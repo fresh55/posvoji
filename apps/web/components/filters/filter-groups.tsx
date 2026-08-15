@@ -11,8 +11,8 @@ import {
 } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
-// Only where the icon is the data: the paw grows with the animal. Age carries
-// its meaning through order instead, so it takes no icon.
+// Only where the icon is the data: the paw grows with the animal. Starost is
+// ordinal, so its order already says what an icon would, and it stays bare.
 const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "sex:male": { icon: Mars, className: "size-4" },
   "sex:female": { icon: Venus, className: "size-4" },
@@ -33,17 +33,33 @@ type GroupProps = {
   onToggle: (value: string) => void;
 };
 
+type CardGroup = Exclude<MultiGroup, "shelter">;
+
+// Everything but zavetišče is a short run of options you weigh against each
+// other, so they all get the card. Only the column count differs.
+const CARD_COLS: Record<CardGroup, string> = {
+  sex: "grid-cols-2",
+  age: "grid-cols-3",
+  size: "grid-cols-3",
+};
+
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
 function isDead(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
-// Velikost only: the paws are meant to be compared against each other, which
-// needs the room a card gives and a segment doesn't.
-function OptionCards({ group, options, counts, selected, onToggle }: GroupProps) {
+// One card for every option in every group: a single selected state to read,
+// instead of one dialect per group in a 14rem column.
+function OptionCards({
+  group,
+  options,
+  counts,
+  selected,
+  onToggle,
+}: Omit<GroupProps, "group"> & { group: CardGroup }) {
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className={cn("grid gap-1.5", CARD_COLS[group])}>
       {options.map(({ value, label }) => {
         const count = counts.get(value) ?? 0;
         const checked = selected.includes(value);
@@ -62,52 +78,10 @@ function OptionCards({ group, options, counts, selected, onToggle }: GroupProps)
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
           >
-            {iconDef && (
-              // Shared floor, so the paws read as growing rather than floating.
-              <span className="flex h-5 items-end">
-                <iconDef.icon
-                  className={iconDef.className}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-              </span>
-            )}
-            <span className="text-xs">{label}</span>
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              {count}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// Spol is a binary and starost is ordinal — both are "pick from a short run",
-// which a segmented strip says in one border instead of three.
-function SegmentStrip({ group, options, counts, selected, onToggle }: GroupProps) {
-  return (
-    <div className="flex overflow-hidden rounded-lg border">
-      {options.map(({ value, label }, i) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
-        const iconDef = optionIcon(group, value);
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onToggle(value)}
-            disabled={isDead(count, checked)}
-            aria-pressed={checked}
-            className={cn(
-              "flex-1 px-1 py-2 transition-colors disabled:opacity-40",
-              i > 0 && "border-l",
-              checked
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-            )}
-          >
-            <span className="flex items-center justify-center gap-1 text-xs">
+            {/* Shared floor, so the paws read as growing rather than
+                floating, and held open where there is no icon so a bare
+                card keeps the height of its siblings. */}
+            <span className="flex h-5 items-end">
               {iconDef && (
                 <iconDef.icon
                   className={iconDef.className}
@@ -115,9 +89,9 @@ function SegmentStrip({ group, options, counts, selected, onToggle }: GroupProps
                   aria-hidden
                 />
               )}
-              {label}
             </span>
-            <span className="block text-[11px] tabular-nums opacity-60">
+            <span className="text-xs">{label}</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">
               {count}
             </span>
           </button>
@@ -220,18 +194,16 @@ function ShelterRows({ options, counts, selected, onToggle }: GroupProps) {
   );
 }
 
-function FilterGroup(props: GroupProps) {
+function FilterGroup({ group, ...rest }: GroupProps) {
   return (
     <section>
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {GROUP_LABELS[props.group]}
+        {GROUP_LABELS[group]}
       </h3>
-      {props.group === "shelter" ? (
-        <ShelterRows {...props} />
-      ) : props.group === "size" ? (
-        <OptionCards {...props} />
+      {group === "shelter" ? (
+        <ShelterRows group={group} {...rest} />
       ) : (
-        <SegmentStrip {...props} />
+        <OptionCards group={group} {...rest} />
       )}
     </section>
   );

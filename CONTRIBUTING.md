@@ -10,15 +10,15 @@ pnpm typecheck
 pnpm test
 ```
 
-Node >= 22 and pnpm are required. There are no services to run — the whole
+Node >= 22 and pnpm are required. There are no services to run; the whole
 project works offline from fixtures.
 
 ## Where to contribute
 
-- **`providers/`** — the main contribution surface. One folder per shelter.
-- **`apps/web`** — the site (Next.js static export + shadcn/ui).
-- **`apps/ingest`** — the batch pipeline.
-- **`packages/`** — schema and SDK; changes here affect everything, so open an
+- **`providers/`**: the main contribution surface. One folder per shelter.
+- **`apps/web`**: the site (Next.js static export + shadcn/ui).
+- **`apps/ingest`**: the batch pipeline.
+- **`packages/`**: schema and SDK. Changes here affect everything, so open an
   issue first.
 
 ## Adding a provider
@@ -29,10 +29,10 @@ version:
 1. Copy `providers/_template` to `providers/<shelter-slug>`.
 2. Implement `discover()`, `fetch()`, `normalize()` against the SDK interface.
 3. Add minimal fixture HTML and tests. Fixtures must be trimmed to the markup
-   the parser needs — never commit full page mirrors, photos, or any personal
+   the parser needs. Never commit full page mirrors, photos, or any personal
    data.
 4. Fill in `policy.yaml`. A provider **cannot be enabled** without
-   `permission_status: granted` from the shelter — CI enforces this. Parsers
+   `permission_status: granted` from the shelter, and CI enforces this. Parsers
    for shelters that haven't answered yet are welcome; they stay disabled.
 
 ## Rules that are not negotiable
@@ -66,13 +66,13 @@ the schema, the policy shape or the provider interface start the body or footer
 with `BREAKING CHANGE:`.
 
 The type and scope are English because tooling reads them; the description can
-be Slovenian or English, whichever you think in. Details and examples are in
+be Slovenian or English. Details and examples are in
 [docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md).
 
 ## Pull requests
 
 - Keep PRs focused; one provider or one feature per PR.
-- The **PR title must be a valid conventional commit** — PRs are squash-merged,
+- The **PR title must be a valid conventional commit**. PRs are squash-merged,
   so the title is what lands on `main`.
 - `pnpm typecheck && pnpm test` must pass.
 - New parser logic needs fixture tests.

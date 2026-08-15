@@ -2,11 +2,13 @@
 
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { FilterSheet } from "@/components/filters/filter-sheet";
+import { SortTabs } from "@/components/filters/sort-tabs";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
+  Sort,
   SpeciesFilter,
   ToggleDef,
   ToggleKey,
@@ -27,6 +29,7 @@ export function AnimalFilters({
   activeCount,
   resultCount,
   onSpeciesChange,
+  onSortChange,
   onToggle,
   onToggleProperty,
   onClearAll,
@@ -42,6 +45,7 @@ export function AnimalFilters({
   activeCount: number;
   resultCount: number;
   onSpeciesChange: (species: SpeciesFilter) => void;
+  onSortChange: (sort: Sort) => void;
   onToggle: (group: MultiGroup, value: string) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
@@ -70,19 +74,31 @@ export function AnimalFilters({
                 onToggle={onToggle}
                 onToggleProperty={onToggleProperty}
                 onSpeciesChange={onSpeciesChange}
+                onSortChange={onSortChange}
                 onClearAll={onClearAll}
               />
             </div>
           )}
         </div>
-        {!isEmpty && (
-          <span
-            aria-live="polite"
-            className="shrink-0 text-xs tabular-nums text-muted-foreground"
-          >
-            {plural(resultCount, ANIMAL_FORMS)}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-3">
+          {/* On a phone the species tabs need the whole row, so sorting moves
+              into the sheet alongside them. */}
+          <div className="hidden sm:block">
+            <SortTabs
+              value={filters.sort}
+              onChange={onSortChange}
+              disabled={isEmpty}
+            />
+          </div>
+          {!isEmpty && (
+            <span
+              aria-live="polite"
+              className="text-xs tabular-nums text-muted-foreground"
+            >
+              {plural(resultCount, ANIMAL_FORMS)}
+            </span>
+          )}
+        </div>
       </div>
       <FilterChips chips={chips} onClearAll={onClearAll} className="mt-2.5" />
     </div>

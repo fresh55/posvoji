@@ -11,11 +11,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { SortTabs } from "@/components/filters/sort-tabs";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
+  Sort,
   SpeciesFilter,
   ToggleDef,
   ToggleKey,
@@ -34,6 +36,7 @@ export function FilterSheet({
   onToggle,
   onToggleProperty,
   onSpeciesChange,
+  onSortChange,
   onClearAll,
 }: {
   filters: Filters;
@@ -47,6 +50,7 @@ export function FilterSheet({
   onToggle: (group: MultiGroup, value: string) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onSpeciesChange: (species: SpeciesFilter) => void;
+  onSortChange: (sort: Sort) => void;
   onClearAll: () => void;
 }) {
   return (
@@ -78,6 +82,8 @@ export function FilterSheet({
             counts={speciesTally}
             fullWidth
           />
+
+          <SortTabs value={filters.sort} onChange={onSortChange} fullWidth />
 
           <FilterGroupList
             filters={filters}

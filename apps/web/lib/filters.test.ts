@@ -7,8 +7,11 @@ import {
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  sortAnimals,
   visibleGroups,
   visibleToggles,
+  waitingMonths,
+  waitingSince,
   type Filters,
   type SpeciesFilter,
 } from "./filters";
@@ -155,5 +158,104 @@ describe("URL codec", () => {
     expect(filters.size).toEqual([]);
     expect(activeFilterCount(filters)).toBe(1);
     expect(serializeFilters(filters)).toBe("vrsta=macka&spol=samica");
+  });
+});
+
+const base = animal("cat", {
+  source: {
+    providerId: "macja-hisa",
+    sourceUrl: "https://www.macjahisa.si/posvojitev/muce/luna",
+    fetchedAt: "2026-08-15T06:00:00Z",
+    firstSeenAt: "2026-06-10T06:00:00Z",
+    lastSeenAt: "2026-08-15T06:00:00Z",
+  },
+});
+
+function withDates(id: string, dates: Partial<Animal>): Animal {
+  return { ...base, ...dates, id };
+}
+
+describe("waitingSince", () => {
+  it("prefers the intake date", () => {
+    const animal = withDates("a", {
+      intakeDate: "2026-02-20",
+      foundDate: "2026-03-20",
+    });
+    expect(waitingSince(animal)).toEqual(new Date("2026-02-20"));
+  });
+
+  it("falls back to the found date", () => {
+    const animal = withDates("b", { foundDate: "2026-03-20" });
+    expect(waitingSince(animal)).toEqual(new Date("2026-03-20"));
+  });
+
+  it("falls back to the day we first saw the listing", () => {
+    expect(waitingSince(base)).toEqual(new Date("2026-06-10T06:00:00Z"));
+  });
+
+  it("returns undefined rather than guessing when no date can be read", () => {
+    const animal = withDates("c", {
+      source: { ...base.source, firstSeenAt: "nekoč" },
+    });
+    expect(waitingSince(animal)).toBeUndefined();
+  });
+});
+
+describe("waitingMonths", () => {
+  it("counts whole calendar months", () => {
+    expect(waitingMonths(withDates("a", { intakeDate: "2026-02-20" }), NOW)).toBe(
+      6,
+    );
+  });
+
+  it("floors at zero for a date in the future", () => {
+    expect(waitingMonths(withDates("b", { intakeDate: "2026-11-20" }), NOW)).toBe(
+      0,
+    );
+  });
+});
+
+describe("sortAnimals", () => {
+  const recent = withDates("recent", { intakeDate: "2026-07-20" });
+  const old = withDates("old", { intakeDate: "2024-04-20" });
+  const undated = withDates("undated", {
+    source: { ...base.source, firstSeenAt: "nekoč" },
+  });
+
+  it("puts the newest arrival first by default", () => {
+    const ids = sortAnimals([old, recent], "novo").map((a) => a.id);
+    expect(ids).toEqual(["recent", "old"]);
+  });
+
+  it("puts the longest wait first", () => {
+    const ids = sortAnimals([recent, old], "cakanje").map((a) => a.id);
+    expect(ids).toEqual(["old", "recent"]);
+  });
+
+  it("sinks an unknown date to the bottom in both orders", () => {
+    expect(sortAnimals([undated, recent, old], "cakanje").at(-1)).toBe(undated);
+    expect(sortAnimals([undated, recent, old], "novo").at(-1)).toBe(undated);
+  });
+
+  it("leaves the input array alone", () => {
+    const animals = [recent, old];
+    sortAnimals(animals, "cakanje");
+    expect(animals[0]).toBe(recent);
+  });
+});
+
+describe("sort in the URL", () => {
+  it("writes no param for the default order", () => {
+    expect(serializeFilters(EMPTY_FILTERS)).toBe("");
+  });
+
+  it("round-trips the waiting order", () => {
+    const query = serializeFilters({ ...EMPTY_FILTERS, sort: "cakanje" });
+    expect(query).toBe("razvrsti=cakanje");
+    expect(parseFilters(query).sort).toBe("cakanje");
+  });
+
+  it("degrades an unknown value to the default", () => {
+    expect(parseFilters("razvrsti=najstarejsi").sort).toBe("novo");
   });
 });

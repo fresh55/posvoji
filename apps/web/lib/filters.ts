@@ -4,6 +4,10 @@ export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
 export type MultiGroup = "sex" | "age" | "size" | "shelter";
 
+// Ordering, not narrowing: it never changes which animals you see, so it stays
+// out of the filter count and survives "Počisti filtre".
+export type Sort = "novo" | "cakanje";
+
 // Yes/no properties an animal either has or doesn't, kept apart from the
 // choose-among groups because they combine with AND: asking for cepljenje and
 // sterilizacija means both, not either.
@@ -21,6 +25,7 @@ export type Filters = {
   size: AnimalSize[];
   shelter: string[];
   toggles: ToggleKey[];
+  sort: Sort;
 };
 
 export const EMPTY_FILTERS: Filters = {
@@ -30,6 +35,7 @@ export const EMPTY_FILTERS: Filters = {
   size: [],
   shelter: [],
   toggles: [],
+  sort: "novo",
 };
 
 export const GROUPS: MultiGroup[] = ["sex", "age", "size", "shelter"];
@@ -167,6 +173,43 @@ export function applyFilters(
       matchesToggles(animal, filters.toggles) &&
       GROUPS.every((group) => matchesGroup(animal, group, filters[group], now)),
   );
+}
+
+// Shelters keep whichever date they have: intake is when the wait started,
+// found is the day before it, and the day we first crawled the listing is only
+// a floor — but a floor beats guessing.
+export function waitingSince(animal: Animal): Date | undefined {
+  for (const raw of [
+    animal.intakeDate,
+    animal.foundDate,
+    animal.source.firstSeenAt,
+  ]) {
+    if (!raw) continue;
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  return undefined;
+}
+
+export function waitingMonths(animal: Animal, now: Date): number | undefined {
+  const since = waitingSince(animal);
+  if (!since) return undefined;
+  const months =
+    (now.getFullYear() - since.getFullYear()) * 12 +
+    (now.getMonth() - since.getMonth());
+  return Math.max(0, months);
+}
+
+// An unknown date sinks either way: we can't claim the animal has waited
+// longest, and we can't claim it just arrived.
+export function sortAnimals(animals: Animal[], sort: Sort): Animal[] {
+  return [...animals].sort((a, b) => {
+    const left = waitingSince(a)?.getTime();
+    const right = waitingSince(b)?.getTime();
+    if (left === undefined) return right === undefined ? 0 : 1;
+    if (right === undefined) return -1;
+    return sort === "cakanje" ? left - right : right - left;
+  });
 }
 
 // The faceting rule, shared by both counters: a number next to an option is
@@ -323,6 +366,8 @@ export function pruneHiddenFilters(filters: Filters): Filters {
         filters.species,
       ),
     ),
+    // Sort is not a filter: no species hides it, so it passes through.
+    sort: filters.sort,
   };
 }
 
@@ -446,6 +491,7 @@ export function serializeFilters(filters: Filters): string {
   if (filters.toggles.length > 0) {
     params.set("lastnosti", filters.toggles.join(","));
   }
+  if (filters.sort !== "novo") params.set("razvrsti", filters.sort);
   // Commas are legal unencoded, and these links get shared by hand.
   return params.toString().replace(/%2C/g, ",");
 }
@@ -482,6 +528,7 @@ export function parseFilters(search: string): Filters {
     size: values("size") as AnimalSize[],
     shelter: values("shelter"),
     toggles: [...new Set(toggles)],
+    sort: params.get("razvrsti") === "cakanje" ? "cakanje" : "novo",
   });
 }
 

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import type { Animal } from "@posvoji/schema";
 import { Skeleton } from "@/components/ui/skeleton";
-import { animalMeta } from "@/lib/labels";
+import { waitingMonths } from "@/lib/filters";
+import { animalMeta, waitingLabel } from "@/lib/labels";
 
 // Anything the shelter hasn't permitted stays on the shelter's own site.
 function permittedImage(animal: Animal): string | undefined {
@@ -14,8 +15,13 @@ function permittedImage(animal: Animal): string | undefined {
   return undefined;
 }
 
-export function AnimalCard({ animal }: { animal: Animal }) {
+// Past a year the wait stops being ordinary, so it steps out of the muted
+// lines instead of reading like one more field.
+const LONG_WAIT_MONTHS = 12;
+
+export function AnimalCard({ animal, now }: { animal: Animal; now: Date }) {
   const image = permittedImage(animal);
+  const waiting = waitingMonths(animal, now);
 
   return (
     <a
@@ -43,6 +49,17 @@ export function AnimalCard({ animal }: { animal: Animal }) {
         </div>
         <p className="text-sm text-muted-foreground">{animalMeta(animal)}</p>
         <p className="truncate text-xs text-muted-foreground/80">{animal.shelter.name}</p>
+        {waiting !== undefined && (
+          <p
+            className={
+              waiting >= LONG_WAIT_MONTHS
+                ? "inline-block rounded-full border px-2 py-0.5 text-[11px] text-foreground/75"
+                : "text-xs text-muted-foreground/80"
+            }
+          >
+            {waitingLabel(waiting)}
+          </p>
+        )}
       </div>
     </a>
   );
@@ -56,6 +73,7 @@ export function AnimalCardSkeleton() {
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-16" />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import {
   GROUPS,
   groupOptions,
   optionLabel,
+  sortAnimals,
   speciesCounts,
   toggleCounts,
   toggleLabel,
@@ -33,13 +34,21 @@ const CARD_GRID =
   "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
 
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
-  const { filters, setSpecies, toggle, toggleProperty, clearAll, activeCount } =
-    useAnimalFilters();
+  const {
+    filters,
+    setSpecies,
+    setSort,
+    toggle,
+    toggleProperty,
+    clearAll,
+    activeCount,
+  } = useAnimalFilters();
 
-  // One Date per mount keeps age buckets stable across re-renders.
+  // One Date per mount keeps age buckets and waiting times stable across
+  // re-renders.
   const now = useMemo(() => new Date(), []);
   const visible = useMemo(
-    () => applyFilters(animals, filters, now),
+    () => sortAnimals(applyFilters(animals, filters, now), filters.sort),
     [animals, filters, now],
   );
 
@@ -126,6 +135,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           activeCount={activeCount}
           resultCount={visible.length}
           onSpeciesChange={setSpecies}
+          onSortChange={setSort}
           onToggle={toggle}
           onToggleProperty={toggleProperty}
           onClearAll={clearAll}
@@ -162,7 +172,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
         ) : (
           <div className={CARD_GRID}>
             {visible.map((animal) => (
-              <AnimalCard key={animal.id} animal={animal} />
+              <AnimalCard key={animal.id} animal={animal} now={now} />
             ))}
           </div>
         )}

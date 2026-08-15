@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Check,
   Mars,
   PawPrint,
   Shrub,
@@ -10,6 +9,7 @@ import {
   Venus,
   type LucideIcon,
 } from "lucide-react";
+import { ShelterPicker } from "@/components/filters/shelter-picker";
 import {
   GROUP_LABELS,
   type FilterOption,
@@ -152,59 +152,6 @@ export function TogglePills({
   );
 }
 
-// Shelters keep arriving, so they stay a quiet list that scales past twenty
-// names instead of a wall of boxes.
-function ShelterRows({ options, counts, selected, onToggle }: GroupProps) {
-  return (
-    // No negative margin: the sidebar scrolls vertically, and any child wider
-    // than its padding box turns that into a horizontal scrollbar too.
-    <div className="space-y-0.5">
-      {options.map(({ value, label, sublabel }) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onToggle(value)}
-            disabled={isDead(count, checked)}
-            aria-pressed={checked}
-            className={cn(
-              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors disabled:opacity-40",
-              checked ? "bg-muted" : "hover:bg-muted/50",
-            )}
-          >
-            {/* Always laid out, so selecting a row doesn't shift the list. */}
-            <Check
-              className={cn("size-3.5 shrink-0", !checked && "opacity-0")}
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block truncate text-sm",
-                  !checked && "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-              {sublabel && (
-                <span className="block truncate text-[11px] text-muted-foreground/80">
-                  {sublabel}
-                </span>
-              )}
-            </span>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {count}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function FilterGroup({ group, ...rest }: GroupProps) {
   return (
     <section>
@@ -212,7 +159,7 @@ function FilterGroup({ group, ...rest }: GroupProps) {
         {GROUP_LABELS[group]}
       </h3>
       {group === "shelter" ? (
-        <ShelterRows group={group} {...rest} />
+        <ShelterPicker {...rest} />
       ) : (
         <OptionCards group={group} {...rest} />
       )}

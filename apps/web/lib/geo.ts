@@ -91,7 +91,10 @@ const FOLDED: Record<string, string> = {
   ž: "z",
 };
 
-function key(city: string): string {
+// Also the identity the map groups shelters by, so two shelters that spell
+// their shared town differently still land on one marker rather than two
+// markers on the same spot.
+export function cityKey(city: string): string {
   return city
     .trim()
     .toLowerCase()
@@ -99,11 +102,11 @@ function key(city: string): string {
 }
 
 const BY_KEY = new Map(
-  Object.entries(CITIES).map(([city, at]) => [key(city), at]),
+  Object.entries(CITIES).map(([city, at]) => [cityKey(city), at]),
 );
 
 export function cityAt(city: string): LatLon | undefined {
-  return BY_KEY.get(key(city));
+  return BY_KEY.get(cityKey(city));
 }
 
 const EARTH_RADIUS_KM = 6371;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -8,72 +9,60 @@ import {
   project,
   type LatLon,
 } from "@/lib/geo";
+import {
+  layoutTowns,
+  wedgePath,
+  type ShelterPin,
+  type Town,
+  type Wedge,
+} from "@/lib/map-layout";
 import { ANIMAL_FORMS, plural } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-export type ShelterPin = {
-  value: string;
-  label: string;
-  city: string;
-  at: LatLon;
-  count: number;
-};
+export type { ShelterPin } from "@/lib/map-layout";
 
-const MIN_RADIUS = 4.5;
-const MAX_RADIUS = 12;
+// Drawn outside the marker, for focus and for selection.
+const RING_OFFSET = 3.5;
 
-// Area tracks the count, not radius, or Ljubljana swallows the country.
-function radius(count: number, busiest: number): number {
-  if (busiest <= 0) return MIN_RADIUS;
-  const share = Math.sqrt(Math.min(count, busiest) / busiest);
-  return MIN_RADIUS + (MAX_RADIUS - MIN_RADIUS) * share;
-}
-
-type Placed = ShelterPin & { x: number; y: number; r: number };
-
-function place(pins: ShelterPin[]): Placed[] {
-  const busiest = Math.max(0, ...pins.map((pin) => pin.count));
-  const towns = new Map<string, ShelterPin[]>();
-  for (const pin of pins) {
-    const town = `${pin.at.lat},${pin.at.lon}`;
-    towns.set(town, [...(towns.get(town) ?? []), pin]);
+// A town holding one shelter is a plain dot; a town holding several is the same
+// dot cut into a wedge each. Both are drawn by this, so the target, the ring
+// and the body of a marker always agree on its shape.
+function Mark({
+  town,
+  wedge,
+  r,
+  className,
+}: {
+  town: Town;
+  wedge: Wedge;
+  r: number;
+  className: string;
+}) {
+  if (town.shelters.length === 1) {
+    return <circle cx={town.x} cy={town.y} r={r} className={className} />;
   }
-
-  const placed: Placed[] = [];
-  for (const together of towns.values()) {
-    const centre = project(together[0].at);
-    const radii = together.map((pin) => radius(pin.count, busiest));
-    // Two shelters in one town would otherwise stack on the same pixel, and
-    // the one underneath could never be clicked.
-    const spread =
-      together.length > 1 ? Math.max(...radii) * 0.85 + 1.5 : 0;
-    together.forEach((pin, i) => {
-      const angle = (i / together.length) * Math.PI * 2 - Math.PI / 2;
-      placed.push({
-        ...pin,
-        r: radii[i],
-        x: centre.x + Math.cos(angle) * spread,
-        y: centre.y + Math.sin(angle) * spread,
-      });
-    });
-  }
-
-  // Largest first, so a small neighbour is painted on top and stays clickable.
-  return placed.sort((a, b) => b.r - a.r);
+  return (
+    <path
+      d={wedgePath(town.x, town.y, r, wedge.from, wedge.to)}
+      className={className}
+    />
+  );
 }
 
 export function ShelterMap({
   pins,
+  busiest,
   selected,
-  onToggle,
+  onPick,
   origin,
 }: {
   pins: ShelterPin[];
+  busiest: number;
   selected: string[];
-  onToggle: (value: string) => void;
+  onPick: (value: string) => void;
   origin?: LatLon;
 }) {
-  const placed = place(pins);
+  const towns = useMemo(() => layoutTowns(pins, busiest), [pins, busiest]);
 
   return (
     <svg
@@ -92,70 +81,81 @@ export function ShelterMap({
 
       {origin && onMap(origin) && <Origin at={origin} />}
 
-      {placed.map((pin) => {
-        const checked = selected.includes(pin.value);
-        const dead = pin.count === 0 && !checked;
-        const tally = plural(pin.count, ANIMAL_FORMS);
-        return (
-          <g
-            key={pin.value}
-            role="button"
-            tabIndex={dead ? -1 : 0}
-            aria-disabled={dead || undefined}
-            aria-pressed={checked}
-            aria-label={`${pin.label}, ${pin.city} — ${tally}`}
-            onClick={() => !dead && onToggle(pin.value)}
-            onKeyDown={(event) => {
-              if (dead) return;
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onToggle(pin.value);
-              }
-            }}
-            className={cn(
-              "group/pin outline-none",
-              dead ? "pointer-events-none" : "cursor-pointer",
-            )}
-          >
-            <title>{`${pin.label} · ${pin.city} · ${tally}`}</title>
+      {towns.map((town) =>
+        town.shelters.map((wedge) => {
+          const checked = selected.includes(wedge.value);
+          const dead = wedge.count === 0 && !checked;
+          const tally = plural(wedge.count, ANIMAL_FORMS);
+          const shared = town.shelters.length > 1;
 
-            {/* A 5px dot is not a tap target; this one is, and it is invisible. */}
-            <circle
-              cx={pin.x}
-              cy={pin.y}
-              r={Math.max(pin.r + 4, 9)}
-              className="fill-transparent"
-            />
-            <circle
-              cx={pin.x}
-              cy={pin.y}
-              r={pin.r + 3.5}
-              strokeWidth={1.25}
+          return (
+            <g
+              key={wedge.value}
+              role="button"
+              tabIndex={dead ? -1 : 0}
+              aria-disabled={dead || undefined}
+              aria-pressed={checked}
+              aria-label={
+                shared
+                  ? `${wedge.label}, eno od ${town.shelters.length} zavetišč v kraju ${wedge.city} — ${tally}`
+                  : `${wedge.label}, ${wedge.city} — ${tally}`
+              }
+              onClick={() => !dead && onPick(wedge.value)}
+              onKeyDown={(event) => {
+                if (dead) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onPick(wedge.value);
+                }
+              }}
               className={cn(
-                "fill-none stroke-foreground",
-                checked ? "opacity-35" : "opacity-0",
-                "group-focus-visible/pin:opacity-100",
+                "group/pin outline-none",
+                dead ? "pointer-events-none" : "cursor-pointer",
               )}
-            />
-            <circle
-              cx={pin.x}
-              cy={pin.y}
-              r={pin.r}
-              strokeWidth={1.25}
-              className={cn(
-                // Opacity rides on the fill alone: the stroke is what keeps
-                // two overlapping dots legible as two.
-                "stroke-background transition-[fill]",
-                checked
-                  ? "fill-foreground"
-                  : dead
-                    ? "fill-foreground/15"
-                    : "fill-foreground/35 group-hover/pin:fill-foreground/60",
-              )}
-            />
-          </g>
-        );
-      })}
+            >
+              <title>{`${wedge.label} · ${wedge.city} · ${tally}`}</title>
+
+              {/* Sized by the room the marker has to its nearest neighbour, so
+                  it is as large as it can be without reaching into another
+                  marker and taking a click meant for that one. */}
+              <Mark
+                town={town}
+                wedge={wedge}
+                r={town.hitR}
+                className="fill-transparent"
+              />
+
+              <Mark
+                town={town}
+                wedge={wedge}
+                r={town.r + RING_OFFSET}
+                className={cn(
+                  "fill-none stroke-foreground [stroke-width:1.25]",
+                  checked ? "opacity-35" : "opacity-0",
+                  "group-focus-visible/pin:opacity-100",
+                )}
+              />
+
+              <Mark
+                town={town}
+                wedge={wedge}
+                r={town.r}
+                className={cn(
+                  // Opacity rides on the fill alone: the stroke is what keeps
+                  // two neighbouring markers legible as two, and what divides
+                  // one town's wedges from each other.
+                  "stroke-background transition-[fill] [stroke-linejoin:round] [stroke-width:1.25]",
+                  checked
+                    ? "fill-foreground"
+                    : dead
+                      ? "fill-foreground/15"
+                      : "fill-foreground/35 group-hover/pin:fill-foreground/60",
+                )}
+              />
+            </g>
+          );
+        }),
+      )}
     </svg>
   );
 }

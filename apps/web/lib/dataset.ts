@@ -13,11 +13,16 @@ const datasetPath = join(
   "animals.json",
 );
 
-// Read at build time. The file is absent until a provider is enabled.
-export function loadAnimals(): Animal[] {
-  if (!existsSync(datasetPath)) return [];
+// Read at build time. The file is absent until a provider is enabled, so
+// generatedAt stays undefined until there is real data to date.
+export function loadDataset(): { animals: Animal[]; generatedAt?: string } {
+  if (!existsSync(datasetPath)) return { animals: [] };
   const parsed = Dataset.safeParse(
     JSON.parse(readFileSync(datasetPath, "utf8")),
   );
-  return parsed.success ? parsed.data.animals : [];
+  if (!parsed.success) return { animals: [] };
+  return {
+    animals: parsed.data.animals,
+    generatedAt: parsed.data.generatedAt,
+  };
 }

@@ -4,7 +4,33 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Two numbers drive the page frame: the side gutter and the vertical rhythm
+   between bands. Both widen with the viewport, so no component hard-codes a
+   page-level margin. */
+:root {
+  --gutter: 1rem;
+  --rhythm: 2rem;
+  --sticky-top: 0px;
+}
+
+@media (width >= 40rem) {
+  :root {
+    --gutter: 1.5rem;
+    --rhythm: 2.5rem;
+  }
+}
+
+@media (width >= 64rem) {
+  :root {
+    --gutter: 2rem;
+    --rhythm: 3rem;
+    --sticky-top: 1.5rem;
+  }
+}
+
 @theme inline {
+  --spacing-gutter: var(--gutter);
+  --spacing-rhythm: var(--rhythm);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -139,6 +165,22 @@
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
+  }
+}
+
+/* Runs a background or rule to the shell's edge while its contents stay on the
+   gutter. Derived from --gutter, so the two can't drift apart. */
+@utility bleed {
+  margin-inline: calc(var(--gutter) * -1);
+  padding-inline: var(--gutter);
+}
+
+/* Overflowing tab strips scroll rather than wrap; the scrollbar itself would
+   be taller than the row it belongs to. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 

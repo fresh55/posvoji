@@ -30,7 +30,12 @@ export type ImageRights = z.infer<typeof ImageRights>;
 
 export const AnimalImage = z.strictObject({
   sourceUrl: z.url(),
-  cachedUrl: z.url().optional(),
+  // Filled by the ingest image cache. Root-relative ("/media/animals/…")
+  // because the static site serves its own copies; a full URL stays valid
+  // should the cache ever move to a separate host.
+  cachedUrl: z
+    .union([z.url(), z.string().regex(/^\/\S+$/)])
+    .optional(),
   rights: ImageRights,
 });
 export type AnimalImage = z.infer<typeof AnimalImage>;

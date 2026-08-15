@@ -2,7 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
-import { loadPolicies } from "./policies";
+import { cacheImages } from "./cache-images";
+import { loadPolicies, type LoadedPolicy } from "./policies";
 import { providers } from "./registry";
 import { datasetDir } from "./paths";
 
@@ -32,7 +33,7 @@ function toChangeEntry(animal: Animal): ChangeEntry {
   };
 }
 
-async function crawl(): Promise<Animal[]> {
+function loadValidPolicies(): LoadedPolicy[] {
   const { policies, errors } = loadPolicies();
   if (errors.length > 0) {
     for (const { dir, message } of errors) {
@@ -40,8 +41,13 @@ async function crawl(): Promise<Animal[]> {
     }
     throw new Error("refusing to crawl with invalid provider policies");
   }
+  return policies;
+}
 
-  const client = new PoliteClient({ userAgent: USER_AGENT });
+async function crawl(
+  client: PoliteClient,
+  policies: LoadedPolicy[],
+): Promise<Animal[]> {
   const animals: Animal[] = [];
 
   for (const { policy } of policies) {
@@ -69,10 +75,12 @@ const previousById = new Map(
   (previous?.animals ?? []).map((a) => [a.id, a] as const),
 );
 
-const crawled = await crawl();
+const policies = loadValidPolicies();
+const client = new PoliteClient({ userAgent: USER_AGENT });
+const crawled = await crawl(client, policies);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
-const animals = crawled.map((animal) => {
+const seeded = crawled.map((animal) => {
   const before = previousById.get(animal.id);
   if (!before) return animal;
   return {
@@ -80,6 +88,22 @@ const animals = crawled.map((animal) => {
     source: { ...animal.source, firstSeenAt: before.source.firstSeenAt },
   };
 });
+
+// Cache permitted photos before the dataset is written so cachedUrl ships
+// with it; the same sync deletes copies that fell out of the dataset.
+const imagePolicies = new Map(
+  policies.map(({ policy }) => [policy.providerId, policy.images] as const),
+);
+mkdirSync(datasetDir, { recursive: true });
+const {
+  animals,
+  fetched,
+  reused,
+  deleted,
+} = await cacheImages(seeded, client, imagePolicies);
+console.log(
+  `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
+);
 
 const currentIds = new Set(animals.map((a) => a.id));
 const generatedAt = new Date().toISOString();
@@ -100,7 +124,6 @@ const changes: ChangeSet = {
 
 const dataset: Dataset = { generatedAt, animals };
 
-mkdirSync(datasetDir, { recursive: true });
 writeFileSync(
   join(datasetDir, "animals.json"),
   JSON.stringify(Dataset.parse(dataset), null, 2),

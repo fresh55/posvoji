@@ -55,4 +55,32 @@ describe("Animal", () => {
     const { attribution: _attribution, ...withoutAttribution } = validAnimal;
     expect(Animal.safeParse(withoutAttribution).success).toBe(false);
   });
+
+  it("accepts a root-relative cachedUrl from the image cache", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          cachedUrl: "/media/animals/0123456789abcdef.webp",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a cachedUrl that is neither a URL nor root-relative", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          cachedUrl: "media/animals/luna.webp",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
 });

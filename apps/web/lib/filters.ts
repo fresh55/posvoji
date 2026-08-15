@@ -7,7 +7,12 @@ export type MultiGroup = "sex" | "age" | "size" | "shelter";
 // Yes/no properties an animal either has or doesn't, kept apart from the
 // choose-among groups because they combine with AND: asking for cepljenje and
 // sterilizacija means both, not either.
-export type ToggleKey = "sterilizacija" | "cepljenje" | "cip";
+export type ToggleKey =
+  | "sterilizacija"
+  | "cepljenje"
+  | "cip"
+  | "brez-fiv"
+  | "brez-felv";
 
 export type Filters = {
   species: SpeciesFilter;
@@ -36,9 +41,12 @@ export const GROUP_LABELS: Record<MultiGroup, string> = {
   shelter: "Zavetišče",
 };
 
+// species pins a toggle to one tab; without it the toggle asks something every
+// species can answer.
 export type ToggleDef = {
   key: ToggleKey;
   label: string;
+  species?: Species;
   matches: (animal: Animal) => boolean;
 };
 
@@ -59,6 +67,21 @@ export const TOGGLES: ToggleDef[] = [
     key: "cip",
     label: "Čip",
     matches: (animal) => animal.medical?.microchipped === true,
+  },
+  // Only a recorded negative counts. An untested cat is "unknown", and letting
+  // that through would sell a maybe as an all-clear on the one question these
+  // filters exist to answer.
+  {
+    key: "brez-fiv",
+    label: "Brez FIV",
+    species: "cat",
+    matches: (animal) => animal.medical?.fiv === "negative",
+  },
+  {
+    key: "brez-felv",
+    label: "Brez FeLV",
+    species: "cat",
+    matches: (animal) => animal.medical?.felv === "negative",
   },
 ];
 
@@ -209,9 +232,33 @@ export function toggleCounts(
   return counts;
 }
 
+// The panel measures itself against the species tab rather than the whole
+// dataset, so what it offers is what the animals on screen can be narrowed by.
+export function bySpecies(animals: Animal[], species: SpeciesFilter): Animal[] {
+  return animals.filter((animal) => matchesSpecies(animal, species));
+}
+
+// Velikost sorts dogs, but for cats it is a distinction nobody shops on.
+function groupFitsSpecies(group: MultiGroup, species: SpeciesFilter): boolean {
+  return !(group === "size" && species === "cat");
+}
+
+// A pinned toggle stays off the "Vse" tab too: there it would quietly discard
+// every dog in the list.
+function toggleFitsSpecies(
+  only: Species | undefined,
+  species: SpeciesFilter,
+): boolean {
+  return only === undefined || only === species;
+}
+
 // A toggle that every animal passes (or none do) can't narrow anything.
-export function visibleToggles(animals: Animal[]): ToggleDef[] {
+export function visibleToggles(
+  animals: Animal[],
+  species: SpeciesFilter,
+): ToggleDef[] {
   return TOGGLES.filter((toggle) => {
+    if (!toggleFitsSpecies(toggle.species, species)) return false;
     const matching = animals.filter((a) => toggle.matches(a)).length;
     return matching > 0 && matching < animals.length;
   });
@@ -234,6 +281,7 @@ export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> 
 // A group with fewer than two distinct values can't narrow anything.
 export function visibleGroups(
   animals: Animal[],
+  species: SpeciesFilter,
   now: Date,
 ): Record<MultiGroup, boolean> {
   const distinct = {
@@ -248,11 +296,33 @@ export function visibleGroups(
       if (value !== undefined) distinct[group].add(value);
     }
   }
+  const shown = (group: MultiGroup) =>
+    groupFitsSpecies(group, species) && distinct[group].size >= 2;
   return {
-    sex: distinct.sex.size >= 2,
-    age: distinct.age.size >= 2,
-    size: distinct.size.size >= 2,
-    shelter: distinct.shelter.size >= 2,
+    sex: shown("sex"),
+    age: shown("age"),
+    size: shown("size"),
+    shelter: shown("shelter"),
+  };
+}
+
+// A selection the species tab no longer has a control for would go on narrowing
+// results with no way to switch it off, so changing species drops it from state
+// and from the URL rather than let it work unseen.
+export function pruneHiddenFilters(filters: Filters): Filters {
+  const keep = (group: MultiGroup) => groupFitsSpecies(group, filters.species);
+  return {
+    species: filters.species,
+    sex: keep("sex") ? filters.sex : [],
+    age: keep("age") ? filters.age : [],
+    size: keep("size") ? filters.size : [],
+    shelter: keep("shelter") ? filters.shelter : [],
+    toggles: filters.toggles.filter((key) =>
+      toggleFitsSpecies(
+        TOGGLES.find((t) => t.key === key)?.species,
+        filters.species,
+      ),
+    ),
   };
 }
 
@@ -381,7 +451,8 @@ export function serializeFilters(filters: Filters): string {
 }
 
 // Unknown slugs are dropped silently: a stale shared link should degrade to
-// fewer filters, not break the page.
+// fewer filters, not break the page. So is anything the link's own species tab
+// hides, such as a cat-only toggle carried onto ?vrsta=pes.
 export function parseFilters(search: string): Filters {
   const params = new URLSearchParams(search);
   const slug = params.get("vrsta");
@@ -404,14 +475,14 @@ export function parseFilters(search: string): Filters {
     .filter((slug): slug is ToggleKey =>
       TOGGLES.some((t) => t.key === slug),
     );
-  return {
+  return pruneHiddenFilters({
     species,
     sex: values("sex") as Sex[],
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],
     shelter: values("shelter"),
     toggles: [...new Set(toggles)],
-  };
+  });
 }
 
 export function activeFilterCount(filters: Filters): number {

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
   applyFilters,
+  bySpecies,
   facetCounts,
   GROUPS,
   groupOptions,
@@ -49,14 +50,23 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     () => facetCounts(animals, filters, now),
     [animals, filters, now],
   );
+  // The panel follows the species tab: measured against the whole dataset it
+  // would offer groups the animals on screen don't vary on.
+  const pool = useMemo(
+    () => bySpecies(animals, filters.species),
+    [animals, filters.species],
+  );
   const groups = useMemo(() => {
-    const shown = visibleGroups(animals, now);
+    const shown = visibleGroups(pool, filters.species, now);
     return GROUPS.filter((group) => shown[group]).map((group) => ({
       group,
-      options: groupOptions(group, animals),
+      options: groupOptions(group, pool),
     }));
-  }, [animals, now]);
-  const toggles = useMemo(() => visibleToggles(animals), [animals]);
+  }, [pool, filters.species, now]);
+  const toggles = useMemo(
+    () => visibleToggles(pool, filters.species),
+    [pool, filters.species],
+  );
   const toggleTally = useMemo(
     () => toggleCounts(animals, filters, now),
     [animals, filters, now],

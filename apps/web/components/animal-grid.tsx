@@ -23,6 +23,14 @@ import {
 } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
+// Cards claim a target width and the column count falls out of whatever space
+// is left. Fixed counts made cards jump from 309px to 222px the moment the
+// sidebar appeared at lg, because the count stayed at three while the room for
+// it shrank by a quarter. Two columns stay hard-coded on phones — auto-fill
+// would drop to one there, and a single column of photos is a worse phone page.
+const CARD_GRID =
+  "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
+
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
   const { filters, setSpecies, toggle, toggleProperty, clearAll, activeCount } =
     useAnimalFilters();
@@ -95,7 +103,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
         />
       )}
 
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         <AnimalFilters
           isEmpty={isEmpty}
           filters={filters}
@@ -118,18 +126,9 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
             <p className="text-sm text-muted-foreground">
               Tu bodo živali, ko se dogovorimo s prvimi zavetišči.
             </p>
-            <div
-              aria-hidden
-              className="grid grid-cols-2 gap-4 opacity-60 md:grid-cols-3 xl:grid-cols-4"
-            >
+            <div aria-hidden className={cn(CARD_GRID, "opacity-60")}>
               {Array.from({ length: 4 }, (_, i) => (
-                // Four fills a 2- or 4-column row, but orphans on 3 columns.
-                <div
-                  key={i}
-                  className={i === 3 ? "md:hidden xl:block" : undefined}
-                >
-                  <AnimalCardSkeleton />
-                </div>
+                <AnimalCardSkeleton key={i} />
               ))}
             </div>
           </div>
@@ -151,7 +150,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+          <div className={CARD_GRID}>
             {visible.map((animal) => (
               <AnimalCard key={animal.id} animal={animal} />
             ))}

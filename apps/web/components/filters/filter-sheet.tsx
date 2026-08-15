@@ -105,7 +105,7 @@ export function FilterSheet({
           )}
         </div>
 
-        <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t bg-popover px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button variant="ghost" onClick={onClearAll}>
             Počisti
           </Button>

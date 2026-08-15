@@ -26,10 +26,13 @@ export function SpeciesTabs({
   fullWidth?: boolean;
 }) {
   return (
+    // Five tabs plus the sheet trigger don't fit a 375px phone, and wrapping
+    // cost a second row on a bar that is pinned to the top the whole time.
+    // Scrolling keeps it one row tall at every width.
     <div
       className={cn(
-        "inline-flex flex-wrap gap-1",
-        fullWidth && "flex w-full",
+        "flex min-w-0 gap-1 overflow-x-auto no-scrollbar",
+        fullWidth && "w-full overflow-visible",
       )}
     >
       {TABS.map(({ value: tab, label, icon: Icon }) => {
@@ -44,7 +47,7 @@ export function SpeciesTabs({
             disabled={disabled}
             aria-pressed={value === tab}
             className={cn(
-              "inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors disabled:opacity-40",
+              "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors disabled:opacity-40",
               fullWidth && "flex-1 py-1.5",
               value === tab
                 ? "bg-foreground text-background"

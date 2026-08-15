@@ -47,7 +47,7 @@ export function AnimalFilters({
   onClearAll: () => void;
 }) {
   return (
-    <div className="sticky top-0 z-10 -mx-6 border-b bg-background/90 px-6 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
+    <div className="bleed sticky top-0 z-10 border-b bg-background/90 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
           <SpeciesTabs
@@ -57,7 +57,7 @@ export function AnimalFilters({
             disabled={isEmpty}
           />
           {(groups.length > 0 || toggles.length > 0) && (
-            <div className="lg:hidden">
+            <div className="shrink-0 lg:hidden">
               <FilterSheet
                 filters={filters}
                 groups={groups}

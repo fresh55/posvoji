@@ -30,22 +30,17 @@ type GroupProps = {
   onToggle: (value: string) => void;
 };
 
-// Velikost is the only group where comparing the icons is the point, so it is
-// the only one that gets cards.
-const CARD_COLS: Partial<Record<MultiGroup, string>> = {
-  size: "grid-cols-3",
-};
-
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
 function isDead(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
-// Spol and velikost: the icon carries the meaning, so each option gets a card.
+// Velikost only: the paws are meant to be compared against each other, which
+// needs the room a card gives and a segment doesn't.
 function OptionCards({ group, options, counts, selected, onToggle }: GroupProps) {
   return (
-    <div className={cn("grid gap-1.5", CARD_COLS[group])}>
+    <div className="grid grid-cols-3 gap-1.5">
       {options.map(({ value, label }) => {
         const count = counts.get(value) ?? 0;
         const checked = selected.includes(value);

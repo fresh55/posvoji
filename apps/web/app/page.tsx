@@ -3,23 +3,16 @@ import { Logo } from "@/components/logo";
 import { loadDataset } from "@/lib/dataset";
 import { plural, SHELTER_FORMS } from "@/lib/labels";
 
-// Dataset generation time, not build time — the date has to mean "last checked
-// with the shelters", or it is worse than showing nothing.
-const refreshed = new Intl.DateTimeFormat("sl-SI", {
-  day: "numeric",
-  month: "numeric",
-  year: "numeric",
-});
-
 export default function Home() {
-  const { animals, generatedAt } = loadDataset();
+  const dataset = loadDataset();
+  const animals = dataset?.animals ?? [];
   const shelters = new Set(animals.map((animal) => animal.shelter.id)).size;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
       <header className="bleed flex items-center justify-between border-b py-4">
         <span className="flex items-center gap-2 font-medium tracking-tight">
-          <Logo className="h-7 w-auto" />
+          <Logo className="h-10 w-auto" />
           posvoji.si
         </span>
         <a
@@ -44,11 +37,10 @@ export default function Home() {
           <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
             Živali iz slovenskih zavetišč, ki iščejo dom.
           </h1>
-          {shelters > 0 && (
+          {dataset && shelters > 0 && (
             <p className="text-sm text-muted-foreground">
-              {plural(shelters, SHELTER_FORMS)}
-              {generatedAt &&
-                ` · osveženo ${refreshed.format(new Date(generatedAt))}`}
+              {plural(shelters, SHELTER_FORMS)} · osveženo{" "}
+              {new Date(dataset.generatedAt).toLocaleDateString("sl-SI")}
             </p>
           )}
         </div>

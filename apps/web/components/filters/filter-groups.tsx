@@ -1,6 +1,15 @@
 "use client";
 
-import { Check, Mars, PawPrint, Venus, type LucideIcon } from "lucide-react";
+import {
+  Check,
+  Mars,
+  PawPrint,
+  Shrub,
+  Sprout,
+  TreeDeciduous,
+  Venus,
+  type LucideIcon,
+} from "lucide-react";
 import {
   GROUP_LABELS,
   type FilterOption,
@@ -11,11 +20,14 @@ import {
 } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
-// Only where the icon is the data: the paw grows with the animal. Starost is
-// ordinal, so its order already says what an icon would, and it stays bare.
+// Only where the icon is the data: the paw grows with the animal and the plant
+// with the years. Spol has nothing to rank, so its pair only has to differ.
 const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "sex:male": { icon: Mars, className: "size-4" },
   "sex:female": { icon: Venus, className: "size-4" },
+  "age:mladicek": { icon: Sprout, className: "size-3.5" },
+  "age:odrasel": { icon: Shrub, className: "size-4.5" },
+  "age:senior": { icon: TreeDeciduous, className: "size-5" },
   "size:small": { icon: PawPrint, className: "size-3" },
   "size:medium": { icon: PawPrint, className: "size-4" },
   "size:large": { icon: PawPrint, className: "size-5" },
@@ -78,9 +90,8 @@ function OptionCards({
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
           >
-            {/* Shared floor, so the paws read as growing rather than
-                floating, and held open where there is no icon so a bare
-                card keeps the height of its siblings. */}
+            {/* Shared floor, so both ramps read as growing rather than
+                floating. */}
             <span className="flex h-5 items-end">
               {iconDef && (
                 <iconDef.icon

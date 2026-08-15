@@ -1,47 +1,52 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Animal, Species } from "@posvoji/schema";
+import { Cat, Dog, PawPrint, Rabbit, type LucideIcon } from "lucide-react";
+import type { Animal } from "@posvoji/schema";
 import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
 import { cn } from "@/lib/utils";
 
-type Filter = "all" | Species;
+type Filter = "all" | "dog" | "cat" | "other";
 
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "Vse" },
-  { value: "dog", label: "Psi" },
-  { value: "cat", label: "Mačke" },
-  { value: "other", label: "Ostale" },
+const FILTERS: { value: Filter; label: string; icon: LucideIcon }[] = [
+  { value: "all", label: "Vse", icon: PawPrint },
+  { value: "dog", label: "Psi", icon: Dog },
+  { value: "cat", label: "Mačke", icon: Cat },
+  { value: "other", label: "Ostale", icon: Rabbit },
 ];
 
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
   const [filter, setFilter] = useState<Filter>("all");
 
-  const visible = useMemo(
-    () =>
-      filter === "all" ? animals : animals.filter((a) => a.species === filter),
-    [animals, filter],
-  );
+  const visible = useMemo(() => {
+    if (filter === "all") return animals;
+    // "Ostale" collects rabbits and anything else, so no species is unreachable.
+    if (filter === "other") {
+      return animals.filter((a) => a.species !== "dog" && a.species !== "cat");
+    }
+    return animals.filter((a) => a.species === filter);
+  }, [animals, filter]);
 
   const isEmpty = animals.length === 0;
 
   return (
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-4 border-b pb-3">
-        <div className="flex gap-1">
-          {FILTERS.map(({ value, label }) => (
+        <div className="flex flex-wrap gap-1">
+          {FILTERS.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               type="button"
               onClick={() => setFilter(value)}
               disabled={isEmpty}
               className={cn(
-                "rounded-md px-2.5 py-1 text-sm transition-colors disabled:opacity-40",
+                "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors disabled:opacity-40 sm:px-2.5",
                 filter === value
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
+              <Icon className="size-4" strokeWidth={1.75} aria-hidden />
               {label}
             </button>
           ))}

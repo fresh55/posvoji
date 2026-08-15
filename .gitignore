@@ -18,6 +18,11 @@ data/dist/
 .env.*
 !.env.example
 
+# editor / tooling
+.claude/
+.vscode/
+.idea/
+
 # misc
 .DS_Store
 Thumbs.db

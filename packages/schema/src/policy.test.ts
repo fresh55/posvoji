@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProviderPolicy } from "./policy.js";
+import { ProviderPolicy } from "./policy";
 
 const basePolicy = {
   providerId: "macja-hisa",

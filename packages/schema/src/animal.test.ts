@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animal } from "./animal.js";
+import { Animal } from "./animal";
 
 const validAnimal = {
   id: "macja-hisa:luna",

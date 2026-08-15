@@ -1,3 +1,3 @@
-export * from "./animal.js";
-export * from "./policy.js";
-export * from "./dataset.js";
+export * from "./animal";
+export * from "./policy";
+export * from "./dataset";

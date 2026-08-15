@@ -7,9 +7,9 @@ import {
   ChangeSet,
   Dataset,
 } from "@posvoji/schema";
-import { loadPolicies } from "./policies.js";
-import { providers } from "./registry.js";
-import { datasetDir } from "./paths.js";
+import { loadPolicies } from "./policies";
+import { providers } from "./registry";
+import { datasetDir } from "./paths";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
 

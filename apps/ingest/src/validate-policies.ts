@@ -1,4 +1,4 @@
-import { loadPolicies } from "./policies.js";
+import { loadPolicies } from "./policies";
 
 const { policies, errors } = loadPolicies();
 

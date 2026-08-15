@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Animal, Species } from "./animal.js";
+import { Animal, Species } from "./animal";
 
 // One published crawl result. `animals.json` on the CDN conforms to this.
 export const Dataset = z.strictObject({

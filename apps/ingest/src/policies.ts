@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { parse } from "yaml";
 import { ProviderPolicy } from "@posvoji/schema";
-import { providersDir } from "./paths.js";
+import { providersDir } from "./paths";
 
 export interface LoadedPolicy {
   dir: string;

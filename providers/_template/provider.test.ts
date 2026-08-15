@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { loadFixture, PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ProviderPolicy } from "@posvoji/schema";
-import provider, { parseDetail, parseList } from "./provider.js";
+import provider, { parseDetail, parseList } from "./provider";
 
 const policy = ProviderPolicy.parse(
   parse(readFileSync(new URL("./policy.yaml", import.meta.url), "utf8")),

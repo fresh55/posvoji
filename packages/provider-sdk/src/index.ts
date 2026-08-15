@@ -1,4 +1,4 @@
-export * from "./provider.js";
-export * from "./polite-client.js";
-export * from "./fixtures.js";
+export * from "./provider";
+export * from "./polite-client";
+export * from "./fixtures";
 export * as cheerio from "cheerio";

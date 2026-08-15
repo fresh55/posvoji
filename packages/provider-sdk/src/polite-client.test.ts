@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeBackoffMs, parseRetryAfter } from "./polite-client.js";
+import { computeBackoffMs, parseRetryAfter } from "./polite-client";
 
 describe("parseRetryAfter", () => {
   it("parses delta-seconds", () => {

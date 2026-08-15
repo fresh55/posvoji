@@ -1,5 +1,5 @@
 import type { Animal, ProviderPolicy } from "@posvoji/schema";
-import type { PoliteClient } from "./polite-client.js";
+import type { PoliteClient } from "./polite-client";
 
 export interface SourceAnimalRef {
   sourceAnimalId: string;

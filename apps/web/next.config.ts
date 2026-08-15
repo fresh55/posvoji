@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // The schema package ships TypeScript source, not a build.
+  transpilePackages: ["@posvoji/schema"],
 };
 
 export default nextConfig;

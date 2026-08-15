@@ -2,7 +2,7 @@
 
 Ta dokument je zaveza projekta zavetiščem, posvojiteljem in prispevkarjem.
 Strojno berljiva različica teh pravil živi v `providers/*/policy.yaml` in jo
-preverja CI — provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
+preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
 
 ## Načela
 
@@ -31,8 +31,8 @@ preverja CI — provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti
    napakah odneha. Družbenih omrežij ne zajemamo.
 
 6. **Pravica do izhoda.** Zavetišče lahko kadarkoli zahteva spremembo prikaza,
-   izključitev fotografij, nižjo frekvenco osveževanja ali popolno izključitev
-   — prek [obrazca](../../issues/new/choose) ali po e-pošti. Zahteve za
+   izključitev fotografij, nižjo frekvenco osveževanja ali popolno izključitev,
+   prek [obrazca](../../issues/new/choose) ali po e-pošti. Zahteve za
    odstranitev obravnavamo prednostno.
 
 ## Kaj dovoljenje zavetišča ureja

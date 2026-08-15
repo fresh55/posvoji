@@ -83,7 +83,7 @@ function OptionCards({ group, options, counts, selected, onToggle }: GroupProps)
   );
 }
 
-// Spol is a binary and starost is ordinal — both are "pick from a short run",
+// Spol is a binary and starost is ordinal; both are "pick from a short run",
 // which a segmented strip says in one border instead of three.
 function SegmentStrip({ group, options, counts, selected, onToggle }: GroupProps) {
   return (

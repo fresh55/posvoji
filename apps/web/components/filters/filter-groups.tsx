@@ -4,7 +4,10 @@ import { Check, Mars, PawPrint, Venus, type LucideIcon } from "lucide-react";
 import {
   GROUP_LABELS,
   type FilterOption,
+  type Filters,
   type MultiGroup,
+  type ToggleDef,
+  type ToggleKey,
 } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
@@ -131,10 +134,10 @@ export function TogglePills({
   selected,
   onToggle,
 }: {
-  toggles: { key: string; label: string }[];
+  toggles: ToggleDef[];
   counts: Map<string, number>;
-  selected: string[];
-  onToggle: (key: string) => void;
+  selected: ToggleKey[];
+  onToggle: (key: ToggleKey) => void;
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -217,8 +220,7 @@ function ShelterRows({ options, counts, selected, onToggle }: GroupProps) {
   );
 }
 
-// Shared by the desktop sidebar and the mobile sheet so both read the same.
-export function FilterGroup(props: GroupProps) {
+function FilterGroup(props: GroupProps) {
   return (
     <section>
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -232,5 +234,54 @@ export function FilterGroup(props: GroupProps) {
         <SegmentStrip {...props} />
       )}
     </section>
+  );
+}
+
+// The desktop sidebar and the mobile sheet frame these differently but show the
+// same controls, so the list lives here and each frame supplies only its chrome.
+export function FilterGroupList({
+  filters,
+  groups,
+  counts,
+  toggles,
+  toggleTally,
+  onToggle,
+  onToggleProperty,
+}: {
+  filters: Filters;
+  groups: { group: MultiGroup; options: FilterOption[] }[];
+  counts: Record<MultiGroup, Map<string, number>>;
+  toggles: ToggleDef[];
+  toggleTally: Map<string, number>;
+  onToggle: (group: MultiGroup, value: string) => void;
+  onToggleProperty: (key: ToggleKey) => void;
+}) {
+  return (
+    <>
+      {groups.map(({ group, options }) => (
+        <FilterGroup
+          key={group}
+          group={group}
+          options={options}
+          counts={counts[group]}
+          selected={filters[group]}
+          onToggle={(value) => onToggle(group, value)}
+        />
+      ))}
+
+      {toggles.length > 0 && (
+        <section>
+          <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Zdravje
+          </h3>
+          <TogglePills
+            toggles={toggles}
+            counts={toggleTally}
+            selected={filters.toggles}
+            onToggle={onToggleProperty}
+          />
+        </section>
+      )}
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { FilterGroup, TogglePills } from "@/components/filters/filter-groups";
+import { FilterGroupList } from "@/components/filters/filter-groups";
 import type {
   FilterOption,
   Filters,
@@ -50,30 +50,15 @@ export function FilterSidebar({
         )}
       </div>
 
-      {groups.map(({ group, options }) => (
-        <FilterGroup
-          key={group}
-          group={group}
-          options={options}
-          counts={counts[group]}
-          selected={filters[group]}
-          onToggle={(value) => onToggle(group, value)}
-        />
-      ))}
-
-      {toggles.length > 0 && (
-        <section>
-          <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Zdravje
-          </h3>
-          <TogglePills
-            toggles={toggles}
-            counts={toggleTally}
-            selected={filters.toggles}
-            onToggle={(key) => onToggleProperty(key as ToggleKey)}
-          />
-        </section>
-      )}
+      <FilterGroupList
+        filters={filters}
+        groups={groups}
+        counts={counts}
+        toggles={toggles}
+        toggleTally={toggleTally}
+        onToggle={onToggle}
+        onToggleProperty={onToggleProperty}
+      />
     </aside>
   );
 }

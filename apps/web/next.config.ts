@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Static files only. Nothing that needs a server at runtime belongs here —
+  // Static files only. Nothing that needs a server at runtime belongs here;
   // images are already sized by the ingest pipeline.
   output: "export",
   images: {

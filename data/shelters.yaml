@@ -115,7 +115,9 @@ shelters:
     website: https://www.macjahisa.si/
     email: zavetisce@macjahisa.si
     phone: "031 326 877"
-    notes: Redno ažuriran strukturiran katalog; kandidat za pilotno partnerstvo.
+    notes: >-
+      Redno ažuriran strukturiran katalog. Pilotni partner: pisno dovoljenje
+      2026-08-16, provider macja-hisa je vklopljen.
 
   - id: johanca
     name: Zavetišče Johanca (Veterina Tolmin)

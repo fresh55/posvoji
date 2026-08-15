@@ -11,6 +11,7 @@
     "export": "tsx src/export.ts"
   },
   "dependencies": {
+    "@posvoji/provider-macja-hisa": "workspace:*",
     "@posvoji/provider-sdk": "workspace:*",
     "@posvoji/schema": "workspace:*",
     "tsx": "^4.23.12",

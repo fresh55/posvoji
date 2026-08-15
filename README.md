@@ -63,7 +63,7 @@ top of `changes.json`, and both stay static.
 | `packages/provider-sdk` | Provider interface, polite HTTP client, fixture harness | MIT |
 | `providers/*` | One adapter per shelter, each with its `policy.yaml` | MIT |
 | `data/shelters.yaml` | Slovenian shelter registry (source: UVHVVR) | — |
-| `docs/` | Data policy, provider guide | — |
+| `docs/` | Data policy, provider guide, commit convention | — |
 
 ## Getting started
 

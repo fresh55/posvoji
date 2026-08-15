@@ -22,11 +22,25 @@ export function plural(n: number, forms: [string, string, string, string]): stri
   return `${n} ${forms[3]}`;
 }
 
-function formatAge(months: number): string {
-  if (months < 12) {
-    return plural(months, ["mesec", "meseca", "mesece", "mesecev"]);
-  }
-  return plural(Math.floor(months / 12), ["leto", "leti", "leta", "let"]);
+// "1 mesec", "2 meseca", "3 mesece", "5 mesecev".
+export const MONTH_FORMS: [string, string, string, string] = [
+  "mesec",
+  "meseca",
+  "mesece",
+  "mesecev",
+];
+
+// "1 leto", "2 leti", "3 leta", "5 let".
+export const YEAR_FORMS: [string, string, string, string] = [
+  "leto",
+  "leti",
+  "leta",
+  "let",
+];
+
+function formatDuration(months: number): string {
+  if (months < 12) return plural(months, MONTH_FORMS);
+  return plural(Math.floor(months / 12), YEAR_FORMS);
 }
 
 // "1 žival", "2 živali", "5 živali" for result counts.
@@ -51,9 +65,16 @@ export function animalMeta(animal: Animal): string {
     SPECIES[animal.species],
     animal.sex ? SEX[animal.sex] : "",
     animal.approximateAgeMonths !== undefined
-      ? formatAge(animal.approximateAgeMonths)
+      ? formatDuration(animal.approximateAgeMonths)
       : "",
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+// Whole months: a wait this long doesn't get more useful by naming the day,
+// and rounding down never overstates it.
+export function waitingLabel(months: number): string {
+  if (months < 1) return "čaka manj kot mesec";
+  return `čaka ${formatDuration(months)}`;
 }

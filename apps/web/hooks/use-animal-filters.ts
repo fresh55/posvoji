@@ -9,6 +9,7 @@ import {
   serializeFilters,
   type Filters,
   type MultiGroup,
+  type Sort,
   type SpeciesFilter,
   type ToggleKey,
 } from "@/lib/filters";
@@ -54,6 +55,13 @@ export function useAnimalFilters() {
     [filters],
   );
 
+  const setSort = useCallback(
+    (sort: Sort) => {
+      writeFilters({ ...filters, sort });
+    },
+    [filters],
+  );
+
   const toggle = useCallback(
     (group: MultiGroup, value: string) => {
       const selected = filters[group] as string[];
@@ -75,11 +83,16 @@ export function useAnimalFilters() {
     [filters],
   );
 
-  const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
+  // Ordering is not a filter, so clearing the filters leaves it alone.
+  const clearAll = useCallback(
+    () => writeFilters({ ...EMPTY_FILTERS, sort: filters.sort }),
+    [filters.sort],
+  );
 
   return {
     filters,
     setSpecies,
+    setSort,
     toggle,
     toggleProperty,
     clearAll,

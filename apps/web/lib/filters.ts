@@ -326,7 +326,9 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   };
 }
 
-export type FilterOption = { value: string; label: string; sublabel?: string };
+// city is the shelter's town, kept as its own field rather than a generic
+// sublabel because the map places a marker from it.
+export type FilterOption = { value: string; label: string; city?: string };
 
 const SEX_OPTIONS: FilterOption[] = [
   { value: "male", label: "Samec" },
@@ -361,11 +363,7 @@ export function groupOptions(
         });
       }
       return [...shelters]
-        .map(([value, { name, city }]) => ({
-          value,
-          label: name,
-          sublabel: city,
-        }))
+        .map(([value, { name, city }]) => ({ value, label: name, city }))
         .sort((a, b) => a.label.localeCompare(b.label, "sl"));
     }
     case "sex":

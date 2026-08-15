@@ -1,0 +1,23 @@
+{
+  "name": "@posvoji/ingest",
+  "version": "0.1.0",
+  "description": "Batch pipeline: crawl enabled providers, normalize, export the static dataset",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "validate": "tsx src/validate-policies.ts",
+    "export": "tsx src/export.ts"
+  },
+  "dependencies": {
+    "@posvoji/provider-sdk": "workspace:*",
+    "@posvoji/schema": "workspace:*",
+    "tsx": "^4.23.12",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  }
+}

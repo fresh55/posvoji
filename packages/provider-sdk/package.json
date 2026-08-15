@@ -1,0 +1,25 @@
+{
+  "name": "@posvoji/provider-sdk",
+  "version": "0.1.0",
+  "description": "Provider interface, polite HTTP client and fixture harness for Posvoji.si adapters",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@posvoji/schema": "workspace:*",
+    "cheerio": "^1.2.0",
+    "robots-parser": "^3.0.1",
+    "undici": "^8.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

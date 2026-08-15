@@ -1,0 +1,36 @@
+name: Popravek ali odstranitev podatkov
+description: >-
+  Za zavetišča in uporabnike: napačen podatek, zahteva za spremembo prikaza ali
+  izključitev vira.
+title: "[data] "
+labels: [data]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Povezava
+      description: URL živali na Posvoji.si ali na izvorni strani.
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Vrsta zahteve
+      options:
+        - Napačen ali zastarel podatek
+        - Sprememba načina prikaza našega vira
+        - Izključitev fotografij
+        - Popolna izključitev našega vira
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Podrobnosti
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: >-
+        Zahteve zavetišč za odstranitev obravnavamo prednostno. Ne vpisujte
+        osebnih podatkov tretjih oseb.

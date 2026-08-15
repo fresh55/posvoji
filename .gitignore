@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# builds
+.next/
+out/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ingest output (dataset is an artifact, not source)
+data/dist/
+*.db
+*.sqlite
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+Thumbs.db
+*.log

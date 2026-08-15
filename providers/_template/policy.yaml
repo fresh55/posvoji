@@ -1,0 +1,25 @@
+# Machine-readable permission record. CI validates every policy.yaml against
+# the ProviderPolicy schema: a provider cannot be enabled, show images or carry
+# more than bare facts without granted, dated permission from the shelter.
+providerId: template
+source: https://example-shelter.si/zivali
+enabled: false
+
+ingestion: scrape
+images: none
+descriptions: facts-only
+
+permission:
+  status: none
+  # When granted, record the date and where the written permission is
+  # archived (a reference id — never the correspondence itself):
+  # status: granted
+  # date: 2026-09-01
+  # reference: mail-thread-0001
+
+attribution: "Vir: Example zavetišče"
+
+crawl:
+  intervalHours: 12
+  excludePaths:
+    - /privat-oddaja

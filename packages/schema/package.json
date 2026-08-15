@@ -1,0 +1,21 @@
+{
+  "name": "@posvoji/schema",
+  "version": "0.1.0",
+  "description": "Zod models for the Posvoji.si adoption index: Animal, ProviderPolicy, Dataset, ChangeSet",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

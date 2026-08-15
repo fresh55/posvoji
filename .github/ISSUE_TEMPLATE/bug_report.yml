@@ -1,0 +1,23 @@
+name: Bug report
+description: Nekaj ne dela, kot bi moralo.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Kaj se je zgodilo?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kaj bi se moralo zgoditi?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Koraki za ponovitev
+      placeholder: |
+        1. ...
+        2. ...

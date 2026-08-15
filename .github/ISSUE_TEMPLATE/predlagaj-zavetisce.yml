@@ -1,0 +1,44 @@
+name: Predlagaj zavetišče / novega providerja
+description: Predlagaj vir, ki naj ga Posvoji.si vključi.
+title: "[provider] "
+labels: [provider]
+body:
+  - type: input
+    id: shelter
+    attributes:
+      label: Zavetišče
+      description: Ime organizacije.
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Spletni naslov objav živali
+    validations:
+      required: true
+  - type: dropdown
+    id: relationship
+    attributes:
+      label: Tvoja povezava z zavetiščem
+      options:
+        - Nisem povezan/a z zavetiščem
+        - Prostovoljec/prostovoljka
+        - Zaposlen/a ali vodstvo zavetišča
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Opombe
+      description: >-
+        Ali zavetišče že ve za Posvoji.si? Ali obstaja API/RSS/CSV vir? Kdo je
+        pravi kontakt za dovoljenje?
+  - type: checkboxes
+    id: policy
+    attributes:
+      label: Politika projekta
+      options:
+        - label: >-
+            Razumem, da se provider vklopi šele, ko zavetišče pisno dovoli
+            uporabo podatkov (glej docs/DATA-POLICY.md).
+          required: true

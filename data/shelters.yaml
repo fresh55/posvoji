@@ -1,0 +1,150 @@
+# Registry of Slovenian animal shelters.
+#
+# Source: UVHVVR register of shelters (gov.si), version dated 2026-02-23,
+# supplemented with public website checks from August 2026. Contacts listed
+# here are institutional only — never personal data of private individuals.
+#
+# This file is reference data for humans and for future providers. An entry
+# here does NOT mean the shelter may be crawled: that is decided solely by a
+# granted permission recorded in providers/<id>/policy.yaml.
+
+meta:
+  register_source: "UVHVVR — Register zavetišč (gov.si)"
+  register_date: 2026-02-23
+  last_reviewed: 2026-08-15
+
+shelters:
+  - id: zonzani
+    name: Zavetišče Zonzani
+    city: Dramlje
+    website: https://www.zonzani.si/
+    email: info@zonzani.si
+    phone: "03 749 06 00"
+
+  - id: obalno
+    name: Obalno zavetišče (Marjetica Koper)
+    city: Koper
+    website: https://obalnozavetisce.si/
+    email: zavetisce@marjeticakoper.si
+    phone: "05 663 37 66"
+    notes: Skupno zavetišče obalnih občin.
+
+  - id: ljubljana
+    name: Zavetišče Ljubljana
+    city: Ljubljana
+    website: https://www.zavetisce-ljubljana.si/
+    email: info@zavetisce-ljubljana.si
+    phone: "01 256 02 79"
+    notes: >-
+      Pogoji uporabe zahtevajo predhodno pisno soglasje za uporabo vsebin.
+      Brez formalnega dovoljenja se ta vir ne vključi.
+
+  - id: oskar
+    name: Zavetišče Oskar Vitovlje
+    city: Vitovlje
+    website: https://zavetisceoskar.si/
+    email: info@zavetisceoskar.si
+    phone: "05 307 85 70"
+
+  - id: horjul
+    name: Zavetišče Horjul
+    city: Horjul
+    website: https://www.zavetisce-horjul.net/
+    email: info@zavetisce-horjul.net
+    phone: "051 304 435"
+    notes: Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
+
+  - id: turk
+    name: Zavetišče Turk
+    city: Novo mesto
+    website: https://zavetisceturk.com/
+    email: zavetisce.turk@gmail.com
+    phone: "07 308 94 30"
+
+  - id: meli
+    name: Meli Center Repče
+    city: Trebnje
+    website: https://www.meli-center.si/
+    email: meli.center.repce@gmail.com
+    phone: "07 304 56 16"
+
+  - id: mala-hisa
+    name: Zavetišče Mala hiša
+    city: Moravske Toplice
+    website: https://zavetisce-malahisa.si/
+    phone: "031 732 700"
+    notes: >-
+      Pogodbeno pokriva tudi Ptuj (Javne službe Ptuj). Rubrika "Privat oddaja"
+      vsebuje zasebne objave in je trajno izključena iz zajema.
+
+  - id: maribor
+    name: Zavetišče Maribor (Snaga)
+    city: Maribor
+    website: https://zavetisce-mb.si/
+    email: zavetisce.mb@snaga-mb.si
+    phone: "02 480 16 60"
+    notes: >-
+      Pogoji uporabe so restriktivni; med pregledom je bil opažen HTTP 429.
+      Brez formalnega dovoljenja se ta vir ne vključi.
+
+  - id: macji-dol
+    name: Mačji dol (Žverca)
+    city: Škofja Loka
+    website: https://www.macji-dol.si/
+    email: info@zverca.si
+    phone: "040 218 861"
+
+  - id: sevnica
+    name: Veterina Sevnica — zavetišče
+    city: Sevnica
+    website: https://veterina-sevnica.si/
+    email: vet.post.sev@siol.net
+    phone: "07 816 02 10"
+    notes: Spletna stran nima stabilnega kataloga; primernejši je partnerski feed.
+
+  - id: brezice
+    name: Veterinarska bolnica Brežice — zavetišče
+    city: Brežice
+    website: https://www.veterinarskabolnica.si/
+    email: zavetisce.brezice@vbb.si
+    phone: "07 496 11 56"
+
+  - id: macja-hisa
+    name: Zavetišče Mačja hiša
+    city: Celje
+    website: https://www.macjahisa.si/
+    email: zavetisce@macjahisa.si
+    phone: "031 326 877"
+    notes: Redno ažuriran strukturiran katalog; kandidat za pilotno partnerstvo.
+
+  - id: johanca
+    name: Zavetišče Johanca (Veterina Tolmin)
+    city: Tolmin
+    email: zavetisce.johanca@gmail.com
+    notes: >-
+      Objave pretežno na družbenih omrežjih; platform ne zajemamo, potreben je
+      partnerski feed ali ročni vnos.
+
+  - id: muri
+    name: Zavod Muri
+    city: Vransko
+    website: https://zavodmuri.si/
+    email: zavod.muri@gmail.com
+
+  - id: potepuhi
+    name: Zavetišče Potepuhi
+    city: Podlog
+    email: zavetisce.potepuhi@gmail.com
+    phone: "051 646 202"
+    notes: >-
+      Objave pretežno na družbenih omrežjih; platform ne zajemamo, potreben je
+      partnerski feed ali ročni vnos.
+
+  - id: sia-in-lu
+    name: Zavetišče Sia in Lu
+    city: Celje
+    email: zavetiscesiainlu@gmail.com
+    phone: "040 224 449"
+    notes: >-
+      Objave pretežno na družbenih omrežjih; platform ne zajemamo, potreben je
+      partnerski feed ali ročni vnos.

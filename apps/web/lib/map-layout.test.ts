@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
-import { layoutTowns, wedgePath, type ShelterPin } from "./map-layout";
+import {
+  layoutTowns,
+  placeLabels,
+  townLabels,
+  wedgePath,
+  type ShelterPin,
+} from "./map-layout";
 
 function pin(
   value: string,
@@ -70,30 +76,6 @@ describe("layoutTowns", () => {
     const dramlje = towns.find((t) => t.city === "Dramlje")!;
     const celje = towns.find((t) => t.city === "Celje")!;
     expect(gap(dramlje, celje)).toBeGreaterThan(0);
-  });
-
-  // The guarantee that stops the mis-clicks: a marker's target may fill the
-  // empty space around it, but never reaches inside a neighbour's visible dot,
-  // so every dot stays clickable where it is drawn.
-  it("never lets a tap target reach inside another marker's dot", () => {
-    const towns = layoutTowns(REAL_PINS, 120);
-    everyPair(towns, (a, b) => {
-      const centres = Math.hypot(a.x - b.x, a.y - b.y);
-      expect(a.hitR + b.r).toBeLessThanOrEqual(centres + 1e-9);
-      expect(b.hitR + a.r).toBeLessThanOrEqual(centres + 1e-9);
-    });
-  });
-
-  it("grows a tap target past the dot it covers", () => {
-    for (const town of layoutTowns(REAL_PINS, 120)) {
-      expect(town.hitR).toBeGreaterThan(town.r);
-    }
-  });
-
-  it("never shrinks a tap target below the dot it covers", () => {
-    for (const town of layoutTowns(REAL_PINS, 120)) {
-      expect(town.hitR).toBeGreaterThanOrEqual(town.r);
-    }
   });
 
   it("keeps every marker within the drift budget of its real town", () => {
@@ -230,5 +212,59 @@ describe("wedgePath", () => {
   it("sets the large-arc flag only past a half turn", () => {
     expect(wedgePath(0, 0, 5, 0, Math.PI / 2)).toContain("A5 5 0 0 1");
     expect(wedgePath(0, 0, 5, 0, Math.PI * 1.5)).toContain("A5 5 0 1 1");
+  });
+});
+
+describe("placeLabels", () => {
+  const town = (city: string, x: number, y: number, count: number) =>
+    layoutTowns([pin(`s-${city}`, city, count, { lat: 46, lon: 14 })], 120).map(
+      (t) => ({ ...t, city, x, y }),
+    )[0];
+
+  it("places a label that has the map to itself", () => {
+    const placed = placeLabels(townLabels([town("Ljubljana", 160, 100, 10)]));
+    expect(placed).toHaveLength(1);
+    expect(placed[0].text).toBe("Ljubljana 10");
+  });
+
+  it("drops a label once both the space below and above are taken", () => {
+    // Three markers on one point: the first takes the space below, the second
+    // the space above, and the third has nowhere left to go.
+    const placed = placeLabels(
+      townLabels([
+        town("Ljubljana", 160, 100, 30),
+        town("Kranj", 160, 100, 20),
+        town("Celje", 160, 100, 10),
+      ]),
+    );
+    expect(placed.map((l) => l.text)).toEqual(["Ljubljana 30", "Kranj 20"]);
+  });
+
+  it("falls back to the position above when the one below is taken", () => {
+    const first = town("Ljubljana", 160, 100, 20);
+    const placed = placeLabels(
+      townLabels([first, town("Kranj", 160, 100 + first.r * 2 + 14, 10)]),
+    );
+    expect(placed).toHaveLength(2);
+  });
+
+  it("respects the order it is given, so towns outrank regions", () => {
+    const placed = placeLabels([
+      { key: "town", text: "Celje 9", size: 7, x: 160, ys: [100] },
+      { key: "region", text: "Savinjska", size: 5.5, x: 160, ys: [100] },
+    ]);
+    expect(placed.map((l) => l.key)).toEqual(["town"]);
+  });
+
+  it("leaves off a label that would hang past the edge of the map", () => {
+    expect(
+      placeLabels([
+        { key: "edge", text: "Obalno-kraška", size: 7, x: 2, ys: [100] },
+      ]),
+    ).toHaveLength(0);
+  });
+
+  it("places nothing for no candidates", () => {
+    expect(placeLabels([])).toEqual([]);
   });
 });

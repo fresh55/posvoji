@@ -32,6 +32,7 @@ export function FilterSheet({
   activeCount,
   resultCount,
   onToggle,
+  onToggleMany,
   onToggleProperty,
   onSpeciesChange,
   onClearAll,
@@ -45,6 +46,7 @@ export function FilterSheet({
   activeCount: number;
   resultCount: number;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
@@ -86,6 +88,7 @@ export function FilterSheet({
             toggles={toggles}
             toggleTally={toggleTally}
             onToggle={onToggle}
+            onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}
           />
         </div>

@@ -28,6 +28,7 @@ export function AnimalFilters({
   resultCount,
   onSpeciesChange,
   onToggle,
+  onToggleMany,
   onToggleProperty,
   onClearAll,
 }: {
@@ -43,6 +44,7 @@ export function AnimalFilters({
   resultCount: number;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
 }) {
@@ -68,6 +70,7 @@ export function AnimalFilters({
                 activeCount={activeCount}
                 resultCount={resultCount}
                 onToggle={onToggle}
+                onToggleMany={onToggleMany}
                 onToggleProperty={onToggleProperty}
                 onSpeciesChange={onSpeciesChange}
                 onClearAll={onClearAll}

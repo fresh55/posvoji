@@ -1,36 +1,47 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
-import { ArrowDownNarrowWide, Check, LoaderCircle } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ArrowDownNarrowWide, Expand, LoaderCircle } from "lucide-react";
 import { ShelterMap } from "@/components/filters/shelter-map";
+import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ShelterPin } from "@/lib/map-layout";
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption } from "@/lib/filters";
-import { cityAt, distanceKm, formatKm, onMap } from "@/lib/geo";
+import { cityAt, distanceKm, onMap } from "@/lib/geo";
 import { plural, SHELTER_FORMS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 // Shelter is the filter people actually use, because you adopt near where you
-// live, so it leads with a map. The list under it is not a fallback for narrow
-// screens: it is the accessible path, it always holds every shelter including
-// the ones no marker could be placed for, and its rows are the full-size target
-// for anyone who cannot hit a marker.
+// live, so it leads with a map. In the sidebar that map is 209px across, which
+// is enough to show the country and to pick a region but not enough to tell two
+// shelters in one town apart. The expanded view is the same map with room for
+// names, and the list is always there underneath.
 export function ShelterPicker({
   options,
   counts,
   selected,
   onToggle,
+  onToggleMany,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
+  onToggleMany: (values: string[]) => void;
 }) {
   const { state, toggle: toggleNearby } = useNearby();
   const origin = state.status === "on" ? state.at : undefined;
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const [expanded, setExpanded] = useState(false);
 
-  const rows = useMemo(() => {
+  const rows: (ShelterRow & { at?: ReturnType<typeof cityAt> })[] = useMemo(() => {
     const located = options.map((option) => {
       const at = option.city ? cityAt(option.city) : undefined;
       return {
@@ -70,15 +81,15 @@ export function ShelterPicker({
     return Math.max(0, ...byTown.values());
   }, [options]);
 
-  // Picking a marker checks a row that may be well below the fold, and on touch
-  // there is no hover to say which shelter a marker was. Bringing the row into
-  // view is what confirms the pick.
-  const pick = useCallback(
-    (value: string) => {
-      onToggle(value);
-      rowRefs.current.get(value)?.scrollIntoView({ block: "nearest" });
+  // Picking a region picks every shelter in it, which is as fine as a 209px map
+  // can honestly be. The list is where you drop the ones you did not mean, so
+  // bringing the first of them into view is what shows what just happened.
+  const pickRegion = useCallback(
+    (values: string[]) => {
+      onToggleMany(values);
+      rowRefs.current.get(values[0])?.scrollIntoView({ block: "nearest" });
     },
-    [onToggle],
+    [onToggleMany],
   );
 
   const unplaced = rows.length - pins.length;
@@ -94,43 +105,60 @@ export function ShelterPicker({
           ? "Seznam je razvrščen po bližini."
           : undefined;
   const missing =
-    unplaced > 0 ? `${plural(unplaced, SHELTER_FORMS)} ni na zemljevidu.` : undefined;
+    unplaced > 0
+      ? `${plural(unplaced, SHELTER_FORMS)} ni na zemljevidu.`
+      : undefined;
+
+  const map = (labelled: boolean) => (
+    <ShelterMap
+      pins={pins}
+      busiest={busiest}
+      selected={selected}
+      onPickRegion={pickRegion}
+      origin={origin}
+      labelled={labelled}
+    />
+  );
 
   return (
     // No negative margin anywhere below: the sidebar scrolls vertically, and
     // any child wider than its padding box turns that into a horizontal
     // scrollbar too.
     <div className="space-y-2.5">
-      {/* Above the map, and not shaped like the pills in Zdravje. This sorts
-          the list, it does not filter it: nothing drops out, no chip appears
-          and the URL does not change, so it should not wear the look the panel
-          uses for filters. */}
-      <button
-        type="button"
-        onClick={toggleNearby}
-        aria-pressed={nearbyOn}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-md py-0.5 text-xs transition-colors",
-          nearbyOn
-            ? "font-medium text-foreground"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        {state.status === "locating" ? (
-          <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-        ) : (
-          <ArrowDownNarrowWide className="size-3.5" aria-hidden />
-        )}
-        {state.status === "locating" ? "Iščem lokacijo…" : "Najbližje prvo"}
-      </button>
+      <div className="flex items-center justify-between gap-2">
+        {/* Not shaped like the pills in Zdravje. This sorts the list, it does
+            not filter it: nothing drops out, no chip appears and the URL does
+            not change, so it should not wear the look used for filters. */}
+        <button
+          type="button"
+          onClick={toggleNearby}
+          aria-pressed={nearbyOn}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md py-0.5 text-xs transition-colors",
+            nearbyOn
+              ? "font-medium text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {state.status === "locating" ? (
+            <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+          ) : (
+            <ArrowDownNarrowWide className="size-3.5" aria-hidden />
+          )}
+          {state.status === "locating" ? "Iščem lokacijo…" : "Najbližje prvo"}
+        </button>
 
-      <ShelterMap
-        pins={pins}
-        busiest={busiest}
-        selected={selected}
-        onPick={pick}
-        origin={origin}
-      />
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1.5 rounded-md py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Expand className="size-3.5" aria-hidden />
+          Povečaj
+        </button>
+      </div>
+
+      {map(false)}
 
       {/* Stays mounted so a denied permission is announced, not just drawn. */}
       <p
@@ -143,57 +171,44 @@ export function ShelterPicker({
         {missing}
       </p>
 
-      <div className="space-y-0.5">
-        {rows.map(({ value, label, city, km }) => {
-          const count = counts.get(value) ?? 0;
-          const checked = selected.includes(value);
-          const sublabel = [city, km === undefined ? undefined : formatKm(km)]
-            .filter(Boolean)
-            .join(" · ");
-          return (
-            <button
-              key={value}
-              type="button"
-              ref={(node) => {
-                if (node) rowRefs.current.set(value, node);
-                else rowRefs.current.delete(value);
-              }}
-              onClick={() => onToggle(value)}
-              disabled={count === 0 && !checked}
-              aria-pressed={checked}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors disabled:opacity-40",
-                checked ? "bg-muted" : "hover:bg-muted/50",
-              )}
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={selected}
+        onToggle={onToggle}
+        refs={rowRefs}
+      />
+
+      <Dialog open={expanded} onOpenChange={setExpanded}>
+        <DialogContent className="max-w-[46rem]">
+          <DialogHeader>
+            <DialogTitle>Zavetišča po Sloveniji</DialogTitle>
+            <DialogDescription>
+              Izberi območje na zemljevidu ali zavetišče s seznama.
+            </DialogDescription>
+          </DialogHeader>
+          {map(true)}
+          <p className="text-[11px] leading-tight text-muted-foreground">
+            Meje statističnih regij:{" "}
+            <a
+              href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
+              className="underline underline-offset-2 hover:text-foreground"
+              target="_blank"
+              rel="noreferrer"
             >
-              {/* Always laid out, so selecting a row doesn't shift the list. */}
-              <Check
-                className={cn("size-3.5 shrink-0", !checked && "opacity-0")}
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              <span className="min-w-0 flex-1">
-                <span
-                  className={cn(
-                    "block truncate text-sm",
-                    !checked && "text-muted-foreground",
-                  )}
-                >
-                  {label}
-                </span>
-                {sublabel && (
-                  <span className="block truncate text-[11px] text-muted-foreground/80">
-                    {sublabel}
-                  </span>
-                )}
-              </span>
-              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+              GURS
+            </a>
+            , CC BY 4.0.
+          </p>
+          <ShelterRows
+            rows={rows}
+            counts={counts}
+            selected={selected}
+            onToggle={onToggle}
+            className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

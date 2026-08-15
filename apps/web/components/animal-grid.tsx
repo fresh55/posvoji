@@ -33,8 +33,15 @@ const CARD_GRID =
   "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
 
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
-  const { filters, setSpecies, toggle, toggleProperty, clearAll, activeCount } =
-    useAnimalFilters();
+  const {
+    filters,
+    setSpecies,
+    toggle,
+    toggleMany,
+    toggleProperty,
+    clearAll,
+    activeCount,
+  } = useAnimalFilters();
 
   // One Date per mount keeps age buckets stable across re-renders.
   const now = useMemo(() => new Date(), []);
@@ -108,6 +115,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           toggleTally={toggleTally}
           hasActiveFilters={activeCount > 0}
           onToggle={toggle}
+          onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onClearAll={clearAll}
         />
@@ -127,6 +135,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           resultCount={visible.length}
           onSpeciesChange={setSpecies}
           onToggle={toggle}
+          onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onClearAll={clearAll}
         />

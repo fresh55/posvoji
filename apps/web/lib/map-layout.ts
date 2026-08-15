@@ -12,7 +12,8 @@ export type ShelterPin = {
 // hold several shelters, and giving each its own marker meant either stacking
 // them on one pixel or pushing them off the town they name. One marker stays on
 // the town and splits into a wedge per shelter, so the position keeps telling
-// the truth and every shelter still has its own target.
+// the truth and a shared town still shows how many it holds. The wedges are a
+// picture only: what gets clicked is the town's region, in map-regions.
 export type Wedge = ShelterPin & { from: number; to: number };
 
 export type Town = {
@@ -21,14 +22,13 @@ export type Town = {
   x: number;
   y: number;
   r: number;
-  hitR: number;
   shelters: Wedge[];
 };
 
 const MIN_RADIUS = 4.5;
 const MAX_RADIUS = 12;
 // A single dot can shrink to MIN_RADIUS, but wedges cut that area into slices,
-// so a shared town needs a floor to stay divisible, and the floor has to rise
+// so a shared town needs a floor to stay legible, and the floor has to rise
 // with the number of ways it is divided. A marker holding three shelters is
 // drawn larger than its count alone would earn, which is the honest signal
 // anyway: there is more here than one shelter.
@@ -42,6 +42,7 @@ function sharedFloor(shelters: number): number {
     MULTI_RADIUS_CAP,
   );
 }
+
 // Clear water between two markers, so touching circles still read as two.
 const PIN_GAP = 1.5;
 // How far a marker may be pushed off its real town. 7 units is about 5 km on
@@ -50,7 +51,6 @@ const PIN_GAP = 1.5;
 const MAX_DRIFT = 7;
 const EDGE_MARGIN = 2;
 const RELAX_PASSES = 120;
-const MAX_HIT_RADIUS = 18;
 
 function clamp(value: number, low: number, high: number): number {
   return Math.min(Math.max(value, low), high);
@@ -132,25 +132,6 @@ function relax(towns: Placed[]): void {
   }
 }
 
-// The tap target is why markers were mis-clicked before: every marker carried a
-// fixed 9 unit circle, so a small town's invisible target sat on top of a big
-// neighbour's visible dot and took the click. A target may now grow until it
-// reaches the edge of the nearest dot, and no further, which is the largest it
-// can be while still leaving every dot clickable where it is drawn. Relaxation
-// has already left a PIN_GAP between dots, so this is always at least the
-// marker's own radius and the floor below never has to bind.
-function sizeTargets(towns: Placed[]): void {
-  for (const town of towns) {
-    let room = MAX_HIT_RADIUS;
-    for (const other of towns) {
-      if (other === town) continue;
-      const reach = Math.hypot(town.x - other.x, town.y - other.y) - other.r;
-      room = Math.min(room, reach);
-    }
-    town.hitR = clamp(room, town.r, MAX_HIT_RADIUS);
-  }
-}
-
 // busiest is the largest per-town count the species tab can produce, which is
 // fixed for as long as the tab is. Passing the filtered maximum instead is what
 // made marker sizes drift between filter states.
@@ -188,15 +169,14 @@ export function layoutTowns(pins: ShelterPin[], busiest: number): Town[] {
         homeX: x,
         homeY: y,
         r,
-        hitR: r,
         shelters: slice(shelters),
       };
     });
 
   relax(towns);
-  sizeTargets(towns);
 
-  // Largest first, so a small neighbour paints on top and stays clickable.
+  // Largest first, so a small marker paints on top of a large one rather than
+  // disappearing under it.
   return towns
     .sort((a, b) => b.r - a.r)
     .map((town) => ({
@@ -205,13 +185,90 @@ export function layoutTowns(pins: ShelterPin[], busiest: number): Town[] {
       x: town.x,
       y: town.y,
       r: town.r,
-      hitR: town.hitR,
       shelters: town.shelters,
     }));
 }
 
-// Pie slice from the centre, used for both the visible wedge and its target.
-// A town with one shelter draws a plain circle instead.
+export function townCount(town: Town): number {
+  return town.shelters.reduce((sum, shelter) => sum + shelter.count, 0);
+}
+
+// Rough advance width per character, as a fraction of the font size. The font
+// is not known here, so this runs generous on purpose: a label quietly skipped
+// costs less than two labels drawn across each other.
+const LABEL_CHAR = 0.52;
+const LABEL_GAP = 2;
+
+export type LabelCandidate = {
+  key: string;
+  text: string;
+  size: number;
+  x: number;
+  /** Baselines to try, in order of preference. */
+  ys: number[];
+};
+
+export type PlacedLabel = { key: string; x: number; y: number; text: string };
+
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
+function overlaps(a: Box, b: Box): boolean {
+  return !(a.x1 < b.x0 || a.x0 > b.x1 || a.y1 < b.y0 || a.y0 > b.y1);
+}
+
+// Only the expanded map labels anything, and even there the labels have to be
+// rationed: sixteen town names and twelve region names on one country collide
+// long before the markers do. Candidates are placed in the order given, so the
+// caller decides what outranks what, and a name that would land on one already
+// drawn is left off rather than smeared over it. The marker, the region and the
+// list all still carry the name.
+export function placeLabels(candidates: LabelCandidate[]): PlacedLabel[] {
+  const taken: Box[] = [];
+  const placed: PlacedLabel[] = [];
+
+  for (const candidate of candidates) {
+    const half = (candidate.text.length * candidate.size * LABEL_CHAR) / 2;
+    for (const y of candidate.ys) {
+      const box: Box = {
+        x0: candidate.x - half - LABEL_GAP,
+        x1: candidate.x + half + LABEL_GAP,
+        y0: y - candidate.size,
+        y1: y + LABEL_GAP,
+      };
+      const offMap =
+        box.x0 < 0 || box.x1 > MAP_WIDTH || box.y0 < 0 || box.y1 > MAP_HEIGHT;
+      if (offMap || taken.some((other) => overlaps(box, other))) continue;
+      taken.push(box);
+      placed.push({ key: candidate.key, x: candidate.x, y, text: candidate.text });
+      break;
+    }
+  }
+  return placed;
+}
+
+export const TOWN_LABEL_SIZE = 7;
+export const REGION_LABEL_SIZE = 5.5;
+
+// Towns first: which shelter sits where is what the map is picked from, and a
+// region that loses its name to a town label still has its shape, its tooltip
+// and its place in the list.
+export function townLabels(towns: Town[]): LabelCandidate[] {
+  return [...towns]
+    .sort((a, b) => townCount(b) - townCount(a))
+    .map((town) => ({
+      key: town.key,
+      text: `${town.city} ${townCount(town)}`,
+      size: TOWN_LABEL_SIZE,
+      x: town.x,
+      ys: [
+        town.y + town.r + TOWN_LABEL_SIZE,
+        town.y - town.r - LABEL_GAP,
+      ],
+    }));
+}
+
+// Pie slice from the centre, for drawing one shelter's share of a shared town's
+// marker. A town with one shelter draws a plain circle instead.
 export function wedgePath(
   cx: number,
   cy: number,

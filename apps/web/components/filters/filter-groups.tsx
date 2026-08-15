@@ -43,6 +43,7 @@ type GroupProps = {
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
+  onToggleMany: (values: string[]) => void;
 };
 
 type CardGroup = Exclude<MultiGroup, "shelter">;
@@ -69,7 +70,7 @@ function OptionCards({
   counts,
   selected,
   onToggle,
-}: Omit<GroupProps, "group"> & { group: CardGroup }) {
+}: Omit<GroupProps, "group" | "onToggleMany"> & { group: CardGroup }) {
   return (
     <div className={cn("grid gap-1.5", CARD_COLS[group])}>
       {options.map(({ value, label }) => {
@@ -152,14 +153,14 @@ export function TogglePills({
   );
 }
 
-function FilterGroup({ group, ...rest }: GroupProps) {
+function FilterGroup({ group, onToggleMany, ...rest }: GroupProps) {
   return (
     <section>
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {GROUP_LABELS[group]}
       </h3>
       {group === "shelter" ? (
-        <ShelterPicker {...rest} />
+        <ShelterPicker {...rest} onToggleMany={onToggleMany} />
       ) : (
         <OptionCards group={group} {...rest} />
       )}
@@ -176,6 +177,7 @@ export function FilterGroupList({
   toggles,
   toggleTally,
   onToggle,
+  onToggleMany,
   onToggleProperty,
 }: {
   filters: Filters;
@@ -184,6 +186,7 @@ export function FilterGroupList({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
 }) {
   return (
@@ -196,6 +199,7 @@ export function FilterGroupList({
           counts={counts[group]}
           selected={filters[group]}
           onToggle={(value) => onToggle(group, value)}
+          onToggleMany={(values) => onToggleMany(group, values)}
         />
       ))}
 

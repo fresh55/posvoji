@@ -18,6 +18,7 @@ export function FilterSidebar({
   toggleTally,
   hasActiveFilters,
   onToggle,
+  onToggleMany,
   onToggleProperty,
   onClearAll,
   className,
@@ -29,6 +30,7 @@ export function FilterSidebar({
   toggleTally: Map<string, number>;
   hasActiveFilters: boolean;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
   className?: string;
@@ -57,6 +59,7 @@ export function FilterSidebar({
         toggles={toggles}
         toggleTally={toggleTally}
         onToggle={onToggle}
+        onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}
       />
     </aside>

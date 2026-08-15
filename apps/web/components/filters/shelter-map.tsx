@@ -34,14 +34,12 @@ export function ShelterMap({
   selected,
   onPickRegion,
   origin,
-  labelled = false,
 }: {
   pins: ShelterPin[];
   busiest: number;
   selected: string[];
   onPickRegion: (values: string[]) => void;
   origin?: LatLon;
-  labelled?: boolean;
 }) {
   const towns = useMemo(() => layoutTowns(pins, busiest), [pins, busiest]);
 
@@ -61,7 +59,6 @@ export function ShelterMap({
   // Town names outrank region names for the same space, so a region only gets
   // labelled where no marker needed the room.
   const labels = useMemo(() => {
-    if (!labelled) return { towns: [], regions: [] };
     const names = new Set(towns.map((town) => town.key));
     const placed = placeLabels([
       ...townLabels(towns),
@@ -77,14 +74,18 @@ export function ShelterMap({
       towns: placed.filter((label) => names.has(label.key)),
       regions: placed.filter((label) => !names.has(label.key)),
     };
-  }, [towns, labelled]);
+  }, [towns]);
 
+  // shrink-0 because the dialog is a flex column with a bounded height: as a
+  // shrinkable flex item the map gave up a quarter of its height and then
+  // letterboxed itself to keep its shape, drawing smaller than the room it
+  // had. It keeps its full height and the dialog scrolls instead.
   return (
     <svg
       viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
       role="group"
       aria-label="Zemljevid zavetišč po statističnih regijah"
-      className="h-auto w-full"
+      className="h-auto w-full shrink-0"
     >
       {/* Regions first and markers after, so a click always reaches the region
           underneath rather than being caught by the marker drawn on top. */}
@@ -101,7 +102,11 @@ export function ShelterMap({
       {origin && onMap(origin) && <Origin at={origin} />}
 
       <g className="pointer-events-none">
-        {labels.regions.map((label) => (
+        {/* Names are sized for the map at its full width. Below sm the dialog
+            is barely wider than a phone, where they would be too small to read
+            and too many to fit, so they are dropped rather than shrunk. */}
+        <g className="hidden sm:inline">
+          {labels.regions.map((label) => (
           <text
             key={label.key}
             x={label.x}
@@ -110,26 +115,29 @@ export function ShelterMap({
             className="fill-muted-foreground/55"
             style={{ fontSize: REGION_LABEL_SIZE }}
           >
-            {label.text}
-          </text>
-        ))}
+              {label.text}
+            </text>
+          ))}
+        </g>
 
         {towns.map((town) => (
           <Marker key={town.key} town={town} selected={selected} />
         ))}
 
-        {labels.towns.map((label) => (
-          <text
-            key={label.key}
-            x={label.x}
-            y={label.y}
-            textAnchor="middle"
-            className="fill-foreground stroke-background [paint-order:stroke] [stroke-width:3px]"
-            style={{ fontSize: TOWN_LABEL_SIZE, fontWeight: 500 }}
-          >
-            {label.text}
-          </text>
-        ))}
+        <g className="hidden sm:inline">
+          {labels.towns.map((label) => (
+            <text
+              key={label.key}
+              x={label.x}
+              y={label.y}
+              textAnchor="middle"
+              className="fill-foreground stroke-background [paint-order:stroke] [stroke-width:3px]"
+              style={{ fontSize: TOWN_LABEL_SIZE, fontWeight: 500 }}
+            >
+              {label.text}
+            </text>
+          ))}
+        </g>
       </g>
     </svg>
   );

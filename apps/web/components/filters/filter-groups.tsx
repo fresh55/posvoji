@@ -9,7 +9,6 @@ import {
   Venus,
   type LucideIcon,
 } from "lucide-react";
-import { ShelterPicker } from "@/components/filters/shelter-picker";
 import {
   GROUP_LABELS,
   type FilterOption,
@@ -38,15 +37,14 @@ function optionIcon(group: MultiGroup, value: string) {
 }
 
 type GroupProps = {
-  group: MultiGroup;
+  group: CardGroup;
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
-  onToggleMany: (values: string[]) => void;
 };
 
-type CardGroup = Exclude<MultiGroup, "shelter">;
+export type CardGroup = Exclude<MultiGroup, "shelter">;
 
 // Everything but zavetišče is a short run of options you weigh against each
 // other, so they all get the card. Only the column count differs.
@@ -70,7 +68,7 @@ function OptionCards({
   counts,
   selected,
   onToggle,
-}: Omit<GroupProps, "group" | "onToggleMany"> & { group: CardGroup }) {
+}: Omit<GroupProps, "group"> & { group: CardGroup }) {
   return (
     <div className={cn("grid gap-1.5", CARD_COLS[group])}>
       {options.map(({ value, label }) => {
@@ -153,17 +151,13 @@ export function TogglePills({
   );
 }
 
-function FilterGroup({ group, onToggleMany, ...rest }: GroupProps) {
+function FilterGroup({ group, ...rest }: GroupProps) {
   return (
     <section>
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {GROUP_LABELS[group]}
       </h3>
-      {group === "shelter" ? (
-        <ShelterPicker {...rest} onToggleMany={onToggleMany} />
-      ) : (
-        <OptionCards group={group} {...rest} />
-      )}
+      <OptionCards group={group} {...rest} />
     </section>
   );
 }
@@ -177,16 +171,14 @@ export function FilterGroupList({
   toggles,
   toggleTally,
   onToggle,
-  onToggleMany,
   onToggleProperty,
 }: {
   filters: Filters;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
 }) {
   return (
@@ -199,7 +191,6 @@ export function FilterGroupList({
           counts={counts[group]}
           selected={filters[group]}
           onToggle={(value) => onToggle(group, value)}
-          onToggleMany={(values) => onToggleMany(group, values)}
         />
       ))}
 

@@ -1,6 +1,9 @@
 "use client";
 
-import { FilterGroupList } from "@/components/filters/filter-groups";
+import {
+  FilterGroupList,
+  type CardGroup,
+} from "@/components/filters/filter-groups";
 import type {
   FilterOption,
   Filters,
@@ -18,19 +21,17 @@ export function FilterSidebar({
   toggleTally,
   hasActiveFilters,
   onToggle,
-  onToggleMany,
   onToggleProperty,
   onClearAll,
   className,
 }: {
   filters: Filters;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   hasActiveFilters: boolean;
   onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
   className?: string;
@@ -59,7 +60,6 @@ export function FilterSidebar({
         toggles={toggles}
         toggleTally={toggleTally}
         onToggle={onToggle}
-        onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}
       />
     </aside>

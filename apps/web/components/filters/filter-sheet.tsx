@@ -1,7 +1,10 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
-import { FilterGroupList } from "@/components/filters/filter-groups";
+import {
+  FilterGroupList,
+  type CardGroup,
+} from "@/components/filters/filter-groups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,13 +35,12 @@ export function FilterSheet({
   activeCount,
   resultCount,
   onToggle,
-  onToggleMany,
   onToggleProperty,
   onSpeciesChange,
   onClearAll,
 }: {
   filters: Filters;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   speciesTally: Record<SpeciesFilter, number>;
   toggles: ToggleDef[];
@@ -46,7 +48,6 @@ export function FilterSheet({
   activeCount: number;
   resultCount: number;
   onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
@@ -88,7 +89,6 @@ export function FilterSheet({
             toggles={toggles}
             toggleTally={toggleTally}
             onToggle={onToggle}
-            onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}
           />
         </div>

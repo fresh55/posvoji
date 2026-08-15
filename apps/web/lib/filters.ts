@@ -1,4 +1,4 @@
-import type { Animal, AnimalSize, Sex, Species } from "@posvoji/schema";
+import { Species, type Animal, type AnimalSize, type Sex } from "@posvoji/schema";
 
 export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
@@ -146,8 +146,26 @@ export function applyFilters(
   );
 }
 
-// Faceted counts: each group is counted against the dataset narrowed by every
-// group except itself, so an option showing n always yields n results.
+// The faceting rule, shared by both counters: a number next to an option is
+// what you get when you pick it, so every filter applies except the one axis
+// being counted. Groups skip themselves; toggles drop themselves from the set.
+function passesFacet(
+  animal: Animal,
+  filters: Filters,
+  now: Date,
+  applied: { toggles: ToggleKey[]; skipGroup?: MultiGroup },
+): boolean {
+  return (
+    matchesSpecies(animal, filters.species) &&
+    matchesToggles(animal, applied.toggles) &&
+    GROUPS.every(
+      (group) =>
+        group === applied.skipGroup ||
+        matchesGroup(animal, group, filters[group], now),
+    )
+  );
+}
+
 export function facetCounts(
   animals: Animal[],
   filters: Filters,
@@ -160,13 +178,9 @@ export function facetCounts(
     shelter: new Map<string, number>(),
   };
   for (const group of GROUPS) {
-    const others = GROUPS.filter((g) => g !== group);
+    const applied = { toggles: filters.toggles, skipGroup: group };
     for (const animal of animals) {
-      if (!matchesSpecies(animal, filters.species)) continue;
-      if (!matchesToggles(animal, filters.toggles)) continue;
-      if (!others.every((g) => matchesGroup(animal, g, filters[g], now))) {
-        continue;
-      }
+      if (!passesFacet(animal, filters, now, applied)) continue;
       const value = groupValue(animal, group, now);
       if (value === undefined) continue;
       counts[group].set(value, (counts[group].get(value) ?? 0) + 1);
@@ -175,8 +189,6 @@ export function facetCounts(
   return counts;
 }
 
-// Same faceting rule as the groups: every other filter applies, so the number
-// on a toggle is what you get when you flip it on.
 export function toggleCounts(
   animals: Animal[],
   filters: Filters,
@@ -184,14 +196,12 @@ export function toggleCounts(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const toggle of TOGGLES) {
-    const others = filters.toggles.filter((k) => k !== toggle.key);
+    const applied = {
+      toggles: filters.toggles.filter((key) => key !== toggle.key),
+    };
     let total = 0;
     for (const animal of animals) {
-      if (!matchesSpecies(animal, filters.species)) continue;
-      if (!matchesToggles(animal, others)) continue;
-      if (!GROUPS.every((g) => matchesGroup(animal, g, filters[g], now))) {
-        continue;
-      }
+      if (!passesFacet(animal, filters, now, applied)) continue;
       if (toggle.matches(animal)) total += 1;
     }
     counts.set(toggle.key, total);
@@ -265,25 +275,36 @@ const SIZE_OPTIONS: FilterOption[] = [
   { value: "large", label: "Velika" },
 ];
 
+// Exhaustive like groupValue: a new group names its own options rather than
+// inheriting whichever branch happens to be last.
 export function groupOptions(
   group: MultiGroup,
   animals: Animal[],
 ): FilterOption[] {
-  if (group === "shelter") {
-    const shelters = new Map<string, { name: string; city: string }>();
-    for (const animal of animals) {
-      shelters.set(animal.shelter.id, {
-        name: animal.shelter.name,
-        city: animal.shelter.city,
-      });
+  switch (group) {
+    case "shelter": {
+      const shelters = new Map<string, { name: string; city: string }>();
+      for (const animal of animals) {
+        shelters.set(animal.shelter.id, {
+          name: animal.shelter.name,
+          city: animal.shelter.city,
+        });
+      }
+      return [...shelters]
+        .map(([value, { name, city }]) => ({
+          value,
+          label: name,
+          sublabel: city,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, "sl"));
     }
-    return [...shelters]
-      .map(([value, { name, city }]) => ({ value, label: name, sublabel: city }))
-      .sort((a, b) => a.label.localeCompare(b.label, "sl"));
+    case "sex":
+      return SEX_OPTIONS;
+    case "age":
+      return AGE_OPTIONS;
+    case "size":
+      return SIZE_OPTIONS;
   }
-  if (group === "sex") return SEX_OPTIONS;
-  if (group === "age") return AGE_OPTIONS;
-  return SIZE_OPTIONS;
 }
 
 export function optionLabel(
@@ -296,12 +317,14 @@ export function optionLabel(
 }
 
 // URL codecs. Slovenian, ASCII-only params: ?vrsta=pes&spol=samica&starost=mladicek
-const SPECIES_SLUGS: [SpeciesFilter, string][] = [
-  ["dog", "pes"],
-  ["cat", "macka"],
-  ["rabbit", "zajcek"],
-  ["other", "ostalo"],
-];
+// Keyed by species rather than listed, so one added to the schema fails to
+// compile here instead of quietly becoming unshareable.
+const SPECIES_SLUGS: Record<Species, string> = {
+  dog: "pes",
+  cat: "macka",
+  rabbit: "zajcek",
+  other: "ostalo",
+};
 
 const VALUE_SLUGS: Record<Exclude<MultiGroup, "shelter">, [string, string][]> = {
   sex: [
@@ -339,8 +362,9 @@ function fromSlug(group: MultiGroup, slug: string): string | undefined {
 
 export function serializeFilters(filters: Filters): string {
   const params = new URLSearchParams();
-  const species = SPECIES_SLUGS.find(([v]) => v === filters.species)?.[1];
-  if (species) params.set("vrsta", species);
+  if (filters.species !== "all") {
+    params.set("vrsta", SPECIES_SLUGS[filters.species]);
+  }
   for (const group of GROUPS) {
     if (filters[group].length > 0) {
       params.set(
@@ -360,8 +384,9 @@ export function serializeFilters(filters: Filters): string {
 // fewer filters, not break the page.
 export function parseFilters(search: string): Filters {
   const params = new URLSearchParams(search);
+  const slug = params.get("vrsta");
   const species =
-    SPECIES_SLUGS.find(([, slug]) => slug === params.get("vrsta"))?.[0] ?? "all";
+    Species.options.find((value) => SPECIES_SLUGS[value] === slug) ?? "all";
   const values = (group: MultiGroup): string[] => {
     const raw = params.get(PARAM_NAMES[group]);
     if (!raw) return [];

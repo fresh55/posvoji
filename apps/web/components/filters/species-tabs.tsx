@@ -1,15 +1,22 @@
 "use client";
 
 import { Cat, Dog, PawPrint, Rabbit, type LucideIcon } from "lucide-react";
+import { Species } from "@posvoji/schema";
 import { type SpeciesFilter } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
+// Keyed by species rather than listed, so one added to the schema fails to
+// compile here instead of existing in the data and nowhere in the UI.
+const SPECIES_TABS: Record<Species, { label: string; icon: LucideIcon }> = {
+  dog: { label: "Psi", icon: Dog },
+  cat: { label: "Mačke", icon: Cat },
+  rabbit: { label: "Zajčki", icon: Rabbit },
+  other: { label: "Ostale", icon: PawPrint },
+};
+
 const TABS: { value: SpeciesFilter; label: string; icon?: LucideIcon }[] = [
   { value: "all", label: "Vse" },
-  { value: "dog", label: "Psi", icon: Dog },
-  { value: "cat", label: "Mačke", icon: Cat },
-  { value: "rabbit", label: "Zajčki", icon: Rabbit },
-  { value: "other", label: "Ostale", icon: PawPrint },
+  ...Species.options.map((value) => ({ value, ...SPECIES_TABS[value] })),
 ];
 
 export function SpeciesTabs({

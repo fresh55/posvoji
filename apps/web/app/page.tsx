@@ -1,13 +1,20 @@
 import { AnimalGrid } from "@/components/animal-grid";
-import { loadAnimals } from "@/lib/dataset";
+import { Logo } from "@/components/logo";
+import { loadDataset } from "@/lib/dataset";
+import { plural, SHELTER_FORMS } from "@/lib/labels";
 
 export default function Home() {
-  const animals = loadAnimals();
+  const dataset = loadDataset();
+  const animals = dataset?.animals ?? [];
+  const shelters = new Set(animals.map((animal) => animal.shelter.id)).size;
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-6">
-      <header className="flex items-center justify-between border-b py-4">
-        <span className="font-medium tracking-tight">posvoji.si</span>
+    <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <header className="bleed flex items-center justify-between border-b py-4">
+        <span className="flex items-center gap-2 font-medium tracking-tight">
+          <Logo className="h-10 w-auto" />
+          posvoji.si
+        </span>
         <a
           href="https://github.com/fresh55/posvoji"
           target="_blank"
@@ -25,20 +32,23 @@ export default function Home() {
         </a>
       </header>
 
-      <main className="flex-1 space-y-10 py-12">
+      <main className="flex flex-1 flex-col gap-rhythm py-rhythm">
         <div className="space-y-2">
           <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-            Najdi svojega psa ali mačko.
+            Živali iz slovenskih zavetišč, ki iščejo dom.
           </h1>
-          <p className="text-muted-foreground">
-            Živali iz slovenskih zavetišč na enem mestu.
-          </p>
+          {dataset && shelters > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {plural(shelters, SHELTER_FORMS)} · osveženo{" "}
+              {new Date(dataset.generatedAt).toLocaleDateString("sl-SI")}
+            </p>
+          )}
         </div>
 
         <AnimalGrid animals={animals} />
       </main>
 
-      <footer className="border-t py-6 text-xs leading-relaxed text-muted-foreground">
+      <footer className="bleed border-t py-6 text-xs leading-relaxed text-muted-foreground">
         Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in
         povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.
       </footer>

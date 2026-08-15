@@ -5,6 +5,7 @@ import {
   activeFilterCount,
   EMPTY_FILTERS,
   parseFilters,
+  pruneHiddenFilters,
   serializeFilters,
   type Filters,
   type MultiGroup,
@@ -37,7 +38,7 @@ function getServerSnapshot(): string {
 }
 
 function writeFilters(next: Filters): void {
-  const query = serializeFilters(next);
+  const query = serializeFilters(pruneHiddenFilters(next));
   history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   for (const listener of listeners) listener();
 }

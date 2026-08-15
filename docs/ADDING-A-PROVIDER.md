@@ -16,7 +16,7 @@ permission is recorded.
 providers/<shelter-slug>/
   package.json        # @posvoji/provider-<slug>, deps on the SDK
   policy.yaml         # machine-readable permission record (CI-validated)
-  provider.ts         # parse functions + defineProvider(...)
+  provider.ts         # parse functions + the AdoptionProvider export
   provider.test.ts    # fixture tests
   fixtures/           # minimal HTML samples
 ```

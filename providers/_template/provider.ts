@@ -1,4 +1,4 @@
-import { cheerio, defineProvider, type SourceAnimalRef } from "@posvoji/provider-sdk";
+import { cheerio, type AdoptionProvider, type SourceAnimalRef } from "@posvoji/provider-sdk";
 import type { AdoptionStatus, Sex, Species } from "@posvoji/schema";
 
 const BASE_URL = "https://example-shelter.si";
@@ -26,8 +26,7 @@ export function parseList(html: string): SourceAnimalRef[] {
   return refs;
 }
 
-// Label-based lookups survive layout changes better than positional
-// selectors like ".col-md-6:nth-child(4)".
+// Labels survive a redesign; positional selectors like .col-md-6:nth-child(4) don't.
 function labelValue($: cheerio.CheerioAPI, label: string): string | undefined {
   const dt = $("dt")
     .filter((_, el) => $(el).text().trim().toLowerCase() === label.toLowerCase())
@@ -63,7 +62,7 @@ export function parseDetail(html: string): DetailFacts {
   };
 }
 
-export default defineProvider({
+const provider: AdoptionProvider = {
   id: PROVIDER_ID,
 
   async discover(ctx) {
@@ -91,7 +90,7 @@ export default defineProvider({
         sourceAnimalId: raw.ref.sourceAnimalId,
         sourceUrl: raw.ref.sourceUrl,
         fetchedAt: raw.fetchedAt,
-        // The pipeline rewrites firstSeenAt from the previous dataset run.
+        // export.ts replaces this with the date we first saw the animal.
         firstSeenAt: raw.fetchedAt,
         lastSeenAt: raw.fetchedAt,
       },
@@ -109,4 +108,6 @@ export default defineProvider({
       attribution: ctx.policy.attribution,
     };
   },
-});
+};
+
+export default provider;

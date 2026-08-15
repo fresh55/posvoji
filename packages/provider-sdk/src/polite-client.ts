@@ -5,28 +5,18 @@ const BACKOFF_BASE_MS = 2_000;
 const BACKOFF_CAP_MS = 60_000;
 const RETRY_AFTER_CAP_MS = 600_000;
 
-export class RobotsDisallowedError extends Error {
-  constructor(url: string) {
-    super(`robots.txt disallows fetching ${url}`);
-    this.name = "RobotsDisallowedError";
-  }
-}
-
 export interface PoliteClientOptions {
-  /** Full User-Agent header, e.g. "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)". */
   userAgent: string;
-  /** Product token matched against robots.txt rules. */
+  // Product token matched against robots.txt rules.
   botName?: string;
-  /** Minimum pause between two requests to the same host. */
   minDelayMs?: number;
-  /** Retries for 429/503/network errors before giving up. */
   maxRetries?: number;
   timeoutMs?: number;
 }
 
 export interface PoliteResponse {
   status: number;
-  /** Response text, or null when the server answered 304 Not Modified. */
+  // null when the server answered 304.
   body: string | null;
   notModified: boolean;
   headers: Record<string, string | string[] | undefined>;
@@ -53,9 +43,7 @@ export function computeBackoffMs(
   return Math.min(BACKOFF_BASE_MS * 2 ** attempt, BACKOFF_CAP_MS);
 }
 
-function headerValue(
-  value: string | string[] | undefined,
-): string | undefined {
+function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
@@ -68,12 +56,8 @@ interface ConditionalMeta {
   lastModified?: string;
 }
 
-/**
- * HTTP client that enforces the project's crawl policy: one request at a time
- * per host, a minimum delay between requests, robots.txt compliance,
- * Retry-After-aware backoff and conditional requests via ETag/Last-Modified.
- * Providers must not fetch any other way.
- */
+// The crawl policy lives here so no provider can get it wrong: robots.txt, one
+// request at a time per host, a delay between them, backoff, and revalidation.
 export class PoliteClient {
   private readonly userAgent: string;
   private readonly botName: string;
@@ -83,10 +67,7 @@ export class PoliteClient {
 
   private readonly hostQueue = new Map<string, Promise<void>>();
   private readonly lastRequestAt = new Map<string, number>();
-  private readonly robots = new Map<
-    string,
-    ReturnType<typeof robotsParser>
-  >();
+  private readonly robots = new Map<string, ReturnType<typeof robotsParser>>();
   private readonly conditional = new Map<string, ConditionalMeta>();
 
   constructor(options: PoliteClientOptions) {
@@ -102,7 +83,7 @@ export class PoliteClient {
     return this.withHostLock(target.host, async () => {
       await this.ensureRobots(target.origin);
       if (!this.isAllowed(target.origin, url)) {
-        throw new RobotsDisallowedError(url);
+        throw new Error(`robots.txt disallows fetching ${url}`);
       }
       return this.requestWithRetries(target.host, url);
     });
@@ -174,10 +155,7 @@ export class PoliteClient {
     if (wait > 0) await sleep(wait);
   }
 
-  private async withHostLock<T>(
-    host: string,
-    fn: () => Promise<T>,
-  ): Promise<T> {
+  private async withHostLock<T>(host: string, fn: () => Promise<T>): Promise<T> {
     const previous = this.hostQueue.get(host) ?? Promise.resolve();
     let release!: () => void;
     const current = new Promise<void>((resolve) => (release = resolve));
@@ -193,8 +171,7 @@ export class PoliteClient {
   private async ensureRobots(origin: string): Promise<void> {
     if (this.robots.has(origin)) return;
     const robotsUrl = `${origin}/robots.txt`;
-    // Unreachable robots.txt (5xx, network failure) is treated as
-    // disallow-all: when a site cannot tell us its rules, we do not crawl it.
+    // If a site can't tell us its rules, we don't crawl it.
     const DISALLOW_ALL = "User-agent: *\nDisallow: /";
     let content: string;
     try {

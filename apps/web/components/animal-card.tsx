@@ -3,10 +3,12 @@ import type { Animal } from "@posvoji/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { animalMeta } from "@/lib/labels";
 
-/** Only images the shelter has actually permitted are ever rendered. */
+// Anything the shelter hasn't permitted stays on the shelter's own site.
 function permittedImage(animal: Animal): string | undefined {
   for (const image of animal.images) {
-    if (image.rights === "cache-permitted") return image.cachedUrl ?? image.sourceUrl;
+    if (image.rights === "cache-permitted") {
+      return image.cachedUrl ?? image.sourceUrl;
+    }
     if (image.rights === "display-permitted") return image.sourceUrl;
   }
   return undefined;
@@ -46,7 +48,6 @@ export function AnimalCard({ animal }: { animal: Animal }) {
   );
 }
 
-/** Same shape as the card above — the placeholder while the index is empty. */
 export function AnimalCardSkeleton() {
   return (
     <div className="rounded-lg border">

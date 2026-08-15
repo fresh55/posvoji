@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // The whole site is static files on a CDN — there is no server. Anything
-  // that would require one (image optimizer, route handlers, server actions)
-  // must stay out; images are pre-sized by the ingest pipeline instead.
+  // Static files only. Nothing that needs a server at runtime belongs here —
+  // images are already sized by the ingest pipeline.
   output: "export",
   images: {
     unoptimized: true,

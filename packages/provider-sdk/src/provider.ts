@@ -9,7 +9,6 @@ export interface SourceAnimalRef {
 export interface RawAnimal {
   ref: SourceAnimalRef;
   fetchedAt: string;
-  /** Provider-shaped payload extracted from the source, not yet normalized. */
   data: unknown;
 }
 
@@ -19,16 +18,9 @@ export interface ProviderContext {
 }
 
 export interface AdoptionProvider {
-  /** Must match the folder name and policy.yaml providerId. */
+  // Must match the folder name and the providerId in policy.yaml.
   id: string;
-  /** List currently published animals (cheap pass over list pages). */
   discover(ctx: ProviderContext): Promise<SourceAnimalRef[]>;
-  /** Fetch one animal's detail page / record. */
   fetch(ctx: ProviderContext, ref: SourceAnimalRef): Promise<RawAnimal>;
-  /** Map a raw record to the shared Animal schema. */
   normalize(ctx: ProviderContext, raw: RawAnimal): Promise<Animal>;
-}
-
-export function defineProvider(provider: AdoptionProvider): AdoptionProvider {
-  return provider;
 }

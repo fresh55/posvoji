@@ -117,8 +117,7 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* Follow the visitor's OS preference. There is no theme toggle by design —
-   this keeps the site free of theme JavaScript. */
+/* Follows the OS preference. No toggle, so no theme JavaScript. */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;

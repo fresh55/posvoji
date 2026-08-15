@@ -13,7 +13,7 @@ const SEX: Record<Sex, string> = {
   unknown: "",
 };
 
-/** Slovenian has a dual, so 1/2/3-4/5+ each take a different form. */
+// Slovenian has a dual, so 1, 2, 3-4 and 5+ each take a different form.
 function plural(n: number, forms: [string, string, string, string]): string {
   const rest = n % 100;
   if (rest === 1) return `${n} ${forms[0]}`;
@@ -22,16 +22,14 @@ function plural(n: number, forms: [string, string, string, string]): string {
   return `${n} ${forms[3]}`;
 }
 
-export function formatAge(months: number): string {
-  if (months < 12) return plural(months, ["mesec", "meseca", "mesece", "mesecev"]);
+function formatAge(months: number): string {
+  if (months < 12) {
+    return plural(months, ["mesec", "meseca", "mesece", "mesecev"]);
+  }
   return plural(Math.floor(months / 12), ["leto", "leti", "leta", "let"]);
 }
 
-export function speciesLabel(species: Species): string {
-  return SPECIES[species];
-}
-
-/** "Mačka · samica · 2 leti" — only the parts we actually know. */
+// "Mačka · samica · 2 leti", skipping whatever we don't know.
 export function animalMeta(animal: Animal): string {
   return [
     SPECIES[animal.species],

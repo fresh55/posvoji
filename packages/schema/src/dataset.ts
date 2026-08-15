@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { Animal, Species } from "./animal";
 
-// One published crawl result. `animals.json` on the CDN conforms to this.
 export const Dataset = z.strictObject({
   generatedAt: z.iso.datetime(),
   animals: z.array(Animal),
@@ -17,8 +16,7 @@ export const ChangeEntry = z.strictObject({
 });
 export type ChangeEntry = z.infer<typeof ChangeEntry>;
 
-// Diff between two consecutive crawl runs. `changes.json` conforms to this;
-// every notification channel (RSS, bots, future email) consumes it.
+// Diff between two runs. Notification channels read this, not the full dataset.
 export const ChangeSet = z.strictObject({
   generatedAt: z.iso.datetime(),
   added: z.array(ChangeEntry),

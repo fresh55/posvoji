@@ -1,12 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
-import {
-  Animal,
-  ChangeEntry,
-  ChangeSet,
-  Dataset,
-} from "@posvoji/schema";
+import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
 import { loadPolicies } from "./policies";
 import { providers } from "./registry";
 import { datasetDir } from "./paths";
@@ -20,7 +15,7 @@ function readPreviousDataset(): Dataset | undefined {
   return result.success ? result.data : undefined;
 }
 
-/** Volatile fields are stamped every run and must not count as a change. */
+// fetchedAt and lastSeenAt change on every run, so they can't count as a change.
 function stableView(animal: Animal): string {
   const { source, ...rest } = animal;
   const { fetchedAt: _f, lastSeenAt: _l, ...stableSource } = source;
@@ -76,7 +71,7 @@ const previousById = new Map(
 
 const crawled = await crawl();
 
-// firstSeenAt survives across runs; a re-crawled animal is not "new".
+// A re-crawled animal is not a new one, so keep the date we first saw it.
 const animals = crawled.map((animal) => {
   const before = previousById.get(animal.id);
   if (!before) return animal;

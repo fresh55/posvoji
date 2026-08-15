@@ -13,10 +13,7 @@ const datasetPath = join(
   "animals.json",
 );
 
-/**
- * Read the exported dataset at build time. Until the first shelter grants
- * permission the file is simply absent, and the site renders its empty state.
- */
+// Read at build time. The file is absent until a provider is enabled.
 export function loadAnimals(): Animal[] {
   if (!existsSync(datasetPath)) return [];
   const parsed = Dataset.safeParse(

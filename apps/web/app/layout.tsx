@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-// next/font self-hosts the files at build time, so no request ever goes to
-// Google from a visitor's browser.
+// Self-hosted at build time, so visitors never hit Google.
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
 
 export const metadata: Metadata = {

@@ -35,8 +35,8 @@ const ProviderPolicyShape = z.strictObject({
   permission: z.strictObject({
     status: PermissionStatus,
     date: z.iso.date().optional(),
-    // Reference to where the written permission is archived (e.g. a private
-    // mail thread id) — never the correspondence or contact details itself.
+    // Where the written permission is archived, e.g. a mail thread id. Never
+    // the correspondence or anyone's contact details.
     reference: z.string().optional(),
     notes: z.string().optional(),
   }),
@@ -50,9 +50,8 @@ const ProviderPolicyShape = z.strictObject({
   }),
 });
 
-// The legal posture of the whole project, enforced at parse time: without a
-// shelter's recorded permission a provider cannot be enabled, cannot show
-// images and cannot carry more than bare facts.
+// Without granted permission a provider stays off, shows no images and carries
+// nothing beyond bare facts.
 export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
   const granted = p.permission.status === "granted";
 

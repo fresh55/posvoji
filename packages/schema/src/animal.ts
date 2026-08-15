@@ -21,8 +21,6 @@ export type AnimalSize = z.infer<typeof AnimalSize>;
 export const TestResult = z.enum(["positive", "negative", "unknown"]);
 export type TestResult = z.infer<typeof TestResult>;
 
-// "unknown" is the default for every image; anything beyond linking to the
-// source requires recorded permission in the provider's policy.yaml.
 export const ImageRights = z.enum([
   "unknown",
   "display-permitted",
@@ -63,8 +61,8 @@ export const AnimalMedical = z.strictObject({
 });
 export type AnimalMedical = z.infer<typeof AnimalMedical>;
 
-// Strict on purpose: fields like owner contacts, adopter data or microchip
-// numbers must never enter the dataset, so unknown keys are a hard error.
+// Strict: owner contacts, adopter data and microchip numbers must never reach
+// the dataset, so any unknown key is an error rather than a passthrough.
 export const Animal = z.strictObject({
   id: z.string().min(1),
   source: AnimalSource,

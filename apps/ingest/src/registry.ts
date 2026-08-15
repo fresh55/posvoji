@@ -1,5 +1,5 @@
 import type { AdoptionProvider } from "@posvoji/provider-sdk";
 
-// Every merged provider registers its implementation here. A provider only
-// actually runs when its policy.yaml is valid AND enabled (see export.ts).
+// Merged providers go here. Whether one actually runs is decided by its
+// policy.yaml, not by this list.
 export const providers: AdoptionProvider[] = [];

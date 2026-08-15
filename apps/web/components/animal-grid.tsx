@@ -61,8 +61,8 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
             className="grid grid-cols-2 gap-4 opacity-60 md:grid-cols-3 lg:grid-cols-4"
           >
             {Array.from({ length: 4 }, (_, i) => (
-              // The 4th would orphan itself on a 3-column row.
-              <div key={i} className={i === 3 ? "hidden lg:block" : undefined}>
+              // Four fills a 2- or 4-column row, but orphans on 3 columns.
+              <div key={i} className={i === 3 ? "md:hidden lg:block" : undefined}>
                 <AnimalCardSkeleton />
               </div>
             ))}

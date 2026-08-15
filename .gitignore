@@ -13,6 +13,9 @@ data/dist/
 *.db
 *.sqlite
 
+# cached shelter photos (shelter content, not repository content)
+apps/web/public/media/
+
 # env
 .env
 .env.*

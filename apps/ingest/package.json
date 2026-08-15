@@ -8,16 +8,19 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "validate": "tsx src/validate-policies.ts",
-    "export": "tsx src/export.ts"
+    "export": "tsx src/export.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@posvoji/provider-sdk": "workspace:*",
     "@posvoji/schema": "workspace:*",
+    "sharp": "^0.34.4",
     "tsx": "^4.23.12",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

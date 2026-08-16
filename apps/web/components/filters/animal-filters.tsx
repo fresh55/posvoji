@@ -16,8 +16,9 @@ import type {
   ToggleKey,
 } from "@/lib/filters";
 
-// Species tabs and the count live in this top bar at every width. The other
-// groups sit in the desktop sidebar; below lg they move into the bottom sheet.
+// Below sm the species control lives in the filter sheet. Keeping the full tab
+// strip beside location, the sheet trigger, and the result count reduced it to
+// zero width and left its divider stranded at the start of the row.
 export function AnimalFilters({
   isEmpty,
   filters,
@@ -57,22 +58,33 @@ export function AnimalFilters({
   onClearAll: () => void;
 }) {
   const { locale } = useI18n();
+  const hasFilterSheet = groups.length > 0 || toggles.length > 0;
 
   return (
     <div className="bleed sticky top-0 z-10 border-b bg-background/90 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
-          <SpeciesTabs
-            value={filters.species}
-            onChange={onSpeciesChange}
-            counts={speciesTally}
-            disabled={isEmpty}
-          />
+          <div
+            className={
+              hasFilterSheet ? "hidden min-w-0 sm:block" : "min-w-0"
+            }
+          >
+            <SpeciesTabs
+              value={filters.species}
+              onChange={onSpeciesChange}
+              counts={speciesTally}
+              disabled={isEmpty}
+            />
+          </div>
           {shelters && (
             <>
               <span
                 aria-hidden
-                className="h-5 w-px shrink-0 bg-border"
+                className={
+                  hasFilterSheet
+                    ? "hidden h-5 w-px shrink-0 bg-border sm:block"
+                    : "h-5 w-px shrink-0 bg-border"
+                }
               />
               <LocationPicker
                 options={shelters}
@@ -83,7 +95,7 @@ export function AnimalFilters({
               />
             </>
           )}
-          {(groups.length > 0 || toggles.length > 0) && (
+          {hasFilterSheet && (
             <div className="shrink-0 lg:hidden">
               <FilterSheet
                 filters={filters}
@@ -107,11 +119,11 @@ export function AnimalFilters({
           <ResultCount
             count={resultCount}
             locale={locale}
-            className="min-w-24 text-muted-foreground"
+            className="min-w-fit text-muted-foreground sm:min-w-24"
           />
         )}
       </div>
-      <FilterChips chips={chips} onClearAll={onClearAll} className="mt-2.5" />
+      <FilterChips chips={chips} onClearAll={onClearAll} className="mt-2" />
     </div>
   );
 }

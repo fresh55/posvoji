@@ -58,7 +58,7 @@ export function useAnimalFilters() {
     (group: MultiGroup, value: string) => {
       const selected = filters[group] as string[];
       const next = selected.includes(value)
-        ? selected.filter((v) => v !== value)
+        ? selected.filter((selectedValue) => selectedValue !== value)
         : [...selected, value];
       writeFilters({ ...filters, [group]: next });
     },

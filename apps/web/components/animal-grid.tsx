@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
+import { useI18n } from "@/components/i18n-provider";
 import { AnimalFilters } from "@/components/filters/animal-filters";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import type { CardGroup } from "@/components/filters/filter-groups";
@@ -35,6 +36,7 @@ const CARD_GRID =
   "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
 
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
+  const { locale, messages } = useI18n();
   const {
     filters,
     setSpecies,
@@ -77,16 +79,20 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     () =>
       GROUPS.filter(
         (group): group is CardGroup => group !== "shelter" && shown[group],
-      ).map((group) => ({ group, options: groupOptions(group, pool) })),
-    [pool, shown],
+      ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
+    [locale, pool, shown],
   );
   const shelters = useMemo(
-    () => (shown.shelter ? groupOptions("shelter", pool) : undefined),
-    [pool, shown],
+    () => (shown.shelter ? groupOptions("shelter", pool, locale) : undefined),
+    [locale, pool, shown],
   );
   const toggles = useMemo(
-    () => visibleToggles(pool, filters.species),
-    [pool, filters.species],
+    () =>
+      visibleToggles(pool, filters.species).map((toggle) => ({
+        ...toggle,
+        label: toggleLabel(toggle.key, locale),
+      })),
+    [locale, pool, filters.species],
   );
   const toggleTally = useMemo(
     () => toggleCounts(animals, filters, now),
@@ -99,13 +105,13 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     ...GROUPS.flatMap((group) =>
       filters[group].map((value) => ({
         key: `${group}:${value}`,
-        label: optionLabel(group, value, animals),
+        label: optionLabel(group, value, animals, locale),
         onRemove: () => toggle(group, value),
       })),
     ),
     ...filters.toggles.map((key) => ({
       key: `toggle:${key}`,
-      label: toggleLabel(key),
+      label: toggleLabel(key, locale),
       onRemove: () => toggleProperty(key),
     })),
   ];
@@ -158,7 +164,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
         {isEmpty ? (
           <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
-              Tu bodo živali, ko se dogovorimo s prvimi zavetišči.
+              {messages.animalsComingSoon}
             </p>
             <div aria-hidden className={cn(CARD_GRID, "opacity-60")}>
               {Array.from({ length: 4 }, (_, i) => (
@@ -174,13 +180,13 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
               aria-hidden
             />
             <div className="space-y-1">
-              <p className="text-sm font-medium">Ni zadetkov.</p>
+              <p className="text-sm font-medium">{messages.noResults}</p>
               <p className="text-sm text-muted-foreground">
-                Poskusi z manj filtri.
+                {messages.tryFewerFilters}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={clearAll}>
-              Počisti filtre
+              {messages.clearFilters}
             </Button>
           </div>
         ) : (

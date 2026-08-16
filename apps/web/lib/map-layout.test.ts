@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
-import { layoutTowns, type ShelterPin } from "./map-layout";
+import {
+  layoutTowns,
+  markerVisualReach,
+  townLabel,
+  type ShelterPin,
+} from "./map-layout";
 
 function pin(
   value: string,
@@ -78,9 +83,8 @@ describe("layoutTowns", () => {
     expect(gap(dramlje, celje)).toBeGreaterThan(0);
   });
 
-  // Markers carry their own clicks again now that the map only draws at dialog
-  // width. The guarantee that keeps that honest: a marker's target may fill the
-  // space around it but never reaches inside a neighbour's dot.
+  // At md and wider, a marker's target may fill the space around it but never
+  // reaches inside a neighbour's dot.
   it("never lets a marker's target reach inside another marker's dot", () => {
     const towns = layoutTowns(REAL_PINS);
     everyPair(towns, (a, b) => {
@@ -96,14 +100,20 @@ describe("layoutTowns", () => {
     }
   });
 
-  // 10 units is about 42px at the width the dialog draws the map, and the
-  // tightest marker on the real roster still has to clear the 24px floor.
-  it("leaves the tightest marker a target worth aiming at", () => {
-    const DIALOG_SCALE = 680 / 320;
-    const smallest = Math.min(
-      ...layoutTowns(REAL_PINS).map((town) => 2 * town.hitR * DIALOG_SCALE),
+  it("keeps every visible marker element inside its protected radius", () => {
+    for (const town of layoutTowns(REAL_PINS)) {
+      expect(markerVisualReach(town)).toBeLessThanOrEqual(town.r + 1e-9);
+    }
+  });
+
+  it("uses one label source for single shelters and shared towns", () => {
+    const towns = layoutTowns(REAL_PINS);
+    expect(townLabel(towns.find((town) => town.city === "Celje")!)).toBe(
+      "Celje",
     );
-    expect(smallest).toBeGreaterThan(24);
+    expect(townLabel(towns.find((town) => town.city === "Brežice")!)).toBe(
+      "brezice",
+    );
   });
 
   it("keeps every marker within the drift budget of its real town", () => {
@@ -132,7 +142,7 @@ describe("layoutTowns", () => {
     expect(backward).toEqual(forward);
   });
 
-  it("keeps a shared town's wedges in the same order either way", () => {
+  it("keeps a shared town's shelters in the same order either way", () => {
     const celje = (pins: ShelterPin[]) =>
       layoutTowns(pins)
         .find((t) => t.city === "Celje")!

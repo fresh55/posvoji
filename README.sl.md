@@ -53,7 +53,7 @@ Zahteve za umik imajo prednost. Podrobnosti so v
 
 Pri samodejnem zajemu se `PosvojiBot` predstavi s kontaktom, spoštuje
 `robots.txt`, pošilja največ eno zahtevo naenkrat na strežnik, med zahtevami
-čaka in ob omejitvah odneha. Tudi mačke poznajo meje. 🐈
+čaka in ob omejitvah odneha.
 
 ## Ste našli napako?
 

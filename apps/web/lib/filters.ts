@@ -1,4 +1,5 @@
 import { Species, type Animal, type AnimalSize, type Sex } from "@posvoji/schema";
+import type { Locale } from "@/lib/i18n";
 
 export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
@@ -34,12 +35,19 @@ export const EMPTY_FILTERS: Filters = {
 
 export const GROUPS: MultiGroup[] = ["sex", "age", "size", "shelter"];
 
-export const GROUP_LABELS: Record<MultiGroup, string> = {
-  sex: "Spol",
-  age: "Starost",
-  size: "Velikost",
-  shelter: "Zavetišče",
+const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
+  sl: {
+    sex: "Spol",
+    age: "Starost",
+    size: "Velikost",
+    shelter: "Zavetišče",
+  },
+  en: { sex: "Sex", age: "Age", size: "Size", shelter: "Shelter" },
 };
+
+export function groupLabel(group: MultiGroup, locale: Locale): string {
+  return GROUP_LABELS[locale][group];
+}
 
 // species pins a toggle to one tab; without it the toggle asks something every
 // species can answer.
@@ -85,8 +93,18 @@ export const TOGGLES: ToggleDef[] = [
   },
 ];
 
-export function toggleLabel(key: ToggleKey): string {
-  return TOGGLES.find((t) => t.key === key)?.label ?? key;
+const TOGGLE_LABELS_EN: Record<ToggleKey, string> = {
+  sterilizacija: "Neutered",
+  cepljenje: "Vaccinated",
+  cip: "Microchipped",
+  "brez-fiv": "FIV negative",
+  "brez-felv": "FeLV negative",
+};
+
+export function toggleLabel(key: ToggleKey, locale: Locale = "sl"): string {
+  return locale === "sl"
+    ? (TOGGLES.find((toggle) => toggle.key === key)?.label ?? key)
+    : TOGGLE_LABELS_EN[key];
 }
 
 function matchesToggles(animal: Animal, selected: ToggleKey[]): boolean {
@@ -330,28 +348,50 @@ export function pruneHiddenFilters(filters: Filters): Filters {
 // sublabel because the map places a marker from it.
 export type FilterOption = { value: string; label: string; city?: string };
 
-const SEX_OPTIONS: FilterOption[] = [
-  { value: "male", label: "Samec" },
-  { value: "female", label: "Samica" },
-];
-
-const AGE_OPTIONS: FilterOption[] = [
-  { value: "mladicek", label: "Mladiček" },
-  { value: "odrasel", label: "Odrasel" },
-  { value: "senior", label: "Senior" },
-];
-
-const SIZE_OPTIONS: FilterOption[] = [
-  { value: "small", label: "Majhna" },
-  { value: "medium", label: "Srednja" },
-  { value: "large", label: "Velika" },
-];
+const OPTIONS: Record<
+  Locale,
+  Record<Exclude<MultiGroup, "shelter">, FilterOption[]>
+> = {
+  sl: {
+    sex: [
+      { value: "male", label: "Samec" },
+      { value: "female", label: "Samica" },
+    ],
+    age: [
+      { value: "mladicek", label: "Mladiček" },
+      { value: "odrasel", label: "Odrasel" },
+      { value: "senior", label: "Senior" },
+    ],
+    size: [
+      { value: "small", label: "Majhna" },
+      { value: "medium", label: "Srednja" },
+      { value: "large", label: "Velika" },
+    ],
+  },
+  en: {
+    sex: [
+      { value: "male", label: "Male" },
+      { value: "female", label: "Female" },
+    ],
+    age: [
+      { value: "mladicek", label: "Young" },
+      { value: "odrasel", label: "Adult" },
+      { value: "senior", label: "Senior" },
+    ],
+    size: [
+      { value: "small", label: "Small" },
+      { value: "medium", label: "Medium" },
+      { value: "large", label: "Large" },
+    ],
+  },
+};
 
 // Exhaustive like groupValue: a new group names its own options rather than
 // inheriting whichever branch happens to be last.
 export function groupOptions(
   group: MultiGroup,
   animals: Animal[],
+  locale: Locale = "sl",
 ): FilterOption[] {
   switch (group) {
     case "shelter": {
@@ -367,11 +407,11 @@ export function groupOptions(
         .sort((a, b) => a.label.localeCompare(b.label, "sl"));
     }
     case "sex":
-      return SEX_OPTIONS;
+      return OPTIONS[locale].sex;
     case "age":
-      return AGE_OPTIONS;
+      return OPTIONS[locale].age;
     case "size":
-      return SIZE_OPTIONS;
+      return OPTIONS[locale].size;
   }
 }
 
@@ -379,8 +419,11 @@ export function optionLabel(
   group: MultiGroup,
   value: string,
   animals: Animal[],
+  locale: Locale = "sl",
 ): string {
-  const option = groupOptions(group, animals).find((o) => o.value === value);
+  const option = groupOptions(group, animals, locale).find(
+    (candidate) => candidate.value === value,
+  );
   return option?.label ?? value;
 }
 

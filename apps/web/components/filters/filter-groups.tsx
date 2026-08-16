@@ -10,17 +10,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  GROUP_LABELS,
+  groupLabel,
   type FilterOption,
   type Filters,
   type MultiGroup,
   type ToggleDef,
   type ToggleKey,
 } from "@/lib/filters";
+import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 
-// Only where the icon is the data: the paw grows with the animal and the plant
-// with the years. Spol has nothing to rank, so its pair only has to differ.
+// Paw and plant size reinforce the ordered choices. Sex only needs distinct
+// symbols.
 const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "sex:male": { icon: Mars, className: "size-4" },
   "sex:female": { icon: Venus, className: "size-4" },
@@ -152,10 +153,12 @@ export function TogglePills({
 }
 
 function FilterGroup({ group, ...rest }: GroupProps) {
+  const { locale } = useI18n();
+
   return (
     <section>
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {GROUP_LABELS[group]}
+        {groupLabel(group, locale)}
       </h3>
       <OptionCards group={group} {...rest} />
     </section>
@@ -181,6 +184,7 @@ export function FilterGroupList({
   onToggle: (group: MultiGroup, value: string) => void;
   onToggleProperty: (key: ToggleKey) => void;
 }) {
+  const { messages } = useI18n();
   return (
     <>
       {groups.map(({ group, options }) => (
@@ -197,7 +201,7 @@ export function FilterGroupList({
       {toggles.length > 0 && (
         <section>
           <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Zdravje
+            {messages.health}
           </h3>
           <TogglePills
             toggles={toggles}

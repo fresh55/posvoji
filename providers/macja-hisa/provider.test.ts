@@ -79,6 +79,7 @@ describe("parseDetail", () => {
   it("extracts facts, photos and vet status", () => {
     expect(parseDetail(detailHtml)).toEqual({
       name: "Dimitri",
+      species: "cat",
       sex: "male",
       approximateAgeMonths: 85,
       intakeDate: "2019-10-29",
@@ -104,6 +105,7 @@ describe("parseDetail", () => {
     );
     expect(facts).toEqual({
       name: undefined,
+      species: "cat",
       // Two labels in one <p> separated by <br>, colon inside the <strong>
       // for the intake row — labelValue must still split them correctly.
       sex: "female",
@@ -112,6 +114,17 @@ describe("parseDetail", () => {
       description: undefined,
       medical: undefined,
       imageUrls: [],
+    });
+  });
+
+  it("recognises a dog explicitly labelled on the cat listing", () => {
+    expect(
+      parseDetail(loadFixture(import.meta.url, "detail-dog.html")),
+    ).toMatchObject({
+      name: "Medo",
+      species: "dog",
+      sex: "male",
+      approximateAgeMonths: 161,
     });
   });
 });
@@ -136,6 +149,21 @@ describe("normalize", () => {
     ]);
     expect(animal.shortDescription).toContain("Dimitri je razigran muc");
     expect(animal.attribution).toBe(policy.attribution);
+  });
+
+  it("preserves a dog classification from the detail page", async () => {
+    const dogRaw = {
+      ...raw,
+      ref: {
+        sourceAnimalId: "4812",
+        sourceUrl: "https://www.macjahisa.si/posvojitev/muce/4812",
+      },
+      data: parseDetail(loadFixture(import.meta.url, "detail-dog.html")),
+    };
+    const animal = Animal.parse(await provider.normalize(ctx, dogRaw));
+
+    expect(animal.name).toBe("Medo");
+    expect(animal.species).toBe("dog");
   });
 
   it("keeps the shelter block in sync with data/shelters.yaml", async () => {

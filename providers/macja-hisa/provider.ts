@@ -8,6 +8,7 @@ import type {
   ImagePolicy,
   ImageRights,
   Sex,
+  Species,
   TestResult,
 } from "@posvoji/schema";
 
@@ -17,6 +18,7 @@ const DETAIL_PATH = /^\/posvojitev\/muce\/(\d+)\/?$/;
 
 export interface DetailFacts {
   name?: string;
+  species: Species;
   sex?: Sex;
   approximateAgeMonths?: number;
   intakeDate?: string;
@@ -85,6 +87,36 @@ const SEX: Record<string, Sex> = {
   "samička": "female",
   samica: "female",
 };
+
+const SPECIES: Record<string, Species> = {
+  pes: "dog",
+  "mačka": "cat",
+  muca: "cat",
+};
+
+function parseIdentity($: cheerio.CheerioAPI): {
+  name?: string;
+  species: Species;
+} {
+  const heading = $("h1").first().text().trim().normalize("NFC");
+  const speciesRaw = labelValue($, "Vrsta")?.toLowerCase();
+
+  if (speciesRaw !== undefined) {
+    return {
+      name: heading || undefined,
+      // An explicit but unrecognised value must not silently become a cat.
+      species: SPECIES[speciesRaw] ?? "other",
+    };
+  }
+
+  // Mačja hiša occasionally publishes a dog on its /muce/ list. In that
+  // case both the list card and detail heading carry an explicit "pes"
+  // prefix; the URL and /files/oglasi_muce/ photo path remain cat-shaped.
+  const dog = heading.match(/^pes\s+(.+)$/iu);
+  return dog
+    ? { name: dog[1]!.trim() || undefined, species: "dog" }
+    : { name: heading || undefined, species: "cat" };
+}
 
 // "3 leta", "1 leto", "10 mesecev", "7 let in 1 mesec". The lookbehind keeps
 // fractional or ranged ages ("1,5 leta", "2-3 leta") out: better no age than a
@@ -187,6 +219,7 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
+  const identity = parseIdentity($);
 
   const imageUrls: string[] = [];
   $(".cat-photos a[data-fancybox]").each((_, el) => {
@@ -204,7 +237,7 @@ export function parseDetail(html: string): DetailFacts {
   const intakeRaw = labelValue($, "Datum sprejema");
 
   return {
-    name: $("h1").first().text().trim().normalize("NFC") || undefined,
+    ...identity,
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
     approximateAgeMonths: ageRaw ? parseAgeMonths(ageRaw) : undefined,
     intakeDate: intakeRaw ? parseSlovenianDate(intakeRaw) : undefined,
@@ -259,7 +292,7 @@ const provider: AdoptionProvider = {
         city: "Celje",
       },
       name: facts.name,
-      species: "cat",
+      species: facts.species,
       sex: facts.sex,
       approximateAgeMonths: facts.approximateAgeMonths,
       intakeDate: facts.intakeDate,

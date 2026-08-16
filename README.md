@@ -1,61 +1,65 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img src="docs/assets/logo.svg" alt="" width="120">
+    <img src="docs/assets/logo.svg" alt="Posvoji.si logo" width="120">
   </picture>
 </p>
 
 # Posvoji.si
 
-🇸🇮 Slovensko: [README.sl.md](README.sl.md)
-
 An open index of animals waiting for a home in Slovenian shelters.
 
-## The idea
+[![CI](https://github.com/fresh55/posvoji/actions/workflows/ci.yml/badge.svg)](https://github.com/fresh55/posvoji/actions/workflows/ci.yml)
 
-Posvoji.si indexes facts (name, species, sex, rough age, status, shelter) and
-links every animal back to the shelter's own listing, which is where adoption
-happens. It is not a mirror and does not replace anyone's website.
+**[Slovenščina](README.sl.md)** · [Contributing](CONTRIBUTING.md) ·
+[Add a shelter](docs/ADDING-A-PROVIDER.md) · [Data policy](docs/DATA-POLICY.md) ·
+[Report a problem](../../issues/new/choose)
 
-Photos and written descriptions belong to the people who made them, so they
-only appear here if the shelter says yes. That permission lives in the repo as
-a file (`providers/<shelter>/policy.yaml`) and CI refuses to enable a provider
-without it.
+> [!NOTE]
+> Posvoji.si does not handle adoptions. Every animal links to the shelter's
+> original listing, where the adoption process takes place.
 
-Things we deliberately don't touch:
+## What it does
 
-- private listings ("oddajo lastniki", "privat oddaja"), which contain
-  people's phone numbers
-- personal data of owners, adopters or applicants
-- microchip numbers
-- Facebook and other platforms
+Posvoji.si brings basic facts from participating shelters into one searchable
+index: name, species, sex, rough age, status and shelter. Every record keeps its
+source and last-sync time.
 
-## How it works
-
-There is no backend. An ingest job runs twice a day, reads the sources it is
-allowed to read, and writes a dataset.
+- **Permission first:** a source stays disabled until the shelter grants
+  written, dated permission.
+- **Source over copy:** the index points people back to the shelter instead of
+  replacing its website.
+- **Static by design:** the ingest pipeline writes JSON; the web app exports
+  static files. There is no production database or public API.
+- **Offline tests:** parsers run against small fixtures. CI never crawls shelter
+  websites.
 
 ```text
-ingest (2x/day) ──▶ animals.json + changes.json ──▶ static site on a CDN
+shelter website ──▶ polite ingest ──▶ animals.json + changes.json ──▶ static site
 ```
 
-The site is plain static files. RSS feeds and a "new cats near me" notifier are
-the obvious next things to build on top of `changes.json`, and both stay
-static.
+## Data boundaries
 
-## Repo layout
+Permission is recorded in `providers/<shelter>/policy.yaml` and validated by
+CI. Photos and written descriptions appear only when the shelter explicitly
+allows them.
 
-| Path | What's in it | License |
-|---|---|---|
-| `apps/web` | Next.js site, static export, shadcn/ui | AGPL-3.0-only |
-| `apps/ingest` | The batch pipeline: validate, crawl, diff, export | AGPL-3.0-only |
-| `packages/schema` | Zod models: `Animal`, `ProviderPolicy`, `Dataset`, `ChangeSet` | MIT |
-| `packages/provider-sdk` | Provider interface, polite HTTP client, fixture harness | MIT |
-| `providers/*` | One adapter per shelter, each with its `policy.yaml` | MIT |
-| `data/shelters.yaml` | Slovenian shelter registry (source: UVHVVR) | n/a |
-| `docs/` | Data policy, provider guide, commit convention | n/a |
+This project never indexes:
 
-## Getting started
+- private-owner listings or personal contact details;
+- personal data of owners, adopters or applicants;
+- microchip numbers;
+- Facebook or other platforms.
+
+All crawling uses the SDK's `PoliteClient`: it respects `robots.txt`, serializes
+requests per host, waits between requests and backs off on `429` responses.
+There are no shortcuts around it—even cats have boundaries. 🐈
+
+Read the binding rules in the [data policy](docs/DATA-POLICY.md).
+
+## Quick start
+
+Requires **Node.js 22+** and **pnpm 10**.
 
 ```bash
 pnpm install
@@ -63,44 +67,36 @@ pnpm test
 pnpm --filter web dev
 ```
 
-Node 22+ and pnpm. No database, no API keys, no services: everything runs
-offline from fixtures, including the tests.
-
-Two commands worth knowing:
-
-```bash
-pnpm validate:policies    # are all provider policies valid and permitted?
-pnpm dataset:export       # build the dataset from enabled providers
-```
+No database, API keys or external services are needed for local development.
 
 ## Contributing
 
-[CONTRIBUTING.md](CONTRIBUTING.md) covers setup and where to contribute.
-Commits follow [Conventional Commits](docs/COMMIT-CONVENTION.md).
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). The main contribution surface is
+`providers/`: one small, tested adapter per shelter.
 
-## Adding a shelter
+To add one, copy `providers/_template`, implement the parser and add minimal
+fixtures. The full process is in [Adding a provider](docs/ADDING-A-PROVIDER.md).
+A parser may be merged before permission arrives, but it must remain disabled.
 
-Copy `providers/_template`, implement three functions, add fixtures and tests.
-The details are in [docs/ADDING-A-PROVIDER.md](docs/ADDING-A-PROVIDER.md), and
-the rules that aren't up for debate are in
-[docs/DATA-POLICY.md](docs/DATA-POLICY.md).
+PR titles follow [Conventional Commits](docs/COMMIT-CONVENTION.md) because pull
+requests are squash-merged.
 
-You can write and merge a parser before a shelter has answered; it stays
-switched off until permission is recorded.
+## Repository map
 
-All HTTP goes through the SDK's `PoliteClient`, which honours robots.txt, waits
-between requests, backs off on 429, and only ever talks to one host at a time.
-Please don't route around it.
+| Path | Purpose | License |
+| --- | --- | --- |
+| `apps/web` | Next.js static site | AGPL-3.0-only |
+| `apps/ingest` | Validate, crawl, diff and export | AGPL-3.0-only |
+| `packages/schema` | Zod data models | MIT |
+| `packages/provider-sdk` | Provider interface, polite client and fixture tools | MIT |
+| `providers/*` | Shelter adapters and machine-readable policies | MIT |
+| `data/shelters.yaml` | Slovenian shelter registry sourced from UVHVVR | Not applicable |
 
-## Licensing
+## License
 
-Split on purpose:
+The split is intentional: `apps/*` is **AGPL-3.0-only**; `packages/*` and
+`providers/*` are **MIT** so schemas and adapters can be reused elsewhere.
 
-- `packages/*` and `providers/*` are **MIT**. The schema and the adapters are
-  the parts worth reusing, including outside Slovenia.
-- `apps/*` are **AGPL-3.0-only**, so the site and pipeline stay open even for
-  someone running a modified copy as a service.
-
-Shelter content (photos, descriptions, fixture HTML) is third-party material
-and **not** covered by either license. The shelters keep every right to their
-own work and can ask us to change or remove things whenever they like.
+Shelter photos, descriptions and fixture HTML remain third-party material.
+They are not covered by the repository's open-source licenses, and shelters
+may change or withdraw permission at any time.

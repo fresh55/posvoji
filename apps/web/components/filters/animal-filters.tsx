@@ -66,7 +66,11 @@ export function AnimalFilters({
             disabled={isEmpty}
           />
           {shelters && (
-            <div className="shrink-0">
+            <>
+              <span
+                aria-hidden
+                className="h-5 w-px shrink-0 bg-border"
+              />
               <LocationPicker
                 options={shelters}
                 counts={shelterTally}
@@ -74,7 +78,7 @@ export function AnimalFilters({
                 onToggle={(value) => onToggle("shelter", value)}
                 onToggleMany={(values) => onToggleMany("shelter", values)}
               />
-            </div>
+            </>
           )}
           {(groups.length > 0 || toggles.length > 0) && (
             <div className="shrink-0 lg:hidden">

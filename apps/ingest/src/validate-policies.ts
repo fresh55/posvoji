@@ -4,7 +4,7 @@ const { policies, errors } = loadPolicies();
 
 for (const { dir, policy } of policies) {
   const state = policy.enabled ? "enabled" : "disabled";
-  console.log(`ok       ${policy.providerId} (${state}) — ${dir}`);
+  console.log(`ok       ${policy.providerId} (${state}) ${dir}`);
 }
 
 for (const { dir, message } of errors) {

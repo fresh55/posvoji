@@ -7,7 +7,7 @@ listings to the shared `Animal` schema.
 
 Check [data/shelters.yaml](../data/shelters.yaml) for the shelter and open a
 "Predlagaj zavetišče" issue so work isn't duplicated. You can build and merge a
-parser before the shelter has answered — it just stays disabled until a granted
+parser before the shelter has answered; it stays disabled until a granted
 permission is recorded.
 
 ## Anatomy
@@ -32,11 +32,11 @@ Start by copying `providers/_template`.
    conditional requests. Never import an HTTP client directly.
 3. **Parse functions are pure and exported** (`parseList`, `parseDetail`), so
    tests run offline against fixtures. Prefer label-based lookups ("Spol",
-   "Starost") over positional selectors — they survive redesigns.
+   "Starost") over positional selectors; they survive redesigns.
 4. **Fixtures are minimal.** Trim saved HTML to the markup your parser needs.
    No full page mirrors, no photos, no personal data of private individuals.
 5. **Normalize conservatively.** Map only fields the schema knows. When a
-   value is unclear, omit it or use `"unknown"` — never guess. The `Animal`
+   value is unclear, omit it or use `"unknown"`. Never guess. The `Animal`
    schema rejects unknown fields on purpose.
 6. **Respect the policy.** Without granted permission, `images` must be
    `none` and `descriptions` must be `facts-only`; the schema enforces this.

@@ -12,7 +12,7 @@ descriptions: facts-only
 permission:
   status: none
   # When granted, record the date and where the written permission is
-  # archived (a reference id — never the correspondence itself):
+  # archived (a reference id, never the correspondence itself):
   # status: granted
   # date: 2026-09-01
   # reference: mail-thread-0001

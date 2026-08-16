@@ -22,6 +22,26 @@ export interface PoliteResponse {
   headers: Record<string, string | string[] | undefined>;
 }
 
+export interface PoliteBytesResponse {
+  status: number;
+  // null when the server answered 304.
+  body: Buffer | null;
+  notModified: boolean;
+  headers: Record<string, string | string[] | undefined>;
+}
+
+// Validators persisted by a caller across runs (the in-memory cache below
+// only lives for one process).
+export interface ConditionalValidators {
+  etag?: string;
+  lastModified?: string;
+}
+
+export interface GetBytesOptions {
+  accept?: string;
+  validators?: ConditionalValidators;
+}
+
 export function parseRetryAfter(
   header: string | undefined,
   now: number = Date.now(),
@@ -79,27 +99,41 @@ export class PoliteClient {
   }
 
   async get(url: string): Promise<PoliteResponse> {
+    const res = await this.getBytes(url);
+    return {
+      ...res,
+      body: res.body === null ? null : res.body.toString("utf8"),
+    };
+  }
+
+  // Same crawl policy as get(), but the body stays binary (images). Callers
+  // that persist validators across runs pass them via options.validators.
+  async getBytes(
+    url: string,
+    options: GetBytesOptions = {},
+  ): Promise<PoliteBytesResponse> {
     const target = new URL(url);
     return this.withHostLock(target.host, async () => {
       await this.ensureRobots(target.origin);
       if (!this.isAllowed(target.origin, url)) {
         throw new Error(`robots.txt disallows fetching ${url}`);
       }
-      return this.requestWithRetries(target.host, url);
+      return this.requestWithRetries(target.host, url, options);
     });
   }
 
   private async requestWithRetries(
     host: string,
     url: string,
-  ): Promise<PoliteResponse> {
+    options: GetBytesOptions,
+  ): Promise<PoliteBytesResponse> {
     for (let attempt = 0; ; attempt++) {
       await this.respectDelay(host);
       let res;
       try {
         res = await request(url, {
           method: "GET",
-          headers: this.buildHeaders(url),
+          headers: this.buildHeaders(url, options),
           signal: AbortSignal.timeout(this.timeoutMs),
         });
       } catch (error) {
@@ -112,7 +146,7 @@ export class PoliteClient {
 
       const status = res.statusCode;
       if ((status === 429 || status === 503) && attempt < this.maxRetries) {
-        await res.body.text().catch(() => "");
+        await res.body.arrayBuffer().catch(() => undefined);
         const retryAfter = parseRetryAfter(
           headerValue(res.headers["retry-after"]),
         );
@@ -121,11 +155,11 @@ export class PoliteClient {
       }
 
       if (status === 304) {
-        await res.body.text().catch(() => "");
+        await res.body.arrayBuffer().catch(() => undefined);
         return { status, body: null, notModified: true, headers: res.headers };
       }
 
-      const body = await res.body.text();
+      const body = Buffer.from(await res.body.arrayBuffer());
       if (status === 200) {
         const etag = headerValue(res.headers["etag"]);
         const lastModified = headerValue(res.headers["last-modified"]);
@@ -137,12 +171,17 @@ export class PoliteClient {
     }
   }
 
-  private buildHeaders(url: string): Record<string, string> {
+  private buildHeaders(
+    url: string,
+    options: GetBytesOptions,
+  ): Record<string, string> {
     const headers: Record<string, string> = {
       "user-agent": this.userAgent,
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      accept:
+        options.accept ??
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     };
-    const meta = this.conditional.get(url);
+    const meta = options.validators ?? this.conditional.get(url);
     if (meta?.etag) headers["if-none-match"] = meta.etag;
     if (meta?.lastModified) headers["if-modified-since"] = meta.lastModified;
     return headers;

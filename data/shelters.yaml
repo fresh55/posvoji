@@ -2,7 +2,7 @@
 #
 # Source: UVHVVR register of shelters (gov.si), version dated 2026-02-23,
 # supplemented with public website checks from August 2026. Contacts listed
-# here are institutional only — never personal data of private individuals.
+# here are institutional only, never personal data of private individuals.
 #
 # This file is reference data for humans and for future providers. An entry
 # here does NOT mean the shelter may be crawled: that is decided solely by a
@@ -115,7 +115,9 @@ shelters:
     website: https://www.macjahisa.si/
     email: zavetisce@macjahisa.si
     phone: "031 326 877"
-    notes: Redno ažuriran strukturiran katalog; kandidat za pilotno partnerstvo.
+    notes: >-
+      Redno ažuriran strukturiran katalog. Pilotni partner: pisno dovoljenje
+      2026-08-16, provider macja-hisa je vklopljen.
 
   - id: johanca
     name: Zavetišče Johanca (Veterina Tolmin)

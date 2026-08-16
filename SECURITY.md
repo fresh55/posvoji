@@ -11,7 +11,7 @@ websites. We aim to respond within 7 days.
 
 ## Scope notes
 
-The production site is static files on a CDN — there is no server-side attack
+The production site is static files on a CDN, so there is no server-side attack
 surface beyond the build pipeline. The most sensitive parts of this project are
 the ingest pipeline (it must never collect personal data or overload shelter
 sites) and the integrity of the published dataset.

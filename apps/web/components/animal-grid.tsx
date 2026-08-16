@@ -132,7 +132,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     <section
       className={cn(
         hasSidebar &&
-          "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-rhythm",
+          "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
       )}
     >
       {hasSidebar && (

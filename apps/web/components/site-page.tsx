@@ -22,7 +22,7 @@ export function SitePage({ locale }: { locale: Locale }) {
           homeHref={locale === "sl" ? "/" : "/en"}
         />
 
-        <main className="flex flex-1 flex-col gap-rhythm py-rhythm">
+        <main className="flex flex-1 flex-col gap-section-gap py-page-y">
           <div className="space-y-2">
             <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
               {messages.heroTitle}

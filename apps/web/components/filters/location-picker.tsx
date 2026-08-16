@@ -6,6 +6,7 @@ import {
   ChevronDown,
   LoaderCircle,
   MapPin,
+  PawPrint,
 } from "lucide-react";
 import { ShelterMap } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
@@ -77,17 +78,6 @@ export function LocationPicker({
         ]
       : [],
   );
-
-  // The yardstick markers are sized against: the largest a single town can be
-  // on this species tab, which does not move when another filter changes.
-  const busiest = useMemo(() => {
-    const byTown = new Map<string, number>();
-    for (const option of options) {
-      const town = option.city ?? option.value;
-      byTown.set(town, (byTown.get(town) ?? 0) + (option.total ?? 0));
-    }
-    return Math.max(0, ...byTown.values());
-  }, [options]);
 
   // Picking a region picks every shelter in it, which is as fine as a map of a
   // country can honestly be. The list is where you drop the ones you did not
@@ -183,17 +173,19 @@ export function LocationPicker({
 
           <ShelterMap
             pins={pins}
-            busiest={busiest}
             selected={selected}
             onPick={pickRegion}
             origin={origin}
           />
 
           <p className="flex items-center gap-1.5 text-[11px] leading-tight text-muted-foreground">
-            <svg viewBox="0 0 10 10" className="size-2.5 shrink-0" aria-hidden>
-              <circle cx="5" cy="5" r="4" className="fill-foreground/45" />
-            </svg>
-            Zavetišče. Večji krog pomeni več živali.
+            <span
+              aria-hidden
+              className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background"
+            >
+              <PawPrint className="size-2.5 text-foreground/70" strokeWidth={2.25} />
+            </span>
+            Zavetišče
           </p>
 
           <div className="space-y-1">

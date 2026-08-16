@@ -327,15 +327,8 @@ export function pruneHiddenFilters(filters: Filters): Filters {
 }
 
 // city is the shelter's town, kept as its own field rather than a generic
-// sublabel because the map places a marker from it. total is how many animals
-// the shelter has on this species tab before any other filter applies, which is
-// the fixed scale the map sizes its markers against.
-export type FilterOption = {
-  value: string;
-  label: string;
-  city?: string;
-  total?: number;
-};
+// sublabel because the map places a marker from it.
+export type FilterOption = { value: string; label: string; city?: string };
 
 const SEX_OPTIONS: FilterOption[] = [
   { value: "male", label: "Samec" },
@@ -362,25 +355,15 @@ export function groupOptions(
 ): FilterOption[] {
   switch (group) {
     case "shelter": {
-      const shelters = new Map<
-        string,
-        { name: string; city: string; total: number }
-      >();
+      const shelters = new Map<string, { name: string; city: string }>();
       for (const animal of animals) {
-        const seen = shelters.get(animal.shelter.id);
         shelters.set(animal.shelter.id, {
           name: animal.shelter.name,
           city: animal.shelter.city,
-          total: (seen?.total ?? 0) + 1,
         });
       }
       return [...shelters]
-        .map(([value, { name, city, total }]) => ({
-          value,
-          label: name,
-          city,
-          total,
-        }))
+        .map(([value, { name, city }]) => ({ value, label: name, city }))
         .sort((a, b) => a.label.localeCompare(b.label, "sl"));
     }
     case "sex":

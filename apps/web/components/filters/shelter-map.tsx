@@ -2,13 +2,10 @@
 
 import { useMemo } from "react";
 import { MAP_HEIGHT, MAP_WIDTH, onMap, project, type LatLon } from "@/lib/geo";
+import { PawPrint } from "lucide-react";
 import {
   layoutTowns,
-  markerBoxes,
-  placeLabels,
   townCount,
-  wedgePath,
-  REGION_LABEL_SIZE,
   type ShelterPin,
   type Town,
 } from "@/lib/map-layout";
@@ -32,18 +29,16 @@ export type { ShelterPin } from "@/lib/map-layout";
 // holds several.
 export function ShelterMap({
   pins,
-  busiest,
   selected,
   onPick,
   origin,
 }: {
   pins: ShelterPin[];
-  busiest: number;
   selected: string[];
   onPick: (values: string[]) => void;
   origin?: LatLon;
 }) {
-  const towns = useMemo(() => layoutTowns(pins, busiest), [pins, busiest]);
+  const towns = useMemo(() => layoutTowns(pins), [pins]);
 
   // Grouped by where the town really is, not by where its marker ended up: a
   // marker may be nudged a few units to stop it overlapping a neighbour, and
@@ -57,33 +52,6 @@ export function ShelterMap({
     }
     return grouped;
   }, [towns]);
-
-  // Regions are what this picks, so regions are what it names. Naming the towns
-  // as well put seventeen pieces of text on one small country and crowded most
-  // of the region names out, which reads as broken rather than as restrained.
-  // Which shelter is which is the list's job.
-  const labels = useMemo(
-    () =>
-      placeLabels(
-        REGION_SHAPES.map((region) => ({
-          key: `region-${region.id}`,
-          text: region.name,
-          size: REGION_LABEL_SIZE,
-          x: region.label[0],
-          // The pole of inaccessibility first, then a little above or below it,
-          // so a name blocked by a marker steps aside instead of vanishing.
-          ys: [
-            region.label[1],
-            region.label[1] - 8,
-            region.label[1] + 8,
-            region.label[1] - 15,
-            region.label[1] + 15,
-          ],
-        })),
-        markerBoxes(towns),
-      ),
-    [towns],
-  );
 
   // shrink-0 because the dialog is a flex column with a bounded height: as a
   // shrinkable flex item the map gave up a quarter of its height and then
@@ -121,25 +89,6 @@ export function ShelterMap({
         />
       ))}
 
-      <g className="pointer-events-none">
-        {/* Names are sized for the map at its full width. Below sm the dialog
-            is barely wider than a phone, where they would be too small to read
-            and too many to fit, so they are dropped rather than shrunk. */}
-        <g className="hidden sm:inline">
-          {labels.map((label) => (
-            <text
-              key={label.key}
-              x={label.x}
-              y={label.y}
-              textAnchor="middle"
-              className="fill-muted-foreground"
-              style={{ fontSize: REGION_LABEL_SIZE }}
-            >
-              {label.text}
-            </text>
-          ))}
-        </g>
-      </g>
     </svg>
   );
 }
@@ -210,9 +159,8 @@ function Region({
   );
 }
 
-// One target per town, not per wedge. A wedge of an already small dot cannot be
-// hit at any width this map is given, which is what the list is for; the whole
-// marker takes the click and selects everything that town holds.
+// One target per town. A town holding several shelters says so with a badge and
+// selects all of them; reaching exactly one of them is what the list is for.
 function Marker({
   town,
   selected,
@@ -237,6 +185,10 @@ function Marker({
     ? `${plural(values.length, SHELTER_FORMS)} v kraju ${town.city}`
     : town.shelters[0].label;
 
+  const badgeR = 3.2;
+  // The paw fills most of the badge; lucide keeps its own padding inside.
+  const glyph = town.r * 1.3;
+
   return (
     <g
       role="button"
@@ -259,9 +211,9 @@ function Marker({
     >
       <title>{`${names} · ${town.city} · ${plural(townCount(town), ANIMAL_FORMS)}`}</title>
 
-      {/* The dot is what the eye aims at; this is what the pointer actually
+      {/* The house is what the eye aims at; this is what the pointer actually
           hits. It grows into the space around the marker but never reaches
-          inside a neighbour's dot. */}
+          inside a neighbour's. */}
       <circle
         cx={town.x}
         cy={town.y}
@@ -269,7 +221,7 @@ function Marker({
         className="fill-transparent"
       />
 
-      {/* A ring on hover and focus, so a dot reads as something you can press
+      {/* A ring on hover and focus, so a house reads as something you can press
           before you press it. */}
       <circle
         cx={town.x}
@@ -281,36 +233,62 @@ function Marker({
         )}
       />
 
-      {town.shelters.map((wedge) => {
-        const checked = selected.includes(wedge.value);
-        const dead = wedge.count === 0 && !checked;
-        const fill = checked
-          ? "fill-foreground"
-          : dead
-            ? "fill-foreground/20"
-            : "fill-foreground/45 group-hover/pin:fill-foreground/70";
-        return shared ? (
-          <path
-            key={wedge.value}
-            d={wedgePath(town.x, town.y, town.r, wedge.from, wedge.to)}
-            className={cn(
-              "stroke-background transition-[fill] [stroke-linejoin:round] [stroke-width:1.25]",
-              fill,
-            )}
-          />
-        ) : (
+      {/* A badge, not a glyph silhouette. The circle keeps every marker one
+          crisp shape against the tiles, and the paw inside says what is here
+          on a site whose whole subject is animals; a house could be anything,
+          a paw here cannot. Same idiom the big map apps settled on for
+          categorised places, and the glyph is the same lucide PawPrint the
+          size filter already uses, so it cannot drift off the page's icon
+          language. */}
+      <circle
+        cx={town.x}
+        cy={town.y}
+        r={town.r}
+        className={cn(
+          "transition-colors [stroke-width:1.4]",
+          state !== false
+            ? "fill-foreground stroke-foreground"
+            : live
+              ? "fill-background stroke-foreground/70 group-hover/pin:stroke-foreground"
+              : "fill-background stroke-foreground/25",
+        )}
+      />
+      <PawPrint
+        x={town.x - glyph / 2}
+        y={town.y - glyph / 2}
+        width={glyph}
+        height={glyph}
+        strokeWidth={2.25}
+        aria-hidden
+        className={cn(
+          "transition-colors",
+          state !== false
+            ? "text-background"
+            : live
+              ? "text-foreground/70 group-hover/pin:text-foreground"
+              : "text-foreground/25",
+        )}
+      />
+
+      {shared && (
+        <g>
           <circle
-            key={wedge.value}
-            cx={town.x}
-            cy={town.y}
-            r={town.r}
-            className={cn(
-              "stroke-background transition-[fill] [stroke-width:1.25]",
-              fill,
-            )}
+            cx={town.x + town.r * 0.85}
+            cy={town.y - town.r * 0.85}
+            r={badgeR}
+            className="fill-foreground stroke-background [stroke-width:1]"
           />
-        );
-      })}
+          <text
+            x={town.x + town.r * 0.85}
+            y={town.y - town.r * 0.85 + badgeR * 0.36}
+            textAnchor="middle"
+            className="fill-background"
+            style={{ fontSize: badgeR * 1.25, fontWeight: 600 }}
+          >
+            {town.shelters.length}
+          </text>
+        </g>
+      )}
     </g>
   );
 }

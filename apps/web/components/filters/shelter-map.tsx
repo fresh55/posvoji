@@ -4,12 +4,11 @@ import { useMemo } from "react";
 import { MAP_HEIGHT, MAP_WIDTH, onMap, project, type LatLon } from "@/lib/geo";
 import {
   layoutTowns,
+  markerBoxes,
   placeLabels,
   townCount,
-  townLabels,
   wedgePath,
   REGION_LABEL_SIZE,
-  TOWN_LABEL_SIZE,
   type ShelterPin,
   type Town,
 } from "@/lib/map-layout";
@@ -56,25 +55,32 @@ export function ShelterMap({
     return grouped;
   }, [towns]);
 
-  // Town names outrank region names for the same space, so a region only gets
-  // labelled where no marker needed the room.
-  const labels = useMemo(() => {
-    const names = new Set(towns.map((town) => town.key));
-    const placed = placeLabels([
-      ...townLabels(towns),
-      ...REGION_SHAPES.map((region) => ({
-        key: `region-${region.id}`,
-        text: region.name,
-        size: REGION_LABEL_SIZE,
-        x: region.label[0],
-        ys: [region.label[1]],
-      })),
-    ]);
-    return {
-      towns: placed.filter((label) => names.has(label.key)),
-      regions: placed.filter((label) => !names.has(label.key)),
-    };
-  }, [towns]);
+  // Regions are what this picks, so regions are what it names. Naming the towns
+  // as well put seventeen pieces of text on one small country and crowded most
+  // of the region names out, which reads as broken rather than as restrained.
+  // Which shelter is which is the list's job.
+  const labels = useMemo(
+    () =>
+      placeLabels(
+        REGION_SHAPES.map((region) => ({
+          key: `region-${region.id}`,
+          text: region.name,
+          size: REGION_LABEL_SIZE,
+          x: region.label[0],
+          // The pole of inaccessibility first, then a little above or below it,
+          // so a name blocked by a marker steps aside instead of vanishing.
+          ys: [
+            region.label[1],
+            region.label[1] - 8,
+            region.label[1] + 8,
+            region.label[1] - 15,
+            region.label[1] + 15,
+          ],
+        })),
+        markerBoxes(towns),
+      ),
+    [towns],
+  );
 
   // shrink-0 because the dialog is a flex column with a bounded height: as a
   // shrinkable flex item the map gave up a quarter of its height and then
@@ -106,15 +112,15 @@ export function ShelterMap({
             is barely wider than a phone, where they would be too small to read
             and too many to fit, so they are dropped rather than shrunk. */}
         <g className="hidden sm:inline">
-          {labels.regions.map((label) => (
-          <text
-            key={label.key}
-            x={label.x}
-            y={label.y}
-            textAnchor="middle"
-            className="fill-muted-foreground/55"
-            style={{ fontSize: REGION_LABEL_SIZE }}
-          >
+          {labels.map((label) => (
+            <text
+              key={label.key}
+              x={label.x}
+              y={label.y}
+              textAnchor="middle"
+              className="fill-muted-foreground"
+              style={{ fontSize: REGION_LABEL_SIZE }}
+            >
               {label.text}
             </text>
           ))}
@@ -123,21 +129,6 @@ export function ShelterMap({
         {towns.map((town) => (
           <Marker key={town.key} town={town} selected={selected} />
         ))}
-
-        <g className="hidden sm:inline">
-          {labels.towns.map((label) => (
-            <text
-              key={label.key}
-              x={label.x}
-              y={label.y}
-              textAnchor="middle"
-              className="fill-foreground stroke-background [paint-order:stroke] [stroke-width:3px]"
-              style={{ fontSize: TOWN_LABEL_SIZE, fontWeight: 500 }}
-            >
-              {label.text}
-            </text>
-          ))}
-        </g>
       </g>
     </svg>
   );
@@ -175,7 +166,7 @@ function Region({
       <path
         d={d}
         aria-hidden
-        className="pointer-events-none fill-muted stroke-border/60 [stroke-width:0.4]"
+        className="pointer-events-none fill-foreground/4 stroke-background [stroke-width:0.8]"
       />
     );
   }
@@ -195,12 +186,13 @@ function Region({
         }
       }}
       className={cn(
-        "cursor-pointer outline-none transition-[fill]",
+        // Regions are separated by the page colour, not by a grey rule: the
+        // gaps read as a seam and the map keeps one line weight instead of two.
+        "cursor-pointer stroke-background outline-none transition-[fill] [stroke-width:0.8]",
         state === false
-          ? "fill-muted hover:fill-foreground/10"
-          : "fill-foreground/15",
-        "stroke-border/60 [stroke-width:0.4]",
-        "focus-visible:fill-foreground/15 focus-visible:stroke-foreground focus-visible:[stroke-width:1.5]",
+          ? "fill-foreground/9 hover:fill-foreground/16"
+          : "fill-foreground/22 hover:fill-foreground/27",
+        "focus-visible:fill-foreground/20 focus-visible:stroke-foreground focus-visible:[stroke-width:1.5]",
       )}
     >
       <title>{`${region.name} · ${plural(values.length, SHELTER_FORMS)} · ${plural(animals, ANIMAL_FORMS)}`}</title>
@@ -221,8 +213,8 @@ function Marker({ town, selected }: { town: Town; selected: string[] }) {
         const fill = checked
           ? "fill-foreground"
           : dead
-            ? "fill-foreground/25"
-            : "fill-foreground/55";
+            ? "fill-foreground/20"
+            : "fill-foreground/45";
         return shared ? (
           <path
             key={wedge.value}

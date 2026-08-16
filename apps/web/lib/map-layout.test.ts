@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
 import {
   layoutTowns,
+  markerBoxes,
   placeLabels,
-  townLabels,
   wedgePath,
   type ShelterPin,
 } from "./map-layout";
@@ -138,7 +138,8 @@ describe("layoutTowns", () => {
       120,
     );
     expect(towns[0].shelters).toHaveLength(2);
-    expect(towns[0].r).toBeGreaterThanOrEqual(8);
+    const alone = layoutTowns([pin("a", "Ljubljana", 2)], 120);
+    expect(towns[0].r).toBeGreaterThan(alone[0].r);
   });
 
   // Each extra wedge takes a share of the same disc, so the disc has to grow or
@@ -216,52 +217,61 @@ describe("wedgePath", () => {
 });
 
 describe("placeLabels", () => {
-  const town = (city: string, x: number, y: number, count: number) =>
-    layoutTowns([pin(`s-${city}`, city, count, { lat: 46, lon: 14 })], 120).map(
-      (t) => ({ ...t, city, x, y }),
-    )[0];
+  const name = (key: string, x: number, ys: number[]) => ({
+    key,
+    text: "Savinjska",
+    size: 5.5,
+    x,
+    ys,
+  });
 
   it("places a label that has the map to itself", () => {
-    const placed = placeLabels(townLabels([town("Ljubljana", 160, 100, 10)]));
-    expect(placed).toHaveLength(1);
-    expect(placed[0].text).toBe("Ljubljana 10");
+    const placed = placeLabels([name("a", 160, [100])]);
+    expect(placed).toEqual([{ key: "a", x: 160, y: 100, text: "Savinjska" }]);
   });
 
-  it("drops a label once both the space below and above are taken", () => {
-    // Three markers on one point: the first takes the space below, the second
-    // the space above, and the third has nowhere left to go.
-    const placed = placeLabels(
-      townLabels([
-        town("Ljubljana", 160, 100, 30),
-        town("Kranj", 160, 100, 20),
-        town("Celje", 160, 100, 10),
-      ]),
-    );
-    expect(placed.map((l) => l.text)).toEqual(["Ljubljana 30", "Kranj 20"]);
-  });
-
-  it("falls back to the position above when the one below is taken", () => {
-    const first = town("Ljubljana", 160, 100, 20);
-    const placed = placeLabels(
-      townLabels([first, town("Kranj", 160, 100 + first.r * 2 + 14, 10)]),
-    );
-    expect(placed).toHaveLength(2);
-  });
-
-  it("respects the order it is given, so towns outrank regions", () => {
+  it("falls back to its next position when the first is taken", () => {
     const placed = placeLabels([
-      { key: "town", text: "Celje 9", size: 7, x: 160, ys: [100] },
-      { key: "region", text: "Savinjska", size: 5.5, x: 160, ys: [100] },
+      name("a", 160, [100]),
+      name("b", 160, [100, 120]),
     ]);
-    expect(placed.map((l) => l.key)).toEqual(["town"]);
+    expect(placed.map((l) => l.y)).toEqual([100, 120]);
+  });
+
+  it("drops a label with nowhere left to go", () => {
+    const placed = placeLabels([
+      name("a", 160, [100]),
+      name("b", 160, [100]),
+    ]);
+    expect(placed.map((l) => l.key)).toEqual(["a"]);
+  });
+
+  it("respects the order it is given", () => {
+    const placed = placeLabels([name("first", 160, [100]), name("second", 160, [100])]);
+    expect(placed.map((l) => l.key)).toEqual(["first"]);
   });
 
   it("leaves off a label that would hang past the edge of the map", () => {
-    expect(
-      placeLabels([
-        { key: "edge", text: "Obalno-kraška", size: 7, x: 2, ys: [100] },
-      ]),
-    ).toHaveLength(0);
+    expect(placeLabels([name("edge", 2, [100])])).toHaveLength(0);
+  });
+
+  // The fault the map showed: names were laid straight across the dots,
+  // because the placer only knew about other names.
+  it("steps a label aside rather than laying it over a marker", () => {
+    const towns = layoutTowns([pin("a", "Ljubljana", 40)], 120);
+    const [marker] = towns;
+    const blocked = placeLabels(
+      [name("r", marker.x, [marker.y])],
+      markerBoxes(towns),
+    );
+    expect(blocked).toHaveLength(0);
+
+    const stepped = placeLabels(
+      [name("r", marker.x, [marker.y, marker.y + marker.r + 12])],
+      markerBoxes(towns),
+    );
+    expect(stepped).toHaveLength(1);
+    expect(stepped[0].y).toBeGreaterThan(marker.y + marker.r);
   });
 
   it("places nothing for no candidates", () => {

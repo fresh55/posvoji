@@ -25,16 +25,16 @@ export type Town = {
   shelters: Wedge[];
 };
 
-const MIN_RADIUS = 4.5;
-const MAX_RADIUS = 12;
+const MIN_RADIUS = 3;
+const MAX_RADIUS = 9;
 // A single dot can shrink to MIN_RADIUS, but wedges cut that area into slices,
 // so a shared town needs a floor to stay legible, and the floor has to rise
 // with the number of ways it is divided. A marker holding three shelters is
 // drawn larger than its count alone would earn, which is the honest signal
 // anyway: there is more here than one shelter.
-const MULTI_RADIUS_FLOOR = 8;
-const MULTI_RADIUS_PER_EXTRA = 2.5;
-const MULTI_RADIUS_CAP = 16;
+const MULTI_RADIUS_FLOOR = 6;
+const MULTI_RADIUS_PER_EXTRA = 2;
+const MULTI_RADIUS_CAP = 12;
 
 function sharedFloor(shelters: number): number {
   return Math.min(
@@ -210,20 +210,32 @@ export type LabelCandidate = {
 
 export type PlacedLabel = { key: string; x: number; y: number; text: string };
 
-type Box = { x0: number; y0: number; x1: number; y1: number };
+export type Box = { x0: number; y0: number; x1: number; y1: number };
+
+// Markers are obstacles for the labels, not just for each other.
+export function markerBoxes(towns: Town[]): Box[] {
+  return towns.map((town) => ({
+    x0: town.x - town.r,
+    y0: town.y - town.r,
+    x1: town.x + town.r,
+    y1: town.y + town.r,
+  }));
+}
 
 function overlaps(a: Box, b: Box): boolean {
   return !(a.x1 < b.x0 || a.x0 > b.x1 || a.y1 < b.y0 || a.y0 > b.y1);
 }
 
-// Only the expanded map labels anything, and even there the labels have to be
-// rationed: sixteen town names and twelve region names on one country collide
-// long before the markers do. Candidates are placed in the order given, so the
-// caller decides what outranks what, and a name that would land on one already
-// drawn is left off rather than smeared over it. The marker, the region and the
-// list all still carry the name.
-export function placeLabels(candidates: LabelCandidate[]): PlacedLabel[] {
-  const taken: Box[] = [];
+// The map names the regions, because regions are what it picks. It named the
+// towns too, which put seventeen pieces of text on one small country, four of
+// them lying across a marker. Candidates are tried in the order given, each
+// against the markers and against whatever is already placed, and a name with
+// nowhere to go is left off rather than smeared over something.
+export function placeLabels(
+  candidates: LabelCandidate[],
+  obstacles: Box[] = [],
+): PlacedLabel[] {
+  const taken: Box[] = [...obstacles];
   const placed: PlacedLabel[] = [];
 
   for (const candidate of candidates) {
@@ -246,26 +258,7 @@ export function placeLabels(candidates: LabelCandidate[]): PlacedLabel[] {
   return placed;
 }
 
-export const TOWN_LABEL_SIZE = 7;
 export const REGION_LABEL_SIZE = 5.5;
-
-// Towns first: which shelter sits where is what the map is picked from, and a
-// region that loses its name to a town label still has its shape, its tooltip
-// and its place in the list.
-export function townLabels(towns: Town[]): LabelCandidate[] {
-  return [...towns]
-    .sort((a, b) => townCount(b) - townCount(a))
-    .map((town) => ({
-      key: town.key,
-      text: `${town.city} ${townCount(town)}`,
-      size: TOWN_LABEL_SIZE,
-      x: town.x,
-      ys: [
-        town.y + town.r + TOWN_LABEL_SIZE,
-        town.y - town.r - LABEL_GAP,
-      ],
-    }));
-}
 
 // Pie slice from the centre, for drawing one shelter's share of a shared town's
 // marker. A town with one shelter draws a plain circle instead.

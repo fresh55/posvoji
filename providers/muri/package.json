@@ -1,0 +1,25 @@
+{
+  "name": "@posvoji/provider-muri",
+  "version": "0.1.0",
+  "description": "Adapter for Zavod Muri (Vransko) — zavodmuri.si",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./provider.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@posvoji/provider-sdk": "workspace:*",
+    "@posvoji/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "yaml": "^2.9.0"
+  }
+}

@@ -132,6 +132,9 @@ shelters:
     city: Vransko
     website: https://zavodmuri.si/
     email: zavod.muri@gmail.com
+    notes: >-
+      Ločena kataloga psov in muc. Pisno dovoljenje 2026-08-16, provider muri
+      je vklopljen.
 
   - id: potepuhi
     name: Zavetišče Potepuhi

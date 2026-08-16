@@ -1,0 +1,24 @@
+# Machine-readable permission record. CI validates every policy.yaml against
+# the ProviderPolicy schema: a provider cannot be enabled, show images or carry
+# more than bare facts without granted, dated permission from the shelter.
+providerId: muri
+source: https://zavodmuri.si/posvojitev/iscejo-dom
+enabled: true
+
+ingestion: scrape
+images: cache-permitted
+descriptions: full-permitted
+
+permission:
+  status: granted
+  date: 2026-08-16
+  reference: mail-thread-zavod-muri-2026-08-16
+  notes: >-
+    Pisno dovoljenje po e-pošti (2026-08-16): zajem kataloga psov in muc,
+    prikaz in predpomnjenje fotografij, celotni opisi.
+
+attribution: "Vir: Zavod Muri"
+
+crawl:
+  intervalHours: 12
+  excludePaths: []

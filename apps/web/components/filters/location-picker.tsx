@@ -154,7 +154,8 @@ export function LocationPicker({
           <DialogHeader>
             <DialogTitle>Kje iščeš?</DialogTitle>
             <DialogDescription>
-              Izberi regijo na zemljevidu ali posamezno zavetišče s seznama.
+              Klikni zavetišče ali celo regijo na zemljevidu, ali izbiraj s
+              seznama.
             </DialogDescription>
           </DialogHeader>
 
@@ -184,9 +185,16 @@ export function LocationPicker({
             pins={pins}
             busiest={busiest}
             selected={selected}
-            onPickRegion={pickRegion}
+            onPick={pickRegion}
             origin={origin}
           />
+
+          <p className="flex items-center gap-1.5 text-[11px] leading-tight text-muted-foreground">
+            <svg viewBox="0 0 10 10" className="size-2.5 shrink-0" aria-hidden>
+              <circle cx="5" cy="5" r="4" className="fill-foreground/45" />
+            </svg>
+            Zavetišče. Večji krog pomeni več živali.
+          </p>
 
           <div className="space-y-1">
             {/* Stays mounted so a denied permission is announced, not just

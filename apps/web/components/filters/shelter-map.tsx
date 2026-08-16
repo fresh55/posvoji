@@ -23,21 +23,24 @@ import { cn } from "@/lib/utils";
 
 export type { ShelterPin } from "@/lib/map-layout";
 
-// What you click is a region, not a marker: a marker sized to mean something in
-// a 209px column is a 6px dot, and no tuning makes a 6px dot a target. Picking
-// a region picks every shelter in it, and the list underneath is where you
-// narrow that to one. The markers stay as the picture of where and how many.
+// Two targets, nested, each honest about how precise it can be. A marker is one
+// town's shelters; the region around it is every shelter in the region. Markers
+// were briefly not clickable at all, which was a rule inherited from the 209px
+// sidebar, where a dot could not be made big enough to hit. The map only draws
+// at dialog width now, so the dots can carry their own clicks again, and the
+// list underneath is still the way to reach exactly one shelter in a town that
+// holds several.
 export function ShelterMap({
   pins,
   busiest,
   selected,
-  onPickRegion,
+  onPick,
   origin,
 }: {
   pins: ShelterPin[];
   busiest: number;
   selected: string[];
-  onPickRegion: (values: string[]) => void;
+  onPick: (values: string[]) => void;
   origin?: LatLon;
 }) {
   const towns = useMemo(() => layoutTowns(pins, busiest), [pins, busiest]);
@@ -101,11 +104,22 @@ export function ShelterMap({
           region={region}
           towns={byRegion.get(region.id) ?? []}
           selected={selected}
-          onPick={onPickRegion}
+          onPick={onPick}
         />
       ))}
 
       {origin && onMap(origin) && <Origin at={origin} />}
+
+      {/* Markers paint after the regions, so a dot takes its own click and the
+          region only gets the ones that miss every dot. */}
+      {towns.map((town) => (
+        <Marker
+          key={town.key}
+          town={town}
+          selected={selected}
+          onPick={onPick}
+        />
+      ))}
 
       <g className="pointer-events-none">
         {/* Names are sized for the map at its full width. Below sm the dialog
@@ -125,10 +139,6 @@ export function ShelterMap({
             </text>
           ))}
         </g>
-
-        {towns.map((town) => (
-          <Marker key={town.key} town={town} selected={selected} />
-        ))}
       </g>
     </svg>
   );
@@ -200,13 +210,77 @@ function Region({
   );
 }
 
-// Picture only. Freed from being a target, a shared town can keep showing that
-// it holds several shelters, and how many of them are picked, at whatever size
-// its counts earn.
-function Marker({ town, selected }: { town: Town; selected: string[] }) {
+// One target per town, not per wedge. A wedge of an already small dot cannot be
+// hit at any width this map is given, which is what the list is for; the whole
+// marker takes the click and selects everything that town holds.
+function Marker({
+  town,
+  selected,
+  onPick,
+}: {
+  town: Town;
+  selected: string[];
+  onPick: (values: string[]) => void;
+}) {
   const shared = town.shelters.length > 1;
+  const values = town.shelters.map((shelter) => shelter.value);
+  const chosen = values.filter((value) => selected.includes(value));
+  const live = townCount(town) > 0 || chosen.length > 0;
+  const state =
+    chosen.length === 0
+      ? false
+      : chosen.length === values.length
+        ? true
+        : "mixed";
+
+  const names = shared
+    ? `${plural(values.length, SHELTER_FORMS)} v kraju ${town.city}`
+    : town.shelters[0].label;
+
   return (
-    <g>
+    <g
+      role="button"
+      tabIndex={live ? 0 : -1}
+      aria-disabled={live ? undefined : true}
+      aria-pressed={state}
+      aria-label={`${names}, ${town.city} — ${plural(townCount(town), ANIMAL_FORMS)}`}
+      onClick={() => live && onPick(values)}
+      onKeyDown={(event) => {
+        if (!live) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onPick(values);
+        }
+      }}
+      className={cn(
+        "group/pin outline-none",
+        live ? "cursor-pointer" : "pointer-events-none",
+      )}
+    >
+      <title>{`${names} · ${town.city} · ${plural(townCount(town), ANIMAL_FORMS)}`}</title>
+
+      {/* The dot is what the eye aims at; this is what the pointer actually
+          hits. It grows into the space around the marker but never reaches
+          inside a neighbour's dot. */}
+      <circle
+        cx={town.x}
+        cy={town.y}
+        r={town.hitR}
+        className="fill-transparent"
+      />
+
+      {/* A ring on hover and focus, so a dot reads as something you can press
+          before you press it. */}
+      <circle
+        cx={town.x}
+        cy={town.y}
+        r={town.r + 2.5}
+        className={cn(
+          "fill-none stroke-foreground opacity-0 [stroke-width:1]",
+          "group-hover/pin:opacity-40 group-focus-visible/pin:opacity-100",
+        )}
+      />
+
       {town.shelters.map((wedge) => {
         const checked = selected.includes(wedge.value);
         const dead = wedge.count === 0 && !checked;
@@ -214,7 +288,7 @@ function Marker({ town, selected }: { town: Town; selected: string[] }) {
           ? "fill-foreground"
           : dead
             ? "fill-foreground/20"
-            : "fill-foreground/45";
+            : "fill-foreground/45 group-hover/pin:fill-foreground/70";
         return shared ? (
           <path
             key={wedge.value}

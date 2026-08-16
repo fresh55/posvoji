@@ -22,6 +22,8 @@ export type Town = {
   x: number;
   y: number;
   r: number;
+  /** Clickable radius, which is larger than the dot the eye sees. */
+  hitR: number;
   shelters: Wedge[];
 };
 
@@ -51,6 +53,10 @@ const PIN_GAP = 1.5;
 const MAX_DRIFT = 7;
 const EDGE_MARGIN = 2;
 const RELAX_PASSES = 120;
+// Markers are targets again. They stopped being targets when the map lived in a
+// 209px column, where a dot could not be made big enough; the map only draws at
+// dialog width now, where 10 units is about 42px across.
+const MAX_HIT_RADIUS = 10;
 
 function clamp(value: number, low: number, high: number): number {
   return Math.min(Math.max(value, low), high);
@@ -132,6 +138,21 @@ function relax(towns: Placed[]): void {
   }
 }
 
+// A marker's target grows into the empty space around it but never reaches
+// inside a neighbour's dot, so every dot stays clickable where it is drawn and
+// no marker takes a click meant for the one next to it.
+function sizeTargets(towns: Placed[]): void {
+  for (const town of towns) {
+    let room = MAX_HIT_RADIUS;
+    for (const other of towns) {
+      if (other === town) continue;
+      const reach = Math.hypot(town.x - other.x, town.y - other.y) - other.r;
+      room = Math.min(room, reach);
+    }
+    town.hitR = clamp(room, town.r, MAX_HIT_RADIUS);
+  }
+}
+
 // busiest is the largest per-town count the species tab can produce, which is
 // fixed for as long as the tab is. Passing the filtered maximum instead is what
 // made marker sizes drift between filter states.
@@ -169,11 +190,13 @@ export function layoutTowns(pins: ShelterPin[], busiest: number): Town[] {
         homeX: x,
         homeY: y,
         r,
+        hitR: r,
         shelters: slice(shelters),
       };
     });
 
   relax(towns);
+  sizeTargets(towns);
 
   // Largest first, so a small marker paints on top of a large one rather than
   // disappearing under it.
@@ -185,6 +208,7 @@ export function layoutTowns(pins: ShelterPin[], busiest: number): Town[] {
       x: town.x,
       y: town.y,
       r: town.r,
+      hitR: town.hitR,
       shelters: town.shelters,
     }));
 }

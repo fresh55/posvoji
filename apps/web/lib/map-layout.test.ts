@@ -78,6 +78,34 @@ describe("layoutTowns", () => {
     expect(gap(dramlje, celje)).toBeGreaterThan(0);
   });
 
+  // Markers carry their own clicks again now that the map only draws at dialog
+  // width. The guarantee that keeps that honest: a marker's target may fill the
+  // space around it but never reaches inside a neighbour's dot.
+  it("never lets a marker's target reach inside another marker's dot", () => {
+    const towns = layoutTowns(REAL_PINS, 120);
+    everyPair(towns, (a, b) => {
+      const centres = Math.hypot(a.x - b.x, a.y - b.y);
+      expect(a.hitR + b.r).toBeLessThanOrEqual(centres + 1e-9);
+      expect(b.hitR + a.r).toBeLessThanOrEqual(centres + 1e-9);
+    });
+  });
+
+  it("makes every marker's target larger than the dot it covers", () => {
+    for (const town of layoutTowns(REAL_PINS, 120)) {
+      expect(town.hitR).toBeGreaterThan(town.r);
+    }
+  });
+
+  // 10 units is about 42px at the width the dialog draws the map, and the
+  // tightest marker on the real roster still has to clear the 24px floor.
+  it("leaves the tightest marker a target worth aiming at", () => {
+    const DIALOG_SCALE = 680 / 320;
+    const smallest = Math.min(
+      ...layoutTowns(REAL_PINS, 120).map((town) => 2 * town.hitR * DIALOG_SCALE),
+    );
+    expect(smallest).toBeGreaterThan(24);
+  });
+
   it("keeps every marker within the drift budget of its real town", () => {
     const towns = layoutTowns(REAL_PINS, 120);
     for (const town of towns) {

@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@posvoji/provider-macja-hisa": "workspace:*",
     "@posvoji/provider-sdk": "workspace:*",
     "@posvoji/schema": "workspace:*",
     "sharp": "^0.34.4",

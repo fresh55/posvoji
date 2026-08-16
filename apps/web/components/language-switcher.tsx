@@ -4,6 +4,7 @@ import type { MouseEvent } from "react";
 import Image from "next/image";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import type { Locale } from "@/lib/i18n";
 
 const LANGUAGES = [
   {
@@ -22,7 +23,11 @@ const LANGUAGES = [
   },
 ] as const;
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({
+  paths,
+}: {
+  paths?: Partial<Record<Locale, string>>;
+}) {
   const { locale, messages } = useI18n();
 
   const keepFilters = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -43,7 +48,7 @@ export function LanguageSwitcher() {
           className="rounded-sm px-2 font-normal"
         >
           <a
-            href={language.href}
+            href={paths?.[language.locale] ?? language.href}
             hrefLang={language.locale}
             lang={language.locale}
             aria-label={language.name}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
@@ -24,6 +24,11 @@ import {
   visibleGroups,
   visibleToggles,
 } from "@/lib/filters";
+import {
+  DEFAULT_ANIMAL_SORT,
+  sortAnimals,
+  type AnimalSort,
+} from "@/lib/sort";
 import { cn } from "@/lib/utils";
 
 // Cards claim a target width and the column count falls out of whatever space
@@ -37,6 +42,7 @@ const CARD_GRID =
 
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
   const { locale, messages } = useI18n();
+  const [sort, setSort] = useState<AnimalSort>(DEFAULT_ANIMAL_SORT);
   const {
     filters,
     setSpecies,
@@ -52,6 +58,10 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
   const visible = useMemo(
     () => applyFilters(animals, filters, now),
     [animals, filters, now],
+  );
+  const sorted = useMemo(
+    () => sortAnimals(visible, sort, locale),
+    [visible, sort, locale],
   );
 
   const isEmpty = animals.length === 0;
@@ -153,11 +163,13 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           chips={chips}
           activeCount={activeCount}
           resultCount={visible.length}
+          sort={sort}
           onSpeciesChange={setSpecies}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onClearAll={clearAll}
+          onSortChange={setSort}
         />
 
         {isEmpty ? (
@@ -190,7 +202,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           </div>
         ) : (
           <div className={CARD_GRID}>
-            {visible.map((animal) => (
+            {sorted.map((animal) => (
               <AnimalCard key={animal.id} animal={animal} />
             ))}
           </div>

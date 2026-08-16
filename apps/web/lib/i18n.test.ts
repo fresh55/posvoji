@@ -29,6 +29,13 @@ describe("localized labels", () => {
     );
   });
 
+  it("uses natural Slovenian wording for all shelters", () => {
+    expect(allShelters(1, "sl")).toBe("Edino zavetišče");
+    expect(allShelters(2, "sl")).toBe("Obe zavetišči");
+    expect(allShelters(3, "sl")).toBe("Vsa 3 zavetišča");
+    expect(allShelters(5, "sl")).toBe("Vseh 5 zavetišč");
+  });
+
   it("formats animal metadata in the selected language", () => {
     const animal = {
       species: "dog",

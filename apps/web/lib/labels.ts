@@ -68,15 +68,6 @@ const SHELTER_FORMS: [string, string, string, string] = [
   "zavetišč",
 ];
 
-// The quantifier in "vsa 3 zavetišča" and "vseh 11 zavetišč" agrees with the
-// count just as the noun does, so it needs forms of its own.
-const ALL_FORMS: [string, string, string, string] = [
-  "vse",
-  "vsa",
-  "vsa",
-  "vseh",
-];
-
 export function animalCount(n: number, locale: Locale): string {
   return locale === "sl"
     ? plural(n, ANIMAL_FORMS)
@@ -91,11 +82,10 @@ export function shelterCount(n: number, locale: Locale): string {
 
 export function allShelters(n: number, locale: Locale): string {
   if (locale === "en") return `All ${shelterCount(n, locale)}`;
-  const quantifier = pick(n, ALL_FORMS);
-  return `${quantifier[0].toUpperCase()}${quantifier.slice(1)} ${plural(
-    n,
-    SHELTER_FORMS,
-  )}`;
+  if (n === 1) return "Edino zavetišče";
+  if (n === 2) return "Obe zavetišči";
+  if (n === 3 || n === 4) return `Vsa ${n} zavetišča`;
+  return `Vseh ${n} zavetišč`;
 }
 
 export function sheltersMissingFromMap(n: number, locale: Locale): string {

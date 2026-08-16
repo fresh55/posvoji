@@ -9,7 +9,6 @@ import {
   Venus,
   type LucideIcon,
 } from "lucide-react";
-import { ShelterPicker } from "@/components/filters/shelter-picker";
 import {
   GROUP_LABELS,
   type FilterOption,
@@ -38,14 +37,14 @@ function optionIcon(group: MultiGroup, value: string) {
 }
 
 type GroupProps = {
-  group: MultiGroup;
+  group: CardGroup;
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
 };
 
-type CardGroup = Exclude<MultiGroup, "shelter">;
+export type CardGroup = Exclude<MultiGroup, "shelter">;
 
 // Everything but zavetišče is a short run of options you weigh against each
 // other, so they all get the card. Only the column count differs.
@@ -158,11 +157,7 @@ function FilterGroup({ group, ...rest }: GroupProps) {
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {GROUP_LABELS[group]}
       </h3>
-      {group === "shelter" ? (
-        <ShelterPicker {...rest} />
-      ) : (
-        <OptionCards group={group} {...rest} />
-      )}
+      <OptionCards group={group} {...rest} />
     </section>
   );
 }
@@ -179,7 +174,7 @@ export function FilterGroupList({
   onToggleProperty,
 }: {
   filters: Filters;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;

@@ -24,11 +24,10 @@ export function onMap(at: LatLon): boolean {
   return x >= 0 && x <= MAP_WIDTH && y >= 0 && y <= MAP_HEIGHT;
 }
 
-// Hand-plotted from ~60 border waypoints in the projection above: a coarse
-// silhouette on purpose, because it renders about 14rem wide and any more
-// detail would collapse into noise.
-export const SLOVENIA_OUTLINE =
-  "M35.4 53.5L53.3 60.2L73.7 65.1L91.2 65.8L113.5 63.7L130.9 65.8L143.5 56L157.1 39.9L177.5 35.7L200.7 36.4L223 28L238.5 25.9L258.9 30.1L267.2 16.8L275.4 7.7L285.1 3.4L290.9 9.8L298.7 28L307.4 47.6L316.1 59.5L307.4 60.2L293.8 53.2L281.2 60.2L274.4 70L261.3 70L251.2 82.6L240.5 93.8L227.9 105L224 123.2L227.9 144.9L210.4 159.6L193.9 175L188.1 190.4L184.8 201.2L177.5 205.1L170.4 207.1L157.6 200.2L139.6 194.6L130.7 191.9L120.2 182L116.2 176L106.7 182L101.8 189.7L86.9 193.5L72.7 198.8L62.9 198.7L48.5 202.3L33.9 202.7L24 202.7L19.9 191.4L30.1 190.5L36.8 189.3L37.4 184.9L39.7 182.8L28.1 168L27.2 155.4L22.3 145.6L26.2 130.9L14.5 118.3L12.6 100.8L2.4 85.4L8.7 77.7L20.4 67.2L30.1 62.3Z";
+// The country's shape is no longer kept here. It is the union of the twelve
+// statistical regions in lib/region-shapes.ts, drawn from the official GURS
+// boundaries, which replaced a hand-plotted silhouette that could never line up
+// with a border anyone would recognise.
 
 // Every town in data/shelters.yaml, plus the larger municipal centres a new
 // shelter is most likely to appear in. A town missing from here costs its
@@ -91,7 +90,10 @@ const FOLDED: Record<string, string> = {
   ž: "z",
 };
 
-function key(city: string): string {
+// Also the identity the map groups shelters by, so two shelters that spell
+// their shared town differently still land on one marker rather than two
+// markers on the same spot.
+export function cityKey(city: string): string {
   return city
     .trim()
     .toLowerCase()
@@ -99,11 +101,11 @@ function key(city: string): string {
 }
 
 const BY_KEY = new Map(
-  Object.entries(CITIES).map(([city, at]) => [key(city), at]),
+  Object.entries(CITIES).map(([city, at]) => [cityKey(city), at]),
 );
 
 export function cityAt(city: string): LatLon | undefined {
-  return BY_KEY.get(key(city));
+  return BY_KEY.get(cityKey(city));
 }
 
 const EARTH_RADIUS_KM = 6371;

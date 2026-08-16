@@ -157,3 +157,49 @@ describe("URL codec", () => {
     expect(serializeFilters(filters)).toBe("vrsta=macka&spol=samica");
   });
 });
+
+// Picking a region on the map turns on every shelter in it at once. This is the
+// shape useAnimalFilters.toggleMany writes; looping one toggle per shelter let
+// each write clobber the one before it, so a three-shelter region selected one.
+function toggleMany(selected: string[], values: string[]): string[] {
+  const everyOne = values.every((value) => selected.includes(value));
+  return everyOne
+    ? selected.filter((value) => !values.includes(value))
+    : [...new Set([...selected, ...values])];
+}
+
+describe("selecting a whole region", () => {
+  it("turns on every shelter in it in one go", () => {
+    expect(toggleMany([], ["mh", "sia-in-lu", "muri"])).toEqual([
+      "mh",
+      "sia-in-lu",
+      "muri",
+    ]);
+  });
+
+  it("turns them all off again when they are all on", () => {
+    expect(toggleMany(["mh", "sia-in-lu", "muri"], ["mh", "sia-in-lu", "muri"]))
+      .toEqual([]);
+  });
+
+  it("completes a partly selected region rather than clearing it", () => {
+    expect(toggleMany(["muri"], ["mh", "sia-in-lu", "muri"])).toEqual([
+      "muri",
+      "mh",
+      "sia-in-lu",
+    ]);
+  });
+
+  it("leaves shelters outside the region alone", () => {
+    expect(toggleMany(["maribor", "mh"], ["mh"])).toEqual(["maribor"]);
+    expect(toggleMany(["maribor"], ["mh", "muri"])).toEqual([
+      "maribor",
+      "mh",
+      "muri",
+    ]);
+  });
+
+  it("never doubles a shelter that was already on", () => {
+    expect(toggleMany(["mh"], ["mh", "muri"])).toEqual(["mh", "muri"]);
+  });
+});

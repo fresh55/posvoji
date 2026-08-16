@@ -22,6 +22,7 @@ export function FilterSidebar({
   toggleTally,
   hasActiveFilters,
   onToggle,
+  onToggleMany,
   onToggleProperty,
   onClearAll,
   className,
@@ -33,13 +34,14 @@ export function FilterSidebar({
   toggleTally: Map<string, number>;
   hasActiveFilters: boolean;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
   className?: string;
 }) {
   const { messages } = useI18n();
   return (
-    <aside className={cn("space-y-7", className)}>
+    <aside className={cn("space-y-6", className)}>
       {/* h-7 matches the species tabs across the gutter, so both columns
           start their content on the same line. */}
       <div className="flex h-7 items-center justify-between">
@@ -62,6 +64,7 @@ export function FilterSidebar({
         toggles={toggles}
         toggleTally={toggleTally}
         onToggle={onToggle}
+        onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}
       />
     </aside>

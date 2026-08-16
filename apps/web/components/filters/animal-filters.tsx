@@ -1,6 +1,7 @@
 "use client";
 
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
+import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import type { CardGroup } from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
@@ -14,7 +15,6 @@ import type {
   ToggleDef,
   ToggleKey,
 } from "@/lib/filters";
-import { animalCount } from "@/lib/labels";
 
 // Species tabs and the count live in this top bar at every width. The other
 // groups sit in the desktop sidebar; below lg they move into the bottom sheet.
@@ -95,6 +95,7 @@ export function AnimalFilters({
                 activeCount={activeCount}
                 resultCount={resultCount}
                 onToggle={onToggle}
+                onToggleMany={onToggleMany}
                 onToggleProperty={onToggleProperty}
                 onSpeciesChange={onSpeciesChange}
                 onClearAll={onClearAll}
@@ -103,12 +104,11 @@ export function AnimalFilters({
           )}
         </div>
         {!isEmpty && (
-          <span
-            aria-live="polite"
-            className="shrink-0 text-xs tabular-nums text-muted-foreground"
-          >
-            {animalCount(resultCount, locale)}
-          </span>
+          <ResultCount
+            count={resultCount}
+            locale={locale}
+            className="min-w-24 text-muted-foreground"
+          />
         )}
       </div>
       <FilterChips chips={chips} onClearAll={onClearAll} className="mt-2.5" />

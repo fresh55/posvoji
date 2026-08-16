@@ -3,12 +3,10 @@
 import {
   Mars,
   PawPrint,
-  Shrub,
-  Sprout,
-  TreeDeciduous,
   Venus,
   type LucideIcon,
 } from "lucide-react";
+import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import {
   groupLabel,
   type FilterOption,
@@ -20,14 +18,9 @@ import {
 import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 
-// Paw and plant size reinforce the ordered choices. Sex only needs distinct
-// symbols.
 const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "sex:male": { icon: Mars, className: "size-4" },
   "sex:female": { icon: Venus, className: "size-4" },
-  "age:mladicek": { icon: Sprout, className: "size-3.5" },
-  "age:odrasel": { icon: Shrub, className: "size-4.5" },
-  "age:senior": { icon: TreeDeciduous, className: "size-5" },
   "size:small": { icon: PawPrint, className: "size-3" },
   "size:medium": { icon: PawPrint, className: "size-4" },
   "size:large": { icon: PawPrint, className: "size-5" },
@@ -39,19 +32,19 @@ function optionIcon(group: MultiGroup, value: string) {
 
 type GroupProps = {
   group: CardGroup;
+  ageLayout: "sidebar" | "sheet";
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
+  onToggleMany: (values: string[]) => void;
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
+type OptionCardGroup = Exclude<CardGroup, "age">;
 
-// Everything but zavetišče is a short run of options you weigh against each
-// other, so they all get the card. Only the column count differs.
-const CARD_COLS: Record<CardGroup, string> = {
+const CARD_COLS: Record<OptionCardGroup, string> = {
   sex: "grid-cols-2",
-  age: "grid-cols-3",
   size: "grid-cols-3",
 };
 
@@ -61,15 +54,15 @@ function isDead(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
-// One card for every option in every group: a single selected state to read,
-// instead of one dialect per group in a 14rem column.
 function OptionCards({
   group,
   options,
   counts,
   selected,
   onToggle,
-}: Omit<GroupProps, "group"> & { group: CardGroup }) {
+}: Omit<GroupProps, "group" | "ageLayout" | "onToggleMany"> & {
+  group: OptionCardGroup;
+}) {
   return (
     <div className={cn("grid gap-1.5", CARD_COLS[group])}>
       {options.map(({ value, label }) => {
@@ -84,14 +77,12 @@ function OptionCards({
             disabled={isDead(count, checked)}
             aria-pressed={checked}
             className={cn(
-              "flex flex-col items-center gap-1 rounded-lg border border-transparent px-1 py-3 transition-colors disabled:opacity-40",
+              "flex flex-col items-center gap-1 rounded-lg border border-transparent px-1 py-2.5 transition-colors disabled:opacity-40",
               checked
                 ? "border-foreground/20 bg-muted text-foreground"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
           >
-            {/* Shared floor, so both ramps read as growing rather than
-                floating. */}
             <span className="flex h-5 items-end">
               {iconDef && (
                 <iconDef.icon
@@ -112,7 +103,6 @@ function OptionCards({
   );
 }
 
-// Yes/no properties: pills that look switched on, not options to compare.
 export function TogglePills({
   toggles,
   counts,
@@ -155,12 +145,31 @@ export function TogglePills({
 function FilterGroup({ group, ...rest }: GroupProps) {
   const { locale } = useI18n();
 
+  if (group === "age") {
+    return (
+      <AgeGrowthControl
+        options={rest.options}
+        counts={rest.counts}
+        selected={rest.selected}
+        onToggle={rest.onToggle}
+        onToggleMany={rest.onToggleMany}
+        layout={rest.ageLayout}
+      />
+    );
+  }
+
   return (
     <section>
-      <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {groupLabel(group, locale)}
       </h3>
-      <OptionCards group={group} {...rest} />
+      <OptionCards
+        group={group}
+        options={rest.options}
+        counts={rest.counts}
+        selected={rest.selected}
+        onToggle={rest.onToggle}
+      />
     </section>
   );
 }
@@ -174,7 +183,9 @@ export function FilterGroupList({
   toggles,
   toggleTally,
   onToggle,
+  onToggleMany,
   onToggleProperty,
+  ageLayout = "sidebar",
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -182,7 +193,9 @@ export function FilterGroupList({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
+  ageLayout?: "sidebar" | "sheet";
 }) {
   const { messages } = useI18n();
   return (
@@ -191,16 +204,18 @@ export function FilterGroupList({
         <FilterGroup
           key={group}
           group={group}
+          ageLayout={ageLayout}
           options={options}
           counts={counts[group]}
           selected={filters[group]}
           onToggle={(value) => onToggle(group, value)}
+          onToggleMany={(values) => onToggleMany(group, values)}
         />
       ))}
 
       {toggles.length > 0 && (
         <section>
-          <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {messages.health}
           </h3>
           <TogglePills

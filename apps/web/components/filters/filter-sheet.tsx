@@ -1,6 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
+import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import {
   FilterGroupList,
@@ -24,7 +25,6 @@ import type {
   ToggleDef,
   ToggleKey,
 } from "@/lib/filters";
-import { animalCount } from "@/lib/labels";
 
 export function FilterSheet({
   filters,
@@ -36,6 +36,7 @@ export function FilterSheet({
   activeCount,
   resultCount,
   onToggle,
+  onToggleMany,
   onToggleProperty,
   onSpeciesChange,
   onClearAll,
@@ -49,6 +50,7 @@ export function FilterSheet({
   activeCount: number;
   resultCount: number;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
@@ -77,7 +79,7 @@ export function FilterSheet({
       >
         <SheetTitle className="text-base">{messages.filters}</SheetTitle>
 
-        <div className="mt-4 space-y-7">
+        <div className="mt-4 space-y-6">
           <SpeciesTabs
             value={filters.species}
             onChange={onSpeciesChange}
@@ -92,7 +94,9 @@ export function FilterSheet({
             toggles={toggles}
             toggleTally={toggleTally}
             onToggle={onToggle}
+            onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}
+            ageLayout="sheet"
           />
         </div>
 
@@ -102,7 +106,13 @@ export function FilterSheet({
           </Button>
           <SheetClose asChild>
             <Button className="flex-1">
-              {messages.show} {animalCount(resultCount, locale)}
+              {messages.show}
+              <ResultCount
+                count={resultCount}
+                locale={locale}
+                announce={false}
+                className="justify-start text-current"
+              />
             </Button>
           </SheetClose>
         </div>

@@ -4,33 +4,41 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Two numbers drive the page frame: the side gutter and the vertical rhythm
-   between bands. Both widen with the viewport, so no component hard-codes a
-   page-level margin. */
+/* Keep the page frame, vertical bands, and desktop columns independent. They
+   grow with the viewport, but changing one relationship must not loosen every
+   other part of the page. */
 :root {
   --gutter: 1rem;
-  --rhythm: 2rem;
+  --page-y: 2rem;
+  --section-gap: 1.5rem;
+  --column-gap: 1.5rem;
   --sticky-top: 0px;
 }
 
 @media (width >= 40rem) {
   :root {
     --gutter: 1.5rem;
-    --rhythm: 2.5rem;
+    --page-y: 2.5rem;
+    --section-gap: 2rem;
+    --column-gap: 2rem;
   }
 }
 
 @media (width >= 64rem) {
   :root {
     --gutter: 2rem;
-    --rhythm: 3rem;
+    --page-y: 3rem;
+    --section-gap: 2.5rem;
+    --column-gap: 2rem;
     --sticky-top: 1.5rem;
   }
 }
 
 @theme inline {
   --spacing-gutter: var(--gutter);
-  --spacing-rhythm: var(--rhythm);
+  --spacing-page-y: var(--page-y);
+  --spacing-section-gap: var(--section-gap);
+  --spacing-column-gap: var(--column-gap);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);

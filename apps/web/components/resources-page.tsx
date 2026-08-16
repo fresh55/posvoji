@@ -278,7 +278,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
           languagePaths={{ sl: "/viri", en: "/en/resources" }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 py-rhythm sm:gap-14">
+        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
           <div className="space-y-5">
             <a
               href={homeHref}

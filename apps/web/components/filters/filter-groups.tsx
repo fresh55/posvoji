@@ -1,14 +1,21 @@
 "use client";
 
 import {
-  Check,
   Mars,
   PawPrint,
+  ScanLine,
+  Scissors,
+  ShieldCheck,
+  Syringe,
+  TestTubeDiagonal,
   Venus,
   type LucideIcon,
 } from "lucide-react";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
+import {
+  FilterSelectionMark,
+  filterCardVariants,
+} from "@/components/filters/filter-card";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -36,6 +43,14 @@ const SEX_ICONS: Record<string, LucideIcon> = {
   female: Venus,
 };
 
+const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
+  sterilizacija: Scissors,
+  cepljenje: Syringe,
+  cip: ScanLine,
+  "brez-fiv": ShieldCheck,
+  "brez-felv": TestTubeDiagonal,
+};
+
 function optionIcon(group: MultiGroup, value: string) {
   return ICONS[`${group}:${value}`];
 }
@@ -52,6 +67,9 @@ type GroupProps = {
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
 type OptionCardGroup = Exclude<CardGroup, "age" | "sex">;
+
+const FILTER_HEADING_CLASS =
+  "mb-2 flex min-h-5 items-center text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
 const CARD_COLS: Record<OptionCardGroup, string> = {
   size: "grid-cols-3",
@@ -72,42 +90,48 @@ function OptionCards({
 }: Omit<GroupProps, "group" | "ageLayout" | "onToggleMany"> & {
   group: OptionCardGroup;
 }) {
+  const { locale } = useI18n();
   return (
     <div className={cn("grid gap-1.5", CARD_COLS[group])}>
-      {options.map(({ value, label }) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
-        const iconDef = optionIcon(group, value);
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onToggle(value)}
-            disabled={isDead(count, checked)}
-            aria-pressed={checked}
-            className={cn(
-              "flex flex-col items-center gap-1 rounded-lg border border-transparent px-1 py-2.5 transition-colors disabled:opacity-40",
-              checked
-                ? "border-foreground/20 bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-            )}
-          >
-            <span className="flex h-5 items-end">
-              {iconDef && (
-                <iconDef.icon
-                  className={iconDef.className}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-              )}
-            </span>
-            <span className="text-xs">{label}</span>
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              {count}
-            </span>
-          </button>
-        );
-      })}
+        {options.map(({ value, label }) => {
+          const count = counts.get(value) ?? 0;
+          const checked = selected.includes(value);
+          const iconDef = optionIcon(group, value);
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onToggle(value)}
+              disabled={isDead(count, checked)}
+              aria-pressed={checked}
+              aria-label={`${label}, ${animalCount(count, locale)}`}
+              className={filterCardVariants({
+                selected: checked,
+                className:
+                  "flex min-h-[4.75rem] flex-col items-center justify-center gap-1 px-1.5 py-2 text-center",
+              })}
+            >
+              <FilterSelectionMark
+                checked={checked}
+                className="absolute right-1.5 top-1.5"
+              />
+              <span aria-hidden className="flex h-5 items-end">
+                {iconDef && (
+                  <iconDef.icon
+                    className={iconDef.className}
+                    strokeWidth={1.75}
+                  />
+                )}
+              </span>
+              <span className={cn("text-xs", checked && "font-medium")}>
+                {label}
+              </span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">
+                {count}
+              </span>
+            </button>
+          );
+        })}
     </div>
   );
 }
@@ -126,11 +150,8 @@ function SexCards({
   onToggle,
 }: Omit<GroupProps, "group" | "ageLayout" | "onToggleMany">) {
   const { locale } = useI18n();
-  const shouldReduceMotion = useReducedMotion();
-
   return (
-    <LazyMotion features={domAnimation}>
-      <ToggleGroup
+    <ToggleGroup
         type="multiple"
         value={selected}
         onValueChange={(nextSelected) => {
@@ -153,63 +174,28 @@ function SexCards({
               value={value}
               disabled={isDead(count, checked)}
               aria-label={`${label}, ${animalCount(count, locale)}`}
-              className={cn(
-                "group relative h-[5.25rem] min-w-0 flex-1 flex-col gap-1 overflow-hidden rounded-lg border px-2 py-2 text-center transition-[border-color,background-color,box-shadow,transform,color] duration-150 disabled:opacity-35",
-                checked
-                  ? "border-[#2f6f4e]/25 bg-[#2f6f4e]/[0.055] text-foreground shadow-xs data-[state=on]:bg-[#2f6f4e]/[0.055]"
-                  : "border-transparent text-muted-foreground hover:-translate-y-px hover:border-border hover:bg-muted/50 hover:text-foreground data-[state=off]:bg-transparent",
-              )}
+              className={filterCardVariants({
+                selected: checked,
+                className:
+                  "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
+              })}
             >
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute right-2 top-2 grid size-4.5 place-items-center rounded-sm border transition-colors",
-                  checked
-                    ? "border-[#2f6f4e] bg-[#2f6f4e] text-white"
-                    : "border-muted-foreground/45 text-transparent",
-                )}
-              >
-                <m.span
-                  initial={false}
-                  animate={{
-                    opacity: checked ? 1 : 0,
-                    scale: checked ? 1 : 0.55,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : checked
-                        ? { type: "spring", stiffness: 520, damping: 28 }
-                        : { duration: 0.1 }
-                  }
-                >
-                  <Check className="size-3" strokeWidth={2.6} />
-                </m.span>
-              </span>
+              <FilterSelectionMark
+                checked={checked}
+                className="absolute right-2 top-2"
+              />
 
-              <m.span
-                aria-hidden
-                className="flex items-center justify-center"
-                initial={false}
-                animate={{
-                  scale: checked ? 1 : 0.88,
-                  rotate: checked ? 0 : value === "male" ? -3 : 3,
-                  y: checked ? 0 : 1,
-                }}
-                transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 420, damping: 24 }
-                }
-              >
+              <span aria-hidden className="flex items-center justify-center">
                 <Icon
                   className={cn(
                     "size-6 transition-colors",
-                    checked ? "text-[#2f7d50]" : "text-muted-foreground",
+                    checked
+                      ? "text-[var(--filter-accent-strong)]"
+                      : "text-muted-foreground",
                   )}
                   strokeWidth={1.65}
                 />
-              </m.span>
+              </span>
               <span className={cn("text-xs", checked && "font-medium")}>
                 {label}
               </span>
@@ -219,46 +205,122 @@ function SexCards({
             </ToggleGroupItem>
           );
         })}
-      </ToggleGroup>
-    </LazyMotion>
+    </ToggleGroup>
   );
 }
 
-export function TogglePills({
+function HealthToggleCards({
   toggles,
   counts,
   selected,
   onToggle,
+  layout = "sidebar",
 }: {
   toggles: ToggleDef[];
   counts: Map<string, number>;
   selected: ToggleKey[];
   onToggle: (key: ToggleKey) => void;
+  layout?: "sidebar" | "sheet";
 }) {
+  const { locale } = useI18n();
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {toggles.map(({ key, label }) => {
-        const count = counts.get(key) ?? 0;
-        const checked = selected.includes(key);
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onToggle(key)}
-            disabled={isDead(count, checked)}
-            aria-pressed={checked}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-40",
-              checked
-                ? "border-foreground bg-foreground text-background"
-                : "text-muted-foreground hover:border-foreground/25 hover:text-foreground",
-            )}
-          >
-            {label}
-            <span className="text-[11px] tabular-nums opacity-60">{count}</span>
-          </button>
-        );
-      })}
+    <div
+        className={cn(
+          "grid gap-1.5",
+          layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
+        )}
+      >
+        {toggles.map(({ key, label }) => {
+          const count = counts.get(key) ?? 0;
+          const checked = selected.includes(key);
+          const Icon = HEALTH_ICONS[key];
+
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onToggle(key)}
+              disabled={isDead(count, checked)}
+              aria-pressed={checked}
+              aria-label={`${label}, ${animalCount(count, locale)}`}
+              className={filterCardVariants({
+                selected: checked,
+                className: cn(
+                  "flex",
+                  layout === "sheet"
+                    ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
+                    : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
+                ),
+              })}
+            >
+              <FilterSelectionMark
+                checked={checked}
+                className={cn(
+                  layout === "sheet"
+                    ? "absolute right-1.5 top-1.5"
+                    : "absolute right-2.5 top-1/2 -translate-y-1/2",
+                )}
+              />
+
+              <span
+                aria-hidden
+                className={cn(
+                  "relative grid shrink-0 place-items-center",
+                  layout === "sheet" ? "size-7" : "size-7.5",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute rounded-full bg-muted-foreground/10 transition-opacity duration-150",
+                    layout === "sheet" ? "size-7" : "size-7.5",
+                    !checked && "opacity-0",
+                  )}
+                />
+                <span className="relative flex items-center justify-center">
+                  <Icon
+                    className={cn(
+                      "size-5 transition-colors duration-150",
+                      checked
+                        ? "text-[var(--filter-accent-strong)]"
+                        : "text-muted-foreground",
+                    )}
+                    strokeWidth={1.65}
+                  />
+                </span>
+              </span>
+
+              {layout === "sheet" ? (
+                <>
+                  <span
+                    className={cn(
+                      "mt-0.5 max-w-full truncate text-xs",
+                      checked && "font-medium",
+                    )}
+                  >
+                    {label}
+                  </span>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {count}
+                  </span>
+                </>
+              ) : (
+                <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+                  <span
+                    className={cn(
+                      "truncate text-xs",
+                      checked && "font-medium",
+                    )}
+                  >
+                    {label}
+                  </span>
+                  <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                    {count}
+                  </span>
+                </span>
+              )}
+            </button>
+          );
+        })}
     </div>
   );
 }
@@ -282,7 +344,7 @@ function FilterGroup({ group, ...rest }: GroupProps) {
   if (group === "sex") {
     return (
       <section>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <h3 className={FILTER_HEADING_CLASS}>
           {groupLabel(group, locale)}
         </h3>
         <SexCards
@@ -297,7 +359,7 @@ function FilterGroup({ group, ...rest }: GroupProps) {
 
   return (
     <section>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className={FILTER_HEADING_CLASS}>
         {groupLabel(group, locale)}
       </h3>
       <OptionCards
@@ -352,14 +414,15 @@ export function FilterGroupList({
 
       {toggles.length > 0 && (
         <section>
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <h3 className={FILTER_HEADING_CLASS}>
             {messages.health}
           </h3>
-          <TogglePills
+          <HealthToggleCards
             toggles={toggles}
             counts={toggleTally}
             selected={filters.toggles}
             onToggle={onToggleProperty}
+            layout={ageLayout}
           />
         </section>
       )}

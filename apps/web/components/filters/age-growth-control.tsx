@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Check,
   Shrub,
   Sprout,
   TreeDeciduous,
@@ -9,6 +8,10 @@ import {
 } from "lucide-react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useEffect, useId, useState } from "react";
+import {
+  FilterSelectionMark,
+  filterCardVariants,
+} from "@/components/filters/filter-card";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -295,41 +298,20 @@ export function AgeGrowthControl({
               value={value}
               disabled={count === 0 && !checked}
               aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
-              className={cn(
-                "group relative min-w-0 overflow-hidden rounded-md border transition-colors disabled:opacity-35",
-                layout === "sheet"
-                  ? "flex h-[4.25rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                  : "grid h-10 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2 text-left",
-                checked
-                  ? "border-[#2f6f4e]/20 bg-[#2f6f4e]/[0.045] data-[state=on]:bg-[#2f6f4e]/[0.045]"
-                  : "border-transparent bg-transparent hover:bg-muted/50 data-[state=off]:bg-transparent",
-              )}
+              className={filterCardVariants({
+                selected: checked,
+                className:
+                  layout === "sheet"
+                    ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
+                    : "grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left",
+              })}
                 >
-              <span
-                aria-hidden
+              <FilterSelectionMark
+                checked={checked}
                 className={cn(
-                  "grid size-4.5 place-items-center rounded-sm border transition-colors",
                   layout === "sheet" && "absolute right-1.5 top-1.5",
-                  checked
-                    ? "border-[#2f6f4e] bg-[#2f6f4e] text-white"
-                    : "border-muted-foreground/50 text-transparent",
                 )}
-              >
-                <m.span
-                  initial={false}
-                  animate={{
-                    opacity: checked ? 1 : 0,
-                    scale: checked ? 1 : 0.55,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : { duration: checked ? 0.16 : 0.1, ease: "easeOut" }
-                  }
-                >
-                  <Check className="size-3" strokeWidth={2.6} />
-                </m.span>
-              </span>
+              />
               <Icon
                 aria-hidden
                 className={cn(stage.colorClassName, stage.rowClassName)}

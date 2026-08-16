@@ -10,6 +10,8 @@ const sl = {
   updated: "osveženo",
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
+  moreInformation: "Več informacij",
+  resources: "Strokovno preverjeni viri",
   chooseLanguage: "Izberi jezik",
   photoAtShelter: "Fotografija na strani zavetišča",
   previousPhoto: "Prejšnja fotografija",
@@ -75,6 +77,8 @@ const en: Messages = {
   updated: "updated",
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
+  moreInformation: "More information",
+  resources: "Trusted animal-care resources",
   chooseLanguage: "Choose language",
   photoAtShelter: "See photo on the shelter’s website",
   previousPhoto: "Previous photo",

@@ -1,0 +1,64 @@
+"use client";
+
+import { Check } from "lucide-react";
+import { cva } from "class-variance-authority";
+import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { cn } from "@/lib/utils";
+
+// One shadcn-style surface contract for every compact filter choice. Layout
+// stays with the caller; interaction, state, and accessibility chrome do not.
+export const filterCardVariants = cva(
+  "group relative min-w-0 overflow-hidden rounded-md border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      selected: {
+        true: "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] shadow-xs hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] data-[state=on]:bg-[var(--filter-accent)]",
+        false:
+          "text-muted-foreground data-[state=off]:bg-background data-[state=off]:hover:bg-muted/40",
+      },
+    },
+    defaultVariants: {
+      selected: false,
+    },
+  },
+);
+
+export function FilterSelectionMark({
+  checked,
+  className,
+}: {
+  checked: boolean;
+  className?: string;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <LazyMotion features={domAnimation}>
+      <span
+        aria-hidden
+        className={cn(
+          "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150",
+          checked
+            ? "border-[var(--filter-accent-strong)] bg-[var(--filter-accent-strong)] text-white"
+            : "border-muted-foreground/40 bg-background text-transparent",
+          className,
+        )}
+      >
+        <m.span
+          initial={false}
+          animate={{
+            opacity: checked ? 1 : 0,
+            scale: checked ? 1 : 0.55,
+          }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0 }
+              : { duration: checked ? 0.14 : 0.1, ease: "easeOut" }
+          }
+        >
+          <Check className="size-3" strokeWidth={2.6} />
+        </m.span>
+      </span>
+    </LazyMotion>
+  );
+}

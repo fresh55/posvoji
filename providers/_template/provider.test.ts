@@ -40,6 +40,7 @@ describe("parseDetail", () => {
       species: "dog",
       sex: "male",
       approximateAgeMonths: 48,
+      intakeDate: "2025-03-12",
       status: "available",
     });
   });
@@ -60,5 +61,6 @@ describe("normalize", () => {
     expect(animal.id).toBe("template:rex");
     expect(animal.attribution).toBe(policy.attribution);
     expect(animal.images).toEqual([]);
+    expect(animal.intakeDate).toBe("2025-03-12");
   });
 });

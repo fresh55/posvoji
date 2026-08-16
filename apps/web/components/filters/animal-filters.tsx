@@ -7,6 +7,7 @@ import type { CardGroup } from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
+import { SortPicker } from "@/components/filters/sort-picker";
 import type {
   FilterOption,
   Filters,
@@ -15,10 +16,11 @@ import type {
   ToggleDef,
   ToggleKey,
 } from "@/lib/filters";
+import type { AnimalSort } from "@/lib/sort";
 
-// Below sm the species control lives in the filter sheet. Keeping the full tab
-// strip beside location, the sheet trigger, and the result count reduced it to
-// zero width and left its divider stranded at the start of the row.
+// Desktop has enough room for one quiet toolbar: species on the left and the
+// result/location/sort actions on the right. Narrower screens keep the result
+// and sort on a second row; below sm the species control lives in the sheet.
 export function AnimalFilters({
   isEmpty,
   filters,
@@ -32,11 +34,13 @@ export function AnimalFilters({
   chips,
   activeCount,
   resultCount,
+  sort,
   onSpeciesChange,
   onToggle,
   onToggleMany,
   onToggleProperty,
   onClearAll,
+  onSortChange,
 }: {
   isEmpty: boolean;
   filters: Filters;
@@ -51,11 +55,13 @@ export function AnimalFilters({
   chips: Chip[];
   activeCount: number;
   resultCount: number;
+  sort: AnimalSort;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onToggle: (group: MultiGroup, value: string) => void;
   onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
+  onSortChange: (sort: AnimalSort) => void;
 }) {
   const { locale } = useI18n();
   const hasFilterSheet = groups.length > 0 || toggles.length > 0;
@@ -63,37 +69,42 @@ export function AnimalFilters({
   return (
     <div className="bleed sticky top-0 z-10 border-b bg-background/90 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <div
-            className={
-              hasFilterSheet ? "hidden min-w-0 sm:block" : "min-w-0"
-            }
-          >
-            <SpeciesTabs
-              value={filters.species}
-              onChange={onSpeciesChange}
-              counts={speciesTally}
-              disabled={isEmpty}
+        <div
+          className={
+            hasFilterSheet ? "hidden min-w-0 sm:block" : "min-w-0"
+          }
+        >
+          <SpeciesTabs
+            value={filters.species}
+            onChange={onSpeciesChange}
+            counts={speciesTally}
+            disabled={isEmpty}
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {!isEmpty && (
+            <ResultCount
+              count={resultCount}
+              locale={locale}
+              className="hidden min-w-24 text-muted-foreground lg:inline-flex"
             />
-          </div>
+          )}
           {shelters && (
-            <>
-              <span
-                aria-hidden
-                className={
-                  hasFilterSheet
-                    ? "hidden h-5 w-px shrink-0 bg-border sm:block"
-                    : "h-5 w-px shrink-0 bg-border"
-                }
-              />
-              <LocationPicker
-                options={shelters}
-                counts={shelterTally}
-                selected={filters.shelter}
-                onToggle={(value) => onToggle("shelter", value)}
-                onToggleMany={(values) => onToggleMany("shelter", values)}
-              />
-            </>
+            <LocationPicker
+              options={shelters}
+              counts={shelterTally}
+              selected={filters.shelter}
+              onToggle={(value) => onToggle("shelter", value)}
+              onToggleMany={(values) => onToggleMany("shelter", values)}
+            />
+          )}
+          {!isEmpty && (
+            <SortPicker
+              value={sort}
+              onChange={onSortChange}
+              className="hidden lg:flex"
+            />
           )}
           {hasFilterSheet && (
             <div className="shrink-0 lg:hidden">
@@ -115,15 +126,26 @@ export function AnimalFilters({
             </div>
           )}
         </div>
-        {!isEmpty && (
-          <ResultCount
-            count={resultCount}
-            locale={locale}
-            className="min-w-fit text-muted-foreground sm:min-w-24"
-          />
-        )}
       </div>
-      <FilterChips chips={chips} onClearAll={onClearAll} className="mt-2" />
+      {!isEmpty && (
+        <div
+          className={`mt-2 min-w-0 items-center justify-between gap-2 ${
+            chips.length > 0 ? "flex" : "flex lg:hidden"
+          }`}
+        >
+          <div className="min-w-0 flex-1">
+            <FilterChips chips={chips} onClearAll={onClearAll} />
+          </div>
+          <div className="flex shrink-0 items-center gap-2 lg:hidden">
+            <ResultCount
+              count={resultCount}
+              locale={locale}
+              className="min-w-fit text-muted-foreground sm:min-w-24"
+            />
+            <SortPicker value={sort} onChange={onSortChange} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

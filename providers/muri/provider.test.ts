@@ -20,6 +20,10 @@ const listHtml = loadFixture(import.meta.url, "list.html");
 const detailHtml = loadFixture(import.meta.url, "detail.html");
 const minimalHtml = loadFixture(import.meta.url, "detail-minimal.html");
 const carouselHtml = loadFixture(import.meta.url, "detail-carousel.html");
+const ownerSurrenderHtml = loadFixture(
+  import.meta.url,
+  "detail-owner-surrender.html",
+);
 
 const raw = {
   ref: {
@@ -75,8 +79,13 @@ describe("parseSlovenianDate", () => {
   it.each([
     ["21.7.2025", "2025-07-21"],
     ["31.07.2026", "2026-07-31"],
+    ["11.6..2025", "2025-06-11"],
     ["29. 10. 2019", "2019-10-29"],
+    ["27/10/2025", "2025-10-27"],
+    [" 19-11-2025. ", "2025-11-19"],
     ["32.13.2026", undefined],
+    ["objavljeno 21.7.2025", undefined],
+    ["2025-07-21", undefined],
     ["kmalu", undefined],
   ])("%s → %s", (input, expected) => {
     expect(parseSlovenianDate(input)).toBe(expected);
@@ -161,10 +170,64 @@ describe("parseDetail", () => {
     });
   });
 
+  it("maps the explicit owner-surrender date to the shelter intake date", () => {
+    expect(parseDetail(ownerSurrenderHtml)).toEqual({
+      name: "Lucky",
+      species: "cat",
+      status: "available",
+      sex: "male",
+      ageMonths: undefined,
+      intakeAgeMonths: 48,
+      intakeDate: "2025-10-27",
+      foundPlace: undefined,
+      description: undefined,
+      medical: undefined,
+      imageUrls: [],
+    });
+  });
+
+  it("normalizes cosmetic label changes and falls back from an invalid preferred value", () => {
+    const html = `
+      <article class="project pj-categs-isce-dom pj-categs-macke">
+        <h2 class="cmsms_project_title">Testna muca</h2>
+        <div class="project_features_item">
+          <div class="project_features_item_title"> Spol: </div>
+          <div class="project_features_item_desc"> samica </div>
+        </div>
+        <div class="project_features_item">
+          <div class="project_features_item_title">Datum   sprejema :</div>
+          <div class="project_features_item_desc">ni znano</div>
+        </div>
+        <div class="project_features_item">
+          <div class="project_features_item_title">
+            Datum oddaje   s strani lastnikov:
+          </div>
+          <div class="project_features_item_desc">27 / 10 / 2025.</div>
+        </div>
+      </article>`;
+
+    const facts = parseDetail(html);
+    expect(facts.sex).toBe("female");
+    expect(facts.intakeDate).toBe("2025-10-27");
+  });
+
+  it("never treats an unrelated page date as an intake date", () => {
+    const html = `
+      <article class="project pj-categs-isce-dom pj-categs-macke">
+        <div class="project_features_item">
+          <div class="project_features_item_title">Datum objave</div>
+          <div class="project_features_item_desc">21. 7. 2025</div>
+        </div>
+      </article>`;
+
+    expect(parseDetail(html).intakeDate).toBeUndefined();
+  });
+
   it("reads carousel photos that no lightbox anchor links, at full size", () => {
     const facts = parseDetail(carouselHtml);
     expect(facts.name).toBe("Čoko-Lina");
     expect(facts.species).toBe("dog");
+    expect(facts.intakeDate).toBe("2025-11-19");
     expect(facts.imageUrls).toEqual([
       // src was already the original.
       "https://zavodmuri.si/wp-content/uploads/2025/12/IMG_8451.jpeg",

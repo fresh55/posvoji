@@ -9,6 +9,7 @@ export interface DetailFacts {
   species: Species;
   sex?: Sex;
   approximateAgeMonths?: number;
+  intakeDate?: string;
   status: AdoptionStatus;
 }
 
@@ -46,11 +47,24 @@ const SEX: Record<string, Sex> = {
   samica: "female",
 };
 
+// Adapt this to the shelter's published format. Invalid or unclear dates stay
+// absent; never substitute a listing date for the animal's actual intake date.
+export function parseSlovenianDate(value: string): string | undefined {
+  const match = value.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+  if (!match) return undefined;
+  const [, day, month, year] = match;
+  const iso = `${year}-${month!.padStart(2, "0")}-${day!.padStart(2, "0")}`;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString().slice(0, 10) === iso ? iso : undefined;
+}
+
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const speciesRaw = labelValue($, "Vrsta")?.toLowerCase() ?? "";
   const sexRaw = labelValue($, "Spol")?.toLowerCase();
   const years = labelValue($, "Starost")?.match(/\d+/);
+  const intakeRaw = labelValue($, "Datum sprejema");
   const statusRaw = labelValue($, "Status")?.toLowerCase();
 
   return {
@@ -58,6 +72,7 @@ export function parseDetail(html: string): DetailFacts {
     species: SPECIES[speciesRaw] ?? "other",
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
     approximateAgeMonths: years ? Number(years[0]) * 12 : undefined,
+    intakeDate: intakeRaw ? parseSlovenianDate(intakeRaw) : undefined,
     status: statusRaw?.includes("išče") ? "available" : "unknown",
   };
 }
@@ -103,6 +118,7 @@ const provider: AdoptionProvider = {
       species: facts.species,
       sex: facts.sex,
       approximateAgeMonths: facts.approximateAgeMonths,
+      intakeDate: facts.intakeDate,
       status: facts.status,
       images: [],
       attribution: ctx.policy.attribution,

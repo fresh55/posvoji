@@ -68,30 +68,72 @@ export function parseList(html: string): SourceAnimalRef[] {
   return [...refs.values()];
 }
 
-// Sidebar facts are label/value rows; one layout names the label "Starost",
-// a newer one "Starost ob sprejemu" (a different fact), so lookups are exact,
-// not prefix. Trailing spaces ("Datum sprejema ") are the theme's, not ours.
-function featureValue(
-  $: cheerio.CheerioAPI,
-  label: string,
-): string | undefined {
-  const row = $(".project_features_item")
-    .filter(
-      (_, el) =>
-        $(el)
-          .children(".project_features_item_title")
-          .text()
-          .trim()
-          .normalize("NFC")
-          .toLowerCase() === label,
-    )
-    .first();
-  const value = row
-    .children(".project_features_item_desc")
-    .text()
+// The theme has changed labels and punctuation over time. Normalize cosmetic
+// differences once, then map only explicitly equivalent shelter facts. Exact
+// aliases prevent a publication/update date from becoming an intake date.
+const FEATURE_LABELS = {
+  status: ["status"],
+  sex: ["spol"],
+  age: ["starost"],
+  intakeAge: ["starost ob sprejemu"],
+  intakeDate: ["datum sprejema", "datum oddaje s strani lastnikov"],
+  foundPlace: ["kraj najdbe"],
+} as const;
+
+type FeatureName = keyof typeof FEATURE_LABELS;
+type FeatureTable = Map<string, string[]>;
+
+function normalizeFeatureLabel(value: string): string {
+  return value
+    .normalize("NFC")
+    .replace(/\s+/g, " ")
     .trim()
-    .normalize("NFC");
-  return value || undefined;
+    .replace(/\s*:+$/, "")
+    .toLowerCase();
+}
+
+function readFeatureTable($: cheerio.CheerioAPI): FeatureTable {
+  const table: FeatureTable = new Map();
+  $(".project_features_item").each((_, element) => {
+    const row = $(element);
+    const label = normalizeFeatureLabel(
+      row.children(".project_features_item_title").text(),
+    );
+    const value = row
+      .children(".project_features_item_desc")
+      .text()
+      .normalize("NFC")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!label || !value) return;
+    table.set(label, [...(table.get(label) ?? []), value]);
+  });
+  return table;
+}
+
+function featureValues(table: FeatureTable, name: FeatureName): string[] {
+  return FEATURE_LABELS[name].flatMap(
+    (label) => table.get(normalizeFeatureLabel(label)) ?? [],
+  );
+}
+
+function featureValue(
+  table: FeatureTable,
+  name: FeatureName,
+): string | undefined {
+  return featureValues(table, name)[0];
+}
+
+function parsedFeatureValue<T>(
+  table: FeatureTable,
+  name: FeatureName,
+  parseValue: (value: string) => T | undefined,
+): T | undefined {
+  for (const value of featureValues(table, name)) {
+    const parsed = parseValue(value);
+    if (parsed !== undefined) return parsed;
+  }
+  return undefined;
 }
 
 const SEX: Record<string, Sex> = {
@@ -117,10 +159,14 @@ export function parseAgeMonths(value: string): number | undefined {
   );
 }
 
-// "21.7.2025" or "31.07.2026" → ISO; impossible dates come back undefined
-// rather than aborting the whole crawl at Animal.parse.
+// Unambiguous Slovenian day-month-year dates → ISO. Accept common separators,
+// surrounding whitespace, a trailing dot, and the occasional doubled dot;
+// reject surrounding prose and impossible dates instead of guessing.
 export function parseSlovenianDate(value: string): string | undefined {
-  const m = value.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+  const m = value
+    .normalize("NFC")
+    .trim()
+    .match(/^(\d{1,2})\s*[./-]+\s*(\d{1,2})\s*[./-]+\s*(\d{4})\s*\.?$/);
   if (!m) return undefined;
   const [, day, month, year] = m;
   const iso = `${year}-${month!.padStart(2, "0")}-${day!.padStart(2, "0")}`;
@@ -261,6 +307,7 @@ export function fullSizeSrc(
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const article = $("article.project").first();
+  const features = readFeatureTable($);
 
   const imageUrls: string[] = [];
   const addImage = (candidate: string | undefined) => {
@@ -294,7 +341,7 @@ export function parseDetail(html: string): DetailFacts {
     addImage(fullSizeSrc(img.attr("src"), img.attr("srcset")));
   });
 
-  const statusRaw = featureValue($, "status")?.toLowerCase();
+  const statusRaw = featureValue(features, "status")?.toLowerCase();
   // v_novem_domu wins over a leftover IŠČE DOM: the tag is added on adoption
   // and the old one is sometimes forgotten.
   const status: AdoptionStatus =
@@ -306,10 +353,18 @@ export function parseDetail(html: string): DetailFacts {
         ? "available"
         : "unknown";
 
-  const sexRaw = featureValue($, "spol")?.toLowerCase();
-  const ageRaw = featureValue($, "starost");
-  const intakeAgeRaw = featureValue($, "starost ob sprejemu");
-  const intakeRaw = featureValue($, "datum sprejema");
+  const sexRaw = featureValue(features, "sex")?.toLowerCase();
+  const ageMonths = parsedFeatureValue(features, "age", parseAgeMonths);
+  const intakeAgeMonths = parsedFeatureValue(
+    features,
+    "intakeAge",
+    parseAgeMonths,
+  );
+  const intakeDate = parsedFeatureValue(
+    features,
+    "intakeDate",
+    parseSlovenianDate,
+  );
 
   return {
     name:
@@ -322,10 +377,10 @@ export function parseDetail(html: string): DetailFacts {
         : undefined,
     status,
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
-    ageMonths: (ageRaw ? parseAgeMonths(ageRaw) : undefined) ?? categoryAgeMonths($),
-    intakeAgeMonths: intakeAgeRaw ? parseAgeMonths(intakeAgeRaw) : undefined,
-    intakeDate: intakeRaw ? parseSlovenianDate(intakeRaw) : undefined,
-    foundPlace: featureValue($, "kraj najdbe"),
+    ageMonths: ageMonths ?? categoryAgeMonths($),
+    intakeAgeMonths,
+    intakeDate,
+    foundPlace: featureValue(features, "foundPlace"),
     description: parseDescription($),
     medical: parseMedical($),
     imageUrls,

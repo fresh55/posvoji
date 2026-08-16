@@ -133,15 +133,13 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           counts={counts}
           toggles={toggles}
           toggleTally={toggleTally}
-          hasActiveFilters={activeCount > 0}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
-          onClearAll={clearAll}
         />
       )}
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         <AnimalFilters
           isEmpty={isEmpty}
           filters={filters}

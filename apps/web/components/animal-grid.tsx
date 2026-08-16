@@ -60,8 +60,8 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     [animals, filters, now],
   );
   const sorted = useMemo(
-    () => sortAnimals(visible, sort, locale),
-    [visible, sort, locale],
+    () => sortAnimals(visible, sort, locale, now),
+    [visible, sort, locale, now],
   );
 
   const isEmpty = animals.length === 0;

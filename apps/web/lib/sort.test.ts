@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "./sort";
 
-function animal(id: string, intakeDate?: string, name?: string): Animal {
+function animal(
+  id: string,
+  intakeDate?: string,
+  name?: string,
+  age?: Pick<Animal, "approximateAgeMonths" | "birthDate">,
+): Animal {
   return {
     id,
     source: {
@@ -17,6 +22,7 @@ function animal(id: string, intakeDate?: string, name?: string): Animal {
     species: "cat",
     status: "available",
     intakeDate,
+    ...age,
     images: [],
     attribution: "Source: Shelter",
   };
@@ -47,6 +53,26 @@ describe("sortAnimals", () => {
     expect(sortAnimals(animals, "name", "sl").map(({ id }) => id)).toEqual([
       "new",
       "old",
+      "unknown",
+    ]);
+  });
+
+  it("sorts ages in either direction and keeps unknown ages last", () => {
+    const byAge = [
+      animal("unknown"),
+      animal("adult", undefined, undefined, { approximateAgeMonths: 48 }),
+      animal("young", undefined, undefined, { birthDate: "2026-04-16" }),
+      animal("senior", undefined, undefined, { approximateAgeMonths: 120 }),
+    ];
+    const now = new Date("2026-08-16T00:00:00Z");
+
+    expect(
+      sortAnimals(byAge, "youngest", "sl", now).map(({ id }) => id),
+    ).toEqual(["young", "adult", "senior", "unknown"]);
+    expect(sortAnimals(byAge, "oldest", "sl", now).map(({ id }) => id)).toEqual([
+      "senior",
+      "adult",
+      "young",
       "unknown",
     ]);
   });

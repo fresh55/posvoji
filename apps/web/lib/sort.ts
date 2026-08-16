@@ -1,9 +1,12 @@
 import type { Animal } from "@posvoji/schema";
+import { ageInMonths } from "./filters";
 import type { Locale } from "./i18n";
 
 export const ANIMAL_SORTS = [
   "longest-in-shelter",
   "newest-arrivals",
+  "youngest",
+  "oldest",
   "name",
 ] as const;
 
@@ -28,10 +31,21 @@ function compareOptional(
   );
 }
 
+function compareOptionalNumber(
+  left: number | undefined,
+  right: number | undefined,
+  direction: 1 | -1,
+): number {
+  if (left === undefined) return right === undefined ? 0 : 1;
+  if (right === undefined) return -1;
+  return direction * (left - right);
+}
+
 export function sortAnimals(
   animals: Animal[],
   sort: AnimalSort = DEFAULT_ANIMAL_SORT,
   locale: Locale = "sl",
+  now: Date = new Date(),
 ): Animal[] {
   const collator = new Intl.Collator(locale, { sensitivity: "base" });
 
@@ -44,6 +58,20 @@ export function sortAnimals(
         break;
       case "newest-arrivals":
         compared = compareOptional(left.intakeDate, right.intakeDate, -1);
+        break;
+      case "youngest":
+        compared = compareOptionalNumber(
+          ageInMonths(left, now),
+          ageInMonths(right, now),
+          1,
+        );
+        break;
+      case "oldest":
+        compared = compareOptionalNumber(
+          ageInMonths(left, now),
+          ageInMonths(right, now),
+          -1,
+        );
         break;
       case "name":
         compared = compareOptional(left.name, right.name, 1, collator);

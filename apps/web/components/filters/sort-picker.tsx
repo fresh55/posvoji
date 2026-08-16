@@ -27,6 +27,8 @@ export function SortPicker({
   const labels: Record<AnimalSort, string> = {
     "longest-in-shelter": messages.sortLongestInShelter,
     "newest-arrivals": messages.sortNewestArrivals,
+    youngest: messages.sortYoungest,
+    oldest: messages.sortOldest,
     name: messages.sortName,
   };
 

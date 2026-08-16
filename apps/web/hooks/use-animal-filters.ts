@@ -7,6 +7,7 @@ import {
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  toggleValues,
   type Filters,
   type MultiGroup,
   type SpeciesFilter,
@@ -65,18 +66,11 @@ export function useAnimalFilters() {
     [filters],
   );
 
-  // Picking a region on the map turns on every shelter in it. Looping over
-  // toggle() could not do that: each call reads the same filters snapshot and
-  // writes the whole group back, so every write but the last was discarded and
-  // a three-shelter region selected one shelter.
   const toggleMany = useCallback(
     (group: MultiGroup, values: string[]) => {
       if (values.length === 0) return;
       const selected = filters[group] as string[];
-      const everyOne = values.every((value) => selected.includes(value));
-      const next = everyOne
-        ? selected.filter((value) => !values.includes(value))
-        : [...new Set([...selected, ...values])];
+      const next = toggleValues(selected, values);
       writeFilters({ ...filters, [group]: next });
     },
     [filters],

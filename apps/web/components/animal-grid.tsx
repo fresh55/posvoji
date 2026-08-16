@@ -127,7 +127,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     >
       {hasSidebar && (
         <FilterSidebar
-          className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-y-auto"
+          className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto"
           filters={filters}
           groups={groups}
           counts={counts}
@@ -135,6 +135,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           toggleTally={toggleTally}
           hasActiveFilters={activeCount > 0}
           onToggle={toggle}
+          onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onClearAll={clearAll}
         />

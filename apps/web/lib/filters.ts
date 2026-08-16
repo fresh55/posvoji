@@ -3,6 +3,11 @@ import type { Locale } from "@/lib/i18n";
 
 export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
+const AGE_GROUP_VALUES: readonly AgeGroup[] = [
+  "mladicek",
+  "odrasel",
+  "senior",
+];
 export type MultiGroup = "sex" | "age" | "size" | "shelter";
 
 // Yes/no properties an animal either has or doesn't, kept apart from the
@@ -332,7 +337,13 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   return {
     species: filters.species,
     sex: keep("sex") ? filters.sex : [],
-    age: keep("age") ? filters.age : [],
+    // Explicitly selecting every age is equivalent to no age constraint. Keep
+    // the URL and active-filter count in their simpler default state.
+    age:
+      keep("age") &&
+      !AGE_GROUP_VALUES.every((value) => filters.age.includes(value))
+        ? filters.age
+        : [],
     size: keep("size") ? filters.size : [],
     shelter: keep("shelter") ? filters.shelter : [],
     toggles: filters.toggles.filter((key) =>
@@ -531,4 +542,14 @@ export function activeFilterCount(filters: Filters): number {
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length
   );
+}
+
+export function toggleValues(
+  selected: readonly string[],
+  values: readonly string[],
+): string[] {
+  if (values.every((value) => selected.includes(value))) {
+    return selected.filter((value) => !values.includes(value));
+  }
+  return [...new Set([...selected, ...values])];
 }

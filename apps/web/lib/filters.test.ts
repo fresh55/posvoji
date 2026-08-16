@@ -7,6 +7,7 @@ import {
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  toggleValues,
   visibleGroups,
   visibleToggles,
   type Filters,
@@ -97,6 +98,24 @@ describe("visibleToggles", () => {
 });
 
 describe("pruneHiddenFilters", () => {
+  it("normalizes selecting every age back to the all-ages default", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      age: ["mladicek", "odrasel", "senior"],
+    });
+
+    expect(pruned.age).toEqual([]);
+  });
+
+  it("keeps a meaningful two-age selection", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      age: ["mladicek", "senior"],
+    });
+
+    expect(pruned.age).toEqual(["mladicek", "senior"]);
+  });
+
   it("drops velikost once the tab turns to cats", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
@@ -128,6 +147,14 @@ describe("pruneHiddenFilters", () => {
 });
 
 describe("URL codec", () => {
+  it("treats an explicit all-age URL as the default state", () => {
+    const filters = parseFilters("starost=mladicek,odrasel,senior");
+
+    expect(filters.age).toEqual([]);
+    expect(activeFilterCount(filters)).toBe(0);
+    expect(serializeFilters(filters)).toBe("");
+  });
+
   it("round-trips the cat-only toggles", () => {
     const filters: Filters = {
       ...EMPTY_FILTERS,
@@ -158,19 +185,9 @@ describe("URL codec", () => {
   });
 });
 
-// Picking a region on the map turns on every shelter in it at once. This is the
-// shape useAnimalFilters.toggleMany writes; looping one toggle per shelter let
-// each write clobber the one before it, so a three-shelter region selected one.
-function toggleMany(selected: string[], values: string[]): string[] {
-  const everyOne = values.every((value) => selected.includes(value));
-  return everyOne
-    ? selected.filter((value) => !values.includes(value))
-    : [...new Set([...selected, ...values])];
-}
-
 describe("selecting a whole region", () => {
   it("turns on every shelter in it in one go", () => {
-    expect(toggleMany([], ["mh", "sia-in-lu", "muri"])).toEqual([
+    expect(toggleValues([], ["mh", "sia-in-lu", "muri"])).toEqual([
       "mh",
       "sia-in-lu",
       "muri",
@@ -178,12 +195,12 @@ describe("selecting a whole region", () => {
   });
 
   it("turns them all off again when they are all on", () => {
-    expect(toggleMany(["mh", "sia-in-lu", "muri"], ["mh", "sia-in-lu", "muri"]))
+    expect(toggleValues(["mh", "sia-in-lu", "muri"], ["mh", "sia-in-lu", "muri"]))
       .toEqual([]);
   });
 
   it("completes a partly selected region rather than clearing it", () => {
-    expect(toggleMany(["muri"], ["mh", "sia-in-lu", "muri"])).toEqual([
+    expect(toggleValues(["muri"], ["mh", "sia-in-lu", "muri"])).toEqual([
       "muri",
       "mh",
       "sia-in-lu",
@@ -191,8 +208,8 @@ describe("selecting a whole region", () => {
   });
 
   it("leaves shelters outside the region alone", () => {
-    expect(toggleMany(["maribor", "mh"], ["mh"])).toEqual(["maribor"]);
-    expect(toggleMany(["maribor"], ["mh", "muri"])).toEqual([
+    expect(toggleValues(["maribor", "mh"], ["mh"])).toEqual(["maribor"]);
+    expect(toggleValues(["maribor"], ["mh", "muri"])).toEqual([
       "maribor",
       "mh",
       "muri",
@@ -200,6 +217,6 @@ describe("selecting a whole region", () => {
   });
 
   it("never doubles a shelter that was already on", () => {
-    expect(toggleMany(["mh"], ["mh", "muri"])).toEqual(["mh", "muri"]);
+    expect(toggleValues(["mh"], ["mh", "muri"])).toEqual(["mh", "muri"]);
   });
 });

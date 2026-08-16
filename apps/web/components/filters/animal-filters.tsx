@@ -1,7 +1,9 @@
 "use client";
 
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
+import type { CardGroup } from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
+import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import type {
   FilterOption,
@@ -23,26 +25,33 @@ export function AnimalFilters({
   counts,
   toggles,
   toggleTally,
+  shelters,
+  shelterTally,
   chips,
   activeCount,
   resultCount,
   onSpeciesChange,
   onToggle,
+  onToggleMany,
   onToggleProperty,
   onClearAll,
 }: {
   isEmpty: boolean;
   filters: Filters;
   speciesTally: Record<SpeciesFilter, number>;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
+  /** Absent when the dataset has nothing to choose between. */
+  shelters: FilterOption[] | undefined;
+  shelterTally: Map<string, number>;
   chips: Chip[];
   activeCount: number;
   resultCount: number;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onToggle: (group: MultiGroup, value: string) => void;
+  onToggleMany: (group: MultiGroup, values: string[]) => void;
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
 }) {
@@ -56,6 +65,21 @@ export function AnimalFilters({
             counts={speciesTally}
             disabled={isEmpty}
           />
+          {shelters && (
+            <>
+              <span
+                aria-hidden
+                className="h-5 w-px shrink-0 bg-border"
+              />
+              <LocationPicker
+                options={shelters}
+                counts={shelterTally}
+                selected={filters.shelter}
+                onToggle={(value) => onToggle("shelter", value)}
+                onToggleMany={(values) => onToggleMany("shelter", values)}
+              />
+            </>
+          )}
           {(groups.length > 0 || toggles.length > 0) && (
             <div className="shrink-0 lg:hidden">
               <FilterSheet

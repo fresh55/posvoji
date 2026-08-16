@@ -1,6 +1,9 @@
 "use client";
 
-import { FilterGroupList } from "@/components/filters/filter-groups";
+import {
+  FilterGroupList,
+  type CardGroup,
+} from "@/components/filters/filter-groups";
 import type {
   FilterOption,
   Filters,
@@ -23,7 +26,7 @@ export function FilterSidebar({
   className,
 }: {
   filters: Filters;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;

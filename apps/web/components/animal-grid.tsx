@@ -6,11 +6,13 @@ import type { Animal } from "@posvoji/schema";
 import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
 import { AnimalFilters } from "@/components/filters/animal-filters";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
+import type { CardGroup } from "@/components/filters/filter-groups";
 import { type Chip } from "@/components/filters/filter-chips";
 import { Button } from "@/components/ui/button";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
   applyFilters,
+  bySpecies,
   facetCounts,
   GROUPS,
   groupOptions,
@@ -33,8 +35,15 @@ const CARD_GRID =
   "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
 
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
-  const { filters, setSpecies, toggle, toggleProperty, clearAll, activeCount } =
-    useAnimalFilters();
+  const {
+    filters,
+    setSpecies,
+    toggle,
+    toggleMany,
+    toggleProperty,
+    clearAll,
+    activeCount,
+  } = useAnimalFilters();
 
   // One Date per mount keeps age buckets stable across re-renders.
   const now = useMemo(() => new Date(), []);
@@ -50,14 +59,35 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     () => facetCounts(animals, filters, now),
     [animals, filters, now],
   );
-  const groups = useMemo(() => {
-    const shown = visibleGroups(animals, now);
-    return GROUPS.filter((group) => shown[group]).map((group) => ({
-      group,
-      options: groupOptions(group, animals),
-    }));
-  }, [animals, now]);
-  const toggles = useMemo(() => visibleToggles(animals), [animals]);
+  // The panel follows the species tab: measured against the whole dataset it
+  // would offer groups the animals on screen don't vary on.
+  const pool = useMemo(
+    () => bySpecies(animals, filters.species),
+    [animals, filters.species],
+  );
+  // Zavetisce is split off from the rest. The others are short runs of options
+  // you weigh against each other and belong in a column of small controls;
+  // where you adopt from is a map, and it goes next to the species tabs as the
+  // other question people arrive with.
+  const shown = useMemo(
+    () => visibleGroups(pool, filters.species, now),
+    [pool, filters.species, now],
+  );
+  const groups = useMemo(
+    () =>
+      GROUPS.filter(
+        (group): group is CardGroup => group !== "shelter" && shown[group],
+      ).map((group) => ({ group, options: groupOptions(group, pool) })),
+    [pool, shown],
+  );
+  const shelters = useMemo(
+    () => (shown.shelter ? groupOptions("shelter", pool) : undefined),
+    [pool, shown],
+  );
+  const toggles = useMemo(
+    () => visibleToggles(pool, filters.species),
+    [pool, filters.species],
+  );
   const toggleTally = useMemo(
     () => toggleCounts(animals, filters, now),
     [animals, filters, now],
@@ -113,11 +143,14 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           counts={counts}
           toggles={toggles}
           toggleTally={toggleTally}
+          shelters={shelters}
+          shelterTally={counts.shelter}
           chips={chips}
           activeCount={activeCount}
           resultCount={visible.length}
           onSpeciesChange={setSpecies}
           onToggle={toggle}
+          onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onClearAll={clearAll}
         />

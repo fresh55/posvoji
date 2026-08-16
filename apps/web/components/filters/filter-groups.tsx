@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, Mars, PawPrint, Venus, type LucideIcon } from "lucide-react";
+import {
+  Mars,
+  PawPrint,
+  Shrub,
+  Sprout,
+  TreeDeciduous,
+  Venus,
+  type LucideIcon,
+} from "lucide-react";
 import {
   GROUP_LABELS,
   type FilterOption,
@@ -11,11 +19,14 @@ import {
 } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
-// Only where the icon is the data: the paw grows with the animal. Age carries
-// its meaning through order instead, so it takes no icon.
+// Only where the icon is the data: the paw grows with the animal and the plant
+// with the years. Spol has nothing to rank, so its pair only has to differ.
 const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "sex:male": { icon: Mars, className: "size-4" },
   "sex:female": { icon: Venus, className: "size-4" },
+  "age:mladicek": { icon: Sprout, className: "size-3.5" },
+  "age:odrasel": { icon: Shrub, className: "size-4.5" },
+  "age:senior": { icon: TreeDeciduous, className: "size-5" },
   "size:small": { icon: PawPrint, className: "size-3" },
   "size:medium": { icon: PawPrint, className: "size-4" },
   "size:large": { icon: PawPrint, className: "size-5" },
@@ -26,11 +37,21 @@ function optionIcon(group: MultiGroup, value: string) {
 }
 
 type GroupProps = {
-  group: MultiGroup;
+  group: CardGroup;
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
+};
+
+export type CardGroup = Exclude<MultiGroup, "shelter">;
+
+// Everything but zavetišče is a short run of options you weigh against each
+// other, so they all get the card. Only the column count differs.
+const CARD_COLS: Record<CardGroup, string> = {
+  sex: "grid-cols-2",
+  age: "grid-cols-3",
+  size: "grid-cols-3",
 };
 
 // A zero-count option is a dead end, but an active selection is never locked
@@ -39,11 +60,17 @@ function isDead(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
-// Velikost only: the paws are meant to be compared against each other, which
-// needs the room a card gives and a segment doesn't.
-function OptionCards({ group, options, counts, selected, onToggle }: GroupProps) {
+// One card for every option in every group: a single selected state to read,
+// instead of one dialect per group in a 14rem column.
+function OptionCards({
+  group,
+  options,
+  counts,
+  selected,
+  onToggle,
+}: Omit<GroupProps, "group"> & { group: CardGroup }) {
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className={cn("grid gap-1.5", CARD_COLS[group])}>
       {options.map(({ value, label }) => {
         const count = counts.get(value) ?? 0;
         const checked = selected.includes(value);
@@ -62,52 +89,9 @@ function OptionCards({ group, options, counts, selected, onToggle }: GroupProps)
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
           >
-            {iconDef && (
-              // Shared floor, so the paws read as growing rather than floating.
-              <span className="flex h-5 items-end">
-                <iconDef.icon
-                  className={iconDef.className}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-              </span>
-            )}
-            <span className="text-xs">{label}</span>
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              {count}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// Spol is a binary and starost is ordinal; both are "pick from a short run",
-// which a segmented strip says in one border instead of three.
-function SegmentStrip({ group, options, counts, selected, onToggle }: GroupProps) {
-  return (
-    <div className="flex overflow-hidden rounded-lg border">
-      {options.map(({ value, label }, i) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
-        const iconDef = optionIcon(group, value);
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onToggle(value)}
-            disabled={isDead(count, checked)}
-            aria-pressed={checked}
-            className={cn(
-              "flex-1 px-1 py-2 transition-colors disabled:opacity-40",
-              i > 0 && "border-l",
-              checked
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-            )}
-          >
-            <span className="flex items-center justify-center gap-1 text-xs">
+            {/* Shared floor, so both ramps read as growing rather than
+                floating. */}
+            <span className="flex h-5 items-end">
               {iconDef && (
                 <iconDef.icon
                   className={iconDef.className}
@@ -115,9 +99,9 @@ function SegmentStrip({ group, options, counts, selected, onToggle }: GroupProps
                   aria-hidden
                 />
               )}
-              {label}
             </span>
-            <span className="block text-[11px] tabular-nums opacity-60">
+            <span className="text-xs">{label}</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">
               {count}
             </span>
           </button>
@@ -167,72 +151,13 @@ export function TogglePills({
   );
 }
 
-// Shelters keep arriving, so they stay a quiet list that scales past twenty
-// names instead of a wall of boxes.
-function ShelterRows({ options, counts, selected, onToggle }: GroupProps) {
-  return (
-    // No negative margin: the sidebar scrolls vertically, and any child wider
-    // than its padding box turns that into a horizontal scrollbar too.
-    <div className="space-y-0.5">
-      {options.map(({ value, label, sublabel }) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onToggle(value)}
-            disabled={isDead(count, checked)}
-            aria-pressed={checked}
-            className={cn(
-              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors disabled:opacity-40",
-              checked ? "bg-muted" : "hover:bg-muted/50",
-            )}
-          >
-            {/* Always laid out, so selecting a row doesn't shift the list. */}
-            <Check
-              className={cn("size-3.5 shrink-0", !checked && "opacity-0")}
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block truncate text-sm",
-                  !checked && "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-              {sublabel && (
-                <span className="block truncate text-[11px] text-muted-foreground/80">
-                  {sublabel}
-                </span>
-              )}
-            </span>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {count}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function FilterGroup(props: GroupProps) {
+function FilterGroup({ group, ...rest }: GroupProps) {
   return (
     <section>
       <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {GROUP_LABELS[props.group]}
+        {GROUP_LABELS[group]}
       </h3>
-      {props.group === "shelter" ? (
-        <ShelterRows {...props} />
-      ) : props.group === "size" ? (
-        <OptionCards {...props} />
-      ) : (
-        <SegmentStrip {...props} />
-      )}
+      <OptionCards group={group} {...rest} />
     </section>
   );
 }
@@ -249,7 +174,7 @@ export function FilterGroupList({
   onToggleProperty,
 }: {
   filters: Filters;
-  groups: { group: MultiGroup; options: FilterOption[] }[];
+  groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;

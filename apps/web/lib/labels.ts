@@ -14,12 +14,19 @@ const SEX: Record<Sex, string> = {
 };
 
 // Slovenian has a dual, so 1, 2, 3-4 and 5+ each take a different form.
-export function plural(n: number, forms: [string, string, string, string]): string {
+export function pick(
+  n: number,
+  forms: [string, string, string, string],
+): string {
   const rest = n % 100;
-  if (rest === 1) return `${n} ${forms[0]}`;
-  if (rest === 2) return `${n} ${forms[1]}`;
-  if (rest === 3 || rest === 4) return `${n} ${forms[2]}`;
-  return `${n} ${forms[3]}`;
+  if (rest === 1) return forms[0];
+  if (rest === 2) return forms[1];
+  if (rest === 3 || rest === 4) return forms[2];
+  return forms[3];
+}
+
+export function plural(n: number, forms: [string, string, string, string]): string {
+  return `${n} ${pick(n, forms)}`;
 }
 
 function formatAge(months: number): string {
@@ -43,6 +50,15 @@ export const SHELTER_FORMS: [string, string, string, string] = [
   "zavetišči",
   "zavetišča",
   "zavetišč",
+];
+
+// The quantifier in "vsa 3 zavetišča" and "vseh 11 zavetišč" agrees with the
+// count just as the noun does, so it needs forms of its own.
+export const ALL_FORMS: [string, string, string, string] = [
+  "vse",
+  "vsa",
+  "vsa",
+  "vseh",
 ];
 
 // "Mačka · samica · 2 leti", skipping whatever we don't know.

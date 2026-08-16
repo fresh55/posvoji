@@ -4,6 +4,7 @@ import {
   FilterGroupList,
   type CardGroup,
 } from "@/components/filters/filter-groups";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   FilterOption,
   Filters,
@@ -36,19 +37,20 @@ export function FilterSidebar({
   onClearAll: () => void;
   className?: string;
 }) {
+  const { messages } = useI18n();
   return (
     <aside className={cn("space-y-7", className)}>
       {/* h-7 matches the species tabs across the gutter, so both columns
           start their content on the same line. */}
       <div className="flex h-7 items-center justify-between">
-        <h2 className="text-sm font-medium">Filtri</h2>
+        <h2 className="text-sm font-medium">{messages.filters}</h2>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={onClearAll}
             className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
           >
-            Počisti
+            {messages.clear}
           </button>
         )}
       </div>

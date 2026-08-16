@@ -8,10 +8,7 @@ export type ShelterPin = {
   count: number;
 };
 
-// A town is the unit the map places, not a shelter. Ljubljana and Celje can
-// hold several shelters, and giving each its own marker meant either stacking
-// them on one pixel or pushing them off the town they name. One marker stays on
-// the town and carries all of them, so the position keeps telling the truth.
+// Shelters in one town share a marker; distinct towns stay separate.
 export type Town = {
   key: string;
   city: string;
@@ -23,24 +20,17 @@ export type Town = {
   shelters: ShelterPin[];
 };
 
-// Every marker is the same size. Scaling the glyph by how many animals a town
-// held meant a small house and a large house read as two different icons, which
-// no icon set does and this one's own lucide icons never do. How many animals
-// are where is a question the list and the tooltips answer exactly, rather than
-// one the marker answers approximately.
-const MARKER_RADIUS = 6.5;
+// Counts belong in the tooltip and list, not in marker size.
+const MARKER_RADIUS = 5.75;
+export const MARKER_STROKE_WIDTH = 0.9;
 
 // Clear water between two markers, so touching circles still read as two.
 const PIN_GAP = 1.5;
-// How far a marker may be pushed off its real town. 7 units is about 5 km on
-// the ground: enough to separate Dramlje from Celje, little enough that the
-// marker still points at the right place.
+// Seven map units is roughly 5 km: enough to separate close towns without
+// misplacing them.
 const MAX_DRIFT = 7;
 const EDGE_MARGIN = 2;
 const RELAX_PASSES = 120;
-// Markers are targets again. They stopped being targets when the map lived in a
-// 209px column, where a dot could not be made big enough; the map only draws at
-// dialog width now, where 10 units is about 42px across.
 const MAX_HIT_RADIUS = 10;
 
 function clamp(value: number, low: number, high: number): number {
@@ -49,9 +39,7 @@ function clamp(value: number, low: number, high: number): number {
 
 type Placed = Town & { homeX: number; homeY: number };
 
-// Markers only ever move to stop overlapping, and never further than MAX_DRIFT
-// from the town they belong to. A pair too close to separate inside that budget
-// keeps a smaller gap rather than lying about where it is.
+// Keep collision adjustment within MAX_DRIFT of the real town.
 function leash(town: Placed): void {
   const dx = town.x - town.homeX;
   const dy = town.y - town.homeY;
@@ -100,9 +88,7 @@ function relax(towns: Placed[]): void {
   }
 }
 
-// A marker's target grows into the empty space around it but never reaches
-// inside a neighbour's dot, so every dot stays clickable where it is drawn and
-// no marker takes a click meant for the one next to it.
+// Grow hit areas only into space not occupied by another marker.
 function sizeTargets(towns: Placed[]): void {
   for (const town of towns) {
     let room = MAX_HIT_RADIUS;
@@ -165,4 +151,32 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
 
 export function townCount(town: Town): number {
   return town.shelters.reduce((sum, shelter) => sum + shelter.count, 0);
+}
+
+// One source of truth for the visible and accessible town label. A cluster is
+// named by its town; a single marker is named by its shelter.
+export function townLabel(town: Town): string {
+  return town.shelters.length > 1 ? town.city : town.shelters[0].label;
+}
+
+// Collision layout protects town.r, so visible marker strokes must stay inside it.
+export function markerGeometry(town: Town) {
+  const discRadius = town.r - MARKER_STROKE_WIDTH / 2;
+  return {
+    discRadius,
+    clusterOffset: discRadius * 0.33,
+    clusterRadius: discRadius * 0.53,
+  };
+}
+
+export function markerVisualReach(town: Town): number {
+  const geometry = markerGeometry(town);
+  if (town.shelters.length === 1) {
+    return geometry.discRadius + MARKER_STROKE_WIDTH / 2;
+  }
+  return (
+    Math.SQRT2 * geometry.clusterOffset +
+    geometry.clusterRadius +
+    MARKER_STROKE_WIDTH / 2
+  );
 }

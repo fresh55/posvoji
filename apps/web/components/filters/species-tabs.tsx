@@ -3,21 +3,22 @@
 import { Cat, Dog, PawPrint, Rabbit, type LucideIcon } from "lucide-react";
 import { Species } from "@posvoji/schema";
 import { type SpeciesFilter } from "@/lib/filters";
+import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 
 // Keyed by species rather than listed, so one added to the schema fails to
 // compile here instead of existing in the data and nowhere in the UI.
-const SPECIES_TABS: Record<Species, { label: string; icon: LucideIcon }> = {
-  dog: { label: "Psi", icon: Dog },
-  cat: { label: "Mačke", icon: Cat },
-  rabbit: { label: "Zajčki", icon: Rabbit },
-  other: { label: "Ostale", icon: PawPrint },
+const SPECIES_ICONS: Record<Species, LucideIcon> = {
+  dog: Dog,
+  cat: Cat,
+  rabbit: Rabbit,
+  other: PawPrint,
 };
 
-const TABS: { value: SpeciesFilter; label: string; icon?: LucideIcon }[] = [
-  { value: "all", label: "Vse" },
-  ...Species.options.map((value) => ({ value, ...SPECIES_TABS[value] })),
-];
+const LABELS: Record<"sl" | "en", Record<SpeciesFilter, string>> = {
+  sl: { all: "Vse", dog: "Psi", cat: "Mačke", rabbit: "Zajčki", other: "Ostale" },
+  en: { all: "All", dog: "Dogs", cat: "Cats", rabbit: "Rabbits", other: "Other" },
+};
 
 export function SpeciesTabs({
   value,
@@ -32,6 +33,16 @@ export function SpeciesTabs({
   disabled?: boolean;
   fullWidth?: boolean;
 }) {
+  const { locale } = useI18n();
+  const tabs: { value: SpeciesFilter; label: string; icon?: LucideIcon }[] = [
+    { value: "all", label: LABELS[locale].all },
+    ...Species.options.map((value) => ({
+      value,
+      label: LABELS[locale][value],
+      icon: SPECIES_ICONS[value],
+    })),
+  ];
+
   return (
     // Five tabs plus the sheet trigger don't fit a 375px phone, and wrapping
     // cost a second row on a bar that is pinned to the top the whole time.
@@ -42,7 +53,7 @@ export function SpeciesTabs({
         fullWidth && "w-full overflow-visible",
       )}
     >
-      {TABS.map(({ value: tab, label, icon: Icon }) => {
+      {tabs.map(({ value: tab, label, icon: Icon }) => {
         // An empty dataset keeps all tabs (disabled); otherwise empty
         // categories disappear rather than leading to zero results.
         if (!disabled && tab !== "all" && counts[tab] === 0) return null;

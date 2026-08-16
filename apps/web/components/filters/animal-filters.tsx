@@ -1,6 +1,7 @@
 "use client";
 
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
+import { useI18n } from "@/components/i18n-provider";
 import type { CardGroup } from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
 import { LocationPicker } from "@/components/filters/location-picker";
@@ -13,7 +14,7 @@ import type {
   ToggleDef,
   ToggleKey,
 } from "@/lib/filters";
-import { ANIMAL_FORMS, plural } from "@/lib/labels";
+import { animalCount } from "@/lib/labels";
 
 // Species tabs and the count live in this top bar at every width. The other
 // groups sit in the desktop sidebar; below lg they move into the bottom sheet.
@@ -55,6 +56,8 @@ export function AnimalFilters({
   onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
 }) {
+  const { locale } = useI18n();
+
   return (
     <div className="bleed sticky top-0 z-10 border-b bg-background/90 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
       <div className="flex items-center justify-between gap-4">
@@ -104,7 +107,7 @@ export function AnimalFilters({
             aria-live="polite"
             className="shrink-0 text-xs tabular-nums text-muted-foreground"
           >
-            {plural(resultCount, ANIMAL_FORMS)}
+            {animalCount(resultCount, locale)}
           </span>
         )}
       </div>

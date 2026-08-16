@@ -1,20 +1,28 @@
 import type { Animal, Sex, Species } from "@posvoji/schema";
+import type { Locale } from "@/lib/i18n";
 
-const SPECIES: Record<Species, string> = {
-  dog: "Pes",
-  cat: "Mačka",
-  rabbit: "Zajček",
-  other: "Druga žival",
+const SPECIES: Record<Locale, Record<Species, string>> = {
+  sl: {
+    dog: "Pes",
+    cat: "Mačka",
+    rabbit: "Zajček",
+    other: "Druga žival",
+  },
+  en: {
+    dog: "Dog",
+    cat: "Cat",
+    rabbit: "Rabbit",
+    other: "Other animal",
+  },
 };
 
-const SEX: Record<Sex, string> = {
-  male: "samec",
-  female: "samica",
-  unknown: "",
+const SEX: Record<Locale, Record<Sex, string>> = {
+  sl: { male: "samec", female: "samica", unknown: "" },
+  en: { male: "male", female: "female", unknown: "" },
 };
 
 // Slovenian has a dual, so 1, 2, 3-4 and 5+ each take a different form.
-export function pick(
+function pick(
   n: number,
   forms: [string, string, string, string],
 ): string {
@@ -25,11 +33,19 @@ export function pick(
   return forms[3];
 }
 
-export function plural(n: number, forms: [string, string, string, string]): string {
+function plural(
+  n: number,
+  forms: [string, string, string, string],
+): string {
   return `${n} ${pick(n, forms)}`;
 }
 
-function formatAge(months: number): string {
+function formatAge(months: number, locale: Locale): string {
+  if (locale === "en") {
+    if (months < 12) return `${months} ${months === 1 ? "month" : "months"}`;
+    const years = Math.floor(months / 12);
+    return `${years} ${years === 1 ? "year" : "years"}`;
+  }
   if (months < 12) {
     return plural(months, ["mesec", "meseca", "mesece", "mesecev"]);
   }
@@ -37,7 +53,7 @@ function formatAge(months: number): string {
 }
 
 // "1 žival", "2 živali", "5 živali" for result counts.
-export const ANIMAL_FORMS: [string, string, string, string] = [
+const ANIMAL_FORMS: [string, string, string, string] = [
   "žival",
   "živali",
   "živali",
@@ -45,7 +61,7 @@ export const ANIMAL_FORMS: [string, string, string, string] = [
 ];
 
 // "1 zavetišče", "2 zavetišči", "3 zavetišča", "5 zavetišč" for coverage.
-export const SHELTER_FORMS: [string, string, string, string] = [
+const SHELTER_FORMS: [string, string, string, string] = [
   "zavetišče",
   "zavetišči",
   "zavetišča",
@@ -54,20 +70,49 @@ export const SHELTER_FORMS: [string, string, string, string] = [
 
 // The quantifier in "vsa 3 zavetišča" and "vseh 11 zavetišč" agrees with the
 // count just as the noun does, so it needs forms of its own.
-export const ALL_FORMS: [string, string, string, string] = [
+const ALL_FORMS: [string, string, string, string] = [
   "vse",
   "vsa",
   "vsa",
   "vseh",
 ];
 
+export function animalCount(n: number, locale: Locale): string {
+  return locale === "sl"
+    ? plural(n, ANIMAL_FORMS)
+    : `${n} ${n === 1 ? "animal" : "animals"}`;
+}
+
+export function shelterCount(n: number, locale: Locale): string {
+  return locale === "sl"
+    ? plural(n, SHELTER_FORMS)
+    : `${n} ${n === 1 ? "shelter" : "shelters"}`;
+}
+
+export function allShelters(n: number, locale: Locale): string {
+  if (locale === "en") return `All ${shelterCount(n, locale)}`;
+  const quantifier = pick(n, ALL_FORMS);
+  return `${quantifier[0].toUpperCase()}${quantifier.slice(1)} ${plural(
+    n,
+    SHELTER_FORMS,
+  )}`;
+}
+
+export function sheltersMissingFromMap(n: number, locale: Locale): string {
+  if (locale === "en") {
+    return `${shelterCount(n, locale)} ${n === 1 ? "is" : "are"} not on the map.`;
+  }
+  const verb = pick(n, ["ni", "nista", "niso", "ni"]);
+  return `${shelterCount(n, locale)} ${verb} na zemljevidu.`;
+}
+
 // "Mačka · samica · 2 leti", skipping whatever we don't know.
-export function animalMeta(animal: Animal): string {
+export function animalMeta(animal: Animal, locale: Locale = "sl"): string {
   return [
-    SPECIES[animal.species],
-    animal.sex ? SEX[animal.sex] : "",
+    SPECIES[locale][animal.species],
+    animal.sex ? SEX[locale][animal.sex] : "",
     animal.approximateAgeMonths !== undefined
-      ? formatAge(animal.approximateAgeMonths)
+      ? formatAge(animal.approximateAgeMonths, locale)
       : "",
   ]
     .filter(Boolean)

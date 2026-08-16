@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { ShelterMap } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,17 +22,11 @@ import {
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption } from "@/lib/filters";
 import { cityAt, distanceKm, onMap } from "@/lib/geo";
-import { ALL_FORMS, pick, plural, SHELTER_FORMS } from "@/lib/labels";
+import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import type { ShelterPin } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
 
-// Where you adopt from is not the same kind of question as what sex or size you
-// want. Those are three-option enumerations you weigh side by side, and they
-// belong in a column of small controls. This one is a map, and in a 14rem
-// column a map of a whole country is 209px across, which is what kept its
-// targets too small to hit however they were drawn. It sits beside the species
-// tabs instead, as the second question everyone actually brings: what, and
-// where. That also means the map is only ever drawn at a size it works at.
+// The map needs dialog width. Narrow screens use regions and the exact list.
 export function LocationPicker({
   options,
   counts,
@@ -45,6 +40,7 @@ export function LocationPicker({
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
 }) {
+  const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
   const { state, toggle: toggleNearby } = useNearby();
   const origin = state.status === "on" ? state.at : undefined;
@@ -65,18 +61,22 @@ export function LocationPicker({
     return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
   }, [options, origin]);
 
-  const pins: ShelterPin[] = rows.flatMap((row) =>
-    row.at
-      ? [
-          {
-            value: row.value,
-            label: row.label,
-            city: row.city ?? "",
-            at: row.at,
-            count: counts.get(row.value) ?? 0,
-          },
-        ]
-      : [],
+  const pins: ShelterPin[] = useMemo(
+    () =>
+      rows.flatMap((row) =>
+        row.at
+          ? [
+              {
+                value: row.value,
+                label: row.label,
+                city: row.city ?? "",
+                at: row.at,
+                count: counts.get(row.value) ?? 0,
+              },
+            ]
+          : [],
+      ),
+    [counts, rows],
   );
 
   // Picking a region picks every shelter in it, which is as fine as a map of a
@@ -98,37 +98,33 @@ export function LocationPicker({
     state.status === "error"
       ? state.message
       : nearbyOn && origin && !onMap(origin)
-        ? "Vaša lokacija je zunaj zemljevida. Seznam je vseeno razvrščen po bližini."
+        ? messages.locationOutsideMap
         : nearbyOn
-          ? "Seznam je razvrščen po bližini."
+          ? messages.sortedByDistance
           : undefined;
   const missing =
     unplaced > 0
-      ? `${plural(unplaced, SHELTER_FORMS)} ni na zemljevidu.`
+      ? sheltersMissingFromMap(unplaced, locale)
       : undefined;
 
   // The trigger has to answer "what is behind this" before it is clicked, and
   // the count is what answers it: eleven shelters exist and this is where they
   // are. "Vsa zavetišča" alone read as a filter state, not as a way in.
   const total = options.length;
-  const quantifier = pick(total, ALL_FORMS);
   const label =
     selected.length === 0
-      ? `${quantifier[0].toUpperCase()}${quantifier.slice(1)} ${plural(total, SHELTER_FORMS)}`
-      : `${selected.length} od ${total} ${SHELTER_FORMS[3]}`;
+      ? allShelters(total, locale)
+      : t("selectedShelters", { selected: selected.length, total });
 
   return (
     <>
-      {/* shadcn's combobox trigger, not an action button. A button says "do
-          something"; this holds a value you can change, and the field shape
-          and the chevron are what say so before it is clicked. */}
       <Button
         variant="outline"
         size="sm"
         role="combobox"
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={`Zavetišče: ${label}. Odpri zemljevid.`}
+        aria-label={t("shelterPickerLabel", { label })}
         onClick={() => setOpen(true)}
         className="max-w-[14rem] justify-between gap-2 font-normal"
       >
@@ -140,18 +136,23 @@ export function LocationPicker({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[46rem]">
+        <DialogContent
+          className="max-w-[46rem]"
+          closeLabel={messages.close}
+        >
           <DialogHeader>
-            <DialogTitle>Kje iščeš?</DialogTitle>
+            <DialogTitle>{messages.whereSearching}</DialogTitle>
             <DialogDescription>
-              Klikni zavetišče ali celo regijo na zemljevidu, ali izbiraj s
-              seznama.
+              <span className="hidden md:inline">
+                {messages.mapInstructionsDesktop}
+              </span>
+              <span className="md:hidden">
+                {messages.mapInstructionsMobile}
+              </span>
             </DialogDescription>
           </DialogHeader>
 
-          {/* Not shaped like the pills in Zdravje. This sorts the list, it does
-              not filter it: nothing drops out, no chip appears and the URL does
-              not change, so it should not wear the look used for filters. */}
+          {/* This changes sort order, not filter state. */}
           <button
             type="button"
             onClick={toggleNearby}
@@ -168,7 +169,9 @@ export function LocationPicker({
             ) : (
               <ArrowDownNarrowWide className="size-3.5" aria-hidden />
             )}
-            {state.status === "locating" ? "Iščem lokacijo…" : "Najbližje prvo"}
+            {state.status === "locating"
+              ? messages.locating
+              : messages.nearestFirst}
           </button>
 
           <ShelterMap
@@ -178,14 +181,28 @@ export function LocationPicker({
             origin={origin}
           />
 
-          <p className="flex items-center gap-1.5 text-[11px] leading-tight text-muted-foreground">
+          <p className="flex items-center gap-2 text-[10px] leading-none text-muted-foreground md:hidden">
+            <span>{messages.fewerAnimals}</span>
+            <span className="flex items-center gap-0.5" aria-hidden>
+              {[14, 18, 22, 26, 30].map((opacity) => (
+                <span
+                  key={opacity}
+                  className="size-2 rounded-[2px] bg-foreground"
+                  style={{ opacity: opacity / 100 }}
+                />
+              ))}
+            </span>
+            <span>{messages.moreAnimals}</span>
+          </p>
+
+          <p className="hidden items-center gap-1.5 text-[11px] leading-tight text-muted-foreground md:flex">
             <span
               aria-hidden
               className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background"
             >
               <PawPrint className="size-2.5 text-foreground/70" strokeWidth={2.25} />
             </span>
-            Zavetišče
+            {messages.shelter}
           </p>
 
           <div className="space-y-1">
@@ -201,7 +218,7 @@ export function LocationPicker({
               {missing}
             </p>
             <p className="text-[11px] leading-tight text-muted-foreground">
-              Meje statističnih regij:{" "}
+              {messages.regionBoundaries}:{" "}
               <a
                 href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
                 className="underline underline-offset-2 hover:text-foreground"

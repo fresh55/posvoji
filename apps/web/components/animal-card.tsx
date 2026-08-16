@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import type { Animal } from "@posvoji/schema";
+import { useI18n } from "@/components/i18n-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { animalMeta } from "@/lib/labels";
 
@@ -16,6 +19,7 @@ function permittedImage(animal: Animal): string | undefined {
 
 export function AnimalCard({ animal }: { animal: Animal }) {
   const image = permittedImage(animal);
+  const { locale, messages } = useI18n();
 
   return (
     <a
@@ -29,19 +33,21 @@ export function AnimalCard({ animal }: { animal: Animal }) {
           <Image src={image} alt={animal.name ?? ""} fill className="object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-            Fotografija na strani zavetišča
+            {messages.photoAtShelter}
           </div>
         )}
       </div>
 
       <div className="space-y-1 p-3">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="truncate font-medium">{animal.name ?? "Brez imena"}</h3>
+          <h3 className="truncate font-medium">{animal.name ?? messages.unnamed}</h3>
           {animal.status === "reserved" && (
-            <span className="shrink-0 text-xs text-muted-foreground">rezerviran</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {messages.reserved}
+            </span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">{animalMeta(animal)}</p>
+        <p className="text-sm text-muted-foreground">{animalMeta(animal, locale)}</p>
         <p className="truncate text-xs text-muted-foreground/80">{animal.shelter.name}</p>
       </div>
     </a>

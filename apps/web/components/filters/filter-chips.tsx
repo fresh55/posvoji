@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export type Chip = { key: string; label: string; onRemove: () => void };
@@ -14,6 +15,7 @@ export function FilterChips({
   onClearAll: () => void;
   className?: string;
 }) {
+  const { messages, t } = useI18n();
   if (chips.length === 0) return null;
 
   return (
@@ -27,7 +29,7 @@ export function FilterChips({
           <button
             type="button"
             onClick={onRemove}
-            aria-label={`Odstrani filter ${label}`}
+            aria-label={t("removeFilter", { label })}
             className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
           >
             <X className="size-3" aria-hidden />
@@ -39,7 +41,7 @@ export function FilterChips({
         onClick={onClearAll}
         className="ml-1 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
       >
-        Počisti filtre
+        {messages.clearFilters}
       </button>
     </div>
   );

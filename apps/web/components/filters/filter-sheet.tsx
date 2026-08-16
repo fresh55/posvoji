@@ -1,6 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   FilterGroupList,
   type CardGroup,
@@ -23,7 +24,7 @@ import type {
   ToggleDef,
   ToggleKey,
 } from "@/lib/filters";
-import { ANIMAL_FORMS, plural } from "@/lib/labels";
+import { animalCount } from "@/lib/labels";
 
 export function FilterSheet({
   filters,
@@ -52,12 +53,13 @@ export function FilterSheet({
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
 }) {
+  const { locale, messages } = useI18n();
   return (
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 rounded-full">
           <SlidersHorizontal className="size-4" aria-hidden />
-          Filtri
+          {messages.filters}
           {activeCount > 0 && (
             <Badge
               variant="secondary"
@@ -70,9 +72,10 @@ export function FilterSheet({
       </SheetTrigger>
       <SheetContent
         side="bottom"
+        closeLabel={messages.close}
         className="max-h-[85dvh] gap-0 overflow-y-auto rounded-t-2xl px-5 pt-4"
       >
-        <SheetTitle className="text-base">Filtri</SheetTitle>
+        <SheetTitle className="text-base">{messages.filters}</SheetTitle>
 
         <div className="mt-4 space-y-7">
           <SpeciesTabs
@@ -95,11 +98,11 @@ export function FilterSheet({
 
         <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button variant="ghost" onClick={onClearAll}>
-            Počisti
+            {messages.clear}
           </Button>
           <SheetClose asChild>
             <Button className="flex-1">
-              Prikaži {plural(resultCount, ANIMAL_FORMS)}
+              {messages.show} {animalCount(resultCount, locale)}
             </Button>
           </SheetClose>
         </div>

@@ -53,7 +53,7 @@ This project never indexes:
 
 All crawling uses the SDK's `PoliteClient`: it respects `robots.txt`, serializes
 requests per host, waits between requests and backs off on `429` responses.
-There are no shortcuts around it—even cats have boundaries. 🐈
+There are no shortcuts around it.
 
 Read the binding rules in the [data policy](docs/DATA-POLICY.md).
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
@@ -43,6 +43,8 @@ const CARD_GRID =
 export function AnimalGrid({ animals }: { animals: Animal[] }) {
   const { locale, messages } = useI18n();
   const [sort, setSort] = useState<AnimalSort>(DEFAULT_ANIMAL_SORT);
+  const [clearTrailKey, setClearTrailKey] = useState(0);
+  const pendingClearCount = useRef<number | null>(null);
   const {
     filters,
     setSpecies,
@@ -65,6 +67,24 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
   );
 
   const isEmpty = animals.length === 0;
+
+  const handleClearAll = useCallback(() => {
+    if (activeCount > 0 || filters.species !== "all") {
+      pendingClearCount.current = visible.length;
+    }
+    clearAll();
+  }, [activeCount, clearAll, filters.species, visible.length]);
+
+  useEffect(() => {
+    const previousCount = pendingClearCount.current;
+    const hasCleared = activeCount === 0 && filters.species === "all";
+    if (previousCount === null || !hasCleared) return;
+
+    pendingClearCount.current = null;
+    if (visible.length > previousCount) {
+      setClearTrailKey((key) => key + 1);
+    }
+  }, [activeCount, filters.species, visible.length]);
 
   const speciesTally = useMemo(() => speciesCounts(animals), [animals]);
   const counts = useMemo(
@@ -163,12 +183,13 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           chips={chips}
           activeCount={activeCount}
           resultCount={visible.length}
+          clearTrailKey={clearTrailKey}
           sort={sort}
           onSpeciesChange={setSpecies}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
-          onClearAll={clearAll}
+          onClearAll={handleClearAll}
           onSortChange={setSort}
         />
 
@@ -196,7 +217,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
                 {messages.tryFewerFilters}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={clearAll}>
+            <Button variant="outline" size="sm" onClick={handleClearAll}>
               {messages.clearFilters}
             </Button>
           </div>

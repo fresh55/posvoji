@@ -5,16 +5,17 @@ import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import type { CardGroup } from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
+import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
+import { activeFilterSectionCount } from "@/lib/filters";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
   SpeciesFilter,
   ToggleDef,
-  ToggleKey,
 } from "@/lib/filters";
 import type { AnimalSort } from "@/lib/sort";
 
@@ -32,7 +33,6 @@ export function AnimalFilters({
   shelters,
   shelterTally,
   chips,
-  activeCount,
   resultCount,
   clearTrailKey,
   sort,
@@ -40,6 +40,7 @@ export function AnimalFilters({
   onToggle,
   onToggleMany,
   onToggleProperty,
+  onToggleManyProperties,
   onClearAll,
   onSortChange,
 }: {
@@ -54,19 +55,16 @@ export function AnimalFilters({
   shelters: FilterOption[] | undefined;
   shelterTally: Map<string, number>;
   chips: Chip[];
-  activeCount: number;
   resultCount: number;
   clearTrailKey: number;
   sort: AnimalSort;
   onSpeciesChange: (species: SpeciesFilter) => void;
-  onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
-  onToggleProperty: (key: ToggleKey) => void;
   onClearAll: () => void;
   onSortChange: (sort: AnimalSort) => void;
-}) {
+} & FilterActionContract) {
   const { locale } = useI18n();
   const hasFilterSheet = groups.length > 0 || toggles.length > 0;
+  const activeSectionCount = activeFilterSectionCount(filters);
 
   return (
     <div className="bleed sticky top-0 z-10 border-b bg-background/90 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
@@ -119,11 +117,12 @@ export function AnimalFilters({
                 speciesTally={speciesTally}
                 toggles={toggles}
                 toggleTally={toggleTally}
-                activeCount={activeCount}
+                activeSectionCount={activeSectionCount}
                 resultCount={resultCount}
                 onToggle={onToggle}
                 onToggleMany={onToggleMany}
                 onToggleProperty={onToggleProperty}
+                onToggleManyProperties={onToggleManyProperties}
                 onSpeciesChange={onSpeciesChange}
                 onClearAll={onClearAll}
               />

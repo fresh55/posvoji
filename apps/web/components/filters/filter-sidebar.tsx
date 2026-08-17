@@ -4,13 +4,13 @@ import {
   FilterGroupList,
   type CardGroup,
 } from "@/components/filters/filter-groups";
+import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { useI18n } from "@/components/i18n-provider";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
   ToggleDef,
-  ToggleKey,
 } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export function FilterSidebar({
   onToggle,
   onToggleMany,
   onToggleProperty,
+  onToggleManyProperties,
   className,
 }: {
   filters: Filters;
@@ -30,11 +31,8 @@ export function FilterSidebar({
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
-  onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
-  onToggleProperty: (key: ToggleKey) => void;
   className?: string;
-}) {
+} & FilterActionContract) {
   const { messages } = useI18n();
   return (
     <aside className={cn("space-y-6", className)}>
@@ -53,6 +51,7 @@ export function FilterSidebar({
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}
+        onToggleManyProperties={onToggleManyProperties}
       />
     </aside>
   );

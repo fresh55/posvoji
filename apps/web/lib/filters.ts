@@ -3,16 +3,11 @@ import type { Locale } from "@/lib/i18n";
 
 export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
-const AGE_GROUP_VALUES: readonly AgeGroup[] = [
-  "mladicek",
-  "odrasel",
-  "senior",
-];
 export type MultiGroup = "sex" | "age" | "size" | "shelter";
 
-// Yes/no properties an animal either has or doesn't, kept apart from the
-// choose-among groups because they combine with AND: asking for cepljenje and
-// sterilizacija means both, not either.
+// Yes/no properties an animal either has or doesn't. Like every other filter
+// section, choices within this section combine with OR; sections combine with
+// AND. This makes multi-select behavior predictable throughout the UI.
 export type ToggleKey =
   | "sterilizacija"
   | "cepljenje"
@@ -113,8 +108,9 @@ export function toggleLabel(key: ToggleKey, locale: Locale = "sl"): string {
 }
 
 function matchesToggles(animal: Animal, selected: ToggleKey[]): boolean {
-  return TOGGLES.every(
-    (toggle) => !selected.includes(toggle.key) || toggle.matches(animal),
+  if (selected.length === 0) return true;
+  return TOGGLES.some(
+    (toggle) => selected.includes(toggle.key) && toggle.matches(animal),
   );
 }
 
@@ -242,9 +238,10 @@ export function toggleCounts(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const toggle of TOGGLES) {
-    const applied = {
-      toggles: filters.toggles.filter((key) => key !== toggle.key),
-    };
+    // Count each choice with the health axis removed, just like facetCounts
+    // removes the group it is measuring. The number then answers what this
+    // choice itself can add under the filters from every other section.
+    const applied = { toggles: [] };
     let total = 0;
     for (const animal of animals) {
       if (!passesFacet(animal, filters, now, applied)) continue;
@@ -337,13 +334,7 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   return {
     species: filters.species,
     sex: keep("sex") ? filters.sex : [],
-    // Explicitly selecting every age is equivalent to no age constraint. Keep
-    // the URL and active-filter count in their simpler default state.
-    age:
-      keep("age") &&
-      !AGE_GROUP_VALUES.every((value) => filters.age.includes(value))
-        ? filters.age
-        : [],
+    age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],
     shelter: keep("shelter") ? filters.shelter : [],
     toggles: filters.toggles.filter((key) =>
@@ -359,42 +350,59 @@ export function pruneHiddenFilters(filters: Filters): Filters {
 // sublabel because the map places a marker from it.
 export type FilterOption = { value: string; label: string; city?: string };
 
-const OPTIONS: Record<
-  Locale,
-  Record<Exclude<MultiGroup, "shelter">, FilterOption[]>
-> = {
-  sl: {
-    sex: [
-      { value: "male", label: "Samec" },
-      { value: "female", label: "Samica" },
-    ],
-    age: [
-      { value: "mladicek", label: "Mladiček" },
-      { value: "odrasel", label: "Odrasel" },
-      { value: "senior", label: "Senior" },
-    ],
-    size: [
-      { value: "small", label: "Majhna" },
-      { value: "medium", label: "Srednja" },
-      { value: "large", label: "Velika" },
-    ],
-  },
-  en: {
-    sex: [
-      { value: "male", label: "Male" },
-      { value: "female", label: "Female" },
-    ],
-    age: [
-      { value: "mladicek", label: "Young" },
-      { value: "odrasel", label: "Adult" },
-      { value: "senior", label: "Senior" },
-    ],
-    size: [
-      { value: "small", label: "Small" },
-      { value: "medium", label: "Medium" },
-      { value: "large", label: "Large" },
-    ],
-  },
+type CodedGroup = Exclude<MultiGroup, "shelter">;
+type CodedValueByGroup = {
+  sex: Exclude<Sex, "unknown">;
+  age: AgeGroup;
+  size: AnimalSize;
+};
+
+/** The canonical metadata for coded filter values. */
+export type FilterValueDefinition<Value extends string = string> = {
+  readonly value: Value;
+  readonly slug: string;
+  readonly labels: Readonly<Record<Locale, string>>;
+};
+
+export const FILTER_METADATA = {
+  sex: [
+    { value: "male", slug: "samec", labels: { sl: "Samec", en: "Male" } },
+    {
+      value: "female",
+      slug: "samica",
+      labels: { sl: "Samica", en: "Female" },
+    },
+  ],
+  age: [
+    {
+      value: "mladicek",
+      slug: "mladicek",
+      labels: { sl: "Mladiček", en: "Young" },
+    },
+    {
+      value: "odrasel",
+      slug: "odrasel",
+      labels: { sl: "Odrasel", en: "Adult" },
+    },
+    {
+      value: "senior",
+      slug: "senior",
+      labels: { sl: "Senior", en: "Senior" },
+    },
+  ],
+  size: [
+    { value: "small", slug: "majhna", labels: { sl: "Majhna", en: "Small" } },
+    {
+      value: "medium",
+      slug: "srednja",
+      labels: { sl: "Srednja", en: "Medium" },
+    },
+    { value: "large", slug: "velika", labels: { sl: "Velika", en: "Large" } },
+  ],
+} as const satisfies {
+  [Group in CodedGroup]: readonly FilterValueDefinition<
+    CodedValueByGroup[Group]
+  >[];
 };
 
 // Exhaustive like groupValue: a new group names its own options rather than
@@ -418,11 +426,12 @@ export function groupOptions(
         .sort((a, b) => a.label.localeCompare(b.label, "sl"));
     }
     case "sex":
-      return OPTIONS[locale].sex;
     case "age":
-      return OPTIONS[locale].age;
     case "size":
-      return OPTIONS[locale].size;
+      return FILTER_METADATA[group].map(({ value, labels }) => ({
+        value,
+        label: labels[locale],
+      }));
   }
 }
 
@@ -448,23 +457,6 @@ const SPECIES_SLUGS: Record<Species, string> = {
   other: "ostalo",
 };
 
-const VALUE_SLUGS: Record<Exclude<MultiGroup, "shelter">, [string, string][]> = {
-  sex: [
-    ["male", "samec"],
-    ["female", "samica"],
-  ],
-  age: [
-    ["mladicek", "mladicek"],
-    ["odrasel", "odrasel"],
-    ["senior", "senior"],
-  ],
-  size: [
-    ["small", "majhna"],
-    ["medium", "srednja"],
-    ["large", "velika"],
-  ],
-};
-
 const PARAM_NAMES: Record<MultiGroup, string> = {
   sex: "spol",
   age: "starost",
@@ -474,12 +466,15 @@ const PARAM_NAMES: Record<MultiGroup, string> = {
 
 function toSlug(group: MultiGroup, value: string): string {
   if (group === "shelter") return value;
-  return VALUE_SLUGS[group].find(([v]) => v === value)?.[1] ?? value;
+  return (
+    FILTER_METADATA[group].find((option) => option.value === value)?.slug ??
+    value
+  );
 }
 
 function fromSlug(group: MultiGroup, slug: string): string | undefined {
   if (group === "shelter") return slug;
-  return VALUE_SLUGS[group].find(([, s]) => s === slug)?.[0];
+  return FILTER_METADATA[group].find((option) => option.slug === slug)?.value;
 }
 
 export function serializeFilters(filters: Filters): string {
@@ -541,6 +536,14 @@ export function activeFilterCount(filters: Filters): number {
   return (
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length
+  );
+}
+
+/** Count selected filter sections, rather than individual selected values. */
+export function activeFilterSectionCount(filters: Filters): number {
+  return (
+    GROUPS.filter((group) => filters[group].length > 0).length +
+    (filters.toggles.length > 0 ? 1 : 0)
   );
 }
 

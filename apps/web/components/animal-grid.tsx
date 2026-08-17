@@ -51,6 +51,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
     toggle,
     toggleMany,
     toggleProperty,
+    toggleManyProperties,
     clearAll,
     activeCount,
   } = useAnimalFilters();
@@ -166,6 +167,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
+          onToggleManyProperties={toggleManyProperties}
         />
       )}
 
@@ -181,7 +183,6 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           shelters={shelters}
           shelterTally={counts.shelter}
           chips={chips}
-          activeCount={activeCount}
           resultCount={visible.length}
           clearTrailKey={clearTrailKey}
           sort={sort}
@@ -189,6 +190,7 @@ export function AnimalGrid({ animals }: { animals: Animal[] }) {
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
+          onToggleManyProperties={toggleManyProperties}
           onClearAll={handleClearAll}
           onSortChange={setSort}
         />

@@ -7,6 +7,7 @@ import {
   FilterGroupList,
   type CardGroup,
 } from "@/components/filters/filter-groups";
+import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,6 @@ import type {
   MultiGroup,
   SpeciesFilter,
   ToggleDef,
-  ToggleKey,
 } from "@/lib/filters";
 
 export function FilterSheet({
@@ -33,11 +33,12 @@ export function FilterSheet({
   speciesTally,
   toggles,
   toggleTally,
-  activeCount,
+  activeSectionCount,
   resultCount,
   onToggle,
   onToggleMany,
   onToggleProperty,
+  onToggleManyProperties,
   onSpeciesChange,
   onClearAll,
 }: {
@@ -47,14 +48,11 @@ export function FilterSheet({
   speciesTally: Record<SpeciesFilter, number>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
-  activeCount: number;
+  activeSectionCount: number;
   resultCount: number;
-  onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
-  onToggleProperty: (key: ToggleKey) => void;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
-}) {
+} & FilterActionContract) {
   const { locale, messages } = useI18n();
   return (
     <Sheet>
@@ -62,12 +60,12 @@ export function FilterSheet({
         <Button variant="outline" size="sm" className="gap-1.5 rounded-full">
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
-          {activeCount > 0 && (
+          {activeSectionCount > 0 && (
             <Badge
               variant="secondary"
               className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums"
             >
-              {activeCount}
+              {activeSectionCount}
             </Badge>
           )}
         </Button>
@@ -96,6 +94,7 @@ export function FilterSheet({
             onToggle={onToggle}
             onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}
+            onToggleManyProperties={onToggleManyProperties}
             ageLayout="sheet"
           />
         </div>

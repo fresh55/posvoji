@@ -19,9 +19,9 @@ import type {
 } from "@/lib/filters";
 import type { AnimalSort } from "@/lib/sort";
 
-// Desktop has enough room for one quiet toolbar: species on the left and the
-// result/location/sort actions on the right. Narrower screens keep the result
-// and sort on a second row; below sm the species control lives in the sheet.
+// Desktop has enough room for one quiet toolbar. Mobile keeps result and sort
+// in the sticky rail while the two primary discovery actions share a bottom
+// dock with enough internal space to read as one deliberate surface.
 export function AnimalFilters({
   isEmpty,
   filters,
@@ -67,79 +67,55 @@ export function AnimalFilters({
   const activeSectionCount = activeFilterSectionCount(filters);
 
   return (
-    <div className="bleed sticky top-0 z-10 border-b bg-background/90 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
-      <div className="flex items-center justify-between gap-4">
-        <div
-          className={
-            hasFilterSheet ? "hidden min-w-0 sm:block" : "min-w-0"
-          }
-        >
-          <SpeciesTabs
-            value={filters.species}
-            onChange={onSpeciesChange}
-            counts={speciesTally}
-            disabled={isEmpty}
-          />
+    <>
+      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
+        <div className="flex items-center justify-between gap-4">
+          <div
+            className={
+              hasFilterSheet ? "hidden min-w-0 sm:block" : "min-w-0"
+            }
+          >
+            <SpeciesTabs
+              value={filters.species}
+              onChange={onSpeciesChange}
+              counts={speciesTally}
+              disabled={isEmpty}
+            />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            {!isEmpty && (
+              <ResultCount
+                count={resultCount}
+                species={filters.species}
+                locale={locale}
+                clearTrailKey={clearTrailKey}
+                className="hidden min-w-24 text-muted-foreground lg:inline-flex"
+              />
+            )}
+            {shelters && (
+              <div className="hidden lg:block">
+                <LocationPicker
+                  options={shelters}
+                  counts={shelterTally}
+                  selected={filters.shelter}
+                  onToggle={(value) => onToggle("shelter", value)}
+                  onToggleMany={(values) => onToggleMany("shelter", values)}
+                />
+              </div>
+            )}
+            {!isEmpty && (
+              <SortPicker
+                value={sort}
+                onChange={onSortChange}
+                className="hidden lg:flex"
+              />
+            )}
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {!isEmpty && (
-            <ResultCount
-              count={resultCount}
-              species={filters.species}
-              locale={locale}
-              clearTrailKey={clearTrailKey}
-              className="hidden min-w-24 text-muted-foreground lg:inline-flex"
-            />
-          )}
-          {shelters && (
-            <LocationPicker
-              options={shelters}
-              counts={shelterTally}
-              selected={filters.shelter}
-              onToggle={(value) => onToggle("shelter", value)}
-              onToggleMany={(values) => onToggleMany("shelter", values)}
-            />
-          )}
-          {!isEmpty && (
-            <SortPicker
-              value={sort}
-              onChange={onSortChange}
-              className="hidden lg:flex"
-            />
-          )}
-          {hasFilterSheet && (
-            <div className="shrink-0 lg:hidden">
-              <FilterSheet
-                filters={filters}
-                groups={groups}
-                counts={counts}
-                speciesTally={speciesTally}
-                toggles={toggles}
-                toggleTally={toggleTally}
-                activeSectionCount={activeSectionCount}
-                resultCount={resultCount}
-                onToggle={onToggle}
-                onToggleMany={onToggleMany}
-                onToggleProperty={onToggleProperty}
-                onToggleManyProperties={onToggleManyProperties}
-                onSpeciesChange={onSpeciesChange}
-                onClearAll={onClearAll}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      {!isEmpty && (
-        <div
-          className={`mt-2 min-w-0 items-center justify-between gap-2 ${
-            chips.length > 0 ? "flex" : "flex lg:hidden"
-          }`}
-        >
-          <div className="min-w-0 flex-1">
-            <FilterChips chips={chips} onClearAll={onClearAll} />
-          </div>
-          <div className="flex shrink-0 items-center gap-2 lg:hidden">
+        {!isEmpty && (
+          <div className="mt-2 flex items-center justify-end gap-2 lg:hidden">
             <ResultCount
               count={resultCount}
               species={filters.species}
@@ -149,8 +125,51 @@ export function AnimalFilters({
             />
             <SortPicker value={sort} onChange={onSortChange} />
           </div>
+        )}
+
+        {!isEmpty && chips.length > 0 && (
+          <div className="mt-2 min-w-0">
+            <FilterChips chips={chips} onClearAll={onClearAll} />
+          </div>
+        )}
+      </div>
+
+      {(hasFilterSheet || shelters) && (
+        <div
+          data-slot="mobile-filter-dock"
+          className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 box-border flex max-w-[calc(100vw-2rem)] flex-row-reverse items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg ring-1 ring-foreground/5 lg:hidden"
+        >
+          {hasFilterSheet && (
+            <FilterSheet
+              filters={filters}
+              groups={groups}
+              counts={counts}
+              speciesTally={speciesTally}
+              toggles={toggles}
+              toggleTally={toggleTally}
+              activeSectionCount={activeSectionCount}
+              resultCount={resultCount}
+              onToggle={onToggle}
+              onToggleMany={onToggleMany}
+              onToggleProperty={onToggleProperty}
+              onToggleManyProperties={onToggleManyProperties}
+              onSpeciesChange={onSpeciesChange}
+              onClearAll={onClearAll}
+            />
+          )}
+          {shelters && (
+            <div className="min-w-0 max-w-[12rem] sm:max-w-[14rem] [&>button]:h-11 [&>button]:w-full [&>button]:rounded-ui">
+              <LocationPicker
+                options={shelters}
+                counts={shelterTally}
+                selected={filters.shelter}
+                onToggle={(value) => onToggle("shelter", value)}
+                onToggleMany={(values) => onToggleMany("shelter", values)}
+              />
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 }

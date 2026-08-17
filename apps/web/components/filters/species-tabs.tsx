@@ -65,7 +65,7 @@ export function SpeciesTabs({
             disabled={disabled}
             aria-pressed={value === tab}
             className={cn(
-              "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors disabled:opacity-40",
+              "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-ui px-2.5 py-1 text-sm transition-colors disabled:opacity-40",
               fullWidth && "flex-1 py-1.5",
               value === tab
                 ? "bg-foreground text-background"

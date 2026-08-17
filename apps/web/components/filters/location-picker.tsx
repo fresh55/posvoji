@@ -18,6 +18,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption } from "@/lib/filters";
@@ -117,30 +118,30 @@ export function LocationPicker({
       : t("selectedShelters", { selected: selected.length, total });
 
   return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        role="combobox"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={t("shelterPickerLabel", { label })}
-        onClick={() => setOpen(true)}
-        className="max-w-[14rem] justify-between gap-2 font-normal"
-      >
-        <span className="flex min-w-0 items-center gap-1.5">
-          <MapPin className="size-3.5 opacity-60" aria-hidden />
-          <span className="truncate">{label}</span>
-        </span>
-        <ChevronDown className="size-3.5 opacity-50" aria-hidden />
-      </Button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          className="max-w-[46rem]"
-          closeLabel={messages.close}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          role="combobox"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label={t("shelterPickerLabel", { label })}
+          className="max-w-[14rem] justify-between gap-2 font-normal"
         >
-          <DialogHeader>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <MapPin className="size-3.5 opacity-60" aria-hidden />
+            <span className="truncate">{label}</span>
+          </span>
+          <ChevronDown className="size-3.5 opacity-50" aria-hidden />
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent
+        className="max-w-[46rem]"
+        closeLabel={messages.close}
+      >
+        <DialogHeader>
             <DialogTitle>{messages.whereSearching}</DialogTitle>
             <DialogDescription>
               <span className="hidden md:inline">
@@ -150,15 +151,15 @@ export function LocationPicker({
                 {messages.mapInstructionsMobile}
               </span>
             </DialogDescription>
-          </DialogHeader>
+        </DialogHeader>
 
-          {/* This changes sort order, not filter state. */}
-          <button
+        {/* This changes sort order, not filter state. */}
+        <button
             type="button"
             onClick={toggleNearby}
             aria-pressed={nearbyOn}
             className={cn(
-              "inline-flex w-fit items-center gap-1.5 rounded-md py-0.5 text-xs transition-colors",
+              "inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors",
               nearbyOn
                 ? "font-medium text-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -172,16 +173,16 @@ export function LocationPicker({
             {state.status === "locating"
               ? messages.locating
               : messages.nearestFirst}
-          </button>
+        </button>
 
-          <ShelterMap
+        <ShelterMap
             pins={pins}
             selected={selected}
             onPick={pickRegion}
             origin={origin}
-          />
+        />
 
-          <p className="flex items-center gap-2 text-[10px] leading-none text-muted-foreground md:hidden">
+        <p className="flex items-center gap-2 text-[10px] leading-none text-muted-foreground md:hidden">
             <span>{messages.fewerAnimals}</span>
             <span className="flex items-center gap-0.5" aria-hidden>
               {[14, 18, 22, 26, 30].map((opacity) => (
@@ -193,9 +194,9 @@ export function LocationPicker({
               ))}
             </span>
             <span>{messages.moreAnimals}</span>
-          </p>
+        </p>
 
-          <p className="hidden items-center gap-1.5 text-[11px] leading-tight text-muted-foreground md:flex">
+        <p className="hidden items-center gap-1.5 text-[11px] leading-tight text-muted-foreground md:flex">
             <span
               aria-hidden
               className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background"
@@ -203,9 +204,9 @@ export function LocationPicker({
               <PawPrint className="size-2.5 text-foreground/70" strokeWidth={2.25} />
             </span>
             {messages.shelter}
-          </p>
+        </p>
 
-          <div className="space-y-1">
+        <div className="space-y-1">
             {/* Stays mounted so a denied permission is announced, not just
                 drawn. */}
             <p
@@ -229,18 +230,17 @@ export function LocationPicker({
               </a>
               , CC BY 4.0.
             </p>
-          </div>
+        </div>
 
-          <ShelterRows
+        <ShelterRows
             rows={rows}
             counts={counts}
             selected={selected}
             onToggle={onToggle}
             refs={rowRefs}
             className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0"
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+        />
+      </DialogContent>
+    </Dialog>
   );
 }

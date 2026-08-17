@@ -85,6 +85,9 @@
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  /* One application radius for interactive controls and content surfaces.
+     Pills, badges, and truly circular controls remain intentionally round. */
+  --radius-ui: var(--radius);
   --filter-accent: oklch(0.92 0.045 151);
   --filter-accent-foreground: oklch(0.32 0.075 151);
   --filter-accent-border: oklch(0.68 0.075 151);
@@ -202,6 +205,15 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+@utility rounded-ui {
+  border-radius: var(--radius-ui);
+}
+
+@utility rounded-ui-top {
+  border-top-left-radius: var(--radius-ui);
+  border-top-right-radius: var(--radius-ui);
 }
 
 @layer base {

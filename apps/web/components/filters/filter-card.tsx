@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // One shadcn-style surface contract for every compact filter choice. Layout
 // stays with the caller; interaction, state, and accessibility chrome do not.
 export const filterCardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-md border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       selected: {

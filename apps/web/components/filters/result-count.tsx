@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   Cat,
   Dog,
@@ -13,7 +13,6 @@ import {
   LazyMotion,
   domAnimation,
   m,
-  useReducedMotion,
 } from "motion/react";
 import type { SpeciesFilter } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
@@ -32,6 +31,7 @@ const ANNOUNCEMENT_DELAY_MS = 250;
 const ICON_TRANSITION_DURATION = 0.24;
 const LABEL_TRANSITION_DURATION = 0.14;
 const PULSE_TRANSITION_DURATION = 0.32;
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const COUNT_Y_TRANSITION = {
   type: "spring",
   stiffness: 520,
@@ -78,6 +78,24 @@ export function countDirection(previous: number, next: number): -1 | 0 | 1 {
   return Math.sign(next - previous) as -1 | 0 | 1;
 }
 
+function subscribeToReducedMotion(onChange: () => void): () => void {
+  if (typeof window.matchMedia !== "function") return () => undefined;
+  const query = window.matchMedia(REDUCED_MOTION_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function getReducedMotionPreference(): boolean {
+  return typeof window.matchMedia !== "function" ||
+    window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+
+function getServerReducedMotionPreference(): true {
+  // Rendering the calm state on the server keeps hydration deterministic. The
+  // client enables motion only after hydration and only when the user allows it.
+  return true;
+}
+
 function useSettledCount(count: number): number {
   const [settledCount, setSettledCount] = useState(count);
 
@@ -109,13 +127,33 @@ export function ResultCount({
   clearTrailKey?: number;
   className?: string;
 }) {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    getReducedMotionPreference,
+    getServerReducedMotionPreference,
+  );
+  const [motionReady, setMotionReady] = useState(false);
   const [change, setChange] = useState({ count, direction: 0 });
+  const shouldAnimate = motionReady && !shouldReduceMotion;
+  const direction =
+    change.count === count
+      ? change.direction
+      : countDirection(change.count, count);
   const settledCount = useSettledCount(count);
 
-  if (change.count !== count) {
-    setChange({ count, direction: countDirection(change.count, count) });
-  }
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMotionReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (change.count === count) return;
+    const previousCount = change.count;
+    const frame = window.requestAnimationFrame(() => {
+      setChange({ count, direction: countDirection(previousCount, count) });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [change.count, count]);
 
   const label = animalCount(count, locale);
   const settledLabel = animalCount(settledCount, locale);
@@ -127,7 +165,7 @@ export function ResultCount({
       ? { opacity: 1, ...EMPTY_ICON_POSES[species] }
       : { opacity: 1, rotate: 0, scale: 1, x: 0, y: 0 };
   const iconAnimation =
-    change.direction > 0
+    direction > 0
       ? { y: [0, -3, 0], scale: [1, 1.08, 1], rotate: [0, -5, 0] }
       : { y: [0, 2, 0], scale: [1, 0.9, 1], rotate: [0, 4, 0] };
 
@@ -137,7 +175,7 @@ export function ResultCount({
         "relative isolate inline-flex shrink-0 overflow-hidden text-xs tabular-nums",
         variant === "standalone"
           ? cn(
-              "min-h-7 min-w-24 justify-center rounded-full border border-border/80 px-2.5 py-1 shadow-xs",
+              "min-h-7 min-w-24 justify-center rounded-ui border border-border/80 px-2.5 py-1 shadow-xs",
               count === 0
                 ? "bg-muted/30 text-muted-foreground"
                 : "bg-background",
@@ -154,9 +192,7 @@ export function ResultCount({
         {announce ? settledLabel : label}
       </span>
       <LazyMotion features={domAnimation}>
-        {variant === "standalone" &&
-          clearTrailKey > 0 &&
-          !shouldReduceMotion && (
+        {variant === "standalone" && clearTrailKey > 0 && (
             <span
               key={clearTrailKey}
               data-clear-trail
@@ -167,20 +203,29 @@ export function ResultCount({
                 <m.span
                   key={step}
                   className="absolute left-0 top-0 grid place-items-center"
-                  initial={{
-                    opacity: 0,
-                    rotate: step === 0 ? -18 : 14,
-                    scale: 0.55,
-                    x: step * 3,
-                    y: 2,
-                  }}
-                  animate={{
-                    opacity: [0, 0.72, 0],
-                    rotate: step === 0 ? [-18, -8, 2] : [14, 5, -3],
-                    scale: [0.55, 0.9, 0.72],
-                    x: [step * 3, step * 3 + 3, step * 3 + 7],
-                    y: [2, -1, -5],
-                  }}
+                  initial={
+                    shouldAnimate
+                      ? {
+                          opacity: 0,
+                          rotate: step === 0 ? -18 : 14,
+                          scale: 0.55,
+                          x: step * 3,
+                          y: 2,
+                        }
+                      : false
+                  }
+                  animate={
+                    shouldAnimate
+                      ? {
+                          opacity: [0, 0.72, 0],
+                          rotate:
+                            step === 0 ? [-18, -8, 2] : [14, 5, -3],
+                          scale: [0.55, 0.9, 0.72],
+                          x: [step * 3, step * 3 + 3, step * 3 + 7],
+                          y: [2, -1, -5],
+                        }
+                      : undefined
+                  }
                   transition={{
                     delay: step * 0.07,
                     duration: 0.46,
@@ -193,13 +238,13 @@ export function ResultCount({
             </span>
           )}
         {variant === "standalone" &&
-          !shouldReduceMotion &&
-          change.direction !== 0 &&
+          shouldAnimate &&
+          direction !== 0 &&
           count > 0 && (
             <m.span
               key={`pulse-${count}`}
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-[var(--filter-accent)]"
+              className="pointer-events-none absolute inset-0 -z-10 rounded-ui bg-[var(--filter-accent)]"
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0.5, 0] }}
               transition={{
@@ -223,12 +268,12 @@ export function ResultCount({
                   : "text-[var(--filter-accent-strong)]",
               )}
               initial={
-                shouldReduceMotion || change.direction === 0
+                !shouldAnimate || direction === 0
                   ? false
                   : { y: 0, scale: 1, rotate: 0 }
               }
               animate={
-                shouldReduceMotion || change.direction === 0
+                !shouldAnimate || direction === 0
                   ? undefined
                   : iconAnimation
               }
@@ -242,13 +287,13 @@ export function ResultCount({
                   key={species}
                   className="col-start-1 row-start-1 grid size-3.5 place-items-center"
                   initial={
-                    shouldReduceMotion
+                    !shouldAnimate
                       ? false
                       : { opacity: 0, scale: 0.72, rotate: -8 }
                   }
                   animate={speciesIconPose}
                   exit={
-                    shouldReduceMotion
+                    !shouldAnimate
                       ? undefined
                       : { opacity: 0, scale: 0.72, rotate: 8 }
                   }
@@ -263,15 +308,15 @@ export function ResultCount({
             <AnimatePresence
               initial={false}
               mode="popLayout"
-              custom={change.direction}
+              custom={direction}
             >
               <m.span
                 key={count}
-                custom={change.direction}
-                variants={shouldReduceMotion ? undefined : countVariants}
-                initial={shouldReduceMotion ? false : "enter"}
-                animate={shouldReduceMotion ? undefined : "center"}
-                exit={shouldReduceMotion ? undefined : "exit"}
+                custom={direction}
+                variants={shouldAnimate ? countVariants : undefined}
+                initial={shouldAnimate ? "enter" : false}
+                animate={shouldAnimate ? "center" : undefined}
+                exit={shouldAnimate ? "exit" : undefined}
                 transition={{
                   y: COUNT_Y_TRANSITION,
                   scale: COUNT_SCALE_TRANSITION,
@@ -286,11 +331,11 @@ export function ResultCount({
           <AnimatePresence initial={false} mode="popLayout">
             <m.span
               key={noun}
-              initial={shouldReduceMotion ? false : { opacity: 0, x: -2 }}
+              initial={shouldAnimate ? { opacity: 0, x: -2 } : false}
               animate={{ opacity: 1, x: 0 }}
-              exit={shouldReduceMotion ? undefined : { opacity: 0, x: 2 }}
+              exit={shouldAnimate ? { opacity: 0, x: 2 } : undefined}
               transition={{
-                duration: shouldReduceMotion ? 0 : LABEL_TRANSITION_DURATION,
+                duration: shouldAnimate ? LABEL_TRANSITION_DURATION : 0,
               }}
             >
               {noun}

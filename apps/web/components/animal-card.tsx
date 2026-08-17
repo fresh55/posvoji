@@ -21,7 +21,7 @@ import { translate } from "@/lib/i18n";
 import { animalMeta } from "@/lib/labels";
 
 const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
+  "animal-gallery-button absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
 
 type SwipeStart = { x: number; y: number };
 
@@ -80,7 +80,7 @@ function AnimalGallery({ animal }: { animal: Animal }) {
   }
 
   return (
-    <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg bg-muted">
+    <div className="relative aspect-[4/3] overflow-hidden rounded-ui-top bg-muted">
       <a
         href={animal.source.sourceUrl}
         target="_blank"
@@ -158,7 +158,7 @@ export function AnimalCard({ animal }: { animal: Animal }) {
   const { locale, messages } = useI18n();
 
   return (
-    <article className="group overflow-hidden rounded-lg border transition-colors hover:border-foreground/25 focus-within:border-foreground/25">
+    <article className="group overflow-hidden rounded-ui border transition-colors hover:border-foreground/25 focus-within:border-foreground/25">
       <AnimalGallery animal={animal} />
       <a
         href={animal.source.sourceUrl}
@@ -183,7 +183,7 @@ export function AnimalCard({ animal }: { animal: Animal }) {
 
 export function AnimalCardSkeleton() {
   return (
-    <div className="rounded-lg border">
+    <div className="rounded-ui border">
       <Skeleton className="aspect-[4/3] rounded-b-none" />
       <div className="space-y-2 p-3">
         <Skeleton className="h-4 w-20" />

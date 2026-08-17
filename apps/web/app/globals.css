@@ -85,6 +85,9 @@
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  /* One application radius for interactive controls and content surfaces.
+     Pills, badges, and truly circular controls remain intentionally round. */
+  --radius-ui: var(--radius);
   --filter-accent: oklch(0.92 0.045 151);
   --filter-accent-foreground: oklch(0.32 0.075 151);
   --filter-accent-border: oklch(0.68 0.075 151);
@@ -204,6 +207,15 @@
   }
 }
 
+@utility rounded-ui {
+  border-radius: var(--radius-ui);
+}
+
+@utility rounded-ui-top {
+  border-top-left-radius: var(--radius-ui);
+  border-top-right-radius: var(--radius-ui);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -213,5 +225,22 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Touch users swipe the full photo, so repeated gallery arrows stay visually
+   quiet while remaining available to assistive technology. If a touch-only
+   device has a hardware keyboard, focusing a button reveals it again. */
+@media (hover: none) and (pointer: coarse) {
+  .animal-gallery-button:not(:focus-visible) {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
   }
 }

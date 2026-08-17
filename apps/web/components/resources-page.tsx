@@ -294,7 +294,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                 {text.intro}
               </p>
             </div>
-            <p className="max-w-3xl rounded-lg border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="max-w-3xl rounded-ui border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
               {text.notice}
             </p>
           </div>
@@ -308,7 +308,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                 {section.resources.map((resource) => (
                   <article
                     key={`${section.id}-${resource.title}`}
-                    className="flex flex-col rounded-xl border bg-card p-5 shadow-xs"
+                    className="flex flex-col rounded-ui border bg-card p-5 shadow-xs"
                   >
                     <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span className="rounded-full border bg-muted/50 px-2.5 py-1">

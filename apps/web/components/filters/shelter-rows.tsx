@@ -52,7 +52,7 @@ export function ShelterRows({
             disabled={count === 0 && !checked}
             aria-pressed={checked}
             className={cn(
-              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors disabled:opacity-40",
+              "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors disabled:opacity-40",
               checked ? "bg-muted" : "hover:bg-muted/50",
             )}
           >

@@ -55,7 +55,7 @@ export function FilterChips({
         type="button"
         onClick={onClearAll}
         aria-label={messages.clearFilters}
-        className="h-7 shrink-0 rounded-md pr-0 pl-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="h-7 shrink-0 rounded-ui pr-0 pl-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         {messages.clear}
       </button>

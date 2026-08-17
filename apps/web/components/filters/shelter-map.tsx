@@ -438,7 +438,7 @@ function MarkerTooltip({ town }: { town: Town }) {
         onRight ? "slide-in-from-left-0.5" : "slide-in-from-right-0.5",
       )}
     >
-      <div className="flex h-full flex-col justify-center rounded-md border border-border bg-popover px-[4px] py-[2px] text-popover-foreground shadow-sm">
+      <div className="flex h-full flex-col justify-center rounded-ui border border-border bg-popover px-[4px] py-[2px] text-popover-foreground shadow-sm">
         <span className="w-full break-words text-[5.5px] font-medium leading-[1.15]">
           {title}
         </span>

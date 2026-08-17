@@ -37,7 +37,7 @@ export function LanguageSwitcher({
   return (
     <nav
       aria-label={messages.chooseLanguage}
-      className="flex items-center gap-0.5 rounded-md border p-0.5"
+      className="flex items-center gap-0.5 rounded-ui border p-0.5"
     >
       {LANGUAGES.map((language) => (
         <Button
@@ -45,7 +45,7 @@ export function LanguageSwitcher({
           asChild
           size="xs"
           variant={locale === language.locale ? "default" : "ghost"}
-          className="rounded-sm px-2 font-normal"
+          className="rounded-ui px-2 font-normal"
         >
           <a
             href={paths?.[language.locale] ?? language.href}

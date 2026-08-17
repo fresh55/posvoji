@@ -7,16 +7,16 @@ import {
   FilterGroupList,
   type CardGroup,
 } from "@/components/filters/filter-groups";
-import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import type {
   FilterOption,
@@ -53,29 +53,37 @@ export function FilterSheet({
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
 } & FilterActionContract) {
-  const { locale, messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 rounded-full">
+    <Drawer>
+      <DrawerTrigger asChild>
+        <Button
+          size="sm"
+          aria-label={
+            activeSectionCount > 0
+              ? t("filtersWithCount", { count: activeSectionCount })
+              : messages.filters
+          }
+          className="h-11 gap-1.5 rounded-ui px-3"
+        >
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
           {activeSectionCount > 0 && (
             <Badge
               variant="secondary"
-              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums"
+              aria-hidden="true"
+              className="hidden h-5 min-w-5 rounded-full px-1 text-xs tabular-nums min-[360px]:inline-flex"
             >
               {activeSectionCount}
             </Badge>
           )}
         </Button>
-      </SheetTrigger>
-      <SheetContent
-        side="bottom"
+      </DrawerTrigger>
+      <DrawerContent
         closeLabel={messages.close}
-        className="max-h-[85dvh] gap-0 overflow-y-auto rounded-t-2xl px-5 pt-4"
+        className="max-h-[85dvh] gap-0 overflow-y-auto px-5 pt-1"
       >
-        <SheetTitle className="text-base">{messages.filters}</SheetTitle>
+        <DrawerTitle className="mt-3 text-base">{messages.filters}</DrawerTitle>
 
         <div className="mt-4 space-y-6">
           <SpeciesTabs
@@ -103,7 +111,7 @@ export function FilterSheet({
           <Button variant="ghost" onClick={onClearAll}>
             {messages.clear}
           </Button>
-          <SheetClose asChild>
+          <DrawerClose asChild>
             <Button className="flex-1">
               {messages.show}
               <ResultCount
@@ -115,9 +123,9 @@ export function FilterSheet({
                 className="justify-start text-current"
               />
             </Button>
-          </SheetClose>
+          </DrawerClose>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }

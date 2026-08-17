@@ -227,20 +227,3 @@
     @apply font-sans;
   }
 }
-
-/* Touch users swipe the full photo, so repeated gallery arrows stay visually
-   quiet while remaining available to assistive technology. If a touch-only
-   device has a hardware keyboard, focusing a button reveals it again. */
-@media (hover: none) and (pointer: coarse) {
-  .animal-gallery-button:not(:focus-visible) {
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border-width: 0;
-  }
-}

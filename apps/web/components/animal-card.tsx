@@ -21,7 +21,7 @@ import { translate } from "@/lib/i18n";
 import { animalMeta } from "@/lib/labels";
 
 const GALLERY_BUTTON_CLASS =
-  "animal-gallery-button absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
 
 type SwipeStart = { x: number; y: number };
 

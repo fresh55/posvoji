@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import { MotionConfig } from "motion/react";
 import {
   getMessages,
   translate,
@@ -31,7 +32,11 @@ export function I18nProvider({
     messages: getMessages(locale),
     t: (key, values) => translate(locale, key, values),
   };
-  return <I18nContext value={value}>{children}</I18nContext>;
+  return (
+    <I18nContext value={value}>
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </I18nContext>
+  );
 }
 
 export function useI18n(): I18n {

@@ -34,6 +34,7 @@ export function AnimalFilters({
   chips,
   activeCount,
   resultCount,
+  clearTrailKey,
   sort,
   onSpeciesChange,
   onToggle,
@@ -55,6 +56,7 @@ export function AnimalFilters({
   chips: Chip[];
   activeCount: number;
   resultCount: number;
+  clearTrailKey: number;
   sort: AnimalSort;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onToggle: (group: MultiGroup, value: string) => void;
@@ -86,7 +88,9 @@ export function AnimalFilters({
           {!isEmpty && (
             <ResultCount
               count={resultCount}
+              species={filters.species}
               locale={locale}
+              clearTrailKey={clearTrailKey}
               className="hidden min-w-24 text-muted-foreground lg:inline-flex"
             />
           )}
@@ -139,7 +143,9 @@ export function AnimalFilters({
           <div className="flex shrink-0 items-center gap-2 lg:hidden">
             <ResultCount
               count={resultCount}
+              species={filters.species}
               locale={locale}
+              clearTrailKey={clearTrailKey}
               className="min-w-fit text-muted-foreground sm:min-w-24"
             />
             <SortPicker value={sort} onChange={onSortChange} />

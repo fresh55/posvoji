@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { Animal, Species, TestResult } from "@posvoji/schema";
 import {
   activeFilterCount,
+  activeFilterSectionCount,
+  applyFilters,
   bySpecies,
   EMPTY_FILTERS,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  toggleCounts,
   toggleValues,
   visibleGroups,
   visibleToggles,
@@ -98,13 +101,13 @@ describe("visibleToggles", () => {
 });
 
 describe("pruneHiddenFilters", () => {
-  it("normalizes selecting every age back to the all-ages default", () => {
+  it("keeps every selected age visible instead of silently clearing it", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
       age: ["mladicek", "odrasel", "senior"],
     });
 
-    expect(pruned.age).toEqual([]);
+    expect(pruned.age).toEqual(["mladicek", "odrasel", "senior"]);
   });
 
   it("keeps a meaningful two-age selection", () => {
@@ -147,12 +150,14 @@ describe("pruneHiddenFilters", () => {
 });
 
 describe("URL codec", () => {
-  it("treats an explicit all-age URL as the default state", () => {
+  it("round-trips an explicit all-age selection", () => {
     const filters = parseFilters("starost=mladicek,odrasel,senior");
 
-    expect(filters.age).toEqual([]);
-    expect(activeFilterCount(filters)).toBe(0);
-    expect(serializeFilters(filters)).toBe("");
+    expect(filters.age).toEqual(["mladicek", "odrasel", "senior"]);
+    expect(activeFilterCount(filters)).toBe(3);
+    expect(serializeFilters(filters)).toBe(
+      "starost=mladicek,odrasel,senior",
+    );
   });
 
   it("round-trips the cat-only toggles", () => {
@@ -182,6 +187,94 @@ describe("URL codec", () => {
     expect(filters.size).toEqual([]);
     expect(activeFilterCount(filters)).toBe(1);
     expect(serializeFilters(filters)).toBe("vrsta=macka&spol=samica");
+  });
+});
+
+describe("active filter section count", () => {
+  it("counts each selected axis once, including health as one section", () => {
+    expect(
+      activeFilterSectionCount({
+        ...EMPTY_FILTERS,
+        species: "cat",
+        sex: ["male", "female"],
+        age: ["mladicek", "odrasel", "senior"],
+        shelter: ["s1", "s2"],
+        toggles: ["cepljenje", "sterilizacija"],
+      }),
+    ).toBe(4);
+  });
+
+  it("does not count the species tab or empty sections", () => {
+    expect(activeFilterSectionCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(
+      0,
+    );
+  });
+});
+
+describe("multi-select behavior", () => {
+  it("uses OR for choices within sex", () => {
+    const male = animal("dog", { sex: "male" });
+    const female = animal("dog", { sex: "female" });
+    const unknown = animal("dog", { sex: "unknown" });
+
+    expect(
+      applyFilters(
+        [male, female, unknown],
+        { ...EMPTY_FILTERS, sex: ["male", "female"] },
+        NOW,
+      ),
+    ).toEqual([male, female]);
+  });
+
+  it("uses OR for choices within age and keeps all three selected", () => {
+    const young = animal("dog", { approximateAgeMonths: 6 });
+    const adult = animal("dog", { approximateAgeMonths: 36 });
+    const senior = animal("dog", { approximateAgeMonths: 120 });
+    const unknown = animal("dog");
+
+    expect(
+      applyFilters(
+        [young, adult, senior, unknown],
+        {
+          ...EMPTY_FILTERS,
+          age: ["mladicek", "odrasel", "senior"],
+        },
+        NOW,
+      ),
+    ).toEqual([young, adult, senior]);
+  });
+
+  it("uses OR for choices within health", () => {
+    const vaccinated = animal("dog", { medical: { vaccinated: true } });
+    const neutered = animal("dog", { medical: { neutered: true } });
+    const both = animal("dog", {
+      medical: { vaccinated: true, neutered: true },
+    });
+    const neither = animal("dog");
+
+    expect(
+      applyFilters(
+        [vaccinated, neutered, both, neither],
+        {
+          ...EMPTY_FILTERS,
+          toggles: ["cepljenje", "sterilizacija"],
+        },
+        NOW,
+      ),
+    ).toEqual([vaccinated, neutered, both]);
+  });
+
+  it("counts each health choice independently of selected health choices", () => {
+    const vaccinated = animal("dog", { medical: { vaccinated: true } });
+    const neutered = animal("dog", { medical: { neutered: true } });
+    const counts = toggleCounts(
+      [vaccinated, neutered],
+      { ...EMPTY_FILTERS, toggles: ["cepljenje"] },
+      NOW,
+    );
+
+    expect(counts.get("cepljenje")).toBe(1);
+    expect(counts.get("sterilizacija")).toBe(1);
   });
 });
 

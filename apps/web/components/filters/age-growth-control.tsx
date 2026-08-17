@@ -10,8 +10,8 @@ import {
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
+import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import { useI18n } from "@/components/i18n-provider";
-import { Button } from "@/components/ui/button";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -95,44 +95,19 @@ export function AgeGrowthControl({
   return (
     <LazyMotion features={domAnimation}>
       <section>
-      <div className="mb-2 flex min-h-5 items-center justify-between gap-3">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {groupLabel("age", locale)}
-        </h3>
-        <m.span
-          aria-hidden={selected.length === 0}
-          initial={false}
-          animate={{ opacity: selected.length > 0 ? 1 : 0 }}
-          transition={
-            shouldReduceMotion
-              ? { duration: 0 }
-              : { duration: 0.12, ease: STANDARD_EASE }
-          }
-          className={cn(
-            "shrink-0",
-            selected.length === 0 && "pointer-events-none",
-          )}
-        >
-          <Button
-            type="button"
-            variant="link"
-            size="xs"
-            tabIndex={selected.length > 0 ? undefined : -1}
-            onClick={() => {
-              setCelebratingAge(null);
-              onToggleMany(selected);
-            }}
-            aria-label={messages.resetAgeFilters}
-            className="h-auto p-0 text-[11px] font-normal text-muted-foreground hover:text-foreground"
-          >
-            {messages.resetAges}
-          </Button>
-        </m.span>
-      </div>
+        <FilterSectionHeader
+          label={groupLabel("age", locale)}
+          active={selected.length > 0}
+          onReset={() => {
+            setCelebratingAge(null);
+            onToggleMany(selected);
+          }}
+          resetAriaLabel={messages.resetAgeFilters}
+        />
 
-      <p id={hintId} className="sr-only">
-        {messages.ageFilterHint}
-      </p>
+        <p id={hintId} className="sr-only">
+          {messages.ageFilterHint}
+        </p>
 
         <div
           aria-hidden="true"

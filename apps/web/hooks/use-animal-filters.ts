@@ -86,6 +86,17 @@ export function useAnimalFilters() {
     [filters],
   );
 
+  const toggleManyProperties = useCallback(
+    (values: ToggleKey[]) => {
+      if (values.length === 0) return;
+      writeFilters({
+        ...filters,
+        toggles: toggleValues(filters.toggles, values) as ToggleKey[],
+      });
+    },
+    [filters],
+  );
+
   const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
 
   return {
@@ -94,6 +105,7 @@ export function useAnimalFilters() {
     toggle,
     toggleMany,
     toggleProperty,
+    toggleManyProperties,
     clearAll,
     activeCount: activeFilterCount(filters),
   };

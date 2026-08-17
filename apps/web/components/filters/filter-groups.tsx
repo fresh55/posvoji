@@ -12,6 +12,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
+import type { FilterActionContract } from "@/components/filters/filter-contract";
+import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import {
   FilterSelectionMark,
   filterCardVariants,
@@ -67,9 +69,6 @@ type GroupProps = {
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
 type OptionCardGroup = Exclude<CardGroup, "age" | "sex">;
-
-const FILTER_HEADING_CLASS =
-  "mb-2 flex min-h-5 items-center text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
 const CARD_COLS: Record<OptionCardGroup, string> = {
   size: "grid-cols-3",
@@ -326,7 +325,7 @@ function HealthToggleCards({
 }
 
 function FilterGroup({ group, ...rest }: GroupProps) {
-  const { locale } = useI18n();
+  const { locale, messages } = useI18n();
 
   if (group === "age") {
     return (
@@ -344,9 +343,12 @@ function FilterGroup({ group, ...rest }: GroupProps) {
   if (group === "sex") {
     return (
       <section>
-        <h3 className={FILTER_HEADING_CLASS}>
-          {groupLabel(group, locale)}
-        </h3>
+        <FilterSectionHeader
+          label={groupLabel(group, locale)}
+          active={rest.selected.length > 0}
+          onReset={() => rest.onToggleMany(rest.selected)}
+          resetAriaLabel={messages.resetSexFilters}
+        />
         <SexCards
           options={rest.options}
           counts={rest.counts}
@@ -359,9 +361,12 @@ function FilterGroup({ group, ...rest }: GroupProps) {
 
   return (
     <section>
-      <h3 className={FILTER_HEADING_CLASS}>
-        {groupLabel(group, locale)}
-      </h3>
+      <FilterSectionHeader
+        label={groupLabel(group, locale)}
+        active={rest.selected.length > 0}
+        onReset={() => rest.onToggleMany(rest.selected)}
+        resetAriaLabel={messages.resetSizeFilters}
+      />
       <OptionCards
         group={group}
         options={rest.options}
@@ -384,6 +389,7 @@ export function FilterGroupList({
   onToggle,
   onToggleMany,
   onToggleProperty,
+  onToggleManyProperties,
   ageLayout = "sidebar",
 }: {
   filters: Filters;
@@ -391,11 +397,8 @@ export function FilterGroupList({
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
-  onToggle: (group: MultiGroup, value: string) => void;
-  onToggleMany: (group: MultiGroup, values: string[]) => void;
-  onToggleProperty: (key: ToggleKey) => void;
   ageLayout?: "sidebar" | "sheet";
-}) {
+} & FilterActionContract) {
   const { messages } = useI18n();
   return (
     <>
@@ -414,9 +417,15 @@ export function FilterGroupList({
 
       {toggles.length > 0 && (
         <section>
-          <h3 className={FILTER_HEADING_CLASS}>
-            {messages.health}
-          </h3>
+          <FilterSectionHeader
+            label={messages.health}
+            active={filters.toggles.length > 0}
+            onReset={() => onToggleManyProperties(filters.toggles)}
+            resetAriaLabel={messages.resetHealthFilters}
+          />
+          <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+            {messages.healthFilterHint}
+          </p>
           <HealthToggleCards
             toggles={toggles}
             counts={toggleTally}

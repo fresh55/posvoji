@@ -13,39 +13,34 @@ import {
   type SpeciesFilter,
   type ToggleKey,
 } from "@/lib/filters";
+import {
+  commitSearch,
+  getSearchSnapshot,
+  getServerSearchSnapshot,
+  subscribeToSearch,
+} from "@/lib/location-search";
 
-// The URL is the single source of truth, so filtered views are shareable and
-// survive reloads. No useSearchParams: with static export the prerendered HTML
-// has no params, and useSyncExternalStore swaps in the client snapshot after
-// hydration without a mismatch. replaceState keeps history clean; since it
-// fires no event, writes notify subscribers by hand.
-const listeners = new Set<() => void>();
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  window.addEventListener("popstate", listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("popstate", listener);
-  };
-}
-
-function getSnapshot(): string {
-  return window.location.search;
-}
-
-function getServerSnapshot(): string {
-  return "";
-}
-
+// zival (the open animal dialog) belongs to a different feature and is not
+// part of Filters, so it would be silently dropped if we only serialized
+// filters. Carry it over from the current URL whenever we write a new one.
 function writeFilters(next: Filters): void {
   const query = serializeFilters(pruneHiddenFilters(next));
-  history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-  for (const listener of listeners) listener();
+  const zival = new URLSearchParams(window.location.search).get("zival");
+  if (!zival) {
+    commitSearch(query, "replace");
+    return;
+  }
+  const params = new URLSearchParams(query);
+  params.set("zival", zival);
+  commitSearch(params.toString(), "replace");
 }
 
 export function useAnimalFilters() {
-  const search = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const search = useSyncExternalStore(
+    subscribeToSearch,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
   const filters = useMemo(() => parseFilters(search), [search]);
 
   const setSpecies = useCallback(

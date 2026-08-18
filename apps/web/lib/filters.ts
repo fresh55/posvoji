@@ -118,6 +118,9 @@ function matchesToggles(animal: Animal, selected: ToggleKey[]): boolean {
 const PUPPY_MAX_EXCLUSIVE = 12;
 const ADULT_MAX_EXCLUSIVE = 96;
 
+// A date-only ISO string parses as UTC midnight, so both sides of the
+// subtraction have to be read in UTC. Reading one of them locally shifted the
+// month by one west of Greenwich, which moved animals between age buckets.
 export function ageInMonths(animal: Animal, now: Date): number | undefined {
   if (animal.approximateAgeMonths !== undefined) {
     return animal.approximateAgeMonths;
@@ -125,8 +128,8 @@ export function ageInMonths(animal: Animal, now: Date): number | undefined {
   if (animal.birthDate) {
     const birth = new Date(animal.birthDate);
     const months =
-      (now.getFullYear() - birth.getFullYear()) * 12 +
-      (now.getMonth() - birth.getMonth());
+      (now.getUTCFullYear() - birth.getUTCFullYear()) * 12 +
+      (now.getUTCMonth() - birth.getUTCMonth());
     return Math.max(0, months);
   }
   return undefined;

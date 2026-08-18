@@ -1,6 +1,7 @@
-import type { Animal, Sex, Species } from "@posvoji/schema";
-import type { Locale } from "@/lib/i18n";
-import { ageInMonths } from "@/lib/filters";
+import type { Animal, AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
+import type { Locale, TranslationKey } from "@/lib/i18n";
+import { translate } from "@/lib/i18n";
+import { ageInMonths, FILTER_METADATA } from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
   sl: {
@@ -41,7 +42,7 @@ function plural(
   return `${n} ${pick(n, forms)}`;
 }
 
-function formatAge(months: number, locale: Locale): string {
+export function formatAge(months: number, locale: Locale): string {
   if (locale === "en") {
     if (months < 12) return `${months} ${months === 1 ? "month" : "months"}`;
     const years = Math.floor(months / 12);
@@ -97,6 +98,12 @@ export function sheltersMissingFromMap(n: number, locale: Locale): string {
   return `${shelterCount(n, locale)} ${verb} na zemljevidu.`;
 }
 
+// An age of zero months is a number nobody says out loud.
+export function ageLabel(months: number, locale: Locale): string {
+  if (months === 0) return translate(locale, "lessThanMonth");
+  return formatAge(months, locale);
+}
+
 // "Mačka · samica · 2 leti", skipping whatever we don't know.
 export function animalMeta(
   animal: Animal,
@@ -107,8 +114,64 @@ export function animalMeta(
   return [
     SPECIES[locale][animal.species],
     animal.sex ? SEX[locale][animal.sex] : "",
-    months !== undefined ? formatAge(months, locale) : "",
+    months !== undefined ? ageLabel(months, locale) : "",
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+// Whole months since intake, same arithmetic as ageInMonths in filters.ts but
+// for a raw ISO date string rather than an Animal. Both sides are read in UTC,
+// because a date-only string parses as UTC midnight and reading it locally
+// moves it into the previous month west of Greenwich. A negative span (future
+// date) or an unparsable one means we can't say, not "0".
+export function timeInShelter(
+  intakeDate: string,
+  locale: Locale,
+  now: Date,
+): string | undefined {
+  const intake = new Date(intakeDate);
+  if (Number.isNaN(intake.getTime())) return undefined;
+  const months =
+    (now.getUTCFullYear() - intake.getUTCFullYear()) * 12 +
+    (now.getUTCMonth() - intake.getUTCMonth());
+  if (months < 0) return undefined;
+  return ageLabel(months, locale);
+}
+
+const STATUS_KEYS: Record<
+  Exclude<AdoptionStatus, "unknown">,
+  TranslationKey
+> = {
+  available: "statusAvailable",
+  reserved: "statusReserved",
+  adopted: "statusAdopted",
+  hold: "statusHold",
+};
+
+export function statusLabel(
+  status: AdoptionStatus,
+  locale: Locale,
+): string | undefined {
+  if (status === "unknown") return undefined;
+  return translate(locale, STATUS_KEYS[status]);
+}
+
+export function sexLabel(
+  sex: Exclude<Sex, "unknown">,
+  locale: Locale,
+): string {
+  return (
+    FILTER_METADATA.sex.find((option) => option.value === sex)?.labels[
+      locale
+    ] ?? sex
+  );
+}
+
+export function sizeLabel(size: AnimalSize, locale: Locale): string {
+  return (
+    FILTER_METADATA.size.find((option) => option.value === size)?.labels[
+      locale
+    ] ?? size
+  );
 }

@@ -22,6 +22,8 @@ const PUBLIC_PREFIX = "/media/animals";
 // Cards render at ~400 CSS pixels; 800 covers 2x displays. Larger originals
 // stay at the shelter behind the source link.
 const MAX_WIDTH = 800;
+// The dialog's thumb strip renders at 56 CSS pixels; 112 covers 2x displays.
+const THUMB_WIDTH = 112;
 const WEBP_QUALITY = 80;
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 
@@ -54,6 +56,13 @@ export interface BytesClient {
 
 export function publicUrlFor(file: string): string {
   return `${PUBLIC_PREFIX}/${file}`;
+}
+
+// Every cached file gets a small sibling under this name. The web app derives
+// the thumb URL from cachedUrl by the same pattern, so the Animal schema does
+// not need a field for it.
+export function thumbFileFor(file: string): string {
+  return file.replace(/\.webp$/, ".thumb.webp");
 }
 
 // Only providers whose policy grants caching, and within them only images
@@ -233,11 +242,32 @@ export async function cacheImages(
     fetched++;
   }
 
+  // Thumbs are cut from our own processed copy, so entries reused from an
+  // older manifest gain one without another request to the shelter. Only
+  // cache-permitted images ever reach next.entries, so the rights check is
+  // already behind us.
+  for (const entry of Object.values(next.entries)) {
+    const thumbPath = join(mediaDir, thumbFileFor(entry.file));
+    if (existsSync(thumbPath)) continue;
+    try {
+      const thumb = await sharp(readFileSync(join(mediaDir, entry.file)))
+        .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer();
+      writeFileSync(thumbPath, thumb);
+    } catch (error) {
+      console.warn(`image ${entry.file}: thumbnail failed (${error})`);
+    }
+  }
+
   // Content addressing can share one file between URLs, so deletion goes by
   // "no longer referenced", not by "my URL was dropped". Sweeping the whole
   // directory also clears orphans left by a lost manifest.
   const referenced = new Set(
-    Object.values(next.entries).map((entry) => entry.file),
+    Object.values(next.entries).flatMap((entry) => [
+      entry.file,
+      thumbFileFor(entry.file),
+    ]),
   );
   let deleted = 0;
   for (const file of readdirSync(mediaDir)) {

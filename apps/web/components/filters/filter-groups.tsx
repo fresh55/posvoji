@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  PawPrint,
-  ScanLine,
-  Scissors,
-  ShieldCheck,
-  Syringe,
-  TestTubeDiagonal,
-  type LucideIcon,
-} from "lucide-react";
+import { PawPrint, type LucideIcon } from "lucide-react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
@@ -28,6 +20,7 @@ import {
   type ToggleKey,
 } from "@/lib/filters";
 import { useI18n } from "@/components/i18n-provider";
+import { HEALTH_ICONS } from "@/lib/animal-icons";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -35,14 +28,6 @@ const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "size:small": { icon: PawPrint, className: "size-3" },
   "size:medium": { icon: PawPrint, className: "size-4" },
   "size:large": { icon: PawPrint, className: "size-5" },
-};
-
-const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
-  sterilizacija: Scissors,
-  cepljenje: Syringe,
-  cip: ScanLine,
-  "brez-fiv": ShieldCheck,
-  "brez-felv": TestTubeDiagonal,
 };
 
 type IconGesture = {

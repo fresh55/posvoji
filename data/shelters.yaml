@@ -56,7 +56,10 @@ shelters:
     website: https://www.zavetisce-horjul.net/
     email: info@zavetisce-horjul.net
     phone: "051 304 435"
-    notes: Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
+    notes: >-
+      Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
+      Dovoljenje potrjeno 2026-08-18; provider je vklopljen za strukturirana
+      dejstva in oddaljeni prikaz fotografij.
 
   - id: turk
     name: Zavetišče Turk

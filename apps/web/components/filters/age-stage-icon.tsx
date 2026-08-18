@@ -58,6 +58,19 @@ export function agePathTransition({
       };
 }
 
+// The stage with the most paths finishes last, so a caller that has to outlive
+// the drawing reads the length from the paths instead of guessing at it.
+export function ageDrawSeconds(stage: AgeStage, reduceMotion: boolean): number {
+  return PATHS[stage].reduce((longest, path) => {
+    const transition = agePathTransition({
+      draw: true,
+      reduceMotion,
+      delay: path.delay,
+    });
+    return Math.max(longest, transition.duration + transition.delay);
+  }, 0);
+}
+
 export function AgeStageIcon({
   stage,
   className,

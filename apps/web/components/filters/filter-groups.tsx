@@ -1,16 +1,16 @@
 "use client";
 
 import {
-  Mars,
   PawPrint,
   ScanLine,
   Scissors,
   ShieldCheck,
   Syringe,
   TestTubeDiagonal,
-  Venus,
   type LucideIcon,
 } from "lucide-react";
+import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { useEffect, useState } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { FilterSectionHeader } from "@/components/filters/filter-section-header";
@@ -18,10 +18,7 @@ import {
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { SexCards } from "@/components/filters/sex-cards";
 import {
   groupLabel,
   type FilterOption,
@@ -40,11 +37,6 @@ const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
   "size:large": { icon: PawPrint, className: "size-5" },
 };
 
-const SEX_ICONS: Record<string, LucideIcon> = {
-  male: Mars,
-  female: Venus,
-};
-
 const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
   sterilizacija: Scissors,
   cepljenje: Syringe,
@@ -52,6 +44,39 @@ const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
   "brez-fiv": ShieldCheck,
   "brez-felv": TestTubeDiagonal,
 };
+
+type IconGesture = {
+  rotate: number | number[];
+  scale: number | number[];
+  x: number | number[];
+  y: number | number[];
+};
+
+const GESTURE_REST: IconGesture = { rotate: 0, scale: 1, x: 0, y: 0 };
+
+// Each icon acts out the thing it stands for, once, as it is switched on.
+const HEALTH_GESTURES: Record<ToggleKey, IconGesture> = {
+  sterilizacija: { rotate: [0, -8, 5, 0], scale: 1, x: 0, y: 0 },
+  // The lucide syringe carries its needle at the bottom left and its plunger at
+  // the top right, so the press runs down that diagonal.
+  cepljenje: { rotate: 0, scale: 1, x: [0, -1.2, 0], y: [0, 1.2, 0] },
+  cip: { rotate: 0, scale: [1, 1.12, 1], x: 0, y: 0 },
+  "brez-fiv": { rotate: 0, scale: [1, 1.1, 1], x: 0, y: 0 },
+  "brez-felv": { rotate: [0, -6, 4, 0], scale: 1, x: 0, y: 0 },
+};
+
+const HOVER_SPRING = {
+  type: "spring",
+  stiffness: 420,
+  damping: 26,
+  mass: 0.5,
+} as const;
+
+const GESTURE_DURATION = 0.35;
+const GESTURE_MS = 500;
+const RIPPLE_DURATION = 0.35;
+const RESET_STAGGER = 0.045;
+const RESET_CLEAR_MS = 280;
 
 function optionIcon(group: MultiGroup, value: string) {
   return ICONS[`${group}:${value}`];
@@ -90,18 +115,43 @@ function OptionCards({
   group: OptionCardGroup;
 }) {
   const { locale } = useI18n();
+  const shouldReduceMotion = useReducedMotion();
+  const [hoveredValue, setHoveredValue] = useState<string | null>(null);
+
   return (
-    <div className={cn("grid gap-1.5", CARD_COLS[group])}>
+    <LazyMotion features={domAnimation}>
+      <div className={cn("grid gap-1.5", CARD_COLS[group])}>
         {options.map(({ value, label }) => {
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
           const iconDef = optionIcon(group, value);
+          const hovered = hoveredValue === value;
           return (
             <button
               key={value}
               type="button"
               onClick={() => onToggle(value)}
               disabled={isDead(count, checked)}
+              // A tap leaves focus on the button, so the lift is limited to a
+              // real mouse and to keyboard focus.
+              onPointerEnter={(event) => {
+                if (event.pointerType !== "mouse") return;
+                setHoveredValue(value);
+              }}
+              onPointerLeave={() =>
+                setHoveredValue((current) =>
+                  current === value ? null : current,
+                )
+              }
+              onFocus={(event) => {
+                if (!event.currentTarget.matches(":focus-visible")) return;
+                setHoveredValue(value);
+              }}
+              onBlur={() =>
+                setHoveredValue((current) =>
+                  current === value ? null : current,
+                )
+              }
               aria-pressed={checked}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
@@ -115,12 +165,21 @@ function OptionCards({
                 className="absolute right-1.5 top-1.5"
               />
               <span aria-hidden className="flex h-5 items-end">
-                {iconDef && (
-                  <iconDef.icon
-                    className={iconDef.className}
-                    strokeWidth={1.75}
-                  />
-                )}
+                <m.span
+                  className="flex items-end will-change-transform"
+                  initial={false}
+                  animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
+                  transition={
+                    shouldReduceMotion ? { duration: 0 } : HOVER_SPRING
+                  }
+                >
+                  {iconDef && (
+                    <iconDef.icon
+                      className={iconDef.className}
+                      strokeWidth={1.75}
+                    />
+                  )}
+                </m.span>
               </span>
               <span className={cn("text-xs", checked && "font-medium")}>
                 {label}
@@ -131,80 +190,8 @@ function OptionCards({
             </button>
           );
         })}
-    </div>
-  );
-}
-
-function changedValue(selected: string[], nextSelected: string[]) {
-  return (
-    nextSelected.find((value) => !selected.includes(value)) ??
-    selected.find((value) => !nextSelected.includes(value))
-  );
-}
-
-function SexCards({
-  options,
-  counts,
-  selected,
-  onToggle,
-}: Omit<GroupProps, "group" | "ageLayout" | "onToggleMany">) {
-  const { locale } = useI18n();
-  return (
-    <ToggleGroup
-        type="multiple"
-        value={selected}
-        onValueChange={(nextSelected) => {
-          const changed = changedValue(selected, nextSelected);
-          if (changed) onToggle(changed);
-        }}
-        aria-label={groupLabel("sex", locale)}
-        spacing={1.5}
-        className="grid w-full grid-cols-2 items-stretch"
-      >
-        {options.map(({ value, label }) => {
-          const count = counts.get(value) ?? 0;
-          const checked = selected.includes(value);
-          const Icon = SEX_ICONS[value];
-          if (!Icon) return null;
-
-          return (
-            <ToggleGroupItem
-              key={value}
-              value={value}
-              disabled={isDead(count, checked)}
-              aria-label={`${label}, ${animalCount(count, locale)}`}
-              className={filterCardVariants({
-                selected: checked,
-                className:
-                  "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
-              })}
-            >
-              <FilterSelectionMark
-                checked={checked}
-                className="absolute right-2 top-2"
-              />
-
-              <span aria-hidden className="flex items-center justify-center">
-                <Icon
-                  className={cn(
-                    "size-6 transition-colors",
-                    checked
-                      ? "text-[var(--filter-accent-strong)]"
-                      : "text-muted-foreground",
-                  )}
-                  strokeWidth={1.65}
-                />
-              </span>
-              <span className={cn("text-xs", checked && "font-medium")}>
-                {label}
-              </span>
-              <span className="text-[11px] tabular-nums text-muted-foreground">
-                {count}
-              </span>
-            </ToggleGroupItem>
-          );
-        })}
-    </ToggleGroup>
+      </div>
+    </LazyMotion>
   );
 }
 
@@ -213,114 +200,235 @@ function HealthToggleCards({
   counts,
   selected,
   onToggle,
+  onToggleMany,
   layout = "sidebar",
 }: {
   toggles: ToggleDef[];
   counts: Map<string, number>;
   selected: ToggleKey[];
   onToggle: (key: ToggleKey) => void;
+  onToggleMany: (values: ToggleKey[]) => void;
   layout?: "sidebar" | "sheet";
 }) {
-  const { locale } = useI18n();
+  const { locale, messages } = useI18n();
+  const shouldReduceMotion = useReducedMotion();
+  const [celebration, setCelebration] = useState<{
+    key: ToggleKey;
+    id: number;
+  } | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!celebration) return;
+    const timer = window.setTimeout(() => setCelebration(null), GESTURE_MS);
+    return () => window.clearTimeout(timer);
+  }, [celebration]);
+
+  useEffect(() => {
+    if (!isResetting || selected.length > 0) return;
+    const timer = window.setTimeout(
+      () => setIsResetting(false),
+      RESET_CLEAR_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isResetting, selected.length]);
+
   return (
-    <div
-        className={cn(
-          "grid gap-1.5",
-          layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
-        )}
-      >
-        {toggles.map(({ key, label }) => {
-          const count = counts.get(key) ?? 0;
-          const checked = selected.includes(key);
-          const Icon = HEALTH_ICONS[key];
+    <section>
+      <FilterSectionHeader
+        label={messages.health}
+        active={selected.length > 0}
+        onReset={() => {
+          setCelebration(null);
+          setIsResetting(true);
+          onToggleMany(selected);
+        }}
+        resetAriaLabel={messages.resetHealthFilters}
+      />
+      <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+        {messages.healthFilterHint}
+      </p>
+      <LazyMotion features={domAnimation}>
+        <div
+          className={cn(
+            "grid gap-1.5",
+            layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
+          )}
+        >
+          {toggles.map(({ key, label }, index) => {
+            const count = counts.get(key) ?? 0;
+            const checked = selected.includes(key);
+            const Icon = HEALTH_ICONS[key];
+            const hovered = hoveredKey === key;
+            const celebrating = celebration?.key === key && checked;
 
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onToggle(key)}
-              disabled={isDead(count, checked)}
-              aria-pressed={checked}
-              aria-label={`${label}, ${animalCount(count, locale)}`}
-              className={filterCardVariants({
-                selected: checked,
-                className: cn(
-                  "flex",
-                  layout === "sheet"
-                    ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-                    : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
-                ),
-              })}
-            >
-              <FilterSelectionMark
-                checked={checked}
-                className={cn(
-                  layout === "sheet"
-                    ? "absolute right-1.5 top-1.5"
-                    : "absolute right-2.5 top-1/2 -translate-y-1/2",
-                )}
-              />
-
-              <span
-                aria-hidden
-                className={cn(
-                  "relative grid shrink-0 place-items-center",
-                  layout === "sheet" ? "size-7" : "size-7.5",
-                )}
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  if (checked) {
+                    setCelebration(null);
+                  } else {
+                    setCelebration((current) => ({
+                      key,
+                      id: (current?.id ?? 0) + 1,
+                    }));
+                  }
+                  onToggle(key);
+                }}
+                disabled={isDead(count, checked)}
+                // A tap leaves focus on the button, so the lift is limited to a
+                // real mouse and to keyboard focus.
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "mouse") return;
+                  setHoveredKey(key);
+                }}
+                onPointerLeave={() =>
+                  setHoveredKey((current) => (current === key ? null : current))
+                }
+                onFocus={(event) => {
+                  if (!event.currentTarget.matches(":focus-visible")) return;
+                  setHoveredKey(key);
+                }}
+                onBlur={() =>
+                  setHoveredKey((current) => (current === key ? null : current))
+                }
+                aria-pressed={checked}
+                aria-label={`${label}, ${animalCount(count, locale)}`}
+                className={filterCardVariants({
+                  selected: checked,
+                  className: cn(
+                    "flex",
+                    layout === "sheet"
+                      ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
+                      : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
+                  ),
+                })}
               >
-                <span
+                <FilterSelectionMark
+                  checked={checked}
                   className={cn(
-                    "absolute rounded-full bg-muted-foreground/10 transition-opacity duration-150",
-                    layout === "sheet" ? "size-7" : "size-7.5",
-                    !checked && "opacity-0",
+                    layout === "sheet"
+                      ? "absolute right-1.5 top-1.5"
+                      : "absolute right-2.5 top-1/2 -translate-y-1/2",
                   )}
                 />
-                <span className="relative flex items-center justify-center">
-                  <Icon
-                    className={cn(
-                      "size-5 transition-colors duration-150",
-                      checked
-                        ? "text-[var(--filter-accent-strong)]"
-                        : "text-muted-foreground",
-                    )}
-                    strokeWidth={1.65}
-                  />
-                </span>
-              </span>
 
-              {layout === "sheet" ? (
-                <>
-                  <span
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative grid shrink-0 place-items-center",
+                    layout === "sheet" ? "size-7" : "size-7.5",
+                  )}
+                >
+                  <m.span
                     className={cn(
-                      "mt-0.5 max-w-full truncate text-xs",
-                      checked && "font-medium",
+                      "absolute rounded-full bg-muted-foreground/10",
+                      layout === "sheet" ? "size-7" : "size-7.5",
                     )}
+                    initial={false}
+                    animate={{
+                      opacity: checked ? 1 : 0,
+                      scale: checked ? 1 : 0.6,
+                    }}
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : checked
+                          ? { type: "spring", stiffness: 380, damping: 26 }
+                          : {
+                              duration: 0.15,
+                              // A reset winks the rows out in order rather than
+                              // all at once.
+                              delay: isResetting ? index * RESET_STAGGER : 0,
+                              ease: "easeOut",
+                            }
+                    }
+                  />
+                  {celebrating && !shouldReduceMotion ? (
+                    <m.span
+                      key={celebration?.id}
+                      className={cn(
+                        "pointer-events-none absolute rounded-full border border-[var(--filter-accent-strong)]",
+                        layout === "sheet" ? "size-7" : "size-7.5",
+                      )}
+                      initial={{ opacity: 0.5, scale: 0.7 }}
+                      animate={{ opacity: 0, scale: 1.35 }}
+                      transition={{
+                        duration: RIPPLE_DURATION,
+                        ease: "easeOut",
+                      }}
+                    />
+                  ) : null}
+                  <m.span
+                    className="relative flex items-center justify-center will-change-transform"
+                    initial={false}
+                    animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
+                    transition={
+                      shouldReduceMotion ? { duration: 0 } : HOVER_SPRING
+                    }
                   >
-                    {label}
-                  </span>
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {count}
-                  </span>
-                </>
-              ) : (
-                <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-                  <span
-                    className={cn(
-                      "truncate text-xs",
-                      checked && "font-medium",
-                    )}
-                  >
-                    {label}
-                  </span>
-                  <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
-                    {count}
-                  </span>
+                    <m.span
+                      className="flex items-center justify-center"
+                      initial={false}
+                      animate={
+                        celebrating && !shouldReduceMotion
+                          ? HEALTH_GESTURES[key]
+                          : GESTURE_REST
+                      }
+                      transition={
+                        celebrating && !shouldReduceMotion
+                          ? { duration: GESTURE_DURATION, ease: "easeOut" }
+                          : { duration: 0.16 }
+                      }
+                    >
+                      <Icon
+                        className={cn(
+                          "size-5 transition-colors duration-150",
+                          checked
+                            ? "text-[var(--filter-accent-strong)]"
+                            : "text-muted-foreground",
+                        )}
+                        strokeWidth={1.65}
+                      />
+                    </m.span>
+                  </m.span>
                 </span>
-              )}
-            </button>
-          );
-        })}
-    </div>
+
+                {layout === "sheet" ? (
+                  <>
+                    <span
+                      className={cn(
+                        "mt-0.5 max-w-full truncate text-xs",
+                        checked && "font-medium",
+                      )}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {count}
+                    </span>
+                  </>
+                ) : (
+                  <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+                    <span
+                      className={cn("truncate text-xs", checked && "font-medium")}
+                    >
+                      {label}
+                    </span>
+                    <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                      {count}
+                    </span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </LazyMotion>
+    </section>
   );
 }
 
@@ -399,7 +507,6 @@ export function FilterGroupList({
   toggleTally: Map<string, number>;
   ageLayout?: "sidebar" | "sheet";
 } & FilterActionContract) {
-  const { messages } = useI18n();
   return (
     <>
       {groups.map(({ group, options }) => (
@@ -416,24 +523,14 @@ export function FilterGroupList({
       ))}
 
       {toggles.length > 0 && (
-        <section>
-          <FilterSectionHeader
-            label={messages.health}
-            active={filters.toggles.length > 0}
-            onReset={() => onToggleManyProperties(filters.toggles)}
-            resetAriaLabel={messages.resetHealthFilters}
-          />
-          <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-            {messages.healthFilterHint}
-          </p>
-          <HealthToggleCards
-            toggles={toggles}
-            counts={toggleTally}
-            selected={filters.toggles}
-            onToggle={onToggleProperty}
-            layout={ageLayout}
-          />
-        </section>
+        <HealthToggleCards
+          toggles={toggles}
+          counts={toggleTally}
+          selected={filters.toggles}
+          onToggle={onToggleProperty}
+          onToggleMany={onToggleManyProperties}
+          layout={ageLayout}
+        />
       )}
     </>
   );

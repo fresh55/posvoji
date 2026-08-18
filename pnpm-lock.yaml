@@ -19,6 +19,9 @@ importers:
       '@posvoji/provider-sdk':
         specifier: workspace:*
         version: link:../../packages/provider-sdk
+      '@posvoji/provider-zonzani':
+        specifier: workspace:*
+        version: link:../../providers/zonzani
       '@posvoji/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -201,6 +204,28 @@ importers:
         version: 2.9.0
 
   providers/muri:
+    dependencies:
+      '@posvoji/provider-sdk':
+        specifier: workspace:*
+        version: link:../../packages/provider-sdk
+      '@posvoji/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(jsdom@30.0.1)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+
+  providers/zonzani:
     dependencies:
       '@posvoji/provider-sdk':
         specifier: workspace:*

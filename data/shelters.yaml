@@ -20,6 +20,9 @@ shelters:
     website: https://www.zonzani.si/
     email: info@zonzani.si
     phone: "03 749 06 00"
+    notes: >-
+      Ločena kataloga psov in mačk. Dovoljenje potrjeno 2026-08-18;
+      provider zonzani je vklopljen za strukturirana dejstva in oddaljene slike.
 
   - id: obalno
     name: Obalno zavetišče (Marjetica Koper)

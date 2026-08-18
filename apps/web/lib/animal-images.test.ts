@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
-import { adjacentImageUrls, permittedImageUrls } from "./animal-images";
+import {
+  adjacentImageUrls,
+  permittedImageUrls,
+  thumbnailUrl,
+} from "./animal-images";
 
 describe("permittedImageUrls", () => {
   it("returns every permitted image in source order", () => {
@@ -35,6 +39,26 @@ describe("permittedImageUrls", () => {
         },
       ] satisfies Animal["images"]),
     ).toEqual(["https://shelter.example/luna.jpg"]);
+  });
+});
+
+describe("thumbnailUrl", () => {
+  it("derives the thumb sibling of a cached copy", () => {
+    expect(thumbnailUrl("/media/animals/0123456789abcdef.webp")).toBe(
+      "/media/animals/0123456789abcdef.thumb.webp",
+    );
+  });
+
+  it("leaves a remote source url alone", () => {
+    expect(thumbnailUrl("https://shelter.example/luna.jpg")).toBe(
+      "https://shelter.example/luna.jpg",
+    );
+  });
+
+  it("does not derive a thumb of a thumb", () => {
+    expect(thumbnailUrl("/media/animals/0123456789abcdef.thumb.webp")).toBe(
+      "/media/animals/0123456789abcdef.thumb.webp",
+    );
   });
 });
 

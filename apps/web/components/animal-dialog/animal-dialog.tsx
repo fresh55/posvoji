@@ -74,11 +74,10 @@ const DRAG_CLOSE_PX = 140;
 // The layout the dismiss gesture was designed for.
 const PHONE_LAYOUT = "(max-width: 639px)";
 
-// Available is the one worth reaching for, so it takes the accent. Reserved
-// is a maybe and says so in amber. Adopted and hold are over, and go quiet.
-const STATUS_CLASS: Record<Exclude<AdoptionStatus, "unknown">, string> = {
-  available:
-    "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+// Available is the default state and needs no badge - the badge is for the
+// exceptions worth calling out. Reserved is a maybe and says so in amber.
+// Adopted and hold are over, and go quiet.
+const STATUS_CLASS: Record<Exclude<AdoptionStatus, "unknown" | "available">, string> = {
   reserved: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
   adopted: "border-transparent bg-muted text-muted-foreground",
   hold: "border-transparent bg-muted text-muted-foreground",
@@ -163,9 +162,13 @@ export function AnimalDialog({
   if (!lastAnimal) return null;
 
   const name = lastAnimal.name ?? messages.unnamed;
-  const status = statusLabel(lastAnimal.status, locale);
-  const statusTone =
-    lastAnimal.status === "unknown" ? undefined : STATUS_CLASS[lastAnimal.status];
+  // Available animals are the norm, so the badge stays for the exceptions.
+  const badgeStatus =
+    lastAnimal.status === "unknown" || lastAnimal.status === "available"
+      ? undefined
+      : lastAnimal.status;
+  const status = badgeStatus && statusLabel(badgeStatus, locale);
+  const statusTone = badgeStatus && STATUS_CLASS[badgeStatus];
   const transition = shouldReduceMotion ? { duration: 0 } : undefined;
 
   // An animal the current filters hide is still reachable by link, and then

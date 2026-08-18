@@ -1,30 +1,23 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import {
-  Cat,
-  Dog,
-  PawPrint,
-  Rabbit,
-  type LucideIcon,
-} from "lucide-react";
+import { PawPrint, type LucideIcon } from "lucide-react";
 import {
   AnimatePresence,
   LazyMotion,
   domAnimation,
   m,
 } from "motion/react";
+import { SPECIES_ICONS } from "@/lib/animal-icons";
 import type { SpeciesFilter } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-const SPECIES_ICONS: Record<SpeciesFilter, LucideIcon> = {
+// The shared map plus the one entry only this control needs.
+const FILTER_ICONS: Record<SpeciesFilter, LucideIcon> = {
   all: PawPrint,
-  dog: Dog,
-  cat: Cat,
-  rabbit: Rabbit,
-  other: PawPrint,
+  ...SPECIES_ICONS,
 };
 
 const ANNOUNCEMENT_DELAY_MS = 250;
@@ -159,7 +152,7 @@ export function ResultCount({
   const settledLabel = animalCount(settledCount, locale);
   const countText = String(count);
   const noun = label.slice(countText.length + 1);
-  const SpeciesIcon = SPECIES_ICONS[species];
+  const SpeciesIcon = FILTER_ICONS[species];
   const speciesIconPose =
     count === 0
       ? { opacity: 1, ...EMPTY_ICON_POSES[species] }

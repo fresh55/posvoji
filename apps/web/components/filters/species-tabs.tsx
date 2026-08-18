@@ -1,19 +1,11 @@
 "use client";
 
-import { Cat, Dog, PawPrint, Rabbit, type LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { Species } from "@posvoji/schema";
 import { type SpeciesFilter } from "@/lib/filters";
 import { useI18n } from "@/components/i18n-provider";
+import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { cn } from "@/lib/utils";
-
-// Keyed by species rather than listed, so one added to the schema fails to
-// compile here instead of existing in the data and nowhere in the UI.
-const SPECIES_ICONS: Record<Species, LucideIcon> = {
-  dog: Dog,
-  cat: Cat,
-  rabbit: Rabbit,
-  other: PawPrint,
-};
 
 const LABELS: Record<"sl" | "en", Record<SpeciesFilter, string>> = {
   sl: { all: "Vse", dog: "Psi", cat: "Mačke", rabbit: "Zajčki", other: "Ostale" },

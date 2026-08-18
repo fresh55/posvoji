@@ -8,6 +8,8 @@ import {
   animalMeta,
   shelterCount,
   sheltersMissingFromMap,
+  statusLabel,
+  timeInShelter,
 } from "./labels";
 
 describe("translations", () => {
@@ -47,6 +49,18 @@ describe("localized labels", () => {
     expect(animalMeta(animal, "en")).toBe("Dog · female · 1 year");
   });
 
+  it("derives card age from a known birth date", () => {
+    const animal = {
+      species: "cat",
+      sex: "female",
+      birthDate: "2024-05-07",
+    } as Animal;
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(animalMeta(animal, "sl", now)).toBe("Mačka · samica · 2 leti");
+    expect(animalMeta(animal, "en", now)).toBe("Cat · female · 2 years");
+  });
+
   it("translates filter choices", () => {
     expect(groupLabel("age", "en")).toBe("Age");
     expect(groupOptions("size", [], "en").map((option) => option.label)).toEqual([
@@ -55,5 +69,39 @@ describe("localized labels", () => {
       "Large",
     ]);
     expect(toggleLabel("cepljenje", "en")).toBe("Vaccinated");
+  });
+
+  it("formats time in shelter with Slovenian duals", () => {
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(timeInShelter("2026-07-15", "sl", now)).toBe("1 mesec");
+    expect(timeInShelter("2026-06-15", "sl", now)).toBe("2 meseca");
+    expect(timeInShelter("2026-05-15", "sl", now)).toBe("3 mesece");
+    expect(timeInShelter("2026-03-15", "sl", now)).toBe("5 mesecev");
+    expect(timeInShelter("2024-08-15", "sl", now)).toBe("2 leti");
+  });
+
+  it("formats time in shelter in English", () => {
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(timeInShelter("2026-02-15", "en", now)).toBe("6 months");
+  });
+
+  it("falls back to 'less than a month' just under the boundary", () => {
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(timeInShelter("2026-08-01", "sl", now)).toBe("manj kot mesec");
+  });
+
+  it("returns undefined for a future intake date", () => {
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(timeInShelter("2026-09-01", "sl", now)).toBeUndefined();
+  });
+
+  it("translates adoption status", () => {
+    expect(statusLabel("available", "sl")).toBe("na voljo");
+    expect(statusLabel("adopted", "en")).toBe("adopted");
+    expect(statusLabel("unknown", "sl")).toBeUndefined();
   });
 });

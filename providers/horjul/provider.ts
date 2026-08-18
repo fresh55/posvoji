@@ -120,7 +120,12 @@ export function parseAgeMonths(value: string): number | undefined {
   const years = normalized.match(/^(\d+)(?:[,.](5))?\s*(?:let|leta|leti|leto)$/);
   if (years) return Number(years[1]) * 12 + (years[2] ? 6 : 0);
   const months = normalized.match(/^(\d+)\s*(?:mesecev|mesece|meseca|mesec)$/);
-  return months ? Number(months[1]) : undefined;
+  if (months) return Number(months[1]);
+  const weeks = normalized.match(/^(\d+)\s*(?:teden|tedna|tedne|tednov)$/);
+  // approximateAgeMonths is intentionally month-granular. Convert an exact
+  // stated week count to the nearest month rather than dropping useful age
+  // evidence (8–9 weeks is approximately two months).
+  return weeks ? Math.round((Number(weeks[1]) * 12) / 52) : undefined;
 }
 
 const SEX: Record<string, Sex> = {
@@ -190,6 +195,15 @@ export function parseDetail(html: string): DetailFacts {
       addImageUrl(imageUrls, $(element).attr("src"));
     });
   }
+  // Journal entries use Elementor galleries whose full-size photos are link
+  // targets and whose visible thumbnails are CSS backgrounds, not <img>s.
+  // Read only gallery links inside the animal's <main> to avoid site chrome,
+  // donation images and other unrelated uploads.
+  main
+    .find(".elementor-widget-gallery a.e-gallery-item[href]")
+    .each((_, element) => {
+      addImageUrl(imageUrls, $(element).attr("href"));
+    });
 
   const foundPlace = lineValue(labeledBlock, /mesto\s+najdbe\s*:/);
   const municipality = foundPlace?.match(/^občina\s+(.+)$/i)?.[1]?.trim();

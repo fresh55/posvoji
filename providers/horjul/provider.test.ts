@@ -16,6 +16,7 @@ const policy = ProviderPolicy.parse(
 );
 const catHtml = loadFixture(import.meta.url, "detail-cat.html");
 const dogHtml = loadFixture(import.meta.url, "detail-dog.html");
+const historyHtml = loadFixture(import.meta.url, "detail-history.html");
 
 describe("policy.yaml", () => {
   it("matches the enabled provider and records granted permission", () => {
@@ -60,6 +61,8 @@ describe("fact parsers", () => {
     ["1,5 let", 18],
     ["7 let in 2 meseca", 86],
     ["5 mesecev", 5],
+    ["8 tednov", 2],
+    ["9 tednov", 2],
     ["Mlada odrasla", undefined],
     ["Nekaj ur", undefined],
   ])("parses intake age %s conservatively", (input, expected) => {
@@ -103,6 +106,21 @@ describe("parseDetail", () => {
       status: "available",
     });
   });
+
+  it("extracts a week-based intake age and full-size journal galleries", () => {
+    expect(parseDetail(historyHtml)).toMatchObject({
+      sourceAnimalId: "862",
+      name: "Klopka",
+      species: "cat",
+      intakeAgeMonths: 2,
+      intakeDate: "2016-07-25",
+      imageUrls: [
+        "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/klopka09-2.jpg",
+        "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Klopka12.jpg",
+        "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Klopka13.jpg",
+      ],
+    });
+  });
 });
 
 describe("resolveAgeMonths", () => {
@@ -113,6 +131,15 @@ describe("resolveAgeMonths", () => {
         "2026-08-18T08:00:00.000Z",
       ),
     ).toBe(21);
+  });
+
+  it("ages an intake age converted from weeks across the animal's stay", () => {
+    expect(
+      resolveAgeMonths(
+        { intakeAgeMonths: 2, intakeDate: "2016-07-25" },
+        "2026-08-18T08:00:00.000Z",
+      ),
+    ).toBe(122);
   });
 });
 

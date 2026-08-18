@@ -47,6 +47,18 @@ describe("localized labels", () => {
     expect(animalMeta(animal, "en")).toBe("Dog · female · 1 year");
   });
 
+  it("derives card age from a known birth date", () => {
+    const animal = {
+      species: "cat",
+      sex: "female",
+      birthDate: "2024-05-07",
+    } as Animal;
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(animalMeta(animal, "sl", now)).toBe("Mačka · samica · 2 leti");
+    expect(animalMeta(animal, "en", now)).toBe("Cat · female · 2 years");
+  });
+
   it("translates filter choices", () => {
     expect(groupLabel("age", "en")).toBe("Age");
     expect(groupOptions("size", [], "en").map((option) => option.label)).toEqual([

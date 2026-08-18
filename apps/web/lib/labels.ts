@@ -1,5 +1,6 @@
 import type { Animal, Sex, Species } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
+import { ageInMonths } from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
   sl: {
@@ -97,13 +98,16 @@ export function sheltersMissingFromMap(n: number, locale: Locale): string {
 }
 
 // "Mačka · samica · 2 leti", skipping whatever we don't know.
-export function animalMeta(animal: Animal, locale: Locale = "sl"): string {
+export function animalMeta(
+  animal: Animal,
+  locale: Locale = "sl",
+  now: Date = new Date(),
+): string {
+  const months = ageInMonths(animal, now);
   return [
     SPECIES[locale][animal.species],
     animal.sex ? SEX[locale][animal.sex] : "",
-    animal.approximateAgeMonths !== undefined
-      ? formatAge(animal.approximateAgeMonths, locale)
-      : "",
+    months !== undefined ? formatAge(months, locale) : "",
   ]
     .filter(Boolean)
     .join(" · ");

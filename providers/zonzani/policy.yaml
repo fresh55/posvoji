@@ -1,0 +1,24 @@
+# The project owner confirmed Zonzani's permission in writing on 2026-08-18.
+# Keep the initial scope conservative: link to source images and ingest only
+# structured shelter facts, not editorial text.
+providerId: zonzani
+source: https://www.zonzani.si
+enabled: true
+
+ingestion: scrape
+images: remote
+descriptions: facts-only
+
+permission:
+  status: granted
+  date: 2026-08-18
+  reference: project-owner-confirmation-zonzani-2026-08-18
+  notes: >-
+    Project owner confirmed permission for the Zonzani dog and cat catalogues.
+    Initial implementation uses remote images and structured facts only.
+
+attribution: "Vir: Zavetišče Zonzani"
+
+crawl:
+  intervalHours: 12
+  excludePaths: []

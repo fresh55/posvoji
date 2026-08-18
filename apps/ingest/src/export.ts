@@ -9,6 +9,16 @@ import { datasetDir } from "./paths";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
 
+// A targeted export refreshes one provider while preserving every other
+// provider's last validated records. This is useful when onboarding a new
+// remote-image provider without re-crawling hundreds of unrelated animals.
+const providerFlag = process.argv.indexOf("--provider");
+const requestedProviderId =
+  providerFlag === -1 ? undefined : process.argv[providerFlag + 1];
+if (providerFlag !== -1 && !requestedProviderId) {
+  throw new Error("--provider requires a provider id");
+}
+
 function readPreviousDataset(): Dataset | undefined {
   const path = join(datasetDir, "animals.json");
   if (!existsSync(path)) return undefined;
@@ -76,11 +86,17 @@ const previousById = new Map(
 );
 
 const policies = loadValidPolicies();
+const crawlPolicies = requestedProviderId
+  ? policies.filter(({ policy }) => policy.providerId === requestedProviderId)
+  : policies;
+if (requestedProviderId && crawlPolicies.length === 0) {
+  throw new Error(`unknown provider: ${requestedProviderId}`);
+}
 const client = new PoliteClient({ userAgent: USER_AGENT });
-const crawled = await crawl(client, policies);
+const crawled = await crawl(client, crawlPolicies);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
-const seeded = crawled.map((animal) => {
+const refreshed = crawled.map((animal) => {
   const before = previousById.get(animal.id);
   if (!before) return animal;
   return {
@@ -89,18 +105,31 @@ const seeded = crawled.map((animal) => {
   };
 });
 
+const refreshedProviderIds = new Set(
+  crawlPolicies.map(({ policy }) => policy.providerId),
+);
+const preserved = requestedProviderId
+  ? (previous?.animals ?? []).filter(
+      (animal) => !refreshedProviderIds.has(animal.source.providerId),
+    )
+  : [];
+const seeded = [...preserved, ...refreshed];
+
 // Cache permitted photos before the dataset is written so cachedUrl ships
 // with it; the same sync deletes copies that fell out of the dataset.
 const imagePolicies = new Map(
   policies.map(({ policy }) => [policy.providerId, policy.images] as const),
 );
 mkdirSync(datasetDir, { recursive: true });
-const {
-  animals,
-  fetched,
-  reused,
-  deleted,
-} = await cacheImages(seeded, client, imagePolicies);
+// A targeted run deliberately leaves the global image cache untouched. The
+// selected provider's source URLs remain usable, while cached files and URLs
+// belonging to preserved providers cannot be deleted or needlessly rechecked.
+const { animals, fetched, reused, deleted } = requestedProviderId
+  ? { animals: seeded, fetched: 0, reused: 0, deleted: 0 }
+  : await cacheImages(seeded, client, imagePolicies);
+if (requestedProviderId) {
+  console.log("images: unchanged (targeted provider export)");
+}
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
 );

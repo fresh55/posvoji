@@ -267,6 +267,14 @@ describe("animal dialog", () => {
     ).toBeTruthy();
   });
 
+  it("badges a reserved animal but leaves an available one unbadged", async () => {
+    window.history.replaceState(null, "", "/?zival=muri");
+    renderGrid();
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("rezerviran")).toBeTruthy();
+  });
+
   it("shows the attribution, the shelter link and the animal's own facts", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
@@ -276,7 +284,7 @@ describe("animal dialog", () => {
       within(dialog).getByText("Foto in opis: Zavetišče Test"),
     ).toBeTruthy();
     expect(within(dialog).getByText("Sterilizacija")).toBeTruthy();
-    expect(within(dialog).getByText("na voljo")).toBeTruthy();
+    expect(within(dialog).queryByText("na voljo")).toBeNull();
 
     const cta = within(dialog).getByRole("link", {
       name: /Odpri objavo pri zavetišču/,

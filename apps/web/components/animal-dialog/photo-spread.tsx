@@ -13,7 +13,7 @@ import {
 } from "@/components/photo-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { permittedImageUrls } from "@/lib/animal-images";
+import { permittedImageUrls, thumbnailUrl } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 
 // Five photos is where a fan still reads as a fan. Past that the window walks
@@ -162,7 +162,7 @@ export function PhotoSpread({ animal }: { animal: Animal }) {
                 )}
               >
                 <Image
-                  src={source}
+                  src={thumbnailUrl(source)}
                   alt=""
                   fill
                   sizes="4rem"

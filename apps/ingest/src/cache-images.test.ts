@@ -13,6 +13,7 @@ import {
   cacheableUrls,
   processImage,
   publicUrlFor,
+  thumbFileFor,
 } from "./cache-images";
 
 function animal(overrides: {
@@ -170,12 +171,47 @@ describe("cacheImages", () => {
 
     expect(result.fetched).toBe(1);
     const files = readdirSync(mediaDir);
-    expect(files).toHaveLength(1);
+    expect(files).toHaveLength(2);
+    const main = files.find((file) => !file.endsWith(".thumb.webp"))!;
+    expect(files).toContain(thumbFileFor(main));
     const cachedUrl = result.animals[0]!.images[0]!.cachedUrl;
-    expect(cachedUrl).toBe(publicUrlFor(files[0]!));
+    expect(cachedUrl).toBe(publicUrlFor(main));
 
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     expect(manifest.entries[url].etag).toBe('"v1"');
+  });
+
+  it("cuts a strip-sized thumbnail next to the cached copy", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), client, CACHE_ONLY, { mediaDir, manifestPath });
+
+    const thumb = readdirSync(mediaDir).find((file) =>
+      file.endsWith(".thumb.webp"),
+    )!;
+    const meta = await sharp(readFileSync(join(mediaDir, thumb))).metadata();
+    expect(meta.format).toBe("webp");
+    expect(meta.width).toBeLessThanOrEqual(112);
+  });
+
+  it("backfills a missing thumbnail without touching the network", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    // A media dir written before thumbnails existed has only the large copy.
+    const thumb = readdirSync(mediaDir).find((file) =>
+      file.endsWith(".thumb.webp"),
+    )!;
+    rmSync(join(mediaDir, thumb));
+
+    const second = new StubClient(new Map());
+    await cacheImages(animals(), second, CACHE_ONLY, { mediaDir, manifestPath });
+
+    expect(second.calls).toHaveLength(0);
+    expect(readdirSync(mediaDir)).toContain(thumb);
   });
 
   it("revalidates with stored validators and reuses the copy on 304", async () => {
@@ -198,7 +234,7 @@ describe("cacheImages", () => {
     expect(second.calls[0]?.options?.validators?.etag).toBe('"v1"');
     expect(result.reused).toBe(1);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeDefined();
-    expect(readdirSync(mediaDir)).toHaveLength(1);
+    expect(readdirSync(mediaDir)).toHaveLength(2);
   });
 
   it("reuses a fresh copy without touching the network", async () => {
@@ -223,14 +259,14 @@ describe("cacheImages", () => {
       new Map([[url, { status: 200, body: await pngFixture() }]]),
     );
     await cacheImages(animals(), client, CACHE_ONLY, { mediaDir, manifestPath });
-    expect(readdirSync(mediaDir)).toHaveLength(1);
+    expect(readdirSync(mediaDir)).toHaveLength(2);
 
     const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
       mediaDir,
       manifestPath,
     });
 
-    expect(result.deleted).toBe(1);
+    expect(result.deleted).toBe(2);
     expect(readdirSync(mediaDir)).toHaveLength(0);
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     expect(manifest.entries).toEqual({});
@@ -251,7 +287,7 @@ describe("cacheImages", () => {
       revalidateAfterDays: 0,
     });
 
-    expect(result.deleted).toBe(1);
+    expect(result.deleted).toBe(2);
     expect(readdirSync(mediaDir)).toHaveLength(0);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeUndefined();
   });
@@ -271,7 +307,7 @@ describe("cacheImages", () => {
       revalidateAfterDays: 0,
     });
 
-    expect(readdirSync(mediaDir)).toHaveLength(1);
+    expect(readdirSync(mediaDir)).toHaveLength(2);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeDefined();
   });
 
@@ -295,7 +331,7 @@ describe("cacheImages", () => {
     );
     await cacheImages(both, client, CACHE_ONLY, { mediaDir, manifestPath });
     // Identical bytes → one content-addressed file for two URLs.
-    expect(readdirSync(mediaDir)).toHaveLength(1);
+    expect(readdirSync(mediaDir)).toHaveLength(2);
 
     const oneLeft = [
       animal({ id: "luna", images: [{ sourceUrl: url, rights: "cache-permitted" }] }),
@@ -310,7 +346,7 @@ describe("cacheImages", () => {
     });
 
     expect(result.deleted).toBe(0);
-    expect(readdirSync(mediaDir)).toHaveLength(1);
+    expect(readdirSync(mediaDir)).toHaveLength(2);
   });
 
   it("caches nothing for a provider without cache permission", async () => {

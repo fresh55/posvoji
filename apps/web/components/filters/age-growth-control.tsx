@@ -1,9 +1,11 @@
 "use client";
 
+import { Leaf } from "lucide-react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   AgeStageIcon,
+  ageDrawSeconds,
   type AgeStage,
 } from "@/components/filters/age-stage-icon";
 import {
@@ -32,6 +34,7 @@ type Stage = {
   groveClassName: string;
   rowClassName: string;
   rangeKey: "ageRangeYoung" | "ageRangeAdult" | "ageRangeSenior";
+  swayDegrees: number;
 };
 
 const STAGES: Record<AgeStage, Stage> = {
@@ -40,22 +43,43 @@ const STAGES: Record<AgeStage, Stage> = {
     groveClassName: "size-7",
     rowClassName: "size-5",
     rangeKey: "ageRangeYoung",
+    swayDegrees: 4.5,
   },
   odrasel: {
     colorClassName: "text-[#92763b]",
     groveClassName: "size-9",
     rowClassName: "size-5.5",
     rangeKey: "ageRangeAdult",
+    swayDegrees: 3,
   },
   senior: {
     colorClassName: "text-[#92763b]",
     groveClassName: "size-11",
     rowClassName: "size-6",
     rangeKey: "ageRangeSenior",
+    swayDegrees: 2,
   },
 };
 
 const STANDARD_EASE = [0.16, 1, 0.3, 1] as const;
+
+// The sway starts once the drawing is under way and rings out past it, so the
+// celebration has to be held for the whole span or the tail snaps to rotate 0.
+const SWAY_DELAY = 0.08;
+const SWAY_TAIL = 0.12;
+const CELEBRATION_GUARD_MS = 80;
+const RESET_STAGGER = 0.045;
+const RESET_CLEAR_MS = 280;
+
+function swaySeconds(stage: AgeStage, reduceMotion: boolean) {
+  return SWAY_DELAY + ageDrawSeconds(stage, reduceMotion) + SWAY_TAIL;
+}
+
+// The leaf starts at top-1 of the column and the ground line sits at bottom-1
+// of the grove, so the drop is the grove height less both insets and the leaf.
+function leafFallDistance(layout: "sidebar" | "sheet") {
+  return (layout === "sheet" ? 48 : 56) - 4 - 4 - 10;
+}
 
 function isAgeStage(value: string): value is AgeStage {
   return value in STAGES;
@@ -90,7 +114,37 @@ export function AgeGrowthControl({
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion() ?? false;
   const hintId = useId();
-  const [celebratingAge, setCelebratingAge] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<{
+    value: AgeStage;
+    id: number;
+  } | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [hoveredAge, setHoveredAge] = useState<string | null>(null);
+  const [fallingLeafId, setFallingLeafId] = useState(0);
+  const celebratingAge = celebration?.value ?? null;
+  const leafFall = leafFallDistance(layout);
+
+  useEffect(() => {
+    if (!celebration) return;
+    const ms =
+      swaySeconds(celebration.value, shouldReduceMotion) * 1000 +
+      CELEBRATION_GUARD_MS;
+    const timer = window.setTimeout(() => setCelebration(null), ms);
+    return () => window.clearTimeout(timer);
+  }, [celebration, shouldReduceMotion]);
+
+  useEffect(() => {
+    if (!isResetting || selected.length > 0) return;
+    const timer = window.setTimeout(
+      () => setIsResetting(false),
+      RESET_CLEAR_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isResetting, selected.length]);
+
+  const celebrationIndex = options.findIndex(
+    ({ value }) => value === celebratingAge,
+  );
 
   return (
     <LazyMotion features={domAnimation}>
@@ -99,7 +153,9 @@ export function AgeGrowthControl({
           label={groupLabel("age", locale)}
           active={selected.length > 0}
           onReset={() => {
-            setCelebratingAge(null);
+            setCelebration(null);
+            setFallingLeafId(0);
+            setIsResetting(true);
             onToggleMany(selected);
           }}
           resetAriaLabel={messages.resetAgeFilters}
@@ -118,12 +174,23 @@ export function AgeGrowthControl({
           )}
         >
           <span className="absolute inset-x-3 bottom-1 h-px bg-border" />
-          {options.map(({ value }) => {
+          {options.map(({ value }, index) => {
             if (!isAgeStage(value)) return null;
 
             const stage = STAGES[value];
             const active = isAgeStageActive(selected, value);
             const celebrating = celebratingAge === value && active;
+            const reacting = celebrationIndex >= 0 && !celebrating;
+            // Neighbours lean away from the plant that just grew; the plant
+            // itself leans right unless it is the last in the row.
+            const windDirection = celebrating
+              ? index === options.length - 1
+                ? -1
+                : 1
+              : Math.sign(index - celebrationIndex) || 1;
+            const hovered = hoveredAge === value;
+            // A reset wakes the columns in order rather than all at once.
+            const settleDelay = isResetting ? index * RESET_STAGGER : 0;
 
             return (
               <span
@@ -142,29 +209,134 @@ export function AgeGrowthControl({
                   transition={
                     shouldReduceMotion
                       ? { duration: 0 }
-                      : { duration: 0.18, ease: STANDARD_EASE }
+                      : {
+                          duration: 0.18,
+                          delay: settleDelay,
+                          ease: STANDARD_EASE,
+                        }
                   }
                 />
+                {celebrating && !shouldReduceMotion ? (
+                  <span className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
+                    <m.span
+                      key={celebration?.id}
+                      className="size-[3px] rounded-full bg-[#2f6f4e]"
+                      initial={{ opacity: 0.65, scale: 0.5 }}
+                      animate={{ opacity: 0, scale: 2.5 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    />
+                  </span>
+                ) : null}
+                {value === "senior" &&
+                fallingLeafId > 0 &&
+                !shouldReduceMotion ? (
+                  <span className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
+                    <m.span
+                      key={fallingLeafId}
+                      initial={{ opacity: 0, x: 0, y: 0, rotate: -8 }}
+                      animate={{
+                        opacity: [0, 0.9, 0.85, 0.85, 0],
+                        x: [0, 5, -4, 2, 2],
+                        y: [
+                          0,
+                          leafFall * 0.3,
+                          leafFall * 0.62,
+                          leafFall,
+                          leafFall,
+                        ],
+                        rotate: [-8, 24, -14, 34, 34],
+                      }}
+                      transition={{
+                        duration: 1.25,
+                        ease: "easeInOut",
+                        // The last pair repeats the landed pose so the leaf
+                        // rests on the ground line while it fades.
+                        times: [0, 0.22, 0.52, 0.86, 1],
+                      }}
+                      onAnimationComplete={() => setFallingLeafId(0)}
+                    >
+                      <Leaf
+                        className={cn("size-2.5", stage.colorClassName)}
+                        strokeWidth={1.6}
+                      />
+                    </m.span>
+                  </span>
+                ) : null}
                 <m.span
                   className="flex origin-bottom items-end justify-center"
                   initial={false}
                   animate={
                     active
-                      ? { opacity: 1, scale: 1, y: 0 }
-                      : { opacity: 0.5, scale: 0.84, y: 2 }
+                      ? { opacity: 1, scale: hovered ? 1.04 : 1, y: 0 }
+                      : hovered
+                        ? { opacity: 0.75, scale: 0.9, y: 1 }
+                        : { opacity: 0.5, scale: 0.84, y: 2 }
                   }
                   transition={
                     shouldReduceMotion
                       ? { duration: 0 }
-                      : { duration: 0.24, ease: STANDARD_EASE }
+                      : {
+                          duration: 0.24,
+                          delay: settleDelay,
+                          ease: STANDARD_EASE,
+                        }
                   }
                 >
-                  <AgeStageIcon
-                    stage={value}
-                    draw={celebrating}
-                    reduceMotion={shouldReduceMotion}
-                    className={cn(stage.colorClassName, stage.groveClassName)}
-                  />
+                  <m.span
+                    className="flex origin-bottom items-end justify-center will-change-transform"
+                    initial={false}
+                    animate={
+                      shouldReduceMotion
+                        ? { rotate: 0, x: 0, scaleX: 1, scaleY: 1 }
+                        : celebrating
+                          ? {
+                              rotate: [
+                                0,
+                                windDirection * stage.swayDegrees,
+                                windDirection * -stage.swayDegrees * 0.42,
+                                0,
+                              ],
+                              x: [0, windDirection * 0.65, 0],
+                              // Squash on the way up, stretch as it settles.
+                              scaleX: [1, 1.04, 0.98, 1],
+                              scaleY: [1, 0.95, 1.03, 1],
+                            }
+                          : reacting
+                            ? {
+                                rotate: [0, windDirection * 1.2, 0],
+                                x: [0, windDirection * 0.4, 0],
+                                scaleX: 1,
+                                scaleY: 1,
+                              }
+                            : { rotate: 0, x: 0, scaleX: 1, scaleY: 1 }
+                    }
+                    transition={
+                      celebrating
+                        ? {
+                            duration:
+                              ageDrawSeconds(value, shouldReduceMotion) +
+                              SWAY_TAIL,
+                            delay: SWAY_DELAY,
+                            ease: "easeOut",
+                          }
+                        : reacting
+                          ? {
+                              duration: 0.34,
+                              delay:
+                                0.1 +
+                                Math.abs(index - celebrationIndex) * 0.045,
+                              ease: "easeOut",
+                            }
+                          : { duration: 0.16 }
+                    }
+                  >
+                    <AgeStageIcon
+                      stage={value}
+                      draw={celebrating}
+                      reduceMotion={shouldReduceMotion}
+                      className={cn(stage.colorClassName, stage.groveClassName)}
+                    />
+                  </m.span>
                 </m.span>
               </span>
             );
@@ -179,12 +351,24 @@ export function AgeGrowthControl({
               const changed = changedValue(selected, nextSelected);
               if (!changed) return;
 
-              if (nextSelected.length === options.length) {
-                setCelebratingAge(null);
+              if (
+                nextSelected.length === options.length ||
+                !nextSelected.includes(changed) ||
+                !isAgeStage(changed)
+              ) {
+                setCelebration(null);
+                if (
+                  changed === "senior" &&
+                  !nextSelected.includes(changed) &&
+                  !shouldReduceMotion
+                ) {
+                  setFallingLeafId((current) => current + 1);
+                }
               } else {
-                setCelebratingAge(
-                  nextSelected.includes(changed) ? changed : null,
-                );
+                setCelebration((current) => ({
+                  value: changed,
+                  id: (current?.id ?? 0) + 1,
+                }));
               }
               onToggle(changed);
             }}
@@ -208,6 +392,27 @@ export function AgeGrowthControl({
                     <ToggleGroupItem
                       value={value}
                       disabled={count === 0 && !checked}
+                      // A tap leaves focus on the button, so the link to the
+                      // grove is limited to a real mouse and to keyboard focus.
+                      onPointerEnter={(event) => {
+                        if (event.pointerType !== "mouse") return;
+                        setHoveredAge(value);
+                      }}
+                      onPointerLeave={() =>
+                        setHoveredAge((current) =>
+                          current === value ? null : current,
+                        )
+                      }
+                      onFocus={(event) => {
+                        if (!event.currentTarget.matches(":focus-visible"))
+                          return;
+                        setHoveredAge(value);
+                      }}
+                      onBlur={() =>
+                        setHoveredAge((current) =>
+                          current === value ? null : current,
+                        )
+                      }
                       aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
                       className={filterCardVariants({
                         selected: checked,
@@ -239,12 +444,6 @@ export function AgeGrowthControl({
                             ? { duration: 0 }
                             : { duration: 0.19, ease: STANDARD_EASE }
                         }
-                        onAnimationComplete={() => {
-                          if (!celebrating) return;
-                          setCelebratingAge((current) =>
-                            current === value ? null : current,
-                          );
-                        }}
                       >
                         <AgeStageIcon
                           stage={value}

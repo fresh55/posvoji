@@ -9,9 +9,7 @@ import type { Locale } from "@/lib/i18n";
 import { ageLabel, animalMeta, speciesLabel, statusLabel } from "@/lib/labels";
 
 
-// The site's own origin. A link preview needs absolute URLs, and a static
-// export has no request to derive one from.
-export const SITE_URL = "https://posvoji.si";
+export { SITE_URL } from "@/lib/site";
 
 const CARD_WIDTH = 1200;
 const CARD_HEIGHT = 630;

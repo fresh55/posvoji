@@ -382,7 +382,10 @@ export function AnimalDialog({
                       </Badge>
                     )}
                     <span className="ms-auto flex items-center gap-1">
-                      <ShareButton path={animalPath(lastAnimal, locale)} />
+                      <ShareButton
+                        path={animalPath(lastAnimal, locale)}
+                        name={name}
+                      />
                       <DialogPrimitive.Close asChild>
                         <Button
                           data-slot="dialog-close-card"

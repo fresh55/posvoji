@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -75,9 +76,17 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
 
             <div className="space-y-5">
               <div className="space-y-2">
-                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-                  {animal.name ?? messages.unnamed}
-                </h1>
+                <div className="flex items-start justify-between gap-3">
+                  <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+                    {animal.name ?? messages.unnamed}
+                  </h1>
+                  {/* A visitor who arrived by a shared link is the one most
+                      likely to pass it on again. */}
+                  <ShareButton
+                    path={animalPath(animal, locale)}
+                    name={animal.name ?? messages.unnamed}
+                  />
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">
                     {speciesLabel(animal.species, locale)}

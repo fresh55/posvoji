@@ -663,7 +663,7 @@ describe("animal dialog", () => {
     );
   });
 
-  it("copies the animal's page when there is no share sheet", async () => {
+  it("hands out the animal's own page, not the address bar", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -677,10 +677,59 @@ describe("animal dialog", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
     });
 
-    // The animal's own page, not the deep link the address bar is showing:
-    // only the page has a title, a description and a card of its own.
-    expect(writeText.mock.calls[0][0]).toContain("/zival/rex-");
-    expect(await within(animalDialog()).findByText("Povezava kopirana")).toBeTruthy();
+    const sheet = await screen.findByText("Deli to žival");
+    const panel = sheet.closest("[data-slot=popover-content]") as HTMLElement;
+    const page = `https://posvoji.si${animalPath(REX, "sl")}`;
+
+    // Every target points at the page, which is the only address with a
+    // title, a description and a card of its own.
+    expect(
+      within(panel).getByRole("link", { name: "Facebook" }).getAttribute("href"),
+    ).toBe(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(page)}`,
+    );
+    expect(
+      within(panel).getByRole("link", { name: "WhatsApp" }).getAttribute("href"),
+    ).toContain(encodeURIComponent(page));
+    expect(within(panel).getByLabelText("Povezava")).toHaveProperty(
+      "value",
+      page,
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        within(panel).getByRole("button", { name: "Kopiraj povezavo" }),
+      );
+    });
+
+    expect(writeText).toHaveBeenCalledWith(page);
+    expect(within(panel).getByRole("status").textContent).toBe(
+      "Povezava kopirana",
+    );
+  });
+
+  it("offers the platform's own share sheet when there is one", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: share,
+    });
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Več" }));
+    });
+
+    expect(share).toHaveBeenCalledWith({
+      title: "Rex išče dom",
+      url: `https://posvoji.si${animalPath(REX, "sl")}`,
+    });
+    Reflect.deleteProperty(navigator, "share");
   });
 
   it("celebrates an adopted animal instead of linking to the listing", async () => {

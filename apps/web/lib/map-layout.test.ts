@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
 import {
+  clusterDiscPositions,
+  DENSITY_STEPS,
+  densityScale,
+  discFitsGlyph,
+  driftBudget,
   layoutTowns,
+  markerGeometry,
   markerVisualReach,
   townLabel,
   type ShelterPin,
@@ -63,10 +69,22 @@ describe("layoutTowns", () => {
     ]);
   });
 
-  it("draws every marker at the same size", () => {
+  it("sizes a marker by the animals its town holds", () => {
     const towns = layoutTowns(REAL_PINS);
-    const sizes = new Set(towns.map((town) => town.r));
-    expect(sizes.size).toBe(1);
+    const at = (city: string) => towns.find((town) => town.city === city)!.r;
+    // Ljubljana holds the most, Tolmin the fewest.
+    expect(at("Ljubljana")).toBeGreaterThan(at("Maribor"));
+    expect(at("Maribor")).toBeGreaterThan(at("Tolmin"));
+    for (const town of towns) {
+      expect(town.r).toBeGreaterThanOrEqual(5);
+      expect(town.r).toBeLessThanOrEqual(8);
+    }
+  });
+
+  it("gives a town with nothing available the smallest marker", () => {
+    const towns = layoutTowns([pin("a", "Ljubljana", 0), pin("b", "Koper", 40)]);
+    expect(towns.find((town) => town.city === "Ljubljana")!.r).toBe(5);
+    expect(towns.find((town) => town.city === "Koper")!.r).toBe(8);
   });
 
   it("leaves no two markers overlapping", () => {
@@ -106,6 +124,55 @@ describe("layoutTowns", () => {
     }
   });
 
+  // Clusters grow a disc per shelter, so the invariant has to hold at every
+  // cluster size the marker draws, not only at the two the roster happens to
+  // contain.
+  it("keeps clusters of every drawn size inside the protected radius", () => {
+    for (const size of [1, 2, 3, 4, 5]) {
+      const towns = layoutTowns(
+        Array.from({ length: size }, (_, index) =>
+          pin(`s${index}`, "Ljubljana", 20),
+        ),
+      );
+      expect(towns).toHaveLength(1);
+      expect(markerVisualReach(towns[0])).toBeLessThanOrEqual(
+        towns[0].r + 1e-9,
+      );
+      for (const disc of clusterDiscPositions(towns[0])) {
+        const reach =
+          Math.hypot(disc.x - towns[0].x, disc.y - towns[0].y) +
+          markerGeometry(towns[0]).clusterRadius;
+        expect(reach).toBeLessThanOrEqual(markerGeometry(towns[0]).discRadius);
+      }
+    }
+  });
+
+  it("draws one disc per shelter up to three, and none past it", () => {
+    const cluster = (size: number) =>
+      clusterDiscPositions(
+        layoutTowns(
+          Array.from({ length: size }, (_, index) =>
+            pin(`s${index}`, "Ljubljana", 20),
+          ),
+        )[0],
+      ).length;
+    expect(cluster(1)).toBe(0);
+    expect(cluster(2)).toBe(2);
+    expect(cluster(3)).toBe(3);
+    // Four shelters get the counted disc instead, so there are no discs to lie.
+    expect(cluster(4)).toBe(0);
+  });
+
+  it("drops the paw from discs too small to show one", () => {
+    const [tight] = layoutTowns([
+      pin("a", "Ljubljana", 0),
+      pin("b", "Ljubljana", 0),
+      pin("c", "Ljubljana", 0),
+    ]);
+    expect(discFitsGlyph(markerGeometry(tight).clusterRadius)).toBe(false);
+    expect(discFitsGlyph(markerGeometry(tight).discRadius)).toBe(true);
+  });
+
   it("uses one label source for single shelters and shared towns", () => {
     const towns = layoutTowns(REAL_PINS);
     expect(townLabel(towns.find((town) => town.city === "Celje")!)).toBe(
@@ -122,7 +189,9 @@ describe("layoutTowns", () => {
       const home = cityAt(town.city)!;
       const x = ((home.lon - 13.35) / 3.3) * MAP_WIDTH;
       const y = ((46.9 - home.lat) / 1.5) * MAP_HEIGHT;
-      expect(Math.hypot(town.x - x, town.y - y)).toBeLessThanOrEqual(7 + 1e-6);
+      expect(Math.hypot(town.x - x, town.y - y)).toBeLessThanOrEqual(
+        driftBudget(town.r) + 1e-6,
+      );
     }
   });
 
@@ -179,5 +248,39 @@ describe("layoutTowns", () => {
 
   it("handles an empty roster", () => {
     expect(layoutTowns([])).toEqual([]);
+  });
+});
+
+describe("densityScale", () => {
+  it("spreads the ramp end to end however the totals bunch up", () => {
+    // Two shelters hold most of the animals in the country. Fixed thresholds
+    // dropped every other region into one bin; rank binning does not.
+    const totals = [0, 3, 5, 8, 12, 15, 400, 900];
+    const step = densityScale(totals);
+    expect(totals.map((total) => step(total))).toEqual([
+      0, 1, 1, 2, 2, 3, 3, 4,
+    ]);
+  });
+
+  it("gives equal totals equal steps", () => {
+    const step = densityScale([4, 4, 90]);
+    expect(step(90)).toBeGreaterThan(step(4));
+    expect(step(4)).toBe(densityScale([4, 4, 90])(4));
+  });
+
+  it("puts a region with no animals on the lowest step", () => {
+    expect(densityScale([0, 10, 20])(0)).toBe(0);
+  });
+
+  it("survives a single live region", () => {
+    expect(densityScale([7])(7)).toBe(0);
+  });
+
+  it("keeps each step clear of the one before it", () => {
+    for (let index = 1; index < DENSITY_STEPS.length; index += 1) {
+      expect(DENSITY_STEPS[index] - DENSITY_STEPS[index - 1]).toBeGreaterThan(
+        0.07,
+      );
+    }
   });
 });

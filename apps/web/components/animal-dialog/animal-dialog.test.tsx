@@ -422,27 +422,6 @@ describe("animal dialog", () => {
     ).toBeNull();
   });
 
-  it("grants the record line to the longest wait alone", async () => {
-    const record = animal("cufi", "Cufi", { intakeDate: "2020-06-15" });
-    const shorter = animal("bela", "Bela", { intakeDate: "2022-06-15" });
-    window.history.replaceState(null, "", "/?zival=cufi");
-    renderGrid([record, shorter]);
-
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Nihče ne čaka dlje.")).toBeTruthy();
-
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: "Naslednja žival" }),
-    );
-
-    // Bela has also waited past three years, but not the longest.
-    const next = animalDialog();
-    expect(
-      within(next).getByText("V zavetišču čaka že 4 leta."),
-    ).toBeTruthy();
-    expect(within(next).queryByText("Nihče ne čaka dlje.")).toBeNull();
-  });
-
   it("offers the longest-waiting sort from the callout when it would change something", async () => {
     const longtimer = animal("cufi", "Cufi", { intakeDate: "2022-06-15" });
     const onSeeLongestWaiting = vi.fn();

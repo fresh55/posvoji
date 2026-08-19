@@ -168,14 +168,11 @@ function Aside({
 export function AnimalFacts({
   animal,
   reference,
-  maxStayMonths,
   onSeeLongestWaiting,
 }: {
   animal: Animal;
   /** The dataset's own build time, so every span agrees with the cards. */
   reference: Date;
-  /** The longest wait anywhere in the dataset. */
-  maxStayMonths?: number;
   /**
    * Re-sorts the list by longest wait and closes the dialog. Absent while
    * that sort is already on, which it is by default, so the link only shows
@@ -202,9 +199,6 @@ export function AnimalFacts({
     inShelter && animal.status !== "hold" && animal.status !== "reserved";
   const longStay =
     waiting && stayMonths !== undefined && stayMonths >= LONG_STAY_MONTHS;
-  // True even when the record is shared: no one has waited longer.
-  const recordStay =
-    longStay && maxStayMonths !== undefined && stayMonths >= maxStayMonths;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
   const medical = TOGGLES.filter((toggle) => toggle.matches(animal));
   const hasIdentity =
@@ -363,11 +357,6 @@ export function AnimalFacts({
           />
           <div className="space-y-0.5 text-sm">
             <p className="font-medium">{t("longStay", { duration: stay })}</p>
-            {recordStay && (
-              <p className="text-xs text-muted-foreground">
-                {messages.longStayRecord}
-              </p>
-            )}
             {onSeeLongestWaiting && (
               <button
                 type="button"

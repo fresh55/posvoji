@@ -23,6 +23,8 @@ export function ShelterRows({
   onToggle,
   refs,
   className,
+  highlighted,
+  onHoverRow,
 }: {
   rows: ShelterRow[];
   counts: Map<string, number>;
@@ -30,12 +32,18 @@ export function ShelterRows({
   onToggle: (value: string) => void;
   refs?: RefObject<Map<string, HTMLButtonElement>>;
   className?: string;
+  /** Values lit up because their marker is hovered on the map. */
+  highlighted?: string[];
+  /** Fired on row pointer enter/leave, so the map can highlight the matching
+   *  marker and region. Null on leave. */
+  onHoverRow?: (value: string | null) => void;
 }) {
   return (
     <div className={cn("space-y-0.5", className)}>
       {rows.map(({ value, label, city, km }) => {
         const count = counts.get(value) ?? 0;
         const checked = selected.includes(value);
+        const isHighlighted = highlighted?.includes(value) ?? false;
         const sublabel = [city, km === undefined ? undefined : formatKm(km)]
           .filter(Boolean)
           .join(" · ");
@@ -49,11 +57,18 @@ export function ShelterRows({
               else refs.current.delete(value);
             }}
             onClick={() => onToggle(value)}
+            onPointerEnter={() => onHoverRow?.(value)}
+            onPointerLeave={() => onHoverRow?.(null)}
             disabled={count === 0 && !checked}
             aria-pressed={checked}
+            data-highlighted={isHighlighted || undefined}
             className={cn(
               "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors disabled:opacity-40",
-              checked ? "bg-muted" : "hover:bg-muted/50",
+              checked
+                ? "bg-muted"
+                : isHighlighted
+                  ? "bg-muted/50"
+                  : "hover:bg-muted/50",
             )}
           >
             {/* Always laid out, so selecting a row doesn't shift the list. */}

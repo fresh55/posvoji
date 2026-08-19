@@ -1,6 +1,5 @@
 "use client";
 
-import { PawPrint, type LucideIcon } from "lucide-react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
@@ -11,6 +10,11 @@ import {
   filterCardVariants,
 } from "@/components/filters/filter-card";
 import { SexCards } from "@/components/filters/sex-cards";
+import { SizePawCards } from "@/components/filters/size-paw-cards";
+import {
+  useFilterCardHover,
+  useOneShotCelebration,
+} from "@/components/filters/use-filter-motion";
 import {
   groupLabel,
   type FilterOption,
@@ -23,12 +27,6 @@ import { useI18n } from "@/components/i18n-provider";
 import { HEALTH_ICONS } from "@/lib/animal-icons";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-
-const ICONS: Record<string, { icon: LucideIcon; className: string }> = {
-  "size:small": { icon: PawPrint, className: "size-3" },
-  "size:medium": { icon: PawPrint, className: "size-4" },
-  "size:large": { icon: PawPrint, className: "size-5" },
-};
 
 type IconGesture = {
   rotate: number | number[];
@@ -59,13 +57,11 @@ const HOVER_SPRING = {
 
 const GESTURE_DURATION = 0.35;
 const GESTURE_MS = 500;
+// The check confirms as the icon gesture lands, not before it starts.
+const GESTURE_CHECK_DELAY = 0.2;
 const RIPPLE_DURATION = 0.35;
 const RESET_STAGGER = 0.045;
 const RESET_CLEAR_MS = 280;
-
-function optionIcon(group: MultiGroup, value: string) {
-  return ICONS[`${group}:${value}`];
-}
 
 type GroupProps = {
   group: CardGroup;
@@ -78,106 +74,11 @@ type GroupProps = {
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
-type OptionCardGroup = Exclude<CardGroup, "age" | "sex">;
-
-const CARD_COLS: Record<OptionCardGroup, string> = {
-  size: "grid-cols-3",
-};
 
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
 function isDead(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
-}
-
-function OptionCards({
-  group,
-  options,
-  counts,
-  selected,
-  onToggle,
-}: Omit<GroupProps, "group" | "ageLayout" | "onToggleMany"> & {
-  group: OptionCardGroup;
-}) {
-  const { locale } = useI18n();
-  const shouldReduceMotion = useReducedMotion();
-  const [hoveredValue, setHoveredValue] = useState<string | null>(null);
-
-  return (
-    <LazyMotion features={domAnimation}>
-      <div className={cn("grid gap-1.5", CARD_COLS[group])}>
-        {options.map(({ value, label }) => {
-          const count = counts.get(value) ?? 0;
-          const checked = selected.includes(value);
-          const iconDef = optionIcon(group, value);
-          const hovered = hoveredValue === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onToggle(value)}
-              disabled={isDead(count, checked)}
-              // A tap leaves focus on the button, so the lift is limited to a
-              // real mouse and to keyboard focus.
-              onPointerEnter={(event) => {
-                if (event.pointerType !== "mouse") return;
-                setHoveredValue(value);
-              }}
-              onPointerLeave={() =>
-                setHoveredValue((current) =>
-                  current === value ? null : current,
-                )
-              }
-              onFocus={(event) => {
-                if (!event.currentTarget.matches(":focus-visible")) return;
-                setHoveredValue(value);
-              }}
-              onBlur={() =>
-                setHoveredValue((current) =>
-                  current === value ? null : current,
-                )
-              }
-              aria-pressed={checked}
-              aria-label={`${label}, ${animalCount(count, locale)}`}
-              className={filterCardVariants({
-                selected: checked,
-                className:
-                  "flex min-h-[4.75rem] flex-col items-center justify-center gap-1 px-1.5 py-2 text-center",
-              })}
-            >
-              <FilterSelectionMark
-                checked={checked}
-                className="absolute right-1.5 top-1.5"
-              />
-              <span aria-hidden className="flex h-5 items-end">
-                <m.span
-                  className="flex items-end will-change-transform"
-                  initial={false}
-                  animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
-                  transition={
-                    shouldReduceMotion ? { duration: 0 } : HOVER_SPRING
-                  }
-                >
-                  {iconDef && (
-                    <iconDef.icon
-                      className={iconDef.className}
-                      strokeWidth={1.75}
-                    />
-                  )}
-                </m.span>
-              </span>
-              <span className={cn("text-xs", checked && "font-medium")}>
-                {label}
-              </span>
-              <span className="text-[11px] tabular-nums text-muted-foreground">
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </LazyMotion>
-  );
 }
 
 function HealthToggleCards({
@@ -197,18 +98,14 @@ function HealthToggleCards({
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  const [celebration, setCelebration] = useState<{
-    key: ToggleKey;
-    id: number;
-  } | null>(null);
+  const {
+    celebration,
+    celebrate,
+    clear: clearCelebration,
+  } = useOneShotCelebration<ToggleKey>(GESTURE_MS);
   const [isResetting, setIsResetting] = useState(false);
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!celebration) return;
-    const timer = window.setTimeout(() => setCelebration(null), GESTURE_MS);
-    return () => window.clearTimeout(timer);
-  }, [celebration]);
+  const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
+    useFilterCardHover();
 
   useEffect(() => {
     if (!isResetting || selected.length > 0) return;
@@ -225,7 +122,7 @@ function HealthToggleCards({
         label={messages.health}
         active={selected.length > 0}
         onReset={() => {
-          setCelebration(null);
+          clearCelebration();
           setIsResetting(true);
           onToggleMany(selected);
         }}
@@ -246,7 +143,7 @@ function HealthToggleCards({
             const checked = selected.includes(key);
             const Icon = HEALTH_ICONS[key];
             const hovered = hoveredKey === key;
-            const celebrating = celebration?.key === key && checked;
+            const celebrating = celebration?.value === key && checked;
 
             return (
               <button
@@ -254,32 +151,14 @@ function HealthToggleCards({
                 type="button"
                 onClick={() => {
                   if (checked) {
-                    setCelebration(null);
+                    clearCelebration();
                   } else {
-                    setCelebration((current) => ({
-                      key,
-                      id: (current?.id ?? 0) + 1,
-                    }));
+                    celebrate(key);
                   }
                   onToggle(key);
                 }}
                 disabled={isDead(count, checked)}
-                // A tap leaves focus on the button, so the lift is limited to a
-                // real mouse and to keyboard focus.
-                onPointerEnter={(event) => {
-                  if (event.pointerType !== "mouse") return;
-                  setHoveredKey(key);
-                }}
-                onPointerLeave={() =>
-                  setHoveredKey((current) => (current === key ? null : current))
-                }
-                onFocus={(event) => {
-                  if (!event.currentTarget.matches(":focus-visible")) return;
-                  setHoveredKey(key);
-                }}
-                onBlur={() =>
-                  setHoveredKey((current) => (current === key ? null : current))
-                }
+                {...hoverHandlers(key)}
                 aria-pressed={checked}
                 aria-label={`${label}, ${animalCount(count, locale)}`}
                 className={filterCardVariants({
@@ -294,6 +173,7 @@ function HealthToggleCards({
               >
                 <FilterSelectionMark
                   checked={checked}
+                  appearDelay={GESTURE_CHECK_DELAY}
                   className={cn(
                     layout === "sheet"
                       ? "absolute right-1.5 top-1.5"
@@ -417,6 +297,47 @@ function HealthToggleCards({
   );
 }
 
+function SizeGroup({
+  options,
+  counts,
+  selected,
+  onToggle,
+  onToggleMany,
+}: Omit<GroupProps, "group" | "ageLayout">) {
+  const { locale, messages } = useI18n();
+  const [isResetting, setIsResetting] = useState(false);
+
+  useEffect(() => {
+    if (!isResetting || selected.length > 0) return;
+    const timer = window.setTimeout(
+      () => setIsResetting(false),
+      RESET_CLEAR_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isResetting, selected.length]);
+
+  return (
+    <section>
+      <FilterSectionHeader
+        label={groupLabel("size", locale)}
+        active={selected.length > 0}
+        onReset={() => {
+          setIsResetting(true);
+          onToggleMany(selected);
+        }}
+        resetAriaLabel={messages.resetSizeFilters}
+      />
+      <SizePawCards
+        options={options}
+        counts={counts}
+        selected={selected}
+        onToggle={onToggle}
+        isResetting={isResetting}
+      />
+    </section>
+  );
+}
+
 function FilterGroup({ group, ...rest }: GroupProps) {
   const { locale, messages } = useI18n();
 
@@ -453,21 +374,13 @@ function FilterGroup({ group, ...rest }: GroupProps) {
   }
 
   return (
-    <section>
-      <FilterSectionHeader
-        label={groupLabel(group, locale)}
-        active={rest.selected.length > 0}
-        onReset={() => rest.onToggleMany(rest.selected)}
-        resetAriaLabel={messages.resetSizeFilters}
-      />
-      <OptionCards
-        group={group}
-        options={rest.options}
-        counts={rest.counts}
-        selected={rest.selected}
-        onToggle={rest.onToggle}
-      />
-    </section>
+    <SizeGroup
+      options={rest.options}
+      counts={rest.counts}
+      selected={rest.selected}
+      onToggle={rest.onToggle}
+      onToggleMany={rest.onToggleMany}
+    />
   );
 }
 

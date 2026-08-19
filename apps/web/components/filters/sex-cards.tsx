@@ -1,11 +1,14 @@
 "use client";
 
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
 import {
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
+import {
+  useFilterCardHover,
+  useOneShotCelebration,
+} from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { groupLabel, type FilterOption } from "@/lib/filters";
@@ -24,6 +27,9 @@ const DRAW_STAGGER = 0.12;
 const FADE_DURATION = 0.15;
 const POP_DURATION = 0.42;
 const POP_MS = 500;
+// The glyph draws over DRAW_DURATION plus one stagger step, so the check waits
+// for the drawing hand instead of racing it.
+const DRAW_CHECK_DELAY = 0.3;
 
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
@@ -105,17 +111,13 @@ export function SexCards({
 }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  const [celebration, setCelebration] = useState<{
-    value: string;
-    id: number;
-  } | null>(null);
-  const [hoveredSex, setHoveredSex] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!celebration) return;
-    const timer = window.setTimeout(() => setCelebration(null), POP_MS);
-    return () => window.clearTimeout(timer);
-  }, [celebration]);
+  const {
+    celebration,
+    celebrate,
+    clear: clearCelebration,
+  } = useOneShotCelebration<string>(POP_MS);
+  const { hoveredValue: hoveredSex, handlers: hoverHandlers } =
+    useFilterCardHover();
 
   const celebrationIndex = options.findIndex(
     ({ value }) => value === celebration?.value,
@@ -131,12 +133,9 @@ export function SexCards({
           if (!changed) return;
 
           if (nextSelected.includes(changed)) {
-            setCelebration((current) => ({
-              value: changed,
-              id: (current?.id ?? 0) + 1,
-            }));
+            celebrate(changed);
           } else {
-            setCelebration(null);
+            clearCelebration();
           }
           onToggle(changed);
         }}
@@ -161,22 +160,7 @@ export function SexCards({
               key={value}
               value={value}
               disabled={isDead(count, checked)}
-              // A tap leaves focus on the button, so the lift is limited to a
-              // real mouse and to keyboard focus.
-              onPointerEnter={(event) => {
-                if (event.pointerType !== "mouse") return;
-                setHoveredSex(value);
-              }}
-              onPointerLeave={() =>
-                setHoveredSex((current) => (current === value ? null : current))
-              }
-              onFocus={(event) => {
-                if (!event.currentTarget.matches(":focus-visible")) return;
-                setHoveredSex(value);
-              }}
-              onBlur={() =>
-                setHoveredSex((current) => (current === value ? null : current))
-              }
+              {...hoverHandlers(value)}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
                 selected: checked,
@@ -186,6 +170,7 @@ export function SexCards({
             >
               <FilterSelectionMark
                 checked={checked}
+                appearDelay={DRAW_CHECK_DELAY}
                 className="absolute right-2 top-2"
               />
 

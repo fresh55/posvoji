@@ -6,6 +6,7 @@ import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import {
   clusterDiscPositions,
+  clusterHitWedges,
   DENSITY_STEPS,
   densityScale,
   discFitsGlyph,
@@ -15,6 +16,7 @@ import {
   markerGeometry,
   townCount,
   townLabel,
+  townSelectableValues,
   type ShelterPin,
   type Town,
 } from "@/lib/map-layout";
@@ -53,9 +55,10 @@ function getRegionStats(
   towns: Town[],
   selected: string[],
 ): Omit<RegionStats, "density"> {
-  const values = towns.flatMap((town) =>
-    town.shelters.map((shelter) => shelter.value),
-  );
+  // Only what a click may toggle. Off-site shelters are on the map but not in
+  // the region's values, so a region pick never selects a shelter with
+  // nothing to show, and a region holding only those stays inert.
+  const values = towns.flatMap(townSelectableValues);
   const animals = towns.reduce((sum, town) => sum + townCount(town), 0);
   return {
     values,
@@ -78,6 +81,8 @@ export function ShelterMap({
   highlightedValue,
   matchedValues,
   onHoverShelters,
+  spotlightValues,
+  spotlightNote,
 }: {
   pins: ShelterPin[];
   selected: string[];
@@ -94,10 +99,26 @@ export function ShelterMap({
   /** Fired when a marker or region gains or loses pointer hover, so the list
    *  can tint the matching row(s). Null means nothing is hovered. */
   onHoverShelters?: (values: string[] | null) => void;
+  /** Shelters the map should point at outright: accent ring plus a named
+   *  callout, independent of hover. The municipality mode's answer to "so
+   *  where is that?" — a dimmed-versus-darker marker was not readable, and on
+   *  phones markers are not drawn at all, so the ring and card are what make
+   *  the answer visible there. Null means no spotlight. */
+  spotlightValues?: string[] | null;
+  /** One-line note under the spotlight callout title, e.g. "responsible
+   *  shelter" in the reader's language. */
+  spotlightNote?: string;
 }) {
   const { locale, messages } = useI18n();
   const towns = useMemo(() => layoutTowns(pins), [pins]);
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
+  /** The single shelter under the pointer inside a cluster marker. A cluster
+   *  answers per disc, so the callout and the list row follow the wedge rather
+   *  than the town. Null for single and overflow markers, which still answer as
+   *  a whole. */
+  const [hoveredShelterValue, setHoveredShelterValue] = useState<string | null>(
+    null,
+  );
   const [hoveredRegionId, setHoveredRegionId] = useState<number | null>(null);
   const [focusedRegionId, setFocusedRegionId] = useState<number | null>(null);
   /** Region wearing keyboard focus right now, so it earns the same callout a
@@ -106,12 +127,23 @@ export function ShelterMap({
   const [calloutRegionId, setCalloutRegionId] = useState<number | null>(null);
   const regionRefs = useRef(new Map<number, SVGPathElement>());
   const activeTown = towns.find((town) => town.key === hoveredTownKey);
+  const hoveredShelter = hoveredShelterValue
+    ? activeTown?.shelters.find(
+        (shelter) => shelter.value === hoveredShelterValue,
+      )
+    : undefined;
 
   const highlightedTown = highlightedValue
     ? towns.find((town) =>
         town.shelters.some((shelter) => shelter.value === highlightedValue),
       )
     : undefined;
+
+  const spotlightTowns = spotlightValues?.length
+    ? towns.filter((town) =>
+        town.shelters.some((shelter) => spotlightValues.includes(shelter.value)),
+      )
+    : [];
   const highlightedRegionId = highlightedTown
     ? regionAt(project(highlightedTown.shelters[0].at))?.id
     : undefined;
@@ -238,8 +270,10 @@ export function ShelterMap({
                 matchedValues.includes(shelter.value),
               )
             }
+            hoveredShelterValue={hoveredShelterValue}
             onPointerEnter={() => {
               setHoveredTownKey(town.key);
+              setHoveredShelterValue(null);
               onHoverShelters?.(town.shelters.map((shelter) => shelter.value));
             }}
             onPointerLeave={() => {
@@ -248,20 +282,44 @@ export function ShelterMap({
               );
               onHoverShelters?.(null);
             }}
+            onHoverShelter={(value) => {
+              if (value === null) {
+                setHoveredTownKey((current) =>
+                  current === town.key ? null : current,
+                );
+                setHoveredShelterValue(null);
+                onHoverShelters?.(null);
+                return;
+              }
+              setHoveredTownKey(town.key);
+              setHoveredShelterValue(value);
+              onHoverShelters?.([value]);
+            }}
           />
         ))}
 
-        {/* Keep the active tooltip above every marker. */}
-        {activeTown && (
+        {/* Keep the active tooltip above every marker. A spotlighted town
+            already wears a persistent card saying the same thing, so hover
+            must not stack a second card on top of it. */}
+        {activeTown && !spotlightTowns.some((t) => t.key === activeTown.key) && (
           <MapCallout
             x={activeTown.x}
             y={activeTown.y}
             reach={activeTown.r}
-            title={townLabel(activeTown)}
+            // A wedge under the pointer names its own shelter. Without that a
+            // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
+            // at, which is the one question the cluster cannot answer.
+            title={hoveredShelter ? hoveredShelter.label : townLabel(activeTown)}
             metadata={
-              activeTown.shelters.length > 1
-                ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
-                : animalCount(townCount(activeTown), locale)
+              hoveredShelter
+                ? hoveredShelter.selectable === false
+                  ? messages.noAnimalsListed
+                  : animalCount(hoveredShelter.count, locale)
+                : townSelectableValues(activeTown).length === 0
+                  ? messages.noAnimalsListed
+                  : activeTown.shelters.length > 1
+                    ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
+                    : animalCount(townCount(activeTown), locale)
             }
           />
         )}
@@ -276,6 +334,44 @@ export function ShelterMap({
           metadata={`${shelterCount(hoveredRegion.stats.values.length, locale)} · ${animalCount(hoveredRegion.stats.animals, locale)}`}
         />
       )}
+
+      {/* Painted last: the spotlight is the whole point of the map while it
+          is on. Drawn outside the md-only marker group on purpose — phones
+          get no markers, so the ring and the named card are all they see. */}
+      {spotlightTowns.map((town) => (
+        <g key={`spot-${town.key}`} aria-hidden className="pointer-events-none">
+          <circle
+            cx={town.x}
+            cy={town.y}
+            r={town.r + 3.5}
+            strokeWidth={1.5}
+            className="fill-none stroke-[var(--filter-accent-strong)] animate-pulse motion-reduce:animate-none"
+          />
+          <circle
+            cx={town.x}
+            cy={town.y}
+            r={2.2}
+            className="fill-[var(--filter-accent-strong)] md:hidden"
+          />
+        </g>
+      ))}
+      {spotlightTowns.map((town) => (
+        <MapCallout
+          key={`spot-callout-${town.key}`}
+          x={town.x}
+          y={town.y}
+          reach={town.r + 6}
+          // The spotlighted shelter by name, not its town: in a shared town
+          // the answer is one of the discs, and the card must say which.
+          title={
+            town.shelters
+              .filter((shelter) => spotlightValues?.includes(shelter.value))
+              .map((shelter) => shelter.label)
+              .join(" · ") || townLabel(town)
+          }
+          metadata={spotlightNote ?? ""}
+        />
+      ))}
     </svg>
   );
 }
@@ -416,6 +512,8 @@ function Marker({
   onPick,
   onPointerEnter,
   onPointerLeave,
+  onHoverShelter,
+  hoveredShelterValue,
   highlighted,
   dimmed,
 }: {
@@ -424,6 +522,10 @@ function Marker({
   onPick: (values: string[]) => void;
   onPointerEnter: () => void;
   onPointerLeave: () => void;
+  /** A cluster wedge gained or lost the pointer. Null on leave. */
+  onHoverShelter: (value: string | null) => void;
+  /** The shelter whose wedge holds the pointer, so only its disc leans in. */
+  hoveredShelterValue: string | null;
   /** The shelter is hovered in the list, so its marker reveals the hit halo
    *  and strengthens its stroke, same as pointer hover would. */
   highlighted: boolean;
@@ -432,10 +534,19 @@ function Marker({
   dimmed: boolean;
 }) {
   const shared = town.shelters.length > 1;
-  const values = town.shelters.map((shelter) => shelter.value);
+  const values = townSelectableValues(town);
   const state = selectionState(values, selected);
+  // A town holding only off-site shelters is informational: hover names it,
+  // nothing picks it. Unlike a dead marker it keeps its pointer events, so
+  // the visitor can find out what the faint dot is.
+  const info = values.length === 0;
   const live = townCount(town) > 0 || state !== false;
   const geometry = markerGeometry(town);
+  // Two or three discs get one hit wedge each, so a click lands on the shelter
+  // it was aimed at instead of toggling the whole town. Empty for single and
+  // overflow markers, which keep answering as a whole.
+  const wedges = clusterHitWedges(town);
+  const wedged = wedges.length > 0;
 
   return (
     <g
@@ -447,14 +558,21 @@ function Marker({
       data-marker-state={
         state === true ? "selected" : state === "mixed" ? "mixed" : "idle"
       }
+      data-marker-info={info || undefined}
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
-      onClick={() => live && onPick(values)}
-      onPointerEnter={onPointerEnter}
-      onPointerLeave={onPointerLeave}
+      onClick={wedged ? undefined : () => live && onPick(values)}
+      onPointerEnter={wedged ? undefined : onPointerEnter}
+      onPointerLeave={wedged ? undefined : onPointerLeave}
       className={cn(
         "group/pin transition-opacity motion-reduce:transition-none",
-        live ? "cursor-pointer" : "pointer-events-none",
+        live
+          ? wedged
+            ? "cursor-default"
+            : "cursor-pointer"
+          : info
+            ? "cursor-default"
+            : "pointer-events-none",
         dimmed && "opacity-30",
       )}
     >
@@ -489,8 +607,34 @@ function Marker({
           selected={selected}
           live={live}
           highlighted={highlighted}
+          hoveredShelterValue={hoveredShelterValue}
         />
       )}
+
+      {/* Painted last so the wedges win the pointer over the halo and the
+          discs alike. They are transparent: the discs stay the picture, the
+          wedges only divide the target. */}
+      {wedges.map(({ value, d }) => {
+        const shelter = town.shelters.find((entry) => entry.value === value);
+        // An off-site shelter's wedge names it and stops there, the same deal
+        // its dot has always had.
+        const pickable = live && shelter?.selectable !== false;
+        return (
+          <path
+            key={value}
+            d={d}
+            data-wedge-shelter={value}
+            data-wedge-pickable={pickable || undefined}
+            onClick={pickable ? () => onPick([value]) : undefined}
+            onPointerEnter={() => onHoverShelter(value)}
+            onPointerLeave={() => onHoverShelter(null)}
+            className={cn(
+              "fill-transparent stroke-none",
+              pickable ? "cursor-pointer" : "cursor-default",
+            )}
+          />
+        );
+      })}
     </g>
   );
 }
@@ -505,6 +649,7 @@ function MarkerDisc({
   discAttribute,
   shelterValue,
   highlighted,
+  hoverScope = "group",
 }: {
   cx: number;
   cy: number;
@@ -515,8 +660,42 @@ function MarkerDisc({
   discAttribute?: string;
   shelterValue?: string;
   highlighted?: boolean;
+  /** "group" leans in whenever the marker is hovered anywhere. "self" waits to
+   *  be told, which is what a wedged cluster needs: one disc answers, not all
+   *  of them. */
+  hoverScope?: "group" | "self";
 }) {
   const glyph = r * glyphScale;
+  const groupHover = hoverScope === "group";
+  // A shelter with nothing to pick is a place, not a control. A paw disc a
+  // shade fainter still read as a control, so it draws as a different shape
+  // entirely: a small plain dot, the same mark the municipalities map uses.
+  if (!selected && !live) {
+    return (
+      <g
+        data-cluster-disc={discAttribute}
+        data-cluster-shelter={shelterValue}
+        className={cn(
+          "origin-center transition-[fill,transform] [transform-box:fill-box] motion-reduce:transition-none",
+          groupHover &&
+            "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
+          highlighted && "scale-110 motion-reduce:scale-100",
+        )}
+      >
+        <circle
+          data-marker-empty=""
+          cx={cx}
+          cy={cy}
+          r={r * 0.42}
+          className={cn(
+            "fill-foreground/35 stroke-none transition-colors motion-reduce:transition-none",
+            groupHover && "group-hover/pin:fill-foreground/60",
+            highlighted && "fill-foreground/60",
+          )}
+        />
+      </g>
+    );
+  }
   return (
     <g
       data-cluster-disc={discAttribute}
@@ -524,16 +703,18 @@ function MarkerDisc({
       className={cn(
         // Each disc grows around its own centre, so cluster discs breathe
         // apart instead of shifting as a block.
-        "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] group-hover/pin:scale-110 motion-reduce:transition-none motion-reduce:group-hover/pin:scale-100",
+        "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] motion-reduce:transition-none",
+        groupHover &&
+          "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
         highlighted && "scale-110 motion-reduce:scale-100",
         selected
           ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
-          : live
-            ? cn(
-                "fill-background stroke-foreground/75 text-foreground/75 group-hover/pin:stroke-foreground group-hover/pin:text-foreground",
-                highlighted && "stroke-foreground text-foreground",
-              )
-            : "fill-background stroke-foreground/40 text-foreground/40",
+          : cn(
+              "fill-background stroke-foreground/75 text-foreground/75",
+              groupHover &&
+                "group-hover/pin:stroke-foreground group-hover/pin:text-foreground",
+              highlighted && "stroke-foreground text-foreground",
+            ),
       )}
     >
       <circle cx={cx} cy={cy} r={r} style={{ strokeWidth: MARKER_STROKE_WIDTH }} />
@@ -561,11 +742,13 @@ function ClusterMarker({
   selected,
   live,
   highlighted,
+  hoveredShelterValue,
 }: {
   town: Town;
   selected: string[];
   live: boolean;
   highlighted: boolean;
+  hoveredShelterValue: string | null;
 }) {
   const { clusterRadius } = markerGeometry(town);
   const positions = clusterDiscPositions(town);
@@ -578,10 +761,15 @@ function ClusterMarker({
       r={clusterRadius}
       glyphScale={1.3}
       selected={selected.includes(shelter.value)}
-      live={live}
+      // An off-site shelter keeps its faint disc even when its town has
+      // animals: the disc, not the town, is what says "this one you can pick".
+      live={live && shelter.selectable !== false}
       discAttribute={selected.includes(shelter.value) ? "selected" : "idle"}
       shelterValue={shelter.value}
-      highlighted={highlighted}
+      // The hovered wedge picks the disc that leans in. A list hover still
+      // names the town, so it lights every disc, as before.
+      highlighted={highlighted || hoveredShelterValue === shelter.value}
+      hoverScope="self"
     />
   ));
 }
@@ -679,9 +867,11 @@ function MapCallout({
         <span className="w-full break-words text-[5.5px] font-medium leading-[1.15]">
           {title}
         </span>
-        <span className="mt-[1.5px] w-full break-words text-[4.75px] leading-[1.15] text-muted-foreground">
-          {metadata}
-        </span>
+        {metadata && (
+          <span className="mt-[1.5px] w-full break-words text-[4.75px] leading-[1.15] text-muted-foreground">
+            {metadata}
+          </span>
+        )}
       </div>
     </foreignObject>
   );

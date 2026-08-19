@@ -4,7 +4,7 @@
 import { cityKey, type LatLon } from "./geo";
 import { POSTAL_DISTRICTS, type PostalDistrict } from "./postal-districts";
 
-export type PostalMatch = { at: LatLon; label: string };
+export type PostalMatch = { at: LatLon; label: string; code: string };
 
 const BY_CODE = new Map(POSTAL_DISTRICTS.map((d) => [d.code, d]));
 
@@ -20,7 +20,11 @@ const ENTRIES: Entry[] = POSTAL_DISTRICTS.flatMap((district) => {
 });
 
 function toMatch(district: PostalDistrict): PostalMatch {
-  return { at: { lat: district.lat, lon: district.lon }, label: district.name };
+  return {
+    at: { lat: district.lat, lon: district.lon },
+    label: district.name,
+    code: district.code,
+  };
 }
 
 // Exact match wins outright. Otherwise a prefix match is only used if every

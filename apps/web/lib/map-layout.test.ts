@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
 import {
   clusterDiscPositions,
+  clusterHitWedges,
   DENSITY_STEPS,
   densityScale,
   discFitsGlyph,
@@ -248,6 +249,102 @@ describe("layoutTowns", () => {
 
   it("handles an empty roster", () => {
     expect(layoutTowns([])).toEqual([]);
+  });
+});
+
+// Pulls the numbers out of a wedge's "M cx cy L x y A r r 0 0 1 x y A r r 0 0
+// 1 x y Z" path in the order the string emits them.
+function parseWedge(d: string) {
+  const n = [...d.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+  return {
+    center: { x: n[0], y: n[1] },
+    start: { x: n[2], y: n[3] },
+    r: n[4],
+    mid: { x: n[9], y: n[10] },
+    end: { x: n[16], y: n[17] },
+  };
+}
+
+// Degrees clockwise from east, same convention CLUSTER_ANGLES uses.
+function angleOf(point: { x: number; y: number }, center: { x: number; y: number }) {
+  const degrees = (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI;
+  return (degrees + 360) % 360;
+}
+
+// True if `angle` lies on the clockwise arc from `start` to `end`.
+function angleInWedge(angle: number, start: number, end: number): boolean {
+  const span = (end - start + 360) % 360;
+  const offset = (angle - start + 360) % 360;
+  return offset <= span + 1e-6;
+}
+
+describe("clusterHitWedges", () => {
+  it("returns no wedges for a single shelter or one past the cluster cap", () => {
+    const [solo] = layoutTowns([pin("a", "Ljubljana", 20)]);
+    expect(clusterHitWedges(solo)).toEqual([]);
+    const [crowded] = layoutTowns(
+      Array.from({ length: 4 }, (_, index) => pin(`s${index}`, "Ljubljana", 20)),
+    );
+    expect(clusterHitWedges(crowded)).toEqual([]);
+  });
+
+  it("gives a 2-shelter town one wedge per shelter, each holding its own disc", () => {
+    const [town] = layoutTowns([
+      pin("a", "Ljubljana", 20),
+      pin("b", "Ljubljana", 20),
+    ]);
+    const wedges = clusterHitWedges(town);
+    expect(wedges.map((w) => w.value)).toEqual(["a", "b"]);
+
+    const discs = clusterDiscPositions(town);
+    wedges.forEach((wedge, index) => {
+      const { center, start, mid, end, r } = parseWedge(wedge.d);
+      expect(r).toBeCloseTo(town.hitR, 1);
+      for (const point of [start, mid, end]) {
+        expect(Math.hypot(point.x - center.x, point.y - center.y)).toBeCloseTo(
+          town.hitR,
+          1,
+        );
+      }
+      const startAngle = angleOf(start, center);
+      const endAngle = angleOf(end, center);
+      discs.forEach((disc, discIndex) => {
+        const discAngle = angleOf(disc, center);
+        expect(angleInWedge(discAngle, startAngle, endAngle)).toBe(
+          discIndex === index,
+        );
+      });
+    });
+  });
+
+  it("gives a 3-shelter town one wedge per shelter, each holding its own disc", () => {
+    const [town] = layoutTowns([
+      pin("a", "Ljubljana", 20),
+      pin("b", "Ljubljana", 20),
+      pin("c", "Ljubljana", 20),
+    ]);
+    const wedges = clusterHitWedges(town);
+    expect(wedges.map((w) => w.value)).toEqual(["a", "b", "c"]);
+
+    const discs = clusterDiscPositions(town);
+    wedges.forEach((wedge, index) => {
+      const { center, start, mid, end, r } = parseWedge(wedge.d);
+      expect(r).toBeCloseTo(town.hitR, 1);
+      for (const point of [start, mid, end]) {
+        expect(Math.hypot(point.x - center.x, point.y - center.y)).toBeCloseTo(
+          town.hitR,
+          1,
+        );
+      }
+      const startAngle = angleOf(start, center);
+      const endAngle = angleOf(end, center);
+      discs.forEach((disc, discIndex) => {
+        const discAngle = angleOf(disc, center);
+        expect(angleInWedge(discAngle, startAngle, endAngle)).toBe(
+          discIndex === index,
+        );
+      });
+    });
   });
 });
 

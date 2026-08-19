@@ -13,6 +13,7 @@ import {
   filterCardVariants,
 } from "@/components/filters/filter-card";
 import { FilterSectionHeader } from "@/components/filters/filter-section-header";
+import { useFilterCardHover } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
 import {
   ToggleGroup,
@@ -68,6 +69,8 @@ const STANDARD_EASE = [0.16, 1, 0.3, 1] as const;
 const SWAY_DELAY = 0.08;
 const SWAY_TAIL = 0.12;
 const CELEBRATION_GUARD_MS = 80;
+// The check confirms once the plant has grown, not while it is still drawing.
+const GROWTH_CHECK_DELAY = 0.3;
 const RESET_STAGGER = 0.045;
 const RESET_CLEAR_MS = 280;
 
@@ -119,7 +122,8 @@ export function AgeGrowthControl({
     id: number;
   } | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  const [hoveredAge, setHoveredAge] = useState<string | null>(null);
+  const { hoveredValue: hoveredAge, handlers: hoverHandlers } =
+    useFilterCardHover();
   const [fallingLeafId, setFallingLeafId] = useState(0);
   const celebratingAge = celebration?.value ?? null;
   const leafFall = leafFallDistance(layout);
@@ -392,27 +396,7 @@ export function AgeGrowthControl({
                     <ToggleGroupItem
                       value={value}
                       disabled={count === 0 && !checked}
-                      // A tap leaves focus on the button, so the link to the
-                      // grove is limited to a real mouse and to keyboard focus.
-                      onPointerEnter={(event) => {
-                        if (event.pointerType !== "mouse") return;
-                        setHoveredAge(value);
-                      }}
-                      onPointerLeave={() =>
-                        setHoveredAge((current) =>
-                          current === value ? null : current,
-                        )
-                      }
-                      onFocus={(event) => {
-                        if (!event.currentTarget.matches(":focus-visible"))
-                          return;
-                        setHoveredAge(value);
-                      }}
-                      onBlur={() =>
-                        setHoveredAge((current) =>
-                          current === value ? null : current,
-                        )
-                      }
+                      {...hoverHandlers(value)}
                       aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
                       className={filterCardVariants({
                         selected: checked,
@@ -424,6 +408,7 @@ export function AgeGrowthControl({
                     >
                       <FilterSelectionMark
                         checked={checked}
+                        appearDelay={GROWTH_CHECK_DELAY}
                         className={cn(
                           layout === "sheet" && "absolute right-1.5 top-1.5",
                         )}

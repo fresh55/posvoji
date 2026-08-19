@@ -6,6 +6,9 @@ export type ShelterPin = {
   city: string;
   at: LatLon;
   count: number;
+  /** False for registry shelters with nothing on the site yet: drawn and
+   *  named on hover, but never picked. Absent means selectable. */
+  selectable?: boolean;
 };
 
 // Shelters in one town share a marker; distinct towns stay separate.
@@ -203,6 +206,14 @@ export function townCount(town: Town): number {
   return town.shelters.reduce((sum, shelter) => sum + shelter.count, 0);
 }
 
+// The values a click on this town may toggle. Off-site shelters share the
+// marker but never the pick.
+export function townSelectableValues(town: Town): string[] {
+  return town.shelters
+    .filter((shelter) => shelter.selectable !== false)
+    .map((shelter) => shelter.value);
+}
+
 // One source of truth for the visible and accessible town label. A cluster is
 // named by its town; a single marker is named by its shelter.
 export function townLabel(town: Town): string {
@@ -253,6 +264,54 @@ export function clusterDiscPositions(town: Town): { x: number; y: number }[] {
       x: town.x + Math.cos(radians) * clusterOffset,
       y: town.y + Math.sin(radians) * clusterOffset,
     };
+  });
+}
+
+// One click target per shelter, replacing the single hit circle a cluster
+// otherwise shares. Wedge boundaries sit on the bisectors between neighbouring
+// disc angles, so each wedge contains exactly its own disc's direction and the
+// boundary between two shelters falls exactly between their coins.
+export function clusterHitWedges(town: Town): { value: string; d: string }[] {
+  const count = town.shelters.length;
+  const angles = CLUSTER_ANGLES[count];
+  if (!angles || count > MAX_CLUSTER_DISCS) return [];
+
+  // bisectors[k] is the boundary between disc k and disc k+1 (wrapping).
+  const bisectors = angles.map((angle, index) => {
+    const next = angles[(index + 1) % angles.length];
+    const nextUnwrapped = next <= angle ? next + 360 : next;
+    return (angle + nextUnwrapped) / 2;
+  });
+
+  const round = (value: number) => Math.round(value * 100) / 100;
+  const pointAt = (degrees: number) => {
+    const radians = (degrees * Math.PI) / 180;
+    return {
+      x: town.x + Math.cos(radians) * town.hitR,
+      y: town.y + Math.sin(radians) * town.hitR,
+    };
+  };
+
+  return town.shelters.map((shelter, index) => {
+    const start = bisectors[(index - 1 + bisectors.length) % bisectors.length];
+    const endRaw = bisectors[index];
+    const end = endRaw <= start ? endRaw + 360 : endRaw;
+    const mid = (start + end) / 2;
+    const startPoint = pointAt(start);
+    const midPoint = pointAt(mid);
+    const endPoint = pointAt(end);
+    const r = round(town.hitR);
+    // Every wedge here spans 180 or 120 degrees, never more, so splitting it
+    // into two halves at the midpoint keeps large-arc-flag 0 in one code path
+    // instead of branching between the 180-degree case and the rest.
+    const d = [
+      `M ${round(town.x)} ${round(town.y)}`,
+      `L ${round(startPoint.x)} ${round(startPoint.y)}`,
+      `A ${r} ${r} 0 0 1 ${round(midPoint.x)} ${round(midPoint.y)}`,
+      `A ${r} ${r} 0 0 1 ${round(endPoint.x)} ${round(endPoint.y)}`,
+      "Z",
+    ].join(" ");
+    return { value: shelter.value, d };
   });
 }
 

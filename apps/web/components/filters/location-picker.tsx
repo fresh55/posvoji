@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
+  ChevronRight,
   LoaderCircle,
   MapPin,
   Navigation,
@@ -10,6 +11,12 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { MunicipalityFinder } from "@/components/filters/municipality-finder";
+import {
+  FOUND_ANIMAL_PARAM,
+  OPEN_MUNICIPALITY_LOOKUP_EVENT,
+} from "@/lib/found-animal";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import { ResultCount } from "@/components/filters/result-count";
 import { ShelterMap } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
@@ -27,7 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
-import { cityAt, distanceKm, onMap } from "@/lib/geo";
+import { cityAt, distanceKm, formatKm, onMap } from "@/lib/geo";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
@@ -51,6 +58,9 @@ export function LocationPicker({
   onToggleMany,
   resultCount,
   species,
+  municipalities,
+  offSite,
+  deepLink,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -61,10 +71,51 @@ export function LocationPicker({
    *  confirm button so picking a shelter has visible consequences. */
   resultCount: number;
   species: SpeciesFilter;
+  /** Municipality → responsible-shelter entries. When present, the dialog
+   *  grows a second mode behind a quiet button: search by občina instead of
+   *  by shelter. */
+  municipalities?: LookupEntry[];
+  /** Registry shelters with no animals on the site. Drawn as inert markers
+   *  and as rows linking to their shelter page, so the map answers "where are
+   *  Slovenia's shelters" and not just "where are ours". */
+  offSite?: FilterOption[];
+  /** Which rendered instance answers the found-animal strip and the ?najdena
+   *  deep link. The picker is mounted twice (desktop toolbar, mobile dock);
+   *  only the one visible at the current breakpoint may open, or two dialogs
+   *  would fight. Omit to opt out of deep-linking entirely. */
+  deepLink?: "desktop" | "mobile";
 }) {
   const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // The municipality mode: same dialog, same map, different question. Off by
+  // default and behind its own button, so the shelter picker stays what it
+  // was until someone arrives with a found animal instead of a filter.
+  const [muniMode, setMuniMode] = useState(false);
+  const [muniShelterIds, setMuniShelterIds] = useState<string[] | null>(null);
+
+  // The found-animal strip and the ?najdena URL both land here: open the
+  // dialog straight in municipality mode. Guarded by breakpoint because two
+  // instances of this picker are mounted at once and exactly one is visible.
+  const canDeepLink = Boolean(deepLink && municipalities?.length);
+  useEffect(() => {
+    if (!canDeepLink) return;
+    const isMine = () => {
+      const isDesktop = window.matchMedia("(min-width: 64rem)").matches;
+      return deepLink === "desktop" ? isDesktop : !isDesktop;
+    };
+    const openLookup = () => {
+      if (!isMine()) return;
+      setMuniMode(true);
+      setOpen(true);
+    };
+    if (new URLSearchParams(window.location.search).has(FOUND_ANIMAL_PARAM)) {
+      openLookup();
+    }
+    window.addEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
+    return () =>
+      window.removeEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
+  }, [canDeepLink, deepLink]);
   const searchRef = useRef<HTMLInputElement>(null);
   const [place, setPlace] = useState("");
   const placeRef = useRef<HTMLInputElement>(null);
@@ -110,9 +161,32 @@ export function LocationPicker({
     return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
   }, [options, origin]);
 
+  // Same locating and sorting as the live rows, in their own list: these are
+  // real shelters someone may live next to, they just have nothing to filter.
+  const offRows: (ShelterRow & { at?: ReturnType<typeof cityAt> })[] =
+    useMemo(() => {
+      const located = (offSite ?? []).map((option) => {
+        const at = option.city ? cityAt(option.city) : undefined;
+        return {
+          ...option,
+          at,
+          km: at && origin ? distanceKm(origin, at) : undefined,
+        };
+      });
+      if (!origin) return located;
+      return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+    }, [offSite, origin]);
+
+  // What the municipality cards may offer to select: only shelters that
+  // exist as filter options, i.e. currently have animals to show.
+  const selectableIds = useMemo(
+    () => new Set(options.map((option) => option.value)),
+    [options],
+  );
+
   const pins: ShelterPin[] = useMemo(
-    () =>
-      rows.flatMap((row) =>
+    () => [
+      ...rows.flatMap((row) =>
         row.at
           ? [
               {
@@ -125,7 +199,24 @@ export function LocationPicker({
             ]
           : [],
       ),
-    [counts, rows],
+      // selectable: false is what keeps these out of region picks: a region
+      // click must never select a shelter that has nothing to show.
+      ...offRows.flatMap((row) =>
+        row.at
+          ? [
+              {
+                value: row.value,
+                label: row.label,
+                city: row.city ?? "",
+                at: row.at,
+                count: 0,
+                selectable: false,
+              },
+            ]
+          : [],
+      ),
+    ],
+    [counts, offRows, rows],
   );
 
   // Picking a region picks every shelter in it, which is as fine as a map of a
@@ -146,8 +237,14 @@ export function LocationPicker({
         fold(`${row.label} ${row.city ?? ""}`).includes(fold(query)),
       )
     : rows;
+  const visibleOffRows = query.trim()
+    ? offRows.filter((row) =>
+        fold(`${row.label} ${row.city ?? ""}`).includes(fold(query)),
+      )
+    : offRows;
 
-  const unplaced = rows.length - pins.length;
+  const unplaced = rows.length + offRows.length - pins.length;
+  const hasOffSitePins = pins.some((pin) => pin.selectable === false);
   const nearbyOn = state.status === "on";
   // Two independent facts, so two lines. Sharing one slot meant a geolocation
   // error silently replaced the note about shelters missing from the map.
@@ -180,6 +277,7 @@ export function LocationPicker({
   // the count is what answers it: eleven shelters exist and this is where they
   // are. "Vsa zavetišča" alone read as a filter state, not as a way in.
   const total = options.length;
+  const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
   const label =
     selected.length === 0
       ? allShelters(total, locale)
@@ -190,7 +288,13 @@ export function LocationPicker({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setQuery("");
+        if (!next) {
+          setQuery("");
+          // Reopening lands in the shelter picker, whatever question the
+          // dialog closed on.
+          setMuniMode(false);
+          setMuniShelterIds(null);
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -285,10 +389,21 @@ export function LocationPicker({
                 selected={selected}
                 onPick={pickRegion}
                 origin={origin}
-                highlightedValue={hoveredRowValue}
+                highlightedValue={muniMode ? null : hoveredRowValue}
                 matchedValues={
-                  query.trim() ? visibleRows.map((row) => row.value) : null
+                  muniMode
+                    ? muniShelterIds
+                    : query.trim()
+                      ? [...visibleRows, ...visibleOffRows].map(
+                          (row) => row.value,
+                        )
+                      : null
                 }
+                // The ring and named card that answer "so where is that?"
+                // once a municipality is picked. Stronger than the hover
+                // highlight on purpose, and the only signal phones get.
+                spotlightValues={muniMode ? muniShelterIds : null}
+                spotlightNote={messages.muniResponsible}
                 onHoverShelters={setHoveredMarkerValues}
                 className="md:h-full [filter:drop-shadow(0_1px_1px_rgb(0_0_0/0.06))_drop-shadow(0_6px_14px_rgb(0_0_0/0.07))]"
               />
@@ -324,6 +439,22 @@ export function LocationPicker({
                 </span>
                 {messages.shelter}
               </span>
+
+              {/* The dot the map draws for a shelter with nothing to pick: a
+                  different shape from the paw disc, not a fainter copy of it.
+                  Only where those markers exist: they are md-only, and only
+                  once one of them is on the map. */}
+              {hasOffSitePins && (
+                <span className="hidden items-center gap-1.5 md:flex">
+                  <span
+                    aria-hidden
+                    className="inline-flex size-4 shrink-0 items-center justify-center"
+                  >
+                    <span className="size-1.5 rounded-full bg-foreground/35" />
+                  </span>
+                  {messages.noAnimalsListed}
+                </span>
+              )}
 
               {/* Only once there is a point to explain. The ring repeats the
                   dashed circle the map draws at the origin, at legend size. */}
@@ -364,6 +495,49 @@ export function LocationPicker({
           </div>
 
           <div className="mt-5 flex flex-col md:mt-0 md:min-h-0 md:border-l md:pl-6">
+            {municipalities && municipalities.length > 0 && (
+              // Two questions, two tabs: filter by shelter, or start from a
+              // found animal's občina. Labeled and always visible, so the
+              // second mode is discoverable instead of a footnote. Same shape
+              // as the species tabs, so the site has one tab.
+              <div className="mb-3 flex shrink-0 gap-1">
+                {(
+                  [
+                    { mode: false, label: messages.shelters },
+                    { mode: true, label: messages.muniTab },
+                  ] as const
+                ).map(({ mode, label }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-pressed={muniMode === mode}
+                    onClick={() => {
+                      setMuniMode(mode);
+                      if (!mode) setMuniShelterIds(null);
+                    }}
+                    className={cn(
+                      "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors",
+                      muniMode === mode
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {muniMode && municipalities ? (
+              <MunicipalityFinder
+                entries={municipalities}
+                selectableIds={selectableIds}
+                selected={selected}
+                onToggle={onToggle}
+                onActiveShelters={setMuniShelterIds}
+              />
+            ) : (
+              <>
             <div className="relative shrink-0">
               <Search
                 className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -529,7 +703,7 @@ export function LocationPicker({
             </div>
 
             <div className="mt-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
-              {visibleRows.length === 0 ? (
+              {visibleRows.length === 0 && visibleOffRows.length === 0 ? (
                 <div className="space-y-1.5 px-2 py-2 text-sm text-muted-foreground">
                   <p>
                     {messages.noSheltersFound} »{query.trim()}«
@@ -546,18 +720,78 @@ export function LocationPicker({
                   </button>
                 </div>
               ) : (
-                <ShelterRows
-                  rows={visibleRows}
-                  counts={counts}
-                  selected={selected}
-                  onToggle={onToggle}
-                  refs={rowRefs}
-                  highlighted={hoveredMarkerValues ?? undefined}
-                  onHoverRow={setHoveredRowValue}
-                  onExitTop={() => searchRef.current?.focus()}
-                  lessThanOneKm={messages.lessThanOneKm}
-                  className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0"
-                />
+                <>
+                  <ShelterRows
+                    rows={visibleRows}
+                    counts={counts}
+                    selected={selected}
+                    onToggle={onToggle}
+                    refs={rowRefs}
+                    highlighted={hoveredMarkerValues ?? undefined}
+                    onHoverRow={setHoveredRowValue}
+                    onExitTop={() => searchRef.current?.focus()}
+                    lessThanOneKm={messages.lessThanOneKm}
+                    className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0"
+                  />
+
+                  {/* Registry shelters without animals, under their own
+                      heading so the zeroes read as "not here yet" rather
+                      than as empty search results. There is nothing to
+                      filter by, but there is a page for each of them, so
+                      the rows are links out rather than dead toggles. The
+                      layout copies ShelterRows down to the spacer where its
+                      check sits, so the two lists share their columns. */}
+                  {visibleOffRows.length > 0 && (
+                    <div className="mt-3">
+                      <p className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                        {messages.noAnimalsListedHeading}
+                      </p>
+                      <div className="space-y-0.5 sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0">
+                        {visibleOffRows.map((row) => {
+                          const sublabel = [
+                            row.city,
+                            row.km === undefined
+                              ? undefined
+                              : formatKm(row.km, messages.lessThanOneKm),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ");
+                          const isHighlighted =
+                            hoveredMarkerValues?.includes(row.value) ?? false;
+                          return (
+                            <a
+                              key={row.value}
+                              href={`${detailBase}/${row.value}`}
+                              onPointerEnter={() => setHoveredRowValue(row.value)}
+                              onPointerLeave={() => setHoveredRowValue(null)}
+                              data-highlighted={isHighlighted || undefined}
+                              className={cn(
+                                "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors",
+                                isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
+                              )}
+                            >
+                              <span className="size-3.5 shrink-0" aria-hidden />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm text-muted-foreground">
+                                  {row.label}
+                                </span>
+                                {sublabel && (
+                                  <span className="block truncate text-[11px] text-muted-foreground/80">
+                                    {sublabel}
+                                  </span>
+                                )}
+                              </span>
+                              <ChevronRight
+                                className="size-3 shrink-0 text-muted-foreground/60"
+                                aria-hidden
+                              />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -568,6 +802,8 @@ export function LocationPicker({
                 {missing}
               </p>
             </div>
+              </>
+            )}
           </div>
         </div>
 

@@ -5,7 +5,9 @@ import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import type {
   CardGroup,
+  CareSection,
   GoodWithSection,
+  HomeSection,
 } from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
@@ -13,6 +15,7 @@ import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { activeFilterSectionCount } from "@/lib/filters";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
   Filters,
@@ -34,8 +37,12 @@ export function AnimalFilters({
   toggles,
   toggleTally,
   goodWith,
+  home,
+  care,
   shelters,
   shelterTally,
+  municipalities,
+  offSiteShelters,
   chips,
   resultCount,
   clearTrailKey,
@@ -56,9 +63,15 @@ export function AnimalFilters({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
   /** Absent when the dataset has nothing to choose between. */
   shelters: FilterOption[] | undefined;
   shelterTally: Map<string, number>;
+  municipalities?: LookupEntry[];
+  /** Registry shelters with no animals on the site, shown inert in the
+   *  location picker's map and list. */
+  offSiteShelters?: FilterOption[];
   chips: Chip[];
   resultCount: number;
   clearTrailKey: number;
@@ -71,7 +84,9 @@ export function AnimalFilters({
   const hasFilterSheet =
     groups.length > 0 ||
     toggles.length > 0 ||
-    (goodWith?.options.length ?? 0) > 0;
+    (goodWith?.options.length ?? 0) > 0 ||
+    (home?.options.length ?? 0) > 0 ||
+    (care?.options.length ?? 0) > 0;
   const activeSectionCount = activeFilterSectionCount(filters);
 
   return (
@@ -111,6 +126,9 @@ export function AnimalFilters({
                   onToggleMany={(values) => onToggleMany("shelter", values)}
                   resultCount={resultCount}
                   species={filters.species}
+                  municipalities={municipalities}
+                  offSite={offSiteShelters}
+                  deepLink="desktop"
                 />
               </div>
             )}
@@ -158,6 +176,8 @@ export function AnimalFilters({
               toggles={toggles}
               toggleTally={toggleTally}
               goodWith={goodWith}
+              home={home}
+              care={care}
               activeSectionCount={activeSectionCount}
               resultCount={resultCount}
               onToggle={onToggle}
@@ -178,6 +198,9 @@ export function AnimalFilters({
                 onToggleMany={(values) => onToggleMany("shelter", values)}
                 resultCount={resultCount}
                 species={filters.species}
+                municipalities={municipalities}
+                offSite={offSiteShelters}
+                deepLink="mobile"
               />
             </div>
           )}

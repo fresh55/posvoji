@@ -28,6 +28,18 @@ export type ToggleKey =
 export const GOOD_WITH_KEYS = ["kids", "dogs", "cats"] as const;
 export type GoodWithKey = (typeof GOOD_WITH_KEYS)[number];
 
+// What kind of home the animal fits. One value today; kept as a list like
+// every other section so the URL codec and a second value later need no new
+// shape. Only a recorded yes counts, the same principle as Družba: a maybe is
+// never sold as a yes to someone who has only a flat to offer.
+export const HOME_KEYS = ["apartment"] as const;
+export type HomeKey = (typeof HOME_KEYS)[number];
+
+// Not a warning but a way in: it exists for visitors who came looking for the
+// animal that needs more from them, and who would otherwise never find it.
+export const CARE_KEYS = ["patient"] as const;
+export type CareKey = (typeof CARE_KEYS)[number];
+
 export type Filters = {
   species: SpeciesFilter;
   sex: Sex[];
@@ -37,6 +49,8 @@ export type Filters = {
   shelter: string[];
   toggles: ToggleKey[];
   goodWith: GoodWithKey[];
+  home: HomeKey[];
+  care: CareKey[];
 };
 
 export const EMPTY_FILTERS: Filters = {
@@ -48,6 +62,8 @@ export const EMPTY_FILTERS: Filters = {
   shelter: [],
   toggles: [],
   goodWith: [],
+  home: [],
+  care: [],
 };
 
 export const GROUPS: MultiGroup[] = ["sex", "age", "size", "energy", "shelter"];
@@ -152,6 +168,32 @@ function matchesGoodWith(animal: Animal, selected: GoodWithKey[]): boolean {
   return selected.every((key) => goodWithMatches(animal, key));
 }
 
+/** Only a recorded yes counts, so "unknown" and no both drop out. */
+export function homeMatches(animal: Animal, key: HomeKey): boolean {
+  switch (key) {
+    case "apartment":
+      return animal.apartmentOk === "yes";
+  }
+}
+
+/** Only a shelter that said so counts; an unanswered animal is not one. */
+export function careMatches(animal: Animal, key: CareKey): boolean {
+  switch (key) {
+    case "patient":
+      return animal.specialNeeds === true;
+  }
+}
+
+function matchesHome(animal: Animal, selected: HomeKey[]): boolean {
+  if (selected.length === 0) return true;
+  return selected.some((key) => homeMatches(animal, key));
+}
+
+function matchesCare(animal: Animal, selected: CareKey[]): boolean {
+  if (selected.length === 0) return true;
+  return selected.some((key) => careMatches(animal, key));
+}
+
 // Boundaries in months: under a year is a baby, past eight a senior.
 const PUPPY_MAX_EXCLUSIVE = 12;
 const ADULT_MAX_EXCLUSIVE = 96;
@@ -229,6 +271,8 @@ export function applyFilters(
       matchesSpecies(animal, filters.species) &&
       matchesToggles(animal, filters.toggles) &&
       matchesGoodWith(animal, filters.goodWith) &&
+      matchesHome(animal, filters.home) &&
+      matchesCare(animal, filters.care) &&
       GROUPS.every((group) => matchesGroup(animal, group, filters[group], now)),
   );
 }
@@ -243,6 +287,8 @@ function passesFacet(
   applied: {
     toggles: ToggleKey[];
     goodWith: GoodWithKey[];
+    home: HomeKey[];
+    care: CareKey[];
     skipGroup?: MultiGroup;
   },
 ): boolean {
@@ -250,6 +296,8 @@ function passesFacet(
     matchesSpecies(animal, filters.species) &&
     matchesToggles(animal, applied.toggles) &&
     matchesGoodWith(animal, applied.goodWith) &&
+    matchesHome(animal, applied.home) &&
+    matchesCare(animal, applied.care) &&
     GROUPS.every(
       (group) =>
         group === applied.skipGroup ||
@@ -274,6 +322,8 @@ export function facetCounts(
     const applied = {
       toggles: filters.toggles,
       goodWith: filters.goodWith,
+      home: filters.home,
+      care: filters.care,
       skipGroup: group,
     };
     for (const animal of animals) {
@@ -296,7 +346,12 @@ export function toggleCounts(
     // Count each choice with the health axis removed, just like facetCounts
     // removes the group it is measuring. The number then answers what this
     // choice itself can add under the filters from every other section.
-    const applied = { toggles: [], goodWith: filters.goodWith };
+    const applied = {
+      toggles: [],
+      goodWith: filters.goodWith,
+      home: filters.home,
+      care: filters.care,
+    };
     let total = 0;
     for (const animal of animals) {
       if (!passesFacet(animal, filters, now, applied)) continue;
@@ -321,11 +376,62 @@ export function goodWithCounts(
     const applied = {
       toggles: filters.toggles,
       goodWith: filters.goodWith.filter((selected) => selected !== key),
+      home: filters.home,
+      care: filters.care,
     };
     let total = 0;
     for (const animal of animals) {
       if (!passesFacet(animal, filters, now, applied)) continue;
       if (goodWithMatches(animal, key)) total += 1;
+    }
+    counts.set(key, total);
+  }
+  return counts;
+}
+
+// Same rule again, one section over: the facet being measured comes off its
+// own selection, every other section stays on, and the facet is required on
+// top of them.
+export function homeCounts(
+  animals: Animal[],
+  filters: Filters,
+  now: Date,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const key of HOME_KEYS) {
+    const applied = {
+      toggles: filters.toggles,
+      goodWith: filters.goodWith,
+      home: filters.home.filter((selected) => selected !== key),
+      care: filters.care,
+    };
+    let total = 0;
+    for (const animal of animals) {
+      if (!passesFacet(animal, filters, now, applied)) continue;
+      if (homeMatches(animal, key)) total += 1;
+    }
+    counts.set(key, total);
+  }
+  return counts;
+}
+
+export function careCounts(
+  animals: Animal[],
+  filters: Filters,
+  now: Date,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const key of CARE_KEYS) {
+    const applied = {
+      toggles: filters.toggles,
+      goodWith: filters.goodWith,
+      home: filters.home,
+      care: filters.care.filter((selected) => selected !== key),
+    };
+    let total = 0;
+    for (const animal of animals) {
+      if (!passesFacet(animal, filters, now, applied)) continue;
+      if (careMatches(animal, key)) total += 1;
     }
     counts.set(key, total);
   }
@@ -370,6 +476,22 @@ export function visibleToggles(
 export function visibleGoodWith(animals: Animal[]): GoodWithKey[] {
   return GOOD_WITH_KEYS.filter((key) => {
     const matching = animals.filter((a) => goodWithMatches(a, key)).length;
+    return matching > 0 && matching < animals.length;
+  });
+}
+
+// Same rule, and no species pinning either: a flat is a flat whether a dog or
+// a cat lives in it.
+export function visibleHome(animals: Animal[]): HomeKey[] {
+  return HOME_KEYS.filter((key) => {
+    const matching = animals.filter((a) => homeMatches(a, key)).length;
+    return matching > 0 && matching < animals.length;
+  });
+}
+
+export function visibleCare(animals: Animal[]): CareKey[] {
+  return CARE_KEYS.filter((key) => {
+    const matching = animals.filter((a) => careMatches(a, key)).length;
     return matching > 0 && matching < animals.length;
   });
 }
@@ -437,8 +559,11 @@ export function pruneHiddenFilters(filters: Filters): Filters {
       ),
     ),
     // No facet here is pinned to a species, so nothing to prune: a selection
-    // made on one tab still has a control on the next.
+    // made on one tab still has a control on the next. The same holds for the
+    // two sections below.
     goodWith: filters.goodWith,
+    home: filters.home,
+    care: filters.care,
   };
 }
 
@@ -447,15 +572,18 @@ export function pruneHiddenFilters(filters: Filters): Filters {
 export type FilterOption = { value: string; label: string; city?: string };
 
 type CodedGroup = Exclude<MultiGroup, "shelter">;
-// goodWith is not a MultiGroup, but its values are coded the same way and want
-// the same one place to name them.
-type MetadataGroup = CodedGroup | "goodWith";
+// goodWith, home and care are not MultiGroups, but their values are coded the
+// same way and want the same one place to name them.
+type ValueGroup = "goodWith" | "home" | "care";
+type MetadataGroup = CodedGroup | ValueGroup;
 type CodedValueByGroup = {
   sex: Exclude<Sex, "unknown">;
   age: AgeGroup;
   size: AnimalSize;
   energy: EnergyLevel;
   goodWith: GoodWithKey;
+  home: HomeKey;
+  care: CareKey;
 };
 
 /** The canonical metadata for coded filter values. */
@@ -513,10 +641,30 @@ export const FILTER_METADATA = {
       labels: { sl: "Živahen", en: "Lively" },
     },
   ],
+  // The labels answer the section's question ("Doma imam: Psa"), so they do not
+  // collide with the species tabs, which say "Psi" for a list of dogs. The
+  // slugs stay as they were: shared links have to keep working.
   goodWith: [
-    { value: "kids", slug: "otroci", labels: { sl: "Otroci", en: "Kids" } },
-    { value: "dogs", slug: "psi", labels: { sl: "Psi", en: "Dogs" } },
-    { value: "cats", slug: "macke", labels: { sl: "Mačke", en: "Cats" } },
+    { value: "kids", slug: "otroci", labels: { sl: "Otroke", en: "Kids" } },
+    { value: "dogs", slug: "psi", labels: { sl: "Psa", en: "A dog" } },
+    { value: "cats", slug: "macke", labels: { sl: "Mačko", en: "A cat" } },
+  ],
+  home: [
+    {
+      value: "apartment",
+      slug: "stanovanje",
+      labels: { sl: "Primeren za stanovanje", en: "Apartment-friendly" },
+    },
+  ],
+  care: [
+    {
+      value: "patient",
+      slug: "potrpezljiv",
+      labels: {
+        sl: "Potrebuje potrpežljivega človeka",
+        en: "Needs a patient person",
+      },
+    },
   ],
 } as const satisfies {
   [Group in MetadataGroup]: readonly FilterValueDefinition<
@@ -534,12 +682,22 @@ export function goodWithOptions(
   }));
 }
 
-export function goodWithLabel(key: GoodWithKey, locale: Locale = "sl"): string {
-  return (
-    FILTER_METADATA.goodWith.find((option) => option.value === key)?.labels[
-      locale
-    ] ?? key
-  );
+export function homeOptions(
+  locale: Locale = "sl",
+): { key: HomeKey; label: string }[] {
+  return FILTER_METADATA.home.map(({ value, labels }) => ({
+    key: value,
+    label: labels[locale],
+  }));
+}
+
+export function careOptions(
+  locale: Locale = "sl",
+): { key: CareKey; label: string }[] {
+  return FILTER_METADATA.care.map(({ value, labels }) => ({
+    key: value,
+    label: labels[locale],
+  }));
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than
@@ -603,6 +761,24 @@ const PARAM_NAMES: Record<MultiGroup, string> = {
   shelter: "zavetisce",
 };
 
+// The value sections are not MultiGroups, so they carry their own param names
+// and their own pair of lookups rather than three copies of the same find().
+const VALUE_PARAM_NAMES: Record<ValueGroup, string> = {
+  goodWith: "druzba",
+  home: "dom",
+  care: "skrb",
+};
+
+function valueSlug(group: ValueGroup, value: string): string {
+  const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
+  return options.find((option) => option.value === value)?.slug ?? value;
+}
+
+function valueFromSlug(group: ValueGroup, slug: string): string | undefined {
+  const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
+  return options.find((option) => option.slug === slug)?.value;
+}
+
 function toSlug(group: MultiGroup, value: string): string {
   if (group === "shelter") return value;
   return (
@@ -632,18 +808,16 @@ export function serializeFilters(filters: Filters): string {
   if (filters.toggles.length > 0) {
     params.set("lastnosti", filters.toggles.join(","));
   }
-  if (filters.goodWith.length > 0) {
+  const setValues = (group: ValueGroup, selected: readonly string[]) => {
+    if (selected.length === 0) return;
     params.set(
-      "druzba",
-      filters.goodWith
-        .map(
-          (key) =>
-            FILTER_METADATA.goodWith.find((option) => option.value === key)
-              ?.slug ?? key,
-        )
-        .join(","),
+      VALUE_PARAM_NAMES[group],
+      selected.map((value) => valueSlug(group, value)).join(","),
     );
-  }
+  };
+  setValues("goodWith", filters.goodWith);
+  setValues("home", filters.home);
+  setValues("care", filters.care);
   // Commas are legal unencoded, and these links get shared by hand.
   return params.toString().replace(/%2C/g, ",");
 }
@@ -673,13 +847,18 @@ export function parseFilters(search: string): Filters {
     .filter((slug): slug is ToggleKey =>
       TOGGLES.some((t) => t.key === slug),
     );
-  const goodWith = (params.get("druzba") ?? "")
-    .split(",")
-    .map(
-      (slug) =>
-        FILTER_METADATA.goodWith.find((option) => option.slug === slug)?.value,
-    )
-    .filter((key): key is GoodWithKey => key !== undefined);
+  const codedValues = (group: ValueGroup): string[] => {
+    const raw = params.get(VALUE_PARAM_NAMES[group]);
+    if (!raw) return [];
+    return [
+      ...new Set(
+        raw
+          .split(",")
+          .map((slug) => valueFromSlug(group, slug))
+          .filter((value): value is string => value !== undefined),
+      ),
+    ];
+  };
   return pruneHiddenFilters({
     species,
     sex: values("sex") as Sex[],
@@ -688,7 +867,9 @@ export function parseFilters(search: string): Filters {
     energy: values("energy") as EnergyLevel[],
     shelter: values("shelter"),
     toggles: [...new Set(toggles)],
-    goodWith: [...new Set(goodWith)],
+    goodWith: codedValues("goodWith") as GoodWithKey[],
+    home: codedValues("home") as HomeKey[],
+    care: codedValues("care") as CareKey[],
   });
 }
 
@@ -696,7 +877,9 @@ export function activeFilterCount(filters: Filters): number {
   return (
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length +
-    filters.goodWith.length
+    filters.goodWith.length +
+    filters.home.length +
+    filters.care.length
   );
 }
 
@@ -705,7 +888,9 @@ export function activeFilterSectionCount(filters: Filters): number {
   return (
     GROUPS.filter((group) => filters[group].length > 0).length +
     (filters.toggles.length > 0 ? 1 : 0) +
-    (filters.goodWith.length > 0 ? 1 : 0)
+    (filters.goodWith.length > 0 ? 1 : 0) +
+    (filters.home.length > 0 ? 1 : 0) +
+    (filters.care.length > 0 ? 1 : 0)
   );
 }
 

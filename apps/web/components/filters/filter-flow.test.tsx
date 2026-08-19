@@ -7,16 +7,26 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
   applyFilters,
+  careCounts,
+  careOptions,
   facetCounts,
+  goodWithCounts,
+  goodWithOptions,
   GROUPS,
   groupOptions,
+  homeCounts,
+  homeOptions,
   optionLabel,
   toggleCounts,
   toggleLabel,
+  visibleCare,
+  visibleGoodWith,
   visibleGroups,
+  visibleHome,
   visibleToggles,
   type AgeGroup,
 } from "@/lib/filters";
+import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
 import { FilterChips, type Chip } from "./filter-chips";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
@@ -39,8 +49,14 @@ function animal(
   approximateAgeMonths: number,
   size: "small" | "medium" | "large",
   medical: Animal["medical"] = {},
+  goodWith: Animal["goodWith"] = undefined,
+  // The two single-value sections answer one field each, so they ride along
+  // rather than adding two more positional arguments nobody passes.
+  extra: Partial<Pick<Animal, "apartmentOk" | "specialNeeds">> = {},
 ): Animal {
   return {
+    ...(goodWith ? { goodWith } : {}),
+    ...extra,
     id,
     source: {
       providerId: "test-shelter",
@@ -64,8 +80,26 @@ function animal(
 }
 
 const ANIMALS = [
-  animal("male-young", "male", 6, "small", { neutered: true }),
-  animal("female-adult", "female", 36, "medium", { vaccinated: true }),
+  animal(
+    "male-young",
+    "male",
+    6,
+    "small",
+    { neutered: true },
+    { kids: "yes", dogs: "yes" },
+    { apartmentOk: "yes" },
+  ),
+  animal(
+    "female-adult",
+    "female",
+    36,
+    "medium",
+    { vaccinated: true },
+    { kids: "yes", dogs: "no" },
+    // The only animal both new sections answer yes for, so the two can be
+    // combined without either card going dead first.
+    { apartmentOk: "yes", specialNeeds: true },
+  ),
   animal("male-senior", "male", 120, "large"),
 ];
 
@@ -76,6 +110,12 @@ function FilterFlowHarness() {
     toggleMany,
     toggleProperty,
     toggleManyProperties,
+    toggleGoodWith,
+    toggleManyGoodWith,
+    toggleHome,
+    toggleManyHome,
+    toggleCare,
+    toggleManyCare,
     clearAll,
   } = useAnimalFilters();
   const matching = applyFilters(ANIMALS, filters, NOW);
@@ -103,7 +143,51 @@ function FilterFlowHarness() {
       label: toggleLabel(key, "sl"),
       onRemove: () => toggleProperty(key),
     })),
+    ...filters.goodWith.map((key) => ({
+      key: `goodWith:${key}`,
+      label: goodWithChipLabel(key, "sl"),
+      onRemove: () => toggleGoodWith(key),
+    })),
+    ...filters.home.map((key) => ({
+      key: `home:${key}`,
+      label: homeLabel(key, "sl"),
+      onRemove: () => toggleHome(key),
+    })),
+    ...filters.care.map((key) => ({
+      key: `care:${key}`,
+      label: careLabel(key, "sl"),
+      onRemove: () => toggleCare(key),
+    })),
   ];
+  const goodWithKeys = visibleGoodWith(ANIMALS);
+  const goodWith = {
+    options: goodWithOptions("sl").filter(({ key }) =>
+      goodWithKeys.includes(key),
+    ),
+    counts: goodWithCounts(ANIMALS, filters, NOW),
+    resultCount: matching.length,
+    total: ANIMALS.length,
+    onToggle: toggleGoodWith,
+    onToggleMany: toggleManyGoodWith,
+  };
+  const homeKeys = visibleHome(ANIMALS);
+  const home = {
+    options: homeOptions("sl").filter(({ key }) => homeKeys.includes(key)),
+    counts: homeCounts(ANIMALS, filters, NOW),
+    resultCount: matching.length,
+    total: ANIMALS.length,
+    onToggle: toggleHome,
+    onToggleMany: toggleManyHome,
+  };
+  const careKeys = visibleCare(ANIMALS);
+  const care = {
+    options: careOptions("sl").filter(({ key }) => careKeys.includes(key)),
+    counts: careCounts(ANIMALS, filters, NOW),
+    resultCount: matching.length,
+    total: ANIMALS.length,
+    onToggle: toggleCare,
+    onToggleMany: toggleManyCare,
+  };
 
   return (
     <I18nProvider locale="sl">
@@ -114,6 +198,9 @@ function FilterFlowHarness() {
           counts={facetCounts(ANIMALS, filters, NOW)}
           toggles={toggles}
           toggleTally={toggleCounts(ANIMALS, filters, NOW)}
+          goodWith={goodWith}
+          home={home}
+          care={care}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
@@ -214,6 +301,127 @@ describe("filter flow interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
     fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
 
+    expect(matchingIds()).toBe("male-young,female-adult,male-senior");
+    expect(query()).toBe("");
+  });
+
+  it("combines household answers with AND and says so on screen", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    expect(matchingIds()).toBe("male-young,female-adult");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    expect(matchingIds()).toBe("male-young");
+    expect(
+      screen.getByText(
+        "Prikazane so živali, ki se razumejo z otroki in psi. 1 od 3.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps the household slugs a shared link already carries", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+
+    expect(query()).toBe("?druzba=otroci,psi");
+  });
+
+  it("names the household on its chips, not the species", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+
+    expect(screen.getByText("Doma: otroci")).toBeTruthy();
+    expect(screen.getByText("Doma: pes")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Odstrani filter Doma: pes" }),
+    );
+    expect(query()).toBe("?druzba=otroci");
+  });
+
+  it("narrows to apartment animals and says so on screen", () => {
+    renderFilters();
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+    );
+
+    expect(pressed(/^Primeren za stanovanje, /)).toBe("true");
+    expect(matchingIds()).toBe("male-young,female-adult");
+    expect(query()).toBe("?dom=stanovanje");
+    expect(
+      screen.getByText(
+        "Prikazane so živali, primerne za stanovanje. 2 od 3.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("narrows to the animals that need a patient person", () => {
+    renderFilters();
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+    );
+
+    expect(matchingIds()).toBe("female-adult");
+    expect(query()).toBe("?skrb=potrpezljiv");
+    expect(
+      screen.getByText(
+        "Prikazane so živali, ki iščejo potrpežljivega človeka. 1 od 3.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("puts both new sections on the chips row and takes them off again", () => {
+    renderFilters();
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+    );
+    expect(query()).toBe("?dom=stanovanje&skrb=potrpezljiv");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Odstrani filter Primeren za stanovanje",
+      }),
+    );
+    expect(query()).toBe("?skrb=potrpezljiv");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Odstrani filter Potrebuje potrpežljivega človeka",
+      }),
+    );
+    expect(query()).toBe("");
+  });
+
+  it("resets and clears the two single-value sections", () => {
+    renderFilters();
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ponastavi filter doma" }),
+    );
+    expect(query()).toBe("");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ponastavi filter posebne skrbi" }),
+    );
+    expect(query()).toBe("");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
   });

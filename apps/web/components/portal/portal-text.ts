@@ -70,6 +70,9 @@ export const portalText = {
   fieldGoodWithCats: "Se razume z mačkami",
   compatibilityHint:
     "Živali z izpolnjenimi polji so po izkušnjah posvojene hitreje. Da izberite le, če za to lahko stojite; Ni znano je pošten odgovor.",
+  fieldApartmentOk: "Primeren za stanovanje",
+  fieldSpecialNeeds: "Posebne potrebe",
+  specialNeedsHint: "Žival potrebuje potrpežljivega človeka.",
   fieldDescription: "Kratek opis",
   descriptionHint: "Nekaj stavkov o značaju in tem, kakšen dom išče.",
   save: "Shrani",

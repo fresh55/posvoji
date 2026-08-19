@@ -155,6 +155,44 @@ export function isPortalCompatibility(
   );
 }
 
+/**
+ * specialNeeds is a boolean on the wire, but the editor offers the same
+ * three-card shape as every other unknown-is-an-answer field. This is the
+ * tri-state the cards drive; specialNeedsAnswer/specialNeedsValue convert it
+ * to and from the boolean the API actually stores.
+ */
+export const PORTAL_SPECIAL_NEEDS_ANSWERS = ["yes", "no", "unknown"] as const;
+export type PortalSpecialNeedsAnswer =
+  (typeof PORTAL_SPECIAL_NEEDS_ANSWERS)[number];
+
+/** Same labels and icons as COMPATIBILITY_META, so the two fields read alike. */
+export const SPECIAL_NEEDS_META: Record<
+  PortalSpecialNeedsAnswer,
+  { label: string; icon: LucideIcon }
+> = {
+  yes: { label: "Da", icon: Check },
+  no: { label: "Ne", icon: X },
+  unknown: { label: "Ni znano", icon: CircleHelp },
+};
+
+/** true/false/null, as the API and the draft state carry it, to the card answer. */
+export function specialNeedsAnswer(
+  value: boolean | null,
+): PortalSpecialNeedsAnswer | null {
+  if (value === true) return "yes";
+  if (value === false) return "no";
+  return null;
+}
+
+/** The card answer back to true/false/null. "unknown" clears the override. */
+export function specialNeedsValue(
+  answer: PortalSpecialNeedsAnswer | null,
+): boolean | null {
+  if (answer === "yes") return true;
+  if (answer === "no") return false;
+  return null;
+}
+
 /** One surface contract for every choice card in the portal, matching the filters. */
 export const CHOICE_CARD =
   "group relative flex min-w-0 items-center justify-center gap-1.5 overflow-hidden rounded-ui border border-border/80 bg-background text-muted-foreground shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50";

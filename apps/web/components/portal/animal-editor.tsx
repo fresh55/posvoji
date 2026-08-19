@@ -9,12 +9,17 @@ import {
   CHOICE_CARD_SELECTED_MUTED,
   COMPATIBILITY_META,
   ENERGY_META,
+  PORTAL_SPECIAL_NEEDS_ANSWERS,
   SEX_META,
   SIZE_META,
+  SPECIAL_NEEDS_META,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
+  specialNeedsAnswer,
+  specialNeedsValue,
+  type PortalSpecialNeedsAnswer,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type { PortalSaveState } from "@/hooks/use-portal-animals";
@@ -56,6 +61,8 @@ type Draft = {
   goodWithKids: PortalCompatibility | null;
   goodWithDogs: PortalCompatibility | null;
   goodWithCats: PortalCompatibility | null;
+  apartmentOk: PortalCompatibility | null;
+  specialNeeds: PortalSpecialNeedsAnswer | null;
 };
 
 /** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
@@ -90,6 +97,10 @@ function draftFrom(animal: PortalAnimal): Draft {
     goodWithCats: isPortalCompatibility(animal.goodWithCats)
       ? animal.goodWithCats
       : null,
+    apartmentOk: isPortalCompatibility(animal.apartmentOk)
+      ? animal.apartmentOk
+      : null,
+    specialNeeds: specialNeedsAnswer(animal.specialNeeds),
   };
 }
 
@@ -147,6 +158,16 @@ function buildPatch(
     "goodWithCats",
     draft.goodWithCats,
     isPortalCompatibility(animal.goodWithCats) ? animal.goodWithCats : null,
+  );
+  put(
+    "apartmentOk",
+    draft.apartmentOk,
+    isPortalCompatibility(animal.apartmentOk) ? animal.apartmentOk : null,
+  );
+  put(
+    "specialNeeds",
+    specialNeedsValue(draft.specialNeeds),
+    animal.specialNeeds,
   );
 
   const rawAge = draft.approximateAgeMonths.trim();
@@ -465,6 +486,87 @@ export function AnimalEditor({
                       CHOICE_CARD,
                       "h-11 px-2 text-xs font-medium",
                       selected && CHOICE_CARD_SELECTED,
+                    )}
+                  >
+                    <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+                    <span className="truncate">{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <Field
+            label={portalText.fieldApartmentOk}
+            overridden={isOverridden(animal, "apartmentOk")}
+            reverting={reverting("apartmentOk", draft.apartmentOk)}
+            onRevert={() => set("apartmentOk", null)}
+            disabled={saving}
+          >
+            <div
+              role="group"
+              aria-label={portalText.fieldApartmentOk}
+              className="grid grid-cols-3 gap-1.5"
+            >
+              {PORTAL_COMPATIBILITIES.map((value) => {
+                const meta = COMPATIBILITY_META[value];
+                const Icon = meta.icon;
+                const selected = draft.apartmentOk === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={saving}
+                    onClick={() => set("apartmentOk", value)}
+                    className={cn(
+                      CHOICE_CARD,
+                      "h-11 px-2 text-xs font-medium",
+                      selected &&
+                        (value === "unknown"
+                          ? CHOICE_CARD_SELECTED_MUTED
+                          : CHOICE_CARD_SELECTED),
+                    )}
+                  >
+                    <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+                    <span className="truncate">{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <Field
+            label={portalText.fieldSpecialNeeds}
+            overridden={isOverridden(animal, "specialNeeds")}
+            reverting={reverting("specialNeeds", draft.specialNeeds)}
+            onRevert={() => set("specialNeeds", null)}
+            disabled={saving}
+            hint={portalText.specialNeedsHint}
+          >
+            <div
+              role="group"
+              aria-label={portalText.fieldSpecialNeeds}
+              className="grid grid-cols-3 gap-1.5"
+            >
+              {PORTAL_SPECIAL_NEEDS_ANSWERS.map((value) => {
+                const meta = SPECIAL_NEEDS_META[value];
+                const Icon = meta.icon;
+                const selected = draft.specialNeeds === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={saving}
+                    onClick={() => set("specialNeeds", value)}
+                    className={cn(
+                      CHOICE_CARD,
+                      "h-11 px-2 text-xs font-medium",
+                      selected &&
+                        (value === "unknown"
+                          ? CHOICE_CARD_SELECTED_MUTED
+                          : CHOICE_CARD_SELECTED),
                     )}
                   >
                     <Icon className="size-4" strokeWidth={1.75} aria-hidden />

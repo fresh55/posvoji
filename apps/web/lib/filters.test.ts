@@ -5,16 +5,20 @@ import {
   activeFilterSectionCount,
   applyFilters,
   bySpecies,
+  careCounts,
   EMPTY_FILTERS,
   facetCounts,
   goodWithCounts,
+  homeCounts,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
   toggleCounts,
   toggleValues,
+  visibleCare,
   visibleGoodWith,
   visibleGroups,
+  visibleHome,
   visibleToggles,
   type Filters,
   type SpeciesFilter,
@@ -152,6 +156,58 @@ describe("visibleGoodWith", () => {
   });
 });
 
+describe("visibleHome", () => {
+  it("offers the section only once it can narrow the list", () => {
+    const animals = [
+      animal("cat", { apartmentOk: "yes" }),
+      animal("cat", { apartmentOk: "no" }),
+    ];
+    expect(visibleHome(animals)).toEqual(["apartment"]);
+  });
+
+  it("stays away while nothing has been answered", () => {
+    expect(visibleHome([animal("dog"), animal("cat")])).toEqual([]);
+  });
+
+  it("stays away when every animal would pass it", () => {
+    const animals = [
+      animal("cat", { apartmentOk: "yes" }),
+      animal("cat", { apartmentOk: "yes" }),
+    ];
+    expect(visibleHome(animals)).toEqual([]);
+  });
+
+  it("asks the same question of dogs and cats alike", () => {
+    const animals = [
+      animal("dog", { apartmentOk: "yes" }),
+      animal("cat", { apartmentOk: "unknown" }),
+    ];
+    expect(visibleHome(animals)).toEqual(["apartment"]);
+  });
+});
+
+describe("visibleCare", () => {
+  it("offers the section only once it can narrow the list", () => {
+    const animals = [
+      animal("dog", { specialNeeds: true }),
+      animal("dog", { specialNeeds: false }),
+    ];
+    expect(visibleCare(animals)).toEqual(["patient"]);
+  });
+
+  it("stays away while no shelter has marked anyone", () => {
+    expect(visibleCare([animal("dog"), animal("cat")])).toEqual([]);
+  });
+
+  it("stays away when every animal would pass it", () => {
+    const animals = [
+      animal("dog", { specialNeeds: true }),
+      animal("cat", { specialNeeds: true }),
+    ];
+    expect(visibleCare(animals)).toEqual([]);
+  });
+});
+
 describe("pruneHiddenFilters", () => {
   it("keeps every selected age visible instead of silently clearing it", () => {
     const pruned = pruneHiddenFilters({
@@ -198,6 +254,17 @@ describe("pruneHiddenFilters", () => {
       goodWith: ["kids", "cats"],
     });
     expect(pruned.goodWith).toEqual(["kids", "cats"]);
+  });
+
+  it("keeps the dom and skrb selections across a species change", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      species: "cat",
+      home: ["apartment"],
+      care: ["patient"],
+    });
+    expect(pruned.home).toEqual(["apartment"]);
+    expect(pruned.care).toEqual(["patient"]);
   });
 
   it("leaves the cat tab holding its own toggles", () => {
@@ -258,6 +325,31 @@ describe("URL codec", () => {
     expect(serializeFilters(filters)).toBe("druzba=otroci");
   });
 
+  it("round-trips the dom and skrb selections under their own params", () => {
+    const filters: Filters = {
+      ...EMPTY_FILTERS,
+      home: ["apartment"],
+      care: ["patient"],
+    };
+    const query = serializeFilters(filters);
+    expect(query).toBe("dom=stanovanje&skrb=potrpezljiv");
+    expect(parseFilters(query)).toEqual(filters);
+    expect(activeFilterCount(filters)).toBe(2);
+  });
+
+  it("drops an unknown dom or skrb slug rather than breaking the link", () => {
+    const filters = parseFilters("dom=hisa&skrb=potrpezljiv,nujno");
+    expect(filters.home).toEqual([]);
+    expect(filters.care).toEqual(["patient"]);
+    expect(serializeFilters(filters)).toBe("skrb=potrpezljiv");
+  });
+
+  it("keeps a repeated dom slug to one selection", () => {
+    expect(parseFilters("dom=stanovanje,stanovanje").home).toEqual([
+      "apartment",
+    ]);
+  });
+
   it("degrades a stale cat-only toggle carried onto the dog tab", () => {
     const filters = parseFilters(
       "vrsta=pes&velikost=majhna&lastnosti=cip,brez-fiv",
@@ -316,6 +408,17 @@ describe("active filter section count", () => {
         goodWith: ["kids", "dogs"],
       }),
     ).toBe(2);
+  });
+
+  it("counts dom and skrb as two more sections", () => {
+    expect(
+      activeFilterSectionCount({
+        ...EMPTY_FILTERS,
+        goodWith: ["kids"],
+        home: ["apartment"],
+        care: ["patient"],
+      }),
+    ).toBe(3);
   });
 
   it("does not count the species tab or empty sections", () => {
@@ -446,6 +549,95 @@ describe("multi-select behavior", () => {
     );
 
     expect(counts.get("kids")).toBe(1);
+  });
+
+  it("keeps only a recorded yes within dom", () => {
+    const yes = animal("cat", { apartmentOk: "yes" });
+    const maybe = animal("cat", { apartmentOk: "unknown" });
+    const no = animal("cat", { apartmentOk: "no" });
+    const silent = animal("cat");
+
+    expect(
+      applyFilters(
+        [yes, maybe, no, silent],
+        { ...EMPTY_FILTERS, home: ["apartment"] },
+        NOW,
+      ),
+    ).toEqual([yes]);
+  });
+
+  it("keeps only an animal the shelter marked within skrb", () => {
+    const marked = animal("dog", { specialNeeds: true });
+    const notMarked = animal("dog", { specialNeeds: false });
+    const silent = animal("dog");
+
+    expect(
+      applyFilters(
+        [marked, notMarked, silent],
+        { ...EMPTY_FILTERS, care: ["patient"] },
+        NOW,
+      ),
+    ).toEqual([marked]);
+  });
+
+  it("ANDs dom and skrb with each other and with the other sections", () => {
+    const both = animal("cat", { apartmentOk: "yes", specialNeeds: true });
+    const homeOnly = animal("cat", { apartmentOk: "yes" });
+    const careOnly = animal("cat", { specialNeeds: true });
+    const otherSpecies = animal("dog", {
+      apartmentOk: "yes",
+      specialNeeds: true,
+    });
+
+    expect(
+      applyFilters(
+        [both, homeOnly, careOnly, otherSpecies],
+        {
+          ...EMPTY_FILTERS,
+          species: "cat",
+          home: ["apartment"],
+          care: ["patient"],
+        },
+        NOW,
+      ),
+    ).toEqual([both]);
+  });
+
+  it("counts dom as what picking it would leave, its own axis dropped", () => {
+    const apartment = animal("cat", { apartmentOk: "yes" });
+    const house = animal("cat", { apartmentOk: "no" });
+    const counts = homeCounts(
+      [apartment, house],
+      { ...EMPTY_FILTERS, home: ["apartment"] },
+      NOW,
+    );
+
+    expect(counts.get("apartment")).toBe(1);
+  });
+
+  it("still narrows the dom tally by the other sections", () => {
+    const cat = animal("cat", { apartmentOk: "yes" });
+    const dog = animal("dog", { apartmentOk: "yes" });
+    const counts = homeCounts(
+      [cat, dog],
+      { ...EMPTY_FILTERS, species: "cat" },
+      NOW,
+    );
+
+    expect(counts.get("apartment")).toBe(1);
+  });
+
+  it("prices skrb on top of a dom already selected", () => {
+    const both = animal("cat", { apartmentOk: "yes", specialNeeds: true });
+    const homeOnly = animal("cat", { apartmentOk: "yes" });
+    const careOnly = animal("cat", { specialNeeds: true });
+    const counts = careCounts(
+      [both, homeOnly, careOnly],
+      { ...EMPTY_FILTERS, home: ["apartment"] },
+      NOW,
+    );
+
+    expect(counts.get("patient")).toBe(1);
   });
 
   it("counts each health choice independently of selected health choices", () => {

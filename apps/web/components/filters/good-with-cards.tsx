@@ -14,13 +14,13 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
+import { GoodWithGlyph } from "@/components/filters/good-with-glyphs";
 import {
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
-import { GOOD_WITH_ICONS } from "@/lib/animal-icons";
 import { GOOD_WITH_KEYS, type GoodWithKey } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
@@ -28,64 +28,11 @@ import { cn } from "@/lib/utils";
 
 export type GoodWithOption = { key: GoodWithKey; label: string };
 
-// Keyframe arrays within one gesture all share a length, so a single `times`
-// on the transition lines them up.
-type IconGesture = {
-  transformOrigin: string;
-  duration: number;
-  times?: number[];
-  keyframes: {
-    rotate?: number[];
-    scaleX?: number[];
-    scaleY?: number[];
-    x?: number[];
-    y?: number[];
-  };
-};
+const GESTURE_REST = { rotate: 0, scale: 1, x: 0, y: 0 };
 
-const GESTURE_REST = {
-  rotate: 0,
-  scale: 1,
-  scaleX: 1,
-  scaleY: 1,
-  x: 0,
-  y: 0,
-};
-
-// Each icon acts out its own answer once, as it is switched on. The transform
-// origin is what separates them: the child pushes off the ground, the dog wags
-// from the base of its tail, the cat sits and blinks.
-const GOOD_WITH_GESTURES: Record<GoodWithKey, IconGesture> = {
-  kids: {
-    transformOrigin: "50% 100%",
-    duration: 0.5,
-    times: [0, 0.18, 0.45, 0.72, 1],
-    keyframes: {
-      scaleX: [1, 1.12, 0.94, 1.1, 1],
-      scaleY: [1, 0.88, 1.08, 0.9, 1],
-      y: [0, 0, -7, 0, 0],
-    },
-  },
-  dogs: {
-    transformOrigin: "70% 85%",
-    duration: 0.55,
-    keyframes: { rotate: [0, -9, 8, -7, 5, -2, 0] },
-  },
-  cats: {
-    transformOrigin: "50% 90%",
-    duration: 0.6,
-    // The blink is the scaleY dip, and it lands after the ears have settled.
-    times: [0, 0.12, 0.24, 0.38, 0.62, 0.74, 1],
-    keyframes: {
-      rotate: [0, -8, 4, -1, 0, 0, 0],
-      scaleY: [1, 1.07, 1.04, 1, 0.82, 1, 1],
-    },
-  },
-};
-
-// Long enough to cover the longest gesture above, so the check and the ripple
-// never cut a hop or a blink short.
-const GESTURE_MS = 650;
+// Long enough to cover the longest gesture a glyph can play, so the check and
+// the ripple never cut a laugh or a blink short.
+const GESTURE_MS = 900;
 // The check confirms as the icon gesture lands, not before it starts.
 const GESTURE_CHECK_DELAY = 0.2;
 const RIPPLE_OPACITY = 0.5;
@@ -216,13 +163,11 @@ export function GoodWithCards({
       {options.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
         const checked = selected.includes(key);
-        const Icon = GOOD_WITH_ICONS[key];
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
         // The card that did not change leans away from the one that did.
         const reacting = celebrationIndex >= 0 && !celebrating;
         const tiltDirection = Math.sign(index - celebrationIndex) || 1;
-        const gesture = GOOD_WITH_GESTURES[key];
 
         return (
           <button
@@ -266,49 +211,34 @@ export function GoodWithCards({
                 />
               ) : null}
               <FilterCardHoverLift hovered={hovered}>
+                {/* The gesture now lives inside the glyph, one part at a
+                    time. What is left out here is the neighbour's lean, which
+                    is the whole icon leaning away and nothing else. */}
                 <m.span
                   className="flex items-center justify-center"
-                  style={{
-                    transformOrigin:
-                      celebrating && !shouldReduceMotion
-                        ? gesture.transformOrigin
-                        : "50% 50%",
-                  }}
                   initial={false}
                   animate={
-                    shouldReduceMotion
-                      ? GESTURE_REST
-                      : celebrating
-                        ? gesture.keyframes
-                        : reacting
-                          ? {
-                              rotate: [0, tiltDirection * 2.5, 0],
-                              scale: 1,
-                              x: 0,
-                              y: 0,
-                            }
-                          : GESTURE_REST
+                    reacting && !shouldReduceMotion
+                      ? { rotate: [0, tiltDirection * 2.5, 0], scale: 1, y: 0 }
+                      : GESTURE_REST
                   }
                   transition={
-                    celebrating && !shouldReduceMotion
-                      ? {
-                          duration: gesture.duration,
-                          times: gesture.times,
-                          ease: "easeOut",
-                        }
-                      : reacting && !shouldReduceMotion
-                        ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
-                        : { duration: 0.16 }
+                    reacting && !shouldReduceMotion
+                      ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                      : { duration: 0.16 }
                   }
                 >
-                  <Icon
+                  <GoodWithGlyph
+                    key={celebrating ? celebration?.id : "rest"}
+                    facet={key}
+                    gesture={celebrating ? "celebrate" : "rest"}
+                    shouldReduceMotion={shouldReduceMotion ?? false}
                     className={cn(
                       "size-5 transition-colors duration-150",
                       checked
                         ? "text-[var(--filter-accent-strong)]"
                         : "text-muted-foreground",
                     )}
-                    strokeWidth={1.65}
                   />
                 </m.span>
               </FilterCardHoverLift>

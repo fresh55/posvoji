@@ -16,6 +16,7 @@
     "@posvoji/provider-ljubljana": "workspace:*",
     "@posvoji/provider-mala-hisa": "workspace:*",
     "@posvoji/provider-macja-hisa": "workspace:*",
+    "@posvoji/provider-maribor": "workspace:*",
     "@posvoji/provider-muri": "workspace:*",
     "@posvoji/provider-obalno": "workspace:*",
     "@posvoji/provider-zonzani": "workspace:*",

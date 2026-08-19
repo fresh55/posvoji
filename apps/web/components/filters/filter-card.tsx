@@ -26,9 +26,12 @@ export const filterCardVariants = cva(
 export function FilterSelectionMark({
   checked,
   className,
+  // Lets a caller hold the check back until its own gesture has landed.
+  appearDelay = 0,
 }: {
   checked: boolean;
   className?: string;
+  appearDelay?: number;
 }) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -53,7 +56,9 @@ export function FilterSelectionMark({
           transition={
             shouldReduceMotion
               ? { duration: 0 }
-              : { duration: checked ? 0.14 : 0.1, ease: "easeOut" }
+              : checked
+                ? { duration: 0.14, delay: appearDelay, ease: "easeOut" }
+                : { duration: 0.1, ease: "easeOut" }
           }
         >
           <Check className="size-3" strokeWidth={2.6} />

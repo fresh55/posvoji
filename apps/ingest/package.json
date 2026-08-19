@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@posvoji/provider-horjul": "workspace:*",
     "@posvoji/provider-ljubljana": "workspace:*",
     "@posvoji/provider-macja-hisa": "workspace:*",
     "@posvoji/provider-muri": "workspace:*",

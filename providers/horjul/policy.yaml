@@ -1,0 +1,39 @@
+# The project owner confirmed Horjul's permission on 2026-08-18. The initial
+# scope is limited to structured shelter facts and remote display of the
+# shelter-hosted animal photographs; editorial descriptions are not ingested.
+providerId: horjul
+source: https://www.zavetisce-horjul.net/iscejo-dom/
+enabled: true
+
+ingestion: scrape
+images: remote
+descriptions: facts-only
+
+permission:
+  status: granted
+  date: 2026-08-18
+  reference: project-owner-confirmation-horjul-2026-08-18
+  notes: >-
+    Project owner confirmed permission for structured shelter facts and remote
+    display of shelter-hosted animal photographs. Descriptions and image
+    caching remain outside the initial scope.
+
+allowedFields:
+  - name
+  - species
+  - sex
+  - approximateAgeMonths
+  - size
+  - status
+  - intakeDate
+  - originMunicipality
+  - medical
+  - images
+
+attribution: "Vir: Zavetišče Horjul"
+
+crawl:
+  intervalHours: 12
+  excludePaths:
+    - /privat-oddaja/
+    - /oddajo-lastniki/

@@ -20,12 +20,16 @@ import {
   applyFilters,
   bySpecies,
   facetCounts,
+  goodWithCounts,
+  goodWithLabel,
+  goodWithOptions,
   GROUPS,
   groupOptions,
   optionLabel,
   speciesCounts,
   toggleCounts,
   toggleLabel,
+  visibleGoodWith,
   visibleGroups,
   visibleToggles,
 } from "@/lib/filters";
@@ -76,6 +80,8 @@ export function AnimalGrid({
     toggleMany,
     toggleProperty,
     toggleManyProperties,
+    toggleGoodWith,
+    toggleManyGoodWith,
     clearAll,
     activeCount,
   } = useAnimalFilters();
@@ -189,6 +195,26 @@ export function AnimalGrid({
     () => toggleCounts(animals, filters, now),
     [animals, filters, now],
   );
+  // The section carries its own options, tally and actions, and is left out
+  // entirely while no facet has enough answers to narrow anything.
+  const goodWith = useMemo(() => {
+    const keys = visibleGoodWith(pool);
+    if (keys.length === 0) return undefined;
+    return {
+      options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
+      counts: goodWithCounts(animals, filters, now),
+      onToggle: toggleGoodWith,
+      onToggleMany: toggleManyGoodWith,
+    };
+  }, [
+    animals,
+    filters,
+    locale,
+    now,
+    pool,
+    toggleGoodWith,
+    toggleManyGoodWith,
+  ]);
 
   // The pressed species tab already shows itself, so chips cover only the
   // sidebar/sheet groups.
@@ -205,9 +231,15 @@ export function AnimalGrid({
       label: toggleLabel(key, locale),
       onRemove: () => toggleProperty(key),
     })),
+    ...filters.goodWith.map((key) => ({
+      key: `goodWith:${key}`,
+      label: goodWithLabel(key, locale),
+      onRemove: () => toggleGoodWith(key),
+    })),
   ];
 
-  const hasSidebar = groups.length > 0 || toggles.length > 0;
+  const hasSidebar =
+    groups.length > 0 || toggles.length > 0 || goodWith !== undefined;
 
   return (
     <section
@@ -225,6 +257,7 @@ export function AnimalGrid({
           counts={counts}
           toggles={toggles}
           toggleTally={toggleTally}
+          goodWith={goodWith}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
@@ -241,6 +274,7 @@ export function AnimalGrid({
           counts={counts}
           toggles={toggles}
           toggleTally={toggleTally}
+          goodWith={goodWith}
           shelters={shelters}
           shelterTally={counts.shelter}
           chips={chips}

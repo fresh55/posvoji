@@ -73,6 +73,17 @@ describe("localized labels", () => {
     expect(toggleLabel("cepljenje", "en")).toBe("Vaccinated");
   });
 
+  it("translates the energija group and its options", () => {
+    expect(groupLabel("energy", "sl")).toBe("Energija");
+    expect(groupLabel("energy", "en")).toBe("Energy");
+    expect(
+      groupOptions("energy", [], "sl").map((option) => option.label),
+    ).toEqual(["Miren", "Uravnotežen", "Živahen"]);
+    expect(
+      groupOptions("energy", [], "en").map((option) => option.label),
+    ).toEqual(["Calm", "Balanced", "Lively"]);
+  });
+
   it("formats time in shelter with Slovenian duals", () => {
     const now = new Date("2026-08-18T00:00:00Z");
 

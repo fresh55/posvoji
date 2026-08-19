@@ -9,6 +9,7 @@ import {
   serializeFilters,
   toggleValues,
   type Filters,
+  type GoodWithKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -83,6 +84,27 @@ export function useAnimalFilters() {
     [filters],
   );
 
+  const toggleGoodWith = useCallback(
+    (key: GoodWithKey) => {
+      const next = filters.goodWith.includes(key)
+        ? filters.goodWith.filter((k) => k !== key)
+        : [...filters.goodWith, key];
+      writeFilters({ ...filters, goodWith: next });
+    },
+    [filters],
+  );
+
+  const toggleManyGoodWith = useCallback(
+    (values: GoodWithKey[]) => {
+      if (values.length === 0) return;
+      writeFilters({
+        ...filters,
+        goodWith: toggleValues(filters.goodWith, values) as GoodWithKey[],
+      });
+    },
+    [filters],
+  );
+
   const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
 
   return {
@@ -92,6 +114,8 @@ export function useAnimalFilters() {
     toggleMany,
     toggleProperty,
     toggleManyProperties,
+    toggleGoodWith,
+    toggleManyGoodWith,
     clearAll,
     activeCount: activeFilterCount(filters),
   };

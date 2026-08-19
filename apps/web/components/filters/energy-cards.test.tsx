@@ -148,13 +148,27 @@ describe("EnergyCards", () => {
 
     render(<StatefulCards />);
 
+    const card = (label: string) =>
+      screen.getByRole("button", { name: new RegExp(`^${label}, `) });
+
     for (const { label } of options) {
-      const button = screen.getByRole("button", {
-        name: new RegExp(`^${label}, `),
-      });
+      const button = card(label);
       // The press pose is its own spring/tween path, so it gets driven too.
       fireEvent.pointerDown(button);
       fireEvent.pointerUp(button);
+      fireEvent.click(button);
+      expect(button.getAttribute("aria-pressed")).toBe("true");
+    }
+
+    // The neighbour shock is staggered by distance and signed by direction, so
+    // it is fired from both ends and from the middle: a card two steps out runs
+    // a different delay and amplitude than one step out.
+    for (const { label } of [...options].reverse()) {
+      fireEvent.click(card(label));
+      expect(card(label).getAttribute("aria-pressed")).toBe("false");
+    }
+    for (const index of [2, 0, 1]) {
+      const button = card(options[index].label);
       fireEvent.click(button);
       expect(button.getAttribute("aria-pressed")).toBe("true");
     }

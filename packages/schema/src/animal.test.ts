@@ -70,6 +70,34 @@ describe("Animal", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a goodWith block with a partial answer", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      goodWith: { kids: "yes", dogs: "unknown" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an animal without goodWith", () => {
+    expect(Animal.safeParse(validAnimal).success).toBe(true);
+  });
+
+  it("rejects a goodWith value outside yes/no/unknown", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      goodWith: { kids: "maybe" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unknown group inside goodWith", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      goodWith: { birds: "yes" },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects a cachedUrl that is neither a URL nor root-relative", () => {
     const result = Animal.safeParse({
       ...validAnimal,
@@ -81,6 +109,16 @@ describe("Animal", () => {
         },
       ],
     });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts an animal with a calm energy level", () => {
+    const result = Animal.safeParse({ ...validAnimal, energy: "calm" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an energy level outside calm/balanced/lively", () => {
+    const result = Animal.safeParse({ ...validAnimal, energy: "hyper" });
     expect(result.success).toBe(false);
   });
 });

@@ -92,7 +92,7 @@ function KidsGlyph({
     <GlyphRoot facet="kids" className={className}>
       <m.g
         style={partStyle("50% 70%")}
-        initial={false}
+        initial={celebrating ? undefined : false}
         animate={
           celebrating
             ? { rotate: [0, -5, 4, -2, 0], y: [0, -0.8, 0.4, -0.3, 0] }
@@ -109,7 +109,7 @@ function KidsGlyph({
           <m.path
             key={d}
             d={d}
-            initial={false}
+            initial={celebrating ? undefined : false}
             animate={
               celebrating ? { opacity: [1, 1, 0, 0, 1, 1] } : REST
             }
@@ -127,7 +127,7 @@ function KidsGlyph({
         <m.path
           d={BABY_MOUTH}
           style={partStyle("50% 50%")}
-          initial={false}
+          initial={celebrating ? undefined : false}
           animate={
             celebrating
               ? { scaleX: [1, 1.35, 1], scaleY: [1, 1.25, 1] }
@@ -155,7 +155,7 @@ function DogsGlyph({
     <GlyphRoot facet="dogs" className={className}>
       <m.g
         style={partStyle("50% 90%")}
-        initial={false}
+        initial={celebrating ? undefined : false}
         animate={celebrating ? { y: [0, -2, 0.5, 0] } : REST}
         transition={celebrating ? { duration: 0.6, ease: "easeOut" } : INSTANT}
       >
@@ -165,7 +165,7 @@ function DogsGlyph({
           d={DOG_EAR_LEFT}
           // The base of the ear, where it meets the crown, is the hinge.
           style={partStyle("90% 90%")}
-          initial={false}
+          initial={celebrating ? undefined : false}
           animate={celebrating ? { rotate: [0, -34, 12, -8, 3, 0] } : REST}
           transition={
             celebrating ? { duration: 0.6, ease: "easeOut" } : INSTANT
@@ -174,7 +174,7 @@ function DogsGlyph({
         <m.path
           d={DOG_EAR_RIGHT}
           style={partStyle("10% 90%")}
-          initial={false}
+          initial={celebrating ? undefined : false}
           animate={celebrating ? { rotate: [0, 34, -12, 8, -3, 0] } : REST}
           transition={
             celebrating ? { duration: 0.6, ease: "easeOut" } : INSTANT
@@ -202,7 +202,7 @@ function CatsGlyph({
     <GlyphRoot facet="cats" className={className}>
       <m.g
         style={partStyle("50% 90%")}
-        initial={false}
+        initial={celebrating ? undefined : false}
         animate={celebrating ? { rotate: [0, 3.5, 3.5, 0] } : REST}
         transition={
           celebrating
@@ -216,7 +216,7 @@ function CatsGlyph({
             key={d}
             d={d}
             style={partStyle("50% 50%")}
-            initial={false}
+            initial={celebrating ? undefined : false}
             animate={celebrating ? { scaleY: [1, 1, 0.08, 0.08, 1] } : REST}
             transition={
               celebrating

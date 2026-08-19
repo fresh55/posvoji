@@ -20,6 +20,9 @@ shelters:
     website: https://www.zonzani.si/
     email: info@zonzani.si
     phone: "03 749 06 00"
+    notes: >-
+      Ločena kataloga psov in mačk. Dovoljenje potrjeno 2026-08-18;
+      provider zonzani je vklopljen za strukturirana dejstva in oddaljene slike.
 
   - id: obalno
     name: Obalno zavetišče (Marjetica Koper)
@@ -36,8 +39,9 @@ shelters:
     email: info@zavetisce-ljubljana.si
     phone: "01 256 02 79"
     notes: >-
-      Pogoji uporabe zahtevajo predhodno pisno soglasje za uporabo vsebin.
-      Brez formalnega dovoljenja se ta vir ne vključi.
+      Pisno dovoljenje je potrdil nosilec projekta 2026-08-18. Provider je
+      vklopljen za strukturirana dejstva in oddaljeni prikaz fotografij;
+      opisi in predpomnjenje fotografij niso vključeni.
 
   - id: oskar
     name: Zavetišče Oskar Vitovlje
@@ -52,7 +56,10 @@ shelters:
     website: https://www.zavetisce-horjul.net/
     email: info@zavetisce-horjul.net
     phone: "051 304 435"
-    notes: Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
+    notes: >-
+      Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
+      Dovoljenje potrjeno 2026-08-18; provider je vklopljen za strukturirana
+      dejstva in oddaljeni prikaz fotografij.
 
   - id: turk
     name: Zavetišče Turk
@@ -84,8 +91,8 @@ shelters:
     email: zavetisce.mb@snaga-mb.si
     phone: "02 480 16 60"
     notes: >-
-      Pogoji uporabe so restriktivni; med pregledom je bil opažen HTTP 429.
-      Brez formalnega dovoljenja se ta vir ne vključi.
+      Pisno dovoljenje za zajem kataloga, celotne opise ter prikaz in
+      predpomnjenje fotografij je bilo prejeto 19. 8. 2026.
 
   - id: macji-dol
     name: Mačji dol (Žverca)

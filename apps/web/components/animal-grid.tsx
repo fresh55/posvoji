@@ -29,6 +29,7 @@ import {
   visibleGroups,
   visibleToggles,
 } from "@/lib/filters";
+import { monthsInShelter } from "@/lib/labels";
 import {
   DEFAULT_ANIMAL_SORT,
   sortAnimals,
@@ -90,6 +91,19 @@ export function AnimalGrid({
   const sorted = useMemo(
     () => sortAnimals(visible, sort, locale, now),
     [visible, sort, locale, now],
+  );
+  // The longest wait across the whole dataset, so the record holder's dialog
+  // can say truthfully that no one has waited longer. Measured against the
+  // dataset's build time, like every other span.
+  const maxStayMonths = useMemo(
+    () =>
+      animals.reduce((longest: number | undefined, animal) => {
+        if (!animal.intakeDate) return longest;
+        const months = monthsInShelter(animal.intakeDate, reference);
+        if (months === undefined) return longest;
+        return longest === undefined ? months : Math.max(longest, months);
+      }, undefined),
+    [animals, reference],
   );
 
   // Looked up in the whole dataset, not in what the filters leave: a shared
@@ -301,6 +315,7 @@ export function AnimalGrid({
         origin={origin}
         siblingIds={shownIds}
         reference={reference}
+        maxStayMonths={maxStayMonths}
         onNavigate={handleNavigate}
         onClose={close}
         // The default sort already leads with the longest waits, so the

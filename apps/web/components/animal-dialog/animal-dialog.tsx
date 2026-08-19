@@ -134,6 +134,7 @@ export function AnimalDialog({
   origin,
   siblingIds,
   reference,
+  maxStayMonths,
   onNavigate,
   onClose,
   onSeeLongestWaiting,
@@ -146,6 +147,8 @@ export function AnimalDialog({
   siblingIds: string[];
   /** The dataset's build time, shared with the cards behind the dialog. */
   reference: Date;
+  /** The longest wait in the dataset, for the record holder's extra line. */
+  maxStayMonths?: number;
   onNavigate: (id: string) => void;
   onClose: () => void;
   /** Hands the long-stay callout a way to the longest-waiting sort. */
@@ -405,6 +408,7 @@ export function AnimalDialog({
                     key={lastAnimal.id}
                     animal={lastAnimal}
                     reference={reference}
+                    maxStayMonths={maxStayMonths}
                     onSeeLongestWaiting={onSeeLongestWaiting}
                   />
                 </m.div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { m } from "motion/react";
-import type { Transition } from "motion/react";
+import type { TargetAndTransition, Transition } from "motion/react";
 import type { GoodWithKey } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
@@ -38,15 +38,41 @@ const CAT_HEAD =
 const CAT_EYES = ["M8 14v.5", "M16 14v.5"];
 const CAT_NOSE = "M11.25 16.25h1.5L12 17l-.75-.75Z";
 
-// The longest gesture here is the cat's blink at 0.85s. A caller holding the
-// celebration open has to outlast it.
 const REST = { rotate: 0, scaleX: 1, scaleY: 1, x: 0, y: 0 } as const;
 const INSTANT: Transition = { duration: 0 };
+
+// How long each glyph acts for. Exported so a caller holding the celebration
+// open can outlast the gesture instead of hard-coding a number that drifts
+// when the choreography changes.
+export const GOOD_WITH_GESTURE_SECONDS: Record<GoodWithKey, number> = {
+  kids: 0.55,
+  dogs: 0.6,
+  cats: 0.85,
+};
+
+export const LONGEST_GOOD_WITH_GESTURE_MS = Math.round(
+  Math.max(...Object.values(GOOD_WITH_GESTURE_SECONDS)) * 1000,
+);
+
+const { kids: KIDS, dogs: DOGS, cats: CATS } = GOOD_WITH_GESTURE_SECONDS;
 
 // A part that only ever sits still still needs the fill-box origin, so that
 // switching it on mid-gesture does not move it.
 function partStyle(transformOrigin: string) {
   return { transformBox: "fill-box", transformOrigin } as const;
+}
+
+// Every animated part answers the same question: act, or sit at rest. The
+// keyframes carry their own starting frame, so nothing here sets `initial`.
+function acts(
+  celebrating: boolean,
+  keyframes: TargetAndTransition,
+  transition: Transition,
+) {
+  return {
+    animate: celebrating ? keyframes : REST,
+    transition: celebrating ? transition : INSTANT,
+  };
 }
 
 function GlyphRoot({
@@ -92,15 +118,11 @@ function KidsGlyph({
     <GlyphRoot facet="kids" className={className}>
       <m.g
         style={partStyle("50% 70%")}
-        initial={celebrating ? undefined : false}
-        animate={
-          celebrating
-            ? { rotate: [0, -5, 4, -2, 0], y: [0, -0.8, 0.4, -0.3, 0] }
-            : REST
-        }
-        transition={
-          celebrating ? { duration: 0.55, ease: "easeOut" } : INSTANT
-        }
+        {...acts(
+          celebrating,
+          { rotate: [0, -5, 4, -2, 0], y: [0, -0.8, 0.4, -0.3, 0] },
+          { duration: KIDS, ease: "easeOut" },
+        )}
       >
         <path d={BABY_HEAD} />
         {/* The eyes are dot strokes with no height to scale, so a squeeze is
@@ -109,33 +131,25 @@ function KidsGlyph({
           <m.path
             key={d}
             d={d}
-            initial={celebrating ? undefined : false}
-            animate={
-              celebrating ? { opacity: [1, 1, 0, 0, 1, 1] } : REST
-            }
-            transition={
-              celebrating
-                ? {
-                    duration: 0.55,
-                    times: [0, 0.15, 0.3, 0.55, 0.8, 1],
-                    ease: "easeOut",
-                  }
-                : INSTANT
-            }
+            {...acts(
+              celebrating,
+              { opacity: [1, 1, 0, 0, 1, 1] },
+              {
+                duration: KIDS,
+                times: [0, 0.15, 0.3, 0.55, 0.8, 1],
+                ease: "easeOut",
+              },
+            )}
           />
         ))}
         <m.path
           d={BABY_MOUTH}
           style={partStyle("50% 50%")}
-          initial={celebrating ? undefined : false}
-          animate={
-            celebrating
-              ? { scaleX: [1, 1.35, 1], scaleY: [1, 1.25, 1] }
-              : REST
-          }
-          transition={
-            celebrating ? { duration: 0.55, ease: "easeOut" } : INSTANT
-          }
+          {...acts(
+            celebrating,
+            { scaleX: [1, 1.35, 1], scaleY: [1, 1.25, 1] },
+            { duration: KIDS, ease: "easeOut" },
+          )}
         />
       </m.g>
     </GlyphRoot>
@@ -155,9 +169,11 @@ function DogsGlyph({
     <GlyphRoot facet="dogs" className={className}>
       <m.g
         style={partStyle("50% 90%")}
-        initial={celebrating ? undefined : false}
-        animate={celebrating ? { y: [0, -2, 0.5, 0] } : REST}
-        transition={celebrating ? { duration: 0.6, ease: "easeOut" } : INSTANT}
+        {...acts(
+          celebrating,
+          { y: [0, -2, 0.5, 0] },
+          { duration: DOGS, ease: "easeOut" },
+        )}
       >
         <path d={DOG_BODY} />
         <path d={DOG_CROWN} />
@@ -165,20 +181,20 @@ function DogsGlyph({
           d={DOG_EAR_LEFT}
           // The base of the ear, where it meets the crown, is the hinge.
           style={partStyle("90% 90%")}
-          initial={celebrating ? undefined : false}
-          animate={celebrating ? { rotate: [0, -34, 12, -8, 3, 0] } : REST}
-          transition={
-            celebrating ? { duration: 0.6, ease: "easeOut" } : INSTANT
-          }
+          {...acts(
+            celebrating,
+            { rotate: [0, -34, 12, -8, 3, 0] },
+            { duration: DOGS, ease: "easeOut" },
+          )}
         />
         <m.path
           d={DOG_EAR_RIGHT}
           style={partStyle("10% 90%")}
-          initial={celebrating ? undefined : false}
-          animate={celebrating ? { rotate: [0, 34, -12, 8, -3, 0] } : REST}
-          transition={
-            celebrating ? { duration: 0.6, ease: "easeOut" } : INSTANT
-          }
+          {...acts(
+            celebrating,
+            { rotate: [0, 34, -12, 8, -3, 0] },
+            { duration: DOGS, ease: "easeOut" },
+          )}
         />
         {DOG_EYES.map((d) => (
           <path key={d} d={d} />
@@ -202,13 +218,11 @@ function CatsGlyph({
     <GlyphRoot facet="cats" className={className}>
       <m.g
         style={partStyle("50% 90%")}
-        initial={celebrating ? undefined : false}
-        animate={celebrating ? { rotate: [0, 3.5, 3.5, 0] } : REST}
-        transition={
-          celebrating
-            ? { duration: 0.85, times: [0, 0.25, 0.7, 1], ease: "easeInOut" }
-            : INSTANT
-        }
+        {...acts(
+          celebrating,
+          { rotate: [0, 3.5, 3.5, 0] },
+          { duration: CATS, times: [0, 0.25, 0.7, 1], ease: "easeInOut" },
+        )}
       >
         <path d={CAT_HEAD} />
         {CAT_EYES.map((d) => (
@@ -216,17 +230,15 @@ function CatsGlyph({
             key={d}
             d={d}
             style={partStyle("50% 50%")}
-            initial={celebrating ? undefined : false}
-            animate={celebrating ? { scaleY: [1, 1, 0.08, 0.08, 1] } : REST}
-            transition={
-              celebrating
-                ? {
-                    duration: 0.85,
-                    times: [0, 0.3, 0.42, 0.62, 1],
-                    ease: "easeInOut",
-                  }
-                : INSTANT
-            }
+            {...acts(
+              celebrating,
+              { scaleY: [1, 1, 0.08, 0.08, 1] },
+              {
+                duration: CATS,
+                times: [0, 0.3, 0.42, 0.62, 1],
+                ease: "easeInOut",
+              },
+            )}
           />
         ))}
         <path d={CAT_NOSE} />

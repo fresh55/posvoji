@@ -28,8 +28,10 @@ export const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
   "brez-felv": TestTubeDiagonal,
 };
 
-// One icon per household question, shared by the Družba filter and the
-// dialog's facts row. Keyed by GoodWithKey, so a new facet fails to compile.
+// One icon per household question, for the dialog's facts row. The filter
+// cards draw the same three animals from good-with-glyphs.tsx instead, where
+// the parts move on their own, so a change here wants one there to match.
+// Keyed by GoodWithKey, so a new facet fails to compile.
 export const GOOD_WITH_ICONS: Record<GoodWithKey, LucideIcon> = {
   kids: Baby,
   dogs: Dog,

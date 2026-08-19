@@ -14,7 +14,10 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
-import { GoodWithGlyph } from "@/components/filters/good-with-glyphs";
+import {
+  GoodWithGlyph,
+  LONGEST_GOOD_WITH_GESTURE_MS,
+} from "@/components/filters/good-with-glyphs";
 import {
   useFilterCardHover,
   useOneShotCelebration,
@@ -30,9 +33,9 @@ export type GoodWithOption = { key: GoodWithKey; label: string };
 
 const GESTURE_REST = { rotate: 0, scale: 1, x: 0, y: 0 };
 
-// Long enough to cover the longest gesture a glyph can play, so the check and
-// the ripple never cut a laugh or a blink short.
-const GESTURE_MS = 900;
+// The hold comes from the glyphs themselves, so the check and the ripple
+// never cut a laugh or a blink short when the choreography changes.
+const GESTURE_MS = LONGEST_GOOD_WITH_GESTURE_MS;
 // The check confirms as the icon gesture lands, not before it starts.
 const GESTURE_CHECK_DELAY = 0.2;
 const RIPPLE_OPACITY = 0.5;
@@ -232,6 +235,9 @@ export function GoodWithCards({
                   }
                 >
                   <GoodWithGlyph
+                    // Remounting is what restarts the gesture: motion holds a
+                    // keyframe run to its own timeline, so swapping the target
+                    // on a live element does not replay it.
                     key={celebrating ? celebration?.id : "rest"}
                     facet={key}
                     gesture={celebrating ? "celebrate" : "rest"}

@@ -1,13 +1,14 @@
 "use client";
 
 import { useRef, type MouseEvent } from "react";
+import { Hourglass } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { Skeleton } from "@/components/ui/skeleton";
 import { translate } from "@/lib/i18n";
-import { animalMeta, statusLabel } from "@/lib/labels";
+import { animalMeta, longStayLabel, statusLabel } from "@/lib/labels";
 
 // Adopted and hold are over, and the card agrees with them the way the
 // dialog's stage light does: about half the colour goes and the photo settles
@@ -25,8 +26,9 @@ export function AnimalCard({
   reference: Date;
   onOpen: (id: string, origin?: DialogOrigin) => void;
 }) {
-  const { locale, messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   const cardRef = useRef<HTMLElement>(null);
+  const wait = longStayLabel(animal, locale, reference);
   // Filters are deliberately left out: this href is written at build time,
   // where the visitor's filters do not exist, and computing it on the client
   // would not survive hydration. A modified click therefore deep links to the
@@ -97,6 +99,16 @@ export function AnimalCard({
           {animal.status === "reserved" && (
             <span className="shrink-0 text-xs text-muted-foreground">
               {statusLabel("reserved", locale)}
+            </span>
+          )}
+          {wait && (
+            <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+              <Hourglass
+                className="size-3.5 text-amber-600 dark:text-amber-400"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              {t("longStayMark", { duration: wait })}
             </span>
           )}
         </div>

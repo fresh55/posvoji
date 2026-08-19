@@ -303,24 +303,30 @@ export function AnimalFacts({
         </div>
       )}
 
-      {/* The same amber as the reserved badge, so the dialog holds one amber
-          recipe. The trailing link turns the story into a path: it re-sorts
-          the list by longest wait, but only offers itself when the list is
-          sorted some other way. */}
+      {/* Styled like a quiet alert: the same neutral box as the shelter
+          block, with the amber held to the icon alone. The link turns the
+          story into a path: it re-sorts the list by longest wait, but only
+          offers itself when the list is sorted some other way. */}
       {longStay && stay && (
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-ui border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          <Hourglass className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
-          <span>{t("longStay", { duration: stay })}</span>
-          {onSeeLongestWaiting && (
-            <button
-              type="button"
-              onClick={onSeeLongestWaiting}
-              className="cursor-pointer font-medium underline underline-offset-4 hover:opacity-80"
-            >
-              {messages.longStayLink}
-            </button>
-          )}
-        </p>
+        <div className="flex items-start gap-3 rounded-ui border bg-muted/40 px-4 py-3">
+          <Hourglass
+            className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <div className="space-y-0.5 text-sm">
+            <p className="font-medium">{t("longStay", { duration: stay })}</p>
+            {onSeeLongestWaiting && (
+              <button
+                type="button"
+                onClick={onSeeLongestWaiting}
+                className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                {messages.longStayLink}
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {((inShelter && stay && !longStay) || animal.originMunicipality) && (

@@ -8,15 +8,19 @@ import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
   applyFilters,
   facetCounts,
+  goodWithCounts,
+  goodWithOptions,
   GROUPS,
   groupOptions,
   optionLabel,
   toggleCounts,
   toggleLabel,
+  visibleGoodWith,
   visibleGroups,
   visibleToggles,
   type AgeGroup,
 } from "@/lib/filters";
+import { goodWithChipLabel } from "@/lib/labels";
 import { FilterChips, type Chip } from "./filter-chips";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
@@ -39,8 +43,10 @@ function animal(
   approximateAgeMonths: number,
   size: "small" | "medium" | "large",
   medical: Animal["medical"] = {},
+  goodWith: Animal["goodWith"] = undefined,
 ): Animal {
   return {
+    ...(goodWith ? { goodWith } : {}),
     id,
     source: {
       providerId: "test-shelter",
@@ -64,8 +70,14 @@ function animal(
 }
 
 const ANIMALS = [
-  animal("male-young", "male", 6, "small", { neutered: true }),
-  animal("female-adult", "female", 36, "medium", { vaccinated: true }),
+  animal("male-young", "male", 6, "small", { neutered: true }, {
+    kids: "yes",
+    dogs: "yes",
+  }),
+  animal("female-adult", "female", 36, "medium", { vaccinated: true }, {
+    kids: "yes",
+    dogs: "no",
+  }),
   animal("male-senior", "male", 120, "large"),
 ];
 
@@ -76,6 +88,8 @@ function FilterFlowHarness() {
     toggleMany,
     toggleProperty,
     toggleManyProperties,
+    toggleGoodWith,
+    toggleManyGoodWith,
     clearAll,
   } = useAnimalFilters();
   const matching = applyFilters(ANIMALS, filters, NOW);
@@ -103,7 +117,23 @@ function FilterFlowHarness() {
       label: toggleLabel(key, "sl"),
       onRemove: () => toggleProperty(key),
     })),
+    ...filters.goodWith.map((key) => ({
+      key: `goodWith:${key}`,
+      label: goodWithChipLabel(key, "sl"),
+      onRemove: () => toggleGoodWith(key),
+    })),
   ];
+  const goodWithKeys = visibleGoodWith(ANIMALS);
+  const goodWith = {
+    options: goodWithOptions("sl").filter(({ key }) =>
+      goodWithKeys.includes(key),
+    ),
+    counts: goodWithCounts(ANIMALS, filters, NOW),
+    resultCount: matching.length,
+    total: ANIMALS.length,
+    onToggle: toggleGoodWith,
+    onToggleMany: toggleManyGoodWith,
+  };
 
   return (
     <I18nProvider locale="sl">
@@ -114,6 +144,7 @@ function FilterFlowHarness() {
           counts={facetCounts(ANIMALS, filters, NOW)}
           toggles={toggles}
           toggleTally={toggleCounts(ANIMALS, filters, NOW)}
+          goodWith={goodWith}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
@@ -216,6 +247,42 @@ describe("filter flow interactions", () => {
 
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
+  });
+
+  it("combines household answers with AND and says so on screen", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    expect(matchingIds()).toBe("male-young,female-adult");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    expect(matchingIds()).toBe("male-young");
+    expect(
+      screen.getByText(
+        "Prikazane so živali, ki se razumejo z otroki in psi. 1 od 3.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps the household slugs a shared link already carries", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+
+    expect(query()).toBe("?druzba=otroci,psi");
+  });
+
+  it("names the household on its chips, not the species", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+
+    expect(screen.getByText("Doma: otroci")).toBeTruthy();
+    expect(screen.getByText("Doma: pes")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Odstrani filter Doma: pes" }),
+    );
+    expect(query()).toBe("?druzba=otroci");
   });
 
   it("hydrates and reacts to shared URL state", () => {

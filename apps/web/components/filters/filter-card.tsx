@@ -113,6 +113,7 @@ export function FilterCardSection({
   resetAriaLabel,
   layout,
   children,
+  footer,
 }: {
   label: string;
   hint: string;
@@ -121,6 +122,8 @@ export function FilterCardSection({
   resetAriaLabel: string;
   layout: FilterCardLayout;
   children: ReactNode;
+  /** What a section says about its cards once they are read together. */
+  footer?: ReactNode;
 }) {
   return (
     <section>
@@ -143,6 +146,7 @@ export function FilterCardSection({
           {children}
         </div>
       </LazyMotion>
+      {footer}
     </section>
   );
 }

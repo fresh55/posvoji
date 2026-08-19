@@ -125,6 +125,28 @@ def test_export_carries_the_energy_level(client, export_token, shelter):
 
 
 @pytest.mark.django_db
+def test_export_carries_apartment_ok_and_special_needs(client, export_token, shelter):
+    AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        apartment_ok="yes",
+        special_needs=False,
+    )
+
+    body = client.get(EXPORT, **bearer(TOKEN)).json()
+
+    # False is a real answer, distinct from never being set, so it has to
+    # survive the export like every other overridden value.
+    assert body["overrides"] == [
+        {
+            "providerId": "testno",
+            "animalId": "testno:1",
+            "fields": {"apartmentOk": "yes", "specialNeeds": False},
+        }
+    ]
+
+
+@pytest.mark.django_db
 def test_export_is_empty_without_overrides(client, export_token):
     body = client.get(EXPORT, **bearer(TOKEN)).json()
 

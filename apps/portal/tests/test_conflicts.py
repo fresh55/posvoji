@@ -97,6 +97,20 @@ def test_the_nested_good_with_block_is_compared_flat(override, shelter):
 
 
 @pytest.mark.django_db
+def test_a_special_needs_flag_moving_is_a_conflict(override, shelter):
+    row = override(special_needs=True, baseline={"specialNeeds": None})
+    animal = make_animal("testno:1", shelter, specialNeeds=False)
+
+    conflicts = conflicts_for(row, animal)
+
+    # False and None are different readings, so the crawl stating False now
+    # is a source that moved, not one that stood still.
+    assert [(c.field, c.baseline, c.crawled) for c in conflicts] == [
+        ("specialNeeds", None, False)
+    ]
+
+
+@pytest.mark.django_db
 def test_an_animal_outside_the_dataset_has_nothing_to_compare(override):
     row = override(status="reserved", baseline={"status": "available"})
 

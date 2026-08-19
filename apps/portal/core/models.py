@@ -16,6 +16,8 @@ OVERRIDE_FIELDS: tuple[tuple[str, str], ...] = (
     ("good_with_kids", "goodWithKids"),
     ("good_with_dogs", "goodWithDogs"),
     ("good_with_cats", "goodWithCats"),
+    ("apartment_ok", "apartmentOk"),
+    ("special_needs", "specialNeeds"),
 )
 
 COLUMN_BY_JSON_KEY: dict[str, str] = {key: column for column, key in OVERRIDE_FIELDS}
@@ -167,6 +169,16 @@ class AnimalOverride(models.Model):
         null=True,
         blank=True,
     )
+    apartment_ok = models.CharField(
+        max_length=16,
+        choices=OverrideCompatibility.choices,
+        null=True,
+        blank=True,
+    )
+    # NULL means not overridden, same as every other field here. True and
+    # False are both real answers; there is no third "no" state to model
+    # because a shelter either flags the need for extra care or has not.
+    special_needs = models.BooleanField(null=True, blank=True)
 
     # What the crawl said for each overridden field at the moment the shelter
     # corrected it, keyed camelCase like the wire format. A field is present

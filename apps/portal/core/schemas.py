@@ -53,6 +53,8 @@ class AnimalOut(Schema):
     goodWithKids: str | None = None
     goodWithDogs: str | None = None
     goodWithCats: str | None = None
+    apartmentOk: str | None = None
+    specialNeeds: bool | None = None
     thumbnailUrl: str | None = None
     overrides: dict[str, Any] = {}
 
@@ -78,6 +80,8 @@ class AnimalOverrideIn(Schema):
     goodWithKids: Literal["yes", "no", "unknown"] | None = None
     goodWithDogs: Literal["yes", "no", "unknown"] | None = None
     goodWithCats: Literal["yes", "no", "unknown"] | None = None
+    apartmentOk: Literal["yes", "no", "unknown"] | None = None
+    specialNeeds: bool | None = None
 
 
 class ExportOverrideOut(Schema):

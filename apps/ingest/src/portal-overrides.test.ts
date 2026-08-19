@@ -93,6 +93,33 @@ describe("PortalExportPayload", () => {
     expect(PortalExportPayload.safeParse(raw).success).toBe(false);
   });
 
+  it("accepts an apartmentOk answer and a specialNeeds flag", () => {
+    const result = PortalExportPayload.safeParse(
+      payload([
+        {
+          providerId: "macja-hisa",
+          animalId: "macja-hisa:luna",
+          fields: { apartmentOk: "yes", specialNeeds: true },
+        },
+      ]),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an apartmentOk value outside yes/no/unknown", () => {
+    const raw: unknown = {
+      generatedAt: "2026-08-18T06:00:00Z",
+      overrides: [
+        {
+          providerId: "macja-hisa",
+          animalId: "macja-hisa:luna",
+          fields: { apartmentOk: "maybe" },
+        },
+      ],
+    };
+    expect(PortalExportPayload.safeParse(raw).success).toBe(false);
+  });
+
   it("rejects a good-with value outside yes/no/unknown", () => {
     const raw: unknown = {
       generatedAt: "2026-08-18T06:00:00Z",
@@ -162,6 +189,40 @@ describe("applyOverrides", () => {
 
     expect(result.applied).toBe(1);
     expect(result.animals[0]?.energy).toBe("calm");
+  });
+
+  it("applies the shelter's apartmentOk answer and specialNeeds flag", () => {
+    const luna = animal({ id: "macja-hisa:luna" });
+    const result = applyOverrides(
+      [luna],
+      payload([
+        {
+          providerId: "macja-hisa",
+          animalId: "macja-hisa:luna",
+          fields: { apartmentOk: "no", specialNeeds: true },
+        },
+      ]),
+    );
+
+    expect(result.applied).toBe(1);
+    expect(result.animals[0]?.apartmentOk).toBe("no");
+    expect(result.animals[0]?.specialNeeds).toBe(true);
+  });
+
+  it("applies specialNeeds false as a real answer, not a no-op", () => {
+    const luna = animal({ id: "macja-hisa:luna", specialNeeds: true });
+    const result = applyOverrides(
+      [luna],
+      payload([
+        {
+          providerId: "macja-hisa",
+          animalId: "macja-hisa:luna",
+          fields: { specialNeeds: false },
+        },
+      ]),
+    );
+
+    expect(result.animals[0]?.specialNeeds).toBe(false);
   });
 
   it("leaves animals without a matching override unchanged", () => {
@@ -356,6 +417,7 @@ describe("fetchPortalOverrides", () => {
     expect(result?.overrides[0]?.baseline).toEqual({
       status: "available",
       energy: null,
+      specialNeeds: null,
     });
   });
 
@@ -511,6 +573,21 @@ describe("conflict detection", () => {
       kind: "moved",
       baseline: null,
       crawled: "lively",
+    });
+  });
+
+  it("treats a crawl that starts stating specialNeeds as a moved source", () => {
+    const luna = animal({ id: "macja-hisa:luna", specialNeeds: false });
+    const result = applyOverrides(
+      [luna],
+      withBaseline({ specialNeeds: true }, { specialNeeds: null }),
+    );
+
+    expect(result.conflicts[0]).toMatchObject({
+      field: "specialNeeds",
+      kind: "moved",
+      baseline: null,
+      crawled: false,
     });
   });
 

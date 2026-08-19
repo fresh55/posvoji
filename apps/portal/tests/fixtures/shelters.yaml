@@ -1,0 +1,25 @@
+# Small stand in for data/shelters.yaml. Fictional shelters and institutional
+# style addresses on example.si, so no real contact ever lands in a test.
+
+meta:
+  register_source: "test fixture"
+  register_date: 2026-01-01
+
+shelters:
+  - id: testno
+    name: Zavetisce Testno
+    city: Testno
+    website: https://example.si/
+    email: info@example.si
+    phone: "01 000 00 00"
+
+  - id: drugo
+    name: Zavetisce Drugo
+    city: Drugo
+    website: https://drugo.example.si/
+    email: zavetisce@drugo.example.si
+
+  - id: brez-poste
+    name: Zavetisce Brez poste
+    city: Nekje
+    website: https://brez.example.si/

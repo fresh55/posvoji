@@ -1,0 +1,33 @@
+[project]
+name = "posvoji-portal"
+version = "0.1.0"
+description = "Shelter self-service portal API for Posvoji.si"
+requires-python = ">=3.12"
+license = "AGPL-3.0-only"
+dependencies = [
+    "django>=5.1,<6.0",
+    "django-cors-headers>=4.4",
+    "django-ninja>=1.3",
+    "django-sesame>=3.2",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "portal.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

@@ -1,0 +1,77 @@
+"""Animal listing and overrides for one shelter."""
+
+from typing import Any
+
+from django.utils import timezone
+from ninja import Router
+
+from ..dataset import (
+    animals_for_shelter,
+    crawled_values,
+    find_animal,
+    merge_animal,
+)
+from ..models import COLUMN_BY_JSON_KEY, AnimalOverride
+from ..schemas import AnimalOut, AnimalOverrideIn
+from ..security import require_membership
+
+router = Router()
+
+
+def _clean(value: Any) -> Any:
+    """Blank text clears the override the same way an explicit null does."""
+    if isinstance(value, str):
+        return value.strip() or None
+    return value
+
+
+@router.get("/shelters/{slug}/animals", response=list[AnimalOut])
+def list_animals(request, slug: str):
+    shelter = require_membership(request, slug)
+    overrides = {
+        override.animal_id: override
+        for override in AnimalOverride.objects.filter(shelter=shelter)
+    }
+    items = [
+        merge_animal(animal, overrides.get(animal.get("id")))
+        for animal in animals_for_shelter(shelter.slug)
+    ]
+    items.sort(key=lambda item: ((item["name"] or "").casefold(), item["id"] or ""))
+    return items
+
+
+@router.put("/shelters/{slug}/animals/{animal_id}", response=AnimalOut)
+def upsert_override(request, slug: str, animal_id: str, payload: AnimalOverrideIn):
+    shelter = require_membership(request, slug)
+    # Only the keys present in the request body are touched, so a partial
+    # update leaves the other overrides alone.
+    changes = payload.model_dump(exclude_unset=True)
+
+    override, _ = AnimalOverride.objects.get_or_create(
+        shelter=shelter, animal_id=animal_id
+    )
+
+    # The animal may not be in the dataset yet: the shelter can be ahead of
+    # the crawl, and the override still has to stick.
+    animal = find_animal(shelter.slug, animal_id)
+    crawled = crawled_values(animal) if animal is not None else None
+
+    baseline = dict(override.baseline)
+    for key, value in changes.items():
+        cleaned = _clean(value)
+        setattr(override, COLUMN_BY_JSON_KEY[key], cleaned)
+        # Record what the crawl says right now for the field being set, so a
+        # later run can tell a source that has moved from a correction that
+        # simply differs from the crawl. Clearing an override drops its
+        # baseline with it, and re-setting a field re-takes the baseline,
+        # which is how a shelter says "I still mean this".
+        if cleaned is None or crawled is None:
+            baseline.pop(key, None)
+        else:
+            baseline[key] = crawled[key]
+    override.baseline = baseline
+    override.baseline_at = timezone.now() if baseline else None
+    override.updated_by = request.user
+    override.save()
+
+    return merge_animal(animal or {"id": animal_id}, override)

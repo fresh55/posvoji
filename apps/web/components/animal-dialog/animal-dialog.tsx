@@ -19,7 +19,9 @@ import {
 } from "motion/react";
 import type { AdoptionStatus, Animal } from "@posvoji/schema";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import { PhotoBloom } from "@/components/animal-dialog/photo-bloom";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
+import { StageWash } from "@/components/animal-dialog/photo-wash";
 import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { useI18n } from "@/components/i18n-provider";
@@ -32,11 +34,28 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { permittedImageUrls } from "@/lib/animal-images";
 import { animalMeta, statusLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-/** Viewport coordinates of the card the dialog was opened from. */
-export type DialogOrigin = { x: number; y: number };
+/** Where a photo was standing on screen, in viewport coordinates. */
+export type DialogPhotoRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * Viewport coordinates of the card the dialog was opened from. The point is
+ * what the zoom grows out of; the photo box is what the fan's first picture
+ * travels from, and is absent when there was no card to measure.
+ */
+export type DialogOrigin = {
+  x: number;
+  y: number;
+  photo?: DialogPhotoRect;
+};
 
 // Written fresh rather than layered on DialogContent: the default is a
 // centered max-w-lg box, and this is a full-screen takeover on phones that
@@ -158,6 +177,15 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
+  // The fan is remounted per animal so its photos start over, which means the
+  // wash cannot live inside it: it would go out with the old animal and come
+  // back from nothing. Held here instead, it is one continuous layer, and
+  // stepping animals crossfades one colour into the next. On the way out it
+  // keeps the last animal's colour and leaves with the dialog.
+  const [washSource, setWashSource] = useState<string | undefined>(undefined);
+  // The card shows an animal's first photo, and so does the fan on the way in,
+  // so that is the one the bloom carries across.
+  const firstPhoto = lastAnimal && permittedImageUrls(lastAnimal.images)[0];
 
   if (!lastAnimal) return null;
 
@@ -239,6 +267,9 @@ export function AnimalDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogPortal>
         <DialogOverlay />
+        {/* Outside the content on purpose: the content carries the zoom, and a
+            copy aimed at viewport coordinates cannot sit inside a transform. */}
+        <PhotoBloom from={origin?.photo} source={firstPhoto} />
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"
@@ -312,9 +343,14 @@ export function AnimalDialog({
                 variants={CONTENT_ITEM}
                 transition={transition}
               >
+                <StageWash source={washSource} status={lastAnimal.status} />
                 {/* Keyed, so stepping to another animal starts its photos
                     over rather than inheriting the last one's state. */}
-                <PhotoSpread key={lastAnimal.id} animal={lastAnimal} />
+                <PhotoSpread
+                  key={lastAnimal.id}
+                  animal={lastAnimal}
+                  onWashSource={setWashSource}
+                />
               </m.div>
 
               <div className={CARD_CLASS}>

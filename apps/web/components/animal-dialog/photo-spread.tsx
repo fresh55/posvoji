@@ -3,9 +3,13 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, m, useReducedMotion } from "motion/react";
+import { m, useReducedMotion } from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
+import {
+  STAGE_WIDTH,
+  StripWash,
+} from "@/components/animal-dialog/photo-wash";
 import { useI18n } from "@/components/i18n-provider";
 import {
   GALLERY_BUTTON_CLASS,
@@ -13,7 +17,7 @@ import {
 } from "@/components/photo-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { permittedImageUrls } from "@/lib/animal-images";
+import { permittedImageUrls, thumbnailUrl } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 
 // Five photos is where a fan still reads as a fan. Past that the window walks
@@ -64,13 +68,10 @@ const SOLO_BOX = "absolute bottom-0 left-1/2 aspect-[4/3] w-[72%]";
 const STAGE_ASPECT = "aspect-[2.3/1]";
 const SOLO_STAGE_ASPECT = "aspect-[1.85/1]";
 
-// The wash is the photo itself, blurred past recognition. It reaches past the
-// stage, because the part behind the photos is the part nobody can see, and
-// stops well inside the shell so nothing smears onto the page. The mask keeps
-// the clip from reading as a rectangle of colour.
-const WASH_BOX = "absolute -inset-x-[10%] -top-4 bottom-0 z-0 overflow-hidden";
-const WASH_MASK =
-  "radial-gradient(75% 75% at 50% 50%, black 55%, transparent 100%)";
+// Images are served unoptimized today, so this picks nothing; it is here so
+// the fan asks for the right file if that ever changes. The wash behind the
+// fan runs off the thumb instead and carries its own.
+const PHOTO_SIZES = "(max-width: 639px) 100vw, 24rem";
 
 // Same corner treatment as the counter on the cards.
 const PHOTO_BADGE_CLASS =
@@ -98,18 +99,60 @@ function fanSlots(count: number, active: number): { index: number; offset: numbe
   return slots;
 }
 
-export function PhotoSpread({ animal }: { animal: Animal }) {
+export function PhotoSpread({
+  animal,
+  onWashSource,
+}: {
+  animal: Animal;
+  /**
+   * Which photo the stage wash should be showing. The wash is mounted above
+   * this component so it outlives the remount, which is the only way one
+   * animal's colour can fade into the next one's.
+   */
+  onWashSource?: (source: string | undefined) => void;
+}) {
   const { messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const images = permittedImageUrls(animal.images);
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxOrigin, setLightboxOrigin] = useState<DOMRect | undefined>(
+    undefined,
+  );
   // The cascade belongs to the mount, which is once per animal: the first
   // render reads false, and every render after it is a photo being picked.
   const entered = useRef(false);
   useEffect(() => {
     entered.current = true;
   }, []);
+
+  // Reported rather than read from above, because which photo is showing is
+  // this component's business. An animal with nothing to show reports nothing
+  // and the wash goes out with it.
+  const washSource = images[activeIndex];
+  useEffect(() => {
+    onWashSource?.(washSource);
+  }, [onWashSource, washSource]);
+
+  // The travelling ring is measured off the thumb it is going to rather than
+  // worked out from the gap, so it stays right if the strip's sizing changes.
+  const thumbsRef = useRef<HTMLDivElement>(null);
+  const [ring, setRing] = useState<
+    { x: number; y: number; w: number; h: number } | undefined
+  >(undefined);
+  useEffect(() => {
+    const thumb =
+      thumbsRef.current?.querySelectorAll<HTMLElement>("[data-thumb]")[
+        activeIndex
+      ];
+    if (!thumb) return;
+    setRing({
+      x: thumb.offsetLeft,
+      y: thumb.offsetTop,
+      w: thumb.offsetWidth,
+      h: thumb.offsetHeight,
+    });
+  }, [activeIndex, images.length]);
 
   if (images.length === 0) {
     return (
@@ -143,33 +186,55 @@ export function PhotoSpread({ animal }: { animal: Animal }) {
           className="relative aspect-[4/3] overflow-hidden bg-muted"
         />
         {images.length > 1 && (
-          <div
-            data-slot="photo-thumbs"
-            className="flex gap-2 overflow-x-auto px-4 pt-4 no-scrollbar"
-          >
-            {images.map((source, index) => (
-              <button
-                key={source}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                aria-pressed={index === activeIndex}
-                aria-label={t("showPhoto", { n: index + 1 })}
-                className={cn(
-                  "relative size-14 shrink-0 overflow-hidden rounded-ui border bg-muted transition-opacity",
-                  index === activeIndex
-                    ? "ring-2 ring-[var(--filter-accent-border)]"
-                    : "opacity-60",
-                )}
-              >
-                <Image
-                  src={source}
-                  alt=""
-                  fill
-                  sizes="4rem"
-                  className="object-cover"
+          <div className="relative">
+            {/* The hero's colour carried a little way down, so the strip reads
+                as the bottom of the photo rather than a tray under it. It sits
+                outside the scroller on purpose: walking the thumbs sideways
+                must not drag or repaint the blurred layer. */}
+            <StripWash source={washSource} />
+            <div
+              ref={thumbsRef}
+              data-slot="photo-thumbs"
+              className="relative z-10 flex gap-2 overflow-x-auto px-4 pt-4 no-scrollbar"
+            >
+              {/* One ring that travels, rather than one per thumb blinking on
+                  and off. It is laid out in the scroller's own coordinates, so
+                  it rides along with the thumbs instead of drifting when the
+                  strip is scrolled mid-slide. */}
+              {ring && (
+                <m.div
+                  aria-hidden
+                  data-slot="photo-thumb-ring"
+                  className="pointer-events-none absolute top-0 left-0 z-10 rounded-ui ring-2 ring-[var(--filter-accent-border)]"
+                  style={{ width: ring.w, height: ring.h }}
+                  initial={false}
+                  animate={{ x: ring.x, y: ring.y }}
+                  transition={shouldReduceMotion ? { duration: 0 } : FAN_SPRING}
                 />
-              </button>
-            ))}
+              )}
+              {images.map((source, index) => (
+                <button
+                  key={source}
+                  data-thumb
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  aria-pressed={index === activeIndex}
+                  aria-label={t("showPhoto", { n: index + 1 })}
+                  className={cn(
+                    "relative size-14 shrink-0 overflow-hidden rounded-ui border bg-muted transition-opacity",
+                    index !== activeIndex && "opacity-60",
+                  )}
+                >
+                  <Image
+                    src={thumbnailUrl(source)}
+                    alt=""
+                    fill
+                    sizes="4rem"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -186,37 +251,13 @@ export function PhotoSpread({ animal }: { animal: Animal }) {
           step(event.key === "ArrowLeft" ? -1 : 1);
         }}
         className={cn(
-          "group relative mx-auto hidden w-[80%] sm:block",
+          "group relative mx-auto hidden sm:block",
+          STAGE_WIDTH,
           solo ? SOLO_STAGE_ASPECT : STAGE_ASPECT,
         )}
       >
-        {/* The photo's own colour, blurred out behind the fan, so the stage
-            is lit by whatever is on it. */}
-        <div
-          aria-hidden
-          className={cn("pointer-events-none", WASH_BOX)}
-          style={{ maskImage: WASH_MASK, WebkitMaskImage: WASH_MASK }}
-        >
-          <AnimatePresence initial={false}>
-            <m.div
-              key={activeIndex}
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={shouldReduceMotion ? { duration: 0 } : FAN_SPRING}
-            >
-              <Image
-                src={images[activeIndex]}
-                alt=""
-                fill
-                sizes="48rem"
-                className="scale-125 object-cover opacity-30 blur-2xl saturate-150"
-              />
-            </m.div>
-          </AnimatePresence>
-        </div>
-
+        {/* The wash that used to sit here is mounted by the dialog now, so it
+            survives this component being remounted for the next animal. */}
         {slots
           .slice()
           .sort((a, b) => a.index - b.index)
@@ -235,9 +276,16 @@ export function PhotoSpread({ animal }: { animal: Animal }) {
               <m.button
                 key={index}
                 type="button"
-                onClick={() =>
-                  active ? setLightboxOpen(true) : setActiveIndex(index)
-                }
+                onClick={(event) => {
+                  if (!active) {
+                    setActiveIndex(index);
+                    return;
+                  }
+                  // Where it is standing right now, so the lightbox can grow
+                  // out of it rather than appear over it.
+                  setLightboxOrigin(event.currentTarget.getBoundingClientRect());
+                  setLightboxOpen(true);
+                }}
                 aria-pressed={active}
                 aria-label={
                   active
@@ -287,7 +335,7 @@ export function PhotoSpread({ animal }: { animal: Animal }) {
                   src={images[index]}
                   alt=""
                   fill
-                  sizes="(max-width: 639px) 100vw, 24rem"
+                  sizes={PHOTO_SIZES}
                   className="object-cover"
                 />
                 {/* The count sits on the photo being looked at, and it is
@@ -353,6 +401,7 @@ export function PhotoSpread({ animal }: { animal: Animal }) {
         index={activeIndex}
         onIndexChange={setActiveIndex}
         title={animal.name ?? messages.unnamed}
+        originRect={lightboxOrigin}
       />
     </>
   );

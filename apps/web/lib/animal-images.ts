@@ -12,6 +12,16 @@ export function permittedImageUrls(images: Animal["images"]): string[] {
   });
 }
 
+// The ingest cache writes a small sibling next to every cached derivative
+// ("<hash>.webp" gets "<hash>.thumb.webp"), sized for the 56px thumb strip.
+// Only our own cached copies have one; any other URL passes through unchanged.
+export function thumbnailUrl(url: string): string {
+  if (!url.startsWith("/media/animals/") || url.endsWith(".thumb.webp")) {
+    return url;
+  }
+  return url.replace(/\.webp$/, ".thumb.webp");
+}
+
 export function adjacentImageUrls(
   images: readonly string[],
   index: number,

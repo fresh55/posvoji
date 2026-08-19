@@ -17,6 +17,7 @@ import {
   permittedImageUrls,
 } from "@/lib/animal-images";
 import { translate } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 // Shared with the dialog's photo spread, so both sets of chevrons behave and
 // look the same.
@@ -32,6 +33,11 @@ type PhotoGalleryProps = {
   animal: Animal;
   sizes: string;
   className?: string;
+  /**
+   * Laid over whatever the surface already is, for callers that want the
+   * photo and its counter to read quieter than the rest of the page.
+   */
+  tone?: string;
   /** Set to make the photo a link; leave out for a plain surface. */
   href?: string;
   linkLabel?: string;
@@ -48,6 +54,7 @@ export function PhotoGallery({
   animal,
   sizes,
   className,
+  tone,
   href,
   linkLabel,
   onNavigate,
@@ -156,7 +163,7 @@ export function PhotoGallery({
   );
 
   return (
-    <div className={className ?? DEFAULT_WRAPPER_CLASS}>
+    <div className={cn(className ?? DEFAULT_WRAPPER_CLASS, tone)}>
       {href ? (
         <a
           href={href}

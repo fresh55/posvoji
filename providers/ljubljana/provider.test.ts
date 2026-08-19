@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { loadFixture, PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ProviderPolicy } from "@posvoji/schema";
-import provider, { parseCmsDate, parseDetail, parseList } from "./provider";
+import provider, {
+  parseCmsDate,
+  parseDescription,
+  parseDetail,
+  parseList,
+} from "./provider";
 
 const policy = ProviderPolicy.parse(
   parse(readFileSync(new URL("./policy.yaml", import.meta.url), "utf8")),
@@ -12,12 +17,12 @@ const listHtml = loadFixture(import.meta.url, "list.html");
 const rabbitHtml = loadFixture(import.meta.url, "detail-rabbit.html");
 
 describe("policy.yaml", () => {
-  it("records the granted facts and remote-photo permission", () => {
+  it("records the granted facts, photo and description permission", () => {
     expect(policy).toMatchObject({
       providerId: provider.id,
       enabled: true,
-      images: "remote",
-      descriptions: "facts-only",
+      images: "cache-permitted",
+      descriptions: "full-permitted",
       permission: { status: "granted", date: "2026-08-18" },
     });
   });
@@ -60,6 +65,30 @@ describe("parseCmsDate", () => {
   });
 });
 
+describe("parseDescription", () => {
+  it("keeps the Opis text and drops the facts restated beside it", () => {
+    expect(
+      parseDescription(
+        "<p><strong>Opis</strong>: Bajsi je kuža manjše rasti. Je prijazen. </p>" +
+          "<p><strong>Datum rojstva</strong>: 19. 3. 2014</p>",
+      ),
+    ).toBe("Bajsi je kuža manjše rasti. Je prijazen.");
+  });
+
+  it("reads the label whether the colon is inside the bold run or after it", () => {
+    expect(
+      parseDescription("<p><strong>Opis: </strong>Tigrast</p>"),
+    ).toBe("Tigrast");
+  });
+
+  it("returns nothing when the field carries no Opis paragraph", () => {
+    expect(
+      parseDescription("<p><strong>Datum rojstva</strong>: 1. 6. 2026</p>"),
+    ).toBeUndefined();
+    expect(parseDescription("")).toBeUndefined();
+  });
+});
+
 describe("parseDetail", () => {
   it("recognises the rabbit and the complete-care medical bundle", () => {
     expect(parseDetail(rabbitHtml)).toEqual({
@@ -71,6 +100,7 @@ describe("parseDetail", () => {
       intakeDate: "2026-06-23",
       size: undefined,
       status: "available",
+      description: "Peter je miren in radoveden zajec.",
       medical: {
         neutered: true,
         microchipped: true,
@@ -106,7 +136,7 @@ describe("provider", () => {
   };
   const ctx = { client: new PoliteClient({ userAgent: "test" }), policy };
 
-  it("normalizes a schema-valid rabbit with display-permitted photos", async () => {
+  it("normalizes a schema-valid rabbit with cacheable photos", async () => {
     const animal = Animal.parse(await provider.normalize(ctx, raw));
     expect(animal).toMatchObject({
       id: "ljubljana:rabbit-uuid",
@@ -120,12 +150,12 @@ describe("provider", () => {
         {
           sourceUrl:
             "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030015.jpg",
-          rights: "display-permitted",
+          rights: "cache-permitted",
         },
       ],
       attribution: "Vir: Zavetišče Ljubljana",
     });
-    expect(animal.shortDescription).toBeUndefined();
+    expect(animal.shortDescription).toBe("Peter je miren in radoveden zajec.");
   });
 
   it("discovers through the supplied polite client", async () => {

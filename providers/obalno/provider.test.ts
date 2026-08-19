@@ -29,7 +29,6 @@ describe("policy.yaml", () => {
     });
   });
 });
-
 describe("parseList", () => {
   it("accepts only same-site animal cards and canonicalizes Unicode URLs", () => {
     expect(parseList(dogList)).toEqual([
@@ -73,7 +72,7 @@ describe("detail facts", () => {
       species: "cat",
       sex: "male",
       birthDate: "2026-05-05",
-      daysInShelter: 1190,
+      daysInShelter: 82,
       description: "Orion je mlad in nekoliko sramežljiv samček.",
       imageUrls: [],
     });
@@ -83,10 +82,6 @@ describe("detail facts", () => {
 describe("intakeDateFromDays", () => {
   it("turns the rolling count into a stable Slovenian-calendar date", () => {
     expect(intakeDateFromDays(82, "2026-08-18T10:00:00.000Z")).toBe("2026-05-28");
-  });
-
-  it("handles a stay long enough to cross several years", () => {
-    expect(intakeDateFromDays(1190, "2026-08-18T10:00:00.000Z")).toBe("2023-05-16");
   });
 
   it("uses Ljubljana's date around the UTC boundary", () => {

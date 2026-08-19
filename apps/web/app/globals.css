@@ -2,10 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Dark mode arrives through the media query below, which swaps tokens without
-   ever setting a .dark class. The variant has to follow the same rule, or every
-   dark: utility silently never fires. The .dark branch is kept so the class
-   block at line 127 still works if a toggle is ever added. */
+/* Dark mode arrives through the prefers-color-scheme block below, which swaps
+   tokens without ever setting a .dark class. The variant has to match on the
+   same terms, or every dark: utility silently never fires. The media branch
+   repeats that block's :root:not(.light) selector so the two cannot drift. The
+   .dark branch is kept for the class block, which a toggle would still use. */
 @custom-variant dark {
   &:is(.dark *) {
     @slot;

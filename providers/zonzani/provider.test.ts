@@ -28,7 +28,6 @@ describe("policy.yaml", () => {
     });
   });
 });
-
 describe("parseList", () => {
   it("uses evidence numbers, canonicalizes URLs and rejects invalid links", () => {
     expect(parseList(loadFixture(import.meta.url, "list.html"))).toEqual([
@@ -166,7 +165,7 @@ describe("provider", () => {
       shelter: { id: "zonzani", name: "Zavetišče Zonzani", city: "Dramlje" },
       species: "dog",
       status: "available",
-      images: [{ rights: "cache-permitted" }],
+      images: [{ rights: "display-permitted" }],
     });
   });
 });

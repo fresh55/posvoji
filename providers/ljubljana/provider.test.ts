@@ -12,12 +12,12 @@ const listHtml = loadFixture(import.meta.url, "list.html");
 const rabbitHtml = loadFixture(import.meta.url, "detail-rabbit.html");
 
 describe("policy.yaml", () => {
-  it("records the granted facts, photo and description permission", () => {
+  it("records the granted facts and remote-photo permission", () => {
     expect(policy).toMatchObject({
       providerId: provider.id,
       enabled: true,
-      images: "cache-permitted",
-      descriptions: "full-permitted",
+      images: "remote",
+      descriptions: "facts-only",
       permission: { status: "granted", date: "2026-08-18" },
     });
   });
@@ -106,7 +106,7 @@ describe("provider", () => {
   };
   const ctx = { client: new PoliteClient({ userAgent: "test" }), policy };
 
-  it("normalizes a schema-valid rabbit with cacheable photos", async () => {
+  it("normalizes a schema-valid rabbit with display-permitted photos", async () => {
     const animal = Animal.parse(await provider.normalize(ctx, raw));
     expect(animal).toMatchObject({
       id: "ljubljana:rabbit-uuid",
@@ -120,7 +120,7 @@ describe("provider", () => {
         {
           sourceUrl:
             "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030015.jpg",
-          rights: "cache-permitted",
+          rights: "display-permitted",
         },
       ],
       attribution: "Vir: Zavetišče Ljubljana",

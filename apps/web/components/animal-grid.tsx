@@ -303,6 +303,16 @@ export function AnimalGrid({
         reference={reference}
         onNavigate={handleNavigate}
         onClose={close}
+        // The default sort already leads with the longest waits, so the
+        // callout's link only exists while some other order is on.
+        onSeeLongestWaiting={
+          sort === DEFAULT_ANIMAL_SORT
+            ? undefined
+            : () => {
+                setSort(DEFAULT_ANIMAL_SORT);
+                close();
+              }
+        }
       />
     </section>
   );

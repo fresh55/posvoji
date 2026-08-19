@@ -4,6 +4,7 @@ import { PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
 import { cacheImages } from "./cache-images";
 import { loadPolicies, type LoadedPolicy } from "./policies";
+import { normalizeAnimalOrigin } from "./normalize-origin";
 import { providers } from "./registry";
 import { datasetDir } from "./paths";
 
@@ -113,7 +114,10 @@ const preserved = requestedProviderId
       (animal) => !refreshedProviderIds.has(animal.source.providerId),
     )
   : [];
-const seeded = [...preserved, ...refreshed];
+// Preserved animals go through the same normalization as freshly crawled
+// ones, so a bad value already in the previous dataset is cleaned up even
+// by a targeted run that does not re-crawl its provider.
+const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
 
 // Cache permitted photos before the dataset is written so cachedUrl ships
 // with it; the same sync deletes copies that fell out of the dataset.

@@ -5,11 +5,26 @@ import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
 import { cacheImages } from "./cache-images";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
+import {
+  applyOverrides,
+  buildOverrideReport,
+  fetchPortalOverrides,
+} from "./portal-overrides";
 import { providers } from "./registry";
 import { writeShareCards } from "./share-cards";
-import { datasetDir } from "./paths";
+import { datasetDir, overrideReportPath } from "./paths";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
+
+// A targeted export refreshes one provider while preserving every other
+// provider's last validated records. This is useful when onboarding a new
+// remote-image provider without re-crawling hundreds of unrelated animals.
+const providerFlag = process.argv.indexOf("--provider");
+const requestedProviderId =
+  providerFlag === -1 ? undefined : process.argv[providerFlag + 1];
+if (providerFlag !== -1 && !requestedProviderId) {
+  throw new Error("--provider requires a provider id");
+}
 
 function readPreviousDataset(): Dataset | undefined {
   const path = join(datasetDir, "animals.json");
@@ -78,22 +93,66 @@ const previousById = new Map(
 );
 
 const policies = loadValidPolicies();
+const crawlPolicies = requestedProviderId
+  ? policies.filter(({ policy }) => policy.providerId === requestedProviderId)
+  : policies;
+if (requestedProviderId && crawlPolicies.length === 0) {
+  throw new Error(`unknown provider: ${requestedProviderId}`);
+}
 const client = new PoliteClient({ userAgent: USER_AGENT });
-const crawled = await crawl(client, policies);
+const crawled = await crawl(client, crawlPolicies);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
-// Origin normalization runs on the full list, not per provider, so every
-// animal that reaches the dataset goes through the same cleanup.
-const seeded = crawled
-  .map((animal) => {
-    const before = previousById.get(animal.id);
-    if (!before) return animal;
-    return {
-      ...animal,
-      source: { ...animal.source, firstSeenAt: before.source.firstSeenAt },
-    };
-  })
-  .map(normalizeAnimalOrigin);
+const refreshed = crawled.map((animal) => {
+  const before = previousById.get(animal.id);
+  if (!before) return animal;
+  return {
+    ...animal,
+    source: { ...animal.source, firstSeenAt: before.source.firstSeenAt },
+  };
+});
+
+const refreshedProviderIds = new Set(
+  crawlPolicies.map(({ policy }) => policy.providerId),
+);
+const preserved = requestedProviderId
+  ? (previous?.animals ?? []).filter(
+      (animal) => !refreshedProviderIds.has(animal.source.providerId),
+    )
+  : [];
+// Preserved animals go through the same normalization as freshly crawled
+// ones, so a bad value already in the previous dataset is cleaned up even
+// by a targeted run that does not re-crawl its provider.
+const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
+
+// Shelter corrections from the portal are merged in after the crawl (and
+// after firstSeenAt is carried over) so a re-crawl can never silently
+// clobber them, and before image caching and the change-set diff so an
+// overridden field — including a status change — shows up in changes.json
+// as an update and ships in the written dataset.
+const portalPayload = await fetchPortalOverrides();
+const overrideResult = portalPayload
+  ? applyOverrides(seeded, portalPayload)
+  : null;
+const overridden = overrideResult?.animals ?? seeded;
+if (overrideResult) {
+  const moved = overrideResult.conflicts.filter((c) => c.kind === "moved");
+  console.log(
+    `portal: ${overrideResult.applied} overrides applied, ` +
+      `${overrideResult.unmatched.length} unmatched, ` +
+      `${moved.length} conflicting with the crawl`,
+  );
+  // The correction goes on winning. This is the only place a moved source
+  // shows up in a run, so it is named per animal rather than counted.
+  for (const conflict of moved) {
+    console.warn(
+      `portal: ${conflict.providerId}/${conflict.animalId} ${conflict.field}: ` +
+        `crawl moved from ${JSON.stringify(conflict.baseline)} to ` +
+        `${JSON.stringify(conflict.crawled)}, still showing ` +
+        `${JSON.stringify(conflict.override)}`,
+    );
+  }
+}
 
 // Cache permitted photos before the dataset is written so cachedUrl ships
 // with it; the same sync deletes copies that fell out of the dataset.
@@ -101,12 +160,17 @@ const imagePolicies = new Map(
   policies.map(({ policy }) => [policy.providerId, policy.images] as const),
 );
 mkdirSync(datasetDir, { recursive: true });
-const {
-  animals,
-  fetched,
-  reused,
-  deleted,
-} = await cacheImages(seeded, client, imagePolicies);
+// A targeted run caches the provider it just crawled, otherwise enabling a
+// cache-permitted shelter would leave its photos hotlinked until somebody ran
+// a full export. Preserved providers stay in scope for the deletion sweep but
+// out of scope for requests, so their cached files and URLs are neither
+// deleted nor needlessly rechecked.
+const { animals, fetched, reused, deleted } = await cacheImages(
+  overridden,
+  client,
+  imagePolicies,
+  requestedProviderId ? { refreshProviderIds: refreshedProviderIds } : {},
+);
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
 );
@@ -116,7 +180,8 @@ const generatedAt = new Date().toISOString();
 
 // Share cards are drawn from the cached photos, so they come after the image
 // sync and read the dataset's own build time: an age on a card and the same
-// age on the page are measured from one clock.
+// age on the page are measured from one clock. A targeted run needs no
+// special case, since an unchanged animal keeps its fingerprint and its card.
 const cards = await writeShareCards(animals, {
   reference: new Date(generatedAt),
 });
@@ -147,6 +212,17 @@ writeFileSync(
 writeFileSync(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),
+);
+// Written on every run, including runs with no portal configured, so the
+// file never goes stale and an empty report cannot be mistaken for "the
+// shelters have corrected nothing".
+writeFileSync(
+  overrideReportPath,
+  JSON.stringify(
+    buildOverrideReport(generatedAt, portalPayload, overrideResult),
+    null,
+    2,
+  ),
 );
 
 console.log(

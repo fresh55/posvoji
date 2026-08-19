@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-08-18T06:00:00Z",
+  "overrides": [
+    {
+      "providerId": "macja-hisa",
+      "animalId": "macja-hisa:luna",
+      "fields": { "status": "reserved", "energy": "calm" },
+      "baseline": { "status": "available", "energy": null },
+      "recordedAt": "2026-08-17T09:30:00Z"
+    },
+    {
+      "providerId": "macja-hisa",
+      "animalId": "macja-hisa:ni-ga-vec",
+      "fields": { "name": "Muc" },
+      "baseline": { "name": "muc" },
+      "recordedAt": "2026-06-01T09:30:00Z"
+    }
+  ]
+}

@@ -22,6 +22,8 @@ const PUBLIC_PREFIX = "/media/animals";
 // Cards render at ~400 CSS pixels; 800 covers 2x displays. Larger originals
 // stay at the shelter behind the source link.
 const MAX_WIDTH = 800;
+// The dialog's thumb strip renders at 56 CSS pixels; 112 covers 2x displays.
+const THUMB_WIDTH = 112;
 const WEBP_QUALITY = 80;
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 
@@ -54,6 +56,13 @@ export interface BytesClient {
 
 export function publicUrlFor(file: string): string {
   return `${PUBLIC_PREFIX}/${file}`;
+}
+
+// Every cached file gets a small sibling under this name. The web app derives
+// the thumb URL from cachedUrl by the same pattern, so the Animal schema does
+// not need a field for it.
+export function thumbFileFor(file: string): string {
+  return file.replace(/\.webp$/, ".thumb.webp");
 }
 
 // Only providers whose policy grants caching, and within them only images
@@ -136,6 +145,12 @@ export interface CacheImagesOptions {
   mediaDir?: string;
   manifestPath?: string;
   revalidateAfterDays?: number;
+  // Restricts which providers' photos this run will actually request. Every
+  // other cache-permitted image keeps its manifest entry, its file and its
+  // cachedUrl without a single request, so a targeted export can cache one
+  // shelter's photos without revalidating hundreds of unrelated ones. Left
+  // unset, every provider is in scope.
+  refreshProviderIds?: ReadonlySet<string>;
 }
 
 // The removal path is the sync itself: an image that is no longer referenced
@@ -156,6 +171,21 @@ export async function cacheImages(
   const next: ImageCacheManifest = { entries: {} };
   mkdirSync(mediaDir, { recursive: true });
 
+  // Scoped runs still walk every cache-permitted URL, because the deletion
+  // sweep below reads next.entries as the full list of what is still wanted.
+  // Out-of-scope URLs are carried over from the previous manifest instead of
+  // being requested again.
+  const scope = options.refreshProviderIds;
+  const inScope =
+    scope === undefined
+      ? undefined
+      : new Set(
+          cacheableUrls(
+            animals.filter((a) => scope.has(a.source.providerId)),
+            imagePolicies,
+          ),
+        );
+
   let fetched = 0;
   let reused = 0;
 
@@ -163,6 +193,11 @@ export async function cacheImages(
     const prev = previous.entries[url];
     const prevUsable =
       prev !== undefined && existsSync(join(mediaDir, prev.file));
+
+    if (inScope && !inScope.has(url)) {
+      if (prevUsable) next.entries[url] = prev;
+      continue;
+    }
 
     if (
       prevUsable &&
@@ -233,11 +268,32 @@ export async function cacheImages(
     fetched++;
   }
 
+  // Thumbs are cut from our own processed copy, so entries reused from an
+  // older manifest gain one without another request to the shelter. Only
+  // cache-permitted images ever reach next.entries, so the rights check is
+  // already behind us.
+  for (const entry of Object.values(next.entries)) {
+    const thumbPath = join(mediaDir, thumbFileFor(entry.file));
+    if (existsSync(thumbPath)) continue;
+    try {
+      const thumb = await sharp(readFileSync(join(mediaDir, entry.file)))
+        .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer();
+      writeFileSync(thumbPath, thumb);
+    } catch (error) {
+      console.warn(`image ${entry.file}: thumbnail failed (${error})`);
+    }
+  }
+
   // Content addressing can share one file between URLs, so deletion goes by
   // "no longer referenced", not by "my URL was dropped". Sweeping the whole
   // directory also clears orphans left by a lost manifest.
   const referenced = new Set(
-    Object.values(next.entries).map((entry) => entry.file),
+    Object.values(next.entries).flatMap((entry) => [
+      entry.file,
+      thumbFileFor(entry.file),
+    ]),
   );
   let deleted = 0;
   for (const file of readdirSync(mediaDir)) {

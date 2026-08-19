@@ -29,7 +29,13 @@ import {
   type ToggleKey,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
-import { ageLabel, monthsInShelter, sexLabel, sizeLabel } from "@/lib/labels";
+import {
+  ageLabel,
+  LONG_STAY_MONTHS,
+  monthsInShelter,
+  sexLabel,
+  sizeLabel,
+} from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 const SEX_ICONS: Record<Exclude<Sex, "unknown">, LucideIcon> = {
@@ -95,10 +101,8 @@ function HealthFact({
 }
 
 // A stay this long is the animal's story, not a data point, so it gets its own
-// line instead of a pill. Long stays are the norm in Slovenian shelters: at
-// twelve months the line would show on nearly half the animals and mean
-// nothing. Three years keeps it to roughly one in five.
-const LONG_STAY_MONTHS = 36;
+// line instead of a pill. The threshold lives in labels.ts, shared with the
+// card's quiet mark.
 
 // Past this length a description starts to bury the shelter box, so it opens
 // clamped. The threshold is characters rather than measured lines to keep the

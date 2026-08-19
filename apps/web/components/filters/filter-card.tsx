@@ -27,7 +27,9 @@ export const filterCardVariants = cva(
 const COUNT_ROLL_DURATION = 0.28;
 
 // A changed number slides in rather than swapping in place, so the narrowing
-// is something you watch happen. Never on first paint: nothing narrowed there.
+// is something you watch happen. Never on first paint: nothing narrowed
+// there. Every caller already sits inside its own LazyMotion, so this reads
+// domAnimation from that context instead of opening a second one.
 export function CountRoll({
   value,
   className,
@@ -48,19 +50,17 @@ export function CountRoll({
   }
 
   return (
-    <LazyMotion features={domAnimation}>
-      <span className={cn("relative inline-block", className)}>
-        <m.span
-          key={displayed.epoch}
-          className="block"
-          initial={displayed.epoch > 0 ? { y: -6, opacity: 0 } : false}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
-        >
-          {value}
-        </m.span>
-      </span>
-    </LazyMotion>
+    <span className={cn("relative inline-block", className)}>
+      <m.span
+        key={displayed.epoch}
+        className="block"
+        initial={displayed.epoch > 0 ? { y: -6, opacity: 0 } : false}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
+      >
+        {value}
+      </m.span>
+    </span>
   );
 }
 

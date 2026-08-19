@@ -8,7 +8,7 @@ import type { FilterActionContract } from "@/components/filters/filter-contract"
 import {
   CollapsibleBody,
   FilterSectionHeader,
-  sectionHintClass,
+  SectionHint,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -157,10 +157,8 @@ function HealthToggleCards({
         collapse={collapse}
         hint={messages.healthFilterHint}
       />
-      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
-      {/* The sidebar carries the hint in its header, where only a pointer can
-          reach it. The sheet and every touch screen keep the sentence here. */}
-      <p className={sectionHintClass(collapse)}>{messages.healthFilterHint}</p>
+      <CollapsibleBody collapse={collapse}>
+      <SectionHint collapse={collapse}>{messages.healthFilterHint}</SectionHint>
       <LazyMotion features={domAnimation}>
         <div
           className={cn(
@@ -362,7 +360,7 @@ function SizeGroup({
         resetAriaLabel={messages.resetSizeFilters}
         collapse={collapse}
       />
-      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
+      <CollapsibleBody collapse={collapse}>
         <SizePawCards
           options={options}
           counts={counts}
@@ -394,7 +392,7 @@ function SexGroup({
         resetAriaLabel={messages.resetSexFilters}
         collapse={collapse}
       />
-      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
+      <CollapsibleBody collapse={collapse}>
         <SexCards
           options={options}
           counts={counts}

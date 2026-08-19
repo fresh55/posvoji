@@ -12,7 +12,7 @@ import {
 import {
   CollapsibleBody,
   FilterSectionHeader,
-  sectionHintClass,
+  SectionHint,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -529,10 +529,8 @@ export function EnergyCards({
         collapse={collapse}
         hint={messages.energyFilterHint}
       />
-      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
-      {/* The sidebar carries the hint in its header, where only a pointer can
-          reach it. The sheet and every touch screen keep the sentence here. */}
-      <p className={sectionHintClass(collapse)}>{messages.energyFilterHint}</p>
+      <CollapsibleBody collapse={collapse}>
+      <SectionHint collapse={collapse}>{messages.energyFilterHint}</SectionHint>
       <LazyMotion features={domAnimation}>
         <div
           className={cn(

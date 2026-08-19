@@ -10,7 +10,7 @@ import {
 import {
   CollapsibleBody,
   FilterSectionHeader,
-  sectionHintClass,
+  SectionHint,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -118,10 +118,8 @@ export function GoodWithCards({
         collapse={collapse}
         hint={messages.goodWithFilterHint}
       />
-      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
-      {/* The sidebar carries the hint in its header, where only a pointer can
-          reach it. The sheet and every touch screen keep the sentence here. */}
-      <p className={sectionHintClass(collapse)}>{messages.goodWithFilterHint}</p>
+      <CollapsibleBody collapse={collapse}>
+      <SectionHint collapse={collapse}>{messages.goodWithFilterHint}</SectionHint>
       <LazyMotion features={domAnimation}>
         <div
           className={cn(

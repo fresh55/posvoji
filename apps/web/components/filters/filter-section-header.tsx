@@ -34,17 +34,17 @@ const BODY_EASE = [0.16, 1, 0.3, 1] as const;
 const FOLD_SETTLE_MS = 350;
 
 /** The folding half of a section. Without a collapse contract it renders its
-    children directly, so the sheet and plain lists stay as they were. */
+    children directly (open defaults true, no id to control), so the sheet
+    and plain lists stay as they were. */
 export function CollapsibleBody({
-  open,
-  id,
+  collapse,
   children,
 }: {
-  open: boolean;
-  id?: string;
+  collapse?: SectionCollapse;
   children: ReactNode;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  const open = collapse?.open ?? true;
 
   return (
     <LazyMotion features={domAnimation}>
@@ -52,7 +52,7 @@ export function CollapsibleBody({
         {open ? (
           <m.div
             key="body"
-            id={id}
+            id={collapse?.contentId}
             // The clip exists for the fold alone. A settled body lets focus
             // rings and tooltips spill past its box again.
             initial={{ height: 0, opacity: 0, overflow: "hidden" }}
@@ -81,11 +81,24 @@ export function CollapsibleBody({
 
 /** The hint sentence a section keeps under its header. A folding section moves
     the hint into the header tooltip, which a touch screen cannot open, so
-    coarse pointers keep the sentence in the body. */
-export function sectionHintClass(collapse: SectionCollapse | undefined): string {
-  return cn(
-    "mb-2 text-[11px] leading-snug text-muted-foreground",
-    collapse && "hidden [@media(pointer:coarse)]:block",
+    coarse pointers keep the sentence in the body; a section that never folds
+    keeps it visible outright. */
+export function SectionHint({
+  collapse,
+  children,
+}: {
+  collapse?: SectionCollapse;
+  children: ReactNode;
+}) {
+  return (
+    <p
+      className={cn(
+        "mb-2 text-[11px] leading-snug text-muted-foreground",
+        collapse && "hidden [@media(pointer:coarse)]:block",
+      )}
+    >
+      {children}
+    </p>
   );
 }
 

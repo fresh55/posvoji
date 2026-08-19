@@ -262,6 +262,7 @@ export function AnimalGrid({
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onToggleManyProperties={toggleManyProperties}
+          onClearAll={handleClearAll}
         />
       )}
 

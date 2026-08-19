@@ -3,10 +3,16 @@
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import {
+  CountRoll,
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
+import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  sectionHintClass,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
 import {
   useFilterCardHover,
   useOneShotCelebration,
@@ -64,6 +70,7 @@ export function GoodWithCards({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   options: GoodWithOption[];
   counts: Map<string, number>;
@@ -71,6 +78,7 @@ export function GoodWithCards({
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
   layout?: "sidebar" | "sheet";
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -107,10 +115,13 @@ export function GoodWithCards({
           onToggleMany(selected);
         }}
         resetAriaLabel={messages.resetGoodWithFilters}
+        collapse={collapse}
+        hint={messages.goodWithFilterHint}
       />
-      <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-        {messages.goodWithFilterHint}
-      </p>
+      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
+      {/* The sidebar carries the hint in its header, where only a pointer can
+          reach it. The sheet and every touch screen keep the sentence here. */}
+      <p className={sectionHintClass(collapse)}>{messages.goodWithFilterHint}</p>
       <LazyMotion features={domAnimation}>
         <div
           className={cn(
@@ -266,9 +277,10 @@ export function GoodWithCards({
                     >
                       {label}
                     </span>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
-                      {count}
-                    </span>
+                    <CountRoll
+                      value={count}
+                      className="text-[11px] tabular-nums text-muted-foreground"
+                    />
                   </>
                 ) : (
                   <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
@@ -277,9 +289,10 @@ export function GoodWithCards({
                     >
                       {label}
                     </span>
-                    <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
-                      {count}
-                    </span>
+                    <CountRoll
+                      value={count}
+                      className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground"
+                    />
                   </span>
                 )}
               </button>
@@ -287,6 +300,7 @@ export function GoodWithCards({
           })}
         </div>
       </LazyMotion>
+      </CollapsibleBody>
     </section>
   );
 }

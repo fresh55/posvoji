@@ -5,10 +5,16 @@ import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { EnergyLevel } from "@posvoji/schema";
 import {
+  CountRoll,
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
+import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  sectionHintClass,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
 import {
   useFilterCardHover,
   useOneShotCelebration,
@@ -468,6 +474,7 @@ export function EnergyCards({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -475,6 +482,7 @@ export function EnergyCards({
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   layout?: "sidebar" | "sheet";
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -518,10 +526,13 @@ export function EnergyCards({
           onToggleMany(selected);
         }}
         resetAriaLabel={messages.resetEnergyFilters}
+        collapse={collapse}
+        hint={messages.energyFilterHint}
       />
-      <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-        {messages.energyFilterHint}
-      </p>
+      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
+      {/* The sidebar carries the hint in its header, where only a pointer can
+          reach it. The sheet and every touch screen keep the sentence here. */}
+      <p className={sectionHintClass(collapse)}>{messages.energyFilterHint}</p>
       <LazyMotion features={domAnimation}>
         <div
           className={cn(
@@ -826,7 +837,7 @@ export function EnergyCards({
                             : REST_TRANSITION
                       }
                     >
-                      {count}
+                      <CountRoll value={count} />
                     </m.span>
                   </>
                 ) : (
@@ -856,7 +867,7 @@ export function EnergyCards({
                             : REST_TRANSITION
                       }
                     >
-                      {count}
+                      <CountRoll value={count} />
                     </m.span>
                   </span>
                 )}
@@ -865,6 +876,7 @@ export function EnergyCards({
           })}
         </div>
       </LazyMotion>
+      </CollapsibleBody>
     </section>
   );
 }

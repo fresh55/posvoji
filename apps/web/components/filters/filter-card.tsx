@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 // One shadcn-style surface contract for every compact filter choice. Layout
@@ -22,6 +23,46 @@ export const filterCardVariants = cva(
     },
   },
 );
+
+const COUNT_ROLL_DURATION = 0.28;
+
+// A changed number slides in rather than swapping in place, so the narrowing
+// is something you watch happen. Never on first paint: nothing narrowed there.
+export function CountRoll({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  // Each change bumps the epoch, which remounts the number so the slide runs
+  // again. Epoch zero is the first paint and renders still.
+  const [displayed, setDisplayed] = useState({ value, epoch: 0 });
+  if (displayed.value !== value) {
+    setDisplayed({ value, epoch: displayed.epoch + 1 });
+  }
+
+  if (shouldReduceMotion) {
+    return <span className={className}>{value}</span>;
+  }
+
+  return (
+    <LazyMotion features={domAnimation}>
+      <span className={cn("relative inline-block", className)}>
+        <m.span
+          key={displayed.epoch}
+          className="block"
+          initial={displayed.epoch > 0 ? { y: -6, opacity: 0 } : false}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
+        >
+          {value}
+        </m.span>
+      </span>
+    </LazyMotion>
+  );
+}
 
 export function FilterSelectionMark({
   checked,

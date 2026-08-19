@@ -1,21 +1,23 @@
-# The project owner confirmed Zonzani's permission in writing on 2026-08-18.
-# Keep the initial scope conservative: link to source images and ingest only
-# structured shelter facts, not editorial text.
+# The project owner confirmed Zonzani's permission in writing on 2026-08-18,
+# covering the dog and cat catalogues, the photographs and the descriptions.
+# The parser does not extract descriptions yet, so none are ingested until it
+# does; the policy records the grant, not the implementation.
 providerId: zonzani
 source: https://www.zonzani.si
 enabled: true
 
 ingestion: scrape
-images: remote
-descriptions: facts-only
+images: cache-permitted
+descriptions: full-permitted
 
 permission:
   status: granted
   date: 2026-08-18
   reference: project-owner-confirmation-zonzani-2026-08-18
   notes: >-
-    Project owner confirmed permission for the Zonzani dog and cat catalogues.
-    Initial implementation uses remote images and structured facts only.
+    Project owner confirmed permission for the Zonzani dog and cat catalogues,
+    for displaying and caching the animal photographs, and for the full
+    descriptions.
 
 attribution: "Vir: Zavetišče Zonzani"
 

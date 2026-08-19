@@ -401,7 +401,10 @@ export function AnimalFacts({
             </ul>
           )}
           {hasGoodWith && (
-            <ul aria-label={messages.goodWith} className="flex flex-wrap gap-2">
+            <ul
+              aria-label={messages.goodWithFacts}
+              className="flex flex-wrap gap-2"
+            >
               {GOOD_WITH_KEYS.map((key) => {
                 const answer = animal.goodWith?.[key] ?? "unknown";
                 return (

@@ -83,10 +83,14 @@ type GroupProps = {
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
 
-/** Everything the Družba section needs, absent while no facet has data. */
+/** Everything the household section needs, absent while no facet has data. */
 export type GoodWithSection = {
   options: GoodWithOption[];
   counts: Map<string, number>;
+  /** What the current filters leave, and the pool they were taken from. The
+      section says both out loud, because its choices narrow together. */
+  resultCount: number;
+  total: number;
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
 };
@@ -384,6 +388,8 @@ export function FilterGroupList({
           options={goodWith.options}
           counts={goodWith.counts}
           selected={filters.goodWith}
+          resultCount={goodWith.resultCount}
+          total={goodWith.total}
           onToggle={goodWith.onToggle}
           onToggleMany={goodWith.onToggleMany}
           layout={ageLayout}

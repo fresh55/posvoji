@@ -19,7 +19,6 @@ import {
   bySpecies,
   facetCounts,
   goodWithCounts,
-  goodWithLabel,
   goodWithOptions,
   GROUPS,
   groupOptions,
@@ -31,6 +30,7 @@ import {
   visibleGroups,
   visibleToggles,
 } from "@/lib/filters";
+import { goodWithChipLabel } from "@/lib/labels";
 import {
   DEFAULT_ANIMAL_SORT,
   sortAnimals,
@@ -160,6 +160,8 @@ export function AnimalGrid({
     return {
       options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
       counts: goodWithCounts(animals, filters, now),
+      resultCount: visible.length,
+      total: pool.length,
       onToggle: toggleGoodWith,
       onToggleMany: toggleManyGoodWith,
     };
@@ -169,6 +171,7 @@ export function AnimalGrid({
     locale,
     now,
     pool,
+    visible.length,
     toggleGoodWith,
     toggleManyGoodWith,
   ]);
@@ -188,9 +191,11 @@ export function AnimalGrid({
       label: toggleLabel(key, locale),
       onRemove: () => toggleProperty(key),
     })),
+    // Not the card label: on a row of chips "Psi" would read as the species
+    // tab, so these name the household instead.
     ...filters.goodWith.map((key) => ({
       key: `goodWith:${key}`,
-      label: goodWithLabel(key, locale),
+      label: goodWithChipLabel(key, locale),
       onRemove: () => toggleGoodWith(key),
     })),
   ];

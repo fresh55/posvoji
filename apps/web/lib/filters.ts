@@ -519,10 +519,13 @@ export const FILTER_METADATA = {
       labels: { sl: "Živahen", en: "Lively" },
     },
   ],
+  // The labels answer the section's question ("Doma imam: Psa"), so they do not
+  // collide with the species tabs, which say "Psi" for a list of dogs. The
+  // slugs stay as they were: shared links have to keep working.
   goodWith: [
-    { value: "kids", slug: "otroci", labels: { sl: "Otroci", en: "Kids" } },
-    { value: "dogs", slug: "psi", labels: { sl: "Psi", en: "Dogs" } },
-    { value: "cats", slug: "macke", labels: { sl: "Mačke", en: "Cats" } },
+    { value: "kids", slug: "otroci", labels: { sl: "Otroke", en: "Kids" } },
+    { value: "dogs", slug: "psi", labels: { sl: "Psa", en: "A dog" } },
+    { value: "cats", slug: "macke", labels: { sl: "Mačko", en: "A cat" } },
   ],
 } as const satisfies {
   [Group in MetadataGroup]: readonly FilterValueDefinition<
@@ -538,14 +541,6 @@ export function goodWithOptions(
     key: value,
     label: labels[locale],
   }));
-}
-
-export function goodWithLabel(key: GoodWithKey, locale: Locale = "sl"): string {
-  return (
-    FILTER_METADATA.goodWith.find((option) => option.value === key)?.labels[
-      locale
-    ] ?? key
-  );
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than

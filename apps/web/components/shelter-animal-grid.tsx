@@ -1,0 +1,83 @@
+"use client";
+
+import { useMemo } from "react";
+import { PawPrint } from "lucide-react";
+import type { Animal } from "@posvoji/schema";
+import { AnimalCard } from "@/components/animal-card";
+import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
+import { useI18n } from "@/components/i18n-provider";
+import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
+import { CARD_GRID } from "@/lib/card-grid";
+import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
+
+// The cards, the grid and the dialog wiring are the home page's; the species
+// tabs, filter sidebar and clear-filters trail that come with AnimalGrid are
+// not what a shelter page asks for.
+export function ShelterAnimalGrid({
+  animals,
+  logoIds,
+  emptyLabel,
+  referenceDate,
+  basePath,
+}: {
+  animals: Animal[];
+  logoIds: string[];
+  emptyLabel: string;
+  /** When the dataset was built; ages are measured from it, not the clock. */
+  referenceDate: string;
+  /** This shelter's own page, where closing the dialog returns to. */
+  basePath: string;
+}) {
+  const { locale } = useI18n();
+
+  // One Date per mount keeps ages stable across re-renders, same as the home
+  // page grid.
+  const now = useMemo(() => new Date(), []);
+  const reference = useMemo(() => new Date(referenceDate), [referenceDate]);
+  const sorted = useMemo(
+    () => sortAnimals(animals, DEFAULT_ANIMAL_SORT, locale, now),
+    [animals, locale, now],
+  );
+
+  // The dialog steps through this shelter's animals in the order shown.
+  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
+    useAnimalDialogHost({ animals, shown: sorted, basePath });
+
+  if (animals.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-ui border border-dashed py-16 text-center">
+        <PawPrint
+          className="size-8 text-muted-foreground/50"
+          strokeWidth={1.5}
+          aria-hidden
+        />
+        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className={CARD_GRID}>
+        {sorted.map((animal) => (
+          <AnimalCard
+            key={animal.id}
+            animal={animal}
+            reference={reference}
+            onOpen={handleOpen}
+          />
+        ))}
+      </div>
+
+      <AnimalDialog
+        animal={selected}
+        logoIds={logoIds}
+        origin={origin}
+        siblingIds={shownIds}
+        reference={reference}
+        onNavigate={handleNavigate}
+        onClose={close}
+      />
+    </>
+  );
+}

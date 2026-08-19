@@ -349,6 +349,53 @@ describe("cacheImages", () => {
     expect(readdirSync(mediaDir)).toHaveLength(2);
   });
 
+  it("caches only the scoped provider and leaves the rest untouched", async () => {
+    const otherUrl = "https://img.si/muri-archie.jpg";
+    const policies = new Map<string, ImagePolicy>([
+      ["macja-hisa", "cache-permitted"],
+      ["muri", "cache-permitted"],
+    ]);
+    const both = () => [
+      animal({ id: "luna", images: [{ sourceUrl: url, rights: "cache-permitted" }] }),
+      animal({
+        id: "archie",
+        providerId: "muri",
+        images: [{ sourceUrl: otherUrl, rights: "cache-permitted" }],
+      }),
+    ];
+
+    // A full run first, so both photos are cached and old enough to revalidate.
+    const first = new StubClient(
+      new Map([
+        [url, { status: 200, body: await pngFixture() }],
+        [otherUrl, { status: 200, body: await pngFixture(120) }],
+      ]),
+    );
+    await cacheImages(both(), first, policies, { mediaDir, manifestPath });
+
+    // Same bytes back, so the scoped photo keeps its content-addressed name
+    // and any deletion below would have to be an unscoped file.
+    const second = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const result = await cacheImages(both(), second, policies, {
+      mediaDir,
+      manifestPath,
+      revalidateAfterDays: 0,
+      refreshProviderIds: new Set(["macja-hisa"]),
+    });
+
+    // Only the scoped provider's photo was requested; a stub miss would throw.
+    expect(second.calls.map(({ url: called }) => called)).toEqual([url]);
+    // The unscoped provider keeps its cached copy rather than losing it to the
+    // deletion sweep.
+    expect(result.deleted).toBe(0);
+    expect(result.animals[1]!.images[0]!.cachedUrl).toBeDefined();
+    expect(
+      existsSync(join(mediaDir, result.animals[1]!.images[0]!.cachedUrl!.split("/").pop()!)),
+    ).toBe(true);
+  });
+
   it("caches nothing for a provider without cache permission", async () => {
     const client = new StubClient(new Map());
     const remoteOnly = new Map<string, ImagePolicy>([["macja-hisa", "remote"]]);

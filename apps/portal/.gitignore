@@ -1,0 +1,13 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+
+# tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# local database and collected static files
+db.sqlite3
+db.sqlite3-journal
+staticfiles/

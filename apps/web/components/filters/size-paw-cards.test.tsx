@@ -118,14 +118,17 @@ describe("size section reset", () => {
             sex: [],
             age: [],
             size: selected as AnimalSize[],
+            energy: [],
             shelter: [],
             toggles: [],
+            goodWith: [],
           }}
           groups={[{ group, options }]}
           counts={{
             sex: new Map(),
             age: new Map(),
             size: counts,
+            energy: new Map(),
             shelter: new Map(),
           }}
           toggles={[]}

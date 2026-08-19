@@ -1,13 +1,20 @@
-import { Species, type Animal, type AnimalSize, type Sex } from "@posvoji/schema";
+import {
+  Species,
+  type Animal,
+  type AnimalSize,
+  type EnergyLevel,
+  type Sex,
+} from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
 
 export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
-export type MultiGroup = "sex" | "age" | "size" | "shelter";
+export type MultiGroup = "sex" | "age" | "size" | "energy" | "shelter";
 
-// Yes/no properties an animal either has or doesn't. Like every other filter
-// section, choices within this section combine with OR; sections combine with
-// AND. This makes multi-select behavior predictable throughout the UI.
+// Yes/no properties an animal either has or doesn't. Choices within this
+// section combine with OR, and sections combine with AND. Every section works
+// this way except Družba, whose choices are constraints of one household
+// rather than alternatives of one attribute.
 export type ToggleKey =
   | "sterilizacija"
   | "cepljenje"
@@ -15,13 +22,21 @@ export type ToggleKey =
   | "brez-fiv"
   | "brez-felv";
 
+// Who the animal can live with. The schema answers each of these with
+// yes/no/unknown; the filter only ever asks for "yes", because a maybe is not
+// something to hand a family looking for a safe match.
+export const GOOD_WITH_KEYS = ["kids", "dogs", "cats"] as const;
+export type GoodWithKey = (typeof GOOD_WITH_KEYS)[number];
+
 export type Filters = {
   species: SpeciesFilter;
   sex: Sex[];
   age: AgeGroup[];
   size: AnimalSize[];
+  energy: EnergyLevel[];
   shelter: string[];
   toggles: ToggleKey[];
+  goodWith: GoodWithKey[];
 };
 
 export const EMPTY_FILTERS: Filters = {
@@ -29,20 +44,29 @@ export const EMPTY_FILTERS: Filters = {
   sex: [],
   age: [],
   size: [],
+  energy: [],
   shelter: [],
   toggles: [],
+  goodWith: [],
 };
 
-export const GROUPS: MultiGroup[] = ["sex", "age", "size", "shelter"];
+export const GROUPS: MultiGroup[] = ["sex", "age", "size", "energy", "shelter"];
 
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
   sl: {
     sex: "Spol",
     age: "Starost",
     size: "Velikost",
+    energy: "Energija",
     shelter: "Zavetišče",
   },
-  en: { sex: "Sex", age: "Age", size: "Size", shelter: "Shelter" },
+  en: {
+    sex: "Sex",
+    age: "Age",
+    size: "Size",
+    energy: "Energy",
+    shelter: "Shelter",
+  },
 };
 
 export function groupLabel(group: MultiGroup, locale: Locale): string {
@@ -114,6 +138,20 @@ function matchesToggles(animal: Animal, selected: ToggleKey[]): boolean {
   );
 }
 
+/** Only a recorded yes counts, so "unknown" and no both drop out. */
+export function goodWithMatches(animal: Animal, key: GoodWithKey): boolean {
+  return animal.goodWith?.[key] === "yes";
+}
+
+// AND within this section, unlike every other one. The other sections offer
+// alternatives of a single attribute, so widening them is what the visitor
+// asked for. These are independent constraints of one household: a family with
+// a child and a dog needs both answered yes, and an OR here would put
+// dog-intolerant animals in front of dog owners.
+function matchesGoodWith(animal: Animal, selected: GoodWithKey[]): boolean {
+  return selected.every((key) => goodWithMatches(animal, key));
+}
+
 // Boundaries in months: under a year is a baby, past eight a senior.
 const PUPPY_MAX_EXCLUSIVE = 12;
 const ADULT_MAX_EXCLUSIVE = 96;
@@ -121,12 +159,18 @@ const ADULT_MAX_EXCLUSIVE = 96;
 // A date-only ISO string parses as UTC midnight, so both sides of the
 // subtraction have to be read in UTC. Reading one of them locally shifted the
 // month by one west of Greenwich, which moved animals between age buckets.
-export function ageInMonths(animal: Animal, now: Date): number | undefined {
+// Takes the two fields rather than an Animal, so the portal, whose animals
+// come from the API rather than the schema, reads the same arithmetic.
+export function ageInMonths(
+  animal: { birthDate?: string; approximateAgeMonths?: number },
+  now: Date,
+): number | undefined {
   if (animal.approximateAgeMonths !== undefined) {
     return animal.approximateAgeMonths;
   }
   if (animal.birthDate) {
     const birth = new Date(animal.birthDate);
+    if (Number.isNaN(birth.getTime())) return undefined;
     const months =
       (now.getUTCFullYear() - birth.getUTCFullYear()) * 12 +
       (now.getUTCMonth() - birth.getUTCMonth());
@@ -161,6 +205,8 @@ function groupValue(
     }
     case "size":
       return animal.size;
+    case "energy":
+      return animal.energy;
     case "shelter":
       return animal.shelter.id;
   }
@@ -188,6 +234,7 @@ export function applyFilters(
     (animal) =>
       matchesSpecies(animal, filters.species) &&
       matchesToggles(animal, filters.toggles) &&
+      matchesGoodWith(animal, filters.goodWith) &&
       GROUPS.every((group) => matchesGroup(animal, group, filters[group], now)),
   );
 }
@@ -199,11 +246,16 @@ function passesFacet(
   animal: Animal,
   filters: Filters,
   now: Date,
-  applied: { toggles: ToggleKey[]; skipGroup?: MultiGroup },
+  applied: {
+    toggles: ToggleKey[];
+    goodWith: GoodWithKey[];
+    skipGroup?: MultiGroup;
+  },
 ): boolean {
   return (
     matchesSpecies(animal, filters.species) &&
     matchesToggles(animal, applied.toggles) &&
+    matchesGoodWith(animal, applied.goodWith) &&
     GROUPS.every(
       (group) =>
         group === applied.skipGroup ||
@@ -221,10 +273,15 @@ export function facetCounts(
     sex: new Map<string, number>(),
     age: new Map<string, number>(),
     size: new Map<string, number>(),
+    energy: new Map<string, number>(),
     shelter: new Map<string, number>(),
   };
   for (const group of GROUPS) {
-    const applied = { toggles: filters.toggles, skipGroup: group };
+    const applied = {
+      toggles: filters.toggles,
+      goodWith: filters.goodWith,
+      skipGroup: group,
+    };
     for (const animal of animals) {
       if (!passesFacet(animal, filters, now, applied)) continue;
       const value = groupValue(animal, group, now);
@@ -245,13 +302,38 @@ export function toggleCounts(
     // Count each choice with the health axis removed, just like facetCounts
     // removes the group it is measuring. The number then answers what this
     // choice itself can add under the filters from every other section.
-    const applied = { toggles: [] };
+    const applied = { toggles: [], goodWith: filters.goodWith };
     let total = 0;
     for (const animal of animals) {
       if (!passesFacet(animal, filters, now, applied)) continue;
       if (toggle.matches(animal)) total += 1;
     }
     counts.set(toggle.key, total);
+  }
+  return counts;
+}
+
+// The number beside a choice still answers "what do I get if I pick this",
+// but an AND section cannot drop its whole axis to work that out. Only the
+// facet being measured comes off the selection; the rest stay on, and the
+// facet itself is then required on top of them.
+export function goodWithCounts(
+  animals: Animal[],
+  filters: Filters,
+  now: Date,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const key of GOOD_WITH_KEYS) {
+    const applied = {
+      toggles: filters.toggles,
+      goodWith: filters.goodWith.filter((selected) => selected !== key),
+    };
+    let total = 0;
+    for (const animal of animals) {
+      if (!passesFacet(animal, filters, now, applied)) continue;
+      if (goodWithMatches(animal, key)) total += 1;
+    }
+    counts.set(key, total);
   }
   return counts;
 }
@@ -288,6 +370,16 @@ export function visibleToggles(
   });
 }
 
+// Same rule as visibleToggles, and no species pinning: every one of these
+// questions is asked of dogs and cats alike. The section therefore reveals
+// itself facet by facet as shelters start answering.
+export function visibleGoodWith(animals: Animal[]): GoodWithKey[] {
+  return GOOD_WITH_KEYS.filter((key) => {
+    const matching = animals.filter((a) => goodWithMatches(a, key)).length;
+    return matching > 0 && matching < animals.length;
+  });
+}
+
 export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> {
   const counts: Record<SpeciesFilter, number> = {
     all: animals.length,
@@ -312,6 +404,7 @@ export function visibleGroups(
     sex: new Set<string>(),
     age: new Set<string>(),
     size: new Set<string>(),
+    energy: new Set<string>(),
     shelter: new Set<string>(),
   };
   for (const animal of animals) {
@@ -326,6 +419,7 @@ export function visibleGroups(
     sex: shown("sex"),
     age: shown("age"),
     size: shown("size"),
+    energy: shown("energy"),
     shelter: shown("shelter"),
   };
 }
@@ -340,6 +434,7 @@ export function pruneHiddenFilters(filters: Filters): Filters {
     sex: keep("sex") ? filters.sex : [],
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],
+    energy: keep("energy") ? filters.energy : [],
     shelter: keep("shelter") ? filters.shelter : [],
     toggles: filters.toggles.filter((key) =>
       toggleFitsSpecies(
@@ -347,6 +442,9 @@ export function pruneHiddenFilters(filters: Filters): Filters {
         filters.species,
       ),
     ),
+    // No facet here is pinned to a species, so nothing to prune: a selection
+    // made on one tab still has a control on the next.
+    goodWith: filters.goodWith,
   };
 }
 
@@ -355,10 +453,15 @@ export function pruneHiddenFilters(filters: Filters): Filters {
 export type FilterOption = { value: string; label: string; city?: string };
 
 type CodedGroup = Exclude<MultiGroup, "shelter">;
+// goodWith is not a MultiGroup, but its values are coded the same way and want
+// the same one place to name them.
+type MetadataGroup = CodedGroup | "goodWith";
 type CodedValueByGroup = {
   sex: Exclude<Sex, "unknown">;
   age: AgeGroup;
   size: AnimalSize;
+  energy: EnergyLevel;
+  goodWith: GoodWithKey;
 };
 
 /** The canonical metadata for coded filter values. */
@@ -403,11 +506,47 @@ export const FILTER_METADATA = {
     },
     { value: "large", slug: "velika", labels: { sl: "Velika", en: "Large" } },
   ],
+  energy: [
+    { value: "calm", slug: "miren", labels: { sl: "Miren", en: "Calm" } },
+    {
+      value: "balanced",
+      slug: "uravnotezen",
+      labels: { sl: "Uravnotežen", en: "Balanced" },
+    },
+    {
+      value: "lively",
+      slug: "zivahen",
+      labels: { sl: "Živahen", en: "Lively" },
+    },
+  ],
+  goodWith: [
+    { value: "kids", slug: "otroci", labels: { sl: "Otroci", en: "Kids" } },
+    { value: "dogs", slug: "psi", labels: { sl: "Psi", en: "Dogs" } },
+    { value: "cats", slug: "macke", labels: { sl: "Mačke", en: "Cats" } },
+  ],
 } as const satisfies {
-  [Group in CodedGroup]: readonly FilterValueDefinition<
+  [Group in MetadataGroup]: readonly FilterValueDefinition<
     CodedValueByGroup[Group]
   >[];
 };
+
+/** The section's own options, in the order the cards show them. */
+export function goodWithOptions(
+  locale: Locale = "sl",
+): { key: GoodWithKey; label: string }[] {
+  return FILTER_METADATA.goodWith.map(({ value, labels }) => ({
+    key: value,
+    label: labels[locale],
+  }));
+}
+
+export function goodWithLabel(key: GoodWithKey, locale: Locale = "sl"): string {
+  return (
+    FILTER_METADATA.goodWith.find((option) => option.value === key)?.labels[
+      locale
+    ] ?? key
+  );
+}
 
 // Exhaustive like groupValue: a new group names its own options rather than
 // inheriting whichever branch happens to be last.
@@ -432,6 +571,7 @@ export function groupOptions(
     case "sex":
     case "age":
     case "size":
+    case "energy":
       return FILTER_METADATA[group].map(({ value, labels }) => ({
         value,
         label: labels[locale],
@@ -465,6 +605,7 @@ const PARAM_NAMES: Record<MultiGroup, string> = {
   sex: "spol",
   age: "starost",
   size: "velikost",
+  energy: "energija",
   shelter: "zavetisce",
 };
 
@@ -497,6 +638,18 @@ export function serializeFilters(filters: Filters): string {
   if (filters.toggles.length > 0) {
     params.set("lastnosti", filters.toggles.join(","));
   }
+  if (filters.goodWith.length > 0) {
+    params.set(
+      "druzba",
+      filters.goodWith
+        .map(
+          (key) =>
+            FILTER_METADATA.goodWith.find((option) => option.value === key)
+              ?.slug ?? key,
+        )
+        .join(","),
+    );
+  }
   // Commas are legal unencoded, and these links get shared by hand.
   return params.toString().replace(/%2C/g, ",");
 }
@@ -526,20 +679,30 @@ export function parseFilters(search: string): Filters {
     .filter((slug): slug is ToggleKey =>
       TOGGLES.some((t) => t.key === slug),
     );
+  const goodWith = (params.get("druzba") ?? "")
+    .split(",")
+    .map(
+      (slug) =>
+        FILTER_METADATA.goodWith.find((option) => option.slug === slug)?.value,
+    )
+    .filter((key): key is GoodWithKey => key !== undefined);
   return pruneHiddenFilters({
     species,
     sex: values("sex") as Sex[],
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],
+    energy: values("energy") as EnergyLevel[],
     shelter: values("shelter"),
     toggles: [...new Set(toggles)],
+    goodWith: [...new Set(goodWith)],
   });
 }
 
 export function activeFilterCount(filters: Filters): number {
   return (
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
-    filters.toggles.length
+    filters.toggles.length +
+    filters.goodWith.length
   );
 }
 
@@ -547,7 +710,8 @@ export function activeFilterCount(filters: Filters): number {
 export function activeFilterSectionCount(filters: Filters): number {
   return (
     GROUPS.filter((group) => filters[group].length > 0).length +
-    (filters.toggles.length > 0 ? 1 : 0)
+    (filters.toggles.length > 0 ? 1 : 0) +
+    (filters.goodWith.length > 0 ? 1 : 0)
   );
 }
 

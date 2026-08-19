@@ -20,12 +20,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { HEALTH_ICONS } from "@/lib/animal-icons";
+import { GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
 import {
   ageGroup,
   ageInMonths,
+  GOOD_WITH_KEYS,
   TOGGLES,
   toggleLabel,
+  type GoodWithKey,
   type ToggleKey,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
@@ -59,6 +61,36 @@ const HEALTH_HINTS: Record<ToggleKey, TranslationKey> = {
   cip: "hintCip",
   "brez-fiv": "hintBrezFiv",
   "brez-felv": "hintBrezFelv",
+};
+
+// The household questions read as full phrases rather than labels, because
+// "Otroci" alone says nothing about the answer. One set of words per answer,
+// and the popover sentence for a yes.
+const GOOD_WITH_LABELS: Record<
+  GoodWithKey,
+  Record<"yes" | "no" | "unknown", TranslationKey>
+> = {
+  kids: {
+    yes: "goodWithYesKids",
+    no: "goodWithNoKids",
+    unknown: "goodWithUnknownKids",
+  },
+  dogs: {
+    yes: "goodWithYesDogs",
+    no: "goodWithNoDogs",
+    unknown: "goodWithUnknownDogs",
+  },
+  cats: {
+    yes: "goodWithYesCats",
+    no: "goodWithNoCats",
+    unknown: "goodWithUnknownCats",
+  },
+};
+
+const GOOD_WITH_HINTS: Record<GoodWithKey, TranslationKey> = {
+  kids: "hintGoodWithKids",
+  dogs: "hintGoodWithDogs",
+  cats: "hintGoodWithCats",
 };
 
 // The washed-out accent keeps the green badges from outshouting the identity
@@ -96,6 +128,64 @@ function HealthFact({
           {hint}
         </PopoverContent>
       </Popover>
+    </li>
+  );
+}
+
+// A "no" is not a fault, so it never gets a warning colour: a plain bordered
+// pill, and words that say what the animal would rather have. An unanswered
+// question is drawn dashed and stays inert, because there is nothing to
+// explain yet.
+const GOOD_WITH_NO_CLASS =
+  "inline-flex items-center gap-1.5 rounded-ui border border-foreground/25 px-2.5 py-1 text-xs text-muted-foreground";
+const GOOD_WITH_UNKNOWN_CLASS =
+  "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground/70";
+
+// Once one household question has an answer, all three are shown: a row that
+// listed only the yeses would read as an all-clear on the rest.
+function GoodWithFact({
+  facet,
+  answer,
+  label,
+  hint,
+}: {
+  facet: GoodWithKey;
+  answer: "yes" | "no" | "unknown";
+  label: string;
+  hint: string;
+}) {
+  const Icon = GOOD_WITH_ICONS[facet];
+  const icon = (
+    <Icon className="size-3.5 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
+  );
+
+  if (answer === "yes") {
+    return (
+      <li>
+        <Popover>
+          <PopoverTrigger className={HEALTH_PILL_CLASS}>
+            {icon}
+            {label}
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+          >
+            {hint}
+          </PopoverContent>
+        </Popover>
+      </li>
+    );
+  }
+
+  return (
+    <li
+      className={
+        answer === "no" ? GOOD_WITH_NO_CLASS : GOOD_WITH_UNKNOWN_CLASS
+      }
+    >
+      {icon}
+      <span>{label}</span>
     </li>
   );
 }
@@ -215,6 +305,12 @@ export function AnimalFacts({
   );
   const fullRecord =
     medical.length === applicable.length && applicable.length >= 3;
+  // One answered question is enough to show the row, and the row then answers
+  // all three. A shelter that has recorded nothing says nothing here.
+  const hasGoodWith = GOOD_WITH_KEYS.some(
+    (key) => animal.goodWith?.[key] !== undefined,
+  );
+  const animalName = animal.name ?? messages.unnamed;
   const clampDescription =
     (animal.shortDescription?.length ?? 0) > CLAMP_DESCRIPTION_CHARS;
 
@@ -223,7 +319,7 @@ export function AnimalFacts({
       {/* Who the animal is, then what its health record says. Two close-set
           rows, so the identity is not buried in a wall of same-shaped badges.
           The breed lives in the dialog's subtitle, not here. */}
-      {(hasIdentity || medical.length > 0) && (
+      {(hasIdentity || medical.length > 0 || hasGoodWith) && (
         <div className="space-y-1.5">
           {hasIdentity && (
             <ul
@@ -302,6 +398,22 @@ export function AnimalFacts({
                   />
                 ))
               )}
+            </ul>
+          )}
+          {hasGoodWith && (
+            <ul aria-label={messages.goodWith} className="flex flex-wrap gap-2">
+              {GOOD_WITH_KEYS.map((key) => {
+                const answer = animal.goodWith?.[key] ?? "unknown";
+                return (
+                  <GoodWithFact
+                    key={key}
+                    facet={key}
+                    answer={answer}
+                    label={messages[GOOD_WITH_LABELS[key][answer]]}
+                    hint={t(GOOD_WITH_HINTS[key], { name: animalName })}
+                  />
+                );
+              })}
             </ul>
           )}
         </div>

@@ -6,6 +6,7 @@ import { useI18n } from "@/components/i18n-provider";
 import {
   FilterGroupList,
   type CardGroup,
+  type GoodWithSection,
 } from "@/components/filters/filter-groups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export function FilterSheet({
   speciesTally,
   toggles,
   toggleTally,
+  goodWith,
   activeSectionCount,
   resultCount,
   onToggle,
@@ -48,6 +50,7 @@ export function FilterSheet({
   speciesTally: Record<SpeciesFilter, number>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
+  goodWith?: GoodWithSection;
   activeSectionCount: number;
   resultCount: number;
   onSpeciesChange: (species: SpeciesFilter) => void;
@@ -99,6 +102,7 @@ export function FilterSheet({
             counts={counts}
             toggles={toggles}
             toggleTally={toggleTally}
+            goodWith={goodWith}
             onToggle={onToggle}
             onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}

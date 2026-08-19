@@ -62,6 +62,7 @@ export function ShelterMap({
   origin,
   className,
   highlightedValue,
+  matchedValues,
   onHoverShelters,
 }: {
   pins: ShelterPin[];
@@ -72,8 +73,12 @@ export function ShelterMap({
   /** A shelter hovered elsewhere (the list row), so its marker and region light
    *  up here too. */
   highlightedValue?: string | null;
-  /** Fired when a marker gains or loses pointer hover, so the list can tint
-   *  the matching row(s). Null means no marker is hovered. */
+  /** Shelters the list search currently matches. Null means no search, so
+   *  nothing dims. The map never hides a marker: a search narrows attention,
+   *  it does not redraw the country. */
+  matchedValues?: string[] | null;
+  /** Fired when a marker or region gains or loses pointer hover, so the list
+   *  can tint the matching row(s). Null means nothing is hovered. */
   onHoverShelters?: (values: string[] | null) => void;
 }) {
   const { locale, messages } = useI18n();
@@ -81,6 +86,10 @@ export function ShelterMap({
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
   const [hoveredRegionId, setHoveredRegionId] = useState<number | null>(null);
   const [focusedRegionId, setFocusedRegionId] = useState<number | null>(null);
+  /** Region wearing keyboard focus right now, so it earns the same callout a
+   *  pointer hover gets. Cleared on blur, unlike focusedRegionId, which the
+   *  roving tabindex keeps as the remembered tab stop. */
+  const [calloutRegionId, setCalloutRegionId] = useState<number | null>(null);
   const regionRefs = useRef(new Map<number, SVGPathElement>());
   const activeTown = towns.find((town) => town.key === hoveredTownKey);
 
@@ -149,11 +158,13 @@ export function ShelterMap({
   };
 
   // A marker sits on top of its region, so both would report a hover. The
-  // marker is the more precise answer and wins.
+  // marker is the more precise answer and wins. Keyboard focus fills in when
+  // no pointer is on the map, so tabbing narrates the same card hovering does.
   const hoveredRegion = activeTown
     ? undefined
     : regions.find(
-        ({ region, stats }) => stats.live && region.id === hoveredRegionId,
+        ({ region, stats }) =>
+          stats.live && region.id === (hoveredRegionId ?? calloutRegionId),
       );
 
   return (
@@ -175,14 +186,28 @@ export function ShelterMap({
             if (element) regionRefs.current.set(region.id, element);
             else regionRefs.current.delete(region.id);
           }}
-          onFocus={() => setFocusedRegionId(region.id)}
-          onMoveFocus={(key) => moveRegionFocus(region.id, key)}
-          onPointerEnter={() => setHoveredRegionId(region.id)}
-          onPointerLeave={() =>
-            setHoveredRegionId((current) =>
+          onFocus={() => {
+            setFocusedRegionId(region.id);
+            setCalloutRegionId(region.id);
+          }}
+          onBlur={() =>
+            setCalloutRegionId((current) =>
               current === region.id ? null : current,
             )
           }
+          onMoveFocus={(key) => moveRegionFocus(region.id, key)}
+          onPointerEnter={() => {
+            setHoveredRegionId(region.id);
+            // Hovering a region previews the rows a click would change, which
+            // matters most here: one region click can toggle several shelters.
+            if (stats.live) onHoverShelters?.(stats.values);
+          }}
+          onPointerLeave={() => {
+            setHoveredRegionId((current) =>
+              current === region.id ? null : current,
+            );
+            if (stats.live) onHoverShelters?.(null);
+          }}
           highlighted={region.id === highlightedRegionId}
         />
       ))}
@@ -197,6 +222,12 @@ export function ShelterMap({
             selected={selected}
             onPick={onPick}
             highlighted={town.key === highlightedTown?.key}
+            dimmed={
+              matchedValues != null &&
+              !town.shelters.some((shelter) =>
+                matchedValues.includes(shelter.value),
+              )
+            }
             onPointerEnter={() => {
               setHoveredTownKey(town.key);
               onHoverShelters?.(town.shelters.map((shelter) => shelter.value));
@@ -295,6 +326,7 @@ function Region({
   tabIndex,
   elementRef,
   onFocus,
+  onBlur,
   onMoveFocus,
   onPointerEnter,
   onPointerLeave,
@@ -306,6 +338,7 @@ function Region({
   tabIndex: 0 | -1;
   elementRef: (element: SVGPathElement | null) => void;
   onFocus: () => void;
+  onBlur: () => void;
   onMoveFocus: (
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" | "Home" | "End",
   ) => void;
@@ -347,6 +380,7 @@ function Region({
       data-region-highlighted={highlighted || undefined}
       onClick={() => onPick(stats.values)}
       onFocus={onFocus}
+      onBlur={onBlur}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onKeyDown={(event) => {

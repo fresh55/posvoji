@@ -1,0 +1,30 @@
+# Machine-readable permission record. CI validates every policy.yaml against
+# the ProviderPolicy schema: a provider cannot be enabled, show images or carry
+# more than bare facts without granted, dated permission from the shelter.
+providerId: turk
+# The WordPress REST collection the adapter pages through. The human-facing
+# lists are /index.php/category/posvoji-psa/ and /index.php/category/posvoji-macko/.
+source: https://zavetisceturk.com/wp-json/wp/v2/posts
+enabled: true
+
+ingestion: api
+images: cache-permitted
+descriptions: full-permitted
+
+permission:
+  status: granted
+  date: 2026-08-19
+  notes: >-
+    Maintainer confirmed that Zavetišče Turk granted all requested
+    permissions, including catalog data, full descriptions, and displaying
+    and caching listing photographs.
+
+attribution: "Vir: Zavetišče Turk"
+
+crawl:
+  intervalHours: 12
+  # Lost-and-found notices. They carry owners' and finders' phone numbers, so
+  # they stay out of the crawl regardless of what else a post is filed under.
+  excludePaths:
+    - /index.php/category/pogresane-zivali
+    - /index.php/category/najdene-zivali

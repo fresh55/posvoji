@@ -18,8 +18,19 @@ export type AdoptionStatus = z.infer<typeof AdoptionStatus>;
 export const AnimalSize = z.enum(["small", "medium", "large"]);
 export type AnimalSize = z.infer<typeof AnimalSize>;
 
+// The shelter's read of day-to-day temperament. Three levels only; unknown is
+// expressed by omitting the field, not by a fourth value.
+export const EnergyLevel = z.enum(["calm", "balanced", "lively"]);
+export type EnergyLevel = z.infer<typeof EnergyLevel>;
+
 export const TestResult = z.enum(["positive", "negative", "unknown"]);
 export type TestResult = z.infer<typeof TestResult>;
+
+// Whether an animal gets on with a group. "unknown" is a real answer: a
+// shelter saying it has not seen the animal with children is information, and
+// different from the field never being set.
+export const Compatibility = z.enum(["yes", "no", "unknown"]);
+export type Compatibility = z.infer<typeof Compatibility>;
 
 export const ImageRights = z.enum([
   "unknown",
@@ -66,6 +77,13 @@ export const AnimalMedical = z.strictObject({
 });
 export type AnimalMedical = z.infer<typeof AnimalMedical>;
 
+export const AnimalGoodWith = z.strictObject({
+  kids: Compatibility.optional(),
+  dogs: Compatibility.optional(),
+  cats: Compatibility.optional(),
+});
+export type AnimalGoodWith = z.infer<typeof AnimalGoodWith>;
+
 // Strict: owner contacts, adopter data and microchip numbers must never reach
 // the dataset, so any unknown key is an error rather than a passthrough.
 export const Animal = z.strictObject({
@@ -82,6 +100,7 @@ export const Animal = z.strictObject({
   approximateAgeMonths: z.number().int().nonnegative().optional(),
 
   size: AnimalSize.optional(),
+  energy: EnergyLevel.optional(),
   status: AdoptionStatus,
 
   intakeDate: z.iso.date().optional(),
@@ -89,6 +108,7 @@ export const Animal = z.strictObject({
   originMunicipality: z.string().optional(),
 
   medical: AnimalMedical.optional(),
+  goodWith: AnimalGoodWith.optional(),
 
   images: z.array(AnimalImage),
 

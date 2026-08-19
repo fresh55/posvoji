@@ -5,9 +5,14 @@ import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
 import { cacheImages } from "./cache-images";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
+import {
+  applyOverrides,
+  buildOverrideReport,
+  fetchPortalOverrides,
+} from "./portal-overrides";
 import { providers } from "./registry";
 import { writeShareCards } from "./share-cards";
-import { datasetDir } from "./paths";
+import { datasetDir, overrideReportPath } from "./paths";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
 
@@ -95,6 +100,13 @@ if (requestedProviderId && crawlPolicies.length === 0) {
   throw new Error(`unknown provider: ${requestedProviderId}`);
 }
 const client = new PoliteClient({ userAgent: USER_AGENT });
+
+// Fetched before the crawl, not after it. A bad token or a payload that no
+// longer matches the contract throws, and a run that is going to fail on that
+// should fail in the first second rather than after a crawl of many minutes.
+// The request is milliseconds, so there is nothing to gain by overlapping it.
+const portalPayload = await fetchPortalOverrides();
+
 const crawled = await crawl(client, crawlPolicies);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
@@ -120,21 +132,72 @@ const preserved = requestedProviderId
 // by a targeted run that does not re-crawl its provider.
 const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
 
+// The portal keys every override by the shelter slug of the account that
+// recorded it and ships that slug as providerId; this pipeline matches an
+// override to an animal on source.providerId. That join is the only thing
+// stopping one shelter from correcting another shelter's animal, and it holds
+// only while an animal's shelter id and its provider id are the same string.
+// Nothing else in the schema enforces it, so it is checked here on every run.
+const misattributed = seeded.filter(
+  (a) => a.shelter.id !== a.source.providerId,
+);
+if (misattributed.length > 0) {
+  const named = misattributed
+    .map(
+      (a) =>
+        `${a.id} (shelter ${a.shelter.id}, provider ${a.source.providerId})`,
+    )
+    .join(", ");
+  throw new Error(
+    `shelter id and providerId disagree, which would break override authorization: ${named}`,
+  );
+}
+
+// Shelter corrections from the portal are merged in after the crawl (and
+// after firstSeenAt is carried over) so a re-crawl can never silently
+// clobber them, and before image caching and the change-set diff so an
+// overridden field — including a status change — shows up in changes.json
+// as an update and ships in the written dataset.
+const overrideResult = portalPayload
+  ? applyOverrides(seeded, portalPayload)
+  : null;
+const overridden = overrideResult?.animals ?? seeded;
+if (overrideResult) {
+  const moved = overrideResult.conflicts.filter((c) => c.kind === "moved");
+  console.log(
+    `portal: ${overrideResult.applied.length} overrides applied, ` +
+      `${overrideResult.unmatched.length} unmatched, ` +
+      `${moved.length} conflicting with the crawl`,
+  );
+  // The correction goes on winning. This is the only place a moved source
+  // shows up in a run, so it is named per animal rather than counted.
+  for (const conflict of moved) {
+    console.warn(
+      `portal: ${conflict.providerId}/${conflict.animalId} ${conflict.field}: ` +
+        `crawl moved from ${JSON.stringify(conflict.baseline)} to ` +
+        `${JSON.stringify(conflict.crawled)}, still showing ` +
+        `${JSON.stringify(conflict.override)}`,
+    );
+  }
+}
+
 // Cache permitted photos before the dataset is written so cachedUrl ships
 // with it; the same sync deletes copies that fell out of the dataset.
 const imagePolicies = new Map(
   policies.map(({ policy }) => [policy.providerId, policy.images] as const),
 );
 mkdirSync(datasetDir, { recursive: true });
-// A targeted run deliberately leaves the global image cache untouched. The
-// selected provider's source URLs remain usable, while cached files and URLs
-// belonging to preserved providers cannot be deleted or needlessly rechecked.
-const { animals, fetched, reused, deleted } = requestedProviderId
-  ? { animals: seeded, fetched: 0, reused: 0, deleted: 0 }
-  : await cacheImages(seeded, client, imagePolicies);
-if (requestedProviderId) {
-  console.log("images: unchanged (targeted provider export)");
-}
+// A targeted run caches the provider it just crawled, otherwise enabling a
+// cache-permitted shelter would leave its photos hotlinked until somebody ran
+// a full export. Preserved providers stay in scope for the deletion sweep but
+// out of scope for requests, so their cached files and URLs are neither
+// deleted nor needlessly rechecked.
+const { animals, fetched, reused, deleted } = await cacheImages(
+  overridden,
+  client,
+  imagePolicies,
+  requestedProviderId ? { refreshProviderIds: refreshedProviderIds } : {},
+);
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
 );
@@ -144,7 +207,8 @@ const generatedAt = new Date().toISOString();
 
 // Share cards are drawn from the cached photos, so they come after the image
 // sync and read the dataset's own build time: an age on a card and the same
-// age on the page are measured from one clock.
+// age on the page are measured from one clock. A targeted run needs no
+// special case, since an unchanged animal keeps its fingerprint and its card.
 const cards = await writeShareCards(animals, {
   reference: new Date(generatedAt),
 });
@@ -175,6 +239,17 @@ writeFileSync(
 writeFileSync(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),
+);
+// Written on every run, including runs with no portal configured, so the
+// file never goes stale and an empty report cannot be mistaken for "the
+// shelters have corrected nothing".
+writeFileSync(
+  overrideReportPath,
+  JSON.stringify(
+    buildOverrideReport(generatedAt, portalPayload, overrideResult),
+    null,
+    2,
+  ),
 );
 
 console.log(

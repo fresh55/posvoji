@@ -145,6 +145,12 @@ export interface CacheImagesOptions {
   mediaDir?: string;
   manifestPath?: string;
   revalidateAfterDays?: number;
+  // Restricts which providers' photos this run will actually request. Every
+  // other cache-permitted image keeps its manifest entry, its file and its
+  // cachedUrl without a single request, so a targeted export can cache one
+  // shelter's photos without revalidating hundreds of unrelated ones. Left
+  // unset, every provider is in scope.
+  refreshProviderIds?: ReadonlySet<string>;
 }
 
 // The removal path is the sync itself: an image that is no longer referenced
@@ -165,6 +171,21 @@ export async function cacheImages(
   const next: ImageCacheManifest = { entries: {} };
   mkdirSync(mediaDir, { recursive: true });
 
+  // Scoped runs still walk every cache-permitted URL, because the deletion
+  // sweep below reads next.entries as the full list of what is still wanted.
+  // Out-of-scope URLs are carried over from the previous manifest instead of
+  // being requested again.
+  const scope = options.refreshProviderIds;
+  const inScope =
+    scope === undefined
+      ? undefined
+      : new Set(
+          cacheableUrls(
+            animals.filter((a) => scope.has(a.source.providerId)),
+            imagePolicies,
+          ),
+        );
+
   let fetched = 0;
   let reused = 0;
 
@@ -172,6 +193,11 @@ export async function cacheImages(
     const prev = previous.entries[url];
     const prevUsable =
       prev !== undefined && existsSync(join(mediaDir, prev.file));
+
+    if (inScope && !inScope.has(url)) {
+      if (prevUsable) next.entries[url] = prev;
+      continue;
+    }
 
     if (
       prevUsable &&

@@ -127,6 +127,10 @@ export function distanceKm(from: LatLon, to: LatLon): number {
 
 // Distance to the town, not to the shelter's door, so round hard enough that
 // nobody mistakes it for directions.
-export function formatKm(km: number): string {
-  return km < 1 ? "manj kot 1 km" : `${Math.round(km)} km`;
+//
+// Everything under a kilometre is one case, and the only case that needs words.
+// The caller passes them, because it is the one that knows the language; the
+// symbol is what stands in when nobody said.
+export function formatKm(km: number, lessThanOneKm = "< 1 km"): string {
+  return km < 1 ? lessThanOneKm : `${Math.round(km)} km`;
 }

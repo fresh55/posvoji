@@ -21,6 +21,7 @@ export function Marker({
   onPointerEnter,
   onPointerLeave,
   highlighted,
+  dimmed,
 }: {
   town: Town;
   selected: string[];
@@ -30,6 +31,9 @@ export function Marker({
   /** The shelter is hovered in the list, so its marker reveals the hit halo
    *  and strengthens its stroke, same as pointer hover would. */
   highlighted: boolean;
+  /** The list search matches none of this town's shelters, so the marker
+   *  fades back while the matches keep full strength. */
+  dimmed?: boolean;
 }) {
   const shared = town.shelters.length > 1;
   const values = town.shelters.map((shelter) => shelter.value);
@@ -48,12 +52,14 @@ export function Marker({
         state === true ? "selected" : state === "mixed" ? "mixed" : "idle"
       }
       data-marker-highlighted={highlighted || undefined}
+      data-marker-dimmed={dimmed || undefined}
       onClick={() => live && onPick(values)}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       className={cn(
-        "group/pin",
+        "group/pin transition-opacity motion-reduce:transition-none",
         live ? "cursor-pointer" : "pointer-events-none",
+        dimmed && "opacity-30",
       )}
     >
       {/* The hit area grows into free space without covering another marker.
@@ -120,7 +126,10 @@ function MarkerDisc({
       data-cluster-disc={discAttribute}
       data-cluster-shelter={shelterValue}
       className={cn(
-        "transition-colors motion-reduce:transition-none",
+        // Each disc grows around its own centre, so cluster discs breathe
+        // apart instead of shifting as a block.
+        "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] group-hover/pin:scale-110 motion-reduce:transition-none motion-reduce:group-hover/pin:scale-100",
+        highlighted && "scale-110 motion-reduce:scale-100",
         selected
           ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
           : live
@@ -199,7 +208,8 @@ function CountDisc({
     <g
       data-cluster-overflow={town.shelters.length}
       className={cn(
-        "transition-colors motion-reduce:transition-none",
+        "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] group-hover/pin:scale-110 motion-reduce:transition-none motion-reduce:group-hover/pin:scale-100",
+        highlighted && "scale-110 motion-reduce:scale-100",
         state === true
           ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
           : state === "mixed"

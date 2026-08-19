@@ -1,19 +1,24 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import {
-  ArrowDownNarrowWide,
   ChevronDown,
   LoaderCircle,
   MapPin,
+  Navigation,
   PawPrint,
+  Search,
+  X,
 } from "lucide-react";
+import { ResultCount } from "@/components/filters/result-count";
 import { ShelterMap } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -21,11 +26,21 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useNearby } from "@/hooks/use-nearby";
-import type { FilterOption } from "@/lib/filters";
+import type { FilterOption, SpeciesFilter } from "@/lib/filters";
 import { cityAt, distanceKm, onMap } from "@/lib/geo";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
+import { readTypedLocation, resolveOrigin } from "@/lib/origin";
+import { looksLikePostcode } from "@/lib/postal-lookup";
 import { cn } from "@/lib/utils";
+
+// Search matches with or without diacritics, so "sezana" finds Sežano.
+function fold(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
 
 // The map needs dialog width. Narrow screens use regions and the exact list.
 export function LocationPicker({
@@ -34,17 +49,43 @@ export function LocationPicker({
   selected,
   onToggle,
   onToggleMany,
+  resultCount,
+  species,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
+  /** Animals the whole filter state currently matches, shown live on the
+   *  confirm button so picking a shelter has visible consequences. */
+  resultCount: number;
+  species: SpeciesFilter;
 }) {
   const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
-  const { state, toggle: toggleNearby } = useNearby();
-  const origin = state.status === "on" ? state.at : undefined;
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [place, setPlace] = useState("");
+  const placeRef = useRef<HTMLInputElement>(null);
+  // The status line belongs to the place input, both on screen and to a
+  // screen reader, so it is named once and pointed at from the field.
+  const statusId = useId();
+  const {
+    state,
+    toggle: toggleNearby,
+    dismissError,
+    turnOff: turnOffNearby,
+  } = useNearby();
+  const geolocated = state.status === "on" ? state.at : undefined;
+  // The point the list sorts from, and where it came from. Memoized because
+  // the row sort below takes it as a dependency, and a fresh object every
+  // render would re-sort every render.
+  const { typed, resolved } = useMemo(() => {
+    const read = readTypedLocation(place);
+    return { typed: read, resolved: resolveOrigin(geolocated, read) };
+  }, [geolocated, place]);
+  const origin = resolved.at;
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   // Two independent hover states for the two directions: a row lights up its
   // marker and region, a marker lights up its row(s). Keeping them as separate
@@ -98,18 +139,38 @@ export function LocationPicker({
     [onToggleMany],
   );
 
+  // Search narrows the list only. The map keeps every pin, so the country
+  // stays whole while you type.
+  const visibleRows = query.trim()
+    ? rows.filter((row) =>
+        fold(`${row.label} ${row.city ?? ""}`).includes(fold(query)),
+      )
+    : rows;
+
   const unplaced = rows.length - pins.length;
   const nearbyOn = state.status === "on";
   // Two independent facts, so two lines. Sharing one slot meant a geolocation
   // error silently replaced the note about shelters missing from the map.
+  //
+  // Within this line the order follows the origin the list is actually sorted
+  // by, with one exception at the top: a geolocation error is news the user
+  // just asked for by pressing the button, so it is said first. It only lasts
+  // until the user types, which dismisses it in favor of the input's own
+  // feedback.
   const status =
     state.status === "error"
       ? state.message
-      : nearbyOn && origin && !onMap(origin)
-        ? messages.locationOutsideMap
-        : nearbyOn
-          ? messages.sortedByDistance
-          : undefined;
+      : resolved.source === "geolocation"
+        ? origin && !onMap(origin)
+          ? messages.locationOutsideMap
+          : messages.sortedByDistance
+        : typed.status === "unknown"
+          ? looksLikePostcode(place)
+            ? messages.postcodeNotFound
+            : messages.locationNotFound
+          : resolved.source === "typed"
+            ? t("sortedByDistanceFrom", { label: resolved.label ?? "" })
+            : undefined;
   const missing =
     unplaced > 0
       ? sheltersMissingFromMap(unplaced, locale)
@@ -125,7 +186,13 @@ export function LocationPicker({
       : t("selectedShelters", { selected: selected.length, total });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setQuery("");
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -145,10 +212,42 @@ export function LocationPicker({
       </DialogTrigger>
 
       <DialogContent
-        className="max-w-[58rem]"
+        className="max-w-[min(88rem,calc(100vw-2rem))] md:h-[min(88dvh,56rem)] md:overflow-hidden"
         closeLabel={messages.close}
+        onEscapeKeyDown={(event) => {
+          // Escape empties the box it is pressed in first, and only closes the
+          // panel once that box is already empty: clearing a search should not
+          // cost the whole map. It has to be handled here rather than on the
+          // inputs, because the dialog listens for the key on the document in
+          // the capture phase, before it ever reaches the field.
+          const target = event.target;
+          if (target === placeRef.current && place !== "") {
+            setPlace("");
+            event.preventDefault();
+          } else if (target === searchRef.current && query !== "") {
+            setQuery("");
+            event.preventDefault();
+          }
+        }}
+        onOpenAutoFocus={(event) => {
+          // Keyboards land in search, ready to type a shelter name. Touch
+          // devices keep radix's default so the soft keyboard stays down
+          // until the search box is asked for.
+          if (window.matchMedia?.("(pointer: fine)").matches) {
+            event.preventDefault();
+            searchRef.current?.focus();
+          }
+        }}
       >
-        <DialogHeader>
+        {/* Selection changes narrate themselves: a region click can toggle
+            several shelters at once, and aria-pressed alone does not say how
+            many. The label is the one already on the trigger, so the wording
+            cannot drift. */}
+        <p aria-live="polite" className="sr-only">
+          {label}
+        </p>
+
+        <DialogHeader className="shrink-0">
             <DialogTitle>{messages.whereSearching}</DialogTitle>
             <DialogDescription>
               <span className="hidden md:inline">
@@ -160,66 +259,96 @@ export function LocationPicker({
             </DialogDescription>
         </DialogHeader>
 
-        {/* md+: map and list side by side, the list scrolling on its own so
-            both stay fully visible. Below md the two stack in the same order
-            (map, then the sort toggle and list), and the whole dialog scrolls
-            instead. */}
-        <div className="md:grid md:grid-cols-2 md:items-stretch md:gap-6">
-          <div className="flex flex-col gap-3">
+        {/* md+: the map owns the dialog. It fills every pixel the fixed-height
+            dialog gives it, and the list is a slim sidebar scrolling on its
+            own. Below md the two stack in the same order (map, then search and
+            list), and the whole dialog scrolls instead.
+
+            Below md this is one flex column and the map's column is display:
+            contents, so the map, the inputs and the legend are all siblings in
+            it and the legend can be ordered last. On md+ the contents goes
+            away, the map column is a real column again, and the legend sits
+            under the map where it belongs. */}
+        <div className="flex flex-col md:grid md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(16rem,19rem)] md:gap-8">
+          <div className="contents md:flex md:flex-col md:gap-3 md:min-h-0">
             {/* The map's own aspect ratio (320:210) sets its height from its
-                width, so height is capped below md by capping the width a
-                calc() derives from it, rather than fighting the SVG's
-                intrinsic sizing. */}
-            <div className="mx-auto w-full max-w-[calc(42vh*32/21)] md:mx-0 md:max-w-none">
+                width below md, so height is capped there by capping the width
+                a calc() derives from it. On md+ the wrapper has a real height
+                and the SVG scales to fit it instead. */}
+            {/* A quiet canvas behind the country, so the letterboxed space a
+                fixed-aspect map leaves in a fluid dialog reads as sea, not as
+                a gap. The drop-shadow rides the composited SVG, which gives
+                the country one silhouette shadow instead of one per region. */}
+            <div className="mx-auto w-full max-w-[calc(42vh*32/21)] rounded-ui bg-muted/40 p-2 sm:p-3 md:mx-0 md:min-h-0 md:flex-1 md:max-w-none">
               <ShelterMap
                 pins={pins}
                 selected={selected}
                 onPick={pickRegion}
                 origin={origin}
                 highlightedValue={hoveredRowValue}
+                matchedValues={
+                  query.trim() ? visibleRows.map((row) => row.value) : null
+                }
                 onHoverShelters={setHoveredMarkerValues}
+                className="md:h-full [filter:drop-shadow(0_1px_1px_rgb(0_0_0/0.06))_drop-shadow(0_6px_14px_rgb(0_0_0/0.07))]"
               />
             </div>
 
             {/* Same steps the map fills its regions with, read from one array
-                so the legend cannot drift away from the picture. */}
-            <p className="flex items-center gap-2 text-[10px] leading-none text-muted-foreground">
-              <span>{messages.fewerAnimals}</span>
-              <span className="flex items-center gap-0.5" aria-hidden>
-                {DENSITY_STEPS.map((opacity) => (
-                  <span
-                    key={opacity}
-                    className="size-2 rounded-[2px] bg-foreground"
-                    style={{ opacity }}
-                  />
-                ))}
-              </span>
-              <span>{messages.moreAnimals}</span>
-            </p>
+                so the legend cannot drift away from the picture.
 
-            <p className="hidden items-center gap-1.5 text-[11px] leading-tight text-muted-foreground md:flex">
-              <span
-                aria-hidden
-                className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background"
-              >
-                <PawPrint className="size-2.5 text-foreground/70" strokeWidth={2.25} />
+                Ordered last below md: on a phone the legend is the least of
+                what the panel is for, and the inputs it used to push down are
+                the most. */}
+            <div className="order-last mt-3 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] leading-none text-muted-foreground md:order-none md:mt-0">
+              <span className="flex items-center gap-2">
+                <span>{messages.fewerAnimals}</span>
+                <span className="flex items-center gap-0.5" aria-hidden>
+                  {DENSITY_STEPS.map((opacity) => (
+                    <span
+                      key={opacity}
+                      className="size-2 rounded-[2px] bg-foreground"
+                      style={{ opacity }}
+                    />
+                  ))}
+                </span>
+                <span>{messages.moreAnimals}</span>
               </span>
-              {messages.shelter}
-            </p>
 
-            <div className="space-y-1">
-              {/* Stays mounted so a denied permission is announced, not just
-                  drawn. */}
-              <p
-                aria-live="polite"
-                className="text-[11px] leading-tight text-muted-foreground empty:hidden"
-              >
-                {status}
-              </p>
-              <p className="text-[11px] leading-tight text-muted-foreground empty:hidden">
-                {missing}
-              </p>
-              <p className="text-[11px] leading-tight text-muted-foreground">
+              <span className="hidden items-center gap-1.5 md:flex">
+                <span
+                  aria-hidden
+                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background"
+                >
+                  <PawPrint className="size-2.5 text-foreground/70" strokeWidth={2.25} />
+                </span>
+                {messages.shelter}
+              </span>
+
+              {/* Only once there is a point to explain. The ring repeats the
+                  dashed circle the map draws at the origin, at legend size. */}
+              {origin && (
+                <span className="flex items-center gap-1.5">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 16 16"
+                    className="size-4 shrink-0"
+                  >
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6"
+                      strokeWidth="1.2"
+                      strokeDasharray="2.4 2.4"
+                      className="fill-none stroke-foreground opacity-70"
+                    />
+                    <circle cx="8" cy="8" r="2.1" className="fill-foreground" />
+                  </svg>
+                  {messages.originLegend}
+                </span>
+              )}
+
+              <span className="leading-tight">
                 {messages.regionBoundaries}:{" "}
                 <a
                   href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
@@ -230,46 +359,236 @@ export function LocationPicker({
                   GURS
                 </a>
                 , CC BY 4.0.
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col md:mt-0 md:min-h-0 md:border-l md:pl-6">
+            <div className="relative shrink-0">
+              <Search
+                className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                ref={searchRef}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  // Enter takes the top match, so search-and-pick is one
+                  // gesture. ArrowDown walks into the list instead.
+                  if (event.key === "Enter" && query.trim()) {
+                    const first = visibleRows.find(
+                      (row) =>
+                        (counts.get(row.value) ?? 0) > 0 ||
+                        selected.includes(row.value),
+                    );
+                    if (first) onToggle(first.value);
+                    event.preventDefault();
+                  } else if (event.key === "ArrowDown") {
+                    const first = visibleRows.find(
+                      (row) =>
+                        (counts.get(row.value) ?? 0) > 0 ||
+                        selected.includes(row.value),
+                    );
+                    if (first) {
+                      rowRefs.current.get(first.value)?.focus();
+                      event.preventDefault();
+                    }
+                  }
+                }}
+                placeholder={messages.searchShelters}
+                aria-label={messages.searchShelters}
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
+
+            {/* The typed way to sort by distance, and the one that always
+                works: no permission prompt, no fix to wait for, and it answers
+                "which shelter is near the town I am moving to" as well as it
+                answers "near me". A postcode or a town name, resolved against
+                the postal-district table. */}
+            <div className="relative mt-2 shrink-0">
+              <MapPin
+                className={cn(
+                  "absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 transition-colors",
+                  resolved.source === "typed"
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+                aria-hidden
+              />
+              <Input
+                ref={placeRef}
+                type="text"
+                inputMode="text"
+                autoComplete="postal-code"
+                value={place}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setPlace(next);
+                  // The most recent act wins. Typing a place that resolves is
+                  // a newer answer than any fix, so geolocation goes off
+                  // rather than quietly outranking what was just typed.
+                  // Anything else only clears a stale error, which would
+                  // otherwise sit on top of this input's own feedback and make
+                  // typing look inert.
+                  if (readTypedLocation(next).status === "matched") {
+                    turnOffNearby();
+                  } else {
+                    dismissError();
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    // Nothing to submit: the sort already followed the typing.
+                    // Enter is how a keyboard says it is done, so take the
+                    // focus off the field and leave the dialog alone.
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                  }
+                  // Escape is the dialog's to hear first, so what it does in
+                  // this field is decided on DialogContent above.
+                }}
+                // The field holds one place at a time, so coming back to it
+                // means replacing, not appending. Selecting on focus makes
+                // typing a new postcode over an old one just work.
+                onFocus={(event) => event.currentTarget.select()}
+                enterKeyHint="done"
+                placeholder={messages.postcodeOrTown}
+                aria-label={messages.postcodeOrTown}
+                aria-describedby={statusId}
+                className="h-8 pl-8 pr-8 text-sm"
+              />
+              {place !== "" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlace("");
+                    placeRef.current?.focus();
+                  }}
+                  aria-label={messages.clearLocation}
+                  className="absolute right-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-3.5" aria-hidden />
+                </button>
+              )}
+            </div>
+
+            {/* Directly under the field it is about, where the eye already is
+                after typing. Stays mounted so a denied permission is
+                announced, not just drawn. */}
+            <p
+              id={statusId}
+              aria-live="polite"
+              className="mt-1 shrink-0 text-[11px] leading-tight text-muted-foreground empty:hidden"
+            >
+              {status}
+            </p>
+
+            <div className="mt-2 flex shrink-0 items-center justify-between gap-2">
+              {/* This changes sort order, not filter state. The icon is a
+                  crosshair rather than the sort arrow the sort picker owns:
+                  with a typed box above it, this button's job is "use where I
+                  am", and sorting is what both of them cause. It steps aside
+                  while a typed place drives the sort: the list is already
+                  nearest-first, and pressing it then would silently swap the
+                  typed origin for the visitor's own. */}
+              {resolved.source !== "typed" && (
+                <button
+                  type="button"
+                  onClick={toggleNearby}
+                  aria-pressed={nearbyOn}
+                  className={cn(
+                    "inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors",
+                    nearbyOn
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {state.status === "locating" ? (
+                    <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Navigation className="size-3.5" aria-hidden />
+                  )}
+                  {state.status === "locating"
+                    ? messages.locating
+                    : messages.nearestFirst}
+                </button>
+              )}
+
+              {selected.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onToggleMany(selected)}
+                  className="ml-auto rounded-ui py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {messages.clear} ({selected.length})
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
+              {visibleRows.length === 0 ? (
+                <div className="space-y-1.5 px-2 py-2 text-sm text-muted-foreground">
+                  <p>
+                    {messages.noSheltersFound} »{query.trim()}«
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      searchRef.current?.focus();
+                    }}
+                    className="text-xs underline underline-offset-2 transition-colors hover:text-foreground"
+                  >
+                    {messages.clearSearch}
+                  </button>
+                </div>
+              ) : (
+                <ShelterRows
+                  rows={visibleRows}
+                  counts={counts}
+                  selected={selected}
+                  onToggle={onToggle}
+                  refs={rowRefs}
+                  highlighted={hoveredMarkerValues ?? undefined}
+                  onHoverRow={setHoveredRowValue}
+                  onExitTop={() => searchRef.current?.focus()}
+                  lessThanOneKm={messages.lessThanOneKm}
+                  className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0"
+                />
+              )}
+            </div>
+
+            {/* This one is about the map, not about the input, so it stays at
+                the bottom of the column. */}
+            <div className="mt-2 shrink-0">
+              <p className="text-[11px] leading-tight text-muted-foreground empty:hidden">
+                {missing}
               </p>
             </div>
           </div>
+        </div>
 
-          <div className="mt-4 flex flex-col md:mt-0 md:min-h-0">
-            {/* This changes sort order, not filter state. */}
-            <button
-              type="button"
-              onClick={toggleNearby}
-              aria-pressed={nearbyOn}
-              className={cn(
-                "inline-flex w-fit shrink-0 items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors",
-                nearbyOn
-                  ? "font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {state.status === "locating" ? (
-                <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-              ) : (
-                <ArrowDownNarrowWide className="size-3.5" aria-hidden />
-              )}
-              {state.status === "locating"
-                ? messages.locating
-                : messages.nearestFirst}
-            </button>
-
-            <div className="mt-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
-              <ShelterRows
-                rows={rows}
-                counts={counts}
-                selected={selected}
-                onToggle={onToggle}
-                refs={rowRefs}
-                highlighted={hoveredMarkerValues ?? undefined}
-                onHoverRow={setHoveredRowValue}
-                className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0"
+        {/* The same closing move the filter sheet has: the count answers "what
+            did my picking do" before the dialog goes away. Sticky below md so
+            it survives the scrolling dialog; the fixed-height desktop layout
+            keeps it in view by itself. */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 mt-1 flex shrink-0 items-center justify-end border-t bg-popover px-5 py-3 md:static md:mx-0 md:mb-0 md:mt-0 md:px-0 md:pb-0">
+          <DialogClose asChild>
+            <Button className="flex-1 md:flex-none md:min-w-44">
+              {messages.show}
+              <ResultCount
+                count={resultCount}
+                species={species}
+                locale={locale}
+                announce={false}
+                variant="inline"
+                className="justify-start text-current"
               />
-            </div>
-          </div>
+            </Button>
+          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>

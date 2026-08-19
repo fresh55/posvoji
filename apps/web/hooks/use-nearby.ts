@@ -62,5 +62,23 @@ export function useNearby() {
     );
   }, [messages, state.status]);
 
-  return { state, toggle };
+  // An error is news until the user does something newer. Typing a place is
+  // that newer thing, so the picker can put the error away instead of letting
+  // it sit on top of the typed sort's own feedback.
+  const dismissError = useCallback(() => {
+    setState((current) =>
+      current.status === "error" ? { status: "off" } : current,
+    );
+  }, []);
+
+  // The most recent act wins. Typing a place that resolves is a newer answer to
+  // "where are you" than a fix the user asked for before, so the picker can
+  // switch this off outright, including while a fix is still in flight: bumping
+  // the attempt is what makes the pending callback land on nothing.
+  const turnOff = useCallback(() => {
+    attempt.current += 1;
+    setState((current) => (current.status === "off" ? current : { status: "off" }));
+  }, []);
+
+  return { state, toggle, dismissError, turnOff };
 }

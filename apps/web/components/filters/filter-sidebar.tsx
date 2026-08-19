@@ -3,6 +3,7 @@
 import {
   FilterGroupList,
   type CardGroup,
+  type GoodWithSection,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { useI18n } from "@/components/i18n-provider";
@@ -20,6 +21,7 @@ export function FilterSidebar({
   counts,
   toggles,
   toggleTally,
+  goodWith,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -31,6 +33,7 @@ export function FilterSidebar({
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
+  goodWith?: GoodWithSection;
   className?: string;
 } & FilterActionContract) {
   const { messages } = useI18n();
@@ -48,6 +51,7 @@ export function FilterSidebar({
         counts={counts}
         toggles={toggles}
         toggleTally={toggleTally}
+        goodWith={goodWith}
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}

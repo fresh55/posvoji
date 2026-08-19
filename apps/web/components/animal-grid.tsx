@@ -4,28 +4,30 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
-import {
-  AnimalDialog,
-  type DialogOrigin,
-} from "@/components/animal-dialog/animal-dialog";
+import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { AnimalFilters } from "@/components/filters/animal-filters";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import type { CardGroup } from "@/components/filters/filter-groups";
 import { type Chip } from "@/components/filters/filter-chips";
 import { Button } from "@/components/ui/button";
-import { useAnimalDialog } from "@/hooks/use-animal-dialog";
+import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
+import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
   bySpecies,
   facetCounts,
+  goodWithCounts,
+  goodWithLabel,
+  goodWithOptions,
   GROUPS,
   groupOptions,
   optionLabel,
   speciesCounts,
   toggleCounts,
   toggleLabel,
+  visibleGoodWith,
   visibleGroups,
   visibleToggles,
 } from "@/lib/filters";
@@ -35,15 +37,6 @@ import {
   type AnimalSort,
 } from "@/lib/sort";
 import { cn } from "@/lib/utils";
-
-// Cards claim a target width and the column count falls out of whatever space
-// is left. Fixed counts made cards jump from 309px to 222px the moment the
-// sidebar appeared at lg, because the count stayed at three while the room for
-// it shrank by a quarter. Two columns stay hard-coded on phones because
-// auto-fill would drop to one there, and a single column of photos is a worse
-// phone page.
-const CARD_GRID =
-  "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
 
 export function AnimalGrid({
   animals,
@@ -60,15 +53,6 @@ export function AnimalGrid({
   const [sort, setSort] = useState<AnimalSort>(DEFAULT_ANIMAL_SORT);
   const [clearTrailKey, setClearTrailKey] = useState(0);
   const pendingClearCount = useRef<number | null>(null);
-  // Remembered with the animal it belongs to, so a step through the list, a
-  // close, or a forward-button reopen never grows out of a stale card.
-  const [zoomFrom, setZoomFrom] = useState<
-    { id: string; at: DialogOrigin } | undefined
-  >();
-  const { openId, open, swap, close } = useAnimalDialog({
-    animals,
-    basePath: locale === "sl" ? "/" : "/en",
-  });
   const {
     filters,
     setSpecies,
@@ -76,6 +60,8 @@ export function AnimalGrid({
     toggleMany,
     toggleProperty,
     toggleManyProperties,
+    toggleGoodWith,
+    toggleManyGoodWith,
     clearAll,
     activeCount,
   } = useAnimalFilters();
@@ -95,37 +81,14 @@ export function AnimalGrid({
     [visible, sort, locale, now],
   );
 
-  // Looked up in the whole dataset, not in what the filters leave: a shared
-  // link has to open the animal it names even when this visitor's filters
-  // would hide it.
-  const selected = useMemo(
-    () => animals.find((animal) => animal.id === openId),
-    [animals, openId],
-  );
-
-  // A stale or hand-edited link points at nothing. That is a URL to clean up,
-  // not an error to throw in front of the visitor.
-  useEffect(() => {
-    if (openId && !selected) close();
-  }, [close, openId, selected]);
-
-  const handleOpen = useCallback(
-    (id: string, at?: DialogOrigin) => {
-      setZoomFrom(at ? { id, at } : undefined);
-      open(id);
-    },
-    [open],
-  );
-
   // What the dialog steps through is what the visitor is looking at: the list
   // as filtered and sorted on screen, in that order.
-  const shownIds = useMemo(() => sorted.map((animal) => animal.id), [sorted]);
-
-  // The zoom belongs to the card that was clicked, not to a step through the
-  // list, so any other animal grows from the middle instead.
-  const origin = zoomFrom?.id === openId ? zoomFrom.at : undefined;
-
-  const handleNavigate = useCallback((id: string) => swap(id), [swap]);
+  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
+    useAnimalDialogHost({
+      animals,
+      shown: sorted,
+      basePath: locale === "sl" ? "/" : "/en",
+    });
 
   const isEmpty = animals.length === 0;
 
@@ -189,6 +152,26 @@ export function AnimalGrid({
     () => toggleCounts(animals, filters, now),
     [animals, filters, now],
   );
+  // The section carries its own options, tally and actions, and is left out
+  // entirely while no facet has enough answers to narrow anything.
+  const goodWith = useMemo(() => {
+    const keys = visibleGoodWith(pool);
+    if (keys.length === 0) return undefined;
+    return {
+      options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
+      counts: goodWithCounts(animals, filters, now),
+      onToggle: toggleGoodWith,
+      onToggleMany: toggleManyGoodWith,
+    };
+  }, [
+    animals,
+    filters,
+    locale,
+    now,
+    pool,
+    toggleGoodWith,
+    toggleManyGoodWith,
+  ]);
 
   // The pressed species tab already shows itself, so chips cover only the
   // sidebar/sheet groups.
@@ -205,9 +188,15 @@ export function AnimalGrid({
       label: toggleLabel(key, locale),
       onRemove: () => toggleProperty(key),
     })),
+    ...filters.goodWith.map((key) => ({
+      key: `goodWith:${key}`,
+      label: goodWithLabel(key, locale),
+      onRemove: () => toggleGoodWith(key),
+    })),
   ];
 
-  const hasSidebar = groups.length > 0 || toggles.length > 0;
+  const hasSidebar =
+    groups.length > 0 || toggles.length > 0 || goodWith !== undefined;
 
   return (
     <section
@@ -225,6 +214,7 @@ export function AnimalGrid({
           counts={counts}
           toggles={toggles}
           toggleTally={toggleTally}
+          goodWith={goodWith}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
@@ -241,6 +231,7 @@ export function AnimalGrid({
           counts={counts}
           toggles={toggles}
           toggleTally={toggleTally}
+          goodWith={goodWith}
           shelters={shelters}
           shelterTally={counts.shelter}
           chips={chips}

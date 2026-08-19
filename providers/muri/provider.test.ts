@@ -6,7 +6,9 @@ import { Animal, ProviderPolicy } from "@posvoji/schema";
 import provider, {
   fullSizeSrc,
   parseAgeMonths,
+  parseCompatibility,
   parseDetail,
+  parseEnergy,
   parseList,
   parseSlovenianDate,
   resolveAgeMonths,
@@ -92,6 +94,43 @@ describe("parseSlovenianDate", () => {
   });
 });
 
+describe("parseCompatibility", () => {
+  it.each([
+    ["ok", "yes"],
+    ["Ok", "yes"],
+    ["da", "yes"],
+    ["DA", "yes"],
+    ["ne", "no"],
+    ["ni preverjeno", undefined],
+    ["neznano", undefined],
+    ["", undefined],
+  ])("%s → %s", (input, expected) => {
+    expect(parseCompatibility(input)).toBe(expected);
+  });
+});
+
+describe("parseEnergy", () => {
+  it.each([
+    ["miren", "calm"],
+    ["Umirjena", "calm"],
+    ["zelo aktiven in poskočen", "lively"],
+    ["živahna, radovedna", "lively"],
+    // Adjectives that describe something other than tempo.
+    ["prijazen", undefined],
+    ["radoveden in prijazen", undefined],
+    // Restless is not calm, and shares no whole word with it.
+    ["nemiren", undefined],
+    // A negated row says what the animal is not.
+    ["ni miren", undefined],
+    ["ne preveč živahen", undefined],
+    // Both tempos at once is a contradiction, not a level.
+    ["miren doma, živahen na sprehodu", undefined],
+    ["", undefined],
+  ])("%s → %s", (input, expected) => {
+    expect(parseEnergy(input)).toBe(expected);
+  });
+});
+
 describe("fullSizeSrc", () => {
   const original = "https://x.si/a/IMG_1.jpeg";
   const derived = "https://x.si/a/IMG_1-820x1093.jpeg";
@@ -142,11 +181,23 @@ describe("parseDetail", () => {
         fiv: "negative",
         felv: "negative",
       },
+      goodWith: { cats: "yes", dogs: "yes" },
+      // "Značaj: prijazen" describes the animal but not its tempo, so no
+      // level is read even though the description elsewhere says "aktiven".
+      energy: undefined,
       imageUrls: [
         "https://zavodmuri.si/wp-content/uploads/2025/07/1000057076.jpg",
         "https://zavodmuri.si/wp-content/uploads/2025/07/1000026680-scaled.jpg",
       ],
     });
+  });
+
+  it("reads an energy level when Značaj states one outright", () => {
+    const html = detailHtml.replace(
+      ">prijazen<",
+      ">prijazen, umirjen in ubogljiv<",
+    );
+    expect(parseDetail(html).energy).toBe("calm");
   });
 
   it("reads the intake-age layout of a standard-format cat page and drops the boilerplate appeals", () => {
@@ -164,6 +215,7 @@ describe("parseDetail", () => {
         "Mercedes je trimesečna muca, ki je k nam prišla po nenavadnem in nevarnem pripetljaju.\n\n" +
         "POSEBNOSTI:\n\n– mlada, trimesečna muca\n\n– igriva in radovedna",
       medical: undefined,
+      goodWith: undefined,
       imageUrls: [
         "https://zavodmuri.si/wp-content/uploads/2026/08/MERCEDES-LUNA.jpg",
       ],
@@ -182,6 +234,7 @@ describe("parseDetail", () => {
       foundPlace: undefined,
       description: undefined,
       medical: undefined,
+      goodWith: undefined,
       imageUrls: [],
     });
   });
@@ -242,6 +295,26 @@ describe("parseDetail", () => {
     const html =
       '<article class="project pj-categs-isce-dom pj-categs-macke pj-categs-v_novem_domu"></article>';
     expect(parseDetail(html).status).toBe("adopted");
+  });
+
+  it("maps only the recognized Mačja/Pasja družba values and drops a hedged one", () => {
+    const html = `
+      <article class="project pj-categs-isce-dom pj-categs-macke">
+        <div class="project_features_item">
+          <div class="project_features_item_title">Mačja družba</div>
+          <div class="project_features_item_desc">ni preverjeno</div>
+        </div>
+        <div class="project_features_item">
+          <div class="project_features_item_title">Pasja družba</div>
+          <div class="project_features_item_desc">ne</div>
+        </div>
+      </article>`;
+
+    expect(parseDetail(html).goodWith).toEqual({ dogs: "no" });
+  });
+
+  it("omits goodWith entirely when the page carries no compatibility rows", () => {
+    expect(parseDetail(carouselHtml).goodWith).toBeUndefined();
   });
 
   it("degrades to unknown without any status signal", () => {
@@ -308,6 +381,7 @@ describe("normalize", () => {
     ]);
     expect(animal.shortDescription).toContain("Archie je seniorček");
     expect(animal.attribution).toBe(policy.attribution);
+    expect(animal.goodWith).toEqual({ cats: "yes", dogs: "yes" });
   });
 
   it("ages an intake-age-only animal forward to the crawl date", async () => {

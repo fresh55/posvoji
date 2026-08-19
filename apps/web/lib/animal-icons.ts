@@ -1,6 +1,8 @@
 import {
+  Baby,
   Cat,
   Dog,
+  Moon,
   PawPrint,
   Rabbit,
   ScanLine,
@@ -8,10 +10,12 @@ import {
   ShieldCheck,
   Syringe,
   TestTubeDiagonal,
+  WavesHorizontal,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
-import type { Species } from "@posvoji/schema";
-import type { ToggleKey } from "@/lib/filters";
+import type { EnergyLevel, Species } from "@posvoji/schema";
+import type { GoodWithKey, ToggleKey } from "@/lib/filters";
 
 // One icon per health trait, shared by the filter panel and the animal
 // dialog so the same fact never arrives wearing two different symbols.
@@ -22,6 +26,23 @@ export const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
   cip: ScanLine,
   "brez-fiv": ShieldCheck,
   "brez-felv": TestTubeDiagonal,
+};
+
+// One icon per household question, shared by the Družba filter and the
+// dialog's facts row. Keyed by GoodWithKey, so a new facet fails to compile.
+export const GOOD_WITH_ICONS: Record<GoodWithKey, LucideIcon> = {
+  kids: Baby,
+  dogs: Dog,
+  cats: Cat,
+};
+
+// One icon per energy level. The three read as a tempo scale rather than a
+// rating: rest, rhythm, jolt. Keyed by the schema enum, so a new level fails
+// to compile.
+export const ENERGY_ICONS: Record<EnergyLevel, LucideIcon> = {
+  calm: Moon,
+  balanced: WavesHorizontal,
+  lively: Zap,
 };
 
 // Likewise for species, shared by the tabs, the result count and the dialog's

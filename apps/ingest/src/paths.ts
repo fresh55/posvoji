@@ -20,6 +20,11 @@ export const cachedImagesDir = join(
 );
 export const imageCacheManifestPath = join(datasetDir, "image-cache.json");
 
+// Audit trail for the shelter corrections merged into the dataset. A
+// sidecar rather than a field on Animal: the dataset is what the site
+// reads, and this is what a maintainer reads.
+export const overrideReportPath = join(datasetDir, "overrides.json");
+
 // Share cards live beside the cached photos: same public dir, same
 // gitignore, same "shelter content is not repository content" rule.
 export const shareCardsDir = join(

@@ -1,0 +1,21 @@
+# Mala hiša has not yet granted permission to republish photographs or full
+# descriptions. The parser can be reviewed and tested, but remains disabled.
+providerId: mala-hisa
+source: https://zavetisce-malahisa.si/psi-za-oddajo/
+enabled: false
+
+ingestion: scrape
+images: none
+descriptions: facts-only
+
+permission:
+  status: none
+
+attribution: "Vir: Zavetišče Mala hiša"
+
+crawl:
+  intervalHours: 12
+  excludePaths:
+    - /privat-oddaja/
+    - /najdeni-psi/
+    - /wp-admin/

@@ -1,6 +1,7 @@
 import type { AdoptionProvider } from "@posvoji/provider-sdk";
 import horjul from "@posvoji/provider-horjul";
 import ljubljana from "@posvoji/provider-ljubljana";
+import malaHisa from "@posvoji/provider-mala-hisa";
 import macjaHisa from "@posvoji/provider-macja-hisa";
 import maribor from "@posvoji/provider-maribor";
 import muri from "@posvoji/provider-muri";
@@ -12,6 +13,7 @@ import zonzani from "@posvoji/provider-zonzani";
 export const providers: AdoptionProvider[] = [
   horjul,
   ljubljana,
+  malaHisa,
   macjaHisa,
   maribor,
   muri,

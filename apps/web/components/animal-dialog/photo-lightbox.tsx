@@ -3,7 +3,9 @@
 import Image from "next/image";
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight, XIcon } from "lucide-react";
+import { m, useReducedMotion } from "motion/react";
 import { Dialog as DialogPrimitive } from "radix-ui";
+import { LightboxWash } from "@/components/animal-dialog/photo-wash";
 import { useI18n } from "@/components/i18n-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,41 @@ import {
 const LIGHTBOX_BUTTON_CLASS =
   "absolute z-10 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background active:translate-y-0!";
 
+// Slow enough to read as one photo travelling, quick enough that nobody waits
+// for it. Barely underdamped, so it lands rather than wobbles.
+const MORPH_SPRING = {
+  type: "spring",
+  stiffness: 300,
+  damping: 32,
+  mass: 0.9,
+} as const;
+
+// The frame fills the content box inside its own padding, and these mirror the
+// padding set on that box. Working the landing rect out rather than measuring
+// it means the first frame the browser paints is already the small one sitting
+// on the fan, so the full-size photo is never shown and then yanked away.
+const FRAME_PHONE_PAD = 16;
+const FRAME_WIDE_PAD = 40;
+const WIDE_FROM = 640;
+
+/**
+ * Where the frame has to start for the photo to look like it grew out of the
+ * one in the fan. The scale is uniform: the two boxes are cropped differently,
+ * and stretching one into the other reads as a squash rather than a zoom.
+ */
+function framePose(origin: DOMRect | undefined) {
+  if (!origin?.width || typeof window === "undefined") return undefined;
+  const pad = window.innerWidth >= WIDE_FROM ? FRAME_WIDE_PAD : FRAME_PHONE_PAD;
+  const width = window.innerWidth - pad * 2;
+  const height = window.innerHeight - pad * 2;
+  if (width <= 0 || height <= 0) return undefined;
+  return {
+    x: origin.left + origin.width / 2 - (pad + width / 2),
+    y: origin.top + origin.height / 2 - (pad + height / 2),
+    scale: origin.width / width,
+  };
+}
+
 // A nested dialog rather than a bare overlay: Radix stacks the layers, so
 // Escape closes this one and leaves the animal open underneath.
 export function PhotoLightbox({
@@ -26,6 +63,7 @@ export function PhotoLightbox({
   index,
   onIndexChange,
   title,
+  originRect,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,8 +71,11 @@ export function PhotoLightbox({
   index: number;
   onIndexChange: (index: number) => void;
   title: string;
+  /** Where the photo was sitting in the fan when it was clicked. */
+  originRect?: DOMRect;
 }) {
   const { messages, t } = useI18n();
+  const shouldReduceMotion = useReducedMotion();
   // The photo that was clicked is where focus belongs on the way out, and a
   // dialog opened from the URL has no trigger for Radix to hand it back to.
   const returnFocus = useRef<HTMLElement | null>(null);
@@ -72,7 +113,21 @@ export function PhotoLightbox({
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
 
-          <div className="relative h-full w-full">
+          {/* The same echo the stage has, on the scrim rather than the page.
+              It stays under the photo and under the controls, so the only
+              thing it changes is the empty ground the photo is matted on. */}
+          <LightboxWash source={image} />
+
+          {/* Only the way in travels. On the way out Radix takes the content
+              away with its own fade, which is what it already did, and is the
+              price of leaving the focus trap and Escape alone. */}
+          <m.div
+            data-slot="photo-lightbox-frame"
+            className="relative h-full w-full"
+            initial={shouldReduceMotion ? false : (framePose(originRect) ?? false)}
+            animate={{ x: 0, y: 0, scale: 1 }}
+            transition={shouldReduceMotion ? { duration: 0 } : MORPH_SPRING}
+          >
             <Image
               src={image}
               alt=""
@@ -80,7 +135,7 @@ export function PhotoLightbox({
               sizes="100vw"
               className="object-contain"
             />
-          </div>
+          </m.div>
 
           <DialogPrimitive.Close asChild>
             <Button

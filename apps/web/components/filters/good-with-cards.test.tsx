@@ -123,6 +123,26 @@ describe("GoodWithCards", () => {
     expect(button(options[2].label).disabled).toBe(false);
   });
 
+  it("draws each facet as its own glyph, in parts the gesture can move", () => {
+    renderCards();
+
+    // One glyph per card, and each one made of the parts its gesture needs:
+    // the child's head, two eyes and a mouth; the dog's body, crown, two ears,
+    // two eyes and a nose; the cat's head, two eyes and a nose.
+    const partCounts: Record<GoodWithKey, number> = {
+      kids: 4,
+      dogs: 7,
+      cats: 4,
+    };
+
+    for (const { key } of options) {
+      const glyph = document.querySelector(`svg[data-good-with-glyph="${key}"]`);
+      expect(glyph).not.toBeNull();
+      expect(glyph?.getAttribute("viewBox")).toBe("0 0 24 24");
+      expect(glyph?.querySelectorAll("path")).toHaveLength(partCounts[key]);
+    }
+  });
+
   it("clears the whole section from its reset", () => {
     const { onToggleMany } = renderCards({ selected: ["kids", "cats"] });
 

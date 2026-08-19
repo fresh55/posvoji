@@ -61,6 +61,7 @@ export interface DetailFacts {
   size?: AnimalSize;
   status: AdoptionStatus;
   medical?: AnimalMedical;
+  description?: string;
   imageUrls: string[];
 }
 
@@ -195,6 +196,36 @@ function parseMedical(html: string): AnimalMedical | undefined {
     : undefined;
 }
 
+// The CMS description field is a short run of labelled paragraphs, e.g.
+// "<p><strong>Opis</strong>: črn dolgodlak</p><p><strong>Datum rojstva</strong>:
+// 13. 1. 2026</p>". Only the "Opis" paragraph is editorial text; the rest
+// restate facts the schema already carries in their own fields, and a date
+// repeated as prose would go stale the moment the CMS entry is corrected.
+// The colon sits inside the <strong> on some listings and outside on others.
+const OPIS_LABEL = /^\s*opis\s*:?\s*$/i;
+
+export function parseDescription(descriptionHtml: string): string | undefined {
+  const $ = cheerio.load(descriptionHtml);
+  const parts: string[] = [];
+  $("p").each((_, element) => {
+    const paragraph = $(element);
+    const label = paragraph.children("strong").first();
+    if (!OPIS_LABEL.test(label.text())) return;
+    // Drop the label itself, keep whatever the shelter wrote after it.
+    const text = paragraph
+      .clone()
+      .children("strong")
+      .remove()
+      .end()
+      .text()
+      .replace(/\s+/g, " ")
+      .replace(/^\s*:\s*/, "")
+      .trim();
+    if (text) parts.push(text);
+  });
+  return parts.length > 0 ? parts.join("\n\n") : undefined;
+}
+
 export function parseDetail(html: string): DetailFacts {
   const value = nextData(html)?.props?.pageProps?.pet;
   const pet: CmsPet =
@@ -220,6 +251,10 @@ export function parseDetail(html: string): DetailFacts {
     size: parseSize(pet.size),
     status: parseStatus(pet),
     medical: parseMedical(html),
+    description: (() => {
+      const raw = stringValue(pet.description);
+      return raw ? parseDescription(raw) : undefined;
+    })(),
     imageUrls,
   };
 }
@@ -288,6 +323,8 @@ const provider: AdoptionProvider = {
         rights === null
           ? []
           : facts.imageUrls.map((sourceUrl) => ({ sourceUrl, rights })),
+      shortDescription:
+        ctx.policy.descriptions === "facts-only" ? undefined : facts.description,
       attribution: ctx.policy.attribution,
     };
   },

@@ -165,7 +165,7 @@ describe("provider", () => {
       shelter: { id: "zonzani", name: "Zavetišče Zonzani", city: "Dramlje" },
       species: "dog",
       status: "available",
-      images: [{ rights: "display-permitted" }],
+      images: [{ rights: "cache-permitted" }],
     });
   });
 });

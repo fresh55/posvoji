@@ -26,8 +26,8 @@ describe("policy.yaml", () => {
       status: "granted",
       date: "2026-08-18",
     });
-    expect(policy.descriptions).toBe("facts-only");
-    expect(policy.images).toBe("remote");
+    expect(policy.descriptions).toBe("full-permitted");
+    expect(policy.images).toBe("cache-permitted");
   });
 });
 
@@ -89,6 +89,7 @@ describe("parseDetail", () => {
         felv: "negative",
         fiv: "negative",
       },
+      description: undefined,
       imageUrls: [
         "https://www.zavetisce-horjul.net/wp-content/uploads/2026/08/NinaT.jpg",
       ],
@@ -120,6 +121,25 @@ describe("parseDetail", () => {
         "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Klopka13.jpg",
       ],
     });
+  });
+});
+
+describe("journal descriptions", () => {
+  it("takes the newest journal entry and drops the questionnaire line", () => {
+    expect(parseDetail(historyHtml).description).toBe(
+      "Klopka je FeLV in FIV negativna, sterilizirana, cepljena, čipirana in " +
+        "išče dom. Oddaja se izključno za notranje bivanje.",
+    );
+  });
+
+  it("ignores older entries that describe an animal she no longer is", () => {
+    // Klopka's 2018 entry still describes the nine-week-old kitten who
+    // arrived in 2016.
+    expect(parseDetail(historyHtml).description).not.toContain("9 tednov");
+  });
+
+  it("has no description when a listing carries no journal", () => {
+    expect(parseDetail(dogHtml).description).toBeUndefined();
   });
 });
 
@@ -169,7 +189,7 @@ describe("provider", () => {
     ).rejects.toThrow("detail identity mismatch");
   });
 
-  it("normalizes to the strict schema with display-only image rights", async () => {
+  it("normalizes to the strict schema with cacheable image rights", async () => {
     const ref = {
       sourceAnimalId: "9035",
       sourceUrl: "https://www.zavetisce-horjul.net/aisha/",
@@ -188,8 +208,10 @@ describe("provider", () => {
       species: "dog",
       approximateAgeMonths: 21,
       status: "available",
-      images: [{ rights: "display-permitted" }],
+      images: [{ rights: "cache-permitted" }],
     });
-    expect(animal).not.toHaveProperty("shortDescription");
+    // Aisha's listing carries no journal, so there is nothing to describe her
+    // with. JSON.stringify drops the key on the way into the dataset.
+    expect(animal.shortDescription).toBeUndefined();
   });
 });

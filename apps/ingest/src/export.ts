@@ -4,6 +4,7 @@ import { PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
 import { cacheImages } from "./cache-images";
 import { loadPolicies, type LoadedPolicy } from "./policies";
+import { normalizeAnimalOrigin } from "./normalize-origin";
 import { providers } from "./registry";
 import { datasetDir } from "./paths";
 
@@ -80,14 +81,18 @@ const client = new PoliteClient({ userAgent: USER_AGENT });
 const crawled = await crawl(client, policies);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
-const seeded = crawled.map((animal) => {
-  const before = previousById.get(animal.id);
-  if (!before) return animal;
-  return {
-    ...animal,
-    source: { ...animal.source, firstSeenAt: before.source.firstSeenAt },
-  };
-});
+// Origin normalization runs on the full list, not per provider, so every
+// animal that reaches the dataset goes through the same cleanup.
+const seeded = crawled
+  .map((animal) => {
+    const before = previousById.get(animal.id);
+    if (!before) return animal;
+    return {
+      ...animal,
+      source: { ...animal.source, firstSeenAt: before.source.firstSeenAt },
+    };
+  })
+  .map(normalizeAnimalOrigin);
 
 // Cache permitted photos before the dataset is written so cachedUrl ships
 // with it; the same sync deletes copies that fell out of the dataset.

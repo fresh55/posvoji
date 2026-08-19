@@ -6,6 +6,7 @@ import { cacheImages } from "./cache-images";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import { providers } from "./registry";
+import { writeShareCards } from "./share-cards";
 import { datasetDir } from "./paths";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
@@ -140,6 +141,16 @@ console.log(
 
 const currentIds = new Set(animals.map((a) => a.id));
 const generatedAt = new Date().toISOString();
+
+// Share cards are drawn from the cached photos, so they come after the image
+// sync and read the dataset's own build time: an age on a card and the same
+// age on the page are measured from one clock.
+const cards = await writeShareCards(animals, {
+  reference: new Date(generatedAt),
+});
+console.log(
+  `share cards: ${cards.written} drawn, ${cards.reused} reused, ${cards.deleted} deleted`,
+);
 
 const changes: ChangeSet = {
   generatedAt,

@@ -19,3 +19,19 @@ export const cachedImagesDir = join(
   "animals",
 );
 export const imageCacheManifestPath = join(datasetDir, "image-cache.json");
+
+// Share cards live beside the cached photos: same public dir, same
+// gitignore, same "shelter content is not repository content" rule.
+export const shareCardsDir = join(
+  repoRoot,
+  "apps",
+  "web",
+  "public",
+  "media",
+  "share",
+);
+export const shareCardManifestPath = join(datasetDir, "share-cards.json");
+
+// Inter is vendored rather than taken from the system: sharp resolves fonts
+// through fontconfig, and a CI runner has no reason to have Inter installed.
+export const fontsDir = join(here, "..", "assets", "fonts");

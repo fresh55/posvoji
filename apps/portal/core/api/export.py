@@ -17,10 +17,6 @@ from ..security import export_token_auth
 router = Router()
 
 
-def iso_utc_now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
 def iso_utc(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -31,6 +27,9 @@ def iso_utc(value: datetime) -> str:
 # baseline value is null still carries that null.
 @router.get("/export", auth=export_token_auth, response=ExportOut, exclude_none=True)
 def export_overrides(request):
+    # Not a repeat of the authenticator's check. With no token configured the
+    # authenticator lets every caller through precisely so this answers 503,
+    # which is what tells the pipeline the portal has no feed yet.
     if not settings.PORTAL_EXPORT_TOKEN:
         raise HttpError(503, "export is not configured")
 
@@ -56,4 +55,4 @@ def export_overrides(request):
         if override.baseline_at is not None:
             entry["recordedAt"] = iso_utc(override.baseline_at)
         overrides.append(entry)
-    return {"generatedAt": iso_utc_now(), "overrides": overrides}
+    return {"generatedAt": iso_utc(datetime.now(UTC)), "overrides": overrides}

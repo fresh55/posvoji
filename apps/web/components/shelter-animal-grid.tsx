@@ -1,23 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalCard } from "@/components/animal-card";
-import {
-  AnimalDialog,
-  type DialogOrigin,
-} from "@/components/animal-dialog/animal-dialog";
+import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
-import { useAnimalDialog } from "@/hooks/use-animal-dialog";
+import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
+import { CARD_GRID } from "@/lib/card-grid";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 
-// Same target-width grid as the home page's AnimalGrid, reproduced rather
-// than imported: a shelter page needs the cards and the animal dialog, not
-// the species tabs, filter sidebar or clear-filters trail that come with it.
-const CARD_GRID =
-  "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
-
+// The cards, the grid and the dialog wiring are the home page's; the species
+// tabs, filter sidebar and clear-filters trail that come with AnimalGrid are
+// not what a shelter page asks for.
 export function ShelterAnimalGrid({
   animals,
   logoIds,
@@ -34,12 +29,6 @@ export function ShelterAnimalGrid({
   basePath: string;
 }) {
   const { locale } = useI18n();
-  // Remembered with the animal it belongs to, so a step through the list, a
-  // close, or a forward-button reopen never grows out of a stale card.
-  const [zoomFrom, setZoomFrom] = useState<
-    { id: string; at: DialogOrigin } | undefined
-  >();
-  const { openId, open, swap, close } = useAnimalDialog({ animals, basePath });
 
   // One Date per mount keeps ages stable across re-renders, same as the home
   // page grid.
@@ -49,33 +38,10 @@ export function ShelterAnimalGrid({
     () => sortAnimals(animals, DEFAULT_ANIMAL_SORT, locale, now),
     [animals, locale, now],
   );
-  const selected = useMemo(
-    () => animals.find((animal) => animal.id === openId),
-    [animals, openId],
-  );
-
-  // An id no animal on this page answers to is a URL to clean up, not an
-  // error to throw in front of the visitor.
-  useEffect(() => {
-    if (openId && !selected) close();
-  }, [close, openId, selected]);
-
-  const handleOpen = useCallback(
-    (id: string, at?: DialogOrigin) => {
-      setZoomFrom(at ? { id, at } : undefined);
-      open(id);
-    },
-    [open],
-  );
 
   // The dialog steps through this shelter's animals in the order shown.
-  const shownIds = useMemo(() => sorted.map((animal) => animal.id), [sorted]);
-
-  // The zoom belongs to the card that was clicked, not to a step through the
-  // list, so any other animal grows from the middle instead.
-  const origin = zoomFrom?.id === openId ? zoomFrom.at : undefined;
-
-  const handleNavigate = useCallback((id: string) => swap(id), [swap]);
+  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
+    useAnimalDialogHost({ animals, shown: sorted, basePath });
 
   if (animals.length === 0) {
     return (

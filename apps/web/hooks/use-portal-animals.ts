@@ -9,6 +9,7 @@ import {
   saveAnimal,
   type PortalAnimal,
   type PortalAnimalPatch,
+  type PortalErrorKind,
 } from "@/lib/portal-api";
 
 const SAVED_FLASH_MS = 1800;
@@ -26,21 +27,20 @@ export type PortalSaveState =
 
 const IDLE: PortalSaveState = { status: "idle" };
 
-function listMessage(error: unknown): string {
-  if (error instanceof PortalError) {
-    if (error.kind === "forbidden") return portalText.forbidden;
-    if (error.kind === "network") return portalText.networkError;
-  }
-  return portalText.listError;
-}
+// What each failure says to a shelter. A kind that is not here says only
+// what the caller was doing, which is all a server fault can honestly say.
+const MESSAGES: Partial<Record<PortalErrorKind, string>> = {
+  forbidden: portalText.forbidden,
+  network: portalText.networkError,
+  invalid: portalText.invalidError,
+};
 
-function saveMessage(error: unknown): string {
+function message(error: unknown, fallback: string): string {
   if (error instanceof PortalError) {
-    if (error.kind === "invalid") return portalText.invalidError;
-    if (error.kind === "network") return portalText.networkError;
-    if (error.kind === "forbidden") return portalText.forbidden;
+    const known = MESSAGES[error.kind];
+    if (known) return known;
   }
-  return portalText.saveError;
+  return fallback;
 }
 
 /**
@@ -97,7 +97,10 @@ export function usePortalAnimals(
           return;
         }
         setAnimals([]);
-        setState({ status: "error", message: listMessage(error) });
+        setState({
+          status: "error",
+          message: message(error, portalText.listError),
+        });
       },
     );
 
@@ -133,9 +136,7 @@ export function usePortalAnimals(
         // Replaced in place: re-sorting here would move the card out from
         // under the hand that just tapped it.
         setAnimals((current) =>
-          current.some((animal) => animal.id === saved.id)
-            ? current.map((animal) => (animal.id === saved.id ? saved : animal))
-            : [...current, saved],
+          current.map((animal) => (animal.id === saved.id ? saved : animal)),
         );
         setSaveStates((current) => ({
           ...current,
@@ -150,7 +151,10 @@ export function usePortalAnimals(
         }
         setSaveStates((current) => ({
           ...current,
-          [animalId]: { status: "error", message: saveMessage(error) },
+          [animalId]: {
+            status: "error",
+            message: message(error, portalText.saveError),
+          },
         }));
         return false;
       }

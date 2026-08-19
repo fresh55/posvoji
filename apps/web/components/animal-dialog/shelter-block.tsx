@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { ExternalLink, Heart } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
+import { ShelterAvatar } from "@/components/shelter-avatar";
 import { Button } from "@/components/ui/button";
 
-// Logos are static files, listed at build time, so a shelter without one never
-// costs a 404: it gets an initial-letter avatar instead.
+// The logo-or-initial fallback lives in ShelterAvatar so one place decides it.
 export function ShelterBlock({
   animal,
   logoIds,
@@ -22,22 +21,7 @@ export function ShelterBlock({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
-        {hasLogo ? (
-          <Image
-            src={`/shelter-logos/${shelter.id}.svg`}
-            alt=""
-            width={44}
-            height={44}
-            className="size-11 shrink-0 rounded-ui object-contain"
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="grid size-11 shrink-0 place-items-center rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-base font-medium text-[var(--filter-accent-foreground)]"
-          >
-            {shelter.name.slice(0, 1).toUpperCase()}
-          </span>
-        )}
+        <ShelterAvatar name={shelter.name} id={shelter.id} hasLogo={hasLogo} />
 
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{shelter.name}</p>

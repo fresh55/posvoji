@@ -43,13 +43,22 @@ function isShelterEntry(value: unknown): value is ShelterRegistryEntry {
 // data checked into the repo, not user input, so a shape check stands in for
 // a full schema: entries missing the required fields are dropped rather than
 // guessed at.
+// Cached like the dataset: the registry is checked into the repo and cannot
+// change while pages are being rendered.
+let cached: ShelterRegistryEntry[] | undefined;
+
 export function loadShelters(): ShelterRegistryEntry[] {
-  if (!existsSync(registryPath)) return [];
+  if (cached !== undefined) return cached;
+  if (!existsSync(registryPath)) {
+    cached = [];
+    return cached;
+  }
   const parsed = parse(readFileSync(registryPath, "utf8")) as
     | ShelterRegistryFile
     | undefined;
   const shelters = parsed?.shelters;
-  return Array.isArray(shelters) ? shelters.filter(isShelterEntry) : [];
+  cached = Array.isArray(shelters) ? shelters.filter(isShelterEntry) : [];
+  return cached;
 }
 
 export function getShelterBySlug(slug: string): ShelterRegistryEntry | undefined {

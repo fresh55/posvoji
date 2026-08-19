@@ -8,8 +8,6 @@ from ninja.errors import HttpError
 
 from .models import Shelter, ShelterMembership
 
-UNCONFIGURED_EXPORT = "export-not-configured"
-
 
 def session_auth(request: HttpRequest):
     """Session cookie auth. Returning None makes django-ninja answer 401."""
@@ -23,11 +21,12 @@ def export_token_auth(request: HttpRequest):
     """Bearer token auth for the ingest pipeline.
 
     With no token configured every caller is let through so the view can
-    answer 503; a configured token is compared in constant time.
+    answer 503 instead of 401; a configured token is compared in constant
+    time. The principal is only ever read as "authenticated", never compared.
     """
     configured = settings.PORTAL_EXPORT_TOKEN
     if not configured:
-        return UNCONFIGURED_EXPORT
+        return "unconfigured"
 
     scheme, _, token = request.headers.get("Authorization", "").partition(" ")
     if scheme.lower() != "bearer" or not token:

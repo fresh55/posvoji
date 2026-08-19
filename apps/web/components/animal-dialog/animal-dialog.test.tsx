@@ -124,6 +124,14 @@ function animalDialog() {
   return screen.getAllByRole("dialog")[0] as HTMLElement;
 }
 
+// The wash is told which photo to show from an effect, so it is empty for the
+// first render and every check on it has to be waited for.
+function washImage(dialog: HTMLElement) {
+  const img = slot(dialog, "photo-wash").querySelector("img");
+  if (!(img instanceof HTMLImageElement)) throw new Error("no wash image yet");
+  return img;
+}
+
 // jsdom has no PointerEvent, and the Event it falls back to drops clientY and
 // pointerType, so the gesture is built on MouseEvent by hand. React listens by
 // event name, so the pointer handlers still receive these. Pointer capture is
@@ -359,6 +367,54 @@ describe("animal dialog", () => {
       .toBe("true");
     expect(region(dialog, "photo-spread").getByText("Fotografija 2 od 2"))
       .toBeTruthy();
+  });
+
+  // The fan is remounted per animal so its photos start over. A wash inside it
+  // would go out with the old animal and come back from nothing, so it is
+  // mounted above the fan and only told which photo is on show.
+  it("keeps the wash outside the fan and follows the photo on show", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(slot(dialog, "photo-spread").contains(slot(dialog, "photo-wash")))
+      .toBe(false);
+    await waitFor(() =>
+      expect(washImage(dialog).getAttribute("src")).toContain("rex-1"),
+    );
+
+    fireEvent.click(photoButton(dialog, "photo-spread", 2));
+
+    await waitFor(() =>
+      expect(washImage(dialog).getAttribute("src")).toContain("rex-2"),
+    );
+  });
+
+  // A link straight to an animal has no card to grow out of, so the dialog
+  // falls back to the zoom it always had rather than flying a photo in from
+  // nowhere.
+  it("carries no photo across when the dialog was opened by link", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(dialog).toBeTruthy();
+    expect(document.querySelector('[data-slot="photo-bloom"]')).toBeNull();
+  });
+
+  it("drains the wash for an animal whose adoption is over", async () => {
+    const settled = animal("lucky", "Lucky", {
+      status: "adopted",
+      images: photos("lucky", 1),
+    });
+    window.history.replaceState(null, "", "/?zival=lucky");
+    renderGrid([settled]);
+    const dialog = await screen.findByRole("dialog");
+
+    await waitFor(() => expect(washImage(dialog)).toBeTruthy());
+    const tone = washImage(dialog).getAttribute("class") ?? "";
+    expect(tone).toContain("saturate-[110%]");
+    expect(tone).not.toContain("saturate-[440%]");
   });
 
   it("steps to the next animal without stacking history", async () => {

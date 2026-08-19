@@ -2,7 +2,20 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Dark mode arrives through the media query below, which swaps tokens without
+   ever setting a .dark class. The variant has to follow the same rule, or every
+   dark: utility silently never fires. The .dark branch is kept so the class
+   block at line 127 still works if a toggle is ever added. */
+@custom-variant dark {
+  &:is(.dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:is(:root:not(.light) *) {
+      @slot;
+    }
+  }
+}
 
 /* Keep the page frame, vertical bands, and desktop columns independent. They
    grow with the viewport, but changing one relationship must not loosen every

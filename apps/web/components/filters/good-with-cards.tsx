@@ -1,38 +1,23 @@
 "use client";
 
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useEffect, useState, type ReactElement } from "react";
-import { AgeGrowthControl } from "@/components/filters/age-growth-control";
-import { EnergyCards } from "@/components/filters/energy-cards";
-import type { FilterActionContract } from "@/components/filters/filter-contract";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
+import { useEffect, useState } from "react";
 import {
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
-import {
-  GoodWithCards,
-  type GoodWithOption,
-} from "@/components/filters/good-with-cards";
-import { SexCards } from "@/components/filters/sex-cards";
-import { SizePawCards } from "@/components/filters/size-paw-cards";
+import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import {
   useFilterCardHover,
   useOneShotCelebration,
 } from "@/components/filters/use-filter-motion";
-import {
-  groupLabel,
-  type FilterOption,
-  type Filters,
-  type GoodWithKey,
-  type MultiGroup,
-  type ToggleDef,
-  type ToggleKey,
-} from "@/lib/filters";
 import { useI18n } from "@/components/i18n-provider";
-import { HEALTH_ICONS } from "@/lib/animal-icons";
+import { GOOD_WITH_ICONS } from "@/lib/animal-icons";
+import type { GoodWithKey } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+
+export type GoodWithOption = { key: GoodWithKey; label: string };
 
 type IconGesture = {
   rotate: number | number[];
@@ -43,15 +28,12 @@ type IconGesture = {
 
 const GESTURE_REST: IconGesture = { rotate: 0, scale: 1, x: 0, y: 0 };
 
-// Each icon acts out the thing it stands for, once, as it is switched on.
-const HEALTH_GESTURES: Record<ToggleKey, IconGesture> = {
-  sterilizacija: { rotate: [0, -8, 5, 0], scale: 1, x: 0, y: 0 },
-  // The lucide syringe carries its needle at the bottom left and its plunger at
-  // the top right, so the press runs down that diagonal.
-  cepljenje: { rotate: 0, scale: 1, x: [0, -1.2, 0], y: [0, 1.2, 0] },
-  cip: { rotate: 0, scale: [1, 1.12, 1], x: 0, y: 0 },
-  "brez-fiv": { rotate: 0, scale: [1, 1.1, 1], x: 0, y: 0 },
-  "brez-felv": { rotate: [0, -6, 4, 0], scale: 1, x: 0, y: 0 },
+// Each icon acts out its own answer once, as it is switched on: the child
+// bounces, the dog wags, the cat flicks an ear.
+const GOOD_WITH_GESTURES: Record<GoodWithKey, IconGesture> = {
+  kids: { rotate: 0, scale: [1, 1.06, 1], x: 0, y: [0, -2.5, 0.5, 0] },
+  dogs: { rotate: [0, -7, 6, 0], scale: 1, x: 0, y: 0 },
+  cats: { rotate: [0, 7, -2, 0], scale: 1, x: [0, 1, 0], y: 0 },
 };
 
 const HOVER_SPRING = {
@@ -69,45 +51,25 @@ const RIPPLE_DURATION = 0.35;
 const RESET_STAGGER = 0.045;
 const RESET_CLEAR_MS = 280;
 
-type GroupProps = {
-  group: CardGroup;
-  ageLayout: "sidebar" | "sheet";
-  options: FilterOption[];
-  counts: Map<string, number>;
-  selected: string[];
-  onToggle: (value: string) => void;
-  onToggleMany: (values: string[]) => void;
-};
-
-export type CardGroup = Exclude<MultiGroup, "shelter">;
-
-/** Everything the Družba section needs, absent while no facet has data. */
-export type GoodWithSection = {
-  options: GoodWithOption[];
-  counts: Map<string, number>;
-  onToggle: (key: GoodWithKey) => void;
-  onToggleMany: (values: GoodWithKey[]) => void;
-};
-
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
 function isDead(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
-function HealthToggleCards({
-  toggles,
+export function GoodWithCards({
+  options,
   counts,
   selected,
   onToggle,
   onToggleMany,
   layout = "sidebar",
 }: {
-  toggles: ToggleDef[];
+  options: GoodWithOption[];
   counts: Map<string, number>;
-  selected: ToggleKey[];
-  onToggle: (key: ToggleKey) => void;
-  onToggleMany: (values: ToggleKey[]) => void;
+  selected: GoodWithKey[];
+  onToggle: (key: GoodWithKey) => void;
+  onToggleMany: (values: GoodWithKey[]) => void;
   layout?: "sidebar" | "sheet";
 }) {
   const { locale, messages } = useI18n();
@@ -116,7 +78,7 @@ function HealthToggleCards({
     celebration,
     celebrate,
     clear: clearCelebration,
-  } = useOneShotCelebration<ToggleKey>(GESTURE_MS);
+  } = useOneShotCelebration<GoodWithKey>(GESTURE_MS);
   const [isResetting, setIsResetting] = useState(false);
   const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
     useFilterCardHover();
@@ -130,20 +92,24 @@ function HealthToggleCards({
     return () => window.clearTimeout(timer);
   }, [isResetting, selected.length]);
 
+  const celebrationIndex = options.findIndex(
+    ({ key }) => key === celebration?.value,
+  );
+
   return (
     <section>
       <FilterSectionHeader
-        label={messages.health}
+        label={messages.goodWith}
         active={selected.length > 0}
         onReset={() => {
           clearCelebration();
           setIsResetting(true);
           onToggleMany(selected);
         }}
-        resetAriaLabel={messages.resetHealthFilters}
+        resetAriaLabel={messages.resetGoodWithFilters}
       />
       <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-        {messages.healthFilterHint}
+        {messages.goodWithFilterHint}
       </p>
       <LazyMotion features={domAnimation}>
         <div
@@ -152,12 +118,15 @@ function HealthToggleCards({
             layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
           )}
         >
-          {toggles.map(({ key, label }, index) => {
+          {options.map(({ key, label }, index) => {
             const count = counts.get(key) ?? 0;
             const checked = selected.includes(key);
-            const Icon = HEALTH_ICONS[key];
+            const Icon = GOOD_WITH_ICONS[key];
             const hovered = hoveredKey === key;
             const celebrating = celebration?.value === key && checked;
+            // The card that did not change leans away from the one that did.
+            const reacting = celebrationIndex >= 0 && !celebrating;
+            const tiltDirection = Math.sign(index - celebrationIndex) || 1;
 
             return (
               <button
@@ -253,14 +222,25 @@ function HealthToggleCards({
                       className="flex items-center justify-center"
                       initial={false}
                       animate={
-                        celebrating && !shouldReduceMotion
-                          ? HEALTH_GESTURES[key]
-                          : GESTURE_REST
+                        shouldReduceMotion
+                          ? GESTURE_REST
+                          : celebrating
+                            ? GOOD_WITH_GESTURES[key]
+                            : reacting
+                              ? {
+                                  rotate: [0, tiltDirection * 2.5, 0],
+                                  scale: 1,
+                                  x: 0,
+                                  y: 0,
+                                }
+                              : GESTURE_REST
                       }
                       transition={
                         celebrating && !shouldReduceMotion
                           ? { duration: GESTURE_DURATION, ease: "easeOut" }
-                          : { duration: 0.16 }
+                          : reacting && !shouldReduceMotion
+                            ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                            : { duration: 0.16 }
                       }
                     >
                       <Icon
@@ -308,186 +288,5 @@ function HealthToggleCards({
         </div>
       </LazyMotion>
     </section>
-  );
-}
-
-function SizeGroup({
-  options,
-  counts,
-  selected,
-  onToggle,
-  onToggleMany,
-}: Omit<GroupProps, "group" | "ageLayout">) {
-  const { locale, messages } = useI18n();
-  const [isResetting, setIsResetting] = useState(false);
-
-  useEffect(() => {
-    if (!isResetting || selected.length > 0) return;
-    const timer = window.setTimeout(
-      () => setIsResetting(false),
-      RESET_CLEAR_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [isResetting, selected.length]);
-
-  return (
-    <section>
-      <FilterSectionHeader
-        label={groupLabel("size", locale)}
-        active={selected.length > 0}
-        onReset={() => {
-          setIsResetting(true);
-          onToggleMany(selected);
-        }}
-        resetAriaLabel={messages.resetSizeFilters}
-      />
-      <SizePawCards
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={onToggle}
-        isResetting={isResetting}
-      />
-    </section>
-  );
-}
-
-function SexGroup({
-  options,
-  counts,
-  selected,
-  onToggle,
-  onToggleMany,
-}: Omit<GroupProps, "group" | "ageLayout">) {
-  const { locale, messages } = useI18n();
-
-  return (
-    <section>
-      <FilterSectionHeader
-        label={groupLabel("sex", locale)}
-        active={selected.length > 0}
-        onReset={() => onToggleMany(selected)}
-        resetAriaLabel={messages.resetSexFilters}
-      />
-      <SexCards
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={onToggle}
-      />
-    </section>
-  );
-}
-
-// Every group names its own renderer. The declared return type is what makes a
-// new CardGroup fail to compile here rather than inherit whichever branch
-// happens to be last.
-function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
-  switch (group) {
-    case "age":
-      return (
-        <AgeGrowthControl
-          options={rest.options}
-          counts={rest.counts}
-          selected={rest.selected}
-          onToggle={rest.onToggle}
-          onToggleMany={rest.onToggleMany}
-          layout={rest.ageLayout}
-        />
-      );
-    case "sex":
-      return (
-        <SexGroup
-          options={rest.options}
-          counts={rest.counts}
-          selected={rest.selected}
-          onToggle={rest.onToggle}
-          onToggleMany={rest.onToggleMany}
-        />
-      );
-    case "size":
-      return (
-        <SizeGroup
-          options={rest.options}
-          counts={rest.counts}
-          selected={rest.selected}
-          onToggle={rest.onToggle}
-          onToggleMany={rest.onToggleMany}
-        />
-      );
-    case "energy":
-      return (
-        <EnergyCards
-          options={rest.options}
-          counts={rest.counts}
-          selected={rest.selected}
-          onToggle={rest.onToggle}
-          onToggleMany={rest.onToggleMany}
-          layout={rest.ageLayout}
-        />
-      );
-  }
-}
-
-// The desktop sidebar and the mobile sheet frame these differently but show the
-// same controls, so the list lives here and each frame supplies only its chrome.
-export function FilterGroupList({
-  filters,
-  groups,
-  counts,
-  toggles,
-  toggleTally,
-  goodWith,
-  onToggle,
-  onToggleMany,
-  onToggleProperty,
-  onToggleManyProperties,
-  ageLayout = "sidebar",
-}: {
-  filters: Filters;
-  groups: { group: CardGroup; options: FilterOption[] }[];
-  counts: Record<MultiGroup, Map<string, number>>;
-  toggles: ToggleDef[];
-  toggleTally: Map<string, number>;
-  goodWith?: GoodWithSection;
-  ageLayout?: "sidebar" | "sheet";
-} & FilterActionContract) {
-  return (
-    <>
-      {groups.map(({ group, options }) => (
-        <FilterGroup
-          key={group}
-          group={group}
-          ageLayout={ageLayout}
-          options={options}
-          counts={counts[group]}
-          selected={filters[group]}
-          onToggle={(value) => onToggle(group, value)}
-          onToggleMany={(values) => onToggleMany(group, values)}
-        />
-      ))}
-
-      {toggles.length > 0 && (
-        <HealthToggleCards
-          toggles={toggles}
-          counts={toggleTally}
-          selected={filters.toggles}
-          onToggle={onToggleProperty}
-          onToggleMany={onToggleManyProperties}
-          layout={ageLayout}
-        />
-      )}
-
-      {goodWith && goodWith.options.length > 0 && (
-        <GoodWithCards
-          options={goodWith.options}
-          counts={goodWith.counts}
-          selected={filters.goodWith}
-          onToggle={goodWith.onToggle}
-          onToggleMany={goodWith.onToggleMany}
-          layout={ageLayout}
-        />
-      )}
-    </>
   );
 }

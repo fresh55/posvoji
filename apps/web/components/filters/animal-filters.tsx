@@ -3,7 +3,10 @@
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
-import type { CardGroup } from "@/components/filters/filter-groups";
+import type {
+  CardGroup,
+  GoodWithSection,
+} from "@/components/filters/filter-groups";
 import { FilterSheet } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
@@ -30,6 +33,7 @@ export function AnimalFilters({
   counts,
   toggles,
   toggleTally,
+  goodWith,
   shelters,
   shelterTally,
   chips,
@@ -51,6 +55,7 @@ export function AnimalFilters({
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
+  goodWith?: GoodWithSection;
   /** Absent when the dataset has nothing to choose between. */
   shelters: FilterOption[] | undefined;
   shelterTally: Map<string, number>;
@@ -63,7 +68,10 @@ export function AnimalFilters({
   onSortChange: (sort: AnimalSort) => void;
 } & FilterActionContract) {
   const { locale } = useI18n();
-  const hasFilterSheet = groups.length > 0 || toggles.length > 0;
+  const hasFilterSheet =
+    groups.length > 0 ||
+    toggles.length > 0 ||
+    (goodWith?.options.length ?? 0) > 0;
   const activeSectionCount = activeFilterSectionCount(filters);
 
   return (
@@ -101,6 +109,8 @@ export function AnimalFilters({
                   selected={filters.shelter}
                   onToggle={(value) => onToggle("shelter", value)}
                   onToggleMany={(values) => onToggleMany("shelter", values)}
+                  resultCount={resultCount}
+                  species={filters.species}
                 />
               </div>
             )}
@@ -147,6 +157,7 @@ export function AnimalFilters({
               speciesTally={speciesTally}
               toggles={toggles}
               toggleTally={toggleTally}
+              goodWith={goodWith}
               activeSectionCount={activeSectionCount}
               resultCount={resultCount}
               onToggle={onToggle}
@@ -165,6 +176,8 @@ export function AnimalFilters({
                 selected={filters.shelter}
                 onToggle={(value) => onToggle("shelter", value)}
                 onToggleMany={(values) => onToggleMany("shelter", values)}
+                resultCount={resultCount}
+                species={filters.species}
               />
             </div>
           )}

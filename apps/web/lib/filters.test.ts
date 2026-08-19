@@ -6,11 +6,14 @@ import {
   applyFilters,
   bySpecies,
   EMPTY_FILTERS,
+  facetCounts,
+  goodWithCounts,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
   toggleCounts,
   toggleValues,
+  visibleGoodWith,
   visibleGroups,
   visibleToggles,
   type Filters,
@@ -71,6 +74,32 @@ describe("visibleGroups", () => {
     expect(visibleGroups(bySpecies(animals, "all"), "all", NOW).sex).toBe(true);
     expect(visibleGroups(bySpecies(animals, "cat"), "cat", NOW).sex).toBe(false);
   });
+
+  it("hides energija with fewer than two distinct values in the pool", () => {
+    expect(visibleGroups([animal("dog")], "all", NOW).energy).toBe(false);
+
+    const oneValue = [
+      animal("dog", { energy: "calm" }),
+      animal("dog", { energy: "calm" }),
+    ];
+    expect(visibleGroups(oneValue, "all", NOW).energy).toBe(false);
+  });
+
+  it("shows energija once the pool has two distinct values", () => {
+    const animals = [
+      animal("dog", { energy: "calm" }),
+      animal("dog", { energy: "lively" }),
+    ];
+    expect(visibleGroups(animals, "all", NOW).energy).toBe(true);
+  });
+
+  it("keeps energija on the cat tab, unlike velikost", () => {
+    const cats = [
+      animal("cat", { energy: "calm" }),
+      animal("cat", { energy: "lively" }),
+    ];
+    expect(visibleGroups(cats, "cat", NOW).energy).toBe(true);
+  });
 });
 
 describe("visibleToggles", () => {
@@ -97,6 +126,29 @@ describe("visibleToggles", () => {
     expect(matches("positive")).toBe(false);
     expect(matches("unknown")).toBe(false);
     expect(matches(undefined)).toBe(false);
+  });
+});
+
+describe("visibleGoodWith", () => {
+  it("offers a facet only once it can narrow the list", () => {
+    const animals = [
+      animal("dog", { goodWith: { kids: "yes", dogs: "yes" } }),
+      animal("dog", { goodWith: { kids: "no", dogs: "yes" } }),
+    ];
+    // Every animal is good with dogs, so that facet would change nothing.
+    expect(visibleGoodWith(animals)).toEqual(["kids"]);
+  });
+
+  it("stays away while nothing has been answered", () => {
+    expect(visibleGoodWith([animal("dog"), animal("cat")])).toEqual([]);
+  });
+
+  it("asks the same three questions of dogs and cats alike", () => {
+    const animals = [
+      animal("cat", { goodWith: { cats: "yes" } }),
+      animal("dog", { goodWith: { cats: "no" } }),
+    ];
+    expect(visibleGoodWith(animals)).toEqual(["cats"]);
   });
 });
 
@@ -139,6 +191,15 @@ describe("pruneHiddenFilters", () => {
     expect(pruned.toggles).toEqual(["cepljenje"]);
   });
 
+  it("keeps the družba selection across a species change", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      species: "dog",
+      goodWith: ["kids", "cats"],
+    });
+    expect(pruned.goodWith).toEqual(["kids", "cats"]);
+  });
+
   it("leaves the cat tab holding its own toggles", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
@@ -146,6 +207,15 @@ describe("pruneHiddenFilters", () => {
       toggles: ["brez-fiv"],
     });
     expect(pruned.toggles).toEqual(["brez-fiv"]);
+  });
+
+  it("keeps an energija selection across a switch to the cat tab", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      species: "cat",
+      energy: ["calm", "lively"],
+    });
+    expect(pruned.energy).toEqual(["calm", "lively"]);
   });
 });
 
@@ -171,6 +241,23 @@ describe("URL codec", () => {
     expect(parseFilters(query)).toEqual(filters);
   });
 
+  it("round-trips the družba selection under its own param", () => {
+    const filters: Filters = {
+      ...EMPTY_FILTERS,
+      goodWith: ["kids", "dogs", "cats"],
+    };
+    const query = serializeFilters(filters);
+    expect(query).toBe("druzba=otroci,psi,macke");
+    expect(parseFilters(query)).toEqual(filters);
+  });
+
+  it("drops an unknown družba slug rather than breaking the link", () => {
+    const filters = parseFilters("druzba=otroci,ptice");
+    expect(filters.goodWith).toEqual(["kids"]);
+    expect(activeFilterCount(filters)).toBe(1);
+    expect(serializeFilters(filters)).toBe("druzba=otroci");
+  });
+
   it("degrades a stale cat-only toggle carried onto the dog tab", () => {
     const filters = parseFilters(
       "vrsta=pes&velikost=majhna&lastnosti=cip,brez-fiv",
@@ -188,6 +275,23 @@ describe("URL codec", () => {
     expect(activeFilterCount(filters)).toBe(1);
     expect(serializeFilters(filters)).toBe("vrsta=macka&spol=samica");
   });
+
+  it("round-trips an energija selection under its own param", () => {
+    const filters: Filters = {
+      ...EMPTY_FILTERS,
+      energy: ["calm", "lively"],
+    };
+    const query = serializeFilters(filters);
+    expect(query).toBe("energija=miren,zivahen");
+    expect(parseFilters(query)).toEqual(filters);
+  });
+
+  it("drops an unknown energija slug rather than breaking the link", () => {
+    const filters = parseFilters("energija=hiper");
+    expect(filters.energy).toEqual([]);
+    expect(activeFilterCount(filters)).toBe(0);
+    expect(serializeFilters(filters)).toBe("");
+  });
 });
 
 describe("active filter section count", () => {
@@ -202,6 +306,16 @@ describe("active filter section count", () => {
         toggles: ["cepljenje", "sterilizacija"],
       }),
     ).toBe(4);
+  });
+
+  it("counts družba as one more section", () => {
+    expect(
+      activeFilterSectionCount({
+        ...EMPTY_FILTERS,
+        toggles: ["cepljenje"],
+        goodWith: ["kids", "dogs"],
+      }),
+    ).toBe(2);
   });
 
   it("does not count the species tab or empty sections", () => {
@@ -264,6 +378,76 @@ describe("multi-select behavior", () => {
     ).toEqual([vaccinated, neutered, both]);
   });
 
+  it("keeps only a recorded yes within družba", () => {
+    const yes = animal("dog", { goodWith: { kids: "yes" } });
+    const maybe = animal("dog", { goodWith: { kids: "unknown" } });
+    const no = animal("dog", { goodWith: { kids: "no" } });
+    const silent = animal("dog");
+
+    expect(
+      applyFilters(
+        [yes, maybe, no, silent],
+        { ...EMPTY_FILTERS, goodWith: ["kids"] },
+        NOW,
+      ),
+    ).toEqual([yes]);
+  });
+
+  // A household with a child and a dog needs both answered, so this section
+  // narrows where the others widen.
+  it("uses AND for choices within družba, unlike every other section", () => {
+    const both = animal("dog", { goodWith: { kids: "yes", cats: "yes" } });
+    const kidsOnly = animal("dog", { goodWith: { kids: "yes", cats: "no" } });
+    const catsOnly = animal("dog", { goodWith: { cats: "yes" } });
+
+    expect(
+      applyFilters(
+        [both, kidsOnly, catsOnly],
+        { ...EMPTY_FILTERS, goodWith: ["kids", "cats"] },
+        NOW,
+      ),
+    ).toEqual([both]);
+  });
+
+  it("counts each družba choice as what picking it would leave", () => {
+    const kids = animal("dog", { goodWith: { kids: "yes" } });
+    const cats = animal("dog", { goodWith: { cats: "yes" } });
+    const counts = goodWithCounts([kids, cats], EMPTY_FILTERS, NOW);
+
+    expect(counts.get("kids")).toBe(1);
+    expect(counts.get("cats")).toBe(1);
+    expect(counts.get("dogs")).toBe(0);
+  });
+
+  // With kids already on, "Mačke" promises what both facets leave, not what
+  // mačke alone would find.
+  it("measures a družba choice on top of the ones already selected", () => {
+    const both = animal("dog", { goodWith: { kids: "yes", cats: "yes" } });
+    const kidsOnly = animal("dog", { goodWith: { kids: "yes" } });
+    const catsOnly = animal("dog", { goodWith: { cats: "yes" } });
+    const counts = goodWithCounts(
+      [both, kidsOnly, catsOnly],
+      { ...EMPTY_FILTERS, goodWith: ["kids"] },
+      NOW,
+    );
+
+    expect(counts.get("cats")).toBe(1);
+    // Its own count drops off the selection, so unchecking is still priced.
+    expect(counts.get("kids")).toBe(2);
+  });
+
+  it("still narrows the družba tally by the other sections", () => {
+    const dog = animal("dog", { goodWith: { kids: "yes" } });
+    const cat = animal("cat", { goodWith: { kids: "yes" } });
+    const counts = goodWithCounts(
+      [dog, cat],
+      { ...EMPTY_FILTERS, species: "cat" },
+      NOW,
+    );
+
+    expect(counts.get("kids")).toBe(1);
+  });
+
   it("counts each health choice independently of selected health choices", () => {
     const vaccinated = animal("dog", { medical: { vaccinated: true } });
     const neutered = animal("dog", { medical: { neutered: true } });
@@ -275,6 +459,37 @@ describe("multi-select behavior", () => {
 
     expect(counts.get("cepljenje")).toBe(1);
     expect(counts.get("sterilizacija")).toBe(1);
+  });
+
+  it("uses OR for choices within energija and leaves field-less animals out once selected", () => {
+    const calm = animal("dog", { energy: "calm" });
+    const lively = animal("dog", { energy: "lively" });
+    const noAnswer = animal("dog");
+
+    expect(
+      applyFilters([calm, lively, noAnswer], EMPTY_FILTERS, NOW),
+    ).toEqual([calm, lively, noAnswer]);
+
+    expect(
+      applyFilters(
+        [calm, lively, noAnswer],
+        { ...EMPTY_FILTERS, energy: ["calm"] },
+        NOW,
+      ),
+    ).toEqual([calm]);
+  });
+
+  it("skips itself when counting energija, so a selected value still counts the rest", () => {
+    const calm = animal("dog", { energy: "calm" });
+    const lively = animal("dog", { energy: "lively" });
+    const counts = facetCounts(
+      [calm, lively],
+      { ...EMPTY_FILTERS, energy: ["calm"] },
+      NOW,
+    );
+
+    expect(counts.energy.get("calm")).toBe(1);
+    expect(counts.energy.get("lively")).toBe(1);
   });
 });
 

@@ -20,9 +20,34 @@ export type Town = {
   shelters: ShelterPin[];
 };
 
-// Counts belong in the tooltip and list, not in marker size.
-const MARKER_RADIUS = 5.75;
+// A marker carries its town's animal count in its area, so the radius follows
+// the square root of the count. The range is deliberately tight: the biggest
+// town holds an order of magnitude more animals than the smallest, and a radius
+// range to match would bury half the country under one dot.
+const MIN_MARKER_RADIUS = 5;
+const MAX_MARKER_RADIUS = 8;
 export const MARKER_STROKE_WIDTH = 0.9;
+
+// Density steps for the region fills, as foreground alpha. Spaced so each step
+// clears 1.25:1 against its neighbour; the old 14-30% ramp in 4% steps sat at
+// 1.09:1, which is no step at all. The legend swatches read the same array, so
+// the two cannot drift apart.
+export const DENSITY_STEPS = [0.08, 0.18, 0.28, 0.36, 0.45] as const;
+
+// Rank binning, not fixed count thresholds. Two shelters hold most of the
+// animals in the country, so cutoffs at 10/25/50/100 dropped every other region
+// into the same bin. Regions with equal totals get equal steps, and a region
+// with no animals but a selected shelter lands on the lowest step by having the
+// lowest total.
+export function densityScale(totals: number[]): (total: number) => number {
+  const unique = [...new Set(totals)].sort((a, b) => a - b);
+  const span = DENSITY_STEPS.length - 1;
+  return (total) => {
+    const rank = unique.indexOf(total);
+    if (rank < 0 || unique.length < 2) return 0;
+    return Math.round((rank * span) / (unique.length - 1));
+  };
+}
 
 // Clear water between two markers, so touching circles still read as two.
 const PIN_GAP = 1.5;
@@ -39,14 +64,22 @@ function clamp(value: number, low: number, high: number): number {
 
 type Placed = Town & { homeX: number; homeY: number };
 
-// Keep collision adjustment within MAX_DRIFT of the real town.
+// How far a marker may be nudged off its town. A larger marker gets the extra
+// room its own radius costs its neighbours, otherwise two towns on the same
+// point can never be pushed far enough apart to read as two.
+export function driftBudget(radius: number): number {
+  return MAX_DRIFT + (radius - MIN_MARKER_RADIUS);
+}
+
+// Keep collision adjustment within the drift budget of the real town.
 function leash(town: Placed): void {
   const dx = town.x - town.homeX;
   const dy = town.y - town.homeY;
   const drift = Math.hypot(dx, dy);
-  if (drift > MAX_DRIFT) {
-    town.x = town.homeX + (dx / drift) * MAX_DRIFT;
-    town.y = town.homeY + (dy / drift) * MAX_DRIFT;
+  const budget = driftBudget(town.r);
+  if (drift > budget) {
+    town.x = town.homeX + (dx / drift) * budget;
+    town.y = town.homeY + (dy / drift) * budget;
   }
   town.x = clamp(town.x, EDGE_MARGIN + town.r, MAP_WIDTH - EDGE_MARGIN - town.r);
   town.y = clamp(
@@ -101,6 +134,14 @@ function sizeTargets(towns: Placed[]): void {
   }
 }
 
+// Sized before collision layout runs, so relax() protects the radius a town
+// actually gets rather than a placeholder.
+function markerRadius(total: number, busiest: number): number {
+  if (total <= 0 || busiest <= 0) return MIN_MARKER_RADIUS;
+  const share = Math.sqrt(total) / Math.sqrt(busiest);
+  return MIN_MARKER_RADIUS + (MAX_MARKER_RADIUS - MIN_MARKER_RADIUS) * share;
+}
+
 export function layoutTowns(pins: ShelterPin[]): Town[] {
   // Grouped by town name, not by coordinate. Two shelters in Ljubljana share a
   // marker; two different towns that round to the same point stay two markers
@@ -110,6 +151,14 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
     const key = cityKey(pin.city);
     grouped.set(key, [...(grouped.get(key) ?? []), pin]);
   }
+
+  const totals = new Map(
+    [...grouped.entries()].map(([key, together]) => [
+      key,
+      together.reduce((sum, pin) => sum + pin.count, 0),
+    ]),
+  );
+  const busiest = Math.max(0, ...totals.values());
 
   // Sorted by town and by shelter name, never by the order the rows arrived in.
   // The list above this reorders itself by distance once a location arrives,
@@ -122,6 +171,7 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
         a.label.localeCompare(b.label, "sl"),
       );
       const { x, y } = project(shelters[0].at);
+      const r = markerRadius(totals.get(key) ?? 0, busiest);
       return {
         key,
         city: shelters[0].city,
@@ -129,8 +179,8 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
         y,
         homeX: x,
         homeY: y,
-        r: MARKER_RADIUS,
-        hitR: MARKER_RADIUS,
+        r,
+        hitR: r,
         shelters,
       };
     });
@@ -159,24 +209,68 @@ export function townLabel(town: Town): string {
   return town.shelters.length > 1 ? town.city : town.shelters[0].label;
 }
 
+// Above this a cluster stops drawing one disc per shelter and draws the number
+// instead, because four overlapping coins is a smudge and a lie about which
+// shelter is which.
+export const MAX_CLUSTER_DISCS = 3;
+
+// Distance from the town centre to a disc centre, and the disc radius, both as
+// a share of the whole marker. Each pair sums to just under 1 so the outermost
+// stroke stays inside the radius collision layout protects.
+const CLUSTER_LAYOUT: Record<number, { offset: number; radius: number }> = {
+  2: { offset: 0.46, radius: 0.53 },
+  3: { offset: 0.52, radius: 0.47 },
+};
+
+// Degrees clockwise from east, in SVG coordinates where y grows downward.
+const CLUSTER_ANGLES: Record<number, number[]> = {
+  2: [-45, 135],
+  3: [-90, 30, 150],
+};
+
 // Collision layout protects town.r, so visible marker strokes must stay inside it.
 export function markerGeometry(town: Town) {
   const discRadius = town.r - MARKER_STROKE_WIDTH / 2;
+  const discs = Math.min(town.shelters.length, MAX_CLUSTER_DISCS);
+  const layout = CLUSTER_LAYOUT[discs] ?? CLUSTER_LAYOUT[2];
   return {
     discRadius,
-    clusterOffset: discRadius * 0.33,
-    clusterRadius: discRadius * 0.53,
+    discs,
+    clusterOffset: discRadius * layout.offset,
+    clusterRadius: discRadius * layout.radius,
   };
+}
+
+// One disc per shelter, in the town's own shelter order, so a disc always
+// stands for the same shelter.
+export function clusterDiscPositions(town: Town): { x: number; y: number }[] {
+  const { discs, clusterOffset } = markerGeometry(town);
+  const angles = CLUSTER_ANGLES[discs];
+  if (!angles || town.shelters.length > MAX_CLUSTER_DISCS) return [];
+  return angles.map((degrees) => {
+    const radians = (degrees * Math.PI) / 180;
+    return {
+      x: town.x + Math.cos(radians) * clusterOffset,
+      y: town.y + Math.sin(radians) * clusterOffset,
+    };
+  });
+}
+
+// Pixels per map unit at the width the picker draws the map, near enough.
+const RENDER_SCALE = 2;
+// A lucide paw under nine pixels across is a smudge. A plain disc is better.
+const MIN_GLYPH_DIAMETER = 9;
+
+export function discFitsGlyph(radius: number): boolean {
+  return radius * 2 * RENDER_SCALE >= MIN_GLYPH_DIAMETER;
 }
 
 export function markerVisualReach(town: Town): number {
   const geometry = markerGeometry(town);
-  if (town.shelters.length === 1) {
+  if (town.shelters.length === 1 || town.shelters.length > MAX_CLUSTER_DISCS) {
     return geometry.discRadius + MARKER_STROKE_WIDTH / 2;
   }
   return (
-    Math.SQRT2 * geometry.clusterOffset +
-    geometry.clusterRadius +
-    MARKER_STROKE_WIDTH / 2
+    geometry.clusterOffset + geometry.clusterRadius + MARKER_STROKE_WIDTH / 2
   );
 }

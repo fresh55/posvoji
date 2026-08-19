@@ -152,6 +152,33 @@ export function timeInShelter(
   return ageLabel(months, locale);
 }
 
+// Long stays are the norm in Slovenian shelters: at twelve months the mark
+// would show on nearly half the animals and mean nothing. Three years keeps
+// it to roughly one in five. The card and the dialog read this one constant,
+// so they cannot disagree about who counts as waiting long.
+export const LONG_STAY_MONTHS = 36;
+
+// The formatted wait of an animal that has waited long and is actually up
+// for adoption, or undefined. Reserved and held animals are not waiting for
+// the visitor's decision, and an adopted one's stay is history.
+export function longStayLabel(
+  animal: Animal,
+  locale: Locale,
+  now: Date,
+): string | undefined {
+  if (!animal.intakeDate) return undefined;
+  if (
+    animal.status === "adopted" ||
+    animal.status === "hold" ||
+    animal.status === "reserved"
+  ) {
+    return undefined;
+  }
+  const months = monthsInShelter(animal.intakeDate, now);
+  if (months === undefined || months < LONG_STAY_MONTHS) return undefined;
+  return ageLabel(months, locale);
+}
+
 const STATUS_KEYS: Record<
   Exclude<AdoptionStatus, "unknown">,
   TranslationKey

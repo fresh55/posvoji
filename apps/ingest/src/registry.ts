@@ -4,6 +4,7 @@ import ljubljana from "@posvoji/provider-ljubljana";
 import malaHisa from "@posvoji/provider-mala-hisa";
 import macjaHisa from "@posvoji/provider-macja-hisa";
 import maribor from "@posvoji/provider-maribor";
+import meli from "@posvoji/provider-meli";
 import muri from "@posvoji/provider-muri";
 import obalno from "@posvoji/provider-obalno";
 import zonzani from "@posvoji/provider-zonzani";
@@ -16,6 +17,7 @@ export const providers: AdoptionProvider[] = [
   malaHisa,
   macjaHisa,
   maribor,
+  meli,
   muri,
   obalno,
   zonzani,

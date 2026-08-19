@@ -1,0 +1,35 @@
+# Meli Center Repče granted permission for catalog data, full descriptions,
+# and displaying and caching animal photographs.
+providerId: meli
+source: https://www.meli-center.si/iscejo-dom/
+enabled: true
+
+ingestion: scrape
+images: cache-permitted
+descriptions: full-permitted
+
+permission:
+  status: granted
+  date: 2026-08-19
+  notes: >-
+    Maintainer confirmed that Meli Center Repče granted all requested
+    permissions, including catalog data, full descriptions, and displaying
+    and caching listing photographs.
+
+allowedFields:
+  - name
+  - species
+  - sex
+  - approximateAgeMonths
+  - status
+  - images
+  - shortDescription
+
+attribution: "Vir: Meli Center Repče"
+
+crawl:
+  intervalHours: 12
+  excludePaths:
+    - /wp-admin/
+    - /privat-oddaja/
+    - /oddajo-lastniki/

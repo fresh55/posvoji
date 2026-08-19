@@ -13,6 +13,24 @@ pnpm test
 Node >= 22 and pnpm are required. There are no services to run; the whole
 project works offline from fixtures.
 
+### When `next dev` reports an error the build does not
+
+`next dev` can report a recovered server error that `pnpm --filter web build`
+and the tests do not reproduce. Two causes have been seen, neither of them in
+this repo's code:
+
+- A dev server left running for a long time keeps serving stale compiled
+  modules. The error then repeats on every hard load of the affected page and
+  goes away on restart.
+- A few seconds after startup Next reads its own manifests from
+  `apps/web/.next/dev` while Turbopack is still writing them, which surfaces
+  once as `SyntaxError: Unexpected end of JSON input`.
+
+Restart the dev server and reproduce before bisecting anything. Dev stack
+traces are mapped back through the compiled chunk and can name a function that
+never ran, so confirm a frame is real by adding a guard to it before trusting
+what it says.
+
 ## Where to contribute
 
 - **`providers/`**: the main contribution surface. One folder per shelter.

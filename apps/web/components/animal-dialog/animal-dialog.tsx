@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { permittedImageUrls } from "@/lib/animal-images";
+import { animalPath } from "@/lib/animal-path";
 import { speciesLabel, statusLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -381,7 +382,7 @@ export function AnimalDialog({
                       </Badge>
                     )}
                     <span className="ms-auto flex items-center gap-1">
-                      <ShareButton />
+                      <ShareButton path={animalPath(lastAnimal, locale)} />
                       <DialogPrimitive.Close asChild>
                         <Button
                           data-slot="dialog-close-card"

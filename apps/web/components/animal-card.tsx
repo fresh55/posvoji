@@ -7,6 +7,7 @@ import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { Skeleton } from "@/components/ui/skeleton";
+import { animalPath } from "@/lib/animal-path";
 import { translate } from "@/lib/i18n";
 import { animalMeta, longStayLabel, statusLabel } from "@/lib/labels";
 
@@ -29,12 +30,14 @@ export function AnimalCard({
   const { locale, messages, t } = useI18n();
   const cardRef = useRef<HTMLElement>(null);
   const wait = longStayLabel(animal, locale, reference);
-  // Filters are deliberately left out: this href is written at build time,
-  // where the visitor's filters do not exist, and computing it on the client
-  // would not survive hydration. A modified click therefore deep links to the
-  // animal without them, while a plain click keeps them through the router.
+  // The animal's own page, which is also what the dialog writes to the
+  // address bar when this card is clicked. Filters are deliberately left out:
+  // the href is written at build time, where the visitor's filters do not
+  // exist, and computing it on the client would not survive hydration. A
+  // modified click therefore deep links to the animal without them, while a
+  // plain click keeps them and opens the dialog in place.
   const settled = animal.status === "adopted" || animal.status === "hold";
-  const href = `?zival=${encodeURIComponent(animal.id)}`;
+  const href = animalPath(animal, locale);
   const label = translate(locale, "openDetails", {
     name: animal.name ?? messages.unnamed,
   });

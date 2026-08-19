@@ -17,27 +17,18 @@ import {
   commitSearch,
   getSearchSnapshot,
   getServerSearchSnapshot,
-  subscribeToSearch,
+  subscribeToLocation,
 } from "@/lib/location-search";
 
-// zival (the open animal dialog) belongs to a different feature and is not
-// part of Filters, so it would be silently dropped if we only serialized
-// filters. Carry it over from the current URL whenever we write a new one.
+// Filters live in the query, the open animal lives in the path, so a filter
+// write leaves the dialog where it is without having to carry anything over.
 function writeFilters(next: Filters): void {
-  const query = serializeFilters(pruneHiddenFilters(next));
-  const zival = new URLSearchParams(window.location.search).get("zival");
-  if (!zival) {
-    commitSearch(query, "replace");
-    return;
-  }
-  const params = new URLSearchParams(query);
-  params.set("zival", zival);
-  commitSearch(params.toString(), "replace");
+  commitSearch(serializeFilters(pruneHiddenFilters(next)), "replace");
 }
 
 export function useAnimalFilters() {
   const search = useSyncExternalStore(
-    subscribeToSearch,
+    subscribeToLocation,
     getSearchSnapshot,
     getServerSearchSnapshot,
   );

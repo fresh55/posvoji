@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 
 const CONFIRM_MS = 2000;
 
-// The URL already carries the open animal, so sharing is just handing over
-// the address bar. Where the platform has no share sheet, the clipboard is
-// the fallback, and where it has neither the button says so by doing nothing.
-export function ShareButton() {
+// What gets shared is the animal's own page, not the address bar. Both open
+// the same animal, but only the page carries a link preview: the address bar
+// deep link is a query on the index, and a query string cannot have its own
+// title, description and card in a static export. Where the platform has no
+// share sheet, the clipboard is the fallback, and where it has neither the
+// button says so by doing nothing.
+export function ShareButton({ path }: { path: string }) {
   const { messages } = useI18n();
   const [copied, setCopied] = useState(false);
 
@@ -21,7 +24,7 @@ export function ShareButton() {
   }, [copied]);
 
   async function share() {
-    const url = window.location.href;
+    const url = new URL(path, window.location.origin).toString();
     if (typeof navigator === "undefined") return;
     try {
       if (navigator.share) {

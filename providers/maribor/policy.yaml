@@ -1,0 +1,40 @@
+# Machine-readable record of the shelter's permission for structured facts,
+# full animal descriptions, and display plus caching of animal photographs.
+providerId: maribor
+source: https://zavetisce-mb.si/posvoji-me/
+enabled: true
+
+ingestion: scrape
+images: cache-permitted
+descriptions: full-permitted
+
+permission:
+  status: granted
+  date: 2026-08-19
+  reference: mail-thread-maribor-2026-08-19
+  notes: >-
+    Pisno dovoljenje: zajem kataloga živali, prikaz in predpomnjenje
+    fotografij ter celotni opisi živali.
+
+allowedFields:
+  - name
+  - species
+  - sex
+  - breed
+  - approximateAgeMonths
+  - size
+  - status
+  - intakeDate
+  - medical
+  - images
+  - shortDescription
+
+attribution: "Vir: Zavetišče Maribor (Snaga)"
+
+crawl:
+  intervalHours: 12
+  excludePaths:
+    - /wp-admin/
+    - /najdeni-pogresani/
+    - /privat-oddaja/
+    - /oddajo-lastniki/

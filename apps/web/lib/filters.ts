@@ -135,7 +135,8 @@ export function ageInMonths(animal: Animal, now: Date): number | undefined {
   return undefined;
 }
 
-function ageGroup(months: number): AgeGroup {
+// Exported so the dialog can show the same life stage the filter buckets by.
+export function ageGroup(months: number): AgeGroup {
   if (months < PUPPY_MAX_EXCLUSIVE) return "mladicek";
   if (months < ADULT_MAX_EXCLUSIVE) return "odrasel";
   return "senior";

@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 
@@ -300,6 +301,179 @@ describe("animal dialog", () => {
     expect(cta.getAttribute("href")).toBe("https://example.test/animals/rex");
     expect(cta.getAttribute("target")).toBe("_blank");
     expect(cta.getAttribute("rel")).toBe("noreferrer");
+  });
+
+  it("puts the species and breed in the subtitle, not the badges", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+
+    const dialog = await screen.findByRole("dialog");
+    // Slovenian writes breed names lowercase, whatever casing the provider
+    // delivered.
+    expect(within(dialog).getByText("Pes · mešanec")).toBeTruthy();
+    // The badge rows carry the identity and the health record; the badge for
+    // the breed is gone because the subtitle already says it.
+    const details = within(dialog).getByRole("list", {
+      name: "Podrobnosti o živali",
+    });
+    expect(within(details).getByText("Samec")).toBeTruthy();
+    expect(within(details).queryByText(/Mešanec/i)).toBeNull();
+    const health = within(dialog).getByRole("list", { name: "Zdravje" });
+    expect(within(health).getByText("Sterilizacija")).toBeTruthy();
+  });
+
+  it("speaks the filter icons' language and explains the health badges", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+
+    const dialog = await screen.findByRole("dialog");
+    // Rex is 24 months old, an adult, so the age badge carries the same
+    // shrub the age filter draws for that stage.
+    expect(dialog.querySelector('[data-age-icon="odrasel"]')).toBeTruthy();
+
+    // The badge answers with a popover rather than a hover tooltip, so a
+    // thumb can ask too. The bubble lands in a portal outside the dialog.
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Sterilizacija" }),
+    );
+    expect(
+      await screen.findByText("Žival je sterilizirana ali kastrirana."),
+    ).toBeTruthy();
+  });
+
+  it("clamps a long description behind a read-more toggle", async () => {
+    const chatty = animal("tia", "Tia", {
+      shortDescription: "Zelo prijazna muca. ".repeat(20).trim(),
+    });
+    window.history.replaceState(null, "", "/?zival=tia");
+    renderGrid([chatty]);
+
+    const dialog = await screen.findByRole("dialog");
+    const description = within(dialog).getByText(/Zelo prijazna muca/);
+    expect(description.className).toContain("line-clamp-5");
+
+    const toggle = within(dialog).getByRole("button", {
+      name: "Preberi več",
+    });
+    fireEvent.click(toggle);
+
+    expect(description.className).not.toContain("line-clamp-5");
+    expect(
+      within(dialog).getByRole("button", { name: "Pokaži manj" }),
+    ).toBeTruthy();
+    // Rex's short paragraph never earns the toggle.
+    expect(REX.shortDescription!.length).toBeLessThan(320);
+  });
+
+  it("folds a complete health record into one line until asked", async () => {
+    const model = animal("lira", "Lira", {
+      medical: {
+        neutered: true,
+        vaccinated: true,
+        microchipped: true,
+        fiv: "negative",
+        felv: "negative",
+      },
+    });
+    window.history.replaceState(null, "", "/?zival=lira");
+    renderGrid([model]);
+
+    const dialog = await screen.findByRole("dialog");
+    const summary = within(dialog).getByRole("button", {
+      name: /Vse zdravstveno urejeno \(5\/5\)/,
+    });
+    expect(summary.getAttribute("aria-expanded")).toBe("false");
+    expect(within(dialog).queryByText("Sterilizacija")).toBeNull();
+
+    fireEvent.click(summary);
+
+    expect(within(dialog).getByText("Sterilizacija")).toBeTruthy();
+    expect(within(dialog).getByText("Brez FeLV")).toBeTruthy();
+  });
+
+  it("keeps a shorter stay as a caption without the callout", async () => {
+    // Rex came in 19 months before the reference date, well under the
+    // three-year line.
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/V zavetišču: 1 leto/)).toBeTruthy();
+    expect(within(dialog).queryByText(/čaka že/)).toBeNull();
+    // The place it was found is carried by the pin, words are for screen
+    // readers only.
+    expect(within(dialog).getByText("Kamnik")).toBeTruthy();
+  });
+
+  it("calls out a stay past three years instead of the quiet caption", async () => {
+    const longtimer = animal("cufi", "Cufi", { intakeDate: "2022-06-15" });
+    window.history.replaceState(null, "", "/?zival=cufi");
+    renderGrid([longtimer]);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("V zavetišču čaka že 4 leta."),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
+    // The list already leads with the longest waits by default, so the
+    // callout has nowhere to send anyone.
+    expect(
+      within(dialog).queryByText("Poglej vse, ki čakajo najdlje"),
+    ).toBeNull();
+  });
+
+  it("offers the longest-waiting sort from the callout when it would change something", async () => {
+    const longtimer = animal("cufi", "Cufi", { intakeDate: "2022-06-15" });
+    const onSeeLongestWaiting = vi.fn();
+    render(
+      <I18nProvider locale="sl">
+        <AnimalDialog
+          animal={longtimer}
+          logoIds={[]}
+          siblingIds={[]}
+          reference={new Date(REFERENCE)}
+          onNavigate={() => {}}
+          onClose={() => {}}
+          onSeeLongestWaiting={onSeeLongestWaiting}
+        />
+      </I18nProvider>,
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Poglej vse, ki čakajo najdlje",
+      }),
+    );
+
+    expect(onSeeLongestWaiting).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the plea away from a reserved animal", async () => {
+    const promised = animal("rezi", "Rezi", {
+      status: "reserved",
+      intakeDate: "2020-01-15",
+    });
+    window.history.replaceState(null, "", "/?zival=rezi");
+    renderGrid([promised]);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByText(/čaka že/)).toBeNull();
+    // The stay is still a fact, so the caption keeps it.
+    expect(within(dialog).getByText(/V zavetišču: 6 let/)).toBeTruthy();
+  });
+
+  it("says nothing about the stay of an animal that has left", async () => {
+    const settled = animal("lucky", "Lucky", {
+      status: "adopted",
+      intakeDate: "2020-01-15",
+    });
+    window.history.replaceState(null, "", "/?zival=lucky");
+    renderGrid([settled]);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByText(/čaka že/)).toBeNull();
+    expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
   });
 
   it("enlarges the photo that was clicked and moves the count onto it", async () => {

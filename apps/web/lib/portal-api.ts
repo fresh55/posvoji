@@ -60,6 +60,8 @@ export const PORTAL_FIELDS = [
   "goodWithKids",
   "goodWithDogs",
   "goodWithCats",
+  "apartmentOk",
+  "specialNeeds",
   "shortDescription",
 ] as const;
 export type PortalField = (typeof PORTAL_FIELDS)[number];
@@ -79,6 +81,8 @@ export type PortalAnimal = {
   goodWithKids: string | null;
   goodWithDogs: string | null;
   goodWithCats: string | null;
+  apartmentOk: string | null;
+  specialNeeds: boolean | null;
   shortDescription: string | null;
   thumbnailUrl: string | null;
   /** Only the fields the shelter changed, with the value it changed them to. */
@@ -102,6 +106,8 @@ export type PortalAnimalPatch = {
   goodWithKids?: PortalCompatibility | null;
   goodWithDogs?: PortalCompatibility | null;
   goodWithCats?: PortalCompatibility | null;
+  apartmentOk?: PortalCompatibility | null;
+  specialNeeds?: boolean | null;
   shortDescription?: string | null;
 };
 

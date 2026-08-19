@@ -3,13 +3,10 @@
 import { m, useReducedMotion } from "motion/react";
 import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
+import { CareCards, type CareOption } from "@/components/filters/care-cards";
 import { EnergyCards } from "@/components/filters/energy-cards";
+import { HomeCards, type HomeOption } from "@/components/filters/home-cards";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
-import {
-  CollapsibleBody,
-  FilterSectionHeader,
-  type SectionCollapse,
-} from "@/components/filters/filter-section-header";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -23,6 +20,11 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
+import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
 import {
   GoodWithCards,
   type GoodWithOption,
@@ -40,9 +42,11 @@ import {
 } from "@/components/filters/use-filter-sections";
 import {
   groupLabel,
+  type CareKey,
   type FilterOption,
   type Filters,
   type GoodWithKey,
+  type HomeKey,
   type MultiGroup,
   type ToggleDef,
   type ToggleKey,
@@ -103,6 +107,28 @@ export type GoodWithSection = {
   total: number;
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
+};
+
+/** Everything the home section needs, absent while no animal answers it. Its
+    sentence names both numbers for the same reason Družba's does. */
+export type HomeSection = {
+  options: HomeOption[];
+  counts: Map<string, number>;
+  resultCount: number;
+  total: number;
+  onToggle: (key: HomeKey) => void;
+  onToggleMany: (values: HomeKey[]) => void;
+};
+
+/** Everything the special-care section needs, absent while no animal answers
+    it. */
+export type CareSection = {
+  options: CareOption[];
+  counts: Map<string, number>;
+  resultCount: number;
+  total: number;
+  onToggle: (key: CareKey) => void;
+  onToggleMany: (values: CareKey[]) => void;
 };
 
 function HealthToggleCards({
@@ -379,6 +405,8 @@ export function FilterGroupList({
   toggles,
   toggleTally,
   goodWith,
+  home,
+  care,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -392,6 +420,8 @@ export function FilterGroupList({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
   ageLayout?: "sidebar" | "sheet";
   /** Folds sections behind their headers. The sidebar turns this on; the
       sheet scrolls as one page and leaves it off. */
@@ -471,6 +501,51 @@ export function FilterGroupList({
               filters.goodWith,
               (value) =>
                 goodWith.options.find((option) => option.key === value)?.label,
+            ),
+          )}
+        />
+      )}
+
+      {/* Dom follows Družba: both ask what the visitor's household is like,
+          and Posebna skrb closes the list because it is the one section that
+          asks what the visitor is willing to take on. */}
+      {home && home.options.length > 0 && (
+        <HomeCards
+          options={home.options}
+          counts={home.counts}
+          selected={filters.home}
+          resultCount={home.resultCount}
+          total={home.total}
+          onToggle={home.onToggle}
+          onToggleMany={home.onToggleMany}
+          layout={ageLayout}
+          collapse={collapseFor(
+            "home",
+            selectionSummary(
+              filters.home,
+              (value) =>
+                home.options.find((option) => option.key === value)?.label,
+            ),
+          )}
+        />
+      )}
+
+      {care && care.options.length > 0 && (
+        <CareCards
+          options={care.options}
+          counts={care.counts}
+          selected={filters.care}
+          resultCount={care.resultCount}
+          total={care.total}
+          onToggle={care.onToggle}
+          onToggleMany={care.onToggleMany}
+          layout={ageLayout}
+          collapse={collapseFor(
+            "care",
+            selectionSummary(
+              filters.care,
+              (value) =>
+                care.options.find((option) => option.key === value)?.label,
             ),
           )}
         />

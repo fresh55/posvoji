@@ -4,7 +4,9 @@ import { translate } from "@/lib/i18n";
 import {
   ageInMonths,
   FILTER_METADATA,
+  type CareKey,
   type GoodWithKey,
+  type HomeKey,
 } from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
@@ -223,6 +225,24 @@ const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, TranslationKey> = {
 
 export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
   return translate(locale, GOOD_WITH_CHIP_KEYS[key]);
+}
+
+// Both of these read as full phrases already ("Primeren za stanovanje"), so a
+// chip needs no second wording the way the household questions do.
+export function homeLabel(key: HomeKey, locale: Locale): string {
+  return (
+    FILTER_METADATA.home.find((option) => option.value === key)?.labels[
+      locale
+    ] ?? key
+  );
+}
+
+export function careLabel(key: CareKey, locale: Locale): string {
+  return (
+    FILTER_METADATA.care.find((option) => option.value === key)?.labels[
+      locale
+    ] ?? key
+  );
 }
 
 export function sizeLabel(size: AnimalSize, locale: Locale): string {

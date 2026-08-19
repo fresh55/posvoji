@@ -12,13 +12,23 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@posvoji/provider-horjul": "workspace:*",
+    "@posvoji/provider-ljubljana": "workspace:*",
+    "@posvoji/provider-mala-hisa": "workspace:*",
     "@posvoji/provider-macja-hisa": "workspace:*",
+    "@posvoji/provider-maribor": "workspace:*",
+    "@posvoji/provider-macji-dol": "workspace:*",
+    "@posvoji/provider-meli": "workspace:*",
     "@posvoji/provider-muri": "workspace:*",
+    "@posvoji/provider-obalno": "workspace:*",
+    "@posvoji/provider-zonzani": "workspace:*",
+    "@posvoji/provider-turk": "workspace:*",
     "@posvoji/provider-sdk": "workspace:*",
     "@posvoji/schema": "workspace:*",
     "sharp": "^0.34.4",
     "tsx": "^4.23.12",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

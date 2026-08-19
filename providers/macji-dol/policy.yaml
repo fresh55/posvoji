@@ -1,0 +1,22 @@
+# Machine-readable record of Mačji dol's permission for catalog data, full
+# descriptions, and displaying and caching listing photos.
+providerId: macji-dol
+source: https://www.macji-dol.si/mucki-iscejo-dom/
+enabled: true
+
+ingestion: scrape
+images: cache-permitted
+descriptions: full-permitted
+
+permission:
+  status: granted
+  date: 2026-08-19
+  notes: >-
+    Maintainer confirmed that Mačji dol granted permission for catalog data,
+    full descriptions, and displaying and caching listing photos.
+
+attribution: "Vir: Mačji dol (Žverca)"
+
+crawl:
+  intervalHours: 12
+  excludePaths: []

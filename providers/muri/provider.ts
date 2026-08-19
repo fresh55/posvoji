@@ -5,7 +5,10 @@ import {
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
+  AnimalGoodWith,
   AnimalMedical,
+  Compatibility,
+  EnergyLevel,
   ImagePolicy,
   ImageRights,
   Sex,
@@ -31,6 +34,8 @@ export interface DetailFacts {
   foundPlace?: string;
   description?: string;
   medical?: AnimalMedical;
+  goodWith?: AnimalGoodWith;
+  energy?: EnergyLevel;
   imageUrls: string[];
 }
 
@@ -78,6 +83,13 @@ const FEATURE_LABELS = {
   intakeAge: ["starost ob sprejemu"],
   intakeDate: ["datum sprejema", "datum oddaje s strani lastnikov"],
   foundPlace: ["kraj najdbe"],
+  // Sidebar rows currently dormant on the live site (last seen 19 Aug 2026),
+  // kept as insurance in case the block returns. No row exists for kids.
+  goodWithCats: ["mačja družba"],
+  goodWithDogs: ["pasja družba"],
+  // Free-form adjectives, only some of which describe energy at all. See
+  // parseEnergy for what is and is not read out of them.
+  character: ["značaj"],
 } as const;
 
 type FeatureName = keyof typeof FEATURE_LABELS;
@@ -134,6 +146,57 @@ function parsedFeatureValue<T>(
     if (parsed !== undefined) return parsed;
   }
   return undefined;
+}
+
+// Only the two unambiguous structured values map. Anything else, including
+// hedged phrasing like "ni preverjeno" (not checked), stays unmapped: better
+// an absent facet than a guessed one.
+export function parseCompatibility(value: string): Compatibility | undefined {
+  const normalized = value.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
+  if (normalized === "ok" || normalized === "da") return "yes";
+  if (normalized === "ne") return "no";
+  return undefined;
+}
+
+// "Značaj" is a free-text adjective list, not a scale: "prijazen" (friendly)
+// and "radoveden" (curious) say nothing about how much the animal wants to
+// do in a day. Only words that state the tempo outright map, and only when
+// the row says one thing: "miren, a živahen na sprehodu" contradicts itself
+// and stays unmapped. There is no honest word for "balanced" here, so that
+// level only ever comes from the shelter portal.
+const ENERGY_WORDS: Record<string, EnergyLevel> = {
+  miren: "calm",
+  mirna: "calm",
+  umirjen: "calm",
+  umirjena: "calm",
+  flegmatičen: "calm",
+  flegmatična: "calm",
+  živahen: "lively",
+  živahna: "lively",
+  energičen: "lively",
+  energična: "lively",
+  aktiven: "lively",
+  aktivna: "lively",
+};
+
+export function parseEnergy(value: string): EnergyLevel | undefined {
+  const words = value
+    .normalize("NFC")
+    .toLowerCase()
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean);
+
+  // "ni miren", "ne preveč živahen": a negated row says what the animal is
+  // not, which is not a level. Whole words only, so "nemiren" (restless) is
+  // no more a negation than it is a match for "miren".
+  if (words.some((word) => word === "ni" || word === "ne")) return undefined;
+
+  const found = new Set<EnergyLevel>();
+  for (const word of words) {
+    const level = ENERGY_WORDS[word];
+    if (level) found.add(level);
+  }
+  return found.size === 1 ? [...found][0] : undefined;
 }
 
 const SEX: Record<string, Sex> = {
@@ -366,6 +429,12 @@ export function parseDetail(html: string): DetailFacts {
     parseSlovenianDate,
   );
 
+  const goodWithCats = parsedFeatureValue(features, "goodWithCats", parseCompatibility);
+  const goodWithDogs = parsedFeatureValue(features, "goodWithDogs", parseCompatibility);
+  const goodWith: AnimalGoodWith = {};
+  if (goodWithCats !== undefined) goodWith.cats = goodWithCats;
+  if (goodWithDogs !== undefined) goodWith.dogs = goodWithDogs;
+
   return {
     name:
       article.find(".cmsms_project_title").first().text().trim().normalize("NFC") ||
@@ -383,6 +452,8 @@ export function parseDetail(html: string): DetailFacts {
     foundPlace: featureValue(features, "foundPlace"),
     description: parseDescription($),
     medical: parseMedical($),
+    goodWith: Object.keys(goodWith).length > 0 ? goodWith : undefined,
+    energy: parsedFeatureValue(features, "character", parseEnergy),
     imageUrls,
   };
 }
@@ -471,6 +542,8 @@ const provider: AdoptionProvider = {
       intakeDate: facts.intakeDate,
       originMunicipality: facts.foundPlace,
       medical: facts.medical,
+      goodWith: facts.goodWith,
+      energy: facts.energy,
       status: facts.status,
       images:
         rights === null

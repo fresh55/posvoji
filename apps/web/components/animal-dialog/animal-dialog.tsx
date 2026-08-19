@@ -35,7 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { permittedImageUrls } from "@/lib/animal-images";
-import { animalMeta, statusLabel } from "@/lib/labels";
+import { speciesLabel, statusLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
@@ -136,6 +136,7 @@ export function AnimalDialog({
   reference,
   onNavigate,
   onClose,
+  onSeeLongestWaiting,
 }: {
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: Animal | undefined;
@@ -147,6 +148,8 @@ export function AnimalDialog({
   reference: Date;
   onNavigate: (id: string) => void;
   onClose: () => void;
+  /** Hands the long-stay callout a way to the longest-waiting sort. */
+  onSeeLongestWaiting?: () => void;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -190,6 +193,17 @@ export function AnimalDialog({
   if (!lastAnimal) return null;
 
   const name = lastAnimal.name ?? messages.unnamed;
+  // The subtitle carries what the fact badges below it do not: the species and
+  // the breed. Sex and age used to be repeated here, one line above their own
+  // badges, and the two "10 let" read as a mistake. Slovenian writes breed
+  // names lowercase, and the providers deliver them in every casing.
+  const breed =
+    lastAnimal.breed && locale === "sl"
+      ? lastAnimal.breed.toLocaleLowerCase("sl")
+      : lastAnimal.breed;
+  const subtitle = [speciesLabel(lastAnimal.species, locale), breed]
+    .filter(Boolean)
+    .join(" · ");
   // Available animals are the norm, so the badge stays for the exceptions.
   const badgeStatus =
     lastAnimal.status === "unknown" || lastAnimal.status === "available"
@@ -381,16 +395,27 @@ export function AnimalDialog({
                       </DialogPrimitive.Close>
                     </span>
                   </div>
-                  <DialogDescription>
-                    {animalMeta(lastAnimal, locale, reference)}
-                  </DialogDescription>
+                  <DialogDescription>{subtitle}</DialogDescription>
                 </m.div>
 
                 <m.div variants={CONTENT_ITEM} transition={transition}>
-                  <AnimalFacts animal={lastAnimal} reference={reference} />
+                  {/* Keyed, so the health row's expanded state starts over
+                      with each animal. */}
+                  <AnimalFacts
+                    key={lastAnimal.id}
+                    animal={lastAnimal}
+                    reference={reference}
+                    onSeeLongestWaiting={onSeeLongestWaiting}
+                  />
                 </m.div>
 
-                <m.div variants={CONTENT_ITEM} transition={transition}>
+                {/* Identity above, action below: the shelter box anchors the
+                    bottom of the card with a little extra air over it. */}
+                <m.div
+                  className="mt-2"
+                  variants={CONTENT_ITEM}
+                  transition={transition}
+                >
                   <ShelterBlock animal={lastAnimal} logoIds={logoIds} />
                 </m.div>
               </div>

@@ -6,8 +6,10 @@ import {
   allShelters,
   animalCount,
   animalMeta,
+  monthsInShelter,
   shelterCount,
   sheltersMissingFromMap,
+  speciesLabel,
   statusLabel,
   timeInShelter,
 } from "./labels";
@@ -97,6 +99,19 @@ describe("localized labels", () => {
     const now = new Date("2026-08-18T00:00:00Z");
 
     expect(timeInShelter("2026-09-01", "sl", now)).toBeUndefined();
+  });
+
+  it("counts whole months in the shelter for the long-stay line", () => {
+    const now = new Date("2026-08-18T00:00:00Z");
+
+    expect(monthsInShelter("2026-08-01", now)).toBe(0);
+    expect(monthsInShelter("2025-08-18", now)).toBe(12);
+    expect(monthsInShelter("kmalu", now)).toBeUndefined();
+  });
+
+  it("names the species on its own", () => {
+    expect(speciesLabel("cat", "sl")).toBe("Mačka");
+    expect(speciesLabel("dog", "en")).toBe("Dog");
   });
 
   it("translates adoption status", () => {

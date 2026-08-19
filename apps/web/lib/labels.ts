@@ -104,6 +104,10 @@ export function ageLabel(months: number, locale: Locale): string {
   return formatAge(months, locale);
 }
 
+export function speciesLabel(species: Species, locale: Locale): string {
+  return SPECIES[locale][species];
+}
+
 // "Mačka · samica · 2 leti", skipping whatever we don't know.
 export function animalMeta(
   animal: Animal,
@@ -112,7 +116,7 @@ export function animalMeta(
 ): string {
   const months = ageInMonths(animal, now);
   return [
-    SPECIES[locale][animal.species],
+    speciesLabel(animal.species, locale),
     animal.sex ? SEX[locale][animal.sex] : "",
     months !== undefined ? ageLabel(months, locale) : "",
   ]
@@ -125,17 +129,26 @@ export function animalMeta(
 // because a date-only string parses as UTC midnight and reading it locally
 // moves it into the previous month west of Greenwich. A negative span (future
 // date) or an unparsable one means we can't say, not "0".
-export function timeInShelter(
+export function monthsInShelter(
   intakeDate: string,
-  locale: Locale,
   now: Date,
-): string | undefined {
+): number | undefined {
   const intake = new Date(intakeDate);
   if (Number.isNaN(intake.getTime())) return undefined;
   const months =
     (now.getUTCFullYear() - intake.getUTCFullYear()) * 12 +
     (now.getUTCMonth() - intake.getUTCMonth());
   if (months < 0) return undefined;
+  return months;
+}
+
+export function timeInShelter(
+  intakeDate: string,
+  locale: Locale,
+  now: Date,
+): string | undefined {
+  const months = monthsInShelter(intakeDate, now);
+  if (months === undefined) return undefined;
   return ageLabel(months, locale);
 }
 

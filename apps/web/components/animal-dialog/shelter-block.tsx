@@ -20,7 +20,7 @@ export function ShelterBlock({
   const hasLogo = logoIds.includes(shelter.id);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
         {hasLogo ? (
           <Image
@@ -76,6 +76,9 @@ export function ShelterBlock({
         )}
       </div>
 
+      {/* The attribution stays a footnote under the box. In practice it
+          repeats the shelter's name, and inside the box that read as the
+          same line printed twice. */}
       <p className="text-xs text-muted-foreground/80">{animal.attribution}</p>
     </div>
   );

@@ -217,8 +217,21 @@ const HOVER_SPRING = {
 
 const NEIGHBOR_DURATION = 0.3;
 const JITTER_DURATION = 0.34;
+const JITTER_TIMES = [0, 0.34, 0.62, 1];
+// The shock radiates outward: each step further from the card that fired
+// arrives this much later and carries this much of the previous step's
+// amplitude. A card next to the source is one step out, the far card two.
+const JITTER_STEP_DELAY = 0.05;
+const JITTER_STEP_DAMPING = 0.62;
+// How much of the push comes back the other way before the card settles.
+const JITTER_RECOIL = 0.45;
 const CARD_HOP_DURATION = 0.32;
-const CARD_HOP_TIMES = [0, 0.3, 1];
+const CARD_HOP_TIMES = [0, 0.28, 0.6, 1];
+// The hop drops back past the line before resting, so it reads as a snap
+// rather than a lift.
+const CARD_HOP_RECOIL = 0.25;
+// The ends of the section are this many steps apart: one card per level.
+const MAX_NEIGHBOR_DISTANCE = Object.keys(TEMPOS).length - 1;
 const COUNT_JOLT_DURATION = 0.18;
 // Matches FilterSelectionMark's own appear duration.
 const CHECK_DURATION = 0.14;
@@ -251,7 +264,13 @@ function tempoEnd(tempo: Tempo): number {
     tempo.neighborTilt > 0 || tempo.neighborLift > 0
       ? tempo.neighborDelay + NEIGHBOR_DURATION
       : 0,
-    tempo.neighborJitter > 0 ? tempo.neighborDelay + JITTER_DURATION : 0,
+    // The furthest card is the last to be reached, so the hold has to cover
+    // the whole staggered run, not just the first step.
+    tempo.neighborJitter > 0
+      ? tempo.neighborDelay +
+        (MAX_NEIGHBOR_DISTANCE - 1) * JITTER_STEP_DELAY +
+        JITTER_DURATION
+      : 0,
   );
 }
 
@@ -324,19 +343,24 @@ function iconPose(
 }
 
 // The card itself moves only for a level loud enough to move it: the lively
-// hop, and the shock its neighbours take a beat later.
+// hop, and the shock its neighbours take a beat later. The hop is vertical and
+// the shock horizontal, so the card that fired stays the one being read.
 type CardPose = "celebrating" | "reacting" | "rest";
 
 function cardPose(
   pose: CardPose,
   tempo: Tempo,
   celebrationTempo: Tempo | undefined,
+  direction: number,
+  distance: number,
 ): Pose {
   switch (pose) {
     case "celebrating":
       if (tempo.cardHop <= 0) break;
       return {
-        animate: { y: [0, -tempo.cardHop, 0] },
+        animate: {
+          y: [0, -tempo.cardHop, tempo.cardHop * CARD_HOP_RECOIL, 0],
+        },
         transition: {
           duration: CARD_HOP_DURATION,
           times: CARD_HOP_TIMES,
@@ -346,11 +370,28 @@ function cardPose(
     case "reacting": {
       const jitter = celebrationTempo?.neighborJitter ?? 0;
       if (jitter <= 0) break;
+      // Steps out from the card that fired. The clamp keeps the run inside the
+      // window tempoEnd holds open.
+      const steps = Math.max(
+        0,
+        Math.min(distance, MAX_NEIGHBOR_DISTANCE) - 1,
+      );
+      const amplitude = jitter * JITTER_STEP_DAMPING ** steps;
       return {
-        animate: { x: [0, -jitter, jitter * 0.7, 0] },
+        // Pushed away from the source, then a smaller answer back.
+        animate: {
+          x: [
+            0,
+            direction * amplitude,
+            -direction * amplitude * JITTER_RECOIL,
+            0,
+          ],
+        },
         transition: {
           duration: JITTER_DURATION,
-          delay: celebrationTempo?.neighborDelay ?? 0,
+          delay:
+            (celebrationTempo?.neighborDelay ?? 0) + steps * JITTER_STEP_DELAY,
+          times: JITTER_TIMES,
           ease: "easeInOut",
         },
       };
@@ -505,8 +546,10 @@ export function EnergyCards({
               reacting &&
               ((celebrationTempo?.neighborTilt ?? 0) > 0 ||
                 (celebrationTempo?.neighborLift ?? 0) > 0);
-            // The cards that did not change lean away from the one that did.
+            // The cards that did not change lean away from the one that did,
+            // and how far they sit from it sets when and how hard.
             const direction = Math.sign(index - celebrationIndex) || 1;
+            const distance = Math.abs(index - celebrationIndex);
             // A reset winks the rows out in order rather than all at once.
             const resetDelay = isResetting ? index * RESET_STAGGER : 0;
             const icon = iconPose(
@@ -519,6 +562,8 @@ export function EnergyCards({
               celebrating ? "celebrating" : reacting ? "reacting" : "rest",
               tempo,
               celebrationTempo,
+              direction,
+              distance,
             );
             const hover = hoverHandlers(value);
             const particles = tempo.particle

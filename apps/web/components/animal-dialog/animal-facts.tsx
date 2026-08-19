@@ -168,11 +168,14 @@ function Aside({
 export function AnimalFacts({
   animal,
   reference,
+  maxStayMonths,
   onSeeLongestWaiting,
 }: {
   animal: Animal;
   /** The dataset's own build time, so every span agrees with the cards. */
   reference: Date;
+  /** The longest wait anywhere in the dataset. */
+  maxStayMonths?: number;
   /**
    * Re-sorts the list by longest wait and closes the dialog. Absent while
    * that sort is already on, which it is by default, so the link only shows
@@ -199,6 +202,9 @@ export function AnimalFacts({
     inShelter && animal.status !== "hold" && animal.status !== "reserved";
   const longStay =
     waiting && stayMonths !== undefined && stayMonths >= LONG_STAY_MONTHS;
+  // True even when the record is shared: no one has waited longer.
+  const recordStay =
+    longStay && maxStayMonths !== undefined && stayMonths >= maxStayMonths;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
   const medical = TOGGLES.filter((toggle) => toggle.matches(animal));
   const hasIdentity =
@@ -303,32 +309,6 @@ export function AnimalFacts({
         </div>
       )}
 
-      {/* Styled like a quiet alert: the same neutral box as the shelter
-          block, with the amber held to the icon alone. The link turns the
-          story into a path: it re-sorts the list by longest wait, but only
-          offers itself when the list is sorted some other way. */}
-      {longStay && stay && (
-        <div className="flex items-start gap-3 rounded-ui border bg-muted/40 px-4 py-3">
-          <Hourglass
-            className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <div className="space-y-0.5 text-sm">
-            <p className="font-medium">{t("longStay", { duration: stay })}</p>
-            {onSeeLongestWaiting && (
-              <button
-                type="button"
-                onClick={onSeeLongestWaiting}
-                className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              >
-                {messages.longStayLink}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {((inShelter && stay && !longStay) || animal.originMunicipality) && (
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {inShelter && stay && !longStay && (
@@ -366,6 +346,38 @@ export function AnimalFacts({
               {showFullDescription ? messages.showLess : messages.readMore}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Last before the shelter box on purpose: facts, then the shelter's
+          own words, then the wait, then the way to act on it. Styled like a
+          quiet alert in the same neutral box as the shelter block, the amber
+          held to the icon alone. The link re-sorts the list by longest wait,
+          and only offers itself while the list is sorted some other way. */}
+      {longStay && stay && (
+        <div className="flex items-start gap-3 rounded-ui border bg-muted/40 px-4 py-3">
+          <Hourglass
+            className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <div className="space-y-0.5 text-sm">
+            <p className="font-medium">{t("longStay", { duration: stay })}</p>
+            {recordStay && (
+              <p className="text-xs text-muted-foreground">
+                {messages.longStayRecord}
+              </p>
+            )}
+            {onSeeLongestWaiting && (
+              <button
+                type="button"
+                onClick={onSeeLongestWaiting}
+                className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                {messages.longStayLink}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

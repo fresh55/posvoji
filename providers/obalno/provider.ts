@@ -122,11 +122,19 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
   return paragraphs.length > 0 ? paragraphs.join("\n\n") : undefined;
 }
 
+function parseDaysInShelter($: cheerio.CheerioAPI): number | undefined {
+  // The badge sits in the page header, outside article.main-content. Related
+  // animal cards further down carry their own badge, so never read those.
+  const badge = $(".date-badge").not("article.post-item .date-badge").first();
+  const match = badge
+    .text()
+    .match(/V\s+zavetišču\s+sem\s+že\s+(\d+)\s+(?:dni|dneva|dan)/i);
+  return match ? Number(match[1]) : undefined;
+}
+
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const root = $("article.main-content").first();
-  const daysText = root.find(".date-badge").first().text();
-  const daysMatch = daysText.match(/V\s+zavetišču\s+sem\s+že\s+(\d+)\s+dni/i);
   const birthRaw = labelValue($, "ROJSTVO");
   const imageUrls: string[] = [];
   const addImage = (value: string | undefined) => {
@@ -143,7 +151,7 @@ export function parseDetail(html: string): DetailFacts {
     species: parseSpecies($),
     sex: parseSex(labelValue($, "SPOL")),
     birthDate: birthRaw ? parseSlashDate(birthRaw) : undefined,
-    daysInShelter: daysMatch ? Number(daysMatch[1]) : undefined,
+    daysInShelter: parseDaysInShelter($),
     description: parseDescription($),
     imageUrls,
   };

@@ -38,6 +38,9 @@ preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
 ## Kaj dovoljenje zavetišča ureja
 
 - prikaz pomanjšanih fotografij in njihovo tehnično predpomnjenje,
+- ali fotografija sme biti vključena v sliko za predogled povezave
+  (`images: cache-permitted`); brez tega dovoljenja žival dobi tipografsko
+  kartico brez fotografije,
 - obseg opisa (samo dejstva / kratek izvleček / celoten opis),
 - frekvenco osveževanja in morebitne izključene poti,
 - način navedbe vira.
@@ -53,7 +56,9 @@ dataset.
 Posvoji.si is a permission-first index. Providers only run with the shelter's
 written, dated permission recorded in `policy.yaml` (CI-enforced). By default
 only objective facts are indexed; photos and creative descriptions require
-explicit permission. Every animal links back to its source. No personal data
+explicit permission, and that permission also decides whether a photo may be
+drawn into the animal's link preview card. Every animal links back to its
+source. No personal data
 of private individuals is ever collected, private-owner listings are excluded,
 and the crawler is conservative: identified bot, robots.txt, backoff, one
 request at a time. Shelters can change or revoke their participation at any

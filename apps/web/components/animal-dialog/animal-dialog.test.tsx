@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { animalPath } from "@/lib/animal-path";
 
 // The filter dock and the drawer read the viewport before they render, and
 // the dismiss gesture asks whether it is on the phone layout. jsdom reports
@@ -183,8 +184,31 @@ describe("animal dialog", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Rex")).toBeTruthy();
-    expect(window.location.search).toBe("?zival=rex");
-    expect(window.history.state?.zival).toBe(true);
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
+    expect(window.location.search).toBe("");
+    expect(window.history.state?.animal).toBe(true);
+  });
+
+  it("links every card at the animal's own page", () => {
+    renderGrid();
+
+    expect(cardLink("Rex").getAttribute("href")).toBe(animalPath(REX, "sl"));
+  });
+
+  // ?zival= is the address the dialog wrote before every animal had a page.
+  // Those links are out in the world and still have to open the animal, and
+  // the address bar is corrected to the page search engines are told about.
+  it("upgrades an old ?zival= link to the animal's own address", async () => {
+    window.history.replaceState(null, "", "/?vrsta=pes&zival=rex");
+    renderGrid();
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Rex")).toBeTruthy();
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(REX, "sl")),
+    );
+    // The filters the link carried are not the alias's to drop.
+    expect(window.location.search).toBe("?vrsta=pes");
   });
 
   it("drops the pushed history entry when the card close is used", async () => {
@@ -196,7 +220,7 @@ describe("animal dialog", () => {
       fireEvent.click(slot(dialog, "dialog-close-card"));
     });
 
-    await waitFor(() => expect(window.location.search).toBe(""));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -239,9 +263,9 @@ describe("animal dialog", () => {
     // open, so the species tab has to be asked for by name including hidden.
     fireEvent.click(screen.getByRole("button", { name: /Psi/, hidden: true }));
 
-    await waitFor(() =>
-      expect(window.location.search).toBe("?vrsta=pes&zival=muri"),
-    );
+    await waitFor(() => expect(window.location.search).toBe("?vrsta=pes"));
+    // The filter wrote the query and left the animal's own path standing.
+    expect(window.location.pathname).toBe(animalPath(MURI, "sl"));
     // Filtered out of the grid, still open: a shared link outranks the tab.
     const dialog = animalDialog();
     expect(dialog).toBeTruthy();
@@ -599,9 +623,11 @@ describe("animal dialog", () => {
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Naslednja žival" }));
 
-    await waitFor(() => expect(window.location.search).toBe("?zival=muri"));
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(MURI, "sl")),
+    );
     expect(window.history.length).toBe(entries);
-    expect(window.history.state?.zival).toBe(true);
+    expect(window.history.state?.animal).toBe(true);
     expect(within(animalDialog()).getByText("Muri")).toBeTruthy();
 
     // One step back still closes, rather than walking the animals in reverse.
@@ -609,7 +635,7 @@ describe("animal dialog", () => {
       window.history.back();
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(window.location.search).toBe("");
+    expect(window.location.pathname).toBe("/");
   });
 
   it("walks the list with the page keys and stops at the ends", async () => {
@@ -623,17 +649,21 @@ describe("animal dialog", () => {
     ).toBeNull();
 
     fireEvent.keyDown(dialog, { key: "PageDown" });
-    await waitFor(() => expect(window.location.search).toBe("?zival=muri"));
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(MURI, "sl")),
+    );
 
     // Muri is last, so PageDown from here does nothing.
     fireEvent.keyDown(animalDialog(), { key: "PageDown" });
-    expect(window.location.search).toBe("?zival=muri");
+    expect(window.location.pathname).toBe(animalPath(MURI, "sl"));
 
     fireEvent.keyDown(animalDialog(), { key: "PageUp" });
-    await waitFor(() => expect(window.location.search).toBe("?zival=rex"));
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(REX, "sl")),
+    );
   });
 
-  it("copies the deep link when there is no share sheet", async () => {
+  it("copies the animal's page when there is no share sheet", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -647,8 +677,9 @@ describe("animal dialog", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
     });
 
-    expect(writeText).toHaveBeenCalledWith(window.location.href);
-    expect(writeText.mock.calls[0][0]).toContain("zival=rex");
+    // The animal's own page, not the deep link the address bar is showing:
+    // only the page has a title, a description and a card of its own.
+    expect(writeText.mock.calls[0][0]).toContain("/zival/rex-");
     expect(await within(animalDialog()).findByText("Povezava kopirana")).toBeTruthy();
   });
 
@@ -676,11 +707,11 @@ describe("animal dialog", () => {
     const entries = window.history.length;
 
     fireEvent.click(screen.getByRole("button", { name: /Psi/, hidden: true }));
-    await waitFor(() =>
-      expect(window.location.search).toBe("?vrsta=pes&zival=muri"),
-    );
+    await waitFor(() => expect(window.location.search).toBe("?vrsta=pes"));
+    // The filter wrote the query and left the animal's own path standing.
+    expect(window.location.pathname).toBe(animalPath(MURI, "sl"));
     // The filter write amended the entry, so its marker has to survive.
-    expect(window.history.state?.zival).toBe(true);
+    expect(window.history.state?.animal).toBe(true);
 
     await act(async () => {
       fireEvent.click(slot(dialog, "dialog-close-card"));
@@ -688,7 +719,8 @@ describe("animal dialog", () => {
 
     // Going back is what closed it, so the filter goes with it rather than
     // the dialog being stripped out of the URL in place.
-    await waitFor(() => expect(window.location.search).toBe(""));
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(window.location.search).toBe("");
     expect(window.history.length).toBe(entries);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -713,7 +745,7 @@ describe("animal dialog", () => {
       drag(slot(dialog, "animal-dialog-body"), 220);
     });
 
-    expect(window.location.search).toBe("?zival=rex");
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
@@ -743,7 +775,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(1));
-    expect(window.location.search).toBe("?zival=rex");
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
   });
 
   it("closes on a downward drag from the top of the phone layout", async () => {
@@ -757,7 +789,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(window.location.search).toBe("");
+    expect(window.location.pathname).toBe("/");
   });
 
   it("ignores a mouse drag and a short pull", async () => {
@@ -771,7 +803,7 @@ describe("animal dialog", () => {
       drag(body, 60);
     });
 
-    expect(window.location.search).toBe("?zival=rex");
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 

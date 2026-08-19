@@ -65,7 +65,10 @@ export function AnimalGrid({
   const [zoomFrom, setZoomFrom] = useState<
     { id: string; at: DialogOrigin } | undefined
   >();
-  const { openId, open, swap, close } = useAnimalDialog();
+  const { openId, open, swap, close } = useAnimalDialog({
+    animals,
+    basePath: locale === "sl" ? "/" : "/en",
+  });
   const {
     filters,
     setSpecies,

@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { SITE_URL } from "@/lib/animal-share";
 import { getMessages } from "@/lib/i18n";
 import "../globals.css";
 
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
+  // Link previews need absolute URLs, and a static export has no request to
+  // build one from, so every relative URL below is resolved against this.
+  metadataBase: new URL(SITE_URL),
   title: "Posvoji.si",
   description: getMessages("sl").metadataDescription,
 };

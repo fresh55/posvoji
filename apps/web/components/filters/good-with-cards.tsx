@@ -1,7 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 import {
   FilterCardHoverLift,
   FilterCardIconWell,
@@ -56,11 +56,14 @@ const TAIL_KEYS: Record<GoodWithKey, TranslationKey> = {
 // is something you watch happen. Never on first paint: nothing narrowed there.
 function CountRoll({ value, className }: { value: number; className?: string }) {
   const shouldReduceMotion = useReducedMotion();
-  const hasPainted = useRef(false);
-
-  useEffect(() => {
-    hasPainted.current = true;
-  }, []);
+  // The previous value as state, adjusted during render, marks exactly the
+  // render where the number changed. A ref read here would be unsound under
+  // concurrent rendering, and an effect would animate one render too late.
+  const [previous, setPrevious] = useState(value);
+  const changed = previous !== value;
+  if (changed) {
+    setPrevious(value);
+  }
 
   if (shouldReduceMotion) {
     return <span className={className}>{value}</span>;
@@ -71,7 +74,7 @@ function CountRoll({ value, className }: { value: number; className?: string }) 
       <m.span
         key={value}
         className="block"
-        initial={hasPainted.current ? { y: -6, opacity: 0 } : false}
+        initial={changed ? { y: -6, opacity: 0 } : false}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
       >

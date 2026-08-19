@@ -18,14 +18,16 @@ const dogDetail = loadFixture(import.meta.url, "detail-dog.html");
 const catDetail = loadFixture(import.meta.url, "detail-cat.html");
 
 describe("policy.yaml", () => {
-  it("keeps the provider disabled until permission is recorded", () => {
-    expect(policy).toMatchObject({
-      providerId: provider.id,
-      enabled: false,
-      images: "none",
-      descriptions: "facts-only",
-      permission: { status: "none" },
+  it("matches the enabled provider and records granted permission", () => {
+    expect(policy.providerId).toBe(provider.id);
+    expect(policy.enabled).toBe(true);
+    expect(policy.permission).toMatchObject({
+      status: "granted",
+      date: "2026-08-20",
     });
+    expect(policy.descriptions).toBe("full-permitted");
+    expect(policy.images).toBe("cache-permitted");
+    // Private-owner listings stay out of the crawl whatever the grant says.
     expect(policy.crawl.excludePaths).toContain("/privat-oddaja/");
   });
 });

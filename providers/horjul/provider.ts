@@ -28,6 +28,7 @@ export interface DetailFacts {
   intakeDate?: string;
   originMunicipality?: string;
   medical?: AnimalMedical;
+  description?: string;
   imageUrls: string[];
 }
 
@@ -250,8 +251,42 @@ export function parseDetail(html: string): DetailFacts {
       : undefined,
     originMunicipality: municipality || undefined,
     medical: parseMedical(facts),
+    description: parseDescription($),
     imageUrls,
   };
+}
+
+// The shelter keeps a dated journal ("Dnevnik") rendered as a tab set, newest
+// entry first and pre-selected. Only that entry describes the animal now:
+// older ones are a history that contradicts it, and Klopka's oldest still
+// describes the nine-week-old kitten she arrived as in 2016. The entries are
+// left in place at the source, which the listing links to.
+// Every entry closes by linking the adoption questionnaire. Some listings put
+// that in its own paragraph and some run it on after the last sentence, so it
+// is cut by sentence: dropping the whole paragraph would take Klopka's
+// description with it.
+const QUESTIONNAIRE = /posvojitveni\s+vpra[sš]alnik/i;
+
+function stripQuestionnaire(text: string): string {
+  return text
+    .split(/(?<=[.!?…])(?:\s+|(?=\p{Lu}))/u)
+    .filter((sentence) => !QUESTIONNAIRE.test(sentence))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseDescription($: cheerio.CheerioAPI): string | undefined {
+  const newest = $(".e-n-tabs-content [role='tabpanel']").first();
+  if (newest.length === 0) return undefined;
+  const paragraphs: string[] = [];
+  newest.find(".elementor-widget-text-editor p").each((_, element) => {
+    const paragraph = stripQuestionnaire(
+      $(element).text().replace(/\s+/g, " ").trim(),
+    );
+    if (paragraph) paragraphs.push(paragraph);
+  });
+  return paragraphs.length > 0 ? paragraphs.join("\n\n") : undefined;
 }
 
 export function resolveAgeMonths(
@@ -337,6 +372,8 @@ const provider: AdoptionProvider = {
         rights === null
           ? []
           : facts.imageUrls.map((sourceUrl) => ({ sourceUrl, rights })),
+      shortDescription:
+        ctx.policy.descriptions === "facts-only" ? undefined : facts.description,
       attribution: ctx.policy.attribution,
     };
   },

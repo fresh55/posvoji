@@ -95,6 +95,7 @@ describe("parseDetail", () => {
         felv: "negative",
         fiv: "negative",
       },
+      description: undefined,
       imageUrls: [
         "https://www.zavetisce-horjul.net/wp-content/uploads/2026/08/NinaT.jpg",
       ],
@@ -126,6 +127,25 @@ describe("parseDetail", () => {
         "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Klopka13.jpg",
       ],
     });
+  });
+});
+
+describe("journal descriptions", () => {
+  it("takes the newest journal entry and drops the questionnaire line", () => {
+    expect(parseDetail(historyHtml).description).toBe(
+      "Klopka je FeLV in FIV negativna, sterilizirana, cepljena, čipirana in " +
+        "išče dom. Oddaja se izključno za notranje bivanje.",
+    );
+  });
+
+  it("ignores older entries that describe an animal she no longer is", () => {
+    // Klopka's 2018 entry still describes the nine-week-old kitten who
+    // arrived in 2016.
+    expect(parseDetail(historyHtml).description).not.toContain("9 tednov");
+  });
+
+  it("has no description when a listing carries no journal", () => {
+    expect(parseDetail(dogHtml).description).toBeUndefined();
   });
 });
 
@@ -205,6 +225,8 @@ describe("provider", () => {
       status: "available",
       images: [{ rights: "cache-permitted" }],
     });
-    expect(animal).not.toHaveProperty("shortDescription");
+    // Aisha's listing carries no journal, so there is nothing to describe her
+    // with. JSON.stringify drops the key on the way into the dataset.
+    expect(animal.shortDescription).toBeUndefined();
   });
 });

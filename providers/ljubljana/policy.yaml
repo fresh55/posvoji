@@ -30,6 +30,7 @@ allowedFields:
   - intakeDate
   - medical
   - images
+  - shortDescription
 
 attribution: "Vir: Zavetišče Ljubljana"
 

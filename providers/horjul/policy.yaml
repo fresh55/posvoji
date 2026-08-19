@@ -30,6 +30,7 @@ allowedFields:
   - originMunicipality
   - medical
   - images
+  - shortDescription
 
 attribution: "Vir: Zavetišče Horjul"
 

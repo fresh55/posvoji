@@ -67,6 +67,23 @@ describe("detail facts", () => {
     });
   });
 
+  it("reads a description wrapped in a layout block, without the site boilerplate", () => {
+    // Predator's and Vladko's listings nest the text in a div instead of
+    // leaving it a direct child, which a direct-child selector loses entirely.
+    const facts = parseDetail(
+      loadFixture(import.meta.url, "detail-cat-wrapped.html"),
+    );
+    expect(facts.description).toBe(
+      "Predator je približno 7 let star samček. Je igriv in prijeten mucek.",
+    );
+    // The donation and volunteering panel closes every listing and is never
+    // the animal's own text.
+    expect(facts.description).not.toContain("Donacije");
+    expect(facts.description).not.toContain("prostovoljcev");
+    // The sign-off is plain text here, not a mailto link.
+    expect(facts.description).not.toContain("example.org");
+  });
+
   it("reads a cat despite whitespace variations", () => {
     expect(parseDetail(catDetail)).toEqual({
       name: "Orion",

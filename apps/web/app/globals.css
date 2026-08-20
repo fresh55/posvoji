@@ -107,12 +107,17 @@
   --filter-accent-border: oklch(0.68 0.075 151);
   --filter-accent-strong: oklch(0.44 0.1 151);
   /* The map's geographic context: the Adriatic and the land across the border.
-     Both stay quieter than the faintest live region, which fills at 8%
+     Both stay quieter than the faintest live region, which fills at 12%
      foreground, so the surroundings never read as part of the country. The
      sea earns its blue from chroma rather than from lightness, so the only
-     water on the map is findable without outweighing a region. */
+     water on the map is findable without outweighing a region.
+     --map-river is the sea's hue at a lightness that carries a hairline: the
+     sea's own 0.955 would vanish on the 0.972 land. It sits 0.17 off the land
+     it crosses in both themes, so the rivers read the same either way, and
+     well short of the country outline, which is what the eye must find first. */
   --map-sea: oklch(0.955 0.03 230);
   --map-abroad: oklch(0.972 0 0);
+  --map-river: oklch(0.8 0.035 230);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -154,6 +159,7 @@
   --filter-accent-strong: oklch(0.72 0.09 151);
   --map-sea: oklch(0.245 0.032 230);
   --map-abroad: oklch(0.215 0 0);
+  --map-river: oklch(0.38 0.035 230);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
@@ -196,8 +202,8 @@
     --filter-accent-border: oklch(0.48 0.06 151);
     --filter-accent-strong: oklch(0.72 0.09 151);
     --map-sea: oklch(0.245 0.032 230);
-    --map-sea-label: oklch(0.62 0.04 230);
     --map-abroad: oklch(0.215 0 0);
+    --map-river: oklch(0.38 0.035 230);
     --card: oklch(0.205 0 0);
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.205 0 0);

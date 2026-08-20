@@ -22,7 +22,12 @@ import {
   ringsPath,
   type RegionShape,
 } from "@/lib/map-regions";
-import { NEIGHBOR_SHAPES, SLOVENIA_UNDERLAY } from "@/lib/neighbor-shapes";
+import {
+  COASTLINE,
+  NEIGHBOR_SHAPES,
+  RIVERS,
+  SLOVENIA_UNDERLAY,
+} from "@/lib/neighbor-shapes";
 import { animalCount, shelterCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { MapCallout, Origin } from "./map-callout";
@@ -650,12 +655,36 @@ function ContextFade({ id }: { id: string }) {
   );
 }
 
+// An open path per line. ringsPath closes every ring it is given, which is
+// right for land and wrong for a coast or a river: closing one would rule a
+// chord back across the water it was drawing.
+function linesPath(lines: [number, number][][]): string {
+  return lines
+    .map(
+      ([first, ...rest]) =>
+        `M${first[0]} ${first[1]}${rest.map(([x, y]) => `L${x} ${y}`).join("")}`,
+    )
+    .join("");
+}
+
 // Same for every render, and the walk behind them is not free.
 const NEIGHBOR_PATHS = NEIGHBOR_SHAPES.map((neighbor) => ({
   id: neighbor.id,
   d: ringsPath(neighbor.rings),
 }));
 const UNDERLAY_PATH = ringsPath(SLOVENIA_UNDERLAY);
+const COASTLINE_PATH = linesPath(COASTLINE);
+const RIVERS_PATH = linesPath(RIVERS.flatMap((river) => river.lines));
+
+// The coast is an edge, not a subject. The country silhouette runs at 1.1 in
+// foreground/45; this is a third of that width at just over half the alpha, so
+// the two can share the Slovenian shore without the thinner one arguing.
+const COASTLINE_WIDTH = 0.4;
+// Thinner still, and in a tone rather than in foreground alpha, so a river
+// never reads as a border. Region fills lie over these lines inside Slovenia
+// and tint them down as a region gets busier, which is the order that keeps
+// the choropleth the thing being read.
+const RIVER_WIDTH = 0.3;
 
 // Slovenia used to float alone on a flat panel. This is the ground it actually
 // sits on, painted before anything else: sea across the whole viewBox, then the
@@ -689,6 +718,33 @@ function GeographicContext({ maskId }: { maskId: string }) {
           two sources' disagreement about the border cannot open a sliver of
           sea or canvas along it. */}
       <path data-map-abroad="SVN" d={UNDERLAY_PATH} fill="var(--map-abroad)" />
+
+      {/* Over the land fills and under everything Slovenia draws on top of
+          them. Drawn straight through the border rather than stopping at it:
+          a river that ends at a frontier is a thing no map has ever meant.
+          Inside the country the density fills cover them, so a busy region
+          quiets its own rivers and the choropleth keeps the floor. */}
+      <path
+        data-map-rivers
+        d={RIVERS_PATH}
+        fill="none"
+        stroke="var(--map-river)"
+        strokeWidth={RIVER_WIDTH}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+
+      {/* Last, so the shore stays a clean edge over the fill it traces. It
+          says where the land stops and nothing else, which is why it is a
+          hairline and not a border. */}
+      <path
+        data-map-coastline
+        d={COASTLINE_PATH}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        className="fill-none stroke-foreground/25"
+        strokeWidth={COASTLINE_WIDTH}
+      />
     </g>
   );
 }
@@ -821,7 +877,12 @@ function Region({
         data-region-state="inert"
         strokeLinejoin="round"
         className={cn(
-          "pointer-events-none fill-foreground/5 [stroke-width:0.6]",
+          // Below DENSITY_STEPS[0] by a full step of the ramp, so an empty
+          // region cannot be mistaken for the quietest live one. It stays
+          // above --map-abroad by more than it is worth arguing about: the
+          // land across the border is untinted, this is not, and the country
+          // outline settles the rest.
+          "pointer-events-none fill-foreground/4 [stroke-width:0.6]",
           REGION_STROKE,
         )}
       />

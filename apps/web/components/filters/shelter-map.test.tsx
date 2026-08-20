@@ -383,6 +383,75 @@ describe("ShelterMap geographic context", () => {
     expect(html).not.toContain("data-map-sea-label");
     expect(html).not.toContain("Jadransko morje");
   });
+
+  const coast = html.match(/<path[^>]*data-map-coastline[^>]*>/)?.[0] ?? "";
+  const rivers = html.match(/<path[^>]*data-map-rivers[^>]*>/)?.[0] ?? "";
+
+  it("draws the coast as an open hairline, not another ring", () => {
+    expect(coast).not.toBe("");
+    const d = coast.match(/ d="([^"]+)"/)?.[1] ?? "";
+    // A ring would close itself and rule a chord back across the water.
+    expect(d).toMatch(/^M-?[\d.]/);
+    expect(d).not.toContain("Z");
+    expect(coast).toContain("fill-none");
+  });
+
+  it("keeps the coast well under the country silhouette", () => {
+    expect(coast).toContain('stroke-width="0.4"');
+    expect(coast).toContain("stroke-foreground/25");
+    // The silhouette: 1.1 wide at 45%. The coast must lose on both counts.
+    expect(html).toContain("stroke-foreground/45");
+    expect(html).toContain("[stroke-width:1.1]");
+  });
+
+  it("draws the rivers thinner still, in the water tone rather than in ink", () => {
+    expect(rivers).not.toBe("");
+    expect(rivers).toContain('stroke-width="0.3"');
+    expect(rivers).toContain("var(--map-river)");
+    expect(rivers).toContain('fill="none"');
+    const d = rivers.match(/ d="([^"]+)"/)?.[1] ?? "";
+    expect(d).not.toContain("Z");
+    // Sava, Drava and Mura, so three separate lines and no more.
+    expect(d.match(/M/g)).toHaveLength(3);
+  });
+
+  it("stacks the rivers over the land and the coast over both, all masked", () => {
+    // Inside the one masked group, which the sea opens and the silhouette
+    // closes: the context fades at the edges and the choropleth stays on top.
+    expect(html.indexOf("data-map-sea")).toBeLessThan(
+      html.indexOf("data-map-rivers"),
+    );
+    expect(html.indexOf('data-map-abroad="SVN"')).toBeLessThan(
+      html.indexOf("data-map-rivers"),
+    );
+    expect(html.indexOf("data-map-rivers")).toBeLessThan(
+      html.indexOf("data-map-coastline"),
+    );
+    expect(html.indexOf("data-map-coastline")).toBeLessThan(
+      html.indexOf("stroke-foreground/45"),
+    );
+    expect(html.indexOf("data-map-coastline")).toBeLessThan(
+      html.indexOf("data-region-state"),
+    );
+  });
+});
+
+describe("ShelterMap inert regions", () => {
+  it("keeps an empty region a clear step below the quietest live one", () => {
+    const html = renderMap([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+      pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+    ]);
+
+    const inert = html.match(/<path[^>]*data-region-state="inert"[^>]*>/)?.[0] ?? "";
+    expect(inert).toContain("fill-foreground/4");
+    // The gap to the ramp's floor is a step of the ramp, not a rounding error.
+    const steps: number[] = [...DENSITY_STEPS];
+    const smallest = Math.min(
+      ...steps.slice(1).map((step, index) => step - steps[index]),
+    );
+    expect(steps[0] - 0.04).toBeGreaterThan(smallest - 0.001);
+  });
 });
 
 describe("anyRegionMixed", () => {

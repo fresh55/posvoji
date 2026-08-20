@@ -39,10 +39,17 @@ const MARKER_COUNT_CUTOFFS = [20, 50] as const;
 export const MARKER_STROKE_WIDTH = 0.9;
 
 // Density steps for the region fills, as foreground alpha. Spaced so each step
-// clears 1.25:1 against its neighbour; the old 14-30% ramp in 4% steps sat at
-// 1.09:1, which is no step at all. The legend swatches read the same array, so
-// the two cannot drift apart.
-export const DENSITY_STEPS = [0.08, 0.18, 0.28, 0.36, 0.45] as const;
+// clears about 1.25:1 against its neighbour; the old 14-30% ramp in 4% steps
+// sat at 1.09:1, which is no step at all. The legend swatches read the same
+// array, so the two cannot drift apart.
+//
+// The floor is 12% and not 8% because of the step nobody had counted: an inert
+// region fills at 4% over the same ground, and 8% left that boundary at 1.08:1,
+// so "no shelters here" and "the quietest region in the country" were one
+// picture. At 12% it clears 1.23:1, which is the ramp's own step. The top is
+// anchored and the low end rebalanced around it, leaving the four gaps at
+// 8/8/8/9 points instead of 10/10/8/9.
+export const DENSITY_STEPS = [0.12, 0.2, 0.28, 0.36, 0.45] as const;
 
 // Rank binning, not fixed count thresholds. Two shelters hold most of the
 // animals in the country, so cutoffs at 10/25/50/100 dropped every other region

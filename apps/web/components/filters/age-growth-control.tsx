@@ -9,10 +9,15 @@ import {
   type AgeStage,
 } from "@/components/filters/age-stage-icon";
 import {
+  CountRoll,
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
+import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
 import { useFilterCardHover } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -106,6 +111,7 @@ export function AgeGrowthControl({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -113,6 +119,7 @@ export function AgeGrowthControl({
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   layout?: "sidebar" | "sheet";
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -163,8 +170,10 @@ export function AgeGrowthControl({
             onToggleMany(selected);
           }}
           resetAriaLabel={messages.resetAgeFilters}
+          collapse={collapse}
         />
 
+        <CollapsibleBody collapse={collapse}>
         <p id={hintId} className="sr-only">
           {messages.ageFilterHint}
         </p>
@@ -449,16 +458,15 @@ export function AgeGrowthControl({
                       >
                         {label}
                       </span>
-                      <span
+                      <CountRoll
+                        value={count}
                         className={cn(
                           "tabular-nums text-muted-foreground",
                           layout === "sheet"
                             ? "text-[10px] leading-tight"
                             : "w-8 text-right text-[11px]",
                         )}
-                      >
-                        {count}
-                      </span>
+                      />
                     </ToggleGroupItem>
                   </TooltipTrigger>
                   <TooltipContent
@@ -472,6 +480,7 @@ export function AgeGrowthControl({
             })}
           </ToggleGroup>
         </TooltipProvider>
+        </CollapsibleBody>
       </section>
     </LazyMotion>
   );

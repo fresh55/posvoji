@@ -1,12 +1,17 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { type ReactElement } from "react";
+import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { EnergyCards } from "@/components/filters/energy-cards";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
+import {
+  CountRoll,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
@@ -29,6 +34,10 @@ import {
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
+import {
+  useFilterSections,
+  type FilterSectionKey,
+} from "@/components/filters/use-filter-sections";
 import {
   groupLabel,
   type FilterOption,
@@ -79,6 +88,7 @@ type GroupProps = {
   selected: string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
+  collapse?: SectionCollapse;
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
@@ -102,6 +112,7 @@ function HealthToggleCards({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   toggles: ToggleDef[];
   counts: Map<string, number>;
@@ -109,6 +120,7 @@ function HealthToggleCards({
   onToggle: (key: ToggleKey) => void;
   onToggleMany: (values: ToggleKey[]) => void;
   layout?: FilterCardLayout;
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -133,6 +145,7 @@ function HealthToggleCards({
       }}
       resetAriaLabel={messages.resetHealthFilters}
       layout={layout}
+      collapse={collapse}
     >
       {toggles.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
@@ -215,7 +228,7 @@ function HealthToggleCards({
               label={label}
               checked={checked}
               renderCount={(className) => (
-                <span className={className}>{count}</span>
+                <CountRoll value={count} className={className} />
               )}
             />
           </button>
@@ -231,6 +244,7 @@ function SizeGroup({
   selected,
   onToggle,
   onToggleMany,
+  collapse,
 }: Omit<GroupProps, "group" | "ageLayout">) {
   const { locale, messages } = useI18n();
   const { isResetting, beginReset } = useResetStagger(selected.length);
@@ -245,14 +259,17 @@ function SizeGroup({
           onToggleMany(selected);
         }}
         resetAriaLabel={messages.resetSizeFilters}
+        collapse={collapse}
       />
-      <SizePawCards
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={onToggle}
-        isResetting={isResetting}
-      />
+      <CollapsibleBody collapse={collapse}>
+        <SizePawCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={onToggle}
+          isResetting={isResetting}
+        />
+      </CollapsibleBody>
     </section>
   );
 }
@@ -263,6 +280,7 @@ function SexGroup({
   selected,
   onToggle,
   onToggleMany,
+  collapse,
 }: Omit<GroupProps, "group" | "ageLayout">) {
   const { locale, messages } = useI18n();
 
@@ -273,13 +291,16 @@ function SexGroup({
         active={selected.length > 0}
         onReset={() => onToggleMany(selected)}
         resetAriaLabel={messages.resetSexFilters}
+        collapse={collapse}
       />
-      <SexCards
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={onToggle}
-      />
+      <CollapsibleBody collapse={collapse}>
+        <SexCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={onToggle}
+        />
+      </CollapsibleBody>
     </section>
   );
 }
@@ -298,6 +319,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           layout={rest.ageLayout}
+          collapse={rest.collapse}
         />
       );
     case "sex":
@@ -308,6 +330,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           selected={rest.selected}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
+          collapse={rest.collapse}
         />
       );
     case "size":
@@ -318,6 +341,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           selected={rest.selected}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
+          collapse={rest.collapse}
         />
       );
     case "energy":
@@ -329,9 +353,21 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           layout={rest.ageLayout}
+          collapse={rest.collapse}
         />
       );
   }
+}
+
+// A closed section still says what it holds: the first selected label, and how
+// many more stand behind it. Language-neutral, so it needs no plural rules.
+function selectionSummary(
+  selected: string[],
+  labelOf: (value: string) => string | undefined,
+): string | null {
+  if (selected.length === 0) return null;
+  const first = labelOf(selected[0]) ?? selected[0];
+  return selected.length === 1 ? first : `${first} +${selected.length - 1}`;
 }
 
 // The desktop sidebar and the mobile sheet frame these differently but show the
@@ -348,6 +384,7 @@ export function FilterGroupList({
   onToggleProperty,
   onToggleManyProperties,
   ageLayout = "sidebar",
+  collapsible = false,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -356,7 +393,28 @@ export function FilterGroupList({
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
   ageLayout?: "sidebar" | "sheet";
+  /** Folds sections behind their headers. The sidebar turns this on; the
+      sheet scrolls as one page and leaves it off. */
+  collapsible?: boolean;
 } & FilterActionContract) {
+  const { isOpen, toggleSection } = useFilterSections();
+  // One base per list, so a header and the body it controls agree on an id
+  // even with the sidebar and the sheet mounted at once.
+  const idBase = useId();
+
+  const collapseFor = (
+    key: FilterSectionKey,
+    summary: string | null,
+  ): SectionCollapse | undefined =>
+    collapsible
+      ? {
+          open: isOpen(key),
+          onToggle: () => toggleSection(key),
+          summary,
+          contentId: `${idBase}-${key}`,
+        }
+      : undefined;
+
   return (
     <>
       {groups.map(({ group, options }) => (
@@ -369,6 +427,13 @@ export function FilterGroupList({
           selected={filters[group]}
           onToggle={(value) => onToggle(group, value)}
           onToggleMany={(values) => onToggleMany(group, values)}
+          collapse={collapseFor(
+            group,
+            selectionSummary(
+              filters[group],
+              (value) => options.find((option) => option.value === value)?.label,
+            ),
+          )}
         />
       ))}
 
@@ -380,6 +445,13 @@ export function FilterGroupList({
           onToggle={onToggleProperty}
           onToggleMany={onToggleManyProperties}
           layout={ageLayout}
+          collapse={collapseFor(
+            "health",
+            selectionSummary(
+              filters.toggles,
+              (value) => toggles.find((toggle) => toggle.key === value)?.label,
+            ),
+          )}
         />
       )}
 
@@ -393,6 +465,14 @@ export function FilterGroupList({
           onToggle={goodWith.onToggle}
           onToggleMany={goodWith.onToggleMany}
           layout={ageLayout}
+          collapse={collapseFor(
+            "goodWith",
+            selectionSummary(
+              filters.goodWith,
+              (value) =>
+                goodWith.options.find((option) => option.key === value)?.label,
+            ),
+          )}
         />
       )}
     </>

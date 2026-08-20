@@ -1,8 +1,8 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { useState } from "react";
 import {
+  CountRoll,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
@@ -14,6 +14,7 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
+import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
   GoodWithGlyph,
   LONGEST_GOOD_WITH_GESTURE_MS,
@@ -41,7 +42,6 @@ const GESTURE_CHECK_DELAY = 0.2;
 const RIPPLE_OPACITY = 0.5;
 const RIPPLE_SCALE = 1.35;
 const RIPPLE_DURATION = 0.35;
-const COUNT_ROLL_DURATION = 0.28;
 
 const LEAD_KEYS: Record<GoodWithKey, TranslationKey> = {
   kids: "goodWithLeadKids",
@@ -54,38 +54,6 @@ const TAIL_KEYS: Record<GoodWithKey, TranslationKey> = {
   dogs: "goodWithTailDogs",
   cats: "goodWithTailCats",
 };
-
-// A changed number slides in rather than swapping in place, so the narrowing
-// is something you watch happen. Never on first paint: nothing narrowed there.
-function CountRoll({ value, className }: { value: number; className?: string }) {
-  const shouldReduceMotion = useReducedMotion();
-  // The previous value as state, adjusted during render, marks exactly the
-  // render where the number changed. A ref read here would be unsound under
-  // concurrent rendering, and an effect would animate one render too late.
-  const [previous, setPrevious] = useState(value);
-  const changed = previous !== value;
-  if (changed) {
-    setPrevious(value);
-  }
-
-  if (shouldReduceMotion) {
-    return <span className={className}>{value}</span>;
-  }
-
-  return (
-    <span className={cn("relative inline-block", className)}>
-      <m.span
-        key={value}
-        className="block"
-        initial={changed ? { y: -6, opacity: 0 } : false}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
-      >
-        {value}
-      </m.span>
-    </span>
-  );
-}
 
 /** Fixed facet order, so the sentence does not reshuffle as you pick. */
 function orderedSelection(selected: GoodWithKey[]): GoodWithKey[] {
@@ -101,6 +69,7 @@ export function GoodWithCards({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   options: GoodWithOption[];
   counts: Map<string, number>;
@@ -111,6 +80,7 @@ export function GoodWithCards({
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
   layout?: FilterCardLayout;
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -155,6 +125,7 @@ export function GoodWithCards({
       }}
       resetAriaLabel={messages.resetGoodWithFilters}
       layout={layout}
+      collapse={collapse}
       // The one place the section says its choices hold at once, and the one
       // the screen reader hears. Nothing selected says nothing.
       footer={

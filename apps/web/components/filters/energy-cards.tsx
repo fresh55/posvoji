@@ -5,6 +5,7 @@ import { m, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import type { EnergyLevel } from "@posvoji/schema";
 import {
+  CountRoll,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
@@ -16,6 +17,7 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
+import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
   useFilterCardHover,
   useOneShotCelebration,
@@ -461,6 +463,7 @@ export function EnergyCards({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -468,6 +471,7 @@ export function EnergyCards({
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   layout?: FilterCardLayout;
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -505,6 +509,7 @@ export function EnergyCards({
       }}
       resetAriaLabel={messages.resetEnergyFilters}
       layout={layout}
+      collapse={collapse}
     >
       {options.map(({ value, label }, index) => {
             const count = counts.get(value) ?? 0;
@@ -754,7 +759,7 @@ export function EnergyCards({
                             : REST_TRANSITION
                       }
                     >
-                      {count}
+                      <CountRoll value={count} />
                     </m.span>
                   )}
                 />

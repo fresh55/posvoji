@@ -95,7 +95,16 @@ describe("ShelterMap marker states", () => {
     expect(html).toContain("pointer-events-none");
   });
 
+  it("draws a shelter with nothing to pick as a dot, not a fainter paw disc", () => {
+    const html = renderMap([
+      pin("empty", "Zavetišče brez živali", "Ljubljana", 0),
+    ]);
 
+    expect(html).toContain("data-marker-empty");
+    // The paw and the stroked disc belong to pickable shelters only.
+    expect(html).not.toContain("lucide-paw-print");
+    expect(html).not.toContain("stroke-foreground/40");
+  });
 
   it("keeps an off-site shelter out of its region's pick and count", () => {
     const html = renderMap([
@@ -125,6 +134,61 @@ describe("ShelterMap marker states", () => {
   });
 });
 
+// The transparent hit path a cluster draws over each of its discs.
+function wedgeTag(html: string, value: string): string {
+  return (
+    html.match(new RegExp(`<path[^>]*data-wedge-shelter="${value}"[^>]*>`))?.[0] ??
+    ""
+  );
+}
+
+function wedgeOrder(html: string): string[] {
+  return [...html.matchAll(/data-wedge-shelter="([^"]+)"/g)].map(
+    ([, value]) => value,
+  );
+}
+
+describe("ShelterMap cluster wedges", () => {
+  it("gives each shelter in a cluster its own hit target, in disc order", () => {
+    const html = renderMap([
+      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+      pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+    ]);
+
+    expect(wedgeOrder(html)).toEqual(["macja-hisa", "sia-in-lu"]);
+  });
+
+  it("leaves a single-shelter marker whole", () => {
+    const html = renderMap([
+      pin("brezice", "Zavetišče Brežice", "Brežice", 5),
+    ]);
+
+    expect(wedgeOrder(html)).toEqual([]);
+  });
+
+  it("leaves an overflow marker whole", () => {
+    const html = renderMap([
+      pin("a", "Zavetišče A", "Celje", 10),
+      pin("b", "Zavetišče B", "Celje", 10),
+      pin("c", "Zavetišče C", "Celje", 10),
+      pin("d", "Zavetišče D", "Celje", 10),
+    ]);
+
+    expect(wedgeOrder(html)).toEqual([]);
+  });
+
+  it("keeps an off-site shelter's wedge hoverable but never clickable", () => {
+    const html = renderMap([
+      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+      { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
+    ]);
+
+    expect(wedgeTag(html, "macja-hisa")).toContain("cursor-pointer");
+    expect(wedgeTag(html, "macja-hisa")).toContain('data-wedge-pickable="true"');
+    expect(wedgeTag(html, "vzhod")).toContain("cursor-default");
+    expect(wedgeTag(html, "vzhod")).not.toContain("data-wedge-pickable");
+  });
+});
 
 describe("ShelterMap regions", () => {
   it("spreads the density ramp over the live regions by rank", () => {

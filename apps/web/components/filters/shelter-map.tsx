@@ -97,6 +97,13 @@ export function ShelterMap({
   const { locale, messages } = useI18n();
   const towns = useMemo(() => layoutTowns(pins), [pins]);
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
+  /** The single shelter under the pointer inside a cluster marker. A cluster
+   *  answers per disc, so the callout and the list row follow the wedge rather
+   *  than the town. Null for single and overflow markers, which still answer as
+   *  a whole. */
+  const [hoveredShelterValue, setHoveredShelterValue] = useState<string | null>(
+    null,
+  );
   const [hoveredRegionId, setHoveredRegionId] = useState<number | null>(null);
   const [focusedRegionId, setFocusedRegionId] = useState<number | null>(null);
   /** Region wearing keyboard focus right now, so it earns the same callout a
@@ -105,6 +112,11 @@ export function ShelterMap({
   const [calloutRegionId, setCalloutRegionId] = useState<number | null>(null);
   const regionRefs = useRef(new Map<number, SVGPathElement>());
   const activeTown = towns.find((town) => town.key === hoveredTownKey);
+  const hoveredShelter = hoveredShelterValue
+    ? activeTown?.shelters.find(
+        (shelter) => shelter.value === hoveredShelterValue,
+      )
+    : undefined;
 
   // Use real coordinates because collision layout may nudge a marker across a
   // region border. Computed once per town, alongside the region grouping, so
@@ -249,8 +261,10 @@ export function ShelterMap({
                 matchedValues.includes(shelter.value),
               )
             }
+            hoveredShelterValue={hoveredShelterValue}
             onPointerEnter={() => {
               setHoveredTownKey(town.key);
+              setHoveredShelterValue(null);
               onHoverShelters?.(town.shelters.map((shelter) => shelter.value));
             }}
             onPointerLeave={() => {
@@ -258,6 +272,19 @@ export function ShelterMap({
                 current === town.key ? null : current,
               );
               onHoverShelters?.(null);
+            }}
+            onHoverShelter={(value) => {
+              if (value === null) {
+                setHoveredTownKey((current) =>
+                  current === town.key ? null : current,
+                );
+                setHoveredShelterValue(null);
+                onHoverShelters?.(null);
+                return;
+              }
+              setHoveredTownKey(town.key);
+              setHoveredShelterValue(value);
+              onHoverShelters?.([value]);
             }}
           />
         ))}
@@ -270,11 +297,18 @@ export function ShelterMap({
             x={activeTown.x}
             y={activeTown.y}
             reach={activeTown.r}
-            title={townLabel(activeTown)}
+            // A wedge under the pointer names its own shelter. Without that a
+            // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
+            // at, which is the one question the cluster cannot answer.
+            title={hoveredShelter ? hoveredShelter.label : townLabel(activeTown)}
             metadata={
-              activeTown.shelters.length > 1
-                ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
-                : animalCount(townCount(activeTown), locale)
+              hoveredShelter
+                ? hoveredShelter.selectable === false
+                  ? messages.noAnimalsListed
+                  : animalCount(hoveredShelter.count, locale)
+                : activeTown.shelters.length > 1
+                  ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
+                  : animalCount(townCount(activeTown), locale)
             }
           />
         )}

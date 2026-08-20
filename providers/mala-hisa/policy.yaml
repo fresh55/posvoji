@@ -11,9 +11,10 @@ images: cache-permitted
 descriptions: full-permitted
 
 logo:
-  # The logo grant is recorded with the shelter's own permission once that
-  # lands; a logo cannot be permitted while the provider has none.
-  use: none
+  use: permitted
+  url: https://zavetisce-malahisa.si/wp-content/uploads/2025/02/mala-hisa-logo-white-1.png
+  date: 2026-08-20
+  reference: project-owner-confirmation-logos-2026-08-20
 
 permission:
   status: granted

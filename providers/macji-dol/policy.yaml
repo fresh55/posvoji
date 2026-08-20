@@ -8,6 +8,12 @@ ingestion: scrape
 images: cache-permitted
 descriptions: full-permitted
 
+logo:
+  use: permitted
+  url: https://www.macji-dol.si/wp-content/uploads/2023/02/logo_long_left.png
+  date: 2026-08-20
+  reference: project-owner-confirmation-logos-2026-08-20
+
 permission:
   status: granted
   date: 2026-08-19

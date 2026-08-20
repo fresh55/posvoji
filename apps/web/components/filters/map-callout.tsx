@@ -44,9 +44,11 @@ export function MapCallout({
         <span className="w-full break-words text-[5.5px] font-medium leading-[1.15]">
           {title}
         </span>
-        <span className="mt-[1.5px] w-full break-words text-[4.75px] leading-[1.15] text-muted-foreground">
-          {metadata}
-        </span>
+        {metadata && (
+          <span className="mt-[1.5px] w-full break-words text-[4.75px] leading-[1.15] text-muted-foreground">
+            {metadata}
+          </span>
+        )}
       </div>
     </foreignObject>
   );

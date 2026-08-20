@@ -2,8 +2,10 @@
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cityAt } from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
 import { LocationPicker } from "./location-picker";
+import { ShelterMap, type ShelterPin } from "./shelter-map";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -29,7 +31,11 @@ const counts = new Map([
   ["jug", 7],
 ]);
 
-async function openPicker() {
+// Registry shelters with nothing to filter by. Celje places on the map, so
+// they also become the faint markers the legend explains.
+const offSite = [{ value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" }];
+
+async function openPicker(props: { offSite?: typeof offSite } = {}) {
   render(
     <I18nProvider locale="sl">
       <LocationPicker
@@ -40,6 +46,7 @@ async function openPicker() {
         onToggleMany={vi.fn()}
         resultCount={11}
         species="all"
+        {...props}
       />
     </I18nProvider>,
   );
@@ -287,6 +294,33 @@ describe("LocationPicker keyboard", () => {
   });
 });
 
+describe("LocationPicker off-site shelters", () => {
+  it("links a shelter with no animals to its page", async () => {
+    await openPicker({ offSite });
+
+    const link = screen.getByRole("link", { name: /Zavetišče Vzhod/ });
+
+    expect(link.getAttribute("href")).toBe("/zavetisca/vzhod");
+  });
+
+  it("explains the faint marker only once there is one", async () => {
+    await openPicker();
+
+    expect(screen.queryByText("Trenutno brez objavljenih živali")).toBeNull();
+
+    cleanup();
+    await openPicker({ offSite });
+
+    // The heading over the rows and the legend entry share the wording.
+    expect(
+      screen.getAllByText("Trenutno brez objavljenih živali"),
+    ).toHaveLength(2);
+  });
+});
+
+// The map lives in this dialog, and a cluster's wedges are the one part of it
+// that needs a real DOM to answer a click. The static render test next door
+// covers what the wedges look like.
 describe("LocationPicker attribution", () => {
   it("covers the postal districts as well as the region boundaries", async () => {
     await openPicker();

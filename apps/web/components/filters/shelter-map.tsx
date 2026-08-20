@@ -10,6 +10,7 @@ import {
   selectionState,
   townCount,
   townLabel,
+  townSelectableValues,
   type ShelterPin,
   type Town,
 } from "@/lib/map-layout";
@@ -39,9 +40,10 @@ function getRegionStats(
   towns: Town[],
   selected: string[],
 ): Omit<RegionStats, "density"> {
-  const values = towns.flatMap((town) =>
-    town.shelters.map((shelter) => shelter.value),
-  );
+  // Only what a click may toggle. Off-site shelters are on the map but not in
+  // the region's values, so a region pick never selects a shelter with
+  // nothing to show, and a region holding only those stays inert.
+  const values = towns.flatMap(townSelectableValues);
   const animals = towns.reduce((sum, town) => sum + townCount(town), 0);
   return {
     values,
@@ -64,6 +66,8 @@ export function ShelterMap({
   highlightedValue,
   matchedValues,
   onHoverShelters,
+  spotlightValues,
+  spotlightNote,
 }: {
   pins: ShelterPin[];
   selected: string[];
@@ -80,6 +84,15 @@ export function ShelterMap({
   /** Fired when a marker or region gains or loses pointer hover, so the list
    *  can tint the matching row(s). Null means nothing is hovered. */
   onHoverShelters?: (values: string[] | null) => void;
+  /** Shelters the map should point at outright: accent ring plus a named
+   *  callout, independent of hover. The municipality lookup's answer to "so
+   *  where is that?" — a dimmed-versus-darker marker was not readable, and on
+   *  phones markers are not drawn at all, so the ring and card are what make
+   *  the answer visible there. Null means no spotlight. */
+  spotlightValues?: string[] | null;
+  /** One-line note under the spotlight callout title, e.g. "responsible
+   *  shelter" in the reader's language. */
+  spotlightNote?: string;
 }) {
   const { locale, messages } = useI18n();
   const towns = useMemo(() => layoutTowns(pins), [pins]);
@@ -114,6 +127,14 @@ export function ShelterMap({
         town.shelters.some((shelter) => shelter.value === highlightedValue),
       )
     : undefined;
+
+  const spotlightTowns = spotlightValues?.length
+    ? towns.filter((town) =>
+        town.shelters.some((shelter) =>
+          spotlightValues.includes(shelter.value),
+        ),
+      )
+    : [];
   const highlightedRegionId = highlightedTown
     ? regionIdByTownKey.get(highlightedTown.key)
     : undefined;
@@ -241,8 +262,10 @@ export function ShelterMap({
           />
         ))}
 
-        {/* Keep the active tooltip above every marker. */}
-        {activeTown && (
+        {/* Keep the active tooltip above every marker. A spotlighted town
+            already wears a persistent card saying the same thing, so hover
+            must not stack a second card on top of it. */}
+        {activeTown && !spotlightTowns.some((t) => t.key === activeTown.key) && (
           <MapCallout
             x={activeTown.x}
             y={activeTown.y}
@@ -266,6 +289,44 @@ export function ShelterMap({
           metadata={`${shelterCount(hoveredRegion.stats.values.length, locale)} · ${animalCount(hoveredRegion.stats.animals, locale)}`}
         />
       )}
+
+      {/* Painted last: the spotlight is the whole point of the map while it
+          is on. Drawn outside the md-only marker group on purpose — phones
+          get no markers, so the ring and the named card are all they see. */}
+      {spotlightTowns.map((town) => (
+        <g key={`spot-${town.key}`} aria-hidden className="pointer-events-none">
+          <circle
+            cx={town.x}
+            cy={town.y}
+            r={town.r + 3.5}
+            strokeWidth={1.5}
+            className="fill-none stroke-[var(--filter-accent-strong)] animate-pulse motion-reduce:animate-none"
+          />
+          <circle
+            cx={town.x}
+            cy={town.y}
+            r={2.2}
+            className="fill-[var(--filter-accent-strong)] md:hidden"
+          />
+        </g>
+      ))}
+      {spotlightTowns.map((town) => (
+        <MapCallout
+          key={`spot-callout-${town.key}`}
+          x={town.x}
+          y={town.y}
+          reach={town.r + 6}
+          // The spotlighted shelter by name, not its town: in a shared town
+          // the answer is one of the discs, and the card must say which.
+          title={
+            town.shelters
+              .filter((shelter) => spotlightValues?.includes(shelter.value))
+              .map((shelter) => shelter.label)
+              .join(" · ") || townLabel(town)
+          }
+          metadata={spotlightNote ?? ""}
+        />
+      ))}
     </svg>
   );
 }

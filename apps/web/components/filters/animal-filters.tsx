@@ -13,6 +13,7 @@ import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { activeFilterSectionCount } from "@/lib/filters";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
   Filters,
@@ -36,6 +37,8 @@ export function AnimalFilters({
   goodWith,
   shelters,
   shelterTally,
+  municipalities,
+  offSiteShelters,
   chips,
   resultCount,
   clearTrailKey,
@@ -59,6 +62,10 @@ export function AnimalFilters({
   /** Absent when the dataset has nothing to choose between. */
   shelters: FilterOption[] | undefined;
   shelterTally: Map<string, number>;
+  municipalities?: LookupEntry[];
+  /** Registry shelters with no animals on the site, shown inert in the
+   *  location picker's map and list. */
+  offSiteShelters?: FilterOption[];
   chips: Chip[];
   resultCount: number;
   clearTrailKey: number;
@@ -111,6 +118,9 @@ export function AnimalFilters({
                   onToggleMany={(values) => onToggleMany("shelter", values)}
                   resultCount={resultCount}
                   species={filters.species}
+                  municipalities={municipalities}
+                  offSite={offSiteShelters}
+                  deepLink="desktop"
                 />
               </div>
             )}
@@ -178,6 +188,9 @@ export function AnimalFilters({
                 onToggleMany={(values) => onToggleMany("shelter", values)}
                 resultCount={resultCount}
                 species={filters.species}
+                municipalities={municipalities}
+                offSite={offSiteShelters}
+                deepLink="mobile"
               />
             </div>
           )}

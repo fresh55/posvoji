@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "generate:postal-districts": "node scripts/generate-postal-districts.mjs"
+    "generate:postal-districts": "node scripts/generate-postal-districts.mjs",
+    "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs"
   },
   "dependencies": {
     "@posvoji/schema": "workspace:*",

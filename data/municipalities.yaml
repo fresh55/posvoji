@@ -1,0 +1,820 @@
+# Which shelter serves which Slovenian municipality (občina).
+#
+# GENERATED at first authoring, maintained by hand from here on.
+# Municipality list: all 212 občin (GURS/SURS naming, spaced hyphens).
+# Every coverage entry cites a source below. Municipalities with an
+# empty coverage list have NO verified public assignment: the page
+# must show 'no verified data', never a guess.
+#
+# Conflicts resolved toward the newer source on purpose:
+# - Bloke, Loška dolina: Meli (2023) -> Ljubljana (own site, 2026).
+# - Laško: Zonzani (2018) -> Sevnica (2023).
+# - Poljčane, Slovenska Bistrica, Slovenske Konjice, Zreče: Zonzani
+#   (2018) -> Maribor (own site, 2026).
+
+meta:
+  municipality_list_source: "GURS/SURS — 212 občin"
+  last_reviewed: 2026-08-20
+
+sources:
+  lj-2026:
+    label: "Zavetišče Ljubljana — Predstavitev za občine"
+    url: https://zavetisce-ljubljana.si/predstavitev-za-obcine
+    date: "2026-08"
+    confirmed: true
+  mb-2026:
+    label: "Zavetišče Maribor — Pogodbene občine"
+    url: https://zavetisce-mb.si/pogodbene-obcine/
+    date: "2026-08"
+    confirmed: true
+  obalno-2026:
+    label: "Obalno zavetišče — občine na spletni strani"
+    url: https://obalnozavetisce.si/
+    date: "2026-08"
+    confirmed: true
+  pmp-2023:
+    label: "Pes, moj prijatelj — pregled pristojnih zavetišč po občinah"
+    url: https://www.pesmojprijatelj.si/zavetisca
+    date: "2023-02"
+    confirmed: false
+  mojpes-2018:
+    label: "Moj pes — predstavitev Zavetišča Zonzani"
+    url: https://www.mojpes.com/aktualno/zavetisce-zonzani/
+    date: "2018-10"
+    confirmed: false
+  smartno-2026:
+    label: "Občina Šmartno ob Paki — obvestilo o oskrbi zapuščenih živali"
+    url: https://www.smartnoobpaki.si/objava/1234605
+    date: "2026-08"
+    confirmed: true
+  ptuj-2026:
+    label: "Mestna občina Ptuj — Živali"
+    url: https://www.ptuj.si/post/321158
+    date: "2026-08"
+    confirmed: true
+
+municipalities:
+  - name: Ajdovščina
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Ankaran
+    coverage:
+      - shelter: obalno
+        source: obalno-2026
+  - name: Apače
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Beltinci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Benedikt
+    coverage: []
+  - name: Bistrica ob Sotli
+    coverage: []
+  - name: Bled
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Bloke
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Bohinj
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Borovnica
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Bovec
+    coverage: []
+  - name: Braslovče
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Brda
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Brezovica
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Brežice
+    coverage:
+      - shelter: brezice
+        source: pmp-2023
+  - name: Cankova
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Celje
+    coverage:
+      - shelter: macja-hisa
+        species: cats
+        source: pmp-2023
+      - shelter: zonzani
+        species: dogs
+        source: mojpes-2018
+  - name: Cerklje na Gorenjskem
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Cerknica
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Cerkno
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Cerkvenjak
+    coverage: []
+  - name: Cirkulane
+    coverage: []
+  - name: Črenšovci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Črna na Koroškem
+    coverage: []
+  - name: Črnomelj
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Destrnik
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Divača
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Dobje
+    coverage: []
+  - name: Dobrepolje
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Dobrna
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Dobrova - Polhov Gradec
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Dobrovnik
+    coverage: []
+  - name: Dol pri Ljubljani
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Dolenjske Toplice
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Domžale
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Dornava
+    coverage: []
+  - name: Dravograd
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Duplek
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Gorenja vas - Poljane
+    coverage:
+      - shelter: horjul
+        species: dogs
+        source: pmp-2023
+      - shelter: macji-dol
+        species: cats
+        source: pmp-2023
+  - name: Gorišnica
+    coverage: []
+  - name: Gorje
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Gornja Radgona
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Gornji Grad
+    coverage: []
+  - name: Gornji Petrovci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Grad
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Grosuplje
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Hajdina
+    coverage: []
+  - name: Hoče - Slivnica
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Hodoš
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Horjul
+    coverage: []
+  - name: Hrastnik
+    coverage:
+      - shelter: sevnica
+        source: pmp-2023
+  - name: Hrpelje - Kozina
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Idrija
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Ig
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Ilirska Bistrica
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Ivančna Gorica
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Izola
+    coverage:
+      - shelter: obalno
+        source: obalno-2026
+  - name: Jesenice
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Jezersko
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Juršinci
+    coverage: []
+  - name: Kamnik
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Kanal ob Soči
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Kidričevo
+    coverage: []
+  - name: Kobarid
+    coverage:
+      - shelter: johanca
+        source: pmp-2023
+  - name: Kobilje
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Kočevje
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Komen
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Komenda
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Koper
+    coverage:
+      - shelter: obalno
+        source: obalno-2026
+  - name: Kostanjevica na Krki
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Kostel
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Kozje
+    coverage: []
+  - name: Kranj
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Kranjska Gora
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Križevci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Krško
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Kungota
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Kuzma
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Laško
+    coverage:
+      - shelter: sevnica
+        source: pmp-2023
+  - name: Lenart
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Lendava
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Litija
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Ljubljana
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Ljubno
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Ljutomer
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Log - Dragomer
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Logatec
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Loška dolina
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Loški Potok
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Lovrenc na Pohorju
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Luče
+    coverage: []
+  - name: Lukovica
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Majšperk
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Makole
+    coverage: []
+  - name: Maribor
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Markovci
+    coverage: []
+  - name: Medvode
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Mengeš
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Metlika
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Mežica
+    coverage: []
+  - name: Miklavž na Dravskem polju
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Miren - Kostanjevica
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Mirna
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Mirna Peč
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Mislinja
+    coverage: []
+  - name: Mokronog - Trebelno
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Moravče
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Moravske Toplice
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Mozirje
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Murska Sobota
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Muta
+    coverage: []
+  - name: Naklo
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Nazarje
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Nova Gorica
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Novo mesto
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Odranci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Oplotnica
+    coverage: []
+  - name: Ormož
+    coverage: []
+  - name: Osilnica
+    coverage: []
+  - name: Pesnica
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Piran
+    coverage:
+      - shelter: obalno
+        source: obalno-2026
+  - name: Pivka
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Podčetrtek
+    coverage:
+      - shelter: zonzani
+        source: pmp-2023
+  - name: Podlehnik
+    coverage: []
+  - name: Podvelka
+    coverage: []
+  - name: Poljčane
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Polzela
+    coverage: []
+  - name: Postojna
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Prebold
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Preddvor
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Prevalje
+    coverage: []
+  - name: Ptuj
+    coverage:
+      - shelter: mala-hisa
+        source: ptuj-2026
+  - name: Puconci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Rače - Fram
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Radeče
+    coverage:
+      - shelter: sevnica
+        source: pmp-2023
+  - name: Radenci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Radlje ob Dravi
+    coverage: []
+  - name: Radovljica
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Ravne na Koroškem
+    coverage: []
+  - name: Razkrižje
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Rečica ob Savinji
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Renče - Vogrsko
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Ribnica
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Ribnica na Pohorju
+    coverage: []
+  - name: Rogaška Slatina
+    coverage: []
+  - name: Rogašovci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Rogatec
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Ruše
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Selnica ob Dravi
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Semič
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Sevnica
+    coverage:
+      - shelter: sevnica
+        source: pmp-2023
+  - name: Sežana
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Slovenj Gradec
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Slovenska Bistrica
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Slovenske Konjice
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Sodražica
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Solčava
+    coverage: []
+  - name: Središče ob Dravi
+    coverage: []
+  - name: Starše
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Straža
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Sveta Ana
+    coverage: []
+  - name: Sveta Trojica v Slovenskih goricah
+    coverage: []
+  - name: Sveti Andraž v Slovenskih goricah
+    coverage: []
+  - name: Sveti Jurij ob Ščavnici
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Sveti Jurij v Slovenskih goricah
+    coverage: []
+  - name: Sveti Tomaž
+    coverage: []
+  - name: Šalovci
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Šempeter - Vrtojba
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Šenčur
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Šentilj
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Šentjernej
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Šentjur
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Šentrupert
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Škocjan
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Škofja Loka
+    coverage:
+      - shelter: horjul
+        species: dogs
+        source: pmp-2023
+      - shelter: macji-dol
+        species: cats
+        source: pmp-2023
+  - name: Škofljica
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Šmarje pri Jelšah
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Šmarješke Toplice
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Šmartno ob Paki
+    coverage:
+      - shelter: potepuhi
+        source: smartno-2026
+  - name: Šmartno pri Litiji
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Šoštanj
+    coverage: []
+  - name: Štore
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Tabor
+    coverage: []
+  - name: Tišina
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Tolmin
+    coverage:
+      - shelter: johanca
+        source: pmp-2023
+  - name: Trbovlje
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Trebnje
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Trnovska vas
+    coverage: []
+  - name: Trzin
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Tržič
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Turnišče
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Velenje
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Velika Polana
+    coverage: []
+  - name: Velike Lašče
+    coverage:
+      - shelter: turk
+        source: pmp-2023
+  - name: Veržej
+    coverage:
+      - shelter: mala-hisa
+        source: pmp-2023
+  - name: Videm
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Vipava
+    coverage:
+      - shelter: oskar
+        source: pmp-2023
+  - name: Vitanje
+    coverage: []
+  - name: Vodice
+    coverage:
+      - shelter: meli
+        source: pmp-2023
+  - name: Vojnik
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Vransko
+    coverage: []
+  - name: Vrhnika
+    coverage:
+      - shelter: ljubljana
+        source: lj-2026
+  - name: Vuzenica
+    coverage: []
+  - name: Zagorje ob Savi
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Zavrč
+    coverage: []
+  - name: Zreče
+    coverage:
+      - shelter: maribor
+        source: mb-2026
+  - name: Žalec
+    coverage:
+      - shelter: zonzani
+        source: mojpes-2018
+  - name: Železniki
+    coverage:
+      - shelter: horjul
+        species: dogs
+        source: pmp-2023
+      - shelter: macji-dol
+        species: cats
+        source: pmp-2023
+  - name: Žetale
+    coverage: []
+  - name: Žiri
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Žirovnica
+    coverage:
+      - shelter: horjul
+        source: pmp-2023
+  - name: Žužemberk
+    coverage: []

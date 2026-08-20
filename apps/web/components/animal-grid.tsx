@@ -29,8 +29,10 @@ import {
   visibleGoodWith,
   visibleGroups,
   visibleToggles,
+  type FilterOption,
 } from "@/lib/filters";
 import { goodWithChipLabel } from "@/lib/labels";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   DEFAULT_ANIMAL_SORT,
   sortAnimals,
@@ -42,12 +44,20 @@ export function AnimalGrid({
   animals,
   logoIds,
   referenceDate,
+  municipalities,
+  offSiteShelters,
 }: {
   animals: Animal[];
   logoIds: string[];
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
   referenceDate: string;
+  /** Municipality → responsible-shelter entries for the shelter dialog's
+   *  "found an animal" mode. Built on the server from data/. */
+  municipalities?: LookupEntry[];
+  /** Registry shelters with no animals on the site, drawn inert in the
+   *  location picker's map and list. */
+  offSiteShelters?: FilterOption[];
 }) {
   const { locale, messages } = useI18n();
   const [sort, setSort] = useState<AnimalSort>(DEFAULT_ANIMAL_SORT);
@@ -240,6 +250,8 @@ export function AnimalGrid({
           goodWith={goodWith}
           shelters={shelters}
           shelterTally={counts.shelter}
+          municipalities={municipalities}
+          offSiteShelters={offSiteShelters}
           chips={chips}
           resultCount={visible.length}
           clearTrailKey={clearTrailKey}

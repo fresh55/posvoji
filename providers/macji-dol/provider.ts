@@ -21,6 +21,7 @@ export interface DetailFacts {
   intakeDate?: string;
   description?: string;
   goodWith?: AnimalGoodWith;
+  apartmentOk?: Compatibility;
   imageUrls: string[];
 }
 
@@ -129,6 +130,26 @@ function parseGoodWith($: cheerio.CheerioAPI): AnimalGoodWith | undefined {
   return Object.keys(goodWith).length > 0 ? goodWith : undefined;
 }
 
+// The same field also carries the site's housing terms. "Bivanje samo v
+// stanovanju" is a cat the shelter keeps indoors, which is the same claim as
+// apartmentOk "yes". Exact terms only, for the reason given above: a hedged
+// or qualified phrase containing these words is not the same claim. There is
+// no term for the opposite, so a "no" is never inferred from silence.
+const APARTMENT_TERMS: Record<string, Compatibility> = {
+  "bivanje samo v stanovanju": "yes",
+};
+
+function parseApartmentOk($: cheerio.CheerioAPI): Compatibility | undefined {
+  const raw = labelValue($, "Družabnost");
+  if (!raw) return undefined;
+
+  for (const part of raw.split(",")) {
+    const mapped = APARTMENT_TERMS[normalizeTerm(part)];
+    if (mapped) return mapped;
+  }
+  return undefined;
+}
+
 function isValidIsoDate(iso: string): boolean {
   const date = new Date(`${iso}T00:00:00Z`);
   return (
@@ -194,6 +215,7 @@ export function parseDetail(html: string): DetailFacts {
     intakeDate: description ? parseIntakeDate(description) : undefined,
     description,
     goodWith: parseGoodWith($),
+    apartmentOk: parseApartmentOk($),
     imageUrls,
   };
 }
@@ -259,6 +281,7 @@ const provider: AdoptionProvider = {
       sex: facts.sex,
       intakeDate: facts.intakeDate,
       goodWith: facts.goodWith,
+      apartmentOk: facts.apartmentOk,
       status: "available",
       images:
         rights === null

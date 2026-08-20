@@ -112,6 +112,32 @@ describe("Animal", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts every apartmentOk answer", () => {
+    for (const answer of ["yes", "no", "unknown"]) {
+      const result = Animal.safeParse({ ...validAnimal, apartmentOk: answer });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects an apartmentOk value outside yes/no/unknown", () => {
+    const result = Animal.safeParse({ ...validAnimal, apartmentOk: "maybe" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a specialNeeds flag", () => {
+    expect(
+      Animal.safeParse({ ...validAnimal, specialNeeds: true }).success,
+    ).toBe(true);
+    expect(
+      Animal.safeParse({ ...validAnimal, specialNeeds: false }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a specialNeeds value that is not a boolean", () => {
+    const result = Animal.safeParse({ ...validAnimal, specialNeeds: "yes" });
+    expect(result.success).toBe(false);
+  });
+
   it("accepts an animal with a calm energy level", () => {
     const result = Animal.safeParse({ ...validAnimal, energy: "calm" });
     expect(result.success).toBe(true);

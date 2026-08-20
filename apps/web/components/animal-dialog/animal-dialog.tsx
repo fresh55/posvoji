@@ -38,6 +38,7 @@ import { permittedImageUrls } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { speciesLabel, statusLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import type { ShelterLogos } from "@/lib/shelter-logos";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
 export type DialogPhotoRect = {
@@ -131,7 +132,7 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
 
 export function AnimalDialog({
   animal,
-  logoIds,
+  logos,
   origin,
   siblingIds,
   reference,
@@ -141,7 +142,7 @@ export function AnimalDialog({
 }: {
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: Animal | undefined;
-  logoIds: string[];
+  logos: ShelterLogos;
   origin?: DialogOrigin;
   /** The ids on screen, in the order they are shown. */
   siblingIds: string[];
@@ -420,7 +421,7 @@ export function AnimalDialog({
                   variants={CONTENT_ITEM}
                   transition={transition}
                 >
-                  <ShelterBlock animal={lastAnimal} logoIds={logoIds} />
+                  <ShelterBlock animal={lastAnimal} logos={logos} />
                 </m.div>
               </div>
             </m.div>

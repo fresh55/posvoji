@@ -41,6 +41,9 @@ preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
 - ali fotografija sme biti vključena v sliko za predogled povezave
   (`images: cache-permitted`); brez tega dovoljenja žival dobi tipografsko
   kartico brez fotografije,
+- ali smemo prikazati logotip zavetišča (`logo.use: permitted`); logotip je
+  znamka zavetišča in ne spada pod dovoljenje za fotografije živali, zato ima
+  svoj vpis in svoj datum,
 - obseg opisa (samo dejstva / kratek izvleček / celoten opis),
 - frekvenco osveževanja in morebitne izključene poti,
 - način navedbe vira.
@@ -57,7 +60,9 @@ Posvoji.si is a permission-first index. Providers only run with the shelter's
 written, dated permission recorded in `policy.yaml` (CI-enforced). By default
 only objective facts are indexed; photos and creative descriptions require
 explicit permission, and that permission also decides whether a photo may be
-drawn into the animal's link preview card. Every animal links back to its
+drawn into the animal's link preview card. A shelter's logo is its trademark
+rather than one of its animal photographs, so it carries its own dated grant
+(`logo.use`) and is not covered by the photo permission. Every animal links back to its
 source. No personal data
 of private individuals is ever collected, private-owner listings are excluded,
 and the crawler is conservative: identified bot, robots.txt, backoff, one

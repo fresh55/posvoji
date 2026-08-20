@@ -9,6 +9,12 @@ ingestion: scrape
 images: remote
 descriptions: facts-only
 
+logo:
+  use: permitted
+  url: https://www.zavetisce-ljubljana.si/assets/logo-new.svg
+  date: 2026-08-20
+  reference: project-owner-confirmation-logos-2026-08-20
+
 permission:
   status: granted
   date: 2026-08-18

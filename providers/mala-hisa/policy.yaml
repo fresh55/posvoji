@@ -8,6 +8,11 @@ ingestion: scrape
 images: none
 descriptions: facts-only
 
+logo:
+  # The logo grant is recorded with the shelter's own permission once that
+  # lands; a logo cannot be permitted while the provider has none.
+  use: none
+
 permission:
   status: none
 

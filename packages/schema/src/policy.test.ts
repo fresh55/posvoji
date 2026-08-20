@@ -49,6 +49,42 @@ describe("ProviderPolicy", () => {
     expect(result.success).toBe(false);
   });
 
+  it("defaults logo use to none when the policy omits it", () => {
+    const result = ProviderPolicy.safeParse(basePolicy);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.logo.use).toBe("none");
+  });
+
+  it("rejects a permitted logo without granted permission", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      logo: { use: "permitted" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a permitted logo with granted permission", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      logo: {
+        use: "permitted",
+        url: "https://www.macjahisa.si/logo.png",
+        date: "2026-08-20",
+      },
+      permission: { status: "granted", date: "2026-08-20" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a permitted logo without a date", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      logo: { use: "permitted" },
+      permission: { status: "granted", date: "2026-08-20" },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects descriptions beyond facts without granted permission", () => {
     const result = ProviderPolicy.safeParse({
       ...basePolicy,

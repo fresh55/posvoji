@@ -9,19 +9,20 @@ import { useI18n } from "@/components/i18n-provider";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { CARD_GRID } from "@/lib/card-grid";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
+import type { ShelterLogos } from "@/lib/shelter-logos";
 
 // The cards, the grid and the dialog wiring are the home page's; the species
 // tabs, filter sidebar and clear-filters trail that come with AnimalGrid are
 // not what a shelter page asks for.
 export function ShelterAnimalGrid({
   animals,
-  logoIds,
+  logos,
   emptyLabel,
   referenceDate,
   basePath,
 }: {
   animals: Animal[];
-  logoIds: string[];
+  logos: ShelterLogos;
   emptyLabel: string;
   /** When the dataset was built; ages are measured from it, not the clock. */
   referenceDate: string;
@@ -71,7 +72,7 @@ export function ShelterAnimalGrid({
 
       <AnimalDialog
         animal={selected}
-        logoIds={logoIds}
+        logos={logos}
         origin={origin}
         siblingIds={shownIds}
         reference={reference}

@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
-import { getShelterLogoIds } from "@/lib/shelter-logos";
+import { getShelterLogos } from "@/lib/shelter-logos";
 
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -40,7 +40,7 @@ export function SitePage({ locale }: { locale: Locale }) {
 
           <AnimalGrid
             animals={animals}
-            logoIds={getShelterLogoIds()}
+            logos={getShelterLogos()}
             referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
           />
         </main>

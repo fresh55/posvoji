@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
-import { getShelterLogoIds } from "@/lib/shelter-logos";
+import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
 
 const pageText = {
@@ -31,7 +31,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const shelters = loadShelters();
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
-  const logoIds = getShelterLogoIds();
+  const logos = getShelterLogos();
   const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = locale === "sl" ? "/" : "/en";
@@ -91,7 +91,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 key={shelter.id}
                 shelter={shelter}
                 href={`${detailBase}/${shelter.id}`}
-                hasLogo={logoIds.includes(shelter.id)}
+                logo={logos[shelter.id]}
                 count={counts.get(shelter.id) ?? 0}
                 locale={locale}
                 providerBadge={text.providerBadge}

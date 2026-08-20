@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { getShelterLogoIds } from "@/lib/shelter-logos";
+import { getShelterLogos } from "@/lib/shelter-logos";
 import { speciesLabel, statusLabel } from "@/lib/labels";
 
 const pageText = {
@@ -105,7 +105,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           </div>
 
           <div className="space-y-4">
-            <ShelterBlock animal={animal} logoIds={getShelterLogoIds()} />
+            <ShelterBlock animal={animal} logos={getShelterLogos()} />
 
             {/* ?zival= is how a page outside the list asks the list to open
                 an animal. The index swaps it for this page's own address as

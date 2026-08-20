@@ -37,14 +37,15 @@ import {
   type AnimalSort,
 } from "@/lib/sort";
 import { cn } from "@/lib/utils";
+import type { ShelterLogos } from "@/lib/shelter-logos";
 
 export function AnimalGrid({
   animals,
-  logoIds,
+  logos,
   referenceDate,
 }: {
   animals: Animal[];
-  logoIds: string[];
+  logos: ShelterLogos;
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
   referenceDate: string;
@@ -291,7 +292,7 @@ export function AnimalGrid({
 
       <AnimalDialog
         animal={selected}
-        logoIds={logoIds}
+        logos={logos}
         origin={origin}
         siblingIds={shownIds}
         reference={reference}

@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { getShelterLogoIds } from "@/lib/shelter-logos";
+import { getShelterLogos } from "@/lib/shelter-logos";
 import { getShelterBySlug } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
 
@@ -53,8 +53,7 @@ export function ShelterDetailPage({
   const animals = (dataset?.animals ?? []).filter(
     (animal) => animal.shelter.id === shelter.id,
   );
-  const logoIds = getShelterLogoIds();
-  const hasLogo = logoIds.includes(shelter.id);
+  const logos = getShelterLogos();
   const hasData = animals.length > 0;
   const messages = getMessages(locale);
   const text = pageText[locale];
@@ -86,8 +85,7 @@ export function ShelterDetailPage({
             <div className="flex flex-wrap items-center gap-4">
               <ShelterAvatar
                 name={shelter.name}
-                id={shelter.id}
-                hasLogo={hasLogo}
+                logo={logos[shelter.id]}
                 size="lg"
               />
               <div className="min-w-0 flex-1 space-y-1">
@@ -151,7 +149,7 @@ export function ShelterDetailPage({
             </h2>
             <ShelterAnimalGrid
               animals={animals}
-              logoIds={logoIds}
+              logos={logos}
               emptyLabel={text.emptyAnimals}
               referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
               basePath={`${indexHref}/${shelter.id}`}

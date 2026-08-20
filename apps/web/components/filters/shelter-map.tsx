@@ -306,9 +306,13 @@ export function ShelterMap({
                 ? hoveredShelter.selectable === false
                   ? messages.noAnimalsListed
                   : animalCount(hoveredShelter.count, locale)
-                : activeTown.shelters.length > 1
-                  ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
-                  : animalCount(townCount(activeTown), locale)
+                : // A town with nothing to pick says so, rather than counting
+                  // out the nought it has.
+                  townSelectableValues(activeTown).length === 0
+                  ? messages.noAnimalsListed
+                  : activeTown.shelters.length > 1
+                    ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
+                    : animalCount(townCount(activeTown), locale)
             }
           />
         )}

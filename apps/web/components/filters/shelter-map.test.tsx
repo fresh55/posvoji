@@ -106,6 +106,19 @@ describe("ShelterMap marker states", () => {
     expect(html).not.toContain("stroke-foreground/40");
   });
 
+  it("keeps an off-site shelter hoverable so its dot can name itself", () => {
+    const html = renderMap([
+      { ...pin("johanca", "Zavetišče Johanca", "Tolmin", 0), selectable: false },
+    ]);
+
+    const marker = markerTag(html, "tolmin");
+    expect(marker).toContain('data-marker-info="true"');
+    expect(marker).toContain("cursor-default");
+    // A dead marker takes no pointer at all; this one still answers a hover.
+    expect(marker).not.toContain("pointer-events-none");
+    expect(marker).not.toContain("cursor-pointer");
+  });
+
   it("keeps an off-site shelter out of its region's pick and count", () => {
     const html = renderMap([
       pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),

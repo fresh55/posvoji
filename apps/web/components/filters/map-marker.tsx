@@ -50,6 +50,10 @@ export function Marker({
   const state = selectionState(values, selected);
   const live =
     values.length > 0 && (townCount(town) > 0 || state !== false);
+  // A town holding only shelters with nothing to pick is informational: hover
+  // names it, nothing selects it. Unlike a dead marker it keeps its pointer
+  // events, so the visitor can find out what the faint dot is.
+  const info = values.length === 0;
   const geometry = markerGeometry(town);
   // Two or three discs get one hit wedge each, so a click lands on the shelter
   // it was aimed at instead of toggling the whole town. Empty for single and
@@ -67,6 +71,7 @@ export function Marker({
       data-marker-state={
         state === true ? "selected" : state === "mixed" ? "mixed" : "idle"
       }
+      data-marker-info={info || undefined}
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
       onClick={wedged ? undefined : () => live && onPick(values)}
@@ -78,7 +83,9 @@ export function Marker({
           ? wedged
             ? "cursor-default"
             : "cursor-pointer"
-          : "pointer-events-none",
+          : info
+            ? "cursor-default"
+            : "pointer-events-none",
         dimmed && "opacity-30",
       )}
     >

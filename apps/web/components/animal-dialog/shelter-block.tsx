@@ -4,24 +4,24 @@ import { ExternalLink, Heart } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
+import type { ShelterLogos } from "@/lib/shelter-logos";
 import { Button } from "@/components/ui/button";
 
 // The logo-or-initial fallback lives in ShelterAvatar so one place decides it.
 export function ShelterBlock({
   animal,
-  logoIds,
+  logos,
 }: {
   animal: Animal;
-  logoIds: string[];
+  logos: ShelterLogos;
 }) {
   const { messages } = useI18n();
   const { shelter } = animal;
-  const hasLogo = logoIds.includes(shelter.id);
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
-        <ShelterAvatar name={shelter.name} id={shelter.id} hasLogo={hasLogo} />
+        <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
 
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{shelter.name}</p>

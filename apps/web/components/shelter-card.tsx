@@ -1,5 +1,6 @@
 import { Info, MapPin, PawPrint, ShieldCheck } from "lucide-react";
 import { ShelterAvatar } from "@/components/shelter-avatar";
+import type { ShelterLogo } from "@/lib/shelter-logos";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 export function ShelterCard({
   shelter,
   href,
-  hasLogo,
+  logo,
   count,
   locale,
   providerBadge,
@@ -17,7 +18,7 @@ export function ShelterCard({
 }: {
   shelter: ShelterRegistryEntry;
   href: string;
-  hasLogo: boolean;
+  logo: ShelterLogo | undefined;
   count: number;
   locale: Locale;
   providerBadge: string;
@@ -32,7 +33,7 @@ export function ShelterCard({
       className="group flex flex-col gap-4 rounded-ui border bg-card p-5 shadow-xs transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2"
     >
       <div className="flex items-center gap-3">
-        <ShelterAvatar name={shelter.name} id={shelter.id} hasLogo={hasLogo} />
+        <ShelterAvatar name={shelter.name} logo={logo} />
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium">{shelter.name}</h2>
           <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">

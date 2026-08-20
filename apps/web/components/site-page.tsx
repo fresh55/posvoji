@@ -7,7 +7,7 @@ import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
-import { getShelterLogoIds } from "@/lib/shelter-logos";
+import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
 
 export function SitePage({ locale }: { locale: Locale }) {
@@ -61,7 +61,7 @@ export function SitePage({ locale }: { locale: Locale }) {
 
           <AnimalGrid
             animals={animals}
-            logoIds={getShelterLogoIds()}
+            logos={getShelterLogos()}
             referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
             municipalities={municipalities}
             offSiteShelters={offSiteShelters}

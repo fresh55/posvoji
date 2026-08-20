@@ -13,6 +13,23 @@ export const DescriptionPolicy = z.enum([
 ]);
 export type DescriptionPolicy = z.infer<typeof DescriptionPolicy>;
 
+// A shelter's logo is its trademark, not one of its animal photographs, so it
+// carries its own grant rather than riding along on `images`.
+export const LogoUse = z.enum(["none", "permitted"]);
+export type LogoUse = z.infer<typeof LogoUse>;
+
+export const LogoPolicy = z.strictObject({
+  use: LogoUse.default("none"),
+  // The logo file itself. Left out, the fetcher looks for one on the
+  // shelter's home page and pins what it found back here.
+  url: z.url().optional(),
+  // The logo grant is its own decision on its own date, so it records them
+  // rather than borrowing the photo grant's.
+  date: z.iso.date().optional(),
+  reference: z.string().optional(),
+});
+export type LogoPolicy = z.infer<typeof LogoPolicy>;
+
 export const PermissionStatus = z.enum([
   "none",
   "requested",
@@ -31,6 +48,7 @@ const ProviderPolicyShape = z.strictObject({
   ingestion: IngestionMode,
   images: ImagePolicy,
   descriptions: DescriptionPolicy,
+  logo: LogoPolicy.prefault({ use: "none" }),
 
   permission: z.strictObject({
     status: PermissionStatus,
@@ -69,11 +87,25 @@ export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
       message: `provider "${p.providerId}" has no granted permission: images must be "none"`,
     });
   }
+  if (!granted && p.logo.use !== "none") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["logo", "use"],
+      message: `provider "${p.providerId}" has no granted permission: logo.use must be "none"`,
+    });
+  }
   if (!granted && p.descriptions !== "facts-only") {
     ctx.addIssue({
       code: "custom",
       path: ["descriptions"],
       message: `provider "${p.providerId}" has no granted permission: descriptions must be "facts-only"`,
+    });
+  }
+  if (p.logo.use !== "none" && p.logo.date === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["logo", "date"],
+      message: `provider "${p.providerId}": a permitted logo must record the date it was granted`,
     });
   }
   if (granted && p.permission.date === undefined) {

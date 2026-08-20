@@ -8,6 +8,12 @@ ingestion: scrape
 images: cache-permitted
 descriptions: full-permitted
 
+logo:
+  use: permitted
+  url: https://zavetisce-mb.si/wp-content/uploads/2023/04/jhmb-logo.svg
+  date: 2026-08-20
+  reference: project-owner-confirmation-logos-2026-08-20
+
 permission:
   status: granted
   date: 2026-08-19

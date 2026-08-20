@@ -9,6 +9,11 @@ ingestion: scrape
 images: none
 descriptions: facts-only
 
+logo:
+  # A shelter's logo is its trademark and needs its own grant, dated, even
+  # when photographs are already permitted.
+  use: none
+
 permission:
   status: none
   # When granted, record the date and where the written permission is

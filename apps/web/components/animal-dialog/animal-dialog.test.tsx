@@ -97,7 +97,7 @@ const REFERENCE = "2026-08-18T00:00:00.000Z";
 function renderGrid(animals: Animal[] = ANIMALS) {
   return render(
     <I18nProvider locale="sl">
-      <AnimalGrid animals={animals} logoIds={[]} referenceDate={REFERENCE} />
+      <AnimalGrid animals={animals} logos={{}} referenceDate={REFERENCE} />
     </I18nProvider>,
   );
 }
@@ -453,7 +453,7 @@ describe("animal dialog", () => {
       <I18nProvider locale="sl">
         <AnimalDialog
           animal={longtimer}
-          logoIds={[]}
+          logos={{}}
           siblingIds={[]}
           reference={new Date(REFERENCE)}
           onNavigate={() => {}}

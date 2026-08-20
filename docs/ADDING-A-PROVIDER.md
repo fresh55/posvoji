@@ -54,6 +54,22 @@ permission:
   reference: <where the written permission is archived>
 ```
 
+The shelter's logo is a separate grant, because a logo is the shelter's
+trademark and not one of its animal photographs. Record it only if the shelter
+agreed to it:
+
+```yaml
+logo:
+  use: permitted
+  url: <the logo file, if you know it; discovered from the home page if not>
+  date: 2026-09-01
+  reference: <where the written permission is archived>
+```
+
+Logos are fetched by `pnpm logos:fetch` (and by every export) into
+`apps/web/public/media/shelter-logos`, which is gitignored: a logo is shelter
+content, so it is fetched rather than committed.
+
 ## Checks
 
 ```bash

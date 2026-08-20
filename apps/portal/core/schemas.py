@@ -61,6 +61,8 @@ class AnimalOut(Schema):
     goodWithKids: str | None = None
     goodWithDogs: str | None = None
     goodWithCats: str | None = None
+    apartmentOk: str | None = None
+    specialNeeds: bool | None = None
     thumbnailUrl: str | None = None
     overrides: dict[str, Any] = {}
 
@@ -92,6 +94,8 @@ class AnimalOverrideIn(Schema):
     goodWithKids: OverrideCompatibility | None = None
     goodWithDogs: OverrideCompatibility | None = None
     goodWithCats: OverrideCompatibility | None = None
+    apartmentOk: OverrideCompatibility | None = None
+    specialNeeds: bool | None = None
 
 
 class ExportOverrideOut(Schema):

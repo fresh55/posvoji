@@ -106,27 +106,49 @@ function sameSiteImageUrl(value: string | undefined): string | undefined {
   }
 }
 
+// The animal's own text is a direct child on most listings, but some are typed
+// into a layout block and some are pasted in from Facebook, which brings its
+// own nest of divs. Reading only direct children silently loses those, so the
+// paragraphs are taken as descendants and the two named blocks that are never
+// the animal's text are excluded instead: the photo gallery, and the site-wide
+// donation and volunteering panel that closes every page.
+const NOT_ANIMAL_TEXT = ".single-pet-icons, .pet-gallery";
+
 function parseDescription($: cheerio.CheerioAPI): string | undefined {
   const paragraphs: string[] = [];
-  $("article.main-content").first().find(".entry-content.animal > p").each((_, el) => {
-    const paragraph = $(el).text().replace(/\s+/g, " ").trim();
-    if (
-      !paragraph ||
-      $(el).find("a[href^='mailto:'], a[href^='tel:']").length > 0 ||
-      /^Za vse dodatne informacije/i.test(paragraph)
-    ) {
-      return;
-    }
-    paragraphs.push(paragraph);
-  });
+  $("article.main-content")
+    .first()
+    .find(".entry-content.animal p")
+    .filter((_, el) => $(el).closest(NOT_ANIMAL_TEXT).length === 0)
+    .each((_, el) => {
+      const paragraph = $(el).text().replace(/\s+/g, " ").trim();
+      if (
+        !paragraph ||
+        $(el).find("a[href^='mailto:'], a[href^='tel:']").length > 0 ||
+        // On the wrapped listings the sign-off is plain text, not a link, so
+        // the wording is what catches it there.
+        /^Za vse dodatne informacije/i.test(paragraph)
+      ) {
+        return;
+      }
+      paragraphs.push(paragraph);
+    });
   return paragraphs.length > 0 ? paragraphs.join("\n\n") : undefined;
+}
+
+function parseDaysInShelter($: cheerio.CheerioAPI): number | undefined {
+  // The badge sits in the page header, outside article.main-content. Related
+  // animal cards further down carry their own badge, so never read those.
+  const badge = $(".date-badge").not("article.post-item .date-badge").first();
+  const match = badge
+    .text()
+    .match(/V\s+zavetišču\s+sem\s+že\s+(\d+)\s+(?:dni|dneva|dan)/i);
+  return match ? Number(match[1]) : undefined;
 }
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const root = $("article.main-content").first();
-  const daysText = root.find(".date-badge").first().text();
-  const daysMatch = daysText.match(/V\s+zavetišču\s+sem\s+že\s+(\d+)\s+dni/i);
   const birthRaw = labelValue($, "ROJSTVO");
   const imageUrls: string[] = [];
   const addImage = (value: string | undefined) => {
@@ -143,7 +165,7 @@ export function parseDetail(html: string): DetailFacts {
     species: parseSpecies($),
     sex: parseSex(labelValue($, "SPOL")),
     birthDate: birthRaw ? parseSlashDate(birthRaw) : undefined,
-    daysInShelter: daysMatch ? Number(daysMatch[1]) : undefined,
+    daysInShelter: parseDaysInShelter($),
     description: parseDescription($),
     imageUrls,
   };

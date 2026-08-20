@@ -11,7 +11,7 @@
 meta:
   register_source: "UVHVVR — Register zavetišč (gov.si)"
   register_date: 2026-02-23
-  last_reviewed: 2026-08-15
+  last_reviewed: 2026-08-20
 
 shelters:
   - id: zonzani
@@ -81,7 +81,9 @@ shelters:
     website: https://zavetisce-malahisa.si/
     phone: "031 732 700"
     notes: >-
-      Pogodbeno pokriva tudi Ptuj (Javne službe Ptuj). Rubrika "Privat oddaja"
+      Pogodbeno pokriva tudi Ptuj (Javne službe Ptuj). Dovoljenje potrjeno
+      2026-08-20; provider mala-hisa je vklopljen za strukturirana dejstva,
+      opise ter prikaz in predpomnjenje fotografij. Rubrika "Privat oddaja"
       vsebuje zasebne objave in je trajno izključena iz zajema.
 
   - id: maribor
@@ -131,8 +133,9 @@ shelters:
     city: Tolmin
     email: zavetisce.johanca@gmail.com
     notes: >-
-      Objave pretežno na družbenih omrežjih; platform ne zajemamo, potreben je
-      partnerski feed ali ročni vnos.
+      Dovoljenje potrjeno 2026-08-20. Spletne strani ni; objave pretežno na
+      družbenih omrežjih, ki jih ne zajemamo, zato je potreben partnerski feed
+      ali ročni vnos prek portala.
 
   - id: muri
     name: Zavod Muri
@@ -149,8 +152,9 @@ shelters:
     email: zavetisce.potepuhi@gmail.com
     phone: "051 646 202"
     notes: >-
-      Objave pretežno na družbenih omrežjih; platform ne zajemamo, potreben je
-      partnerski feed ali ročni vnos.
+      Dovoljenje potrjeno 2026-08-20. Spletne strani ni; objave pretežno na
+      družbenih omrežjih, ki jih ne zajemamo, zato je potreben partnerski feed
+      ali ročni vnos prek portala.
 
   - id: sia-in-lu
     name: Zavetišče Sia in Lu
@@ -158,5 +162,6 @@ shelters:
     email: zavetiscesiainlu@gmail.com
     phone: "040 224 449"
     notes: >-
-      Objave pretežno na družbenih omrežjih; platform ne zajemamo, potreben je
-      partnerski feed ali ročni vnos.
+      Dovoljenje potrjeno 2026-08-20. Spletne strani ni; objave pretežno na
+      družbenih omrežjih, ki jih ne zajemamo, zato je potreben partnerski feed
+      ali ročni vnos prek portala.

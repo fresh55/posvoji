@@ -105,10 +105,51 @@ const sl = {
   searchShelters: "Išči zavetišče po imenu…",
   noSheltersFound: "Ni zadetkov za",
   clearSearch: "Počisti iskanje",
+  muniPrompt: "Si našel žival? Preveri, katero zavetišče je pristojno za tvojo občino.",
+  muniPromptCta: "Poišči občino",
+  muniTab: "Najdena žival",
+  muniSearch: "Občina ali poštna številka …",
+  muniHint:
+    "Vpiši občino ali poštno številko kraja, kjer je bila žival najdena, in dobiš pristojno zavetišče s kontakti.",
+  muniHere: "Uporabi mojo lokacijo",
+  muniFromPostcode: "Pošta {code} {name}",
+  muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
+  muniNoMatch: "Ni občine z imenom",
+  muniResponsible: "pristojno zavetišče",
+  muniResponsiblePlural: "pristojni zavetišči",
+  muniOnSite: "Živali tega zavetišča so na posvoji.si ({count})",
+  muniCall: "Pokliči {phone}",
+  muniCost:
+    "Stroške odlova, prevoza, veterinarskega pregleda in oskrbe prvih 30 dni krije občina, kjer je bila žival najdena. Tebe kot najditelja ne stane nič.",
+  muniCostSource: "Zakon o zaščiti živali, 31. člen",
+  muniStepsTitle: "Kaj zdaj",
+  muniStep1:
+    "Pokliči zavetišče in povej, kje je žival. Odlov in prevoz sta del javne službe.",
+  muniStep2:
+    "Če je žival označena s čipom, zavetišče preveri register in v 24 urah obvesti lastnika.",
+  muniStep3:
+    "Poškodovane živali ne premikaj na silo. To povej po telefonu.",
+  muniLost: "Si žival izgubil? Poglej živali v tem zavetišču",
+  muniNearestTitle: "Najbližja zavetišča",
+  muniNearestNote:
+    "Ni potrjeno, da so pristojna za to občino. Pokliči in vprašaj.",
+  muniUnverified: "ni preverjenega podatka",
+  muniUnverifiedAdvice:
+    "Za to občino nimamo preverjenega podatka o pristojnem zavetišču. Preveri pri svoji občini ali v javnem registru zavetišč.",
+  muniRegister: "Register zavetišč — UVHVVR (gov.si)",
+  muniSource: "Vir:",
+  muniDatedSource:
+    "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
+  muniSelectShelter: "Izberi to zavetišče",
+  muniShelterSelected: "Izbrano",
+  speciesDogs: "Psi",
+  speciesCats: "Mačke",
   lessThanOneKm: "manj kot 1 km",
   fewerAnimals: "Manj živali",
   moreAnimals: "Več živali",
   shelter: "Zavetišče",
+  noAnimalsListed: "Trenutno brez objavljenih živali",
+  noAnimalsListedHeading: "Trenutno brez objavljenih živali",
   originLegend: "Izhodišče",
   regionBoundaries: "Meje statističnih regij in poštni okoliši",
   shelterMapLabel: "Zemljevid zavetišč po statističnih regijah",
@@ -116,10 +157,29 @@ const sl = {
   geolocationUnavailable: "Lokacije ni bilo mogoče določiti.",
   geolocationTimeout: "Iskanje lokacije je trajalo predolgo.",
   geolocationUnsupported: "Brskalnik ne pozna lokacije.",
-  goodWith: "Družba",
-  resetGoodWithFilters: "Ponastavi filter družbe",
+  // The filter section asks about the visitor's home; the dialog row states
+  // what the shelter answered about the animal. Two questions, two labels.
+  goodWith: "Doma imam",
+  goodWithFacts: "Družba",
+  resetGoodWithFilters: "Ponastavi, kdo živi pri tebi",
   goodWithFilterHint:
-    "Po presoji zavetišča. Živali brez podatka ta filter skrije.",
+    "Označi, kdo že živi pri tebi. Živali brez odgovora zavetišča so skrite.",
+  // The section reads as one sentence, so the phrases are whole and translated,
+  // never assembled from parts in the component.
+  goodWithOutcome:
+    "Prikazane so živali, ki se razumejo {list}. {count} od {total}.",
+  // Lead carries the preposition, which in Slovenian depends on the word that
+  // follows it. Tail is the same noun without it, for the rest of the list.
+  goodWithLeadKids: "z otroki",
+  goodWithLeadDogs: "s psi",
+  goodWithLeadCats: "z mačkami",
+  goodWithTailKids: "otroki",
+  goodWithTailDogs: "psi",
+  goodWithTailCats: "mačkami",
+  goodWithJoiner: "in",
+  goodWithChipKids: "Doma: otroci",
+  goodWithChipDogs: "Doma: pes",
+  goodWithChipCats: "Doma: mačka",
   goodWithYesKids: "Se razume z otroki",
   goodWithYesDogs: "Se razume s psi",
   goodWithYesCats: "Se razume z mačkami",
@@ -132,6 +192,25 @@ const sl = {
   hintGoodWithKids: "Zavetišče presoja, da se {name} razume z otroki.",
   hintGoodWithDogs: "Zavetišče presoja, da se {name} razume s psi.",
   hintGoodWithCats: "Zavetišče presoja, da se {name} razume z mačkami.",
+  home: "Dom",
+  resetHomeFilters: "Ponastavi filter doma",
+  homeFilterHint:
+    "Živali, za katere zavetišče presoja, da lahko srečno živijo v stanovanju.",
+  homeOutcome:
+    "Prikazane so živali, primerne za stanovanje. {count} od {total}.",
+  apartmentYes: "Primeren za stanovanje",
+  apartmentNo: "Potrebuje več prostora kot stanovanje",
+  hintApartmentOk: "Zavetišče presoja, da lahko {name} živi v stanovanju.",
+  // The section is an invitation, not a warning: it exists for the visitor who
+  // came to help, so the words never describe the animal as a problem.
+  care: "Posebna skrb",
+  resetCareFilters: "Ponastavi filter posebne skrbi",
+  careFilterHint:
+    "Za tiste, ki želijo pomagati živali, ki potrebuje več časa in razumevanja.",
+  careOutcome:
+    "Prikazane so živali, ki iščejo potrpežljivega človeka. {count} od {total}.",
+  specialNeedsNote:
+    "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
 } as const;
 
 type Messages = { [Key in keyof typeof sl]: string };
@@ -239,10 +318,50 @@ const en: Messages = {
   searchShelters: "Search shelters by name…",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
+  muniPrompt: "Found an animal? Check which shelter serves your municipality.",
+  muniPromptCta: "Find your municipality",
+  muniTab: "Found an animal",
+  muniSearch: "Municipality or postcode …",
+  muniHint:
+    "Type the municipality or the postcode of the place where the animal was found to get the responsible shelter and its contacts.",
+  muniHere: "Use my location",
+  muniFromPostcode: "Postcode {code} {name}",
+  muniWhichOne: "This postcode covers several municipalities. Which one?",
+  muniNoMatch: "No municipality named",
+  muniResponsible: "responsible shelter",
+  muniResponsiblePlural: "responsible shelters",
+  muniOnSite: "This shelter's animals are on posvoji.si ({count})",
+  muniCall: "Call {phone}",
+  muniCost:
+    "Capture, transport, the veterinary examination and the first 30 days of care are paid by the municipality where the animal was found. As the finder you pay nothing.",
+  muniCostSource: "Animal Protection Act, Article 31",
+  muniStepsTitle: "What now",
+  muniStep1:
+    "Call the shelter and say where the animal is. Capture and transport are part of the public service.",
+  muniStep2:
+    "If the animal is chipped, the shelter checks the register and notifies the owner within 24 hours.",
+  muniStep3: "Do not force-move an injured animal. Say so on the phone.",
+  muniLost: "Lost your animal? Look at this shelter's animals",
+  muniNearestTitle: "Nearest shelters",
+  muniNearestNote:
+    "Not confirmed as responsible for this municipality. Call and ask.",
+  muniUnverified: "no verified data",
+  muniUnverifiedAdvice:
+    "We have no verified data on the responsible shelter for this municipality. Check with your municipality or the public shelter register.",
+  muniRegister: "Shelter register — UVHVVR (gov.si)",
+  muniSource: "Source:",
+  muniDatedSource:
+    "This comes from an older source; confirm with the shelter or municipality before visiting.",
+  muniSelectShelter: "Select this shelter",
+  muniShelterSelected: "Selected",
+  speciesDogs: "Dogs",
+  speciesCats: "Cats",
   lessThanOneKm: "less than 1 km",
   fewerAnimals: "Fewer animals",
   moreAnimals: "More animals",
   shelter: "Shelter",
+  noAnimalsListed: "No animals listed right now",
+  noAnimalsListedHeading: "No animals listed right now",
   originLegend: "Starting point",
   regionBoundaries: "Statistical region boundaries and postal districts",
   shelterMapLabel: "Map of shelters by statistical region",
@@ -250,10 +369,22 @@ const en: Messages = {
   geolocationUnavailable: "Your location could not be determined.",
   geolocationTimeout: "Finding your location took too long.",
   geolocationUnsupported: "Location is not available in this browser.",
-  goodWith: "Good with",
-  resetGoodWithFilters: "Reset good with filters",
+  goodWith: "At home I have",
+  goodWithFacts: "Good with",
+  resetGoodWithFilters: "Reset who lives with you",
   goodWithFilterHint:
-    "As judged by the shelter. Animals with no answer are hidden by this filter.",
+    "Tell us who already lives with you. Animals the shelter has not answered for stay hidden.",
+  goodWithOutcome: "Showing animals that get on with {list}. {count} of {total}.",
+  goodWithLeadKids: "kids",
+  goodWithLeadDogs: "dogs",
+  goodWithLeadCats: "cats",
+  goodWithTailKids: "kids",
+  goodWithTailDogs: "dogs",
+  goodWithTailCats: "cats",
+  goodWithJoiner: "and",
+  goodWithChipKids: "Home: kids",
+  goodWithChipDogs: "Home: dog",
+  goodWithChipCats: "Home: cat",
   goodWithYesKids: "Good with kids",
   goodWithYesDogs: "Good with dogs",
   goodWithYesCats: "Good with cats",
@@ -266,6 +397,22 @@ const en: Messages = {
   hintGoodWithKids: "The shelter judges that {name} gets on with children.",
   hintGoodWithDogs: "The shelter judges that {name} gets on with dogs.",
   hintGoodWithCats: "The shelter judges that {name} gets on with cats.",
+  home: "Home",
+  resetHomeFilters: "Reset the home filter",
+  homeFilterHint:
+    "Animals the shelter judges can live happily in an apartment.",
+  homeOutcome: "Showing apartment-friendly animals. {count} of {total}.",
+  apartmentYes: "Apartment-friendly",
+  apartmentNo: "Needs more room than an apartment",
+  hintApartmentOk: "The shelter judges that {name} can live in an apartment.",
+  care: "Special care",
+  resetCareFilters: "Reset the special care filter",
+  careFilterHint:
+    "For those who want to help an animal that needs more time and understanding.",
+  careOutcome:
+    "Showing animals looking for a patient person. {count} of {total}.",
+  specialNeedsNote:
+    "This animal needs a patient person and a little more time.",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

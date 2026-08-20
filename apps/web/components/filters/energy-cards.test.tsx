@@ -222,6 +222,8 @@ describe("FilterGroupList energy group", () => {
             shelter: [],
             toggles: [],
             goodWith: [],
+            home: [],
+            care: [],
           }}
           groups={[{ group, options }]}
           counts={{

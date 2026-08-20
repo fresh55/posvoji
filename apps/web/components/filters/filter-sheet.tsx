@@ -6,7 +6,9 @@ import { useI18n } from "@/components/i18n-provider";
 import {
   FilterGroupList,
   type CardGroup,
+  type CareSection,
   type GoodWithSection,
+  type HomeSection,
 } from "@/components/filters/filter-groups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,8 @@ export function FilterSheet({
   toggles,
   toggleTally,
   goodWith,
+  home,
+  care,
   activeSectionCount,
   resultCount,
   onToggle,
@@ -51,6 +55,8 @@ export function FilterSheet({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
   activeSectionCount: number;
   resultCount: number;
   onSpeciesChange: (species: SpeciesFilter) => void;
@@ -103,6 +109,8 @@ export function FilterSheet({
             toggles={toggles}
             toggleTally={toggleTally}
             goodWith={goodWith}
+            home={home}
+            care={care}
             onToggle={onToggle}
             onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}

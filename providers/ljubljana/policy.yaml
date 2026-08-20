@@ -1,13 +1,14 @@
 # The project owner confirmed permission on 2026-08-18 for the shelter
-# catalogue and shelter-hosted animal photographs. Keep editorial descriptions
-# out of the initial scope and link to, rather than cache, the photographs.
+# catalogue, the shelter-hosted animal photographs and the descriptions. The
+# parser does not extract descriptions yet, so none are ingested until it does;
+# the policy records the grant, not the implementation.
 providerId: ljubljana
 source: https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu
 enabled: true
 
 ingestion: scrape
-images: remote
-descriptions: facts-only
+images: cache-permitted
+descriptions: full-permitted
 
 logo:
   use: permitted
@@ -20,9 +21,9 @@ permission:
   date: 2026-08-18
   reference: project-owner-confirmation-ljubljana-2026-08-18
   notes: >-
-    Project owner confirmed permission for structured shelter facts and display
-    of shelter-hosted animal photographs. Descriptions and image caching remain
-    outside the initial scope.
+    Project owner confirmed permission for structured shelter facts, for
+    displaying and caching shelter-hosted animal photographs, and for the full
+    descriptions.
 
 allowedFields:
   - name
@@ -35,6 +36,7 @@ allowedFields:
   - intakeDate
   - medical
   - images
+  - shortDescription
 
 attribution: "Vir: Zavetišče Ljubljana"
 

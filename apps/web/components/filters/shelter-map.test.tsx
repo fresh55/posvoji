@@ -95,6 +95,19 @@ describe("ShelterMap marker states", () => {
     expect(html).toContain("pointer-events-none");
   });
 
+
+
+  it("keeps an off-site shelter out of its region's pick and count", () => {
+    const html = renderMap([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+      { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
+    ]);
+
+    // Both towns sit in Osrednjeslovenska, but the region answers for the
+    // one selectable shelter only.
+    expect(regionTag(html, "Osrednjeslovenska")).toContain("1 zavetišče");
+  });
+
   it("keeps pointer markers out of the accessibility tree", () => {
     const html = renderMap([
       pin("brezice", "Zavetišče Brežice", "Brežice", 5),
@@ -111,6 +124,7 @@ describe("ShelterMap marker states", () => {
     expect(html).toContain("hidden md:block");
   });
 });
+
 
 describe("ShelterMap regions", () => {
   it("spreads the density ramp over the live regions by rank", () => {

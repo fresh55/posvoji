@@ -234,12 +234,82 @@ def test_listing_reads_the_crawled_energy_level(member_client, shelter, dataset_
 
 
 @pytest.mark.django_db
+def test_listing_reads_the_crawled_apartment_ok_and_special_needs(
+    member_client, shelter, dataset_file
+):
+    dataset_file(
+        [make_animal("testno:1", shelter, apartmentOk="no", specialNeeds=True)]
+    )
+
+    item = member_client.get(animals_url(shelter.slug)).json()[0]
+
+    assert item["apartmentOk"] == "no"
+    assert item["specialNeeds"] is True
+    assert item["overrides"] == {}
+
+
+@pytest.mark.django_db
 def test_put_rejects_an_unknown_energy_level(member_client, shelter, dataset_file):
     dataset_file([make_animal("testno:1", shelter)])
 
     response = put(member_client, shelter.slug, "testno:1", {"energy": "hyper"})
 
     assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_put_stores_the_apartment_ok_answer(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(member_client, shelter.slug, "testno:1", {"apartmentOk": "yes"})
+
+    assert response.status_code == 200
+    item = response.json()
+    assert item["apartmentOk"] == "yes"
+    assert item["overrides"] == {"apartmentOk": "yes"}
+
+    override = AnimalOverride.objects.get(shelter=shelter, animal_id="testno:1")
+    assert override.apartment_ok == "yes"
+
+
+@pytest.mark.django_db
+def test_put_rejects_an_unknown_apartment_ok_value(
+    member_client, shelter, dataset_file
+):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(member_client, shelter.slug, "testno:1", {"apartmentOk": "maybe"})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_put_stores_the_special_needs_flag(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(member_client, shelter.slug, "testno:1", {"specialNeeds": True})
+
+    assert response.status_code == 200
+    item = response.json()
+    assert item["specialNeeds"] is True
+    assert item["overrides"] == {"specialNeeds": True}
+
+    override = AnimalOverride.objects.get(shelter=shelter, animal_id="testno:1")
+    assert override.special_needs is True
+
+
+@pytest.mark.django_db
+def test_put_stores_special_needs_false_as_a_real_answer(
+    member_client, shelter, dataset_file
+):
+    # False is a deliberate answer, not the same as never having answered, so
+    # it has to survive round-tripping like every other override value.
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(member_client, shelter.slug, "testno:1", {"specialNeeds": False})
+
+    assert response.status_code == 200
+    assert response.json()["overrides"] == {"specialNeeds": False}
 
 
 @pytest.mark.django_db

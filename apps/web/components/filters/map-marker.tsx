@@ -9,6 +9,7 @@ import {
   MAX_CLUSTER_DISCS,
   selectionState,
   townCount,
+  townSelectableValues,
   type Town,
 } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
@@ -36,9 +37,12 @@ export function Marker({
   dimmed?: boolean;
 }) {
   const shared = town.shelters.length > 1;
-  const values = town.shelters.map((shelter) => shelter.value);
+  // Only the shelters a click may toggle. An off-site shelter shares the
+  // marker so the map can show where it is, but never the pick.
+  const values = townSelectableValues(town);
   const state = selectionState(values, selected);
-  const live = townCount(town) > 0 || state !== false;
+  const live =
+    values.length > 0 && (townCount(town) > 0 || state !== false);
   const geometry = markerGeometry(town);
 
   return (

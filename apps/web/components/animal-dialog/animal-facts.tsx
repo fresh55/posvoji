@@ -2,9 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import {
+  Building2,
   CalendarClock,
   ChevronDown,
   ClipboardCheck,
+  HeartHandshake,
   Hourglass,
   MapPin,
   Mars,
@@ -190,6 +192,54 @@ function GoodWithFact({
   );
 }
 
+// The housing answer is a yes or a no and nothing else: "unknown" would be a
+// pill that says the shelter has not looked into it, which is not worth the
+// row. A yes explains itself the way the household yeses do; a no is dressed
+// as plainly, because needing a garden is not a fault.
+function ApartmentFact({
+  answer,
+  label,
+  hint,
+}: {
+  answer: "yes" | "no";
+  label: string;
+  hint: string;
+}) {
+  const icon = (
+    <Building2
+      className="size-3.5 shrink-0 opacity-70"
+      strokeWidth={1.75}
+      aria-hidden
+    />
+  );
+
+  if (answer === "no") {
+    return (
+      <li className={GOOD_WITH_NO_CLASS}>
+        {icon}
+        <span>{label}</span>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Popover>
+        <PopoverTrigger className={HEALTH_PILL_CLASS}>
+          {icon}
+          {label}
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+        >
+          {hint}
+        </PopoverContent>
+      </Popover>
+    </li>
+  );
+}
+
 // A stay this long is the animal's story, not a data point, so it gets its own
 // line instead of a pill. The threshold lives in labels.ts, shared with the
 // card's quiet mark.
@@ -310,6 +360,10 @@ export function AnimalFacts({
   const hasGoodWith = GOOD_WITH_KEYS.some(
     (key) => animal.goodWith?.[key] !== undefined,
   );
+  const apartment =
+    animal.apartmentOk === "yes" || animal.apartmentOk === "no"
+      ? animal.apartmentOk
+      : undefined;
   const animalName = animal.name ?? messages.unnamed;
   const clampDescription =
     (animal.shortDescription?.length ?? 0) > CLAMP_DESCRIPTION_CHARS;
@@ -319,7 +373,7 @@ export function AnimalFacts({
       {/* Who the animal is, then what its health record says. Two close-set
           rows, so the identity is not buried in a wall of same-shaped badges.
           The breed lives in the dialog's subtitle, not here. */}
-      {(hasIdentity || medical.length > 0 || hasGoodWith) && (
+      {(hasIdentity || medical.length > 0 || hasGoodWith || apartment) && (
         <div className="space-y-1.5">
           {hasIdentity && (
             <ul
@@ -401,7 +455,10 @@ export function AnimalFacts({
             </ul>
           )}
           {hasGoodWith && (
-            <ul aria-label={messages.goodWith} className="flex flex-wrap gap-2">
+            <ul
+              aria-label={messages.goodWithFacts}
+              className="flex flex-wrap gap-2"
+            >
               {GOOD_WITH_KEYS.map((key) => {
                 const answer = animal.goodWith?.[key] ?? "unknown";
                 return (
@@ -414,6 +471,19 @@ export function AnimalFacts({
                   />
                 );
               })}
+            </ul>
+          )}
+          {apartment && (
+            <ul aria-label={messages.home} className="flex flex-wrap gap-2">
+              <ApartmentFact
+                answer={apartment}
+                label={
+                  apartment === "yes"
+                    ? messages.apartmentYes
+                    : messages.apartmentNo
+                }
+                hint={t("hintApartmentOk", { name: animalName })}
+              />
             </ul>
           )}
         </div>
@@ -433,6 +503,15 @@ export function AnimalFacts({
               {animal.originMunicipality}
             </Aside>
           )}
+        </p>
+      )}
+
+      {/* Said plainly and once, in the same quiet line as the other context
+          facts. A shelter marking this is asking for the right person, not
+          warning the visitor off, so it gets no alert box and no colour. */}
+      {animal.specialNeeds && (
+        <p className="text-xs text-muted-foreground">
+          <Aside icon={HeartHandshake}>{messages.specialNeedsNote}</Aside>
         </p>
       )}
 

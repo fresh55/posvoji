@@ -5,6 +5,7 @@ import type { TargetAndTransition, Transition } from "motion/react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import {
+  CountRoll,
   FilterSelectionMark,
   filterCardVariants,
   isDeadOption,
@@ -505,7 +506,7 @@ export function SizePawCards({
                       : { duration: 0.16 }
                 }
               >
-                {count}
+                <CountRoll value={count} />
               </m.span>
             </button>
           );

@@ -1,12 +1,14 @@
-# Mala hiša has not yet granted permission to republish photographs or full
-# descriptions. The parser can be reviewed and tested, but remains disabled.
+# The project owner confirmed Mala hiša's permission on 2026-08-20, covering
+# the shelter catalogue, the animal photographs and the descriptions. The
+# "Privat oddaja" section carries private-owner listings and stays excluded
+# from the crawl for good.
 providerId: mala-hisa
 source: https://zavetisce-malahisa.si/psi-za-oddajo/
-enabled: false
+enabled: true
 
 ingestion: scrape
-images: none
-descriptions: facts-only
+images: cache-permitted
+descriptions: full-permitted
 
 logo:
   # The logo grant is recorded with the shelter's own permission once that
@@ -14,7 +16,24 @@ logo:
   use: none
 
 permission:
-  status: none
+  status: granted
+  date: 2026-08-20
+  reference: project-owner-confirmation-mala-hisa-2026-08-20
+  notes: >-
+    Project owner confirmed permission for structured shelter facts, for
+    displaying and caching shelter-hosted animal photographs, and for the
+    full descriptions.
+
+allowedFields:
+  - name
+  - species
+  - sex
+  - breed
+  - approximateAgeMonths
+  - size
+  - status
+  - images
+  - shortDescription
 
 attribution: "Vir: Zavetišče Mala hiša"
 

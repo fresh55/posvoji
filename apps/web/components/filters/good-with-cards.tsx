@@ -2,6 +2,7 @@
 
 import { m, useReducedMotion } from "motion/react";
 import {
+  CountRoll,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
@@ -13,60 +14,75 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
+import type { SectionCollapse } from "@/components/filters/filter-section-header";
+import {
+  GoodWithGlyph,
+  LONGEST_GOOD_WITH_GESTURE_MS,
+} from "@/components/filters/good-with-glyphs";
 import {
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
-import { GOOD_WITH_ICONS } from "@/lib/animal-icons";
-import type { GoodWithKey } from "@/lib/filters";
+import { GOOD_WITH_KEYS, type GoodWithKey } from "@/lib/filters";
+import type { TranslationKey } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 export type GoodWithOption = { key: GoodWithKey; label: string };
 
-type IconGesture = {
-  rotate: number | number[];
-  scale: number | number[];
-  x: number | number[];
-  y: number | number[];
-};
+const GESTURE_REST = { rotate: 0, scale: 1, x: 0, y: 0 };
 
-const GESTURE_REST: IconGesture = { rotate: 0, scale: 1, x: 0, y: 0 };
-
-// Each icon acts out its own answer once, as it is switched on: the child
-// bounces, the dog wags, the cat flicks an ear.
-const GOOD_WITH_GESTURES: Record<GoodWithKey, IconGesture> = {
-  kids: { rotate: 0, scale: [1, 1.06, 1], x: 0, y: [0, -2.5, 0.5, 0] },
-  dogs: { rotate: [0, -7, 6, 0], scale: 1, x: 0, y: 0 },
-  cats: { rotate: [0, 7, -2, 0], scale: 1, x: [0, 1, 0], y: 0 },
-};
-
-const GESTURE_DURATION = 0.35;
-const GESTURE_MS = 500;
+// The hold comes from the glyphs themselves, so the check and the ripple
+// never cut a laugh or a blink short when the choreography changes.
+const GESTURE_MS = LONGEST_GOOD_WITH_GESTURE_MS;
 // The check confirms as the icon gesture lands, not before it starts.
 const GESTURE_CHECK_DELAY = 0.2;
 const RIPPLE_OPACITY = 0.5;
 const RIPPLE_SCALE = 1.35;
 const RIPPLE_DURATION = 0.35;
 
+const LEAD_KEYS: Record<GoodWithKey, TranslationKey> = {
+  kids: "goodWithLeadKids",
+  dogs: "goodWithLeadDogs",
+  cats: "goodWithLeadCats",
+};
+
+const TAIL_KEYS: Record<GoodWithKey, TranslationKey> = {
+  kids: "goodWithTailKids",
+  dogs: "goodWithTailDogs",
+  cats: "goodWithTailCats",
+};
+
+/** Fixed facet order, so the sentence does not reshuffle as you pick. */
+function orderedSelection(selected: GoodWithKey[]): GoodWithKey[] {
+  return GOOD_WITH_KEYS.filter((key) => selected.includes(key));
+}
+
 export function GoodWithCards({
   options,
   counts,
   selected,
+  resultCount,
+  total,
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   options: GoodWithOption[];
   counts: Map<string, number>;
   selected: GoodWithKey[];
+  /** Animals the current filters leave, and the pool they were taken from. */
+  resultCount: number;
+  total: number;
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
   layout?: FilterCardLayout;
+  collapse?: SectionCollapse;
 }) {
-  const { locale, messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const {
     celebration,
@@ -81,6 +97,22 @@ export function GoodWithCards({
     ({ key }) => key === celebration?.value,
   );
 
+  const chosen = orderedSelection(selected);
+
+  const outcome =
+    chosen.length === 0
+      ? null
+      : t("goodWithOutcome", {
+          list: joinPhrases(
+            chosen.map((key, index) =>
+              index === 0 ? t(LEAD_KEYS[key]) : t(TAIL_KEYS[key]),
+            ),
+            messages.goodWithJoiner,
+          ),
+          count: resultCount,
+          total,
+        });
+
   return (
     <FilterCardSection
       label={messages.goodWith}
@@ -93,11 +125,21 @@ export function GoodWithCards({
       }}
       resetAriaLabel={messages.resetGoodWithFilters}
       layout={layout}
+      collapse={collapse}
+      // The one place the section says its choices hold at once, and the one
+      // the screen reader hears. Nothing selected says nothing.
+      footer={
+        <p
+          aria-live="polite"
+          className="mt-2 text-[11px] leading-snug text-muted-foreground empty:mt-0"
+        >
+          {outcome}
+        </p>
+      }
     >
       {options.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
         const checked = selected.includes(key);
-        const Icon = GOOD_WITH_ICONS[key];
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
         // The card that did not change leans away from the one that did.
@@ -146,39 +188,37 @@ export function GoodWithCards({
                 />
               ) : null}
               <FilterCardHoverLift hovered={hovered}>
+                {/* The gesture now lives inside the glyph, one part at a
+                    time. What is left out here is the neighbour's lean, which
+                    is the whole icon leaning away and nothing else. */}
                 <m.span
                   className="flex items-center justify-center"
                   initial={false}
                   animate={
-                    shouldReduceMotion
-                      ? GESTURE_REST
-                      : celebrating
-                        ? GOOD_WITH_GESTURES[key]
-                        : reacting
-                          ? {
-                              rotate: [0, tiltDirection * 2.5, 0],
-                              scale: 1,
-                              x: 0,
-                              y: 0,
-                            }
-                          : GESTURE_REST
+                    reacting && !shouldReduceMotion
+                      ? { rotate: [0, tiltDirection * 2.5, 0], scale: 1, y: 0 }
+                      : GESTURE_REST
                   }
                   transition={
-                    celebrating && !shouldReduceMotion
-                      ? { duration: GESTURE_DURATION, ease: "easeOut" }
-                      : reacting && !shouldReduceMotion
-                        ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
-                        : { duration: 0.16 }
+                    reacting && !shouldReduceMotion
+                      ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                      : { duration: 0.16 }
                   }
                 >
-                  <Icon
+                  <GoodWithGlyph
+                    // Remounting is what restarts the gesture: motion holds a
+                    // keyframe run to its own timeline, so swapping the target
+                    // on a live element does not replay it.
+                    key={celebrating ? celebration?.id : "rest"}
+                    facet={key}
+                    gesture={celebrating ? "celebrate" : "rest"}
+                    shouldReduceMotion={shouldReduceMotion ?? false}
                     className={cn(
                       "size-5 transition-colors duration-150",
                       checked
                         ? "text-[var(--filter-accent-strong)]"
                         : "text-muted-foreground",
                     )}
-                    strokeWidth={1.65}
                   />
                 </m.span>
               </FilterCardHoverLift>
@@ -189,7 +229,7 @@ export function GoodWithCards({
               label={label}
               checked={checked}
               renderCount={(className) => (
-                <span className={className}>{count}</span>
+                <CountRoll value={count} className={className} />
               )}
             />
           </button>
@@ -197,4 +237,11 @@ export function GoodWithCards({
       })}
     </FilterCardSection>
   );
+}
+
+// Commas and the joining word are the sentence's own punctuation; the words
+// being joined all come from the message catalogue.
+function joinPhrases(phrases: string[], joiner: string): string {
+  if (phrases.length < 2) return phrases[0] ?? "";
+  return `${phrases.slice(0, -1).join(", ")} ${joiner} ${phrases[phrases.length - 1]}`;
 }

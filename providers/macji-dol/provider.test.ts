@@ -96,6 +96,26 @@ describe("parseDetail", () => {
       </div></article></div>`;
     expect(parseDetail(html).goodWith).toBeUndefined();
   });
+
+  it("reads the housing term as an apartment cat", () => {
+    const html = `
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>DRUŽABNOST:</strong> Ljudje, bivanje samo v stanovanju</p>
+      </div></article></div>`;
+    expect(parseDetail(html).apartmentOk).toBe("yes");
+  });
+
+  it("leaves apartmentOk unset when the term is qualified or absent", () => {
+    const qualified = `
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>DRUŽABNOST:</strong> Mačke, po možnosti bivanje samo v stanovanju</p>
+      </div></article></div>`;
+    expect(parseDetail(qualified).apartmentOk).toBeUndefined();
+    expect(
+      parseDetail(loadFixture(import.meta.url, "detail-pair-separate.html"))
+        .apartmentOk,
+    ).toBeUndefined();
+  });
 });
 
 describe("normalize", () => {
@@ -129,6 +149,17 @@ describe("normalize", () => {
       "Ni nujno, da odideta v skupen dom.",
     );
     expect(animal.goodWith).toEqual({ cats: "yes" });
+  });
+
+  it("carries the housing term through to the listing", async () => {
+    const html = `
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>DRUŽABNOST:</strong> Ljudje, bivanje samo v stanovanju</p>
+      </div></article></div>`;
+    const animal = Animal.parse(
+      await provider.normalize(ctx, { ...raw, data: parseDetail(html) }),
+    );
+    expect(animal.apartmentOk).toBe("yes");
   });
 
   it("keeps the shelter block in sync with data/shelters.yaml", async () => {

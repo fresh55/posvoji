@@ -1,7 +1,13 @@
 import type { Animal, AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
-import { ageInMonths, FILTER_METADATA } from "@/lib/filters";
+import {
+  ageInMonths,
+  FILTER_METADATA,
+  type CareKey,
+  type GoodWithKey,
+  type HomeKey,
+} from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
   sl: {
@@ -205,6 +211,37 @@ export function sexLabel(
     FILTER_METADATA.sex.find((option) => option.value === sex)?.labels[
       locale
     ] ?? sex
+  );
+}
+
+// A chip names the household, not the card. The card label answers the section
+// heading ("Doma imam: Psa"), but a chip stands on its own in a row next to the
+// species chips, where "Psa" would read as a list of dogs.
+const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, TranslationKey> = {
+  kids: "goodWithChipKids",
+  dogs: "goodWithChipDogs",
+  cats: "goodWithChipCats",
+};
+
+export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
+  return translate(locale, GOOD_WITH_CHIP_KEYS[key]);
+}
+
+// Both of these read as full phrases already ("Primeren za stanovanje"), so a
+// chip needs no second wording the way the household questions do.
+export function homeLabel(key: HomeKey, locale: Locale): string {
+  return (
+    FILTER_METADATA.home.find((option) => option.value === key)?.labels[
+      locale
+    ] ?? key
+  );
+}
+
+export function careLabel(key: CareKey, locale: Locale): string {
+  return (
+    FILTER_METADATA.care.find((option) => option.value === key)?.labels[
+      locale
+    ] ?? key
   );
 }
 

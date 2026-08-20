@@ -110,6 +110,14 @@ export const Animal = z.strictObject({
   medical: AnimalMedical.optional(),
   goodWith: AnimalGoodWith.optional(),
 
+  // Same three answers as goodWith, for the same reason: a shelter saying it
+  // does not know whether the animal can live in a flat is information.
+  apartmentOk: Compatibility.optional(),
+  // The animal needs more time, knowledge or care than most. A flag rather
+  // than a Compatibility: a shelter either says so or has not, and there is
+  // no useful "no" to record.
+  specialNeeds: z.boolean().optional(),
+
   images: z.array(AnimalImage),
 
   shortDescription: z.string().optional(),

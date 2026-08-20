@@ -29,6 +29,7 @@ describe("policy.yaml", () => {
     });
   });
 });
+
 describe("parseList", () => {
   it("accepts only same-site animal cards and canonicalizes Unicode URLs", () => {
     expect(parseList(dogList)).toEqual([
@@ -66,13 +67,30 @@ describe("detail facts", () => {
     });
   });
 
+  it("reads a description wrapped in a layout block, without the site boilerplate", () => {
+    // Predator's and Vladko's listings nest the text in a div instead of
+    // leaving it a direct child, which a direct-child selector loses entirely.
+    const facts = parseDetail(
+      loadFixture(import.meta.url, "detail-cat-wrapped.html"),
+    );
+    expect(facts.description).toBe(
+      "Predator je približno 7 let star samček. Je igriv in prijeten mucek.",
+    );
+    // The donation and volunteering panel closes every listing and is never
+    // the animal's own text.
+    expect(facts.description).not.toContain("Donacije");
+    expect(facts.description).not.toContain("prostovoljcev");
+    // The sign-off is plain text here, not a mailto link.
+    expect(facts.description).not.toContain("example.org");
+  });
+
   it("reads a cat despite whitespace variations", () => {
     expect(parseDetail(catDetail)).toEqual({
       name: "Orion",
       species: "cat",
       sex: "male",
       birthDate: "2026-05-05",
-      daysInShelter: 82,
+      daysInShelter: 1190,
       description: "Orion je mlad in nekoliko sramežljiv samček.",
       imageUrls: [],
     });
@@ -82,6 +100,10 @@ describe("detail facts", () => {
 describe("intakeDateFromDays", () => {
   it("turns the rolling count into a stable Slovenian-calendar date", () => {
     expect(intakeDateFromDays(82, "2026-08-18T10:00:00.000Z")).toBe("2026-05-28");
+  });
+
+  it("handles a stay long enough to cross several years", () => {
+    expect(intakeDateFromDays(1190, "2026-08-18T10:00:00.000Z")).toBe("2023-05-16");
   });
 
   it("uses Ljubljana's date around the UTC boundary", () => {

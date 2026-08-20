@@ -1,12 +1,14 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { type ReactElement } from "react";
+import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
+import { CareCards, type CareOption } from "@/components/filters/care-cards";
 import { EnergyCards } from "@/components/filters/energy-cards";
+import { HomeCards, type HomeOption } from "@/components/filters/home-cards";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import {
+  CountRoll,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
@@ -19,6 +21,11 @@ import {
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
+import {
   GoodWithCards,
   type GoodWithOption,
 } from "@/components/filters/good-with-cards";
@@ -30,10 +37,16 @@ import {
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import {
+  useFilterSections,
+  type FilterSectionKey,
+} from "@/components/filters/use-filter-sections";
+import {
   groupLabel,
+  type CareKey,
   type FilterOption,
   type Filters,
   type GoodWithKey,
+  type HomeKey,
   type MultiGroup,
   type ToggleDef,
   type ToggleKey,
@@ -79,16 +92,43 @@ type GroupProps = {
   selected: string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
+  collapse?: SectionCollapse;
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
 
-/** Everything the Družba section needs, absent while no facet has data. */
+/** Everything the household section needs, absent while no facet has data. */
 export type GoodWithSection = {
   options: GoodWithOption[];
   counts: Map<string, number>;
+  /** What the current filters leave, and the pool they were taken from. The
+      section says both out loud, because its choices narrow together. */
+  resultCount: number;
+  total: number;
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
+};
+
+/** Everything the home section needs, absent while no animal answers it. Its
+    sentence names both numbers for the same reason Družba's does. */
+export type HomeSection = {
+  options: HomeOption[];
+  counts: Map<string, number>;
+  resultCount: number;
+  total: number;
+  onToggle: (key: HomeKey) => void;
+  onToggleMany: (values: HomeKey[]) => void;
+};
+
+/** Everything the special-care section needs, absent while no animal answers
+    it. */
+export type CareSection = {
+  options: CareOption[];
+  counts: Map<string, number>;
+  resultCount: number;
+  total: number;
+  onToggle: (key: CareKey) => void;
+  onToggleMany: (values: CareKey[]) => void;
 };
 
 function HealthToggleCards({
@@ -98,6 +138,7 @@ function HealthToggleCards({
   onToggle,
   onToggleMany,
   layout = "sidebar",
+  collapse,
 }: {
   toggles: ToggleDef[];
   counts: Map<string, number>;
@@ -105,6 +146,7 @@ function HealthToggleCards({
   onToggle: (key: ToggleKey) => void;
   onToggleMany: (values: ToggleKey[]) => void;
   layout?: FilterCardLayout;
+  collapse?: SectionCollapse;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -129,6 +171,7 @@ function HealthToggleCards({
       }}
       resetAriaLabel={messages.resetHealthFilters}
       layout={layout}
+      collapse={collapse}
     >
       {toggles.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
@@ -211,7 +254,7 @@ function HealthToggleCards({
               label={label}
               checked={checked}
               renderCount={(className) => (
-                <span className={className}>{count}</span>
+                <CountRoll value={count} className={className} />
               )}
             />
           </button>
@@ -227,6 +270,7 @@ function SizeGroup({
   selected,
   onToggle,
   onToggleMany,
+  collapse,
 }: Omit<GroupProps, "group" | "ageLayout">) {
   const { locale, messages } = useI18n();
   const { isResetting, beginReset } = useResetStagger(selected.length);
@@ -241,14 +285,17 @@ function SizeGroup({
           onToggleMany(selected);
         }}
         resetAriaLabel={messages.resetSizeFilters}
+        collapse={collapse}
       />
-      <SizePawCards
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={onToggle}
-        isResetting={isResetting}
-      />
+      <CollapsibleBody collapse={collapse}>
+        <SizePawCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={onToggle}
+          isResetting={isResetting}
+        />
+      </CollapsibleBody>
     </section>
   );
 }
@@ -259,6 +306,7 @@ function SexGroup({
   selected,
   onToggle,
   onToggleMany,
+  collapse,
 }: Omit<GroupProps, "group" | "ageLayout">) {
   const { locale, messages } = useI18n();
 
@@ -269,13 +317,16 @@ function SexGroup({
         active={selected.length > 0}
         onReset={() => onToggleMany(selected)}
         resetAriaLabel={messages.resetSexFilters}
+        collapse={collapse}
       />
-      <SexCards
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={onToggle}
-      />
+      <CollapsibleBody collapse={collapse}>
+        <SexCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={onToggle}
+        />
+      </CollapsibleBody>
     </section>
   );
 }
@@ -294,6 +345,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           layout={rest.ageLayout}
+          collapse={rest.collapse}
         />
       );
     case "sex":
@@ -304,6 +356,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           selected={rest.selected}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
+          collapse={rest.collapse}
         />
       );
     case "size":
@@ -314,6 +367,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           selected={rest.selected}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
+          collapse={rest.collapse}
         />
       );
     case "energy":
@@ -325,9 +379,21 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           layout={rest.ageLayout}
+          collapse={rest.collapse}
         />
       );
   }
+}
+
+// A closed section still says what it holds: the first selected label, and how
+// many more stand behind it. Language-neutral, so it needs no plural rules.
+function selectionSummary(
+  selected: string[],
+  labelOf: (value: string) => string | undefined,
+): string | null {
+  if (selected.length === 0) return null;
+  const first = labelOf(selected[0]) ?? selected[0];
+  return selected.length === 1 ? first : `${first} +${selected.length - 1}`;
 }
 
 // The desktop sidebar and the mobile sheet frame these differently but show the
@@ -339,11 +405,14 @@ export function FilterGroupList({
   toggles,
   toggleTally,
   goodWith,
+  home,
+  care,
   onToggle,
   onToggleMany,
   onToggleProperty,
   onToggleManyProperties,
   ageLayout = "sidebar",
+  collapsible = false,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -351,8 +420,31 @@ export function FilterGroupList({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
   ageLayout?: "sidebar" | "sheet";
+  /** Folds sections behind their headers. The sidebar turns this on; the
+      sheet scrolls as one page and leaves it off. */
+  collapsible?: boolean;
 } & FilterActionContract) {
+  const { isOpen, toggleSection } = useFilterSections();
+  // One base per list, so a header and the body it controls agree on an id
+  // even with the sidebar and the sheet mounted at once.
+  const idBase = useId();
+
+  const collapseFor = (
+    key: FilterSectionKey,
+    summary: string | null,
+  ): SectionCollapse | undefined =>
+    collapsible
+      ? {
+          open: isOpen(key),
+          onToggle: () => toggleSection(key),
+          summary,
+          contentId: `${idBase}-${key}`,
+        }
+      : undefined;
+
   return (
     <>
       {groups.map(({ group, options }) => (
@@ -365,6 +457,13 @@ export function FilterGroupList({
           selected={filters[group]}
           onToggle={(value) => onToggle(group, value)}
           onToggleMany={(values) => onToggleMany(group, values)}
+          collapse={collapseFor(
+            group,
+            selectionSummary(
+              filters[group],
+              (value) => options.find((option) => option.value === value)?.label,
+            ),
+          )}
         />
       ))}
 
@@ -376,6 +475,13 @@ export function FilterGroupList({
           onToggle={onToggleProperty}
           onToggleMany={onToggleManyProperties}
           layout={ageLayout}
+          collapse={collapseFor(
+            "health",
+            selectionSummary(
+              filters.toggles,
+              (value) => toggles.find((toggle) => toggle.key === value)?.label,
+            ),
+          )}
         />
       )}
 
@@ -384,9 +490,64 @@ export function FilterGroupList({
           options={goodWith.options}
           counts={goodWith.counts}
           selected={filters.goodWith}
+          resultCount={goodWith.resultCount}
+          total={goodWith.total}
           onToggle={goodWith.onToggle}
           onToggleMany={goodWith.onToggleMany}
           layout={ageLayout}
+          collapse={collapseFor(
+            "goodWith",
+            selectionSummary(
+              filters.goodWith,
+              (value) =>
+                goodWith.options.find((option) => option.key === value)?.label,
+            ),
+          )}
+        />
+      )}
+
+      {/* Dom follows Družba: both ask what the visitor's household is like,
+          and Posebna skrb closes the list because it is the one section that
+          asks what the visitor is willing to take on. */}
+      {home && home.options.length > 0 && (
+        <HomeCards
+          options={home.options}
+          counts={home.counts}
+          selected={filters.home}
+          resultCount={home.resultCount}
+          total={home.total}
+          onToggle={home.onToggle}
+          onToggleMany={home.onToggleMany}
+          layout={ageLayout}
+          collapse={collapseFor(
+            "home",
+            selectionSummary(
+              filters.home,
+              (value) =>
+                home.options.find((option) => option.key === value)?.label,
+            ),
+          )}
+        />
+      )}
+
+      {care && care.options.length > 0 && (
+        <CareCards
+          options={care.options}
+          counts={care.counts}
+          selected={filters.care}
+          resultCount={care.resultCount}
+          total={care.total}
+          onToggle={care.onToggle}
+          onToggleMany={care.onToggleMany}
+          layout={ageLayout}
+          collapse={collapseFor(
+            "care",
+            selectionSummary(
+              filters.care,
+              (value) =>
+                care.options.find((option) => option.key === value)?.label,
+            ),
+          )}
         />
       )}
     </>

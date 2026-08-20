@@ -17,20 +17,28 @@ import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
   bySpecies,
+  careCounts,
+  careOptions,
   facetCounts,
   goodWithCounts,
-  goodWithLabel,
   goodWithOptions,
   GROUPS,
   groupOptions,
+  homeCounts,
+  homeOptions,
   optionLabel,
   speciesCounts,
   toggleCounts,
   toggleLabel,
+  visibleCare,
   visibleGoodWith,
   visibleGroups,
+  visibleHome,
   visibleToggles,
+  type FilterOption,
 } from "@/lib/filters";
+import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   DEFAULT_ANIMAL_SORT,
   sortAnimals,
@@ -43,12 +51,20 @@ export function AnimalGrid({
   animals,
   logos,
   referenceDate,
+  municipalities,
+  offSiteShelters,
 }: {
   animals: Animal[];
   logos: ShelterLogos;
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
   referenceDate: string;
+  /** Municipality → responsible-shelter entries for the shelter dialog's
+   *  "found an animal" mode. Built on the server from data/. */
+  municipalities?: LookupEntry[];
+  /** Registry shelters with no animals on the site, drawn inert in the
+   *  location picker's map and list. */
+  offSiteShelters?: FilterOption[];
 }) {
   const { locale, messages } = useI18n();
   const [sort, setSort] = useState<AnimalSort>(DEFAULT_ANIMAL_SORT);
@@ -63,6 +79,10 @@ export function AnimalGrid({
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
+    toggleHome,
+    toggleManyHome,
+    toggleCare,
+    toggleManyCare,
     clearAll,
     activeCount,
   } = useAnimalFilters();
@@ -161,6 +181,8 @@ export function AnimalGrid({
     return {
       options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
       counts: goodWithCounts(animals, filters, now),
+      resultCount: visible.length,
+      total: pool.length,
       onToggle: toggleGoodWith,
       onToggleMany: toggleManyGoodWith,
     };
@@ -170,8 +192,55 @@ export function AnimalGrid({
     locale,
     now,
     pool,
+    visible.length,
     toggleGoodWith,
     toggleManyGoodWith,
+  ]);
+
+  // Same rule as the household section: absent until the shelters have
+  // answered for some animals and not for all of them.
+  const home = useMemo(() => {
+    const keys = visibleHome(pool);
+    if (keys.length === 0) return undefined;
+    return {
+      options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
+      counts: homeCounts(animals, filters, now),
+      resultCount: visible.length,
+      total: pool.length,
+      onToggle: toggleHome,
+      onToggleMany: toggleManyHome,
+    };
+  }, [
+    animals,
+    filters,
+    locale,
+    now,
+    pool,
+    visible.length,
+    toggleHome,
+    toggleManyHome,
+  ]);
+
+  const care = useMemo(() => {
+    const keys = visibleCare(pool);
+    if (keys.length === 0) return undefined;
+    return {
+      options: careOptions(locale).filter(({ key }) => keys.includes(key)),
+      counts: careCounts(animals, filters, now),
+      resultCount: visible.length,
+      total: pool.length,
+      onToggle: toggleCare,
+      onToggleMany: toggleManyCare,
+    };
+  }, [
+    animals,
+    filters,
+    locale,
+    now,
+    pool,
+    visible.length,
+    toggleCare,
+    toggleManyCare,
   ]);
 
   // The pressed species tab already shows itself, so chips cover only the
@@ -189,15 +258,33 @@ export function AnimalGrid({
       label: toggleLabel(key, locale),
       onRemove: () => toggleProperty(key),
     })),
+    // Not the card label: on a row of chips "Psi" would read as the species
+    // tab, so these name the household instead.
     ...filters.goodWith.map((key) => ({
       key: `goodWith:${key}`,
-      label: goodWithLabel(key, locale),
+      label: goodWithChipLabel(key, locale),
       onRemove: () => toggleGoodWith(key),
+    })),
+    // Both of these read as whole phrases on the card already, so a chip says
+    // the same words rather than a second wording of them.
+    ...filters.home.map((key) => ({
+      key: `home:${key}`,
+      label: homeLabel(key, locale),
+      onRemove: () => toggleHome(key),
+    })),
+    ...filters.care.map((key) => ({
+      key: `care:${key}`,
+      label: careLabel(key, locale),
+      onRemove: () => toggleCare(key),
     })),
   ];
 
   const hasSidebar =
-    groups.length > 0 || toggles.length > 0 || goodWith !== undefined;
+    groups.length > 0 ||
+    toggles.length > 0 ||
+    goodWith !== undefined ||
+    home !== undefined ||
+    care !== undefined;
 
   return (
     <section
@@ -216,10 +303,13 @@ export function AnimalGrid({
           toggles={toggles}
           toggleTally={toggleTally}
           goodWith={goodWith}
+          home={home}
+          care={care}
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onToggleManyProperties={toggleManyProperties}
+          onClearAll={handleClearAll}
         />
       )}
 
@@ -233,8 +323,12 @@ export function AnimalGrid({
           toggles={toggles}
           toggleTally={toggleTally}
           goodWith={goodWith}
+          home={home}
+          care={care}
           shelters={shelters}
           shelterTally={counts.shelter}
+          municipalities={municipalities}
+          offSiteShelters={offSiteShelters}
           chips={chips}
           resultCount={visible.length}
           clearTrailKey={clearTrailKey}

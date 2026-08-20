@@ -303,7 +303,7 @@ describe("LocationPicker off-site shelters", () => {
     expect(link.getAttribute("href")).toBe("/zavetisca/vzhod");
   });
 
-  it("explains the faint marker only once there is one", async () => {
+  it("heads the rows it cannot filter by, and leaves the legend out of it", async () => {
     await openPicker();
 
     expect(screen.queryByText("Trenutno brez objavljenih živali")).toBeNull();
@@ -311,10 +311,74 @@ describe("LocationPicker off-site shelters", () => {
     cleanup();
     await openPicker({ offSite });
 
-    // The heading over the rows and the legend entry share the wording.
+    // The heading over the rows, and nothing else: the hollow ring on the map
+    // names itself on hover, so the legend no longer repeats it.
     expect(
       screen.getAllByText("Trenutno brez objavljenih živali"),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+  });
+});
+
+describe("LocationPicker legend", () => {
+  it("carries the density ramp alone once nothing else needs explaining", async () => {
+    await openPicker({ offSite });
+
+    const legends = Array.from(
+      screen.getByRole("dialog").querySelectorAll("[data-map-legend]"),
+    );
+    // Both copies exist in markup (an on-map row for md+, an inline row for
+    // phones) with CSS choosing which one shows.
+    expect(legends).toHaveLength(2);
+    for (const legend of legends) {
+      // The one encoding with no other way in, and nothing else: no paw
+      // swatch, no marker sizes, no off-site ring. Those answer for
+      // themselves on the map.
+      expect(legend.textContent).toBe("Manj živaliVeč živali");
+      expect(legend.querySelector(".lucide-paw-print")).toBeNull();
+    }
+  });
+
+  it("explains the hatch only while a region is partly picked", async () => {
+    // Two shelters in one region, so picking one of them leaves that region
+    // between states and the map hatches it.
+    const shared = [
+      { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
+      { value: "sever", label: "Zavetišče Sever", city: "Ljubljana" },
+    ];
+    const sharedCounts = new Map([
+      ["jug", 7],
+      ["sever", 4],
+    ]);
+
+    function renderWith(selected: string[]) {
+      render(
+        <I18nProvider locale="sl">
+          <LocationPicker
+            options={shared}
+            counts={sharedCounts}
+            selected={selected}
+            onToggle={vi.fn()}
+            onToggleMany={vi.fn()}
+            resultCount={11}
+            species="all"
+          />
+        </I18nProvider>,
+      );
+      fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    }
+
+    renderWith([]);
+    expect(screen.queryByText("Delno izbrana regija")).toBeNull();
+
+    cleanup();
+    renderWith(["jug"]);
+    expect(
+      screen.getAllByText("Delno izbrana regija").length,
+    ).toBeGreaterThan(0);
+
+    cleanup();
+    renderWith(["jug", "sever"]);
+    expect(screen.queryByText("Delno izbrana regija")).toBeNull();
   });
 });
 
@@ -410,6 +474,9 @@ describe("LocationPicker attribution", () => {
 
     type(input, "1000");
 
-    expect(screen.getByText("Izhodišče")).toBeTruthy();
+    // The legend now renders twice in markup (an on-map panel for md+, an
+    // inline row for phones) with CSS choosing which one shows, so both
+    // copies exist in jsdom regardless of viewport.
+    expect(screen.getAllByText("Izhodišče").length).toBeGreaterThan(0);
   });
 });

@@ -7,7 +7,6 @@ import {
   LoaderCircle,
   MapPin,
   Navigation,
-  PawPrint,
   Search,
   X,
 } from "lucide-react";
@@ -18,7 +17,7 @@ import {
 } from "@/lib/found-animal";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { ResultCount } from "@/components/filters/result-count";
-import { ShelterMap } from "@/components/filters/shelter-map";
+import { ShelterMap, anyRegionMixed } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -34,12 +33,122 @@ import {
 } from "@/components/ui/dialog";
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
-import { cityAt, distanceKm, formatKm, onMap } from "@/lib/geo";
+import { cityAt, distanceKm, formatKm, onMap, type LatLon } from "@/lib/geo";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import { looksLikePostcode } from "@/lib/postal-lookup";
 import { cn } from "@/lib/utils";
+
+// The map legend, drawn in two places (a corner of the map canvas md+, an
+// in-flow row on phones) from one component so they cannot drift apart.
+//
+// It explains what nobody can guess and nothing else. The density ramp is the
+// one encoding with no other way in, so it is always here. Everything else
+// waits for the thing it describes to exist: the hatch appears with the first
+// partial selection, the origin ring with the first origin. The marker shapes
+// and sizes explain themselves on hover, through the callout, so they say
+// nothing here at all.
+function MapLegend({
+  variant,
+  highlightedDensity,
+  onHoverDensity,
+  onLeaveDensity,
+  hasMixedRegion,
+  origin,
+  messages,
+}: {
+  variant: "panel" | "inline";
+  highlightedDensity: number | null;
+  onHoverDensity: (index: number) => void;
+  onLeaveDensity: () => void;
+  /** At least one region is partly picked right now, so the hatch on the map
+   *  is a state worth naming. */
+  hasMixedRegion: boolean;
+  origin: LatLon | undefined;
+  messages: ReturnType<typeof useI18n>["messages"];
+}) {
+  return (
+    <div
+      data-map-legend={variant}
+      className={cn(
+        "leading-none text-muted-foreground",
+        variant === "panel"
+          ? "flex flex-col gap-y-1 text-[10px]"
+          : "order-last mt-3 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] md:hidden",
+      )}
+    >
+      <span className="flex items-center gap-2">
+        <span>{messages.fewerAnimals}</span>
+        <span
+          className="flex items-center gap-0.5"
+          aria-hidden
+          onMouseLeave={onLeaveDensity}
+        >
+          {DENSITY_STEPS.map((opacity, index) => (
+            // The padded span, not the square, is the hover target: an 8px
+            // square is too small to aim at on its own, so the hit area
+            // grows without the visible swatch growing with it. cursor-help
+            // rather than -default: this responds to hover with
+            // information, closer to a tooltip than to inert decoration.
+            <span
+              key={opacity}
+              className="cursor-help p-0.5"
+              onMouseEnter={() => onHoverDensity(index)}
+            >
+              <span
+                className={cn(
+                  "block size-2 rounded-[2px] bg-foreground transition-shadow",
+                  highlightedDensity === index && "ring-1 ring-foreground/30",
+                )}
+                style={{ opacity }}
+              />
+            </span>
+          ))}
+        </span>
+        <span>{messages.moreAnimals}</span>
+      </span>
+
+      {/* The hatch a mixed/partly-selected region gets on the map, at legend
+          size. Only while such a region exists, which is the moment the hatch
+          first appears: the row teaches the pattern as it is made, rather than
+          describing a state the map is not in. Both variants, because regions
+          and their partial selection exist on phones too. */}
+      {hasMixedRegion && (
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className="size-2.5 shrink-0 rounded-[2px] border border-[var(--filter-accent-strong)]"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, var(--filter-accent-strong) 0 1px, var(--filter-accent) 1px 4px)",
+            }}
+          />
+          {messages.mixedRegionLegend}
+        </span>
+      )}
+
+      {/* Only once there is a point to explain. The ring repeats the dashed
+          circle the map draws at the origin, at legend size. */}
+      {origin && (
+        <span className="flex items-center gap-1.5">
+          <svg aria-hidden viewBox="0 0 16 16" className="size-4 shrink-0">
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              strokeWidth="1.2"
+              strokeDasharray="2.4 2.4"
+              className="fill-none stroke-foreground opacity-70"
+            />
+            <circle cx="8" cy="8" r="2.1" className="fill-foreground" />
+          </svg>
+          {messages.originLegend}
+        </span>
+      )}
+    </div>
+  );
+}
 
 // Search matches with or without diacritics, so "sezana" finds Sežano.
 function fold(text: string): string {
@@ -145,6 +254,12 @@ export function LocationPicker({
   const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
     string[] | null
   >(null);
+  // Hovering a legend density square lights up that step on the map, so the
+  // strip becomes a way to ask "where are the busy ones" instead of a static
+  // key. Pointer-only: touch devices never fire it, and that is fine.
+  const [highlightedDensity, setHighlightedDensity] = useState<number | null>(
+    null,
+  );
 
   const rows: (ShelterRow & { at?: ReturnType<typeof cityAt> })[] = useMemo(() => {
     const located = options.map((option) => {
@@ -244,7 +359,13 @@ export function LocationPicker({
     : offRows;
 
   const unplaced = rows.length + offRows.length - pins.length;
-  const hasOffSitePins = pins.some((pin) => pin.selectable === false);
+  // Asked of the same grouping the map draws from, so the legend row and the
+  // hatch on the country appear and disappear together. Memoized because it
+  // walks every town through a point-in-polygon lookup.
+  const hasMixedRegion = useMemo(
+    () => anyRegionMixed(pins, selected),
+    [pins, selected],
+  );
   const nearbyOn = state.status === "on";
   // Two independent facts, so two lines. Sharing one slot meant a geolocation
   // error silently replaced the note about shelters missing from the map.
@@ -379,11 +500,12 @@ export function LocationPicker({
                 width below md, so height is capped there by capping the width
                 a calc() derives from it. On md+ the wrapper has a real height
                 and the SVG scales to fit it instead. */}
-            {/* A quiet canvas behind the country, so the letterboxed space a
-                fixed-aspect map leaves in a fluid dialog reads as sea, not as
-                a gap. The drop-shadow rides the composited SVG, which gives
-                the country one silhouette shadow instead of one per region. */}
-            <div className="mx-auto w-full max-w-[calc(42vh*32/21)] rounded-ui bg-muted/40 p-2 sm:p-3 md:mx-0 md:min-h-0 md:flex-1 md:max-w-none">
+            {/* A quiet canvas behind the map, for the letterboxed space a
+                fixed-aspect SVG leaves in a fluid dialog. The map draws its
+                own geographic context (sea and neighbouring land) inside the
+                viewBox, fading out toward the edges so it meets this canvas
+                without a seam. */}
+            <div className="relative mx-auto w-full max-w-[calc(42vh*32/21)] rounded-ui bg-muted/40 p-2 sm:p-3 md:mx-0 md:min-h-0 md:flex-1 md:max-w-none">
               <ShelterMap
                 pins={pins}
                 selected={selected}
@@ -405,93 +527,67 @@ export function LocationPicker({
                 spotlightValues={muniMode ? muniShelterIds : null}
                 spotlightNote={messages.muniResponsible}
                 onHoverShelters={setHoveredMarkerValues}
-                className="md:h-full [filter:drop-shadow(0_1px_1px_rgb(0_0_0/0.06))_drop-shadow(0_6px_14px_rgb(0_0_0/0.07))]"
+                highlightedDensity={highlightedDensity}
+                className="md:h-full"
               />
+
+              {/* Real atlases put the legend on the map: the canvas's own
+                  bottom-right corner, md+ only. Slovenia's south-east border
+                  slopes up and away from there, which keeps it reliably clear
+                  of the country's own shape; the faint "abroad" land it sits
+                  on is the atlas convention anyway. No card around it: one row
+                  of 10px muted text is the same contrast the inline legend
+                  already carries over the page, and a bordered blurred box
+                  around it was furniture the map had to pay for. The canvas
+                  padding keeps a small margin off both edges. Below md the
+                  canvas is too small for map furniture, so this stays hidden
+                  there and the inline legend takes over instead. */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden justify-end p-2 sm:p-3 md:flex">
+                <div className="pointer-events-auto ml-auto w-fit">
+                  <MapLegend
+                    variant="panel"
+                    highlightedDensity={highlightedDensity}
+                    onHoverDensity={setHighlightedDensity}
+                    onLeaveDensity={() => setHighlightedDensity(null)}
+                    hasMixedRegion={hasMixedRegion}
+                    origin={origin}
+                    messages={messages}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Same steps the map fills its regions with, read from one array
-                so the legend cannot drift away from the picture.
-
-                Ordered last below md: on a phone the legend is the least of
+            {/* Ordered last below md: on a phone the legend is the least of
                 what the panel is for, and the inputs it used to push down are
-                the most. */}
-            <div className="order-last mt-3 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] leading-none text-muted-foreground md:order-none md:mt-0">
-              <span className="flex items-center gap-2">
-                <span>{messages.fewerAnimals}</span>
-                <span className="flex items-center gap-0.5" aria-hidden>
-                  {DENSITY_STEPS.map((opacity) => (
-                    <span
-                      key={opacity}
-                      className="size-2 rounded-[2px] bg-foreground"
-                      style={{ opacity }}
-                    />
-                  ))}
-                </span>
-                <span>{messages.moreAnimals}</span>
-              </span>
+                the most. On md+ this stays hidden; the panel on the canvas
+                takes over there (see MapLegend above). */}
+            <MapLegend
+              variant="inline"
+              highlightedDensity={highlightedDensity}
+              onHoverDensity={setHighlightedDensity}
+              onLeaveDensity={() => setHighlightedDensity(null)}
+              hasMixedRegion={hasMixedRegion}
+              origin={origin}
+              messages={messages}
+            />
 
-              <span className="hidden items-center gap-1.5 md:flex">
-                <span
-                  aria-hidden
-                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background"
-                >
-                  <PawPrint className="size-2.5 text-foreground/70" strokeWidth={2.25} />
-                </span>
-                {messages.shelter}
-              </span>
-
-              {/* The dot the map draws for a shelter with nothing to pick: a
-                  different shape from the paw disc, not a fainter copy of it.
-                  Only where those markers exist: they are md-only, and only
-                  once one of them is on the map. */}
-              {hasOffSitePins && (
-                <span className="hidden items-center gap-1.5 md:flex">
-                  <span
-                    aria-hidden
-                    className="inline-flex size-4 shrink-0 items-center justify-center"
-                  >
-                    <span className="size-1.5 rounded-full bg-foreground/35" />
-                  </span>
-                  {messages.noAnimalsListed}
-                </span>
-              )}
-
-              {/* Only once there is a point to explain. The ring repeats the
-                  dashed circle the map draws at the origin, at legend size. */}
-              {origin && (
-                <span className="flex items-center gap-1.5">
-                  <svg
-                    aria-hidden
-                    viewBox="0 0 16 16"
-                    className="size-4 shrink-0"
-                  >
-                    <circle
-                      cx="8"
-                      cy="8"
-                      r="6"
-                      strokeWidth="1.2"
-                      strokeDasharray="2.4 2.4"
-                      className="fill-none stroke-foreground opacity-70"
-                    />
-                    <circle cx="8" cy="8" r="2.1" className="fill-foreground" />
-                  </svg>
-                  {messages.originLegend}
-                </span>
-              )}
-
-              <span className="leading-tight">
-                {messages.regionBoundaries}:{" "}
-                <a
-                  href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
-                  className="underline underline-offset-2 hover:text-foreground"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GURS
-                </a>
-                , CC BY 4.0.
-              </span>
-            </div>
+            {/* CC BY 4.0 requires attribution, so this stays visible, just
+                quieter than the legend it used to share a row with. Ordered
+                last of everything in the column: below md it sinks with the
+                legend, on md+ it already follows the legend as the next
+                sibling. */}
+            <p className="order-last mt-1 shrink-0 text-[10px] leading-tight text-muted-foreground/70 md:order-none">
+              {messages.regionBoundaries}:{" "}
+              <a
+                href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
+                className="underline underline-offset-2 hover:text-foreground"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GURS
+              </a>
+              , CC BY 4.0.
+            </p>
           </div>
 
           <div className="mt-5 flex flex-col md:mt-0 md:min-h-0 md:border-l md:pl-6">

@@ -23,12 +23,19 @@ export type Town = {
   shelters: ShelterPin[];
 };
 
-// A marker carries its town's animal count in its area, so the radius follows
-// the square root of the count. The range is deliberately tight: the biggest
-// town holds an order of magnitude more animals than the smallest, and a radius
-// range to match would bury half the country under one dot.
-const MIN_MARKER_RADIUS = 5;
-const MAX_MARKER_RADIUS = 8;
+// A marker carries its town's animal count in its size, in three bins rather
+// than on a curve. Three sizes are three sizes the eye can name; the square
+// root ramp it replaces spent most of its range on the one town that holds a
+// third of the country and left the rest within half a unit of each other.
+const MARKER_RADIUS_STEPS = [5, 5.75, 6.5] as const;
+const MIN_MARKER_RADIUS = MARKER_RADIUS_STEPS[0];
+
+// Where the bins cut. Town totals in the live roster run 13 15 18 19 23 23 38
+// 46 50 72 186, so 20 and 50 split it four small, four medium, three large.
+// Absolute and not a share of the busiest town, so a marker does not change
+// size when a neighbour's shelter empties out.
+const MARKER_COUNT_CUTOFFS = [20, 50] as const;
+
 export const MARKER_STROKE_WIDTH = 0.9;
 
 // Density steps for the region fills, as foreground alpha. Spaced so each step
@@ -139,10 +146,9 @@ function sizeTargets(towns: Placed[]): void {
 
 // Sized before collision layout runs, so relax() protects the radius a town
 // actually gets rather than a placeholder.
-function markerRadius(total: number, busiest: number): number {
-  if (total <= 0 || busiest <= 0) return MIN_MARKER_RADIUS;
-  const share = Math.sqrt(total) / Math.sqrt(busiest);
-  return MIN_MARKER_RADIUS + (MAX_MARKER_RADIUS - MIN_MARKER_RADIUS) * share;
+export function markerRadius(total: number): number {
+  const bin = MARKER_COUNT_CUTOFFS.filter((cutoff) => total >= cutoff).length;
+  return MARKER_RADIUS_STEPS[bin];
 }
 
 export function layoutTowns(pins: ShelterPin[]): Town[] {
@@ -161,8 +167,6 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
       together.reduce((sum, pin) => sum + pin.count, 0),
     ]),
   );
-  const busiest = Math.max(0, ...totals.values());
-
   // Sorted by town and by shelter name, never by the order the rows arrived in.
   // The list above this reorders itself by distance once a location arrives,
   // and inheriting that order made the wedges of a shared town swap places
@@ -174,7 +178,7 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
         a.label.localeCompare(b.label, "sl"),
       );
       const { x, y } = project(shelters[0].at);
-      const r = markerRadius(totals.get(key) ?? 0, busiest);
+      const r = markerRadius(totals.get(key) ?? 0);
       return {
         key,
         city: shelters[0].city,

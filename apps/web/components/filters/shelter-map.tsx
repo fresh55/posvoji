@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { MAP_HEIGHT, MAP_WIDTH, onMap, project, type LatLon } from "@/lib/geo";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -16,10 +16,13 @@ import {
 } from "@/lib/map-layout";
 import {
   REGION_SHAPES,
+  outlinePath,
   regionAt,
   regionPath,
+  ringsPath,
   type RegionShape,
 } from "@/lib/map-regions";
+import { NEIGHBOR_SHAPES, SLOVENIA_UNDERLAY } from "@/lib/neighbor-shapes";
 import { animalCount, shelterCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { MapCallout, Origin } from "./map-callout";
@@ -55,6 +58,37 @@ function getRegionStats(
   };
 }
 
+/** Towns bucketed into the region each one really sits in, plus the reverse
+ *  lookup. Real coordinates and not the laid-out marker position, because
+ *  collision layout may nudge a marker across a region border. */
+function groupTownsByRegion(towns: Town[]): {
+  byRegion: Map<number, Town[]>;
+  regionIdByTownKey: Map<string, number>;
+} {
+  const byRegion = new Map<number, Town[]>();
+  const regionIdByTownKey = new Map<string, number>();
+  for (const town of towns) {
+    const region = regionAt(project(town.shelters[0].at));
+    if (!region) continue;
+    byRegion.set(region.id, [...(byRegion.get(region.id) ?? []), town]);
+    regionIdByTownKey.set(town.key, region.id);
+  }
+  return { byRegion, regionIdByTownKey };
+}
+
+/** Whether any region is partly picked right now. The legend's hatch row is
+ *  drawn only while this is true, so the hatch explains itself the moment it
+ *  first appears instead of standing in the legend unprovoked. Shares the
+ *  grouping and the stats the map itself draws from, so the row cannot claim a
+ *  state the country is not in. */
+export function anyRegionMixed(pins: ShelterPin[], selected: string[]): boolean {
+  const { byRegion } = groupTownsByRegion(layoutTowns(pins));
+  return REGION_SHAPES.some((region) => {
+    const stats = getRegionStats(byRegion.get(region.id) ?? [], selected);
+    return stats.live && stats.state === "mixed";
+  });
+}
+
 // Regions are the keyboard and narrow-screen controls; town markers add
 // pointer precision when the map is large enough.
 export function ShelterMap({
@@ -68,6 +102,7 @@ export function ShelterMap({
   onHoverShelters,
   spotlightValues,
   spotlightNote,
+  highlightedDensity,
 }: {
   pins: ShelterPin[];
   selected: string[];
@@ -93,8 +128,20 @@ export function ShelterMap({
   /** One-line note under the spotlight callout title, e.g. "responsible
    *  shelter" in the reader's language. */
   spotlightNote?: string;
+  /** A density step hovered in the legend, as an index into DENSITY_STEPS.
+   *  Unpicked regions on that step light up and the rest of the ramp fades, so
+   *  the legend answers "which regions are this busy?". Null or undefined
+   *  means no legend hover. Picked and partly picked regions are left alone:
+   *  they carry a selection, which outranks a preview. */
+  highlightedDensity?: number | null;
 }) {
   const { locale, messages } = useI18n();
+  // The dev gallery mounts several maps on one page, and every one of them
+  // defines this pattern, so the id cannot be a constant. useId is stripped to
+  // alphanumerics because the value it returns carries colons.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const hatchId = `map-hatch-${uid}`;
+  const contextFadeId = `map-context-fade-${uid}`;
   const towns = useMemo(() => layoutTowns(pins), [pins]);
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
   /** The single shelter under the pointer inside a cluster marker. A cluster
@@ -118,21 +165,12 @@ export function ShelterMap({
       )
     : undefined;
 
-  // Use real coordinates because collision layout may nudge a marker across a
-  // region border. Computed once per town, alongside the region grouping, so
-  // the highlighted town's region is a lookup rather than a second
+  // Memoized so the highlighted town's region is a lookup rather than a second
   // point-in-polygon pass over every render.
-  const { byRegion, regionIdByTownKey } = useMemo(() => {
-    const grouped = new Map<number, Town[]>();
-    const townRegion = new Map<string, number>();
-    for (const town of towns) {
-      const region = regionAt(project(town.shelters[0].at));
-      if (!region) continue;
-      grouped.set(region.id, [...(grouped.get(region.id) ?? []), town]);
-      townRegion.set(town.key, region.id);
-    }
-    return { byRegion: grouped, regionIdByTownKey: townRegion };
-  }, [towns]);
+  const { byRegion, regionIdByTownKey } = useMemo(
+    () => groupTownsByRegion(towns),
+    [towns],
+  );
 
   const highlightedTown = highlightedValue
     ? towns.find((town) =>
@@ -207,6 +245,28 @@ export function ShelterMap({
       aria-label={messages.shelterMapLabel}
       className={cn("h-auto w-full shrink-0", className)}
     >
+      <defs>
+        <MixedHatch id={hatchId} />
+        <ContextFade id={contextFadeId} />
+      </defs>
+
+      <GeographicContext maskId={contextFadeId} />
+
+      {/* Every region strokes its own outline, so an internal border is
+          painted twice and the coast once, leaving the seams darker than the
+          country's edge. One silhouette under the regions puts the weight
+          back on the outside. It goes under and not over because a coastal
+          region's selected and focused strokes run along the same line, and
+          they have to win there. */}
+      <path
+        d={COUNTRY_OUTLINE}
+        aria-hidden
+        // The shapes are polygonal, so a mitred corner spikes on the coast.
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        className="pointer-events-none fill-none stroke-foreground/45 [stroke-width:1.1]"
+      />
+
       {/* Markers paint last and receive pointer clicks before regions. */}
       {regions.map(({ region, stats }) => (
         <Region
@@ -242,6 +302,8 @@ export function ShelterMap({
             if (stats.live) onHoverShelters?.(null);
           }}
           highlighted={region.id === highlightedRegionId}
+          densityFocus={regionDensityFocus(stats, highlightedDensity)}
+          hatchId={hatchId}
         />
       ))}
 
@@ -338,7 +400,23 @@ export function ShelterMap({
             cy={town.y}
             r={town.r + 3.5}
             strokeWidth={1.5}
-            className="fill-none stroke-[var(--filter-accent-strong)] animate-pulse motion-reduce:animate-none"
+            className="fill-none stroke-[var(--filter-accent-strong)]"
+          />
+          {/* The ring that travels, over the static one that always marks the
+              spot. The ping keyframes hold the last quarter of the cycle
+              invisible, so a slow duration leaves a pause between rings
+              rather than a sonar sweep. The duration is inline because
+              animate-ping sets the animation shorthand, which would win over
+              a utility. transform-box and transform-origin are set because
+              an SVG shape otherwise scales from the viewBox origin instead
+              of its own centre. */}
+          <circle
+            cx={town.x}
+            cy={town.y}
+            r={town.r + 3.5}
+            strokeWidth={1.5}
+            style={{ animationDuration: "2.2s" }}
+            className="origin-center fill-none stroke-[var(--filter-accent-strong)] [transform-box:fill-box] animate-ping motion-reduce:animate-none"
           />
           <circle
             cx={town.x}
@@ -369,14 +447,287 @@ export function ShelterMap({
   );
 }
 
+// Tile side in user units. The viewBox is 320 x 210 and the picker draws it
+// near two pixels per unit, so a 3-unit tile puts the lines about six pixels
+// apart and a 0.6-unit line renders about 1.2 pixels wide: thin enough to read
+// as hatching, wide enough not to alias away.
+const HATCH_TILE = 3;
+const HATCH_LINE_WIDTH = 0.6;
+
+// A partly picked region wore the selected green at half opacity, which sat
+// between "picked" and "a dense grey region" and read as neither. Hatching is
+// the cartographic answer: the selection colour, unmistakably not solid.
+//
+// userSpaceOnUse rather than the default objectBoundingBox: the twelve regions
+// differ in size several times over, and a tile measured in fractions of each
+// bounding box would give every region its own hatch density. The line stands
+// upright in the middle of the tile and patternTransform rotates the whole
+// tiling, so the line never straddles a tile seam and needs no duplicate to
+// close the gap at the edge.
+function MixedHatch({ id }: { id: string }) {
+  return (
+    <pattern
+      id={id}
+      patternUnits="userSpaceOnUse"
+      patternTransform="rotate(45)"
+      width={HATCH_TILE}
+      height={HATCH_TILE}
+    >
+      {/* The ground under the lines. --filter-accent is pale green on light
+          and deep green on dark, and --filter-accent-strong inverts with it,
+          so the hatch keeps its contrast in both themes. */}
+      <rect
+        width={HATCH_TILE}
+        height={HATCH_TILE}
+        fill="var(--filter-accent)"
+      />
+      <line
+        x1={HATCH_TILE / 2}
+        y1={0}
+        x2={HATCH_TILE / 2}
+        y2={HATCH_TILE}
+        stroke="var(--filter-accent-strong)"
+        strokeWidth={HATCH_LINE_WIDTH}
+      />
+    </pattern>
+  );
+}
+
+// How far the context fades in from each viewBox edge, in user units. The
+// letterbox around the SVG is wider than the viewBox on some aspect ratios, so
+// a context layer that stopped dead at the edge would rule a rectangle across
+// the panel. Roughly a twentieth of the map's width: enough to read as an
+// unbounded surround, not so much that the sea disappears.
+const CONTEXT_FADE = 14;
+
+// Where the open water is, in user units, measured off the projected Natural
+// Earth coastline: the Gulf of Trieste reaches the left edge below y 162 and
+// the bottom edge left of x 17. The sea is the only blue on the map and the
+// fade was eating exactly the corner it lives in, so the two strips that cross
+// it stop short of it. The gap between the keep line and the resume line is
+// the strip's own falloff along its length, so it ends in a gradient rather
+// than at a seam.
+const SEA_KEEP_BELOW_Y = 162;
+const SEA_FADE_RESUMES_ABOVE_Y = 132;
+const SEA_KEEP_LEFT_OF_X = 18;
+const SEA_FADE_RESUMES_RIGHT_OF_X = 50;
+
+// A luminance mask that is white in the middle and black at the edges. The
+// strips paint translucent black over the white ground rather than a gradient
+// each, so where two of them overlap in a corner the alpha compounds and the
+// corner goes dark, which is what a corner should do.
+//
+// The left and bottom strips carry a second mask of their own, which switches
+// the strip off along its length before it reaches the southwest corner. Both
+// are off there, so the sea and the Italian coast around Trieste run to the
+// viewBox edge at full strength. A map that ends at its frame is ordinary
+// cartography; a map with its only water washed out is not.
+function ContextFade({ id }: { id: string }) {
+  const strips = [
+    { key: "t", x: 0, y: 0, w: MAP_WIDTH, h: CONTEXT_FADE, from: [0, 0], to: [0, 1] },
+    {
+      key: "b",
+      x: 0,
+      y: MAP_HEIGHT - CONTEXT_FADE,
+      w: MAP_WIDTH,
+      h: CONTEXT_FADE,
+      from: [0, 1],
+      to: [0, 0],
+    },
+    { key: "l", x: 0, y: 0, w: CONTEXT_FADE, h: MAP_HEIGHT, from: [0, 0], to: [1, 0] },
+    {
+      key: "r",
+      x: MAP_WIDTH - CONTEXT_FADE,
+      y: 0,
+      w: CONTEXT_FADE,
+      h: MAP_HEIGHT,
+      from: [1, 0],
+      to: [0, 0],
+    },
+  ];
+
+  // White lets the strip fade, black holds it off. Both run in user units so
+  // the stops sit on the coastline the numbers were read from.
+  const keeps = [
+    {
+      key: "l",
+      x1: 0,
+      y1: SEA_FADE_RESUMES_ABOVE_Y,
+      x2: 0,
+      y2: SEA_KEEP_BELOW_Y,
+      x: 0,
+      y: 0,
+      w: CONTEXT_FADE,
+      h: MAP_HEIGHT,
+    },
+    {
+      key: "b",
+      x1: SEA_FADE_RESUMES_RIGHT_OF_X,
+      y1: 0,
+      x2: SEA_KEEP_LEFT_OF_X,
+      y2: 0,
+      x: 0,
+      y: MAP_HEIGHT - CONTEXT_FADE,
+      w: MAP_WIDTH,
+      h: CONTEXT_FADE,
+    },
+  ];
+
+  return (
+    <>
+      {strips.map((strip) => (
+        <linearGradient
+          key={strip.key}
+          id={`${id}-${strip.key}`}
+          x1={strip.from[0]}
+          y1={strip.from[1]}
+          x2={strip.to[0]}
+          y2={strip.to[1]}
+        >
+          <stop offset="0" stopColor="black" stopOpacity={1} />
+          <stop offset="1" stopColor="black" stopOpacity={0} />
+        </linearGradient>
+      ))}
+      {keeps.map((keep) => (
+        <linearGradient
+          key={keep.key}
+          id={`${id}-${keep.key}-keep`}
+          gradientUnits="userSpaceOnUse"
+          x1={keep.x1}
+          y1={keep.y1}
+          x2={keep.x2}
+          y2={keep.y2}
+        >
+          <stop offset="0" stopColor="white" />
+          <stop offset="1" stopColor="black" />
+        </linearGradient>
+      ))}
+      {keeps.map((keep) => (
+        <mask
+          key={keep.key}
+          id={`${id}-${keep.key}-keep-mask`}
+          maskUnits="userSpaceOnUse"
+          x={keep.x}
+          y={keep.y}
+          width={keep.w}
+          height={keep.h}
+        >
+          <rect
+            x={keep.x}
+            y={keep.y}
+            width={keep.w}
+            height={keep.h}
+            fill={`url(#${id}-${keep.key}-keep)`}
+          />
+        </mask>
+      ))}
+      <mask
+        id={id}
+        maskUnits="userSpaceOnUse"
+        x={0}
+        y={0}
+        width={MAP_WIDTH}
+        height={MAP_HEIGHT}
+      >
+        <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="white" />
+        {strips.map((strip) => (
+          <rect
+            key={strip.key}
+            x={strip.x}
+            y={strip.y}
+            width={strip.w}
+            height={strip.h}
+            fill={`url(#${id}-${strip.key})`}
+            mask={
+              keeps.some((keep) => keep.key === strip.key)
+                ? `url(#${id}-${strip.key}-keep-mask)`
+                : undefined
+            }
+          />
+        ))}
+      </mask>
+    </>
+  );
+}
+
+// Same for every render, and the walk behind them is not free.
+const NEIGHBOR_PATHS = NEIGHBOR_SHAPES.map((neighbor) => ({
+  id: neighbor.id,
+  d: ringsPath(neighbor.rings),
+}));
+const UNDERLAY_PATH = ringsPath(SLOVENIA_UNDERLAY);
+
+// Slovenia used to float alone on a flat panel. This is the ground it actually
+// sits on, painted before anything else: sea across the whole viewBox, then the
+// neighbouring land over it. Blue survives only where no country covers it,
+// which is the Adriatic corner and nowhere else, so the coast is drawn by the
+// land rather than by a hand-cut sea polygon that would drift from it.
+//
+// The countries carry no border stroke between them. Natural Earth and GURS
+// generalise the frontier about 1.4 units apart, so a stroked neighbour would
+// ghost a second border alongside Slovenia's own, and a silhouette that quiet
+// has no business drawing lines at all.
+function GeographicContext({ maskId }: { maskId: string }) {
+  return (
+    <g aria-hidden className="pointer-events-none" mask={`url(#${maskId})`}>
+      <rect
+        data-map-sea
+        width={MAP_WIDTH}
+        height={MAP_HEIGHT}
+        fill="var(--map-sea)"
+      />
+      {NEIGHBOR_PATHS.map((neighbor) => (
+        <path
+          key={neighbor.id}
+          d={neighbor.d}
+          data-map-abroad={neighbor.id}
+          fill="var(--map-abroad)"
+        />
+      ))}
+      {/* Natural Earth's Slovenia, in the neighbours' own tone. The real
+          country covers it entirely, so it is never seen; it is here so the
+          two sources' disagreement about the border cannot open a sliver of
+          sea or canvas along it. */}
+      <path data-map-abroad="SVN" d={UNDERLAY_PATH} fill="var(--map-abroad)" />
+    </g>
+  );
+}
+
 // The stroke is what draws the country. It runs on inert regions too, so an
 // empty region still reads as part of the silhouette rather than as a hole.
 const REGION_STROKE = "stroke-foreground/30";
 
-function densityStyle(density: number): CSSProperties {
+// Same for every render, and the walk behind it is not free.
+const COUNTRY_OUTLINE = outlinePath();
+
+/** What a legend hover asks of one region: wear the hover look, fade back, or
+ *  nothing. */
+type DensityFocus = "match" | "dim";
+
+// Only an idle live region answers the legend. A selection is an answer the
+// visitor already gave, and dimming or lighting it would overwrite it.
+function regionDensityFocus(
+  stats: RegionStats,
+  highlightedDensity: number | null | undefined,
+): DensityFocus | undefined {
+  if (highlightedDensity == null || !stats.live || stats.state !== false) {
+    return undefined;
+  }
+  return stats.density === highlightedDensity ? "match" : "dim";
+}
+
+// Enough to push the rest of the ramp behind the step being asked about, not
+// so much that the country loses its shape.
+const DENSITY_DIM = 0.4;
+
+function densityStyle(density: number, dimmed = false): CSSProperties {
   const next = Math.min(density + 1, DENSITY_STEPS.length - 1);
   return {
-    "--map-density": DENSITY_STEPS[density],
+    // Only the resting value dims. The hover value stays whole, so a pointer
+    // still lifts a dimmed region out and beats the legend.
+    "--map-density": dimmed
+      ? DENSITY_STEPS[density] * DENSITY_DIM
+      : DENSITY_STEPS[density],
     "--map-density-hover": DENSITY_STEPS[next],
   } as CSSProperties;
 }
@@ -401,10 +752,15 @@ const REGION_LOOK: Record<
     highlighted:
       "fill-[var(--filter-accent-border)] stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.2]",
   },
+  // No fill utility here: the fill is the hatch pattern, set as an attribute,
+  // and a Tailwind fill class would win over it. The stroke carries most of the
+  // hover answer, because a fill-opacity step across thin lines on a pale
+  // ground barely moves; the opacity step is kept as well, since it lifts the
+  // ground the lines sit on.
   mixed: {
-    rest: "fill-[var(--filter-accent-border)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.5] [stroke-width:0.8] hover:[fill-opacity:0.65] hover:[stroke-width:1.1]",
+    rest: "stroke-[var(--filter-accent-strong)] [fill-opacity:0.85] [stroke-width:0.8] hover:[fill-opacity:1] hover:[stroke-width:1.3]",
     highlighted:
-      "fill-[var(--filter-accent-border)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.65] [stroke-width:1.1]",
+      "stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.3]",
   },
   idle: {
     rest: cn(
@@ -430,6 +786,8 @@ function Region({
   onPointerEnter,
   onPointerLeave,
   highlighted,
+  densityFocus,
+  hatchId,
 }: {
   region: RegionShape;
   stats: RegionStats;
@@ -446,6 +804,11 @@ function Region({
   /** A shelter in this region is hovered in the list, so it wears the same
    *  look pointer hover would give it. */
   highlighted: boolean;
+  /** The legend is pointing at a density step: "match" means this region is on
+   *  it, "dim" means it is not. Undefined when no step is hovered. */
+  densityFocus?: DensityFocus;
+  /** The map's hatch pattern, which the mixed state fills with. */
+  hatchId: string;
 }) {
   const { locale } = useI18n();
   const d = regionPath(region);
@@ -456,6 +819,7 @@ function Region({
         d={d}
         aria-hidden
         data-region-state="inert"
+        strokeLinejoin="round"
         className={cn(
           "pointer-events-none fill-foreground/5 [stroke-width:0.6]",
           REGION_STROKE,
@@ -465,6 +829,10 @@ function Region({
   }
 
   const stateName = regionStateName(stats.state);
+  // A list hover already asked for this region by name, so the legend never
+  // fades it back.
+  const dimmed = densityFocus === "dim" && !highlighted;
+  const lit = highlighted || densityFocus === "match";
 
   return (
     <path
@@ -474,9 +842,14 @@ function Region({
       tabIndex={tabIndex}
       aria-pressed={stats.state}
       aria-label={`${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}`}
+      // Attribute and not a class, because a pattern reference cannot be
+      // written as a Tailwind fill utility.
+      fill={stateName === "mixed" ? `url(#${hatchId})` : undefined}
       data-region-state={stateName}
       data-region-density={stats.density}
       data-region-highlighted={highlighted || undefined}
+      data-region-density-focus={densityFocus}
+      strokeLinejoin="round"
       onClick={() => onPick(stats.values)}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -500,10 +873,14 @@ function Region({
           onMoveFocus(event.key);
         }
       }}
-      style={stats.state === false ? densityStyle(stats.density) : undefined}
+      style={
+        stats.state === false
+          ? densityStyle(stats.density, dimmed)
+          : undefined
+      }
       className={cn(
         "cursor-pointer outline-none transition-[fill,stroke,fill-opacity,stroke-width] motion-reduce:transition-none",
-        REGION_LOOK[stateName][highlighted ? "highlighted" : "rest"],
+        REGION_LOOK[stateName][lit ? "highlighted" : "rest"],
         "focus-visible:stroke-foreground focus-visible:[stroke-width:1.75]",
       )}
     />

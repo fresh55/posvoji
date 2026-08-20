@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { cityAt } from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
-import { ShelterMap } from "./shelter-map";
+import { ShelterMap, anyRegionMixed } from "./shelter-map";
 
 function pin(
   value: string,
@@ -104,6 +104,17 @@ describe("ShelterMap marker states", () => {
     // The paw and the stroked disc belong to pickable shelters only.
     expect(html).not.toContain("lucide-paw-print");
     expect(html).not.toContain("stroke-foreground/40");
+  });
+
+  it("draws that dot hollow, in the alpha the legend swatch copies", () => {
+    const html = renderMap([
+      pin("empty", "Zavetišče brez živali", "Ljubljana", 0),
+    ]);
+
+    const dot = html.match(/<circle[^>]*data-marker-empty[^>]*>/)?.[0] ?? "";
+    expect(dot).toContain("fill-none");
+    expect(dot).toContain("stroke-foreground/45");
+    expect(dot).not.toContain("fill-foreground/35");
   });
 
   it("keeps an off-site shelter hoverable so its dot can name itself", () => {
@@ -248,6 +259,28 @@ describe("ShelterMap regions", () => {
     expect(html).toContain("var(--filter-accent-strong)");
   });
 
+  it("hatches a partly picked region instead of half-fading the green", () => {
+    const html = renderMap(
+      [
+        pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+        pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+      ],
+      ["macja-hisa"],
+    );
+
+    const pattern = html.match(/<pattern[^>]*>/)?.[0] ?? "";
+    const id = pattern.match(/id="([^"]+)"/)?.[1] ?? "";
+    expect(id).not.toBe("");
+    expect(pattern).toContain('patternUnits="userSpaceOnUse"');
+    expect(pattern).toContain('patternTransform="rotate(45)"');
+
+    const region = regionTag(html, "Savinjska");
+    expect(region).toContain('data-region-state="mixed"');
+    expect(region).toContain(`fill="url(#${id})"`);
+    // The half-strength green the hatch replaces.
+    expect(region).not.toContain("fill-opacity:0.5");
+  });
+
   it("keeps every region drawn, empty ones included", () => {
     const html = renderMap([
       pin("brezice", "Zavetišče Brežice", "Brežice", 5),
@@ -267,6 +300,177 @@ describe("ShelterMap regions", () => {
       'aria-label="Osrednjeslovenska: 1 zavetišče, 5 živali"',
     );
     expect(html).not.toContain("<title>");
+  });
+});
+
+describe("ShelterMap geographic context", () => {
+  const html = renderMap([pin("koper", "Zavetišče Koper", "Koper", 5)]);
+  const layer =
+    html.match(/<g aria-hidden="true" class="pointer-events-none"[^>]*>/)?.[0] ??
+    "";
+
+  it("paints sea across the viewBox and the neighbouring land over it", () => {
+    const sea = html.match(/<rect[^>]*data-map-sea[^>]*>/)?.[0] ?? "";
+    expect(sea).toContain('width="320"');
+    expect(sea).toContain('height="210"');
+    expect(sea).toContain("var(--map-sea)");
+
+    const abroad = [...html.matchAll(/data-map-abroad="([^"]+)"/g)].map(
+      ([, id]) => id,
+    );
+    // The four neighbours, plus Natural Earth's Slovenia underneath, which is
+    // what keeps the border from opening a sliver of sea.
+    expect(abroad).toEqual(["ITA", "AUT", "HUN", "HRV", "SVN"]);
+    expect(html).toContain("var(--map-abroad)");
+  });
+
+  it("draws the context before the country, inert and out of the tree", () => {
+    expect(layer).not.toBe("");
+    expect(html.indexOf("data-map-sea")).toBeLessThan(
+      html.indexOf("stroke-foreground/45"),
+    );
+  });
+
+  const maskId = layer.match(/mask="url\(#([^)]+)\)"/)?.[1] ?? "";
+
+  it("fades the context out at the edges and masks nothing else", () => {
+    expect(maskId).not.toBe("");
+    expect(html).toContain(`<mask id="${maskId}"`);
+    // Four edge gradients, so the fade runs on all sides rather than one.
+    expect(html).toContain(`<linearGradient id="${maskId}-t"`);
+    expect(html).toContain(`<linearGradient id="${maskId}-b"`);
+    expect(html).toContain(`<linearGradient id="${maskId}-l"`);
+    expect(html).toContain(`<linearGradient id="${maskId}-r"`);
+    // Only the context wears the fade itself.
+    expect(html.match(new RegExp(`mask="url\\(#${maskId}\\)"`, "g"))).toHaveLength(1);
+  });
+
+  it("holds the fade off the southwest corner, where the sea is", () => {
+    // The two strips crossing the gulf switch themselves off along their
+    // length; the two that never touch it do not.
+    expect(html).toContain(
+      `<rect x="0" y="0" width="14" height="210" fill="url(#${maskId}-l)" mask="url(#${maskId}-l-keep-mask)"`,
+    );
+    expect(html).toContain(
+      `<rect x="0" y="196" width="320" height="14" fill="url(#${maskId}-b)" mask="url(#${maskId}-b-keep-mask)"`,
+    );
+    expect(html).toContain(
+      `<rect x="0" y="0" width="320" height="14" fill="url(#${maskId}-t)"></rect>`,
+    );
+    expect(html).toContain(
+      `<rect x="306" y="0" width="14" height="210" fill="url(#${maskId}-r)"></rect>`,
+    );
+
+    // Each keep gradient runs white (fade) to black (no fade) toward the
+    // water, in user units, so it lands on the coastline and not on a
+    // proportion of the strip.
+    const keeps = [...html.matchAll(/<linearGradient id="[^"]*-keep"[^>]*>/g)].map(
+      ([tag]) => tag,
+    );
+    expect(keeps).toHaveLength(2);
+    for (const keep of keeps) {
+      expect(keep).toContain('gradientUnits="userSpaceOnUse"');
+    }
+    // Left strip: faded above y 132, off below y 162.
+    expect(keeps[0]).toContain('y1="132"');
+    expect(keeps[0]).toContain('y2="162"');
+    // Bottom strip: faded right of x 50, off left of x 18.
+    expect(keeps[1]).toContain('x1="50"');
+    expect(keeps[1]).toContain('x2="18"');
+  });
+
+  it("leaves the water unlabelled", () => {
+    expect(html).not.toContain("data-map-sea-label");
+    expect(html).not.toContain("Jadransko morje");
+  });
+});
+
+describe("anyRegionMixed", () => {
+  const celje = [
+    pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+    pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+  ];
+
+  it("is false with nothing picked and false with a region picked whole", () => {
+    expect(anyRegionMixed(celje, [])).toBe(false);
+    expect(anyRegionMixed(celje, ["macja-hisa", "sia-in-lu"])).toBe(false);
+  });
+
+  it("is true once one shelter of a region is picked and another is not", () => {
+    expect(anyRegionMixed(celje, ["macja-hisa"])).toBe(true);
+  });
+
+  it("agrees with the state the map draws", () => {
+    expect(renderMap(celje, ["macja-hisa"])).toContain(
+      'data-region-state="mixed"',
+    );
+    expect(renderMap(celje, ["macja-hisa", "sia-in-lu"])).not.toContain(
+      'data-region-state="mixed"',
+    );
+  });
+
+  it("ignores an off-site shelter, which a region pick never selects", () => {
+    const pins = [
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+      { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
+    ];
+
+    expect(anyRegionMixed(pins, ["ljubljana"])).toBe(false);
+  });
+});
+
+describe("ShelterMap legend hover", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  function renderWithDensity(density: number | null): string {
+    return renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={() => undefined}
+          highlightedDensity={density}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it("lights the regions on the hovered step and fades the rest", () => {
+    const html = renderWithDensity(DENSITY_STEPS.length - 1);
+
+    // Maribor holds the most animals, so it sits on the top step.
+    const lit = regionTag(html, "Podravska");
+    const dim = regionTag(html, "Osrednjeslovenska");
+    expect(lit).toContain('data-region-density-focus="match"');
+    expect(lit).toContain("stroke-foreground/45");
+    expect(dim).toContain('data-region-density-focus="dim"');
+    // The dimmed region keeps its hover value, so a pointer still lifts it out.
+    expect(dim).toContain(`--map-density:${DENSITY_STEPS[0] * 0.4}`);
+    expect(dim).toContain(`--map-density-hover:${DENSITY_STEPS[1]}`);
+  });
+
+  it("renders exactly as before when no step is hovered", () => {
+    expect(renderWithDensity(null)).toBe(renderMap(pins));
+  });
+
+  it("leaves a picked region out of the legend preview", () => {
+    const html = renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={["ljubljana"]}
+          onPick={() => undefined}
+          highlightedDensity={DENSITY_STEPS.length - 1}
+        />
+      </I18nProvider>,
+    );
+
+    expect(regionTag(html, "Osrednjeslovenska")).not.toContain(
+      "data-region-density-focus",
+    );
   });
 });
 

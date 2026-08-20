@@ -15,6 +15,13 @@ import {
 } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
 
+// Lifts the coin off the country behind it. The values are in SVG units, which
+// the 320-wide viewBox renders about three times larger, so under a pixel here
+// is the shadow the eye gets. Dropped in dark mode: a black shadow on a dark
+// map is only mud.
+const COIN_SHADOW =
+  "[filter:drop-shadow(0_0.4px_0.5px_rgba(0,0,0,0.25))] dark:[filter:none]";
+
 // Exact keyboard selection stays in the list, so markers remain pointer-only.
 export function Marker({
   town,
@@ -196,15 +203,18 @@ function MarkerDisc({
           highlighted && "scale-110 motion-reduce:scale-100",
         )}
       >
+        {/* Hollow, not filled: a speck read as dirt on the map. The legend
+            swatch copies foreground/45, so the two must not drift. */}
         <circle
           data-marker-empty=""
           cx={cx}
           cy={cy}
-          r={r * 0.42}
+          r={r * 0.5}
+          style={{ strokeWidth: 0.7 }}
           className={cn(
-            "fill-foreground/35 stroke-none transition-colors motion-reduce:transition-none",
-            groupHover && "group-hover/pin:fill-foreground/60",
-            highlighted && "fill-foreground/60",
+            "fill-none stroke-foreground/45 transition-colors motion-reduce:transition-none",
+            groupHover && "group-hover/pin:stroke-foreground/75",
+            highlighted && "stroke-foreground/75",
           )}
         />
       </g>
@@ -219,6 +229,7 @@ function MarkerDisc({
         // Each disc grows around its own centre, so cluster discs breathe
         // apart instead of shifting as a block.
         "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] motion-reduce:transition-none",
+        COIN_SHADOW,
         groupHover &&
           "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
         highlighted && "scale-110 motion-reduce:scale-100",
@@ -308,6 +319,7 @@ function CountDisc({
       data-cluster-overflow={town.shelters.length}
       className={cn(
         "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] group-hover/pin:scale-110 motion-reduce:transition-none motion-reduce:group-hover/pin:scale-100",
+        COIN_SHADOW,
         highlighted && "scale-110 motion-reduce:scale-100",
         state === true
           ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"

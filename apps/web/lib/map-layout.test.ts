@@ -9,6 +9,7 @@ import {
   driftBudget,
   layoutTowns,
   markerGeometry,
+  markerRadius,
   markerVisualReach,
   townLabel,
   type ShelterPin,
@@ -70,22 +71,35 @@ describe("layoutTowns", () => {
     ]);
   });
 
-  it("sizes a marker by the animals its town holds", () => {
+  it("sizes a marker by the animals its town holds, in three steps", () => {
     const towns = layoutTowns(REAL_PINS);
     const at = (city: string) => towns.find((town) => town.city === city)!.r;
-    // Ljubljana holds the most, Tolmin the fewest.
-    expect(at("Ljubljana")).toBeGreaterThan(at("Maribor"));
-    expect(at("Maribor")).toBeGreaterThan(at("Tolmin"));
+    // Tolmin 8, Novo mesto 30, Ljubljana 120: one town per step.
+    expect(at("Ljubljana")).toBeGreaterThan(at("Novo mesto"));
+    expect(at("Novo mesto")).toBeGreaterThan(at("Tolmin"));
+    // Steps, not a curve: Maribor holds 80 to Ljubljana's 120 and both are
+    // large, so the two markers are the same size.
+    expect(at("Maribor")).toBe(at("Ljubljana"));
+    expect(new Set(towns.map((town) => town.r)).size).toBe(3);
     for (const town of towns) {
       expect(town.r).toBeGreaterThanOrEqual(5);
       expect(town.r).toBeLessThanOrEqual(8);
     }
   });
 
+  it("puts each town on the step its count earns", () => {
+    expect(markerRadius(0)).toBe(5);
+    expect(markerRadius(19)).toBe(5);
+    expect(markerRadius(20)).toBe(5.75);
+    expect(markerRadius(49)).toBe(5.75);
+    expect(markerRadius(50)).toBe(6.5);
+    expect(markerRadius(500)).toBe(6.5);
+  });
+
   it("gives a town with nothing available the smallest marker", () => {
-    const towns = layoutTowns([pin("a", "Ljubljana", 0), pin("b", "Koper", 40)]);
+    const towns = layoutTowns([pin("a", "Ljubljana", 0), pin("b", "Koper", 60)]);
     expect(towns.find((town) => town.city === "Ljubljana")!.r).toBe(5);
-    expect(towns.find((town) => town.city === "Koper")!.r).toBe(8);
+    expect(towns.find((town) => town.city === "Koper")!.r).toBe(6.5);
   });
 
   it("leaves no two markers overlapping", () => {

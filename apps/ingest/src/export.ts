@@ -61,30 +61,42 @@ function loadValidPolicies(): LoadedPolicy[] {
   return policies;
 }
 
+// Each policy targets a different shelter site, so crawling them concurrently
+// is no less polite than crawling them one at a time: PoliteClient already
+// serializes requests per host with its own delay between them. Running the
+// providers themselves in parallel just removes the artificial wait for an
+// unrelated host to finish first.
+async function crawlProvider(
+  client: PoliteClient,
+  policy: LoadedPolicy["policy"],
+): Promise<Animal[]> {
+  const provider = providers.find((p) => p.id === policy.providerId);
+  if (!provider) {
+    throw new Error(
+      `policy ${policy.providerId} is enabled but no provider is registered`,
+    );
+  }
+  const ctx = { client, policy };
+  const refs = await provider.discover(ctx);
+  console.log(`${provider.id}: discovered ${refs.length} animals`);
+  const animals: Animal[] = [];
+  for (const ref of refs) {
+    const raw = await provider.fetch(ctx, ref);
+    animals.push(Animal.parse(await provider.normalize(ctx, raw)));
+  }
+  return animals;
+}
+
 async function crawl(
   client: PoliteClient,
   policies: LoadedPolicy[],
 ): Promise<Animal[]> {
-  const animals: Animal[] = [];
-
-  for (const { policy } of policies) {
-    if (!policy.enabled) continue;
-    const provider = providers.find((p) => p.id === policy.providerId);
-    if (!provider) {
-      throw new Error(
-        `policy ${policy.providerId} is enabled but no provider is registered`,
-      );
-    }
-    const ctx = { client, policy };
-    const refs = await provider.discover(ctx);
-    console.log(`${provider.id}: discovered ${refs.length} animals`);
-    for (const ref of refs) {
-      const raw = await provider.fetch(ctx, ref);
-      animals.push(Animal.parse(await provider.normalize(ctx, raw)));
-    }
-  }
-
-  return animals;
+  const results = await Promise.all(
+    policies
+      .filter(({ policy }) => policy.enabled)
+      .map(({ policy }) => crawlProvider(client, policy)),
+  );
+  return results.flat();
 }
 
 const previous = readPreviousDataset();

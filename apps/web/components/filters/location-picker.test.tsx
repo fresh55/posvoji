@@ -99,11 +99,19 @@ describe("LocationPicker typed location", () => {
   it("shows the distance to each shelter once an origin exists", async () => {
     const input = await openPicker();
 
-    expect(screen.getByRole("dialog").textContent).not.toContain("km");
+    // Read off the rows and not off the whole dialog: the map carries a scale
+    // bar, so "km" is on screen before any shelter has a distance.
+    const rowText = () =>
+      Array.from(screen.getByRole("dialog").querySelectorAll("button"))
+        .map((button) => button.textContent ?? "")
+        .filter((text) => text.includes("Zavetišče "))
+        .join("|");
+
+    expect(rowText()).not.toContain("km");
 
     type(input, "1000");
 
-    expect(screen.getByRole("dialog").textContent).toContain("km");
+    expect(rowText()).toContain("km");
   });
 
   it("says nothing while the input is too short to be a finished attempt", async () => {

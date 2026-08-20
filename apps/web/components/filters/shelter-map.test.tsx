@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { cityAt } from "@/lib/geo";
+import { cityAt, distanceKm, project, type LatLon } from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { ShelterMap, anyRegionMixed } from "./shelter-map";
@@ -539,6 +539,156 @@ describe("ShelterMap legend hover", () => {
 
     expect(regionTag(html, "Osrednjeslovenska")).not.toContain(
       "data-region-density-focus",
+    );
+  });
+});
+
+describe("ShelterMap scale bar", () => {
+  const html = renderMap([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)]);
+  const bar = html.match(/<path[^>]*data-map-scale="(\d+)"[^>]*>/);
+  const km = Number(bar?.[1]);
+  // Only the ends of the strokes: the tick verticals carry no x of their own.
+  const xs = [
+    ...(bar?.[0].match(/ d="([^"]+)"/)?.[1] ?? "").matchAll(/[MH](-?[\d.]+)/g),
+  ].map(([, x]) => Number(x));
+
+  it("measures a round number of kilometres, honestly projected", () => {
+    expect(bar).not.toBeNull();
+    expect(km).toBe(25);
+
+    // The same distance put through the projection the map itself uses: two
+    // points that far apart along the map's mid latitude have to span exactly
+    // as many user units as the bar is long.
+    const west: LatLon = { lat: 46.15, lon: 13.35 };
+    const east: LatLon = {
+      lat: 46.15,
+      lon: 13.35 + km / (111.32 * Math.cos((46.15 * Math.PI) / 180)),
+    };
+    expect(distanceKm(west, east)).toBeCloseTo(km, 1);
+
+    const length = Math.max(...xs) - Math.min(...xs);
+    expect(length).toBeCloseTo(project(east).x - project(west).x, 6);
+    // 0.795 km per unit, so 25 km is a little over 31 units.
+    expect(length).toBeCloseTo(31.44, 1);
+  });
+
+  it("stands in the bottom-right corner, clear of the legend overlay", () => {
+    expect(Math.max(...xs)).toBe(314);
+    expect(html).toContain('y="173.5"');
+  });
+
+  it("labels itself without a message key, in type quieter than a callout", () => {
+    expect(html).toContain(">25 km</text>");
+    // The callout's title runs at 5.5px; italic is the water's register.
+    expect(html).toContain('font-size="4.2"');
+    expect(html).not.toContain("italic");
+  });
+
+  it("keeps the bar out of the tree and out of the way of the pointer", () => {
+    expect(html).toMatch(
+      /<g aria-hidden="true" class="pointer-events-none"><path data-map-scale=/,
+    );
+  });
+});
+
+describe("ShelterMap municipality connector", () => {
+  // Trebnje, well away from Ljubljana, so there is a line to draw.
+  const from: LatLon = { lat: 45.908, lon: 15.01 };
+  const pins = [pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)];
+
+  function renderConnector(
+    spotlightFrom?: LatLon | null,
+    spotlightValues: string[] | null = ["ljubljana"],
+  ): string {
+    return renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={() => undefined}
+          spotlightValues={spotlightValues}
+          spotlightFrom={spotlightFrom}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it("joins the municipality to its shelter in the origin's dashed language", () => {
+    const line =
+      renderConnector(from).match(/<line[^>]*data-map-connector[^>]*>/)?.[0] ?? "";
+
+    expect(line).not.toBe("");
+    expect(line).toContain('stroke-dasharray="2 2"');
+    expect(line).toContain('stroke-width="0.9"');
+    expect(line).toContain("stroke-foreground");
+    expect(line).toContain("opacity-60");
+  });
+
+  it("starts at the municipality's own point and stops short of the ring", () => {
+    const html = renderConnector(from);
+    const dot =
+      html.match(/<circle[^>]*data-map-connector-from[^>]*>/)?.[0] ?? "";
+    const line = html.match(/<line[^>]*data-map-connector[^>]*>/)?.[0] ?? "";
+    const at = (tag: string, name: string) =>
+      Number(tag.match(new RegExp(`${name}="([\\d.-]+)"`))?.[1]);
+
+    expect(at(dot, "cx")).toBeCloseTo(project(from).x, 3);
+    expect(at(dot, "cy")).toBeCloseTo(project(from).y, 3);
+
+    // Both ends give way: the line leaves its own dot and stops at the ring
+    // rather than crossing either.
+    const marker = project(cityAt("Ljubljana")!);
+    expect(
+      Math.hypot(at(line, "x1") - project(from).x, at(line, "y1") - project(from).y),
+    ).toBeCloseTo(2.4, 3);
+    expect(
+      Math.hypot(at(line, "x2") - marker.x, at(line, "y2") - marker.y),
+    ).toBeGreaterThan(4);
+  });
+
+  it("draws nothing without a municipality point, and nothing without a spotlight", () => {
+    expect(renderConnector(undefined)).not.toContain("data-map-connector");
+    expect(renderConnector(null)).not.toContain("data-map-connector");
+    expect(renderConnector(from, null)).not.toContain("data-map-connector");
+  });
+
+  it("draws nothing from a point off the map", () => {
+    // Vienna: a real place, and not one this viewBox holds.
+    expect(
+      renderConnector({ lat: 48.21, lon: 16.37 }),
+    ).not.toContain("data-map-connector");
+  });
+
+  it("draws one line per spotlighted shelter, from the same point", () => {
+    const html = renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[
+            pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+            pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+          ]}
+          selected={[]}
+          onPick={() => undefined}
+          spotlightValues={["ljubljana", "maribor"]}
+          spotlightFrom={from}
+        />
+      </I18nProvider>,
+    );
+
+    expect(html.match(/data-map-connector(?!-from)/g)).toHaveLength(2);
+    expect(html.match(/data-map-connector-from/g)).toHaveLength(1);
+  });
+
+  it("keeps the connector inert and out of the accessibility tree", () => {
+    const html = renderConnector(from);
+    const group =
+      html.match(/<g aria-hidden="true" class="pointer-events-none">(?=<line)/)?.[0] ??
+      "";
+
+    expect(group).not.toBe("");
+    // Under the ring it explains, so it is never drawn across it.
+    expect(html.indexOf("data-map-connector")).toBeLessThan(
+      html.indexOf("stroke-[var(--filter-accent-strong)]"),
     );
   });
 });

@@ -51,6 +51,7 @@ export function MunicipalityFinder({
   selected,
   onToggle,
   onActiveShelters,
+  onActiveMunicipality,
 }: {
   entries: LookupEntry[];
   /** Shelter ids that exist as filter options, i.e. can be selected. */
@@ -60,6 +61,9 @@ export function MunicipalityFinder({
   /** Shelter ids of the picked municipality, for the map to light up.
    *  Null when no municipality is picked. */
   onActiveShelters: (values: string[] | null) => void;
+  /** Name of the picked municipality, which is the only thing that knows
+   *  where the question was asked from. Null when none is picked. */
+  onActiveMunicipality?: (name: string | null) => void;
 }) {
   const { locale, messages, t } = useI18n();
   const [query, setQuery] = useState("");
@@ -109,7 +113,8 @@ export function MunicipalityFinder({
     onActiveShelters(
       active ? active.coverage.map((coverage) => coverage.shelterId) : null,
     );
-  }, [active, onActiveShelters]);
+    onActiveMunicipality?.(active ? active.name : null);
+  }, [active, onActiveMunicipality, onActiveShelters]);
 
   const cardText: CoverageCardText = {
     dogs: messages.speciesDogs,

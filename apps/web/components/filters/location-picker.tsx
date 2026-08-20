@@ -36,6 +36,7 @@ import type { FilterOption, SpeciesFilter } from "@/lib/filters";
 import { cityAt, distanceKm, formatKm, onMap, type LatLon } from "@/lib/geo";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
+import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import { looksLikePostcode } from "@/lib/postal-lookup";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,16 @@ function MapLegend({
   );
 }
 
+// Every one of the 212 občine carries a GURS centroid, so a picked
+// municipality always has a real point to draw the connector from. Built once,
+// outside the component, because the table never changes.
+const MUNICIPALITY_AT = new Map<string, LatLon>(
+  MUNICIPALITY_CENTROIDS.map((entry) => [
+    entry.name,
+    { lat: entry.lat, lon: entry.lon },
+  ]),
+);
+
 // Search matches with or without diacritics, so "sezana" finds Sežano.
 function fold(text: string): string {
   return text
@@ -202,6 +213,9 @@ export function LocationPicker({
   // was until someone arrives with a found animal instead of a filter.
   const [muniMode, setMuniMode] = useState(false);
   const [muniShelterIds, setMuniShelterIds] = useState<string[] | null>(null);
+  // The občina behind those shelters, by name, so the map can draw the line
+  // from where the animal was found to the shelter answering for it.
+  const [muniName, setMuniName] = useState<string | null>(null);
 
   // The found-animal strip and the ?najdena URL both land here: open the
   // dialog straight in municipality mode. Guarded by breakpoint because two
@@ -415,6 +429,7 @@ export function LocationPicker({
           // dialog closed on.
           setMuniMode(false);
           setMuniShelterIds(null);
+          setMuniName(null);
         }
       }}
     >
@@ -504,8 +519,12 @@ export function LocationPicker({
                 fixed-aspect SVG leaves in a fluid dialog. The map draws its
                 own geographic context (sea and neighbouring land) inside the
                 viewBox, fading out toward the edges so it meets this canvas
-                without a seam. */}
-            <div className="relative mx-auto w-full max-w-[calc(42vh*32/21)] rounded-ui bg-muted/40 p-2 sm:p-3 md:mx-0 md:min-h-0 md:flex-1 md:max-w-none">
+                without a seam.
+                The hairline around it is the neatline every printed map has:
+                it says where the map ends, which the fade deliberately does
+                not. Full border-border and not a fraction of it, because in
+                dark mode that token is already only white at a tenth. */}
+            <div className="relative mx-auto w-full max-w-[calc(42vh*32/21)] rounded-ui border bg-muted/40 p-2 sm:p-3 md:mx-0 md:min-h-0 md:flex-1 md:max-w-none">
               <ShelterMap
                 pins={pins}
                 selected={selected}
@@ -526,6 +545,14 @@ export function LocationPicker({
                 // highlight on purpose, and the only signal phones get.
                 spotlightValues={muniMode ? muniShelterIds : null}
                 spotlightNote={messages.muniResponsible}
+                // The other half of that answer: which place is being
+                // answered for. Only in municipality mode, and only when the
+                // občina is one we hold a centroid for.
+                spotlightFrom={
+                  muniMode && muniName
+                    ? (MUNICIPALITY_AT.get(muniName) ?? null)
+                    : null
+                }
                 onHoverShelters={setHoveredMarkerValues}
                 highlightedDensity={highlightedDensity}
                 className="md:h-full"
@@ -609,7 +636,10 @@ export function LocationPicker({
                     aria-pressed={muniMode === mode}
                     onClick={() => {
                       setMuniMode(mode);
-                      if (!mode) setMuniShelterIds(null);
+                      if (!mode) {
+                        setMuniShelterIds(null);
+                        setMuniName(null);
+                      }
                     }}
                     className={cn(
                       "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors",
@@ -631,6 +661,7 @@ export function LocationPicker({
                 selected={selected}
                 onToggle={onToggle}
                 onActiveShelters={setMuniShelterIds}
+                onActiveMunicipality={setMuniName}
               />
             ) : (
               <>

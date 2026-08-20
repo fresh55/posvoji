@@ -12,6 +12,19 @@ const LON_SPAN = 3.3;
 const LAT_MAX = 46.9;
 const LAT_SPAN = 1.5;
 
+// The latitude the squeeze above is measured at, halfway up the viewBox.
+const MID_LAT = 46.15;
+
+/** One user unit of the viewBox in kilometres, which is what a scale bar has
+ *  to be drawn from. A degree of longitude at MID_LAT is 111.32 * cos(46.15)
+ *  = 77.12 km, and the viewBox lays 3.3 of them across 320 units, so a unit is
+ *  0.795 km. Vertically a degree of latitude is about 111.16 km over 140 units
+ *  per degree, which is 0.794 km per unit: the same to within a fifth of a
+ *  percent, so one horizontal bar speaks for the whole map. Derived here and
+ *  not written down, so it cannot outlive a change to the viewBox. */
+export const KM_PER_MAP_UNIT =
+  (111.32 * Math.cos((MID_LAT * Math.PI) / 180) * LON_SPAN) / MAP_WIDTH;
+
 export function project(at: LatLon): { x: number; y: number } {
   return {
     x: ((at.lon - LON_MIN) / LON_SPAN) * MAP_WIDTH,

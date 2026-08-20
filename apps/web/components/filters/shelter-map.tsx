@@ -1,7 +1,14 @@
 "use client";
 
 import { useId, useMemo, useRef, useState, type CSSProperties } from "react";
-import { MAP_HEIGHT, MAP_WIDTH, onMap, project, type LatLon } from "@/lib/geo";
+import {
+  KM_PER_MAP_UNIT,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  onMap,
+  project,
+  type LatLon,
+} from "@/lib/geo";
 import { useI18n } from "@/components/i18n-provider";
 import {
   DENSITY_STEPS,
@@ -107,6 +114,7 @@ export function ShelterMap({
   onHoverShelters,
   spotlightValues,
   spotlightNote,
+  spotlightFrom,
   highlightedDensity,
 }: {
   pins: ShelterPin[];
@@ -133,6 +141,12 @@ export function ShelterMap({
   /** One-line note under the spotlight callout title, e.g. "responsible
    *  shelter" in the reader's language. */
   spotlightNote?: string;
+  /** Where the spotlight was asked from: the municipality's own point. A
+   *  dashed line runs from here to every spotlighted marker, so the ring reads
+   *  as "this shelter, for that place" instead of as a mark on its own. Null,
+   *  undefined or a point off the map draws nothing, because a line from
+   *  roughly the right place is worse than no line. */
+  spotlightFrom?: LatLon | null;
   /** A density step hovered in the legend, as an index into DENSITY_STEPS.
    *  Unpicked regions on that step light up and the rest of the ramp fades, so
    *  the legend answers "which regions are this busy?". Null or undefined
@@ -312,6 +326,10 @@ export function ShelterMap({
         />
       ))}
 
+      {/* Under the callouts on purpose: a card is the answer someone just
+          asked for, and the bar is furniture that can wait behind it. */}
+      <ScaleBar />
+
       {origin && onMap(origin) && <Origin at={origin} />}
 
       <g className="hidden md:block">
@@ -395,6 +413,30 @@ export function ShelterMap({
         />
       )}
 
+      {/* Under the rings and over everything else: the line explains them, so
+          it must not be drawn across the thing it points at. */}
+      {spotlightFrom && onMap(spotlightFrom) && spotlightTowns.length > 0 && (
+        <g aria-hidden className="pointer-events-none">
+          {spotlightTowns.map((town) => (
+            <Connector
+              key={`link-${town.key}`}
+              from={spotlightFrom}
+              town={town}
+            />
+          ))}
+          {/* The municipality's end of the line. A dot and not a second
+              dashed ring: the ring is what the origin wears, and this is not
+              where the visitor is, only what they asked about. */}
+          <circle
+            data-map-connector-from
+            cx={project(spotlightFrom).x}
+            cy={project(spotlightFrom).y}
+            r={1.2}
+            className="fill-foreground opacity-60"
+          />
+        </g>
+      )}
+
       {/* Painted last: the spotlight is the whole point of the map while it
           is on. Drawn outside the md-only marker group on purpose — phones
           get no markers, so the ring and the named card are all they see. */}
@@ -403,7 +445,7 @@ export function ShelterMap({
           <circle
             cx={town.x}
             cy={town.y}
-            r={town.r + 3.5}
+            r={town.r + SPOTLIGHT_RING}
             strokeWidth={1.5}
             className="fill-none stroke-[var(--filter-accent-strong)]"
           />
@@ -418,7 +460,7 @@ export function ShelterMap({
           <circle
             cx={town.x}
             cy={town.y}
-            r={town.r + 3.5}
+            r={town.r + SPOTLIGHT_RING}
             strokeWidth={1.5}
             style={{ animationDuration: "2.2s" }}
             className="origin-center fill-none stroke-[var(--filter-accent-strong)] [transform-box:fill-box] animate-ping motion-reduce:animate-none"
@@ -449,6 +491,93 @@ export function ShelterMap({
         />
       ))}
     </svg>
+  );
+}
+
+// How far outside a marker the spotlight ring sits, in user units. Shared with
+// the connector, which stops at the ring rather than crossing it.
+const SPOTLIGHT_RING = 3.5;
+
+// A round number that stays a caption. 50 km would be 62.9 units, a fifth of
+// the map's width, and would read as a graphic rather than as a measure; 25 km
+// is 31.4 units, about the width of the legend row it stands over.
+const SCALE_BAR_KM = 25;
+// The bottom-right corner, with the rest of the map's furniture. Right end six
+// units off the edge, matching the padding the legend keeps. y 176 rather than
+// lower because the legend overlay is HTML on the canvas and its height in
+// user units depends on the aspect ratio and on how many rows it is carrying:
+// three rows plus the canvas padding come to about 25 units at the tightest
+// sizes the dialog draws at, so the bar clears it from here. Everything in this
+// corner is Croatia at this projection (lon 15.9 east, lat 45.6 south), so the
+// bar crosses no shape of Slovenia's.
+const SCALE_BAR_RIGHT = 314;
+const SCALE_BAR_Y = 176;
+const SCALE_BAR_TICK = 1.5;
+
+// The map's second piece of type, after the callouts, and it has to stay the
+// quieter one. Upright: italic is the water's register on a map. Both the line
+// and the label run at the silhouette's alpha and under half its width, so the
+// bar sits below the country rather than beside it.
+const SCALE_BAR_TEXT = 4.2;
+
+// Digits and "km" read in every language the site has, so the one label on the
+// map needs no message key.
+function ScaleBar() {
+  const length = SCALE_BAR_KM / KM_PER_MAP_UNIT;
+  const left = SCALE_BAR_RIGHT - length;
+  const top = SCALE_BAR_Y - SCALE_BAR_TICK;
+  const bottom = SCALE_BAR_Y + SCALE_BAR_TICK;
+  return (
+    <g aria-hidden className="pointer-events-none">
+      <path
+        data-map-scale={SCALE_BAR_KM}
+        d={`M${left} ${top}V${bottom}M${left} ${SCALE_BAR_Y}H${SCALE_BAR_RIGHT}M${SCALE_BAR_RIGHT} ${top}V${bottom}`}
+        strokeWidth={0.5}
+        strokeLinecap="round"
+        className="fill-none stroke-foreground/45"
+      />
+      <text
+        x={SCALE_BAR_RIGHT}
+        y={SCALE_BAR_Y - 2.5}
+        textAnchor="end"
+        fontSize={SCALE_BAR_TEXT}
+        className="fill-foreground/45 stroke-none"
+      >
+        {`${SCALE_BAR_KM} km`}
+      </text>
+    </g>
+  );
+}
+
+// Both ends of the connector give way to what they join: it leaves its own dot
+// and stops at the ring, so neither mark is drawn through.
+const CONNECTOR_START_GAP = 2.4;
+const CONNECTOR_END_GAP = 1.5;
+
+// The same dashes the origin ring wears, at the same width, one step quieter.
+// A municipality and its shelter are two places the visitor did not pick off
+// the map, and the dashed language is what says so.
+function Connector({ from, town }: { from: LatLon; town: Town }) {
+  const at = project(from);
+  const dx = town.x - at.x;
+  const dy = town.y - at.y;
+  const length = Math.hypot(dx, dy);
+  const end = town.r + SPOTLIGHT_RING + CONNECTOR_END_GAP;
+  // A shelter inside its own municipality leaves nothing to draw between the
+  // dot and the ring, and a stub through both would say less than nothing.
+  if (length <= CONNECTOR_START_GAP + end) return null;
+  return (
+    <line
+      data-map-connector
+      x1={at.x + (dx / length) * CONNECTOR_START_GAP}
+      y1={at.y + (dy / length) * CONNECTOR_START_GAP}
+      x2={town.x - (dx / length) * end}
+      y2={town.y - (dy / length) * end}
+      strokeWidth={0.9}
+      strokeDasharray="2 2"
+      strokeLinecap="round"
+      className="stroke-foreground opacity-60"
+    />
   );
 }
 

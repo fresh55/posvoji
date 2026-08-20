@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx src/validate-policies.ts",
     "export": "tsx src/export.ts",
+    "fetch:logos": "tsx src/fetch-logos.ts",
     "test": "vitest run"
   },
   "dependencies": {

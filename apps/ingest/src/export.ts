@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
 import { cacheImages } from "./cache-images";
+import { cacheLogos, logoTargets } from "./cache-logos";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import {
@@ -201,6 +202,23 @@ const { animals, fetched, reused, deleted } = await cacheImages(
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
 );
+
+// Shelter logos are keyed by provider, not by animal, so the sync runs over
+// every permitted shelter even on a targeted run: revalidation keeps that
+// free, and passing a subset would read as "the rest revoked their logo" and
+// delete their files.
+const logos = await cacheLogos(
+  logoTargets(policies.map(({ policy }) => policy)),
+  client,
+);
+console.log(
+  `logos: ${logos.fetched} fetched, ${logos.reused} reused, ${logos.deleted} deleted`,
+);
+// Discovery is a ranked guess. Naming what it picked lets a maintainer pin the
+// url into policy.yaml, after which the guess is never made again.
+for (const [providerId, url] of Object.entries(logos.discovered)) {
+  console.log(`logos: ${providerId} discovered ${url} (pin it in policy.yaml)`);
+}
 
 const currentIds = new Set(animals.map((a) => a.id));
 const generatedAt = new Date().toISOString();

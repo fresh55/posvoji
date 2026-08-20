@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  CHOICE_CARD,
-  CHOICE_CARD_SELECTED,
-} from "@/components/portal/portal-fields";
+import { choiceCard } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
 import type { PortalShelter } from "@/lib/portal-api";
-import { cn } from "@/lib/utils";
 
 /**
  * Only rendered for an account that belongs to more than one shelter. A
@@ -35,10 +31,9 @@ export function ShelterSwitcher({
               type="button"
               aria-pressed={selected}
               onClick={() => onSelect(shelter.slug)}
-              className={cn(
-                CHOICE_CARD,
+              className={choiceCard(
+                selected,
                 "h-11 gap-2 px-2.5 text-sm font-medium",
-                selected && CHOICE_CARD_SELECTED,
               )}
             >
               <span

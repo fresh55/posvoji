@@ -12,30 +12,29 @@ import { m, useReducedMotion } from "motion/react";
 import { AnimalEditor } from "@/components/portal/animal-editor";
 import { OverrideMark, RevertButton } from "@/components/portal/override-mark";
 import {
-  FALLBACK_SPECIES_ICON,
   SEX_META,
-  SPECIES_ICONS,
   isPortalSex,
   isPortalStatus,
-  speciesLabel,
+  portalSpeciesIcon,
+  portalSpeciesLabel,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
 import type { PortalSaveState } from "@/hooks/use-portal-animals";
 import { Button } from "@/components/ui/button";
+import { ageInMonths } from "@/lib/filters";
 import { formatAge } from "@/lib/labels";
 import type { PortalAnimal, PortalAnimalPatch } from "@/lib/portal-api";
 
-// Same order as the public site: an explicit age wins over a birth date.
+// The public site's arithmetic, read through the API's nulls, so a shelter
+// and a visitor never read a different age off the same birth date.
 function ageMonths(animal: PortalAnimal, now: Date): number | undefined {
-  if (animal.approximateAgeMonths !== null) return animal.approximateAgeMonths;
-  if (!animal.birthDate) return undefined;
-  const birth = new Date(animal.birthDate);
-  if (Number.isNaN(birth.getTime())) return undefined;
-  return Math.max(
-    0,
-    (now.getFullYear() - birth.getFullYear()) * 12 +
-      (now.getMonth() - birth.getMonth()),
+  return ageInMonths(
+    {
+      birthDate: animal.birthDate ?? undefined,
+      approximateAgeMonths: animal.approximateAgeMonths ?? undefined,
+    },
+    now,
   );
 }
 
@@ -54,7 +53,7 @@ function Glyph({
 function metaLine(animal: PortalAnimal, now: Date): string {
   const months = ageMonths(animal, now);
   return [
-    speciesLabel(animal.species),
+    portalSpeciesLabel(animal.species),
     isPortalSex(animal.sex) && animal.sex !== "unknown"
       ? SEX_META[animal.sex].label.toLowerCase()
       : "",
@@ -77,8 +76,7 @@ export function PortalAnimalCard({
   const [editing, setEditing] = useState(false);
   const now = useMemo(() => new Date(), []);
 
-  const speciesIcon =
-    SPECIES_ICONS[animal.species ?? ""] ?? FALLBACK_SPECIES_ICON;
+  const speciesIcon = portalSpeciesIcon(animal.species);
   const name = animal.name ?? portalText.unnamed;
   const status = isPortalStatus(animal.status) ? animal.status : null;
   const overrideCount = Object.keys(animal.overrides).length;

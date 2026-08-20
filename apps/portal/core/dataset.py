@@ -18,17 +18,29 @@ logger = logging.getLogger(__name__)
 
 Animal = dict[str, Any]
 
+# The parsed dataset, keyed by the path and the file's modification time. The
+# file is written by another process, so its mtime is what says the parsed
+# copy is out of date. A missing file caches nothing and is simply re-checked.
+_cache: tuple[tuple[Path, int, int], list[Animal]] | None = None
+
 
 def dataset_path() -> Path:
     return Path(settings.DATASET_PATH)
 
 
-def load_animals() -> list[Animal]:
-    path = dataset_path()
+def clear_cache() -> None:
+    """Drops the parsed dataset.
+
+    Needed by tests that rewrite the file within one clock tick of the
+    previous write, where the mtime cannot show the change.
+    """
+    global _cache
+    _cache = None
+
+
+def _parse(path: Path) -> list[Animal]:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return []
     except (OSError, ValueError):
         logger.exception("unreadable dataset at %s", path)
         return []
@@ -37,6 +49,32 @@ def load_animals() -> list[Animal]:
     if not isinstance(animals, list):
         return []
     return [animal for animal in animals if isinstance(animal, dict)]
+
+
+def load_animals() -> list[Animal]:
+    """The crawled animals, parsed once per version of the file.
+
+    Callers read the whole dataset per request and sometimes per row, and the
+    file runs to hundreds of kilobytes, so parsing it every time is the cost
+    that matters here.
+    """
+    global _cache
+    path = dataset_path()
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        return []
+    except OSError:
+        logger.exception("unreadable dataset at %s", path)
+        return []
+
+    key = (path, stat.st_mtime_ns, stat.st_size)
+    if _cache is not None and _cache[0] == key:
+        return _cache[1]
+
+    animals = _parse(path)
+    _cache = (key, animals)
+    return animals
 
 
 def animals_for_shelter(slug: str) -> list[Animal]:

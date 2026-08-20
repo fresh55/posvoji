@@ -159,12 +159,18 @@ const ADULT_MAX_EXCLUSIVE = 96;
 // A date-only ISO string parses as UTC midnight, so both sides of the
 // subtraction have to be read in UTC. Reading one of them locally shifted the
 // month by one west of Greenwich, which moved animals between age buckets.
-export function ageInMonths(animal: Animal, now: Date): number | undefined {
+// Takes the two fields rather than an Animal, so the portal, whose animals
+// come from the API rather than the schema, reads the same arithmetic.
+export function ageInMonths(
+  animal: { birthDate?: string; approximateAgeMonths?: number },
+  now: Date,
+): number | undefined {
   if (animal.approximateAgeMonths !== undefined) {
     return animal.approximateAgeMonths;
   }
   if (animal.birthDate) {
     const birth = new Date(animal.birthDate);
+    if (Number.isNaN(birth.getTime())) return undefined;
     const months =
       (now.getUTCFullYear() - birth.getUTCFullYear()) * 12 +
       (now.getUTCMonth() - birth.getUTCMonth());
@@ -513,10 +519,13 @@ export const FILTER_METADATA = {
       labels: { sl: "Živahen", en: "Lively" },
     },
   ],
+  // The labels answer the section's question ("Doma imam: Psa"), so they do not
+  // collide with the species tabs, which say "Psi" for a list of dogs. The
+  // slugs stay as they were: shared links have to keep working.
   goodWith: [
-    { value: "kids", slug: "otroci", labels: { sl: "Otroci", en: "Kids" } },
-    { value: "dogs", slug: "psi", labels: { sl: "Psi", en: "Dogs" } },
-    { value: "cats", slug: "macke", labels: { sl: "Mačke", en: "Cats" } },
+    { value: "kids", slug: "otroci", labels: { sl: "Otroke", en: "Kids" } },
+    { value: "dogs", slug: "psi", labels: { sl: "Psa", en: "A dog" } },
+    { value: "cats", slug: "macke", labels: { sl: "Mačko", en: "A cat" } },
   ],
 } as const satisfies {
   [Group in MetadataGroup]: readonly FilterValueDefinition<
@@ -532,14 +541,6 @@ export function goodWithOptions(
     key: value,
     label: labels[locale],
   }));
-}
-
-export function goodWithLabel(key: GoodWithKey, locale: Locale = "sl"): string {
-  return (
-    FILTER_METADATA.goodWith.find((option) => option.value === key)?.labels[
-      locale
-    ] ?? key
-  );
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than

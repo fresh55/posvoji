@@ -1,17 +1,25 @@
 "use client";
 
 import type { TargetAndTransition, Transition } from "motion/react";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { m, useReducedMotion } from "motion/react";
+import { useState } from "react";
 import type { EnergyLevel } from "@posvoji/schema";
 import {
-  FilterSelectionMark,
+  FilterCardHoverLift,
+  FilterCardIconWell,
+  FilterCardMark,
+  FilterCardRipple,
+  FilterCardSection,
+  FilterCardTail,
+  filterCardLayoutClass,
   filterCardVariants,
+  isDeadOption,
+  type FilterCardLayout,
 } from "@/components/filters/filter-card";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import {
   useFilterCardHover,
   useOneShotCelebration,
+  useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
 import { groupLabel, type FilterOption } from "@/lib/filters";
@@ -208,13 +216,6 @@ const TEMPOS: Record<EnergyLevel, Tempo> = {
   },
 };
 
-const HOVER_SPRING = {
-  type: "spring",
-  stiffness: 420,
-  damping: 26,
-  mass: 0.5,
-} as const;
-
 const NEIGHBOR_DURATION = 0.3;
 const JITTER_DURATION = 0.34;
 const JITTER_TIMES = [0, 0.34, 0.62, 1];
@@ -235,8 +236,6 @@ const MAX_NEIGHBOR_DISTANCE = Object.keys(TEMPOS).length - 1;
 const COUNT_JOLT_DURATION = 0.18;
 // Matches FilterSelectionMark's own appear duration.
 const CHECK_DURATION = 0.14;
-const RESET_STAGGER = 0.045;
-const RESET_CLEAR_MS = 280;
 // The mark the level leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
 const WATERMARK_IN_DURATION = 0.3;
@@ -282,12 +281,6 @@ const TEMPO_MS = Math.ceil(
 // middle tempo, so it stands in.
 function levelOf(value: string): EnergyLevel {
   return value in TEMPOS ? (value as EnergyLevel) : "balanced";
-}
-
-// A zero-count option is a dead end, but an active selection is never locked
-// out of being unchecked.
-function isDead(count: number, checked: boolean): boolean {
-  return count === 0 && !checked;
 }
 
 type Pose = { animate: TargetAndTransition; transition: Transition };
@@ -474,7 +467,7 @@ export function EnergyCards({
   selected: string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
-  layout?: "sidebar" | "sheet";
+  layout?: FilterCardLayout;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -483,21 +476,14 @@ export function EnergyCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<string>(TEMPO_MS);
-  const [isResetting, setIsResetting] = useState(false);
+  const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
+    selected.length,
+  );
   const [pressedValue, setPressedValue] = useState<string | null>(null);
   const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover();
 
   const releasePress = (value: string) =>
     setPressedValue((current) => (current === value ? null : current));
-
-  useEffect(() => {
-    if (!isResetting || selected.length > 0) return;
-    const timer = window.setTimeout(
-      () => setIsResetting(false),
-      RESET_CLEAR_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [isResetting, selected.length]);
 
   const celebrationIndex = options.findIndex(
     ({ value }) => value === celebration?.value,
@@ -508,34 +494,25 @@ export function EnergyCards({
       : undefined;
 
   return (
-    <section>
-      <FilterSectionHeader
-        label={groupLabel("energy", locale)}
-        active={selected.length > 0}
-        onReset={() => {
-          clearCelebration();
-          setIsResetting(true);
-          onToggleMany(selected);
-        }}
-        resetAriaLabel={messages.resetEnergyFilters}
-      />
-      <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-        {messages.energyFilterHint}
-      </p>
-      <LazyMotion features={domAnimation}>
-        <div
-          className={cn(
-            "grid gap-1.5",
-            layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
-          )}
-        >
-          {options.map(({ value, label }, index) => {
+    <FilterCardSection
+      label={groupLabel("energy", locale)}
+      hint={messages.energyFilterHint}
+      active={selected.length > 0}
+      onReset={() => {
+        clearCelebration();
+        beginReset();
+        onToggleMany(selected);
+      }}
+      resetAriaLabel={messages.resetEnergyFilters}
+      layout={layout}
+    >
+      {options.map(({ value, label }, index) => {
             const count = counts.get(value) ?? 0;
             const checked = selected.includes(value);
             const level = levelOf(value);
             const tempo = TEMPOS[level];
             const hovered = hoveredValue === value;
-            const dead = isDead(count, checked);
+            const dead = isDeadOption(count, checked);
             const celebrating = celebration?.value === value && checked;
             // The anticipation is press feedback, so it runs on touch too, and
             // it yields the moment the gesture takes over.
@@ -550,8 +527,7 @@ export function EnergyCards({
             // and how far they sit from it sets when and how hard.
             const direction = Math.sign(index - celebrationIndex) || 1;
             const distance = Math.abs(index - celebrationIndex);
-            // A reset winks the rows out in order rather than all at once.
-            const resetDelay = isResetting ? index * RESET_STAGGER : 0;
+            const resetDelay = resetDelayOf(index);
             const icon = iconPose(
               celebrating ? "celebrating" : tilting ? "reacting" : "rest",
               tempo,
@@ -608,9 +584,7 @@ export function EnergyCards({
                     // isolate keeps the watermark's negative z-index above the
                     // card's own background instead of behind it.
                     "isolate flex",
-                    layout === "sheet"
-                      ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-                      : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
+                    filterCardLayoutClass(layout),
                   ),
                 })}
               >
@@ -666,58 +640,24 @@ export function EnergyCards({
                   </svg>
                 </m.span>
 
-                <FilterSelectionMark
+                <FilterCardMark
+                  layout={layout}
                   checked={checked}
                   appearDelay={tempo.checkDelay}
-                  className={cn(
-                    layout === "sheet"
-                      ? "absolute right-1.5 top-1.5"
-                      : "absolute right-2.5 top-1/2 -translate-y-1/2",
-                  )}
                 />
 
-                <span
-                  aria-hidden
-                  className={cn(
-                    "relative grid shrink-0 place-items-center",
-                    layout === "sheet" ? "size-7" : "size-7.5",
-                  )}
+                <FilterCardIconWell
+                  layout={layout}
+                  checked={checked}
+                  exitDelay={resetDelay}
                 >
-                  <m.span
-                    className={cn(
-                      "absolute rounded-full bg-muted-foreground/10",
-                      layout === "sheet" ? "size-7" : "size-7.5",
-                    )}
-                    initial={false}
-                    animate={{
-                      opacity: checked ? 1 : 0,
-                      scale: checked ? 1 : 0.6,
-                    }}
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : checked
-                          ? { type: "spring", stiffness: 380, damping: 26 }
-                          : {
-                              duration: 0.15,
-                              delay: resetDelay,
-                              ease: "easeOut",
-                            }
-                    }
-                  />
                   {celebrating && !shouldReduceMotion ? (
-                    <m.span
+                    <FilterCardRipple
                       key={`ring-${celebration?.id}`}
-                      className={cn(
-                        "pointer-events-none absolute rounded-full border border-[var(--filter-accent-strong)]",
-                        layout === "sheet" ? "size-7" : "size-7.5",
-                      )}
-                      initial={{ opacity: tempo.rippleOpacity, scale: 0.7 }}
-                      animate={{ opacity: 0, scale: tempo.rippleScale }}
-                      transition={{
-                        duration: tempo.rippleDuration,
-                        ease: "easeOut",
-                      }}
+                      layout={layout}
+                      opacity={tempo.rippleOpacity}
+                      scale={tempo.rippleScale}
+                      duration={tempo.rippleDuration}
                     />
                   ) : null}
                   {celebrating && particles && !shouldReduceMotion
@@ -751,14 +691,7 @@ export function EnergyCards({
                         </m.span>
                       ))
                     : null}
-                  <m.span
-                    className="relative flex items-center justify-center will-change-transform"
-                    initial={false}
-                    animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
-                    transition={
-                      shouldReduceMotion ? { duration: 0 } : HOVER_SPRING
-                    }
-                  >
+                  <FilterCardHoverLift hovered={hovered}>
                     <m.span
                       className="flex items-center justify-center"
                       initial={false}
@@ -793,21 +726,16 @@ export function EnergyCards({
                         />
                       </m.span>
                     </m.span>
-                  </m.span>
-                </span>
+                  </FilterCardHoverLift>
+                </FilterCardIconWell>
 
-                {layout === "sheet" ? (
-                  <>
-                    <span
-                      className={cn(
-                        "mt-0.5 max-w-full truncate text-xs",
-                        checked && "font-medium",
-                      )}
-                    >
-                      {label}
-                    </span>
+                <FilterCardTail
+                  layout={layout}
+                  label={label}
+                  checked={checked}
+                  renderCount={(className) => (
                     <m.span
-                      className="text-[11px] tabular-nums text-muted-foreground"
+                      className={className}
                       initial={false}
                       animate={
                         celebrating && tempo.countJolt && !shouldReduceMotion
@@ -828,43 +756,11 @@ export function EnergyCards({
                     >
                       {count}
                     </m.span>
-                  </>
-                ) : (
-                  <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-                    <span
-                      className={cn("truncate text-xs", checked && "font-medium")}
-                    >
-                      {label}
-                    </span>
-                    <m.span
-                      className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground"
-                      initial={false}
-                      animate={
-                        celebrating && tempo.countJolt && !shouldReduceMotion
-                          ? { y: [0, 1, 0] }
-                          : { y: 0 }
-                      }
-                      transition={
-                        shouldReduceMotion
-                          ? { duration: 0 }
-                          : celebrating && tempo.countJolt
-                            ? {
-                                duration: COUNT_JOLT_DURATION,
-                                delay: tempo.particleDelay,
-                                ease: "easeOut",
-                              }
-                            : REST_TRANSITION
-                      }
-                    >
-                      {count}
-                    </m.span>
-                  </span>
-                )}
+                  )}
+                />
               </m.button>
             );
           })}
-        </div>
-      </LazyMotion>
-    </section>
+    </FilterCardSection>
   );
 }

@@ -28,7 +28,6 @@ describe("policy.yaml", () => {
     });
   });
 });
-
 describe("parseList", () => {
   it("uses evidence numbers, canonicalizes URLs and rejects invalid links", () => {
     expect(parseList(loadFixture(import.meta.url, "list.html"))).toEqual([

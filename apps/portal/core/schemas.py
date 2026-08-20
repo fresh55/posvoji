@@ -6,10 +6,18 @@ avoids an alias layer between the two sides.
 """
 
 from datetime import date
-from typing import Any, Literal
+from typing import Any
 
 from ninja import Schema
 from pydantic import ConfigDict, Field
+
+from .models import (
+    OverrideCompatibility,
+    OverrideEnergy,
+    OverrideSex,
+    OverrideSize,
+    OverrideStatus,
+)
 
 
 class ErrorOut(Schema):
@@ -64,23 +72,29 @@ class AnimalOverrideIn(Schema):
 
     Unknown keys are rejected. A field that is absent stays as it is, an
     explicit null clears the override and restores the crawled value.
+
+    The vocabularies are the model's own TextChoices. upsert_override writes
+    with setattr and save(), which runs no model validation, so this schema is
+    the only gate on those values and must not hold a second copy of them.
+    use_enum_values keeps what comes out of validation a plain string, which
+    is what the columns and the export payload carry.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     name: str | None = None
     shortDescription: str | None = None
-    status: Literal["available", "reserved", "adopted", "hold"] | None = None
-    sex: Literal["male", "female", "unknown"] | None = None
+    status: OverrideStatus | None = None
+    sex: OverrideSex | None = None
     breed: str | None = None
     birthDate: date | None = None
     approximateAgeMonths: int | None = Field(default=None, ge=0)
-    size: Literal["small", "medium", "large"] | None = None
-    energy: Literal["calm", "balanced", "lively"] | None = None
-    goodWithKids: Literal["yes", "no", "unknown"] | None = None
-    goodWithDogs: Literal["yes", "no", "unknown"] | None = None
-    goodWithCats: Literal["yes", "no", "unknown"] | None = None
-    apartmentOk: Literal["yes", "no", "unknown"] | None = None
+    size: OverrideSize | None = None
+    energy: OverrideEnergy | None = None
+    goodWithKids: OverrideCompatibility | None = None
+    goodWithDogs: OverrideCompatibility | None = None
+    goodWithCats: OverrideCompatibility | None = None
+    apartmentOk: OverrideCompatibility | None = None
     specialNeeds: bool | None = None
 
 

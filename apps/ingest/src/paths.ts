@@ -25,6 +25,19 @@ export const imageCacheManifestPath = join(datasetDir, "image-cache.json");
 // reads, and this is what a maintainer reads.
 export const overrideReportPath = join(datasetDir, "overrides.json");
 
+// Shelter logos live beside the cached photos for the same reason: a logo is
+// the shelter's mark, not repository content, so it is fetched rather than
+// committed.
+export const shelterLogosDir = join(
+  repoRoot,
+  "apps",
+  "web",
+  "public",
+  "media",
+  "shelter-logos",
+);
+export const shelterLogoManifestPath = join(datasetDir, "shelter-logos.json");
+
 // Share cards live beside the cached photos: same public dir, same
 // gitignore, same "shelter content is not repository content" rule.
 export const shareCardsDir = join(

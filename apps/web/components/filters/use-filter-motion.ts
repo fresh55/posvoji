@@ -31,6 +31,38 @@ export function useOneShotCelebration<T>(holdMs: number): {
   return { celebration, celebrate, clear };
 }
 
+// A reset winks the section's cards out in order rather than all at once, so
+// the delay a card takes is its position in the section.
+export const RESET_STAGGER = 0.045;
+// Long enough for the last card in a section to have had its turn.
+const RESET_CLEAR_MS = 280;
+
+export function useResetStagger(selectedCount: number): {
+  isResetting: boolean;
+  beginReset: () => void;
+  resetDelay: (index: number) => number;
+} {
+  const [isResetting, setIsResetting] = useState(false);
+
+  useEffect(() => {
+    if (!isResetting || selectedCount > 0) return;
+    const timer = window.setTimeout(
+      () => setIsResetting(false),
+      RESET_CLEAR_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isResetting, selectedCount]);
+
+  const beginReset = useCallback(() => setIsResetting(true), []);
+
+  const resetDelay = useCallback(
+    (index: number) => (isResetting ? index * RESET_STAGGER : 0),
+    [isResetting],
+  );
+
+  return { isResetting, beginReset, resetDelay };
+}
+
 type HoverHandlers = {
   onPointerEnter: (event: PointerEvent<Element>) => void;
   onPointerLeave: () => void;

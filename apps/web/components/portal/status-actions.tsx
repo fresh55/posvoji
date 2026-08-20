@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { m, useReducedMotion } from "motion/react";
-import { STATUS_META } from "@/components/portal/portal-fields";
+import { STATUS_META, choiceCard } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
 import { PORTAL_STATUSES, type PortalStatus } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,7 @@ const POP_MS = 520;
 // The four statuses are the daily work, so they are one tap on the card
 // itself rather than a field inside a form. Icon first: staff scan the row
 // for the shape, not for the word.
-const BUTTON_BASE =
-  "relative flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-ui border border-border/80 bg-background px-2 text-xs font-medium text-muted-foreground shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:z-10 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50";
+const BUTTON_LAYOUT = "h-11 flex-1 px-2 text-xs font-medium focus-visible:z-10";
 
 export function StatusActions({
   value,
@@ -58,7 +57,10 @@ export function StatusActions({
               setPopped(status);
               onSelect(status);
             }}
-            className={cn(BUTTON_BASE, selected && meta.selected)}
+            className={choiceCard(
+              selected,
+              cn(BUTTON_LAYOUT, selected && meta.selected),
+            )}
           >
             <m.span
               aria-hidden

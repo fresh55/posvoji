@@ -7,8 +7,10 @@ import { useState } from "react";
 import {
   FilterSelectionMark,
   filterCardVariants,
+  isDeadOption,
 } from "@/components/filters/filter-card";
 import {
+  RESET_STAGGER,
   useFilterCardHover,
   useOneShotCelebration,
 } from "@/components/filters/use-filter-motion";
@@ -122,7 +124,6 @@ const LIFT_DURATION = 0.25;
 // Long enough for the slowest full sequence, which is large's shadow settling
 // after its impact.
 const LANDING_MS = 900;
-const RESET_STAGGER = 0.045;
 const CROUCH_DURATION = 0.1;
 // The mark the paw leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
@@ -139,12 +140,6 @@ function impactTimes(impactDelay: number, duration: number): number[] {
 
 function shadowDuration(landing: Landing): number {
   return landing.impactDelay + SHADOW_SETTLE;
-}
-
-// A zero-count option is a dead end, but an active selection is never locked
-// out of being unchecked.
-function isDead(count: number, checked: boolean): boolean {
-  return count === 0 && !checked;
 }
 
 type Pose = { animate: TargetAndTransition; transition: Transition };
@@ -268,7 +263,7 @@ export function SizePawCards({
           const checked = selected.includes(value);
           const landing = landingFor(value);
           const hovered = hoveredValue === value;
-          const dead = isDead(count, checked);
+          const dead = isDeadOption(count, checked);
           const celebrating = celebration?.value === value && checked;
           // The crouch is press feedback, so it runs on touch too, and it
           // yields the moment the landing takes over.

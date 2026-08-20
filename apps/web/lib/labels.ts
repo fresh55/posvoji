@@ -1,7 +1,11 @@
 import type { Animal, AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
-import { ageInMonths, FILTER_METADATA } from "@/lib/filters";
+import {
+  ageInMonths,
+  FILTER_METADATA,
+  type GoodWithKey,
+} from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
   sl: {
@@ -206,6 +210,19 @@ export function sexLabel(
       locale
     ] ?? sex
   );
+}
+
+// A chip names the household, not the card. The card label answers the section
+// heading ("Doma imam: Psa"), but a chip stands on its own in a row next to the
+// species chips, where "Psa" would read as a list of dogs.
+const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, TranslationKey> = {
+  kids: "goodWithChipKids",
+  dogs: "goodWithChipDogs",
+  cats: "goodWithChipCats",
+};
+
+export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
+  return translate(locale, GOOD_WITH_CHIP_KEYS[key]);
 }
 
 export function sizeLabel(size: AnimalSize, locale: Locale): string {

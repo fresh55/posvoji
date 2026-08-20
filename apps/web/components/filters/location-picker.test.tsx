@@ -321,6 +321,79 @@ describe("LocationPicker off-site shelters", () => {
 // The map lives in this dialog, and a cluster's wedges are the one part of it
 // that needs a real DOM to answer a click. The static render test next door
 // covers what the wedges look like.
+describe("ShelterMap cluster wedges", () => {
+  function clusterPin(
+    value: string,
+    label: string,
+    count: number,
+    selectable?: boolean,
+  ): ShelterPin {
+    return {
+      value,
+      label,
+      city: "Celje",
+      count,
+      at: cityAt("Celje")!,
+      selectable,
+    };
+  }
+
+  function renderCluster(pins: ShelterPin[]) {
+    const onPick = vi.fn();
+    const onHoverShelters = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={onPick}
+          onHoverShelters={onHoverShelters}
+        />
+      </I18nProvider>,
+    );
+    const wedge = (value: string) =>
+      container.querySelector(`[data-wedge-shelter="${value}"]`)!;
+    return { onPick, onHoverShelters, wedge };
+  }
+
+  it("picks only the shelter whose wedge was clicked", () => {
+    const { onPick, wedge } = renderCluster([
+      clusterPin("macja-hisa", "Zavetišče Mačja hiša", 185),
+      clusterPin("sia-in-lu", "Zavetišče Sia in Lu", 11),
+    ]);
+
+    fireEvent.click(wedge("sia-in-lu"));
+
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick).toHaveBeenCalledWith(["sia-in-lu"]);
+  });
+
+  it("ignores a click on an off-site shelter's wedge", () => {
+    const { onPick, wedge } = renderCluster([
+      clusterPin("macja-hisa", "Zavetišče Mačja hiša", 185),
+      clusterPin("vzhod", "Zavetišče Vzhod", 0, false),
+    ]);
+
+    fireEvent.click(wedge("vzhod"));
+
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it("names the hovered shelter alone, not its town", () => {
+    const { onHoverShelters, wedge } = renderCluster([
+      clusterPin("macja-hisa", "Zavetišče Mačja hiša", 185),
+      clusterPin("sia-in-lu", "Zavetišče Sia in Lu", 11),
+    ]);
+
+    fireEvent.pointerOver(wedge("sia-in-lu"));
+
+    expect(onHoverShelters).toHaveBeenCalledWith(["sia-in-lu"]);
+    expect(screen.getByText("Zavetišče Sia in Lu")).toBeTruthy();
+    expect(screen.getByText("11 živali")).toBeTruthy();
+    expect(screen.queryByText("Celje")).toBeNull();
+  });
+});
+
 describe("LocationPicker attribution", () => {
   it("covers the postal districts as well as the region boundaries", async () => {
     await openPicker();

@@ -3,6 +3,7 @@
 import { PawPrint } from "lucide-react";
 import {
   clusterDiscPositions,
+  clusterHitWedges,
   discFitsGlyph,
   markerGeometry,
   MARKER_STROKE_WIDTH,
@@ -21,6 +22,8 @@ export function Marker({
   onPick,
   onPointerEnter,
   onPointerLeave,
+  onHoverShelter,
+  hoveredShelterValue,
   highlighted,
   dimmed,
 }: {
@@ -29,6 +32,10 @@ export function Marker({
   onPick: (values: string[]) => void;
   onPointerEnter: () => void;
   onPointerLeave: () => void;
+  /** A cluster wedge gained or lost the pointer. Null on leave. */
+  onHoverShelter: (value: string | null) => void;
+  /** The shelter whose wedge holds the pointer, so only its disc leans in. */
+  hoveredShelterValue: string | null;
   /** The shelter is hovered in the list, so its marker reveals the hit halo
    *  and strengthens its stroke, same as pointer hover would. */
   highlighted: boolean;
@@ -43,7 +50,16 @@ export function Marker({
   const state = selectionState(values, selected);
   const live =
     values.length > 0 && (townCount(town) > 0 || state !== false);
+  // A town holding only shelters with nothing to pick is informational: hover
+  // names it, nothing selects it. Unlike a dead marker it keeps its pointer
+  // events, so the visitor can find out what the faint dot is.
+  const info = values.length === 0;
   const geometry = markerGeometry(town);
+  // Two or three discs get one hit wedge each, so a click lands on the shelter
+  // it was aimed at instead of toggling the whole town. Empty for single and
+  // overflow markers, which keep answering as a whole.
+  const wedges = clusterHitWedges(town);
+  const wedged = wedges.length > 0;
 
   return (
     <g
@@ -55,14 +71,21 @@ export function Marker({
       data-marker-state={
         state === true ? "selected" : state === "mixed" ? "mixed" : "idle"
       }
+      data-marker-info={info || undefined}
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
-      onClick={() => live && onPick(values)}
-      onPointerEnter={onPointerEnter}
-      onPointerLeave={onPointerLeave}
+      onClick={wedged ? undefined : () => live && onPick(values)}
+      onPointerEnter={wedged ? undefined : onPointerEnter}
+      onPointerLeave={wedged ? undefined : onPointerLeave}
       className={cn(
         "group/pin transition-opacity motion-reduce:transition-none",
-        live ? "cursor-pointer" : "pointer-events-none",
+        live
+          ? wedged
+            ? "cursor-default"
+            : "cursor-pointer"
+          : info
+            ? "cursor-default"
+            : "pointer-events-none",
         dimmed && "opacity-30",
       )}
     >
@@ -97,8 +120,34 @@ export function Marker({
           selected={selected}
           live={live}
           highlighted={highlighted}
+          hoveredShelterValue={hoveredShelterValue}
         />
       )}
+
+      {/* Painted last so the wedges win the pointer over the halo and the
+          discs alike. They are transparent: the discs stay the picture, the
+          wedges only divide the target. */}
+      {wedges.map(({ value, d }) => {
+        const shelter = town.shelters.find((entry) => entry.value === value);
+        // An off-site shelter's wedge names it and stops there, the same deal
+        // its dot has always had.
+        const pickable = live && shelter?.selectable !== false;
+        return (
+          <path
+            key={value}
+            d={d}
+            data-wedge-shelter={value}
+            data-wedge-pickable={pickable || undefined}
+            onClick={pickable ? () => onPick([value]) : undefined}
+            onPointerEnter={() => onHoverShelter(value)}
+            onPointerLeave={() => onHoverShelter(null)}
+            className={cn(
+              "fill-transparent stroke-none",
+              pickable ? "cursor-pointer" : "cursor-default",
+            )}
+          />
+        );
+      })}
     </g>
   );
 }
@@ -113,6 +162,7 @@ function MarkerDisc({
   discAttribute,
   shelterValue,
   highlighted,
+  hoverScope = "group",
 }: {
   cx: number;
   cy: number;
@@ -123,8 +173,44 @@ function MarkerDisc({
   discAttribute?: string;
   shelterValue?: string;
   highlighted?: boolean;
+  /** "group" leans in whenever the marker is hovered anywhere. "self" waits to
+   *  be told, which is what a wedged cluster needs: one disc answers, not all
+   *  of them. */
+  hoverScope?: "group" | "self";
 }) {
   const glyph = r * glyphScale;
+  const groupHover = hoverScope === "group";
+  // A shelter with nothing to pick is a place, not a control. A paw disc a
+  // shade fainter still read as a control, so it draws as a different shape
+  // entirely: a small plain dot. The state is carried by the shape, not by the
+  // opacity.
+  if (!selected && !live) {
+    return (
+      <g
+        data-cluster-disc={discAttribute}
+        data-cluster-shelter={shelterValue}
+        className={cn(
+          "origin-center transition-[fill,transform] [transform-box:fill-box] motion-reduce:transition-none",
+          groupHover &&
+            "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
+          highlighted && "scale-110 motion-reduce:scale-100",
+        )}
+      >
+        <circle
+          data-marker-empty=""
+          cx={cx}
+          cy={cy}
+          r={r * 0.42}
+          className={cn(
+            "fill-foreground/35 stroke-none transition-colors motion-reduce:transition-none",
+            groupHover && "group-hover/pin:fill-foreground/60",
+            highlighted && "fill-foreground/60",
+          )}
+        />
+      </g>
+    );
+  }
+
   return (
     <g
       data-cluster-disc={discAttribute}
@@ -132,16 +218,18 @@ function MarkerDisc({
       className={cn(
         // Each disc grows around its own centre, so cluster discs breathe
         // apart instead of shifting as a block.
-        "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] group-hover/pin:scale-110 motion-reduce:transition-none motion-reduce:group-hover/pin:scale-100",
+        "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] motion-reduce:transition-none",
+        groupHover &&
+          "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
         highlighted && "scale-110 motion-reduce:scale-100",
         selected
           ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
-          : live
-            ? cn(
-                "fill-background stroke-foreground/75 text-foreground/75 group-hover/pin:stroke-foreground group-hover/pin:text-foreground",
-                highlighted && "stroke-foreground text-foreground",
-              )
-            : "fill-background stroke-foreground/40 text-foreground/40",
+          : cn(
+              "fill-background stroke-foreground/75 text-foreground/75",
+              groupHover &&
+                "group-hover/pin:stroke-foreground group-hover/pin:text-foreground",
+              highlighted && "stroke-foreground text-foreground",
+            ),
       )}
     >
       <circle cx={cx} cy={cy} r={r} style={{ strokeWidth: MARKER_STROKE_WIDTH }} />
@@ -169,11 +257,13 @@ function ClusterMarker({
   selected,
   live,
   highlighted,
+  hoveredShelterValue,
 }: {
   town: Town;
   selected: string[];
   live: boolean;
   highlighted: boolean;
+  hoveredShelterValue: string | null;
 }) {
   const { clusterRadius } = markerGeometry(town);
   const positions = clusterDiscPositions(town);
@@ -186,10 +276,15 @@ function ClusterMarker({
       r={clusterRadius}
       glyphScale={1.3}
       selected={selected.includes(shelter.value)}
-      live={live}
+      // An off-site shelter keeps its dot even when its town has animals: the
+      // disc, not the town, is what says "this one you can pick".
+      live={live && shelter.selectable !== false}
       discAttribute={selected.includes(shelter.value) ? "selected" : "idle"}
       shelterValue={shelter.value}
-      highlighted={highlighted}
+      // The hovered wedge picks the disc that leans in. A list hover still
+      // names the town, so it lights every disc, as before.
+      highlighted={highlighted || hoveredShelterValue === shelter.value}
+      hoverScope="self"
     />
   ));
 }

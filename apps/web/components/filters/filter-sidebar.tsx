@@ -1,12 +1,18 @@
 "use client";
 
+import { LazyMotion, domAnimation } from "motion/react";
+import { CountRoll } from "@/components/filters/filter-card";
 import {
   FilterGroupList,
   type CardGroup,
   type GoodWithSection,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
+import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
+import { activeFilterSectionCount } from "@/lib/filters";
 import type {
   FilterOption,
   Filters,
@@ -26,6 +32,7 @@ export function FilterSidebar({
   onToggleMany,
   onToggleProperty,
   onToggleManyProperties,
+  onClearAll,
   className,
 }: {
   filters: Filters;
@@ -34,15 +41,58 @@ export function FilterSidebar({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
+  onClearAll: () => void;
   className?: string;
 } & FilterActionContract) {
   const { messages } = useI18n();
+  const scrollRef = useScrollEdgeFades<HTMLElement>();
+  // The chips row scrolls away with the page while the sidebar stays; this
+  // count and its clear keep the state and the way out in view.
+  const activeSections = activeFilterSectionCount(filters);
+
   return (
-    <aside className={cn("space-y-6", className)}>
+    <aside
+      ref={scrollRef}
+      // The negative margin and padding give focus rings room inside the
+      // overflow clip. Hairlines between sections read the stack as one list.
+      className={cn(
+        "fade-scroll -mx-1 space-y-3 px-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
+        className,
+      )}
+    >
       {/* h-7 matches the species tabs across the gutter, so both columns
           start their content on the same line. */}
-      <div className="flex h-7 items-center">
-        <h2 className="text-sm font-medium">{messages.filters}</h2>
+      <div className="flex h-7 items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium">
+          {messages.filters}
+          {activeSections > 0 && (
+            // Same badge the mobile sheet already shows next to "Filtri". Its
+            // own LazyMotion: unlike the sections below, nothing here already
+            // opens one for CountRoll to read domAnimation from.
+            <LazyMotion features={domAnimation}>
+              <Badge
+                variant="secondary"
+                className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
+              >
+                <CountRoll value={activeSections} />
+              </Badge>
+            </LazyMotion>
+          )}
+        </h2>
+        <Button
+          type="button"
+          variant="link"
+          size="xs"
+          onClick={onClearAll}
+          aria-hidden={activeSections === 0}
+          tabIndex={activeSections > 0 ? undefined : -1}
+          className={cn(
+            "h-auto p-0 text-[11px] font-normal text-muted-foreground transition-opacity hover:text-foreground",
+            activeSections === 0 && "pointer-events-none opacity-0",
+          )}
+        >
+          {messages.clearFilters}
+        </Button>
       </div>
 
       <FilterGroupList
@@ -56,6 +106,7 @@ export function FilterSidebar({
         onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}
         onToggleManyProperties={onToggleManyProperties}
+        collapsible
       />
     </aside>
   );

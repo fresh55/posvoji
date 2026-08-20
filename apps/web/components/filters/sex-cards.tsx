@@ -2,6 +2,7 @@
 
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
+  CountRoll,
   FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
@@ -217,9 +218,10 @@ export function SexCards({
               <span className={cn("text-xs", checked && "font-medium")}>
                 {label}
               </span>
-              <span className="text-[11px] tabular-nums text-muted-foreground">
-                {count}
-              </span>
+              <CountRoll
+                value={count}
+                className="text-[11px] tabular-nums text-muted-foreground"
+              />
             </ToggleGroupItem>
           );
         })}

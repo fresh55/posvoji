@@ -3,8 +3,13 @@
 import { Check } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
-import { FilterSectionHeader } from "@/components/filters/filter-section-header";
+import { useState, type ReactNode } from "react";
+import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  SectionHint,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
 import { cn } from "@/lib/utils";
 
 /** A card is a row in the sidebar's one column, a tile in the sheet's three. */
@@ -58,6 +63,46 @@ const HOVER_SPRING = {
   mass: 0.5,
 } as const;
 
+const COUNT_ROLL_DURATION = 0.28;
+
+// A changed number slides in rather than swapping in place, so the narrowing
+// is something you watch happen. Never on first paint: nothing narrowed
+// there. Every caller already sits inside its own LazyMotion, so this reads
+// domAnimation from that context instead of opening a second one.
+export function CountRoll({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  // Each change bumps the epoch, which remounts the number so the slide runs
+  // again. Epoch zero is the first paint and renders still.
+  const [displayed, setDisplayed] = useState({ value, epoch: 0 });
+  if (displayed.value !== value) {
+    setDisplayed({ value, epoch: displayed.epoch + 1 });
+  }
+
+  if (shouldReduceMotion) {
+    return <span className={className}>{value}</span>;
+  }
+
+  return (
+    <span className={cn("relative inline-block", className)}>
+      <m.span
+        key={displayed.epoch}
+        className="block"
+        initial={displayed.epoch > 0 ? { y: -6, opacity: 0 } : false}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
+      >
+        {value}
+      </m.span>
+    </span>
+  );
+}
+
 export function FilterSelectionMark({
   checked,
   className,
@@ -104,7 +149,10 @@ export function FilterSelectionMark({
 }
 
 // The section frame every card group shares: its heading and reset, the line
-// saying where the answers come from, and the grid the cards sit in.
+// saying where the answers come from, and the grid the cards sit in. A
+// collapse contract turns the heading into a disclosure trigger and moves the
+// hint into its tooltip; without one the section always shows everything, as
+// the mobile sheet needs.
 export function FilterCardSection({
   label,
   hint,
@@ -112,6 +160,7 @@ export function FilterCardSection({
   onReset,
   resetAriaLabel,
   layout,
+  collapse,
   children,
   footer,
 }: {
@@ -121,6 +170,7 @@ export function FilterCardSection({
   onReset: () => void;
   resetAriaLabel: string;
   layout: FilterCardLayout;
+  collapse?: SectionCollapse;
   children: ReactNode;
   /** What a section says about its cards once they are read together. */
   footer?: ReactNode;
@@ -132,21 +182,23 @@ export function FilterCardSection({
         active={active}
         onReset={onReset}
         resetAriaLabel={resetAriaLabel}
+        collapse={collapse}
+        hint={hint}
       />
-      <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-        {hint}
-      </p>
-      <LazyMotion features={domAnimation}>
-        <div
-          className={cn(
-            "grid gap-1.5",
-            layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
-          )}
-        >
-          {children}
-        </div>
-      </LazyMotion>
-      {footer}
+      <CollapsibleBody collapse={collapse}>
+        <SectionHint collapse={collapse}>{hint}</SectionHint>
+        <LazyMotion features={domAnimation}>
+          <div
+            className={cn(
+              "grid gap-1.5",
+              layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
+            )}
+          >
+            {children}
+          </div>
+        </LazyMotion>
+        {footer}
+      </CollapsibleBody>
     </section>
   );
 }

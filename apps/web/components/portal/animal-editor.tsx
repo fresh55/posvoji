@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { LoaderCircle, PawPrint, TriangleAlert } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
+import { ChoiceGrid } from "@/components/portal/choice-grid";
 import { OverrideMark, RevertButton } from "@/components/portal/override-mark";
 import {
-  CHOICE_CARD,
-  CHOICE_CARD_SELECTED,
-  CHOICE_CARD_SELECTED_MUTED,
   COMPATIBILITY_META,
   ENERGY_META,
   PORTAL_SPECIAL_NEEDS_ANSWERS,
@@ -47,7 +45,6 @@ import {
   type PortalSex,
   type PortalSize,
 } from "@/lib/portal-api";
-import { cn } from "@/lib/utils";
 
 type Draft = {
   name: string;
@@ -264,13 +261,20 @@ export function AnimalEditor({
   }
 
   const saving = saveState.status === "saving";
-  const { patch } = buildPatch(draft, animal);
+  // The same patch the submit will send: what the form would change, and
+  // whether the typed age is a number at all.
+  const { patch, ageError: ageInvalid } = buildPatch(draft, animal);
   const dirty = Object.keys(patch).length > 0;
   const name = animal.name ?? portalText.unnamed;
+  const errorText = ageError
+    ? portalText.invalidError
+    : saveState.status === "error"
+      ? saveState.message
+      : null;
 
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
-    if (key === "approximateAgeMonths") setAgeError(false);
+    setAgeError(false);
   }
 
   /** Empty is what "give it back to the crawler" looks like in the form. */
@@ -280,16 +284,15 @@ export function AnimalEditor({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = buildPatch(draft, animal);
-    if (result.ageError) {
+    if (ageInvalid) {
       setAgeError(true);
       return;
     }
-    if (Object.keys(result.patch).length === 0) {
+    if (!dirty) {
       onOpenChange(false);
       return;
     }
-    if (await onSave(result.patch)) onOpenChange(false);
+    if (await onSave(patch)) onOpenChange(false);
   }
 
   return (
@@ -326,34 +329,14 @@ export function AnimalEditor({
             onRevert={() => set("sex", null)}
             disabled={saving}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldSex}
-              className="grid grid-cols-3 gap-1.5"
-            >
-              {PORTAL_SEXES.map((sex) => {
-                const meta = SEX_META[sex];
-                const Icon = meta.icon;
-                const selected = draft.sex === sex;
-                return (
-                  <button
-                    key={sex}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={saving}
-                    onClick={() => set("sex", sex)}
-                    className={cn(
-                      CHOICE_CARD,
-                      "h-11 px-2 text-xs font-medium",
-                      selected && CHOICE_CARD_SELECTED,
-                    )}
-                  >
-                    <Icon className="size-4" strokeWidth={1.75} aria-hidden />
-                    <span className="truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ChoiceGrid
+              label={portalText.fieldSex}
+              options={PORTAL_SEXES}
+              meta={SEX_META}
+              value={draft.sex}
+              onPick={(sex) => set("sex", sex)}
+              disabled={saving}
+            />
           </Field>
 
           <Field
@@ -425,37 +408,14 @@ export function AnimalEditor({
             onRevert={() => set("size", null)}
             disabled={saving}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldSize}
-              className="grid grid-cols-3 gap-1.5"
-            >
-              {PORTAL_SIZES.map((size) => {
-                const meta = SIZE_META[size];
-                const selected = draft.size === size;
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={saving}
-                    onClick={() => set("size", size)}
-                    className={cn(
-                      CHOICE_CARD,
-                      "h-11 px-2 text-xs font-medium",
-                      selected && CHOICE_CARD_SELECTED,
-                    )}
-                  >
-                    <PawPrint
-                      className={meta.iconClass}
-                      strokeWidth={1.75}
-                      aria-hidden
-                    />
-                    <span className="truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ChoiceGrid
+              label={portalText.fieldSize}
+              options={PORTAL_SIZES}
+              meta={SIZE_META}
+              value={draft.size}
+              onPick={(size) => set("size", size)}
+              disabled={saving}
+            />
           </Field>
 
           <Field
@@ -466,34 +426,14 @@ export function AnimalEditor({
             disabled={saving}
             hint={portalText.energyHint}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldEnergy}
-              className="grid grid-cols-3 gap-1.5"
-            >
-              {PORTAL_ENERGIES.map((energy) => {
-                const meta = ENERGY_META[energy];
-                const Icon = meta.icon;
-                const selected = draft.energy === energy;
-                return (
-                  <button
-                    key={energy}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={saving}
-                    onClick={() => set("energy", energy)}
-                    className={cn(
-                      CHOICE_CARD,
-                      "h-11 px-2 text-xs font-medium",
-                      selected && CHOICE_CARD_SELECTED,
-                    )}
-                  >
-                    <Icon className="size-4" strokeWidth={1.75} aria-hidden />
-                    <span className="truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ChoiceGrid
+              label={portalText.fieldEnergy}
+              options={PORTAL_ENERGIES}
+              meta={ENERGY_META}
+              value={draft.energy}
+              onPick={(energy) => set("energy", energy)}
+              disabled={saving}
+            />
           </Field>
 
           <Field
@@ -503,37 +443,14 @@ export function AnimalEditor({
             onRevert={() => set("apartmentOk", null)}
             disabled={saving}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldApartmentOk}
-              className="grid grid-cols-3 gap-1.5"
-            >
-              {PORTAL_COMPATIBILITIES.map((value) => {
-                const meta = COMPATIBILITY_META[value];
-                const Icon = meta.icon;
-                const selected = draft.apartmentOk === value;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={saving}
-                    onClick={() => set("apartmentOk", value)}
-                    className={cn(
-                      CHOICE_CARD,
-                      "h-11 px-2 text-xs font-medium",
-                      selected &&
-                        (value === "unknown"
-                          ? CHOICE_CARD_SELECTED_MUTED
-                          : CHOICE_CARD_SELECTED),
-                    )}
-                  >
-                    <Icon className="size-4" strokeWidth={1.75} aria-hidden />
-                    <span className="truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ChoiceGrid
+              label={portalText.fieldApartmentOk}
+              options={PORTAL_COMPATIBILITIES}
+              meta={COMPATIBILITY_META}
+              value={draft.apartmentOk}
+              onPick={(value) => set("apartmentOk", value)}
+              disabled={saving}
+            />
           </Field>
 
           <Field
@@ -544,37 +461,14 @@ export function AnimalEditor({
             disabled={saving}
             hint={portalText.specialNeedsHint}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldSpecialNeeds}
-              className="grid grid-cols-3 gap-1.5"
-            >
-              {PORTAL_SPECIAL_NEEDS_ANSWERS.map((value) => {
-                const meta = SPECIAL_NEEDS_META[value];
-                const Icon = meta.icon;
-                const selected = draft.specialNeeds === value;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={saving}
-                    onClick={() => set("specialNeeds", value)}
-                    className={cn(
-                      CHOICE_CARD,
-                      "h-11 px-2 text-xs font-medium",
-                      selected &&
-                        (value === "unknown"
-                          ? CHOICE_CARD_SELECTED_MUTED
-                          : CHOICE_CARD_SELECTED),
-                    )}
-                  >
-                    <Icon className="size-4" strokeWidth={1.75} aria-hidden />
-                    <span className="truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ChoiceGrid
+              label={portalText.fieldSpecialNeeds}
+              options={PORTAL_SPECIAL_NEEDS_ANSWERS}
+              meta={SPECIAL_NEEDS_META}
+              value={draft.specialNeeds}
+              onPick={(value) => set("specialNeeds", value)}
+              disabled={saving}
+            />
           </Field>
 
           <div className="space-y-5">
@@ -593,37 +487,14 @@ export function AnimalEditor({
                 onRevert={() => set(field, null)}
                 disabled={saving}
               >
-                <div
-                  role="group"
-                  aria-label={label}
-                  className="grid grid-cols-3 gap-1.5"
-                >
-                  {PORTAL_COMPATIBILITIES.map((value) => {
-                    const meta = COMPATIBILITY_META[value];
-                    const Icon = meta.icon;
-                    const selected = draft[field] === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={selected}
-                        disabled={saving}
-                        onClick={() => set(field, value)}
-                        className={cn(
-                          CHOICE_CARD,
-                          "h-11 px-2 text-xs font-medium",
-                          selected &&
-                            (value === "unknown"
-                              ? CHOICE_CARD_SELECTED_MUTED
-                              : CHOICE_CARD_SELECTED),
-                        )}
-                      >
-                        <Icon className="size-4" strokeWidth={1.75} aria-hidden />
-                        <span className="truncate">{meta.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <ChoiceGrid
+                  label={label}
+                  options={PORTAL_COMPATIBILITIES}
+                  meta={COMPATIBILITY_META}
+                  value={draft[field]}
+                  onPick={(value) => set(field, value)}
+                  disabled={saving}
+                />
               </Field>
             ))}
             <p className="text-xs text-muted-foreground">
@@ -649,17 +520,13 @@ export function AnimalEditor({
             />
           </Field>
 
-          {(ageError || saveState.status === "error") && (
+          {errorText && (
             <p
               role="alert"
               className="flex items-start gap-1.5 text-sm text-destructive"
             >
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              {ageError
-                ? portalText.invalidError
-                : saveState.status === "error"
-                  ? saveState.message
-                  : null}
+              {errorText}
             </p>
           )}
 

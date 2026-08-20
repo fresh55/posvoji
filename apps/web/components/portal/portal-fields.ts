@@ -1,56 +1,125 @@
 import {
   BookmarkCheck,
-  Cat,
   Check,
   CircleHelp,
-  Dog,
   HeartHandshake,
   Mars,
   Pause,
   PawPrint,
-  Rabbit,
   Venus,
   X,
   type LucideIcon,
 } from "lucide-react";
-import { ENERGY_ICONS } from "@/lib/animal-icons";
+import { Species } from "@posvoji/schema";
+import { filterCardVariants } from "@/components/filters/filter-card";
+import { ENERGY_ICONS, SPECIES_ICONS } from "@/lib/animal-icons";
+import { FILTER_METADATA } from "@/lib/filters";
+import { sexLabel, sizeLabel, speciesLabel } from "@/lib/labels";
 import {
   PORTAL_COMPATIBILITIES,
   PORTAL_ENERGIES,
+  PORTAL_SEXES,
+  PORTAL_SIZES,
+  PORTAL_STATUSES,
   type PortalCompatibility,
   type PortalEnergy,
   type PortalSex,
   type PortalSize,
   type PortalStatus,
 } from "@/lib/portal-api";
+import { cn } from "@/lib/utils";
+
+/** Narrows one of the API's plain strings to the set the portal edits. */
+function oneOf<Value extends string>(
+  values: readonly Value[],
+): (value: string | null) => value is Value {
+  return (value: string | null): value is Value =>
+    value !== null && (values as readonly string[]).includes(value);
+}
+
+export const isPortalStatus = oneOf(PORTAL_STATUSES);
+export const isPortalSex = oneOf(PORTAL_SEXES);
+export const isPortalSize = oneOf(PORTAL_SIZES);
+export const isPortalEnergy = oneOf(PORTAL_ENERGIES);
+export const isPortalCompatibility = oneOf(PORTAL_COMPATIBILITIES);
 
 // The species arrives as a plain string from the API, which reads it out of
-// the dataset. An unknown one gets the generic paw rather than nothing.
-export const SPECIES_ICONS: Record<string, LucideIcon> = {
-  dog: Dog,
-  cat: Cat,
-  rabbit: Rabbit,
-  other: PawPrint,
-};
+// the dataset. One the schema does not know is not an animal we can name.
+const isSpecies = oneOf(Species.options);
 
-export const FALLBACK_SPECIES_ICON = PawPrint;
-
-const SPECIES_LABELS: Record<string, string> = {
-  dog: "Pes",
-  cat: "Mačka",
-  rabbit: "Zajček",
-  other: "Druga žival",
-};
-
-export function speciesLabel(species: string | null): string {
-  return (species && SPECIES_LABELS[species]) || "Žival";
+export function portalSpeciesIcon(species: string | null): LucideIcon {
+  return isSpecies(species) ? SPECIES_ICONS[species] : PawPrint;
 }
+
+export function portalSpeciesLabel(species: string | null): string {
+  return isSpecies(species) ? speciesLabel(species, "sl") : "Žival";
+}
+
+/**
+ * One option of an icon choice row. The label and the icon come from the
+ * tables the public site already uses, so a shelter picks the card the
+ * adopter will later search by.
+ */
+export type ChoiceMeta = {
+  label: string;
+  icon: LucideIcon;
+  /** Sizes the icon when the row is a scale rather than a set of equals. */
+  iconClass?: string;
+  /** A deliberate "not known" stays selected, without the positive accent. */
+  mutedWhenSelected?: boolean;
+};
+
+function energyLabel(energy: PortalEnergy): string {
+  return (
+    FILTER_METADATA.energy.find((option) => option.value === energy)?.labels
+      .sl ?? energy
+  );
+}
+
+export const SEX_META: Record<PortalSex, ChoiceMeta> = {
+  male: { label: sexLabel("male", "sl"), icon: Mars },
+  female: { label: sexLabel("female", "sl"), icon: Venus },
+  unknown: { label: "Ni znano", icon: CircleHelp },
+};
+
+// The paw grows with the size, so the three read as one scale before the
+// labels are read at all.
+export const SIZE_META: Record<PortalSize, ChoiceMeta> = {
+  small: {
+    label: sizeLabel("small", "sl"),
+    icon: PawPrint,
+    iconClass: "size-3.5",
+  },
+  medium: {
+    label: sizeLabel("medium", "sl"),
+    icon: PawPrint,
+    iconClass: "size-4.5",
+  },
+  large: {
+    label: sizeLabel("large", "sl"),
+    icon: PawPrint,
+    iconClass: "size-5.5",
+  },
+};
+
+export const ENERGY_META: Record<PortalEnergy, ChoiceMeta> = {
+  calm: { label: energyLabel("calm"), icon: ENERGY_ICONS.calm },
+  balanced: { label: energyLabel("balanced"), icon: ENERGY_ICONS.balanced },
+  lively: { label: energyLabel("lively"), icon: ENERGY_ICONS.lively },
+};
+
+/** Answers shared by the three "gets on with" fields (kids, dogs, cats). */
+export const COMPATIBILITY_META: Record<PortalCompatibility, ChoiceMeta> = {
+  yes: { label: "Da", icon: Check },
+  no: { label: "Ne", icon: X },
+  unknown: { label: "Ni znano", icon: CircleHelp, mutedWhenSelected: true },
+};
 
 type StatusMeta = {
   label: string;
   icon: LucideIcon;
-  /** Selected state. Green means available, amber pending, black final, grey paused. */
-  selected: string;
+  /** Selected state, where it differs from the card's own green accent. */
+  selected?: string;
   /** Read-only badge on the card header. */
   badge: string;
 };
@@ -59,8 +128,6 @@ export const STATUS_META: Record<PortalStatus, StatusMeta> = {
   available: {
     label: "Na voljo",
     icon: PawPrint,
-    selected:
-      "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)]",
     badge:
       "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
   },
@@ -88,70 +155,15 @@ export const STATUS_META: Record<PortalStatus, StatusMeta> = {
   },
 };
 
-export function isPortalStatus(value: string | null): value is PortalStatus {
-  return value !== null && value in STATUS_META;
-}
-
-export const SEX_META: Record<PortalSex, { label: string; icon: LucideIcon }> = {
-  male: { label: "Samec", icon: Mars },
-  female: { label: "Samica", icon: Venus },
-  unknown: { label: "Ni znano", icon: CircleHelp },
-};
-
-export function isPortalSex(value: string | null): value is PortalSex {
-  return value !== null && value in SEX_META;
-}
-
-// The paw grows with the size, so the three read as one scale before the
-// labels are read at all.
-export const SIZE_META: Record<
-  PortalSize,
-  { label: string; iconClass: string }
-> = {
-  small: { label: "Majhna", iconClass: "size-3.5" },
-  medium: { label: "Srednja", iconClass: "size-4.5" },
-  large: { label: "Velika", iconClass: "size-5.5" },
-};
-
-export function isPortalSize(value: string | null): value is PortalSize {
-  return value !== null && value in SIZE_META;
-}
-
 /**
- * Same three levels and the same icons the public energy filter uses, so a
- * shelter picks the card the adopter will later search by.
+ * Every choice card in the portal is the public filters' card with an icon
+ * and a label centred inside it. Layout stays with the caller.
  */
-export const ENERGY_META: Record<
-  PortalEnergy,
-  { label: string; icon: LucideIcon }
-> = {
-  calm: { label: "Miren", icon: ENERGY_ICONS.calm },
-  balanced: { label: "Uravnotežen", icon: ENERGY_ICONS.balanced },
-  lively: { label: "Živahen", icon: ENERGY_ICONS.lively },
-};
-
-export function isPortalEnergy(value: string | null): value is PortalEnergy {
-  return (
-    value !== null && (PORTAL_ENERGIES as readonly string[]).includes(value)
-  );
-}
-
-/** Answers shared by the three "gets on with" fields (kids, dogs, cats). */
-export const COMPATIBILITY_META: Record<
-  PortalCompatibility,
-  { label: string; icon: LucideIcon }
-> = {
-  yes: { label: "Da", icon: Check },
-  no: { label: "Ne", icon: X },
-  unknown: { label: "Ni znano", icon: CircleHelp },
-};
-
-export function isPortalCompatibility(
-  value: string | null,
-): value is PortalCompatibility {
-  return (
-    value !== null &&
-    (PORTAL_COMPATIBILITIES as readonly string[]).includes(value)
+export function choiceCard(selected: boolean, className?: string): string {
+  return cn(
+    filterCardVariants({ selected }),
+    "flex items-center justify-center gap-1.5",
+    className,
   );
 }
 
@@ -166,13 +178,10 @@ export type PortalSpecialNeedsAnswer =
   (typeof PORTAL_SPECIAL_NEEDS_ANSWERS)[number];
 
 /** Same labels and icons as COMPATIBILITY_META, so the two fields read alike. */
-export const SPECIAL_NEEDS_META: Record<
-  PortalSpecialNeedsAnswer,
-  { label: string; icon: LucideIcon }
-> = {
+export const SPECIAL_NEEDS_META: Record<PortalSpecialNeedsAnswer, ChoiceMeta> = {
   yes: { label: "Da", icon: Check },
   no: { label: "Ne", icon: X },
-  unknown: { label: "Ni znano", icon: CircleHelp },
+  unknown: { label: "Ni znano", icon: CircleHelp, mutedWhenSelected: true },
 };
 
 /** true/false/null, as the API and the draft state carry it, to the card answer. */
@@ -193,18 +202,10 @@ export function specialNeedsValue(
   return null;
 }
 
-/** One surface contract for every choice card in the portal, matching the filters. */
-export const CHOICE_CARD =
-  "group relative flex min-w-0 items-center justify-center gap-1.5 overflow-hidden rounded-ui border border-border/80 bg-background text-muted-foreground shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50";
-
-/** Selected state for the neutral choice cards (sex, size), same green as the filters. */
-export const CHOICE_CARD_SELECTED =
-  "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)]";
-
 /**
  * Selected state for a deliberate "I don't know" answer. It is still a
  * choice, not a blank, so it stays marked selected, just without the green
  * accent that means "known and positive".
  */
-export const CHOICE_CARD_SELECTED_MUTED =
+export const CHOICE_CARD_MUTED =
   "border-foreground/25 bg-muted text-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground";

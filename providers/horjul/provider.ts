@@ -110,44 +110,23 @@ export function parseSlovenianDate(value: string): string | undefined {
   return parsed.toISOString().slice(0, 10) === iso ? iso : undefined;
 }
 
-// A number in an amount is "2", "1,5" or "1.5".
-const AMOUNT = /(\d+(?:[,.]5)?)/.source;
-// A stated amount, alone or as a bounded range like "2-3".
-const SPAN = `${AMOUNT}(?:\\s*[-–]\\s*${AMOUNT})?`;
-
-// The shelter's own range is bounded evidence, so it maps to its midpoint.
-function midpoint(low: string, high: string | undefined): number {
-  const from = Number(low.replace(",", "."));
-  return high === undefined ? from : (from + Number(high.replace(",", "."))) / 2;
-}
-
-// Only ages the shelter itself states are mapped: an exact number, a bounded
-// range ("2-3 leta" becomes its midpoint) or "kotena v zavetišču", which is
-// exact by definition (born in the shelter, so zero at intake). Open prose
-// such as "mlada odrasla" and "nekaj ur" stays unknown rather than being
-// turned into a guessed number.
+// Only exact numeric ages are mapped. Prose such as "mlada odrasla" and
+// "nekaj ur" stays unknown rather than being turned into a guessed number.
 export function parseAgeMonths(value: string): number | undefined {
   const normalized = normalizeText(value).toLowerCase();
-  if (/^s?koten[ao]?\s+v\s+zavetišču$/.test(normalized)) return 0;
   const combined = normalized.match(
     /^(\d+)\s*(?:let|leta|leti|leto)\s+(?:in\s+)?(\d+)\s*(?:mesecev|mesece|meseca|mesec)$/,
   );
   if (combined) return Number(combined[1]) * 12 + Number(combined[2]);
-  const years = normalized.match(
-    new RegExp(`^${SPAN}\\s*(?:let|leta|leti|leto)$`),
-  );
-  if (years) return Math.round(midpoint(years[1]!, years[2]) * 12);
-  const months = normalized.match(
-    new RegExp(`^${SPAN}\\s*(?:mesecev|mesece|meseca|mesec)$`),
-  );
-  if (months) return Math.round(midpoint(months[1]!, months[2]));
-  const weeks = normalized.match(
-    new RegExp(`^${SPAN}\\s*(?:teden|tedna|tedne|tednov)$`),
-  );
+  const years = normalized.match(/^(\d+)(?:[,.](5))?\s*(?:let|leta|leti|leto)$/);
+  if (years) return Number(years[1]) * 12 + (years[2] ? 6 : 0);
+  const months = normalized.match(/^(\d+)\s*(?:mesecev|mesece|meseca|mesec)$/);
+  if (months) return Number(months[1]);
+  const weeks = normalized.match(/^(\d+)\s*(?:teden|tedna|tedne|tednov)$/);
   // approximateAgeMonths is intentionally month-granular. Convert an exact
   // stated week count to the nearest month rather than dropping useful age
   // evidence (8–9 weeks is approximately two months).
-  return weeks ? Math.round((midpoint(weeks[1]!, weeks[2]) * 12) / 52) : undefined;
+  return weeks ? Math.round((Number(weeks[1]) * 12) / 52) : undefined;
 }
 
 const SEX: Record<string, Sex> = {
@@ -261,6 +240,7 @@ export function parseDetail(html: string): DetailFacts {
 // older ones are a history that contradicts it, and Klopka's oldest still
 // describes the nine-week-old kitten she arrived as in 2016. The entries are
 // left in place at the source, which the listing links to.
+//
 // Every entry closes by linking the adoption questionnaire. Some listings put
 // that in its own paragraph and some run it on after the last sentence, so it
 // is cut by sentence: dropping the whole paragraph would take Klopka's

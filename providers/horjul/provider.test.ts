@@ -63,12 +63,6 @@ describe("fact parsers", () => {
     ["5 mesecev", 5],
     ["8 tednov", 2],
     ["9 tednov", 2],
-    ["2-3 leta", 30],
-    ["2 – 3 leta", 30],
-    ["8-9 tednov", 2],
-    ["4-5 mesecev", 5],
-    ["Kotena v zavetišču", 0],
-    ["Koten v zavetišču", 0],
     ["Mlada odrasla", undefined],
     ["Nekaj ur", undefined],
   ])("parses intake age %s conservatively", (input, expected) => {
@@ -157,15 +151,6 @@ describe("resolveAgeMonths", () => {
         "2026-08-18T08:00:00.000Z",
       ),
     ).toBe(21);
-  });
-
-  it("ages an animal born in the shelter from its intake date alone", () => {
-    expect(
-      resolveAgeMonths(
-        { intakeAgeMonths: 0, intakeDate: "2022-01-10" },
-        "2026-08-18T08:00:00.000Z",
-      ),
-    ).toBe(55);
   });
 
   it("ages an intake age converted from weeks across the animal's stay", () => {

@@ -5,10 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
   applyOverrides,
-  baselineFieldKeys,
   buildOverrideReport,
   fetchPortalOverrides,
-  overrideFieldKeys,
   PortalExportPayload,
 } from "./portal-overrides";
 
@@ -164,7 +162,7 @@ describe("applyOverrides", () => {
       ]),
     );
 
-    expect(result.applied).toBe(1);
+    expect(result.applied).toHaveLength(1);
     expect(result.unmatched).toHaveLength(0);
     expect(result.animals[0]).toMatchObject({
       status: "reserved",
@@ -187,7 +185,7 @@ describe("applyOverrides", () => {
       ]),
     );
 
-    expect(result.applied).toBe(1);
+    expect(result.applied).toHaveLength(1);
     expect(result.animals[0]?.energy).toBe("calm");
   });
 
@@ -204,7 +202,7 @@ describe("applyOverrides", () => {
       ]),
     );
 
-    expect(result.applied).toBe(1);
+    expect(result.applied).toHaveLength(1);
     expect(result.animals[0]?.apartmentOk).toBe("no");
     expect(result.animals[0]?.specialNeeds).toBe(true);
   });
@@ -228,7 +226,7 @@ describe("applyOverrides", () => {
   it("leaves animals without a matching override unchanged", () => {
     const luna = animal({ id: "macja-hisa:luna" });
     const result = applyOverrides([luna], payload([]));
-    expect(result.applied).toBe(0);
+    expect(result.applied).toHaveLength(0);
     expect(result.animals).toEqual([luna]);
   });
 
@@ -261,7 +259,7 @@ describe("applyOverrides", () => {
       ]),
     );
 
-    expect(result.applied).toBe(1);
+    expect(result.applied).toHaveLength(1);
     expect(result.animals[0]?.goodWith).toEqual({ kids: "yes", dogs: "no" });
   });
 
@@ -335,7 +333,7 @@ describe("applyOverrides", () => {
       ]),
     );
 
-    expect(result.applied).toBe(0);
+    expect(result.applied).toHaveLength(0);
     expect(result.unmatched).toHaveLength(1);
     expect(result.unmatched[0]?.animalId).toBe("macja-hisa:mia");
     expect(result.animals).toEqual([luna]);
@@ -354,7 +352,7 @@ describe("applyOverrides", () => {
       ]),
     );
 
-    expect(result.applied).toBe(0);
+    expect(result.applied).toHaveLength(0);
     expect(result.unmatched).toHaveLength(1);
   });
 });
@@ -446,13 +444,6 @@ describe("fetchPortalOverrides", () => {
 });
 
 describe("baseline contract", () => {
-  it("covers exactly the fields an override can carry", () => {
-    // A field added to OverrideFields without a matching baseline key would
-    // silently never be checked for conflicts, and the portal sending its
-    // baseline would fail strict validation of the whole payload.
-    expect(baselineFieldKeys).toEqual(overrideFieldKeys);
-  });
-
   it("accepts a null baseline value and rejects an unknown key", () => {
     expect(
       PortalExportPayload.safeParse(

@@ -100,6 +100,13 @@ if (requestedProviderId && crawlPolicies.length === 0) {
   throw new Error(`unknown provider: ${requestedProviderId}`);
 }
 const client = new PoliteClient({ userAgent: USER_AGENT });
+
+// Fetched before the crawl, not after it. A bad token or a payload that no
+// longer matches the contract throws, and a run that is going to fail on that
+// should fail in the first second rather than after a crawl of many minutes.
+// The request is milliseconds, so there is nothing to gain by overlapping it.
+const portalPayload = await fetchPortalOverrides();
+
 const crawled = await crawl(client, crawlPolicies);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
@@ -125,12 +132,32 @@ const preserved = requestedProviderId
 // by a targeted run that does not re-crawl its provider.
 const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
 
+// The portal keys every override by the shelter slug of the account that
+// recorded it and ships that slug as providerId; this pipeline matches an
+// override to an animal on source.providerId. That join is the only thing
+// stopping one shelter from correcting another shelter's animal, and it holds
+// only while an animal's shelter id and its provider id are the same string.
+// Nothing else in the schema enforces it, so it is checked here on every run.
+const misattributed = seeded.filter(
+  (a) => a.shelter.id !== a.source.providerId,
+);
+if (misattributed.length > 0) {
+  const named = misattributed
+    .map(
+      (a) =>
+        `${a.id} (shelter ${a.shelter.id}, provider ${a.source.providerId})`,
+    )
+    .join(", ");
+  throw new Error(
+    `shelter id and providerId disagree, which would break override authorization: ${named}`,
+  );
+}
+
 // Shelter corrections from the portal are merged in after the crawl (and
 // after firstSeenAt is carried over) so a re-crawl can never silently
 // clobber them, and before image caching and the change-set diff so an
 // overridden field — including a status change — shows up in changes.json
 // as an update and ships in the written dataset.
-const portalPayload = await fetchPortalOverrides();
 const overrideResult = portalPayload
   ? applyOverrides(seeded, portalPayload)
   : null;
@@ -138,7 +165,7 @@ const overridden = overrideResult?.animals ?? seeded;
 if (overrideResult) {
   const moved = overrideResult.conflicts.filter((c) => c.kind === "moved");
   console.log(
-    `portal: ${overrideResult.applied} overrides applied, ` +
+    `portal: ${overrideResult.applied.length} overrides applied, ` +
       `${overrideResult.unmatched.length} unmatched, ` +
       `${moved.length} conflicting with the crawl`,
   );

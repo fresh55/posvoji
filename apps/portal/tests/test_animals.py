@@ -147,6 +147,38 @@ def test_put_creates_an_override_and_records_the_editor(
 
 
 @pytest.mark.django_db
+def test_a_validated_vocabulary_value_stays_a_bare_string(
+    member_client, shelter, dataset_file
+):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    body = put(
+        member_client,
+        shelter.slug,
+        "testno:1",
+        {"status": "hold", "sex": "female", "size": "medium", "energy": "calm"},
+    ).json()
+
+    # The vocabularies are the model's TextChoices, which are enum members.
+    # What is stored and what goes on the wire has to be the plain value, or
+    # the column, the export and the ingest contract all see an enum repr.
+    assert [type(body["overrides"][key]) for key in ("status", "sex", "size")] == [
+        str,
+        str,
+        str,
+    ]
+    override = AnimalOverride.objects.get(shelter=shelter, animal_id="testno:1")
+    assert type(override.status) is str
+    assert type(override.energy) is str
+    assert override.overridden_fields() == {
+        "status": "hold",
+        "sex": "female",
+        "size": "medium",
+        "energy": "calm",
+    }
+
+
+@pytest.mark.django_db
 def test_put_stores_the_good_with_answers(member_client, shelter, dataset_file):
     dataset_file([make_animal("testno:1", shelter)])
 

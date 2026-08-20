@@ -1,22 +1,25 @@
 "use client";
 
 import type { TargetAndTransition, Transition } from "motion/react";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { m, useReducedMotion } from "motion/react";
+import { useState } from "react";
 import {
   CountRoll,
-  FilterSelectionMark,
+  FilterCardHoverLift,
+  FilterCardIconWell,
+  FilterCardMark,
+  FilterCardSection,
+  FilterCardTail,
+  filterCardLayoutClass,
   filterCardVariants,
+  isDeadOption,
+  type FilterCardLayout,
 } from "@/components/filters/filter-card";
-import {
-  CollapsibleBody,
-  FilterSectionHeader,
-  sectionHintClass,
-  type SectionCollapse,
-} from "@/components/filters/filter-section-header";
+import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
   useFilterCardHover,
   useOneShotCelebration,
+  useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
 import type { HomeKey } from "@/lib/filters";
@@ -86,20 +89,10 @@ const PRESS_REST: TargetAndTransition = { scale: 1 };
 const PRESS_TRANSITION: Transition = { duration: 0.12, ease: "easeOut" };
 const REST_TRANSITION: Transition = { duration: 0.16 };
 
-const HOVER_SPRING = {
-  type: "spring",
-  stiffness: 420,
-  damping: 26,
-  mass: 0.5,
-} as const;
-
 // The mark the lit building leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
 const WATERMARK_IN_DURATION = 0.3;
 const WATERMARK_OUT_DURATION = 0.12;
-
-const RESET_STAGGER = 0.045;
-const RESET_CLEAR_MS = 280;
 
 // Every phase measured from the moment the card is switched on. The hold has
 // to outlast the slowest of them, because clearing the celebration snaps
@@ -113,12 +106,6 @@ const LIGHTS_MS = Math.ceil(
       GLOW_DELAY + GLOW_DURATION,
     ),
 );
-
-// A zero-count option is a dead end, but an active selection is never locked
-// out of being unchecked.
-function isDead(count: number, checked: boolean): boolean {
-  return count === 0 && !checked;
-}
 
 // Two layers over the lit panes: a muted outline that draws itself on when the
 // section first appears, and an accent copy that draws on when the card is
@@ -253,7 +240,7 @@ export function HomeCards({
   total: number;
   onToggle: (key: HomeKey) => void;
   onToggleMany: (values: HomeKey[]) => void;
-  layout?: "sidebar" | "sheet";
+  layout?: FilterCardLayout;
   collapse?: SectionCollapse;
 }) {
   const { locale, messages, t } = useI18n();
@@ -263,7 +250,7 @@ export function HomeCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<HomeKey>(LIGHTS_MS);
-  const [isResetting, setIsResetting] = useState(false);
+  const { beginReset, resetDelay } = useResetStagger(selected.length);
   const [pressedKey, setPressedKey] = useState<HomeKey | null>(null);
   const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
     useFilterCardHover();
@@ -271,287 +258,205 @@ export function HomeCards({
   const releasePress = (key: HomeKey) =>
     setPressedKey((current) => (current === key ? null : current));
 
-  useEffect(() => {
-    if (!isResetting || selected.length > 0) return;
-    const timer = window.setTimeout(
-      () => setIsResetting(false),
-      RESET_CLEAR_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [isResetting, selected.length]);
-
   const outcome =
     selected.length === 0
       ? null
       : t("homeOutcome", { count: resultCount, total });
 
   return (
-    <section>
-      <FilterSectionHeader
-        label={messages.home}
-        active={selected.length > 0}
-        onReset={() => {
-          clearCelebration();
-          setIsResetting(true);
-          onToggleMany(selected);
-        }}
-        resetAriaLabel={messages.resetHomeFilters}
-        collapse={collapse}
-        hint={messages.homeFilterHint}
-      />
-      <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
-      {/* The sidebar carries the hint in its header, where only a pointer can
-          reach it. The sheet and every touch screen keep the sentence here. */}
-      <p className={sectionHintClass(collapse)}>{messages.homeFilterHint}</p>
-      <LazyMotion features={domAnimation}>
-        <div
-          className={cn(
-            "grid gap-1.5",
-            // The sheet columns exist to fit several short labels side by
-            // side. One long label is a full-width tile instead of a third of
-            // a row it cannot be read in.
-            layout === "sheet" && options.length > 1
-              ? "grid-cols-2"
-              : "grid-cols-1",
-          )}
+    <FilterCardSection
+      label={messages.home}
+      hint={messages.homeFilterHint}
+      active={selected.length > 0}
+      onReset={() => {
+        clearCelebration();
+        beginReset();
+        onToggleMany(selected);
+      }}
+      resetAriaLabel={messages.resetHomeFilters}
+      layout={layout}
+      collapse={collapse}
+      // The label is a whole phrase, so it gets a readable tile in the sheet
+      // rather than a third of a row.
+      sheetColumns={1}
+      // What the section did to the list, and the one line the screen reader
+      // hears. Nothing selected says nothing.
+      footer={
+        <p
+          aria-live="polite"
+          className="mt-2 text-[11px] leading-snug text-muted-foreground empty:mt-0"
         >
-          {options.map(({ key, label }, index) => {
-            const count = counts.get(key) ?? 0;
-            const checked = selected.includes(key);
-            const dead = isDead(count, checked);
-            const hovered = hoveredKey === key;
-            const celebrating = celebration?.value === key && checked;
-            // The settle is press feedback, so it runs on touch too, and it
-            // yields the moment the lights take over.
-            const pressing =
-              pressedKey === key && !celebrating && !shouldReduceMotion;
-            // A reset winks the rows out in order rather than all at once.
-            const resetDelay = isResetting ? index * RESET_STAGGER : 0;
-            const hover = hoverHandlers(key);
+          {outcome}
+        </p>
+      }
+    >
+      {options.map(({ key, label }, index) => {
+        const count = counts.get(key) ?? 0;
+        const checked = selected.includes(key);
+        const dead = isDeadOption(count, checked);
+        const hovered = hoveredKey === key;
+        const celebrating = celebration?.value === key && checked;
+        // The settle is press feedback, so it runs on touch too, and it
+        // yields the moment the lights take over.
+        const pressing =
+          pressedKey === key && !celebrating && !shouldReduceMotion;
+        const exitDelay = resetDelay(index);
+        const hover = hoverHandlers(key);
 
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  if (checked) {
-                    clearCelebration();
-                  } else {
-                    celebrate(key);
-                  }
-                  // Touch browsers can skip pointerleave when the finger slides
-                  // off, and pointercancel does not cover every path, so the
-                  // click clears the press too.
-                  releasePress(key);
-                  onToggle(key);
-                }}
-                disabled={dead}
-                {...hover}
-                onPointerLeave={() => {
-                  hover.onPointerLeave();
-                  releasePress(key);
-                }}
-                onPointerDown={() => setPressedKey(key)}
-                onPointerUp={() => releasePress(key)}
-                onPointerCancel={() => releasePress(key)}
-                aria-pressed={checked}
-                aria-label={`${label}, ${animalCount(count, locale)}`}
-                className={filterCardVariants({
-                  selected: checked,
-                  className: cn(
-                    // isolate keeps the watermark's negative z-index above the
-                    // card's own background instead of behind it.
-                    "isolate flex",
-                    layout === "sheet"
-                      ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-                      : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
-                  ),
-                })}
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => {
+              if (checked) {
+                clearCelebration();
+              } else {
+                celebrate(key);
+              }
+              // Touch browsers can skip pointerleave when the finger slides
+              // off, and pointercancel does not cover every path, so the
+              // click clears the press too.
+              releasePress(key);
+              onToggle(key);
+            }}
+            disabled={dead}
+            {...hover}
+            onPointerLeave={() => {
+              hover.onPointerLeave();
+              releasePress(key);
+            }}
+            onPointerDown={() => setPressedKey(key)}
+            onPointerUp={() => releasePress(key)}
+            onPointerCancel={() => releasePress(key)}
+            aria-pressed={checked}
+            aria-label={`${label}, ${animalCount(count, locale)}`}
+            className={filterCardVariants({
+              selected: checked,
+              className: cn(
+                // isolate keeps the watermark's negative z-index above the
+                // card's own background instead of behind it.
+                "isolate flex",
+                filterCardLayoutClass(layout),
+              ),
+            })}
+          >
+            {/* The mark the lit house leaves on the card, clipped by the
+                card's own overflow. */}
+            <m.span
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute -z-10",
+                layout === "sheet"
+                  ? "-bottom-2 -right-1.5"
+                  : "-bottom-1 -right-1",
+              )}
+              // A real initial, so a card checked from the URL stamps its
+              // mark on load instead of having it already there.
+              initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
+              animate={{
+                opacity: checked ? WATERMARK_OPACITY : 0,
+                scale: shouldReduceMotion || checked ? 1 : 1.06,
+              }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : checked
+                    ? {
+                        duration: WATERMARK_IN_DURATION,
+                        delay: CHECK_DELAY,
+                        ease: "easeOut",
+                      }
+                    : {
+                        duration: WATERMARK_OUT_DURATION,
+                        delay: exitDelay,
+                        ease: "easeOut",
+                      }
+              }
+            >
+              {/* The rotation stays on the svg; the span owns transform. */}
+              <svg
+                viewBox="0 0 24 24"
+                className={cn(
+                  "rotate-[-12deg]",
+                  layout === "sheet" ? "size-12" : "size-9",
+                )}
+                fill="none"
+                stroke="var(--filter-accent-strong)"
+                strokeWidth={1.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {/* The mark the lit house leaves on the card, clipped by the
-                    card's own overflow. */}
+                {BUILDING.map(({ d }) => (
+                  <path key={d} d={d} />
+                ))}
+              </svg>
+            </m.span>
+
+            <FilterCardMark
+              layout={layout}
+              checked={checked}
+              appearDelay={CHECK_DELAY}
+            />
+
+            <FilterCardIconWell
+              layout={layout}
+              checked={checked}
+              exitDelay={exitDelay}
+            >
+              {celebrating && !shouldReduceMotion ? (
                 <m.span
-                  aria-hidden
+                  key={`glow-${celebration?.id}`}
                   className={cn(
-                    "pointer-events-none absolute -z-10",
-                    layout === "sheet"
-                      ? "-bottom-2 -right-1.5"
-                      : "-bottom-1 -right-1",
+                    "pointer-events-none absolute rounded-full bg-[var(--filter-accent-strong)] blur-[6px]",
+                    layout === "sheet" ? "size-7" : "size-7.5",
                   )}
-                  // A real initial, so a card checked from the URL stamps its
-                  // mark on load instead of having it already there.
-                  initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
-                  animate={{
-                    opacity: checked ? WATERMARK_OPACITY : 0,
-                    scale: shouldReduceMotion || checked ? 1 : 1.06,
+                  initial={{ opacity: 0, scale: 0.55 }}
+                  animate={GLOW_KEYFRAMES}
+                  transition={{
+                    duration: GLOW_DURATION,
+                    delay: GLOW_DELAY,
+                    times: GLOW_TIMES,
+                    ease: "easeOut",
                   }}
+                />
+              ) : null}
+              <FilterCardHoverLift hovered={hovered}>
+                <m.span
+                  className="flex items-center justify-center"
+                  initial={false}
+                  animate={pressing ? PRESS_SETTLE : PRESS_REST}
                   transition={
                     shouldReduceMotion
                       ? { duration: 0 }
-                      : checked
-                        ? {
-                            duration: WATERMARK_IN_DURATION,
-                            delay: CHECK_DELAY,
-                            ease: "easeOut",
-                          }
-                        : {
-                            duration: WATERMARK_OUT_DURATION,
-                            delay: resetDelay,
-                            ease: "easeOut",
-                          }
+                      : pressing
+                        ? PRESS_TRANSITION
+                        : REST_TRANSITION
                   }
                 >
-                  {/* The rotation stays on the svg; the span owns transform. */}
-                  <svg
-                    viewBox="0 0 24 24"
+                  <HomeGlyph
+                    checked={checked}
+                    dead={dead}
                     className={cn(
-                      "rotate-[-12deg]",
-                      layout === "sheet" ? "size-12" : "size-9",
+                      "size-5 transition-opacity duration-200",
+                      // An unlit house nobody can move into.
+                      dead && "opacity-70",
                     )}
-                    fill="none"
-                    stroke="var(--filter-accent-strong)"
-                    strokeWidth={1.75}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    {BUILDING.map(({ d }) => (
-                      <path key={d} d={d} />
-                    ))}
-                  </svg>
-                </m.span>
-
-                <FilterSelectionMark
-                  checked={checked}
-                  appearDelay={CHECK_DELAY}
-                  className={cn(
-                    layout === "sheet"
-                      ? "absolute right-1.5 top-1.5"
-                      : "absolute right-2.5 top-1/2 -translate-y-1/2",
-                  )}
-                />
-
-                <span
-                  aria-hidden
-                  className={cn(
-                    "relative grid shrink-0 place-items-center",
-                    layout === "sheet" ? "size-7" : "size-7.5",
-                  )}
-                >
-                  <m.span
-                    className={cn(
-                      "absolute rounded-full bg-muted-foreground/10",
-                      layout === "sheet" ? "size-7" : "size-7.5",
-                    )}
-                    initial={false}
-                    animate={{
-                      opacity: checked ? 1 : 0,
-                      scale: checked ? 1 : 0.6,
-                    }}
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : checked
-                          ? { type: "spring", stiffness: 380, damping: 26 }
-                          : {
-                              duration: 0.15,
-                              delay: resetDelay,
-                              ease: "easeOut",
-                            }
-                    }
                   />
-                  {celebrating && !shouldReduceMotion ? (
-                    <m.span
-                      key={`glow-${celebration?.id}`}
-                      className={cn(
-                        "pointer-events-none absolute rounded-full bg-[var(--filter-accent-strong)] blur-[6px]",
-                        layout === "sheet" ? "size-7" : "size-7.5",
-                      )}
-                      initial={{ opacity: 0, scale: 0.55 }}
-                      animate={GLOW_KEYFRAMES}
-                      transition={{
-                        duration: GLOW_DURATION,
-                        delay: GLOW_DELAY,
-                        times: GLOW_TIMES,
-                        ease: "easeOut",
-                      }}
-                    />
-                  ) : null}
-                  <m.span
-                    className="relative flex items-center justify-center will-change-transform"
-                    initial={false}
-                    animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
-                    transition={
-                      shouldReduceMotion ? { duration: 0 } : HOVER_SPRING
-                    }
-                  >
-                    <m.span
-                      className="flex items-center justify-center"
-                      initial={false}
-                      animate={pressing ? PRESS_SETTLE : PRESS_REST}
-                      transition={
-                        shouldReduceMotion
-                          ? { duration: 0 }
-                          : pressing
-                            ? PRESS_TRANSITION
-                            : REST_TRANSITION
-                      }
-                    >
-                      <HomeGlyph
-                        checked={checked}
-                        dead={dead}
-                        className={cn(
-                          "size-5 transition-opacity duration-200",
-                          // An unlit house nobody can move into.
-                          dead && "opacity-70",
-                        )}
-                      />
-                    </m.span>
-                  </m.span>
-                </span>
+                </m.span>
+              </FilterCardHoverLift>
+            </FilterCardIconWell>
 
-                {layout === "sheet" ? (
-                  <>
-                    <span
-                      className={cn(
-                        "mt-0.5 max-w-full truncate text-xs",
-                        checked && "font-medium",
-                      )}
-                    >
-                      {label}
-                    </span>
-                    <CountRoll
-                      value={count}
-                      className="text-[11px] tabular-nums text-muted-foreground"
-                    />
-                  </>
-                ) : (
-                  <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-                    <span
-                      className={cn("truncate text-xs", checked && "font-medium")}
-                    >
-                      {label}
-                    </span>
-                    <CountRoll
-                      value={count}
-                      className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground"
-                    />
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </LazyMotion>
-
-      {/* What the section did to the list, and the one line the screen reader
-          hears. Nothing selected says nothing. */}
-      <p
-        aria-live="polite"
-        className="mt-2 text-[11px] leading-snug text-muted-foreground empty:mt-0"
-      >
-        {outcome}
-      </p>
-      </CollapsibleBody>
-    </section>
+            <FilterCardTail
+              layout={layout}
+              label={label}
+              checked={checked}
+              renderCount={(className) => (
+                <CountRoll value={count} className={className} />
+              )}
+            />
+          </button>
+        );
+      })}
+    </FilterCardSection>
   );
 }

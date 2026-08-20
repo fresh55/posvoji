@@ -1,5 +1,6 @@
 "use client";
 
+import { LazyMotion, domAnimation } from "motion/react";
 import { CountRoll } from "@/components/filters/filter-card";
 import {
   FilterGroupList,
@@ -9,6 +10,7 @@ import {
   type HomeSection,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
@@ -70,9 +72,17 @@ export function FilterSidebar({
         <h2 className="flex items-center gap-2 text-sm font-medium">
           {messages.filters}
           {activeSections > 0 && (
-            <span className="inline-flex min-w-4.5 items-center justify-center rounded-full border border-[var(--filter-accent-border)]/50 bg-[var(--filter-accent)] px-1.5 py-px text-[10px] font-medium leading-none tabular-nums text-[var(--filter-accent-foreground)] animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
-              <CountRoll value={activeSections} />
-            </span>
+            // Same badge the mobile sheet already shows next to "Filtri". Its
+            // own LazyMotion: unlike the sections below, nothing here already
+            // opens one for CountRoll to read domAnimation from.
+            <LazyMotion features={domAnimation}>
+              <Badge
+                variant="secondary"
+                className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
+              >
+                <CountRoll value={activeSections} />
+              </Badge>
+            </LazyMotion>
           )}
         </h2>
         <Button

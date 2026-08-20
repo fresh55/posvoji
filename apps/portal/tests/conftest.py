@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from django.contrib.auth import get_user_model
 
+from core.dataset import clear_cache
 from core.models import Shelter, ShelterMembership
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -36,6 +37,14 @@ def make_animal(animal_id: str, shelter: Shelter, **overrides) -> dict:
     return animal
 
 
+@pytest.fixture(autouse=True)
+def fresh_dataset_cache():
+    """No parsed dataset survives from one test into the next."""
+    clear_cache()
+    yield
+    clear_cache()
+
+
 @pytest.fixture
 def dataset_file(settings, tmp_path):
     """Points DATASET_PATH at a writable file and returns a writer for it."""
@@ -45,6 +54,10 @@ def dataset_file(settings, tmp_path):
     def write(animals: list[dict]) -> Path:
         payload = {"generatedAt": "2026-08-18T08:00:00.000Z", "animals": animals}
         path.write_text(json.dumps(payload), encoding="utf-8")
+        # Two writes in one test can land in the same filesystem timestamp
+        # tick, which the mtime-keyed cache cannot see. Real runs rewrite the
+        # file minutes apart.
+        clear_cache()
         return path
 
     write.path = path

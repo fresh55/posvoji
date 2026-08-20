@@ -138,27 +138,16 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
     date_hierarchy = "updated_at"
     actions = ("accept_the_crawl", "keep_the_correction")
 
-    # Set for the duration of one changelist render, see changelist_view.
-    _index = None
-
     def get_queryset(self, request):
         # The crawl state of every row needs its shelter slug, so the join is
         # worth doing once instead of once per row.
         return super().get_queryset(request).select_related("shelter")
 
-    def changelist_view(self, request, extra_context=None):
-        # crawl_state is called per row and is handed only the row, so the
-        # dataset for this page is read here and kept on the admin instance.
-        self._index = animal_index()
-        try:
-            return super().changelist_view(request, extra_context)
-        finally:
-            self._index = None
-
     @admin.display(description="crawl")
     def crawl_state(self, obj: AnimalOverride) -> str:
-        index = self._index if self._index is not None else animal_index()
-        animal = index.get((obj.shelter.slug, obj.animal_id))
+        # Called once per row. The dataset is parsed once per version of the
+        # file, so this is an index build, not a re-read of animals.json.
+        animal = animal_index().get((obj.shelter.slug, obj.animal_id))
         return STATE_LABELS[override_state(obj, animal)]
 
     @admin.display(description="crawl report")
@@ -174,6 +163,39 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
             return "in step with the crawl"
         return "\n".join(describe(conflict) for conflict in conflicts)
 
+    def _resolve_conflicts(self, request, queryset, resolve) -> int:
+        """Applies one resolution to every conflicting field in the selection.
+
+        Both actions walk the same ground: find the conflicts, decide each
+        one, then record the re-taken baseline against the editor. Only the
+        decision differs, so it is the only thing passed in. resolve is called
+        per conflict with the override, the conflict, the crawl's current
+        values and the baseline being rebuilt, and changes those in place.
+
+        Returns the number of fields it touched.
+        """
+        index = animal_index()
+        touched = 0
+        for override in queryset.select_related("shelter"):
+            animal = index.get((override.shelter.slug, override.animal_id))
+            conflicts = conflicts_for(override, animal)
+            # No conflicts also covers an override with no matching animal,
+            # which is not something either action can resolve.
+            if not conflicts:
+                continue
+            crawled = crawled_values(animal)
+            baseline = dict(override.baseline)
+            for conflict in conflicts:
+                resolve(override, conflict, crawled, baseline)
+            override.baseline = baseline
+            # An override with nothing left in its baseline has nothing
+            # recorded against the crawl, so it carries no time either.
+            override.baseline_at = timezone.now() if baseline else None
+            override.updated_by = request.user
+            override.save()
+            touched += len(conflicts)
+        return touched
+
     @admin.action(description="Accept the crawl for conflicting fields")
     def accept_the_crawl(self, request, queryset):
         """Drops the shelter's value for every field whose source has moved.
@@ -181,22 +203,12 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
         Only the conflicting fields are cleared. The rest of the correction is
         untouched, because nothing has happened to it.
         """
-        index = animal_index()
-        cleared = 0
-        for override in queryset.select_related("shelter"):
-            animal = index.get((override.shelter.slug, override.animal_id))
-            conflicts = conflicts_for(override, animal)
-            if not conflicts:
-                continue
-            baseline = dict(override.baseline)
-            for conflict in conflicts:
-                setattr(override, COLUMN_BY_JSON_KEY[conflict.field], None)
-                baseline.pop(conflict.field, None)
-            override.baseline = baseline
-            override.baseline_at = timezone.now() if baseline else None
-            override.updated_by = request.user
-            override.save()
-            cleared += len(conflicts)
+
+        def hand_back(override, conflict, crawled, baseline):
+            setattr(override, COLUMN_BY_JSON_KEY[conflict.field], None)
+            baseline.pop(conflict.field, None)
+
+        cleared = self._resolve_conflicts(request, queryset, hand_back)
         self.message_user(request, f"{cleared} field(s) handed back to the crawl")
 
     @admin.action(description="Keep the correction, clear the conflict")
@@ -207,20 +219,9 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
         and goes on winning. This records that a human has seen where the
         source moved to and still prefers the shelter's answer.
         """
-        index = animal_index()
-        kept = 0
-        for override in queryset.select_related("shelter"):
-            animal = index.get((override.shelter.slug, override.animal_id))
-            conflicts = conflicts_for(override, animal)
-            if not conflicts:
-                continue
-            crawled = crawled_values(animal)
-            baseline = dict(override.baseline)
-            for conflict in conflicts:
-                baseline[conflict.field] = crawled[conflict.field]
-            override.baseline = baseline
-            override.baseline_at = timezone.now()
-            override.updated_by = request.user
-            override.save()
-            kept += len(conflicts)
+
+        def re_take(override, conflict, crawled, baseline):
+            baseline[conflict.field] = crawled[conflict.field]
+
+        kept = self._resolve_conflicts(request, queryset, re_take)
         self.message_user(request, f"{kept} correction(s) confirmed against the crawl")

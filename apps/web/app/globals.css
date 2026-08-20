@@ -2,10 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Dark mode arrives through the media query below, which swaps tokens without
-   ever setting a .dark class. The variant has to follow the same rule, or every
-   dark: utility silently never fires. The .dark branch is kept so the class
-   block at line 127 still works if a toggle is ever added. */
+/* Dark mode arrives through the prefers-color-scheme block below, which swaps
+   tokens without ever setting a .dark class. The variant has to match on the
+   same terms, or every dark: utility silently never fires. The media branch
+   repeats that block's :root:not(.light) selector so the two cannot drift. The
+   .dark branch is kept for the class block, which a toggle would still use. */
 @custom-variant dark {
   &:is(.dark *) {
     @slot;
@@ -220,6 +221,15 @@
   }
 }
 
+@utility rounded-ui {
+  border-radius: var(--radius-ui);
+}
+
+@utility rounded-ui-top {
+  border-top-left-radius: var(--radius-ui);
+  border-top-right-radius: var(--radius-ui);
+}
+
 /* Registered so a fade eases in rather than snapping. Browsers without
    @property still get the fade, just without the transition. */
 @property --scroll-fade-top {
@@ -253,15 +263,6 @@
     black calc(100% - var(--scroll-fade-bottom, 0) * 2.5rem),
     rgb(0 0 0 / calc(1 - var(--scroll-fade-bottom, 0))) 100%
   );
-}
-
-@utility rounded-ui {
-  border-radius: var(--radius-ui);
-}
-
-@utility rounded-ui-top {
-  border-top-left-radius: var(--radius-ui);
-  border-top-right-radius: var(--radius-ui);
 }
 
 @layer base {

@@ -173,7 +173,7 @@ export function AgeGrowthControl({
           collapse={collapse}
         />
 
-        <CollapsibleBody open={collapse?.open ?? true} id={collapse?.contentId}>
+        <CollapsibleBody collapse={collapse}>
         <p id={hintId} className="sr-only">
           {messages.ageFilterHint}
         </p>

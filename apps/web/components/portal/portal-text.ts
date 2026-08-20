@@ -1,9 +1,11 @@
 // The portal is Slovenian only: its users are shelter staff. The strings stay
 // here rather than in lib/i18n.ts, which carries the bilingual public site.
+// The placeholder syntax is shared with it.
+
+export { interpolate as fill } from "@/lib/i18n";
 
 export const portalText = {
   brand: "Portal za zavetišča",
-  publicSite: "Nazaj na Posvoji.si",
 
   // Login
   loginTitle: "Prijava za zavetišča",
@@ -31,7 +33,6 @@ export const portalText = {
   // Workspace
   loading: "Nalagam …",
   redirecting: "Preusmerjam na prijavo …",
-  signedInAs: "Prijavljeni ste kot {email}",
   logout: "Odjava",
   publicPage: "Javna stran zavetišča",
   chooseShelter: "Izberite zavetišče",
@@ -87,17 +88,4 @@ export const portalText = {
   revert: "Povrni",
   revertField: "Povrni {field} na podatek z vaše strani",
   revertHint: "Povrne podatek, kot je zapisan na vaši spletni strani.",
-  notSet: "Ni podatka",
-  clearAge: "Brez starosti",
-  sexUnknown: "Ni znano",
 } as const;
-
-export function fill(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
-    template,
-  );
-}

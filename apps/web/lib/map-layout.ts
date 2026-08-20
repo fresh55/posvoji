@@ -214,6 +214,19 @@ export function townSelectableValues(town: Town): string[] {
     .map((shelter) => shelter.value);
 }
 
+// Shared by the region and marker components, so a shelter reads the same
+// selection state (all picked, some picked, none picked) wherever it appears.
+export function selectionState(
+  values: string[],
+  selected: string[],
+): boolean | "mixed" {
+  const selectedCount = values.filter((value) =>
+    selected.includes(value),
+  ).length;
+  if (selectedCount === 0) return false;
+  return selectedCount === values.length ? true : "mixed";
+}
+
 // One source of truth for the visible and accessible town label. A cluster is
 // named by its town; a single marker is named by its shelter.
 export function townLabel(town: Town): string {

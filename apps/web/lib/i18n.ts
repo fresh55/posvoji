@@ -423,13 +423,22 @@ export function getMessages(locale: Locale): Messages {
   return messages[locale];
 }
 
+// Fills {name} placeholders. Exported because the portal keeps its own
+// Slovenian-only strings outside Messages but writes placeholders the same way.
+export function interpolate(
+  template: string,
+  values: Record<string, string | number>,
+): string {
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+    template,
+  );
+}
+
 export function translate(
   locale: Locale,
   key: TranslationKey,
   values: Record<string, string | number> = {},
 ): string {
-  return Object.entries(values).reduce(
-    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
-    messages[locale][key],
-  );
+  return interpolate(messages[locale][key], values);
 }

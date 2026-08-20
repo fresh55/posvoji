@@ -7,9 +7,18 @@ import { loadDataset } from "@/lib/dataset";
 // One page per animal in the dataset. They exist so a shared link has
 // something to preview and a crawler has something to read; the index and its
 // dialog remain where people browse.
+// A static export needs at least one path per dynamic route, and a checkout
+// without an exported dataset (CI, a fresh clone) has no animals to name. The
+// placeholder builds the same not-found page a stale link already gets.
+const NO_ANIMALS = [
+  { animal: "ni-zivali", city: "slovenija", shelter: "zavetisce" },
+];
+
 export function generateStaticParams() {
-  const dataset = loadDataset();
-  return (dataset?.animals ?? []).map((animal) => animalPathParts(animal));
+  const params = (loadDataset()?.animals ?? []).map((animal) =>
+    animalPathParts(animal),
+  );
+  return params.length > 0 ? params : NO_ANIMALS;
 }
 
 export const dynamicParams = false;

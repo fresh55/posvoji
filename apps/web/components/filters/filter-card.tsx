@@ -161,6 +161,7 @@ export function FilterCardSection({
   resetAriaLabel,
   layout,
   collapse,
+  sheetColumns = "grid-cols-3",
   children,
   footer,
 }: {
@@ -171,6 +172,8 @@ export function FilterCardSection({
   resetAriaLabel: string;
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
+  /** The sheet's columns, for a section whose labels are too long for three. */
+  sheetColumns?: string;
   children: ReactNode;
   /** What a section says about its cards once they are read together. */
   footer?: ReactNode;
@@ -191,7 +194,7 @@ export function FilterCardSection({
           <div
             className={cn(
               "grid gap-1.5",
-              layout === "sheet" ? "grid-cols-3" : "grid-cols-1",
+              layout === "sheet" ? sheetColumns : "grid-cols-1",
             )}
           >
             {children}

@@ -91,3 +91,60 @@ describe("the družba row", () => {
     ).toBeTruthy();
   });
 });
+
+describe("the housing row", () => {
+  it("stays away when the shelter has not answered", () => {
+    renderFacts({ sex: "female" });
+    expect(screen.queryByRole("list", { name: "Dom" })).toBeNull();
+  });
+
+  it("stays away for an unknown answer, which says nothing", () => {
+    renderFacts({ apartmentOk: "unknown" });
+    expect(screen.queryByRole("list", { name: "Dom" })).toBeNull();
+  });
+
+  it("shows a yes and explains it when asked", async () => {
+    renderFacts({ apartmentOk: "yes" });
+
+    const row = screen.getByRole("list", { name: "Dom" });
+    const button = within(row).getByRole("button");
+    expect(button.textContent).toContain("Primeren za stanovanje");
+
+    button.click();
+    expect(
+      await screen.findByText(
+        "Zavetišče presoja, da lahko Muri živi v stanovanju.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("states a no plainly, with nothing to open", () => {
+    renderFacts({ apartmentOk: "no" });
+
+    const row = screen.getByRole("list", { name: "Dom" });
+    expect(
+      within(row).getByText("Potrebuje več prostora kot stanovanje"),
+    ).toBeTruthy();
+    expect(within(row).queryByRole("button")).toBeNull();
+  });
+});
+
+describe("the special care line", () => {
+  it("says nothing unless the shelter marked the animal", () => {
+    renderFacts({ specialNeeds: false });
+    expect(
+      screen.queryByText(
+        "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
+      ),
+    ).toBeNull();
+  });
+
+  it("asks for the right person rather than warning the visitor off", () => {
+    renderFacts({ specialNeeds: true });
+    expect(
+      screen.getByText(
+        "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
+      ),
+    ).toBeTruthy();
+  });
+});

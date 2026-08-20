@@ -7,12 +7,17 @@ import { OverrideMark, RevertButton } from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
+  PORTAL_SPECIAL_NEEDS_ANSWERS,
   SEX_META,
   SIZE_META,
+  SPECIAL_NEEDS_META,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
+  specialNeedsAnswer,
+  specialNeedsValue,
+  type PortalSpecialNeedsAnswer,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type { PortalSaveState } from "@/hooks/use-portal-animals";
@@ -53,6 +58,8 @@ type Draft = {
   goodWithKids: PortalCompatibility | null;
   goodWithDogs: PortalCompatibility | null;
   goodWithCats: PortalCompatibility | null;
+  apartmentOk: PortalCompatibility | null;
+  specialNeeds: PortalSpecialNeedsAnswer | null;
 };
 
 /** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
@@ -87,6 +94,10 @@ function draftFrom(animal: PortalAnimal): Draft {
     goodWithCats: isPortalCompatibility(animal.goodWithCats)
       ? animal.goodWithCats
       : null,
+    apartmentOk: isPortalCompatibility(animal.apartmentOk)
+      ? animal.apartmentOk
+      : null,
+    specialNeeds: specialNeedsAnswer(animal.specialNeeds),
   };
 }
 
@@ -144,6 +155,16 @@ function buildPatch(
     "goodWithCats",
     draft.goodWithCats,
     isPortalCompatibility(animal.goodWithCats) ? animal.goodWithCats : null,
+  );
+  put(
+    "apartmentOk",
+    draft.apartmentOk,
+    isPortalCompatibility(animal.apartmentOk) ? animal.apartmentOk : null,
+  );
+  put(
+    "specialNeeds",
+    specialNeedsValue(draft.specialNeeds),
+    animal.specialNeeds,
   );
 
   const rawAge = draft.approximateAgeMonths.trim();
@@ -411,6 +432,41 @@ export function AnimalEditor({
               meta={ENERGY_META}
               value={draft.energy}
               onPick={(energy) => set("energy", energy)}
+              disabled={saving}
+            />
+          </Field>
+
+          <Field
+            label={portalText.fieldApartmentOk}
+            overridden={isOverridden(animal, "apartmentOk")}
+            reverting={reverting("apartmentOk", draft.apartmentOk)}
+            onRevert={() => set("apartmentOk", null)}
+            disabled={saving}
+          >
+            <ChoiceGrid
+              label={portalText.fieldApartmentOk}
+              options={PORTAL_COMPATIBILITIES}
+              meta={COMPATIBILITY_META}
+              value={draft.apartmentOk}
+              onPick={(value) => set("apartmentOk", value)}
+              disabled={saving}
+            />
+          </Field>
+
+          <Field
+            label={portalText.fieldSpecialNeeds}
+            overridden={isOverridden(animal, "specialNeeds")}
+            reverting={reverting("specialNeeds", draft.specialNeeds)}
+            onRevert={() => set("specialNeeds", null)}
+            disabled={saving}
+            hint={portalText.specialNeedsHint}
+          >
+            <ChoiceGrid
+              label={portalText.fieldSpecialNeeds}
+              options={PORTAL_SPECIAL_NEEDS_ANSWERS}
+              meta={SPECIAL_NEEDS_META}
+              value={draft.specialNeeds}
+              onPick={(value) => set("specialNeeds", value)}
               disabled={saving}
             />
           </Field>

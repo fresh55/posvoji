@@ -108,12 +108,47 @@ export const ENERGY_META: Record<PortalEnergy, ChoiceMeta> = {
   lively: { label: energyLabel("lively"), icon: ENERGY_ICONS.lively },
 };
 
-/** Answers shared by the three "gets on with" fields (kids, dogs, cats). */
+/**
+ * Answers shared by the yes/no/unknown fields: the three "gets on with" ones
+ * (kids, dogs, cats) and "primeren za stanovanje".
+ */
 export const COMPATIBILITY_META: Record<PortalCompatibility, ChoiceMeta> = {
   yes: { label: "Da", icon: Check },
   no: { label: "Ne", icon: X },
   unknown: { label: "Ni znano", icon: CircleHelp, mutedWhenSelected: true },
 };
+
+/**
+ * specialNeeds is a boolean on the wire, but the editor offers the same
+ * three-card shape as every other unknown-is-an-answer field. This is the
+ * tri-state the cards drive; specialNeedsAnswer/specialNeedsValue convert it
+ * to and from the boolean the API actually stores.
+ */
+export const PORTAL_SPECIAL_NEEDS_ANSWERS = ["yes", "no", "unknown"] as const;
+export type PortalSpecialNeedsAnswer =
+  (typeof PORTAL_SPECIAL_NEEDS_ANSWERS)[number];
+
+/** Same labels and icons as COMPATIBILITY_META, so the two fields read alike. */
+export const SPECIAL_NEEDS_META: Record<PortalSpecialNeedsAnswer, ChoiceMeta> =
+  COMPATIBILITY_META;
+
+/** true/false/null, as the API and the draft state carry it, to the card answer. */
+export function specialNeedsAnswer(
+  value: boolean | null,
+): PortalSpecialNeedsAnswer | null {
+  if (value === true) return "yes";
+  if (value === false) return "no";
+  return null;
+}
+
+/** The card answer back to true/false/null. "unknown" clears the override. */
+export function specialNeedsValue(
+  answer: PortalSpecialNeedsAnswer | null,
+): boolean | null {
+  if (answer === "yes") return true;
+  if (answer === "no") return false;
+  return null;
+}
 
 type StatusMeta = {
   label: string;

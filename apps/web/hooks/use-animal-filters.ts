@@ -8,8 +8,10 @@ import {
   pruneHiddenFilters,
   serializeFilters,
   toggleValues,
+  type CareKey,
   type Filters,
   type GoodWithKey,
+  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -105,6 +107,48 @@ export function useAnimalFilters() {
     [filters],
   );
 
+  const toggleHome = useCallback(
+    (key: HomeKey) => {
+      const next = filters.home.includes(key)
+        ? filters.home.filter((k) => k !== key)
+        : [...filters.home, key];
+      writeFilters({ ...filters, home: next });
+    },
+    [filters],
+  );
+
+  const toggleManyHome = useCallback(
+    (values: HomeKey[]) => {
+      if (values.length === 0) return;
+      writeFilters({
+        ...filters,
+        home: toggleValues(filters.home, values) as HomeKey[],
+      });
+    },
+    [filters],
+  );
+
+  const toggleCare = useCallback(
+    (key: CareKey) => {
+      const next = filters.care.includes(key)
+        ? filters.care.filter((k) => k !== key)
+        : [...filters.care, key];
+      writeFilters({ ...filters, care: next });
+    },
+    [filters],
+  );
+
+  const toggleManyCare = useCallback(
+    (values: CareKey[]) => {
+      if (values.length === 0) return;
+      writeFilters({
+        ...filters,
+        care: toggleValues(filters.care, values) as CareKey[],
+      });
+    },
+    [filters],
+  );
+
   const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
 
   return {
@@ -116,6 +160,10 @@ export function useAnimalFilters() {
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
+    toggleHome,
+    toggleManyHome,
+    toggleCare,
+    toggleManyCare,
     clearAll,
     activeCount: activeFilterCount(filters),
   };

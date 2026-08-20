@@ -5,7 +5,9 @@ import { CountRoll } from "@/components/filters/filter-card";
 import {
   FilterGroupList,
   type CardGroup,
+  type CareSection,
   type GoodWithSection,
+  type HomeSection,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,8 @@ export function FilterSidebar({
   toggles,
   toggleTally,
   goodWith,
+  home,
+  care,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -41,6 +45,8 @@ export function FilterSidebar({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
   onClearAll: () => void;
   className?: string;
 } & FilterActionContract) {
@@ -102,6 +108,8 @@ export function FilterSidebar({
         toggles={toggles}
         toggleTally={toggleTally}
         goodWith={goodWith}
+        home={home}
+        care={care}
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}

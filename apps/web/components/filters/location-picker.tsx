@@ -3,13 +3,19 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  List,
   LoaderCircle,
   MapPin,
   Navigation,
+  PawPrint,
   Search,
   X,
 } from "lucide-react";
+import { MapPickCard } from "@/components/filters/map-pick-card";
+import { MiniMap } from "@/components/filters/mini-map";
 import { MunicipalityFinder } from "@/components/filters/municipality-finder";
 import {
   FOUND_ANIMAL_PARAM,
@@ -17,7 +23,14 @@ import {
 } from "@/lib/found-animal";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { ResultCount } from "@/components/filters/result-count";
-import { ShelterMap, anyRegionMixed } from "@/components/filters/shelter-map";
+import { EmptyMarkerGlyph } from "@/components/filters/map-marker";
+import {
+  ShelterMap,
+  anyEmptyMarker,
+  anyRegionMixed,
+  anyRegionSelected,
+  type MapPick,
+} from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -38,11 +51,25 @@ import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
+import type { ShelterSummary } from "@/lib/shelter-summary";
 import { looksLikePostcode } from "@/lib/postal-lookup";
 import { cn } from "@/lib/utils";
 
-// The map legend, drawn in two places (a corner of the map canvas md+, an
-// in-flow row on phones) from one component so they cannot drift apart.
+// The ground a density swatch sits on, so its alpha composites over something
+// close to the land a region fill actually composites over rather than over
+// whatever happens to be behind the legend. The stage's own paper is
+// --muted at 40% opacity over --background, which is the pair named in the
+// audit; --map-abroad, the inert land tone under a region before its own
+// fill lands, sits within 0.02 lightness of that mix in both themes (0.988
+// vs 0.972 on light, 0.195 vs 0.215 on dark), so the paper mix alone stands
+// in for both without a second blend to maintain.
+const LEGEND_SWATCH_GROUND =
+  "color-mix(in oklch, var(--muted) 40%, var(--background))";
+
+// The map legend. Both renderings live in the stage's bottom-left corner over
+// the paper, and both come out of this one component so they cannot drift
+// apart: a stacked column md+, a wrapping row on phones, where the corner is
+// the width of the screen and a column of it would be a wall.
 //
 // It explains what nobody can guess and nothing else. The density ramp is the
 // one encoding with no other way in, so it is always here. Everything else
@@ -55,7 +82,9 @@ function MapLegend({
   highlightedDensity,
   onHoverDensity,
   onLeaveDensity,
+  hasSelectedRegion,
   hasMixedRegion,
+  hasEmptyMarker,
   origin,
   messages,
 }: {
@@ -63,9 +92,15 @@ function MapLegend({
   highlightedDensity: number | null;
   onHoverDensity: (index: number) => void;
   onLeaveDensity: () => void;
+  /** At least one region is fully picked right now, so the solid selection
+   *  green is on the map and needs telling apart from the density ramp. */
+  hasSelectedRegion: boolean;
   /** At least one region is partly picked right now, so the hatch on the map
    *  is a state worth naming. */
   hasMixedRegion: boolean;
+  /** At least one shelter with nothing listed is drawn as a hollow circle right
+   *  now. Only the panel variant acts on it: see the row below. */
+  hasEmptyMarker: boolean;
   origin: LatLon | undefined;
   messages: ReturnType<typeof useI18n>["messages"];
 }) {
@@ -76,7 +111,7 @@ function MapLegend({
         "leading-none text-muted-foreground",
         variant === "panel"
           ? "flex flex-col gap-y-1 text-[10px]"
-          : "order-last mt-3 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] md:hidden",
+          : "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] md:hidden",
       )}
     >
       <span className="flex items-center gap-2">
@@ -97,18 +132,55 @@ function MapLegend({
               className="cursor-help p-0.5"
               onMouseEnter={() => onHoverDensity(index)}
             >
+              {/* Two layers, not one. A region's fill composites over the
+                  land it sits on, not over whatever happens to be behind the
+                  legend; painting the ramp's alpha straight onto this panel
+                  used its own near-black dark background as the ground
+                  instead, which is darker than the land the map actually
+                  uses and compressed all five steps into the same corner of
+                  the scale. The underlay is LEGEND_SWATCH_GROUND, the
+                  opaque stand-in for that land; the map's own ink and alpha
+                  ride on top of it unchanged, --map-density-fill at the
+                  DENSITY_STEPS opacity. */}
               <span
                 className={cn(
-                  "block size-2 rounded-[2px] bg-foreground transition-shadow",
+                  "relative block size-2 overflow-hidden rounded-[2px] transition-shadow",
                   highlightedDensity === index && "ring-1 ring-foreground/30",
                 )}
-                style={{ opacity }}
-              />
+                style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
+              >
+                <span
+                  aria-hidden
+                  className="absolute inset-0 bg-[var(--map-density-fill)]"
+                  style={{ opacity }}
+                />
+              </span>
             </span>
           ))}
         </span>
         <span>{messages.moreAnimals}</span>
       </span>
+
+      {/* The solid selection green, the moment a region first wears it. The
+          ramp and the selected state share one hue on purpose, so the legend
+          has to say which green is the answer the visitor gave: without this
+          row a first-timer can read the darkest density step as "already
+          picked" and nothing on the map corrects them. Both variants, because
+          regions are selectable on phones too. */}
+      {hasSelectedRegion && (
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            // --map-selected-fill, not --filter-accent-border: the legend has
+            // to show the fill the map actually draws for a chosen region
+            // (see shelter-map.tsx REGION_LOOK.selected and the token's own
+            // comment in globals.css), or the swatch would teach a colour the
+            // country never shows.
+            className="size-2.5 shrink-0 rounded-[2px] border border-[var(--filter-accent-strong)] bg-[var(--map-selected-fill)]"
+          />
+          {messages.selectedRegionLegend}
+        </span>
+      )}
 
       {/* The hatch a mixed/partly-selected region gets on the map, at legend
           size. Only while such a region exists, which is the moment the hatch
@@ -126,6 +198,21 @@ function MapLegend({
             }}
           />
           {messages.mixedRegionLegend}
+        </span>
+      )}
+
+      {/* The hollow circle a shelter with no animals listed gets. Every other
+          mark on the map either answers on hover or earns a row here the
+          moment it appears; this one is too small to aim a pointer at, so the
+          callout never gets asked and the row is the only way to learn it.
+          Panel only, unlike the hatch: markers are drawn at md+ and the inline
+          variant is the phone rendering, where no marker exists to explain.
+          The glyph comes from map-marker.tsx, drawn from the same classes and
+          the same radius-to-stroke proportion the real circle uses. */}
+      {variant === "panel" && hasEmptyMarker && (
+        <span className="flex items-center gap-1.5">
+          <EmptyMarkerGlyph className="size-3.5 shrink-0" />
+          {messages.emptyShelterLegend}
         </span>
       )}
 
@@ -169,7 +256,9 @@ function fold(text: string): string {
     .toLowerCase();
 }
 
-// The map needs dialog width. Narrow screens use regions and the exact list.
+// The map is the dialog: a near-full-viewport plate with the list, the title,
+// the credits and the confirm button floating on it. Narrow screens keep the
+// same plate and move the list into a bottom sheet.
 export function LocationPicker({
   options,
   counts,
@@ -180,6 +269,7 @@ export function LocationPicker({
   species,
   municipalities,
   offSite,
+  summaries,
   deepLink,
 }: {
   options: FilterOption[];
@@ -199,6 +289,10 @@ export function LocationPicker({
    *  and as rows linking to their shelter page, so the map answers "where are
    *  Slovenia's shelters" and not just "where are ours". */
   offSite?: FilterOption[];
+  /** Per-shelter species breakdown and longest wait, keyed by shelter id, for
+   *  the card a map click leaves in the panel. Computed once in the grid from
+   *  the whole dataset. */
+  summaries?: Map<string, ShelterSummary>;
   /** Which rendered instance answers the found-animal strip and the ?najdena
    *  deep link. The picker is mounted twice (desktop toolbar, mobile dock);
    *  only the one visible at the current breakpoint may open, or two dialogs
@@ -216,6 +310,19 @@ export function LocationPicker({
   // The občina behind those shelters, by name, so the map can draw the line
   // from where the animal was found to the shelter answering for it.
   const [muniName, setMuniName] = useState<string | null>(null);
+  // What the last map click was about, and the card that answers it. Null
+  // until something is clicked, and again once the card is dismissed. A new
+  // click replaces it: one card at a time, always about the newest click.
+  const [pick, setPick] = useState<MapPick | null>(null);
+  const pickCardRef = useRef<HTMLDivElement>(null);
+  // The panel has two docks and they fold independently, because they open on
+  // opposite defaults: a desktop has room for the list beside the map and
+  // starts with it out, a phone does not and starts with the map whole. One
+  // boolean would have had to guess the breakpoint at click time; two let the
+  // control that is actually on screen own its own state, and the other one
+  // sits in a display:none branch where nothing can reach it.
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // The found-animal strip and the ?najdena URL both land here: open the
   // dialog straight in municipality mode. Guarded by breakpoint because two
@@ -351,13 +458,37 @@ export function LocationPicker({
   // Picking a region picks every shelter in it, which is as fine as a map of a
   // country can honestly be. The list is where you drop the ones you did not
   // mean, so bringing the first of them into view is what shows what happened.
-  const pickRegion = useCallback(
-    (values: string[]) => {
+  //
+  // The toggle is unchanged and still lands in one click. What is added is the
+  // card: the same click also says what it just picked, in the panel, where
+  // there is room to say it.
+  const handlePick = useCallback(
+    (values: string[], from: MapPick) => {
       onToggleMany(values);
       rowRefs.current.get(values[0])?.scrollIntoView({ block: "nearest" });
+      setPick(from);
+      // The card lives in the panel, so a click has to bring the panel out
+      // wherever it is folded. Both docks, because only the one at the
+      // current breakpoint is on screen and the other is a no-op there.
+      setPanelOpen(true);
+      setSheetOpen(true);
+      // The card lives in the shelter panel, so a click while the found-animal
+      // tab is open comes back to it. Same clearing the tab button does.
+      setMuniMode(false);
+      setMuniShelterIds(null);
+      setMuniName(null);
     },
     [onToggleMany],
   );
+
+  // Bring the card into view when it appears. The panel scrolls on its own in
+  // both docks, so a click made with the list scrolled down would otherwise
+  // put its answer above the fold; "nearest" leaves an already-visible card
+  // where it is. Focus is deliberately untouched: the clicked region or marker
+  // keeps it, so the map can be walked on.
+  useEffect(() => {
+    if (pick) pickCardRef.current?.scrollIntoView({ block: "nearest" });
+  }, [pick]);
 
   // Search narrows the list only. The map keeps every pin, so the country
   // stays whole while you type.
@@ -378,6 +509,19 @@ export function LocationPicker({
   // walks every town through a point-in-polygon lookup.
   const hasMixedRegion = useMemo(
     () => anyRegionMixed(pins, selected),
+    [pins, selected],
+  );
+  // And for the solid selection green, so the row that says which green means
+  // "chosen" arrives with the first fully picked region.
+  const hasSelectedRegion = useMemo(
+    () => anyRegionSelected(pins, selected),
+    [pins, selected],
+  );
+  // Same deal for the hollow circles: asked of the towns the map lays out, so
+  // the row and the circles appear together. Only the panel legend reads it,
+  // because markers are md+ only.
+  const hasEmptyMarker = useMemo(
+    () => anyEmptyMarker(pins, selected),
     [pins, selected],
   );
   const nearbyOn = state.status === "on";
@@ -430,6 +574,11 @@ export function LocationPicker({
           setMuniMode(false);
           setMuniShelterIds(null);
           setMuniName(null);
+          setPick(null);
+          // Neither dock's fold survives a close: reopening always lands on
+          // the panel on a desktop and on the map on a phone.
+          setPanelOpen(true);
+          setSheetOpen(false);
         }
       }}
     >
@@ -444,7 +593,17 @@ export function LocationPicker({
           className="max-w-[14rem] justify-between gap-2 font-normal"
         >
           <span className="flex min-w-0 items-center gap-1.5">
-            <MapPin className="size-3.5 opacity-60" aria-hidden />
+            {/* A live preview, not a stand-in icon: the same region shapes and
+                the same density computation the dialog's map draws from
+                (lib/map-layout.ts), so the trigger already shows what is
+                behind it before it is ever clicked. aria-hidden because the
+                label carries the meaning; a screen reader has nothing to gain
+                from a tiny country shape. */}
+            <MiniMap
+              pins={pins}
+              selected={selected}
+              className="h-4 w-auto shrink-0 text-foreground opacity-60"
+            />
             <span className="truncate">{label}</span>
           </span>
           <ChevronDown className="size-3.5 opacity-50" aria-hidden />
@@ -452,7 +611,17 @@ export function LocationPicker({
       </DialogTrigger>
 
       <DialogContent
-        className="max-w-[min(88rem,calc(100vw-2rem))] md:h-[min(88dvh,56rem)] md:overflow-hidden"
+        // Near the whole viewport, and the map is what fills it. The plate is
+        // no longer a column of the dialog; it is the dialog, and the list,
+        // the title, the credits and the confirm button float on it. p-0 and
+        // gap-0 because nothing here is in flow: every piece is placed against
+        // an edge of the stage below.
+        //
+        // The dialog's own border is the map's neatline now. The plate used to
+        // carry its own hairline to say where the map ended; full bleed leaves
+        // that job to the frame the dialog already draws.
+        className="h-[min(94dvh,60rem)] w-[min(96vw,110rem)] max-h-none max-w-none gap-0 overflow-hidden p-0"
+        showCloseButton={false}
         closeLabel={messages.close}
         onEscapeKeyDown={(event) => {
           // Escape empties the box it is pressed in first, and only closes the
@@ -487,48 +656,49 @@ export function LocationPicker({
           {label}
         </p>
 
-        <DialogHeader className="shrink-0">
-            <DialogTitle>{messages.whereSearching}</DialogTitle>
-            <DialogDescription>
-              <span className="hidden md:inline">
-                {messages.mapInstructionsDesktop}
-              </span>
-              <span className="md:hidden">
-                {messages.mapInstructionsMobile}
-              </span>
-            </DialogDescription>
-        </DialogHeader>
+        {/* The stage. Everything below is absolutely placed against one of its
+            edges; the map's paper ground is the dialog's own background, so
+            the letterbox a fixed-aspect SVG leaves has something to land on
+            whatever the viewport's shape. */}
+        <div className="relative h-full w-full overflow-hidden bg-muted/40">
+          {/* The recenter container, and the whole of the recentering. The map
+              is given only the space the panel leaves, and the SVG letterboxes
+              inside it (preserveAspectRatio, the browser's default), so no
+              label, no marker and no scale bar can ever end up under the
+              panel: not because a transform was tuned to miss it, but because
+              the picture is never drawn there in the first place.
 
-        {/* md+: the map owns the dialog. It fills every pixel the fixed-height
-            dialog gives it, and the list is a slim sidebar scrolling on its
-            own. Below md the two stack in the same order (map, then search and
-            list), and the whole dialog scrolls instead.
+              Panel out: the full width less the panel, its right inset and the
+              gutter before it, which is 24 + 0.75 + 0.75 rem. Folded: the same
+              two gutters around a 3rem rail. Below md the panel is a bottom
+              sheet instead, so what the map gives up is height above the peek
+              bar and the width stays whole.
 
-            Below md this is one flex column and the map's column is display:
-            contents, so the map, the inputs and the legend are all siblings in
-            it and the legend can be ordered last. On md+ the contents goes
-            away, the map column is a real column again, and the legend sits
-            under the map where it belongs. */}
-        <div className="flex flex-col md:grid md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(16rem,19rem)] md:gap-8">
-          <div className="contents md:flex md:flex-col md:gap-3 md:min-h-0">
-            {/* The map's own aspect ratio (320:210) sets its height from its
-                width below md, so height is capped there by capping the width
-                a calc() derives from it. On md+ the wrapper has a real height
-                and the SVG scales to fit it instead. */}
-            {/* A quiet canvas behind the map, for the letterboxed space a
-                fixed-aspect SVG leaves in a fluid dialog. The map draws its
-                own geographic context (sea and neighbouring land) inside the
-                viewBox, fading out toward the edges so it meets this canvas
-                without a seam.
-                The hairline around it is the neatline every printed map has:
-                it says where the map ends, which the fade deliberately does
-                not. Full border-border and not a fraction of it, because in
-                dark mode that token is already only white at a tenth. */}
-            <div className="relative mx-auto w-full max-w-[calc(42vh*32/21)] rounded-ui border bg-muted/40 p-2 sm:p-3 md:mx-0 md:min-h-0 md:flex-1 md:max-w-none">
+              width is what transitions, not a transform: a transform would
+              scale the plate's type and hairlines mid-flight, and this SVG's
+              hairlines are a quarter of a unit wide. Checked live at 1280,
+              1440 and 1920 and it runs clean, because the only work per frame
+              is one SVG relayout of paths that are already computed. */}
+          <div
+            data-map-stage={panelOpen ? "panel" : "rail"}
+            className={cn(
+              "absolute inset-x-0 top-0 flex items-center justify-center p-2 sm:p-3",
+              "md:right-auto md:bottom-0 md:p-4",
+              "transition-[width,bottom] duration-500 ease-out motion-reduce:transition-none",
+              // Below md the sheet takes height instead of width, so the same
+              // recentering happens on the other axis: the container gives up
+              // exactly what the sheet takes and the plate recentres in what
+              // is left. Nothing is ever drawn under the sheet either.
+              sheetOpen ? "bottom-[55dvh]" : "bottom-13",
+              panelOpen
+                ? "md:w-[calc(100%-25.5rem)]"
+                : "md:w-[calc(100%-4.5rem)]",
+            )}
+          >
               <ShelterMap
                 pins={pins}
                 selected={selected}
-                onPick={pickRegion}
+                onPick={handlePick}
                 origin={origin}
                 highlightedValue={muniMode ? null : hoveredRowValue}
                 matchedValues={
@@ -555,55 +725,119 @@ export function LocationPicker({
                 }
                 onHoverShelters={setHoveredMarkerValues}
                 highlightedDensity={highlightedDensity}
-                className="md:h-full"
+                // md+: the SVG takes the whole container and lets its own
+                // preserveAspectRatio letterbox the viewBox inside it. That is
+                // the letterboxing: no aspect-ratio arithmetic on this side,
+                // and the paper it leaves showing is the dialog's ground.
+                // Below md it keeps the component's own h-auto instead, so the
+                // plate is exactly as tall as 320:210 makes it and no taller,
+                // capped at the container so a raised sheet shrinks it rather
+                // than pushing it out of the frame.
+                className="max-h-full md:h-full"
               />
+          </div>
 
-              {/* Real atlases put the legend on the map: the canvas's own
-                  bottom-right corner, md+ only. Slovenia's south-east border
-                  slopes up and away from there, which keeps it reliably clear
-                  of the country's own shape; the faint "abroad" land it sits
-                  on is the atlas convention anyway. No card around it: one row
-                  of 10px muted text is the same contrast the inline legend
-                  already carries over the page, and a bordered blurred box
-                  around it was furniture the map had to pay for. The canvas
-                  padding keeps a small margin off both edges. Below md the
-                  canvas is too small for map furniture, so this stays hidden
-                  there and the inline legend takes over instead. */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden justify-end p-2 sm:p-3 md:flex">
-                <div className="pointer-events-auto ml-auto w-fit">
-                  <MapLegend
-                    variant="panel"
-                    highlightedDensity={highlightedDensity}
-                    onHoverDensity={setHighlightedDensity}
-                    onLeaveDensity={() => setHighlightedDensity(null)}
-                    hasMixedRegion={hasMixedRegion}
-                    origin={origin}
-                    messages={messages}
-                  />
-                </div>
-              </div>
+          {/* The title, floated on the paper rather than stacked above the
+              map. DialogHeader stays whole because radix names the dialog off
+              the title and describes it off the description; only where they
+              are drawn has changed. The subtitle stays in the chip: it is the
+              one line that says the map is clickable, and a title attribute
+              would have said it to nobody with a touch screen. */}
+          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,60%)]">
+            <DialogHeader className="pointer-events-auto rounded-ui border bg-background/85 px-3 py-2 shadow-xs backdrop-blur">
+              <DialogTitle className="text-base leading-none">
+                {messages.whereSearching}
+              </DialogTitle>
+              <DialogDescription className="text-[11px] leading-snug">
+                <span className="hidden md:inline">
+                  {messages.mapInstructionsDesktop}
+                </span>
+                <span className="md:hidden">
+                  {messages.mapInstructionsMobile}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          {/* The dialog's own close, drawn here instead of by DialogContent:
+              the built-in one is pinned to the top-right corner, which is
+              where the panel now docks. Over the paper on the opposite side of
+              the title, in the same quiet register as the rest of the floating
+              chrome. */}
+          <DialogClose asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              // size-11 below md is the 44px touch target the mobile
+              // hardening asks of every control in this dialog; the pointer
+              // breakpoint gets the smaller square back.
+              className="absolute right-3 top-3 z-30 size-11 bg-background/85 shadow-xs backdrop-blur md:size-8"
+            >
+              <X className="size-4" aria-hidden />
+              <span className="sr-only">{messages.close}</span>
+            </Button>
+          </DialogClose>
+
+          {/* Bottom-left, over the paper: the legend and the credits, which is
+              where a printed sheet puts them. The plate's own furniture, the
+              scale bar, keeps the bottom-right of the viewBox, so the two
+              never meet; the confirm pill takes the dialog's bottom-right
+              corner, which is outside the map's container while the panel is
+              out and sixty-odd pixels of dialog edge while it is folded, well
+              under the scale bar's own height above the frame.
+
+              Below md the stack rides above the peek bar, and steps out of the
+              way entirely once the sheet is up: sixty percent of the screen is
+              already the list, and the map under it has nothing left to
+              explain. */}
+          <div
+            className={cn(
+              // Below md this sits above the confirm pill rather than beside
+              // it: a phone has no room for two things in one corner, and the
+              // credits set at 10px in half a screen's width are five lines of
+              // hyphenated nothing.
+              "pointer-events-none absolute bottom-28 left-3 z-10 flex max-w-[26rem] flex-col gap-1 md:bottom-3",
+              sheetOpen && "max-md:hidden",
+            )}
+          >
+            <div className="pointer-events-auto hidden w-fit md:block">
+              <MapLegend
+                variant="panel"
+                highlightedDensity={highlightedDensity}
+                onHoverDensity={setHighlightedDensity}
+                onLeaveDensity={() => setHighlightedDensity(null)}
+                hasSelectedRegion={hasSelectedRegion}
+                hasMixedRegion={hasMixedRegion}
+                hasEmptyMarker={hasEmptyMarker}
+                origin={origin}
+                messages={messages}
+              />
             </div>
 
-            {/* Ordered last below md: on a phone the legend is the least of
-                what the panel is for, and the inputs it used to push down are
-                the most. On md+ this stays hidden; the panel on the canvas
-                takes over there (see MapLegend above). */}
-            <MapLegend
-              variant="inline"
-              highlightedDensity={highlightedDensity}
-              onHoverDensity={setHighlightedDensity}
-              onLeaveDensity={() => setHighlightedDensity(null)}
-              hasMixedRegion={hasMixedRegion}
-              origin={origin}
-              messages={messages}
-            />
+            {/* The phone's legend, unchanged in what it says and in which
+                rows it carries. It wraps rather than stacking, because on a
+                phone this strip is the width of the screen. */}
+            <div className="pointer-events-auto md:hidden">
+              <MapLegend
+                variant="inline"
+                highlightedDensity={highlightedDensity}
+                onHoverDensity={setHighlightedDensity}
+                onLeaveDensity={() => setHighlightedDensity(null)}
+                hasSelectedRegion={hasSelectedRegion}
+                hasMixedRegion={hasMixedRegion}
+                // Passed and ignored: the inline legend is the phone rendering
+                // and phones draw no markers, so the row it would feed stays
+                // out of that variant. Kept in the shared prop shape so the two
+                // legends are still one component with one contract.
+                hasEmptyMarker={hasEmptyMarker}
+                origin={origin}
+                messages={messages}
+              />
+            </div>
 
             {/* CC BY 4.0 requires attribution, so this stays visible, just
-                quieter than the legend it used to share a row with. Ordered
-                last of everything in the column: below md it sinks with the
-                legend, on md+ it already follows the legend as the next
-                sibling. */}
-            <p className="order-last mt-1 shrink-0 text-[10px] leading-tight text-muted-foreground/70 md:order-none">
+                quieter than the legend it sits under. */}
+            <p className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70">
               {messages.regionBoundaries}:{" "}
               <a
                 href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
@@ -613,47 +847,181 @@ export function LocationPicker({
               >
                 GURS
               </a>
-              , CC BY 4.0.
+              , CC BY 4.0.{" "}
+              {/* Second sentence in the same paragraph, not a second line: the
+                  relief is one more thing this map is drawn from, and it does
+                  not deserve a block of its own under the legend. */}
+              {messages.reliefSource}:{" "}
+              <a
+                href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
+                className="underline underline-offset-2 hover:text-foreground"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Terrain Tiles
+              </a>{" "}
+              (AWS Open Data), SRTM / NASA.
             </p>
           </div>
 
-          <div className="mt-5 flex flex-col md:mt-0 md:min-h-0 md:border-l md:pl-6">
-            {municipalities && municipalities.length > 0 && (
-              // Two questions, two tabs: filter by shelter, or start from a
-              // found animal's občina. Labeled and always visible, so the
-              // second mode is discoverable instead of a footnote. Same shape
-              // as the species tabs, so the site has one tab.
-              <div className="mb-3 flex shrink-0 gap-1">
-                {(
-                  [
-                    { mode: false, label: messages.shelters },
-                    { mode: true, label: messages.muniTab },
-                  ] as const
-                ).map(({ mode, label }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    aria-pressed={muniMode === mode}
-                    onClick={() => {
-                      setMuniMode(mode);
-                      if (!mode) {
-                        setMuniShelterIds(null);
-                        setMuniName(null);
-                      }
-                    }}
-                    className={cn(
-                      "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors",
-                      muniMode === mode
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+          {/* The same closing move the filter sheet has, as a pill on the
+              paper: the count answers "what did my picking do" before the
+              dialog goes away. Bottom-right, under the panel on md+ and above
+              whatever the sheet is currently doing below it, so it is never
+              the thing a phone has to scroll past. */}
+          <div
+            className={cn(
+              "absolute right-3 z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none md:bottom-3",
+              sheetOpen ? "bottom-[calc(55dvh+0.75rem)]" : "bottom-16",
+            )}
+          >
+            <DialogClose asChild>
+              <Button size="lg" className="rounded-full px-5 shadow-lg">
+                {messages.show}
+                <ResultCount
+                  count={resultCount}
+                  species={species}
+                  locale={locale}
+                  announce={false}
+                  variant="inline"
+                  className="justify-start text-current"
+                />
+              </Button>
+            </DialogClose>
+          </div>
+
+          {/* The panel, one element in two docks. On md+ it is a card floated
+              against the right edge of the stage, folding to a rail; below md
+              the same card is a bottom sheet, folding to a peek bar. Both
+              folds are the same DOM with different classes, so the list, the
+              search and the card inside it keep their state and their
+              scroll position across either move. */}
+          <div
+            data-picker-panel={panelOpen ? "open" : "collapsed"}
+            data-picker-sheet={sheetOpen ? "open" : "collapsed"}
+            className={cn(
+              "absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t bg-background/95 shadow-lg backdrop-blur",
+              "transition-[height,width] duration-500 ease-out motion-reduce:transition-none",
+              sheetOpen ? "h-[55dvh] rounded-t-ui" : "h-13",
+              "md:inset-x-auto md:right-3 md:top-16 md:bottom-16 md:h-auto md:rounded-ui md:border",
+              panelOpen ? "md:w-96" : "md:w-12 md:justify-center",
+            )}
+          >
+            {/* The phone's peek bar. The whole strip is the control, because on
+                a sheet the strip is the affordance; naming the active tab and
+                the count is what makes it worth a tap. */}
+            <button
+              type="button"
+              data-picker-peek
+              aria-expanded={sheetOpen}
+              onClick={() => setSheetOpen((current) => !current)}
+              className="flex h-13 shrink-0 items-center gap-2 px-4 text-left md:hidden"
+            >
+              <span className="text-sm font-medium">
+                {muniMode ? messages.muniTab : messages.shelters}
+              </span>
+              {selected.length > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums text-muted-foreground">
+                  {selected.length}
+                </span>
+              )}
+              <ChevronUp
+                className={cn(
+                  "ml-auto size-4 text-muted-foreground transition-transform motion-reduce:transition-none",
+                  sheetOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </button>
+
+            {/* The rail: everything the folded panel still has to say, which is
+                which question is open and how much has been picked. One
+                control, so the whole rail head takes the click. */}
+            {!panelOpen && (
+              <button
+                type="button"
+                data-picker-rail
+                aria-expanded={false}
+                aria-label={messages.expandPanel}
+                onClick={() => setPanelOpen(true)}
+                className="hidden shrink-0 flex-col items-center gap-2 p-2 text-muted-foreground transition-colors hover:text-foreground md:flex"
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+                {muniMode ? (
+                  <PawPrint className="size-4" aria-hidden />
+                ) : (
+                  <List className="size-4" aria-hidden />
+                )}
+                {selected.length > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums">
+                    {selected.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {panelOpen && (
+              <div className="hidden shrink-0 items-center gap-1 px-4 pt-4 pb-2 md:flex">
+                {municipalities && municipalities.length > 0 && (
+                  // Two questions, two tabs: filter by shelter, or start from a
+                  // found animal's občina. Labeled and always visible, so the
+                  // second mode is discoverable instead of a footnote. Same
+                  // shape as the species tabs, so the site has one tab.
+                  <div className="flex min-w-0 shrink gap-1">
+                    {(
+                      [
+                        { mode: false, label: messages.shelters },
+                        { mode: true, label: messages.muniTab },
+                      ] as const
+                    ).map(({ mode, label }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        aria-pressed={muniMode === mode}
+                        onClick={() => {
+                          setMuniMode(mode);
+                          if (!mode) {
+                            setMuniShelterIds(null);
+                            setMuniName(null);
+                          }
+                        }}
+                        data-picker-tab={mode ? "municipality" : "shelters"}
+                        className={cn(
+                          "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors",
+                          muniMode === mode
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  data-picker-collapse
+                  aria-expanded
+                  aria-label={messages.collapsePanel}
+                  onClick={() => setPanelOpen(false)}
+                  className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <ChevronRight className="size-4" aria-hidden />
+                </button>
               </div>
             )}
 
+            {/* Mounted while either dock is out, and hidden at the breakpoint
+                whose dock is folded. One copy of the list, one search box, one
+                pick card, whichever way the panel is currently drawn. */}
+            {(panelOpen || sheetOpen) && (
+              <div
+                className={cn(
+                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-md:pt-1",
+                  !panelOpen && "md:hidden",
+                  !sheetOpen && "max-md:hidden",
+                )}
+              >
             {muniMode && municipalities ? (
               <MunicipalityFinder
                 entries={municipalities}
@@ -665,6 +1033,28 @@ export function LocationPicker({
               />
             ) : (
               <>
+            {/* Above the search boxes and in the flow, so it pushes them down
+                instead of covering them: the click's answer arrives without
+                taking away what was already there. */}
+            {pick && (
+              <MapPickCard
+                pick={pick}
+                rows={rows}
+                counts={counts}
+                selected={selected}
+                summaries={summaries}
+                onToggle={onToggle}
+                onDismiss={() => {
+                  setPick(null);
+                  // The X is inside the panel, so dismissing it would drop
+                  // keyboard focus on the body. Search is where the panel
+                  // starts and where the dialog puts focus on open.
+                  searchRef.current?.focus();
+                }}
+                cardRef={pickCardRef}
+              />
+            )}
+
             <div className="relative shrink-0">
               <Search
                 className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -829,7 +1219,11 @@ export function LocationPicker({
               )}
             </div>
 
-            <div className="mt-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
+            {/* The list scrolls inside the panel at every size. Below md it
+                used to be the dialog that scrolled; the sheet has a fixed
+                height, so the scrolling has to happen here or the peek bar
+                gets pushed off the top of its own sheet. */}
+            <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
               {visibleRows.length === 0 && visibleOffRows.length === 0 ? (
                 <div className="space-y-1.5 px-2 py-2 text-sm text-muted-foreground">
                   <p>
@@ -931,27 +1325,9 @@ export function LocationPicker({
             </div>
               </>
             )}
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* The same closing move the filter sheet has: the count answers "what
-            did my picking do" before the dialog goes away. Sticky below md so
-            it survives the scrolling dialog; the fixed-height desktop layout
-            keeps it in view by itself. */}
-        <div className="sticky bottom-0 -mx-5 -mb-5 mt-1 flex shrink-0 items-center justify-end border-t bg-popover px-5 py-3 md:static md:mx-0 md:mb-0 md:mt-0 md:px-0 md:pb-0">
-          <DialogClose asChild>
-            <Button className="flex-1 md:flex-none md:min-w-44">
-              {messages.show}
-              <ResultCount
-                count={resultCount}
-                species={species}
-                locale={locale}
-                announce={false}
-                variant="inline"
-                className="justify-start text-current"
-              />
-            </Button>
-          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>

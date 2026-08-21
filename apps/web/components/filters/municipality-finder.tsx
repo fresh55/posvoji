@@ -41,6 +41,14 @@ const LAW_URL =
 // this replaced listed all 212 občine; the dialog answers one question.
 const MAX_MATCHES = 8;
 
+// Tap-to-try examples for the empty state, so the box teaches its own input
+// instead of leaving a blank field to guess at. One obvious capital, one from
+// the northeast, one on the coast: three taps also say the lookup covers the
+// whole country, not just Ljubljana. Names, not translations, since a
+// municipality is called the same thing in both locales. Each one resolves to
+// exactly one entry with real coverage; see municipality-finder.test.tsx.
+const EXAMPLE_MUNICIPALITIES = ["Ljubljana", "Maribor", "Koper"];
+
 // The municipality mode of the shelter picker: say where the animal was found
 // and get the shelter responsible for it, what it costs (nothing), and what to
 // do next. The občina can be typed, but a postcode or the device's own position
@@ -203,13 +211,43 @@ export function MunicipalityFinder({
         </button>
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 space-y-3 md:overflow-y-auto md:pr-1">
+      {/* Scrolls at every size now: the panel this sits in is a floating card
+          on md+ and a bottom sheet below it, and both have a fixed height. It
+          used to ride a scrolling dialog on phones, which no longer exists. */}
+      <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {state.status === "error" && (
           <p className="text-sm text-muted-foreground">{state.message}</p>
         )}
 
         {!query.trim() && !guess && !active && state.status !== "error" && (
-          <p className="text-sm text-muted-foreground">{messages.muniHint}</p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{messages.muniHint}</p>
+
+            {/* Fills the void this empty state used to leave below the
+                explainer, and doubles as a hint about what the box takes.
+                Quiet on purpose: these are a teaching aid, not a shortcut
+                worth competing with the search box for attention. Tapping
+                one runs the exact same path as typing it, by writing the
+                same query state the input's own onChange writes. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                {messages.muniExampleLead}
+              </span>
+              {EXAMPLE_MUNICIPALITIES.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => {
+                    setQuery(name);
+                    setPicked(null);
+                  }}
+                  className="inline-flex h-6 items-center rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Shows its work: which postal district the občina came from. */}

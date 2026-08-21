@@ -23,6 +23,7 @@ import type {
   SpeciesFilter,
   ToggleDef,
 } from "@/lib/filters";
+import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 
 // Desktop has enough room for one quiet toolbar. Mobile keeps result and sort
@@ -43,6 +44,7 @@ export function AnimalFilters({
   shelterTally,
   municipalities,
   offSiteShelters,
+  shelterSummaries,
   chips,
   resultCount,
   clearTrailKey,
@@ -72,6 +74,9 @@ export function AnimalFilters({
   /** Registry shelters with no animals on the site, shown inert in the
    *  location picker's map and list. */
   offSiteShelters?: FilterOption[];
+  /** Species breakdown and longest wait per shelter, for the card the map's
+   *  own click leaves in the picker's panel. */
+  shelterSummaries?: Map<string, ShelterSummary>;
   chips: Chip[];
   resultCount: number;
   clearTrailKey: number;
@@ -128,6 +133,7 @@ export function AnimalFilters({
                   species={filters.species}
                   municipalities={municipalities}
                   offSite={offSiteShelters}
+                  summaries={shelterSummaries}
                   deepLink="desktop"
                 />
               </div>
@@ -200,6 +206,7 @@ export function AnimalFilters({
                 species={filters.species}
                 municipalities={municipalities}
                 offSite={offSiteShelters}
+                summaries={shelterSummaries}
                 deepLink="mobile"
               />
             </div>

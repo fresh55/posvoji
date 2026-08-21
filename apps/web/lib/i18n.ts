@@ -58,6 +58,13 @@ const sl = {
   noResults: "Ni zadetkov.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
+  // The zero state gets specific when a shelter selection is the whole
+  // reason for it: dropping only the shelter filter would show results.
+  // Singular/plural picks the verb form for one vs. several zavetišča.
+  // {species} takes one of the speciesAbsence* forms below.
+  noResultsShelterSingular: "Izbrano zavetišče trenutno nima {species}.",
+  noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
+  showFromAllShelters: "Pokaži iz vseh zavetišč",
   clear: "Počisti",
   resetFilters: "Ponastavi",
   resetAgeFilters: "Ponastavi filter starosti",
@@ -112,6 +119,7 @@ const sl = {
   muniHint:
     "Vpiši občino ali poštno številko kraja, kjer je bila žival najdena, in dobiš pristojno zavetišče s kontakti.",
   muniHere: "Uporabi mojo lokacijo",
+  muniExampleLead: "Npr.:",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
   muniNoMatch: "Ni občine z imenom",
@@ -144,16 +152,45 @@ const sl = {
   muniShelterSelected: "Izbrano",
   speciesDogs: "Psi",
   speciesCats: "Mačke",
+  // Genitive plural of each species tab, for sentences built around "nima"
+  // ("nima psov", not "nima psi"). "All" and "other" both read as "živali":
+  // the plural of žival takes the same form in nominative and genitive.
+  speciesAbsenceAll: "živali",
+  speciesAbsenceDogs: "psov",
+  speciesAbsenceCats: "mačk",
+  speciesAbsenceRabbits: "zajčkov",
+  speciesAbsenceOther: "drugih živali",
+  // The card a map click leaves in the panel: what that shelter or region is,
+  // and the one way on from it. "Prikaži živali" and not just "Prikaži",
+  // because the footer button already owns the short form and this one stands
+  // on its own inside the card.
+  showAnimals: "Prikaži živali",
+  longestWaiting: "Najdlje čaka: {name}, {duration}",
+  closePickCard: "Zapri kartico",
+  shelterPickCardLabel: "Izbrano na zemljevidu: {label}",
   lessThanOneKm: "manj kot 1 km",
   fewerAnimals: "Manj živali",
   moreAnimals: "Več živali",
   shelter: "Zavetišče",
   noAnimalsListed: "Trenutno brez objavljenih živali",
   noAnimalsListedHeading: "Trenutno brez objavljenih živali",
+  // The metadata line an empty region's callout carries. Lowercase-calm like
+  // the counts it stands in for, because it answers the same question.
+  noSheltersInRegion: "Ni zavetišč v tej regiji",
+  selectedRegionLegend: "Izbrana regija",
   mixedRegionLegend: "Delno izbrana regija",
+  emptyShelterLegend: "Zavetišče brez živali",
   originLegend: "Izhodišče",
   regionBoundaries: "Meje statističnih regij in poštni okoliši",
+  // The hillshade under the region fills is computed from a public elevation
+  // model, and the model asks to be named. Same quiet register as the GURS
+  // credit it stands next to.
+  reliefSource: "Senčenje reliefa",
   shelterMapLabel: "Zemljevid zavetišč po statističnih regijah",
+  // The picker's floating panel, which folds away to a rail so the map can
+  // have the whole plate back.
+  collapsePanel: "Skrij seznam",
+  expandPanel: "Pokaži seznam",
   geolocationDenied: "Dostop do lokacije je zavrnjen.",
   geolocationUnavailable: "Lokacije ni bilo mogoče določiti.",
   geolocationTimeout: "Iskanje lokacije je trajalo predolgo.",
@@ -272,6 +309,9 @@ const en: Messages = {
   noResults: "No results.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
+  noResultsShelterSingular: "The selected shelter currently has no {species}.",
+  noResultsShelterPlural: "The selected shelters currently have no {species}.",
+  showFromAllShelters: "Show from all shelters",
   clear: "Clear",
   resetFilters: "Reset",
   resetAgeFilters: "Reset age filters",
@@ -326,6 +366,7 @@ const en: Messages = {
   muniHint:
     "Type the municipality or the postcode of the place where the animal was found to get the responsible shelter and its contacts.",
   muniHere: "Use my location",
+  muniExampleLead: "E.g.:",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
   muniNoMatch: "No municipality named",
@@ -357,16 +398,31 @@ const en: Messages = {
   muniShelterSelected: "Selected",
   speciesDogs: "Dogs",
   speciesCats: "Cats",
+  speciesAbsenceAll: "animals",
+  speciesAbsenceDogs: "dogs",
+  speciesAbsenceCats: "cats",
+  speciesAbsenceRabbits: "rabbits",
+  speciesAbsenceOther: "other animals",
+  showAnimals: "Show animals",
+  longestWaiting: "Waiting longest: {name}, {duration}",
+  closePickCard: "Close the card",
+  shelterPickCardLabel: "Picked on the map: {label}",
   lessThanOneKm: "less than 1 km",
   fewerAnimals: "Fewer animals",
   moreAnimals: "More animals",
   shelter: "Shelter",
   noAnimalsListed: "No animals listed right now",
   noAnimalsListedHeading: "No animals listed right now",
+  noSheltersInRegion: "No shelters in this region",
+  selectedRegionLegend: "Selected region",
   mixedRegionLegend: "Partly selected region",
+  emptyShelterLegend: "Shelter with no animals",
   originLegend: "Starting point",
   regionBoundaries: "Statistical region boundaries and postal districts",
+  reliefSource: "Relief shading",
   shelterMapLabel: "Map of shelters by statistical region",
+  collapsePanel: "Hide the list",
+  expandPanel: "Show the list",
   geolocationDenied: "Location access was denied.",
   geolocationUnavailable: "Your location could not be determined.",
   geolocationTimeout: "Finding your location took too long.",
@@ -444,3 +500,4 @@ export function translate(
 ): string {
   return interpolate(messages[locale][key], values);
 }
+

@@ -100,7 +100,9 @@ export function AnimalCard({
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="truncate font-medium">{animal.name ?? messages.unnamed}</h3>
           {animal.status === "reserved" && (
-            <span className="shrink-0 text-xs text-muted-foreground">
+            // Same amber-family recipe as the dialog's reserved badge
+            // (animal-dialog.tsx STATUS_CLASS), scaled down to the grid card.
+            <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
               {statusLabel("reserved", locale)}
             </span>
           )}
@@ -115,7 +117,7 @@ export function AnimalCard({
             </span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground tabular-nums">
           {animalMeta(animal, locale, reference)}
         </p>
         <p className="truncate text-xs text-muted-foreground/80">{animal.shelter.name}</p>

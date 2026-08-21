@@ -129,6 +129,17 @@ describe("ShelterMap marker states", () => {
     expect(html).not.toContain("stroke-foreground/40");
   });
 
+  // discFitsGlyph decides in user units against a fixed guess at the render
+  // scale, so it cannot know the plate is being drawn on a tablet at under one
+  // pixel per unit. The container query is what knows. Asserted on the glyph
+  // itself rather than through a layout the test environment does not have.
+  it("takes the paw off a plate drawn too small for it to read", () => {
+    const html = renderMap([pin("jug", "Zavetišče Jug", "Ljubljana", 50)]);
+
+    expect(html).toContain("lucide-paw-print");
+    expect(html).toContain("@max-[512px]/map-stage:hidden");
+  });
+
   it("draws that dot hollow, in the alpha the legend swatch copies", () => {
     const html = renderMap([
       pin("empty", "Zavetišče brez živali", "Ljubljana", 0),

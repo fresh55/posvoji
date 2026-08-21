@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
+import type { ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cityAt } from "@/lib/geo";
+import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS } from "@/lib/map-layout";
 import type { ShelterSummary } from "@/lib/shelter-summary";
@@ -42,7 +44,9 @@ const counts = new Map([
 // they also become the faint markers the legend explains.
 const offSite = [{ value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" }];
 
-async function openPicker(props: { offSite?: typeof offSite } = {}) {
+async function openPicker(
+  props: Partial<ComponentProps<typeof LocationPicker>> = {},
+) {
   render(
     <I18nProvider locale="sl">
       <LocationPicker
@@ -908,6 +912,108 @@ describe("LocationPicker floating panel", () => {
     // exactly the height the sheet takes.
     expect(panel().className).toContain("h-[55dvh]");
     expect(stage().className).toContain("bottom-[55dvh]");
+  });
+
+  // The paw layer asks this element how wide the plate is actually drawn, and
+  // it can only ask an element that declares itself a container.
+  it("names the stage a container, so the map can be measured by what holds it", async () => {
+    await openPicker();
+
+    expect(stage().className).toContain("@container/map-stage");
+  });
+});
+
+// The other question this dialog answers, and the entry point that arrives
+// already asking it. On a phone the whole answer lives in the sheet, so what
+// the deep link does to the sheet is the feature.
+describe("LocationPicker found-animal entry", () => {
+  const dialog = () => screen.getByRole("dialog");
+
+  const municipalities = [
+    {
+      name: "Maribor",
+      nearest: [],
+      coverage: [
+        {
+          shelterId: "sever",
+          shelterName: "Zavetišče Sever",
+          city: "Maribor",
+          detailHref: "/zavetisca/sever",
+          animals: 4,
+          sourceLabel: "Test",
+          sourceDate: "2026-01-01",
+          confirmed: true,
+        },
+      ],
+    },
+  ];
+
+  // deepLink="mobile" answers below 64rem, and the matchMedia stub at the top
+  // of this file reports every query as unmatched, so this instance is the
+  // visible one and the one that must respond.
+  function openFromStrip() {
+    render(
+      <I18nProvider locale="sl">
+        <LocationPicker
+          options={options}
+          counts={counts}
+          selected={[]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          resultCount={11}
+          species="all"
+          municipalities={municipalities}
+          deepLink="mobile"
+        />
+      </I18nProvider>,
+    );
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_MUNICIPALITY_LOOKUP_EVENT));
+    });
+  }
+
+  it("brings the sheet up with it, so the občina field is the thing on screen", () => {
+    openFromStrip();
+
+    const panel = dialog().querySelector<HTMLElement>("[data-picker-panel]")!;
+    // Not "collapsed": a phone opening this from the map would show a
+    // shelter-density plate and no way to type an občina into it.
+    expect(panel.dataset.pickerSheet).toBe("open");
+    expect(screen.getByLabelText("Občina ali poštna številka …")).toBeTruthy();
+  });
+
+  it("titles the dialog with the question it was opened to ask", () => {
+    openFromStrip();
+
+    expect(screen.getByRole("dialog", { name: "Najdena žival" })).toBeTruthy();
+    expect(dialog().textContent).toContain(
+      "Zemljevid pokaže, katero zavetišče je pristojno.",
+    );
+    // The shelter-picking instructions belong to the other tab.
+    expect(dialog().textContent).not.toContain(
+      "Izberi regijo na zemljevidu ali zavetišče s seznama.",
+    );
+  });
+
+  it("keeps the tabs in the sheet's fold, not behind the pointer breakpoint", async () => {
+    await openPicker({ municipalities });
+
+    const tabs = dialog().querySelector<HTMLElement>(
+      "[data-picker-tab='municipality']",
+    )!;
+    const row = tabs.parentElement!.parentElement!;
+    // Folded with the sheet below md and with the panel above it, the same way
+    // the list below it folds. Never hidden by breakpoint alone: that is what
+    // made the second question unreachable on a phone.
+    expect(row.className).toContain("max-md:hidden");
+    expect(row.className).not.toContain("md:flex");
+
+    fireEvent.click(dialog().querySelector<HTMLElement>("[data-picker-peek]")!);
+
+    expect(
+      dialog().querySelector<HTMLElement>("[data-picker-tab='municipality']")!
+        .parentElement!.parentElement!.className,
+    ).not.toContain("max-md:hidden");
   });
 });
 

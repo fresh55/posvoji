@@ -105,6 +105,33 @@ const DISC_MORPH = cn("transition-[r,cx,cy]", MAP_MORPH);
 // under the same geometry-properties rule the circles rely on.
 const GLYPH_MORPH = cn("transition-[x,y,width,height]", MAP_MORPH);
 
+// discFitsGlyph in lib/map-layout.ts decides which discs are big enough for a
+// paw, and it decides in user units against RENDER_SCALE, a fixed guess at how
+// many pixels a user unit is drawn at. That guess holds on a desktop and breaks
+// below it: measured live, the map stage is 573px wide at a 1024 viewport with
+// the panel out (smallest paw 6.6px), 400px on a landscape phone (4.5px) and
+// 327px on a 768 tablet, where the paws come out 3.6 to 6.0px. A lucide paw at
+// four pixels is not a quiet glyph, it is a smudge on the coin.
+//
+// So the per-disc gate keeps deciding which discs deserve a paw relative to
+// each other, and this answers the question it cannot: is the plate drawn large
+// enough for any paw to read at all. Below the cut the whole glyph layer comes
+// off and the markers stay plain discs, which still carry selection by fill and
+// count by radius.
+//
+// 512px, because the smallest paw the live roster draws is 3.9 user units and
+// the stage spends 32px of its width on padding: (512 - 32) / 320 = 1.5 px per
+// unit puts that paw at 5.85px, which is the floor. Above it every paw on the
+// plate clears six pixels.
+//
+// A container query and not a viewport breakpoint, for a reason no breakpoint
+// can cover: the panel folds to a rail, and the stage nearly doubles when it
+// does. At a 1024 viewport the same map is 573px wide with the panel out and
+// 909px with it folded, so the paws are wrong at one and right at the other
+// while the viewport never moves. The stage's own width is the only thing that
+// knows, and @container is how a child asks it.
+const GLYPH_TOO_SMALL = "@max-[512px]/map-stage:hidden";
+
 // Exact keyboard selection stays in the list, so markers remain pointer-only.
 export function Marker({
   town,
@@ -399,7 +426,7 @@ function MarkerDisc({
           fill="currentColor"
           strokeWidth={1.5}
           aria-hidden
-          className={cn("stroke-current", GLYPH_MORPH)}
+          className={cn("stroke-current", GLYPH_MORPH, GLYPH_TOO_SMALL)}
         />
       )}
     </g>

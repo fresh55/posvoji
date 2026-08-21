@@ -107,6 +107,8 @@ const sl = {
     "Klikni zavetišče ali celo regijo na zemljevidu, ali izbiraj s seznama.",
   mapInstructionsMobile:
     "Izberi regijo na zemljevidu ali zavetišče s seznama.",
+  mapInstructionsMuni:
+    "Zemljevid pokaže, katero zavetišče je pristojno.",
   locating: "Iščem lokacijo…",
   nearestFirst: "Najbližje prvo",
   searchShelters: "Išči zavetišče po imenu…",
@@ -354,6 +356,8 @@ const en: Messages = {
     "Select a shelter or region on the map, or choose from the list.",
   mapInstructionsMobile:
     "Select a region on the map or a shelter from the list.",
+  mapInstructionsMuni:
+    "The map shows which shelter is responsible.",
   locating: "Finding your location…",
   nearestFirst: "Nearest first",
   searchShelters: "Search shelters by name…",

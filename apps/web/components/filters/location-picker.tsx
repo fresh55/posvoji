@@ -338,6 +338,14 @@ export function LocationPicker({
       if (!isMine()) return;
       setMuniMode(true);
       setOpen(true);
+      // The sheet comes up with it. A phone opens the picker on the map with
+      // the sheet peeked, which is right when the question is "which region",
+      // because the map is the answer. It is wrong here: this entry point was
+      // pressed by someone holding a found animal, and every part of the
+      // answer, the field to type an občina into and the shelter it returns,
+      // lives in the sheet. Landing on a shelter-density map with the one
+      // control folded away asks them to guess that the peek bar opens.
+      setSheetOpen(true);
     };
     if (new URLSearchParams(window.location.search).has(FOUND_ANIMAL_PARAM)) {
       openLookup();
@@ -683,6 +691,14 @@ export function LocationPicker({
             data-map-stage={panelOpen ? "panel" : "rail"}
             className={cn(
               "absolute inset-x-0 top-0 flex items-center justify-center p-2 sm:p-3",
+              // Named, so the paw layer in map-marker.tsx can ask how wide the
+              // plate is actually drawn rather than guessing from the viewport.
+              // This element is the right one to ask: it is the box the SVG
+              // fills, and it is the box that changes width when the panel
+              // folds to a rail. Both its width and its height come from the
+              // insets and the width utilities below, never from its contents,
+              // so inline-size containment costs nothing here.
+              "@container/map-stage",
               "md:right-auto md:bottom-0 md:p-4",
               "transition-[width,bottom] duration-500 ease-out motion-reduce:transition-none",
               // Below md the sheet takes height instead of width, so the same
@@ -745,16 +761,30 @@ export function LocationPicker({
               would have said it to nobody with a touch screen. */}
           <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,60%)]">
             <DialogHeader className="pointer-events-auto rounded-ui border bg-background/85 px-3 py-2 shadow-xs backdrop-blur">
+              {/* The chip follows the question the dialog is currently
+                  asking. One dialog answers two of them, and the found-animal
+                  mode used to be titled "Kje iščeš?" over instructions to pick
+                  a region: the deep link from the found-animal strip landed on
+                  copy about a filter the visitor had not come to set. The
+                  municipality mode says what it is and what the map is doing
+                  for it; the instruction is one line at both breakpoints,
+                  because the answer arrives in the panel either way. */}
               <DialogTitle className="text-base leading-none">
-                {messages.whereSearching}
+                {muniMode ? messages.muniTab : messages.whereSearching}
               </DialogTitle>
               <DialogDescription className="text-[11px] leading-snug">
-                <span className="hidden md:inline">
-                  {messages.mapInstructionsDesktop}
-                </span>
-                <span className="md:hidden">
-                  {messages.mapInstructionsMobile}
-                </span>
+                {muniMode ? (
+                  messages.mapInstructionsMuni
+                ) : (
+                  <>
+                    <span className="hidden md:inline">
+                      {messages.mapInstructionsDesktop}
+                    </span>
+                    <span className="md:hidden">
+                      {messages.mapInstructionsMobile}
+                    </span>
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -960,8 +990,26 @@ export function LocationPicker({
               </button>
             )}
 
-            {panelOpen && (
-              <div className="hidden shrink-0 items-center gap-1 px-4 pt-4 pb-2 md:flex">
+            {/* The tabs, in both docks. They used to be md:flex only, which
+                left the second question unreachable on a phone: the found-
+                animal mode could be entered from the strip on the page and
+                never from inside the dialog, and once in it the only way back
+                to the shelter list was to tap a region and hope. The peek bar
+                names the open tab but does not switch it, so a phone had a
+                label where the control should be.
+
+                Same fold idiom as the list block below: the row is a flex row,
+                and each breakpoint hides it when its own dock is folded, so
+                neither a md:hidden nor a max-md:hidden ever has to outrank a
+                display utility written beside it. */}
+            {(panelOpen || sheetOpen) && (
+              <div
+                className={cn(
+                  "flex shrink-0 items-center gap-1 px-4 pt-4 pb-2 max-md:pt-2",
+                  !panelOpen && "md:hidden",
+                  !sheetOpen && "max-md:hidden",
+                )}
+              >
                 {municipalities && municipalities.length > 0 && (
                   // Two questions, two tabs: filter by shelter, or start from a
                   // found animal's občina. Labeled and always visible, so the
@@ -987,7 +1035,10 @@ export function LocationPicker({
                         }}
                         data-picker-tab={mode ? "municipality" : "shelters"}
                         className={cn(
-                          "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors",
+                          // 44px of height below md, the touch target the rest
+                          // of this dialog's mobile chrome already keeps; the
+                          // pointer breakpoint keeps the tighter row it had.
+                          "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors max-md:min-h-11 max-md:px-3.5",
                           muniMode === mode
                             ? "bg-foreground text-background"
                             : "text-muted-foreground hover:text-foreground",
@@ -1004,7 +1055,10 @@ export function LocationPicker({
                   aria-expanded
                   aria-label={messages.collapsePanel}
                   onClick={() => setPanelOpen(false)}
-                  className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  // md+ only: below it the peek bar is what folds the dock, and
+                  // a second fold control in the sheet would be two answers to
+                  // one question.
+                  className="ml-auto hidden size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:inline-flex"
                 >
                   <ChevronRight className="size-4" aria-hidden />
                 </button>

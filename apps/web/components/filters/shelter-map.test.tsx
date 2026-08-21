@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cityAt,
@@ -19,7 +19,7 @@ import { DENSITY_STEPS, layoutTowns, type ShelterPin } from "@/lib/map-layout";
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { Marker } from "./map-marker";
-import { Region, ShelterMap, legendFlags } from "./shelter-map";
+import { Region, REGION_DWELL_MS, ShelterMap, legendFlags } from "./shelter-map";
 
 function pin(
   value: string,
@@ -31,6 +31,21 @@ function pin(
 }
 
 afterEach(() => cleanup());
+
+// The plate names a region only once the pointer has settled on it, so a test
+// that wants the label has to let REGION_DWELL_MS run out. Fake timers are
+// installed for the dwell alone and handed back straight after: nothing else
+// in this file wants a frozen clock, least of all the roving tab stops, which
+// move focus on a real requestAnimationFrame. Markers answer on contact and
+// take a plain fireEvent.
+function hoverRegion(node: Element) {
+  vi.useFakeTimers();
+  fireEvent.pointerOver(node);
+  act(() => {
+    vi.advanceTimersByTime(REGION_DWELL_MS);
+  });
+  vi.useRealTimers();
+}
 
 // The one path a region draws, found by the accessible name it keeps.
 function regionTag(html: string, name: string): string {
@@ -906,7 +921,7 @@ describe("ShelterMap inert regions", () => {
   it("names the empty region and says so, without a count", () => {
     const { inert } = renderLive(onlyLjubljana);
 
-    fireEvent.pointerOver(inert);
+    hoverRegion(inert);
 
     expect(screen.getByText("Goriška")).toBeTruthy();
     expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
@@ -917,7 +932,7 @@ describe("ShelterMap inert regions", () => {
   it("takes the card away again when the pointer leaves", () => {
     const { inert } = renderLive(onlyLjubljana);
 
-    fireEvent.pointerOver(inert);
+    hoverRegion(inert);
     expect(screen.queryByText("Ni zavetišč v tej regiji")).toBeTruthy();
 
     fireEvent.pointerOut(inert);
@@ -961,7 +976,7 @@ describe("ShelterMap inert regions", () => {
   it("names who answers for the region, under the line saying it has none", () => {
     const { inert } = renderLive(onlyLjubljana, coveredGoriska);
 
-    fireEvent.pointerOver(inert);
+    hoverRegion(inert);
 
     expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
     // Both names, joined by the middot the map's other metadata pairs use,
@@ -976,7 +991,7 @@ describe("ShelterMap inert regions", () => {
   it("counts the shelters the way Slovenian does, one, two and more", () => {
     const named = (names: string[]) => {
       const { inert } = renderLive(onlyLjubljana, new Map([[GORISKA, names]]));
-      fireEvent.pointerOver(inert);
+      hoverRegion(inert);
       return document.querySelector("[data-callout-note]")?.textContent;
     };
 
@@ -992,7 +1007,7 @@ describe("ShelterMap inert regions", () => {
   it("says nothing extra where the coverage table has nothing to say", () => {
     const { inert } = renderLive(onlyLjubljana);
 
-    fireEvent.pointerOver(inert);
+    hoverRegion(inert);
 
     expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
     expect(document.querySelector("[data-callout-note]")).toBeNull();
@@ -1016,6 +1031,169 @@ describe("ShelterMap inert regions", () => {
     // Still not a control: naming a shelter somewhere else does not make this
     // region pressable.
     expect(regionTag(html, "Goriška")).toContain('role="img"');
+  });
+});
+
+// The regions tile the whole country, so a pointer on its way anywhere crosses
+// two or three of them, and naming each one it touched turned the plate into a
+// flicker of labels.
+//
+// A live region now says nothing at all to a pointer: its counts are in the
+// list beside the map, its density is in the legend under it, and its markers
+// answer for themselves. An empty one still answers, because who is
+// responsible for a region with no shelters in it is a fact with nowhere else
+// on the plate to live, and the dwell is what keeps that one exception from
+// being asked by every pointer passing over it.
+describe("ShelterMap region dwell", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+  const GORISKA = REGION_SHAPES.find((region) => region.name === "Goriška")!.id;
+
+  function renderRegions() {
+    const onHoverShelters = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={() => undefined}
+          onHoverShelters={onHoverShelters}
+          regionShelterNames={new Map([[GORISKA, ["Zavetišče Nova Gorica"]]])}
+        />
+      </I18nProvider>,
+    );
+    return {
+      onHoverShelters,
+      inert: container.querySelector('[aria-label^="Goriška"]')!,
+      live: container.querySelector('[aria-label^="Osrednjeslovenska"]')!,
+      callout: () => container.querySelector("[data-map-callout]"),
+    };
+  }
+
+  afterEach(() => vi.useRealTimers());
+
+  it("names nothing the moment a pointer arrives", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.inert);
+
+    expect(map.callout()).toBeNull();
+  });
+
+  it("answers an empty region once the pointer has stayed", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.inert);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS);
+    });
+
+    expect(map.callout()).not.toBeNull();
+    expect(screen.getByText("Goriška")).toBeTruthy();
+    // The covered-by line is the whole reason this callout survived: nothing
+    // else on the plate can say who takes a stray found here.
+    expect(screen.getByText("Zanje skrbi Zavetišče Nova Gorica")).toBeTruthy();
+  });
+
+  it("never answers a live region's pointer, however long it rests there", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.live);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS * 3);
+    });
+
+    // Not a longer dwell: no dwell. Everything the name carried is already on
+    // screen, and a label under the pointer on the way to a marker is the
+    // noise this removes rather than rations.
+    expect(map.callout()).toBeNull();
+    expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
+  });
+
+  it("says nothing at all for a pointer that was only passing through", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.inert);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS - 40);
+    });
+    fireEvent.pointerOut(map.inert);
+    // Well past the deadline the transit never reached: a cancelled dwell is
+    // cancelled, not deferred.
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS * 3);
+    });
+
+    expect(map.callout()).toBeNull();
+    expect(screen.queryByText("Goriška")).toBeNull();
+  });
+
+  it("starts the wait over when the pointer comes back", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.inert);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS - 40);
+    });
+    fireEvent.pointerOut(map.inert);
+    fireEvent.pointerOver(map.inert);
+    // What was left of the first dwell is not credited to the second.
+    act(() => {
+      vi.advanceTimersByTime(40);
+    });
+    expect(map.callout()).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS);
+    });
+    expect(map.callout()).not.toBeNull();
+  });
+
+  it("keeps the list's own echo instant, which was never the noisy part", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.live);
+
+    // The one thing a live region still says to a pointer, and it says it
+    // straight away: a quiet tint on rows somebody is already reading.
+    expect(map.onHoverShelters).toHaveBeenCalledWith(["ljubljana"]);
+    expect(map.callout()).toBeNull();
+  });
+
+  it("answers keyboard focus on the spot, where a pointer gets nothing", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    // Focus is deliberate by definition. Nobody tabs across a country by
+    // accident, so there is nothing here to wait out and nothing to ration:
+    // this is now the only way the plate names a live region, and a sighted
+    // keyboard user needs to see where they have got to.
+    fireEvent.focus(map.live);
+
+    expect(map.callout()).not.toBeNull();
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+  });
+
+  it("leaves an empty region out of the keyboard's way entirely", () => {
+    const map = renderRegions();
+
+    // The other half of the focus contract, and the reason there is no
+    // inert-focus case to test: an empty region is not a control and never
+    // joins the tab order, so the pointer path above is the only one it has.
+    // What a screen reader gets instead is the label, which carries the same
+    // two facts the callout shows (see the inert-region tests above).
+    expect(map.inert.getAttribute("tabindex")).toBeNull();
+    expect(map.inert.getAttribute("aria-label")).toContain(
+      "Zanje skrbi Zavetišče Nova Gorica",
+    );
   });
 });
 
@@ -1246,9 +1424,16 @@ describe("ShelterMap scale bar", () => {
     expect(length).toBeCloseTo(31.44, 1);
   });
 
-  it("stands in the bottom-right corner, clear of the legend overlay", () => {
+  it("stands in the bottom-right corner, with the frame margin the rest keeps", () => {
     expect(Math.max(...xs)).toBe(314);
-    expect(html).toContain('y="173.5"');
+    // The label above the bar, which sits 2.5 units over a bar at y 194. The
+    // bar used to be held twenty units higher to clear an HTML legend drawn
+    // over this corner; the legend is a caption under the plate now, so the
+    // corner is the plate's own again.
+    expect(html).toContain('y="191.5"');
+    // Still inside the four units of margin every other piece of furniture
+    // keeps from the frame (210 is the viewBox's own floor).
+    expect(210 - 195.5).toBeGreaterThanOrEqual(4);
   });
 
   it("labels itself without a message key, in type quieter than a callout", () => {
@@ -1390,11 +1575,10 @@ describe("ShelterMap plate furniture", () => {
   });
 });
 
-// The annotation carries no card, so it is set straight across whatever the
-// plate had there already. Where that is a town anchor the two names
-// interleave letter for letter, and the halo rescues exactly one of them. The
-// convention is older than this map: the name answering a question stays and
-// the furniture gets out of the way.
+// The annotation is drawn over whatever the plate had there already, and its
+// chip is opaque, so a town anchor underneath is not interleaved with but
+// covered outright. The convention is older than this map: the name answering
+// a question stays and the furniture gets out of the way.
 describe("ShelterMap label priority", () => {
   const pins = [
     pin("horjul", "Zavetišče Horjul", "Horjul", 12),
@@ -1462,7 +1646,7 @@ describe("ShelterMap label priority", () => {
     const map = renderMapDom();
     expect(map.anchor("Kranj")).not.toBeNull();
 
-    fireEvent.pointerEnter(map.region("Gorenjska"));
+    hoverRegion(map.region("Gorenjska"));
 
     expect(map.anchor("Kranj")).toBeNull();
     expect(map.anchor("Maribor")).not.toBeNull();
@@ -2252,8 +2436,12 @@ describe("ShelterMap distance from the origin", () => {
   it("draws nothing for a region hover, which measures to no one place", () => {
     const container = renderWithOrigin(cityAt("Koper"));
 
-    fireEvent.pointerOver(container.querySelector('[aria-label^="Goriška"]')!);
+    // Dwelled, so the region really is answering: the question is whether a
+    // region's annotation drags a distance line along with it, and a hover
+    // that never landed would have proved nothing.
+    hoverRegion(container.querySelector('[aria-label^="Goriška"]')!);
 
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
     expect(container.querySelector("[data-map-distance]")).toBeNull();
   });
 
@@ -2385,8 +2573,11 @@ describe("ShelterMap species annotation", () => {
       pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
     ]);
 
-    fireEvent.pointerOver(container.querySelector('[aria-label^="Goriška"]')!);
+    // Dwelled, so there is a region annotation to look at: the point is that
+    // it carries no species line, not that no annotation appeared.
+    hoverRegion(container.querySelector('[aria-label^="Goriška"]')!);
 
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
     expect(container.querySelector("[data-callout-species]")).toBeNull();
   });
 

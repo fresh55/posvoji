@@ -8,7 +8,9 @@ function animal(
   id: string,
   shelterId: string,
   species: Species,
-  extra: Partial<Pick<Animal, "intakeDate" | "name" | "status">> = {},
+  extra: Partial<
+    Pick<Animal, "intakeDate" | "name" | "status" | "images">
+  > = {},
 ): Animal {
   return {
     id,
@@ -24,9 +26,14 @@ function animal(
     status: (extra.status ?? "available") as AdoptionStatus,
     intakeDate: extra.intakeDate,
     name: extra.name,
-    images: [],
+    images: extra.images ?? [],
     attribution: "Vir: test",
   };
+}
+
+// A single permitted photo, the same shape permittedImageUrls looks for.
+function photo(id: string): Animal["images"] {
+  return [{ sourceUrl: `https://example.org/${id}.jpg`, rights: "display-permitted" }];
 }
 
 describe("summarizeShelters", () => {
@@ -110,5 +117,151 @@ describe("summarizeShelters", () => {
     );
 
     expect(summaries.get("jug")?.longestWaiting?.name).toBe("Brez imena");
+  });
+
+  describe("faces", () => {
+    it("leads with the longest-waiting animal's own photo", () => {
+      const summaries = summarizeShelters(
+        [
+          animal("a", "jug", "cat", {
+            intakeDate: "2024-08-01",
+            name: "Bine",
+            images: photo("a"),
+          }),
+          animal("b", "jug", "cat", {
+            intakeDate: "2016-08-01",
+            name: "Mila",
+            images: photo("b"),
+          }),
+        ],
+        "sl",
+        NOW,
+      );
+
+      // Mila is the longestWaiting animal, and her photo leads the fan.
+      expect(summaries.get("jug")?.longestWaiting?.name).toBe("Mila");
+      expect(summaries.get("jug")?.faces?.[0]).toEqual({
+        name: "Mila",
+        src: "https://example.org/b.jpg",
+      });
+      expect(summaries.get("jug")?.faces?.[1]).toEqual({
+        name: "Bine",
+        src: "https://example.org/a.jpg",
+      });
+    });
+
+    it("skips an animal with no photo, whatever its wait", () => {
+      const summaries = summarizeShelters(
+        [
+          animal("a", "jug", "cat", {
+            intakeDate: "2016-08-01",
+            name: "Mila",
+          }),
+          animal("b", "jug", "cat", {
+            intakeDate: "2024-08-01",
+            name: "Bine",
+            images: photo("b"),
+          }),
+        ],
+        "sl",
+        NOW,
+      );
+
+      // Mila waited longer and is still named by longestWaiting, but has
+      // nothing to put in the fan, so it opens with Bine instead.
+      expect(summaries.get("jug")?.longestWaiting?.name).toBe("Mila");
+      expect(summaries.get("jug")?.faces).toEqual([
+        { name: "Bine", src: "https://example.org/b.jpg" },
+      ]);
+    });
+
+    it("caps the fan at three, longer waits first", () => {
+      const summaries = summarizeShelters(
+        [
+          animal("a", "jug", "dog", {
+            intakeDate: "2020-08-01",
+            name: "A",
+            images: photo("a"),
+          }),
+          animal("b", "jug", "dog", {
+            intakeDate: "2021-08-01",
+            name: "B",
+            images: photo("b"),
+          }),
+          animal("c", "jug", "dog", {
+            intakeDate: "2022-08-01",
+            name: "C",
+            images: photo("c"),
+          }),
+          animal("d", "jug", "dog", {
+            intakeDate: "2023-08-01",
+            name: "D",
+            images: photo("d"),
+          }),
+        ],
+        "sl",
+        NOW,
+      );
+
+      expect(summaries.get("jug")?.faces?.map((face) => face.name)).toEqual([
+        "A",
+        "B",
+        "C",
+      ]);
+    });
+
+    it("fills remaining slots from animals with no known wait, but after every known one", () => {
+      const summaries = summarizeShelters(
+        [
+          animal("a", "jug", "dog", { name: "Nobody knows", images: photo("a") }),
+          animal("b", "jug", "dog", {
+            intakeDate: "2024-08-01",
+            name: "Known",
+            images: photo("b"),
+          }),
+        ],
+        "sl",
+        NOW,
+      );
+
+      expect(summaries.get("jug")?.faces?.map((face) => face.name)).toEqual([
+        "Known",
+        "Nobody knows",
+      ]);
+    });
+
+    it("leaves out an animal that is not waiting for the visitor, photo or not", () => {
+      const summaries = summarizeShelters(
+        [
+          animal("a", "jug", "cat", {
+            intakeDate: "2010-08-01",
+            name: "Posvojen",
+            status: "adopted",
+            images: photo("a"),
+          }),
+          animal("b", "jug", "cat", {
+            intakeDate: "2024-08-01",
+            name: "Bine",
+            images: photo("b"),
+          }),
+        ],
+        "sl",
+        NOW,
+      );
+
+      expect(summaries.get("jug")?.faces?.map((face) => face.name)).toEqual([
+        "Bine",
+      ]);
+    });
+
+    it("says nothing when nobody at the shelter has a photo", () => {
+      const summaries = summarizeShelters(
+        [animal("a", "jug", "dog", { intakeDate: "2020-08-01", name: "A" })],
+        "sl",
+        NOW,
+      );
+
+      expect(summaries.get("jug")?.faces).toBeUndefined();
+    });
   });
 });

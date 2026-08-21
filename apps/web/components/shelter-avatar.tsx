@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 // are mostly wordmarks: forcing one into the square the fallback uses would
 // shrink it to an unreadable strip. The fallback letter stays square.
 const SIZE_CLASS = {
+  // For chip-scale placements where sm's 44px chip crowds a compact card, the
+  // map pick card's header being the first of these.
+  xs: { chip: "h-9 max-w-24 px-1.5", logo: "h-6", fallback: "size-9 text-sm" },
   sm: { chip: "h-11 max-w-28 px-2", logo: "h-7", fallback: "size-11 text-base" },
   lg: {
     chip: "h-14 max-w-36 px-2.5",

@@ -40,6 +40,7 @@ import {
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import { requestShelterSpotlight } from "@/lib/shelter-spotlight";
 import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
@@ -165,10 +166,20 @@ export function AnimalGrid({
   // shelter" rather than "what matches my filter" — the count pill next to the
   // shelter's name already carries the filtered number. `now` and not
   // `reference`, because the wait is measured the same way the age buckets are.
-  const shelterSummaries = useMemo(
-    () => summarizeShelters(animals, locale, now),
-    [animals, locale, now],
-  );
+  //
+  // summarizeShelters only ever sees animals, so the logo is folded in here:
+  // `logos` is keyed by the same shelter id (see shelter-block.tsx for the
+  // same lookup against an animal's own shelter), and a shelter the fetch
+  // never found a logo for is simply left for ShelterAvatar's initial-letter
+  // fallback to answer.
+  const shelterSummaries = useMemo(() => {
+    const summaries = summarizeShelters(animals, locale, now);
+    for (const [id, summary] of summaries) {
+      const logo = logos[id];
+      if (logo) summary.logo = logo;
+    }
+    return summaries;
+  }, [animals, locale, logos, now]);
   const counts = useMemo(
     () => facetCounts(animals, filters, now),
     [animals, filters, now],
@@ -335,7 +346,7 @@ export function AnimalGrid({
   return (
     <section
       className={cn(
-        "pb-20 lg:pb-0",
+        "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0",
         hasSidebar &&
           "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
       )}
@@ -449,6 +460,11 @@ export function AnimalGrid({
                 animal={animal}
                 reference={reference}
                 onOpen={handleOpen}
+                // This grid is the one place the shelter name has somewhere
+                // to go: the pickers are mounted below it, inside
+                // AnimalFilters. The event is how the ask crosses that
+                // distance without either side holding a ref to the other.
+                onShelterClick={requestShelterSpotlight}
               />
             ))}
           </div>

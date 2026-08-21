@@ -1,6 +1,10 @@
 "use client";
 
+import { memo, useEffect, useState } from "react";
 import { PawPrint } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
+import type { Locale } from "@/lib/i18n";
+import { animalCount, shelterCount } from "@/lib/labels";
 import {
   clusterDiscs,
   clusterHitWedges,
@@ -16,10 +20,16 @@ import {
   satelliteHitCircles,
   type ShelterPin,
   selectionState,
+  townCount,
   townIsLive,
+  townLabel,
   townSelectableValues,
   type Town,
 } from "@/lib/map-layout";
+// Type-only, so this never becomes a runtime import: shelter-map.tsx imports
+// Marker from this file, and a value import back would make the two modules
+// circular. Both types are erased at compile time either way.
+import type { MapPick, RegionMoveKey } from "./shelter-map";
 import { cn } from "@/lib/utils";
 
 // The hollow disc a shelter with nothing listed draws: just over half the
@@ -137,8 +147,91 @@ const GLYPH_MORPH = cn("transition-[x,y,width,height]", MAP_MORPH);
 // knows, and @container is how a child asks it.
 const GLYPH_TOO_SMALL = "@max-[512px]/map-stage:hidden";
 
-// Exact keyboard selection stays in the list, so markers remain pointer-only.
-export function Marker({
+// The coin's focus ring, and how far outside the marker it sits. town.reach is
+// everything the marker draws, satellites included, so the ring never crosses
+// a mark of its own town's.
+//
+// 2.1 wide, which is what the regions' focus-visible stroke runs at, and for
+// the same reason: keyboard focus has to be the single heaviest line on the
+// plate whatever it lands on. A selected region strokes 1.8 at its heaviest
+// and a coin 0.9, so 2.1 outranks every other stroke here as well.
+const FOCUS_RING_GAP = 2.2;
+const FOCUS_RING =
+  "fill-none stroke-foreground [stroke-width:0] group-focus-visible/pin:[stroke-width:2.1]";
+
+// The ring the one mark a coin has been drilled into wears, and how far
+// outside that mark it sits. Half the coin's gap, because the marks inside one
+// coin sit against each other: a full-width gap would draw one disc's ring
+// across its neighbour.
+//
+// The same ink and the same 2.1 as the coin's own ring, because it says the
+// same thing, and it is drawn instead of that ring rather than inside it.
+// Keyboard focus is one place on the plate; two rings at the heaviest weight
+// would be two answers to where that place is.
+//
+// No focus-visible gate either, unlike the coin's. A coin can be focused by a
+// click, so its ring waits to be sure the keyboard asked; a wedge is only ever
+// reached by pressing Enter on a coin that already holds keyboard focus, so
+// the state that draws this ring is the state that earns it.
+const WEDGE_FOCUS_RING_GAP = 1.1;
+const WEDGE_FOCUS_RING = "fill-none stroke-foreground [stroke-width:2.1]";
+
+// What the coin says when it is asked rather than looked at: the same facts the
+// annotation carries, in the same order and out of the same helpers, so the
+// screen reader and the plate cannot describe one town two ways. A town with
+// nothing to pick says so rather than counting out the nought it has.
+function markerLabel(
+  town: Town,
+  locale: Locale,
+  noAnimalsListed: string,
+): string {
+  const name = townLabel(town);
+  if (townSelectableValues(town).length === 0) {
+    return `${name}: ${noAnimalsListed}`;
+  }
+  const animals = animalCount(townCount(town), locale);
+  return town.shelters.length > 1
+    ? `${name}: ${shelterCount(town.shelters.length, locale)}, ${animals}`
+    : `${name}: ${animals}`;
+}
+
+// What one mark inside a shared coin says while the keyboard is standing on
+// it. The same two facts its annotation carries, out of the same helpers and
+// in the same order, so drilling into a wedge tells a screen reader exactly
+// what hovering it shows anyone else. An off-site mark says it has nothing
+// listed rather than counting out the nought it has, which is the sentence the
+// callout writes over it too.
+function wedgeLabel(
+  shelter: ShelterPin,
+  locale: Locale,
+  noAnimalsListed: string,
+): string {
+  const animals =
+    shelter.selectable === false
+      ? noAnimalsListed
+      : animalCount(shelter.count, locale);
+  return `${shelter.label}: ${animals}`;
+}
+
+// Coins were pointer-only once, and the list was the whole keyboard story for
+// picking one shelter out of a shared town. It is not any more. A wedge still
+// has no tab stop of its own, but the coin's stop drills into one: Enter on a
+// shared coin steps inside, the arrows walk the marks it holds, Enter or Space
+// picks the mark standing under them, and Escape comes back out. Space at coin
+// level still picks the town whole, so the group a click on the coin makes is
+// never out of reach.
+//
+// Memoized: every hover anywhere on the map sets state in ShelterMap, which
+// re-renders its whole tree, and every town on the plate mounts one of these.
+// Only the marker actually under the pointer (or newly highlighted, or newly
+// dimmed by a search) has anything to redraw; memo is what stops the rest
+// from doing the same work for nothing. It only pays off because ShelterMap
+// hands every marker the same handler identities and scopes
+// hoveredShelterValue to the one town it names (null for the rest) rather
+// than the raw state, which every marker would otherwise see change
+// together. See shelter-map.tsx's handleTown* callbacks and the comment
+// above where these props are built.
+export const Marker = memo(function Marker({
   town,
   selected,
   onPick,
@@ -148,15 +241,31 @@ export function Marker({
   hoveredShelterValue,
   highlighted,
   dimmed,
+  tabIndex,
+  elementRef,
+  onFocus,
+  onBlur,
+  onMoveFocus,
 }: {
   town: Town;
   selected: string[];
-  onPick: (values: string[]) => void;
-  onPointerEnter: () => void;
-  onPointerLeave: () => void;
-  /** A cluster wedge gained or lost the pointer. Null on leave. */
-  onHoverShelter: (value: string | null) => void;
-  /** The shelter whose wedge holds the pointer, so only its disc leans in. */
+  /** The map's own click callback, unadapted: this component already has
+   *  town as its own prop, so it builds the MapPick itself rather than being
+   *  handed a wrapper that would need a fresh identity on every render. */
+  onPick: (values: string[], from: MapPick) => void;
+  /** Takes the town rather than closing over it, so one function covers
+   *  every marker: see the note on Marker above for why that matters. */
+  onPointerEnter: (town: Town) => void;
+  onPointerLeave: (town: Town) => void;
+  /** A mark inside a shared coin gained or lost the pointer, or the keyboard
+   *  drilled onto one or off it. Null on leave. One callback for both, so the
+   *  annotation and the list row cannot learn to answer a pointer and a
+   *  keyboard two different ways. */
+  onHoverShelter: (town: Town, value: string | null) => void;
+  /** The shelter whose mark holds the pointer or the drilled keyboard, so only
+   *  its disc leans in. Null for every town but the one that shelter belongs
+   *  to: see the note above on why this is scoped rather than the raw hover
+   *  state. */
   hoveredShelterValue: string | null;
   /** The shelter is hovered in the list, so its marker reveals the hit halo
    *  and strengthens its stroke, same as pointer hover would. */
@@ -164,7 +273,18 @@ export function Marker({
   /** The list search matches none of this town's shelters, so the marker
    *  fades back while the matches keep full strength. */
   dimmed?: boolean;
+  /** 0 for the one coin holding the plate's shared tab stop, -1 for the rest.
+   *  Taken only by a live marker: a town that is not a control is named for
+   *  assistive tech and left out of the tab order, the way an empty region is. */
+  tabIndex: 0 | -1;
+  /** Takes the town rather than closing over it, so one function covers every
+   *  marker: see the note on Marker above for why that matters. */
+  elementRef: (town: Town, element: SVGGElement | null) => void;
+  onFocus: (town: Town) => void;
+  onBlur: (town: Town) => void;
+  onMoveFocus: (town: Town, key: RegionMoveKey) => void;
 }) {
+  const { locale, messages } = useI18n();
   const shared = town.shelters.length > 1;
   // Only the shelters a click may toggle. An off-site shelter shares the
   // marker so the map can show where it is, but never the pick.
@@ -198,6 +318,104 @@ export function Marker({
   // Whether the marker's own marks answer for their shelters, which is when
   // the group must stop answering for the town as a whole.
   const wedged = hits.length > 0;
+  // Where those same marks are actually drawn, in the same order and for the
+  // same shelters as the targets above. The hit geometry is deliberately wider
+  // than the picture, and in one case much wider (a dominated coin's target is
+  // the whole town's hit radius), so a ring drawn on it would be a ring around
+  // country rather than around a mark.
+  const marks: ClusterDisc[] = dominant
+    ? [
+        { value: dominant.value, x: town.x, y: town.y, r: geometry.discRadius },
+        ...satellites,
+      ]
+    : discs;
+
+  /** Which mark the keyboard has drilled into, as an index into `marks`, or
+   *  null at coin level. Read through the clamp below and never directly: the
+   *  species tabs re-cut a coin under the visitor, a cluster can become a
+   *  dominated town or overflow into a plain count disc, and an index into the
+   *  marks that were there is not an index into the marks that are. */
+  const [drilledIndex, setDrilledIndex] = useState<number | null>(null);
+  const drilled =
+    drilledIndex !== null && drilledIndex < marks.length ? drilledIndex : null;
+  const drilledMark = drilled !== null ? marks[drilled] : undefined;
+  const drilledShelter = drilledMark
+    ? town.shelters.find((entry) => entry.value === drilledMark.value)
+    : undefined;
+  // The same test the pointer's own targets make: an off-site shelter is named
+  // and never picked, whichever way the visitor arrived at it.
+  const drilledPickable =
+    drilledShelter !== undefined && live && drilledShelter.selectable !== false;
+
+  // What the coin reports pressed. While the drill is open it answers for the
+  // mark and not for the town, because that is what its name says as well. A
+  // mark with nothing to pick presses nothing, and reports no pressed state at
+  // all rather than a false one.
+  const pressed = drilledShelter
+    ? drilledPickable
+      ? selected.includes(drilledShelter.value)
+      : undefined
+    : live
+      ? state
+      : undefined;
+
+  // Wraps the raw onPick prop with the MapPick payload, the way this town's
+  // click was always described: one shelter by value, several by the town's
+  // own label. A local wrapper rather than an adapter built in shelter-map.tsx
+  // is what lets that prop stay one shared function for every marker; see the
+  // comment on Marker above.
+  const pick = (values: string[]) => {
+    onPick(
+      values,
+      values.length === 1
+        ? { kind: "shelter", value: values[0] }
+        : { kind: "group", label: townLabel(town), values },
+    );
+  };
+
+  // Stepping onto a mark inside the coin, and stepping back off it. Both go
+  // out through onHoverShelter, which is the pointer's own path: the
+  // annotation names the shelter, its disc leans in and the list row tints,
+  // because none of that ever asked which kind of pointing it was answering.
+  const enterWedge = (index: number) => {
+    setDrilledIndex(index);
+    onHoverShelter(town, marks[index].value);
+  };
+  const leaveWedges = () => {
+    setDrilledIndex(null);
+    onHoverShelter(town, null);
+  };
+
+  // Escape, while a coin is drilled into, belongs to the coin and to nothing
+  // else. It cannot be answered in onKeyDown below, and the reason is worth
+  // writing down: the picker draws this map inside a Radix dialog, whose
+  // dismissable layer listens for Escape on the document in the capture phase.
+  // That runs before the event ever reaches a React handler on the marker, so
+  // backing out of one coin closed the whole picker instead, which is the
+  // opposite of backing out one level.
+  //
+  // The window sits one step earlier in the capture path than the document, so
+  // a listener here goes first whatever order the two were registered in,
+  // which a second document listener could not promise. It takes the press
+  // outright: preventDefault alone would do, the layer checking
+  // defaultPrevented before it dismisses, but a key that means "leave this
+  // coin" has no business reaching anything else either.
+  //
+  // Only while drilled. At coin level Escape is the dialog's own and closes
+  // the picker exactly as it always has.
+  useEffect(() => {
+    if (drilled === null) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDrilledIndex(null);
+      onHoverShelter(town, null);
+    };
+    window.addEventListener("keydown", handleEscape, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleEscape, { capture: true });
+  }, [drilled, onHoverShelter, town]);
 
   // The pointer half of a cluster's per-shelter target, shared by the wedge
   // and by the disc circle painted over it.
@@ -209,9 +427,9 @@ export function Marker({
     return {
       pickable,
       props: {
-        onClick: pickable ? () => onPick([value]) : undefined,
-        onPointerEnter: () => onHoverShelter(value),
-        onPointerLeave: () => onHoverShelter(null),
+        onClick: pickable ? () => pick([value]) : undefined,
+        onPointerEnter: () => onHoverShelter(town, value),
+        onPointerLeave: () => onHoverShelter(town, null),
         className: cn(
           "fill-transparent stroke-none",
           pickable ? "cursor-pointer" : "cursor-default",
@@ -222,7 +440,25 @@ export function Marker({
 
   return (
     <g
-      aria-hidden
+      ref={(element) => elementRef(town, element)}
+      // Named for assistive tech either way, and a control only when there is
+      // something to press. Same division the regions keep: a live one is a
+      // button that reports what it has, an inert one is an image that says
+      // what it is. A marker was aria-hidden entirely once, which told a
+      // screen reader nothing about where the shelters are.
+      role={live ? "button" : "img"}
+      // A drilled coin is standing on one of its marks, so it answers as that
+      // shelter. The town's own name comes back the moment Escape does.
+      aria-label={
+        drilledShelter
+          ? wedgeLabel(drilledShelter, locale, messages.noAnimalsListed)
+          : markerLabel(town, locale, messages.noAnimalsListed)
+      }
+      aria-pressed={pressed}
+      // Only a live marker joins the roving tab order. tabIndex and not
+      // tabindex: React writes the attribute, and an undefined here is what
+      // keeps an inert coin out of the tab order altogether.
+      tabIndex={live ? tabIndex : undefined}
       data-marker-kind={
         !shared ? "single" : satellites.length > 0 ? "satellite" : "cluster"
       }
@@ -233,11 +469,113 @@ export function Marker({
       data-marker-info={info || undefined}
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
-      onClick={wedged ? undefined : () => live && onPick(values)}
-      onPointerEnter={wedged ? undefined : onPointerEnter}
-      onPointerLeave={wedged ? undefined : onPointerLeave}
+      data-marker-drilled={drilledMark?.value}
+      onClick={wedged ? undefined : () => live && pick(values)}
+      onPointerEnter={wedged ? undefined : () => onPointerEnter(town)}
+      onPointerLeave={wedged ? undefined : () => onPointerLeave(town)}
+      onFocus={() => onFocus(town)}
+      onBlur={() => {
+        // Focus leaving the coin closes the drill outright, so a coin the
+        // visitor comes back to is always found at coin level. Nothing worth
+        // keeping is thrown away: the marks are walked in painting order and
+        // drilling in always starts at the first of them, so a remembered
+        // wedge would save one keypress at the price of a coin that answers
+        // differently depending on where the keyboard has been. It would also
+        // have to survive the species tabs re-cutting the coin, which they do.
+        if (drilledIndex !== null) leaveWedges();
+        onBlur(town);
+      }}
+      // Two levels, and which one the coin is on decides what a key means.
+      //
+      // At coin level Enter and Space toggle what a click on the coin toggles,
+      // except on a coin whose own marks answer for their shelters: there
+      // Enter steps inside instead, because a shared coin never had one honest
+      // answer to Enter. The town is not what was aimed at when the plate is
+      // drawing three shelters, and a pointer has been able to say which of
+      // them it meant all along. Space keeps the whole group, so the pick that
+      // used to be Enter's is still one keypress away.
+      //
+      // Drilled, the coin belongs to the mark under the keyboard: the arrows
+      // walk the marks, Enter and Space pick the one they are standing on,
+      // Escape leaves without picking.
+      onKeyDown={(event) => {
+        if (!live) return;
+        if (drilled !== null) {
+          // Escape never arrives here. It is taken in the capture phase at the
+          // window, one step ahead of the dialog that would otherwise close on
+          // it; see the effect above.
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            // An off-site mark is named and nothing more, the same deal its
+            // dot has with a click. Nothing happened, so the drill stays open.
+            if (!drilledPickable) return;
+            const value = marks[drilled].value;
+            // Out first and then the pick: one shelter chosen is the end of
+            // the drill, the way Escape is the end of it without one.
+            leaveWedges();
+            pick([value]);
+            return;
+          }
+          if (
+            event.key === "ArrowLeft" ||
+            event.key === "ArrowRight" ||
+            event.key === "ArrowUp" ||
+            event.key === "ArrowDown" ||
+            event.key === "Home" ||
+            event.key === "End"
+          ) {
+            // Consumed here and never handed on to onMoveFocus. While the
+            // drill is open the arrows belong to the marks inside this coin,
+            // and a press that walked the plate as well would leave the
+            // keyboard in two places at once.
+            //
+            // These wrap, where the plate's own arrows do not. A town has no
+            // neighbour east of the eastern-most one, but the marks in a coin
+            // are two or three things arranged around a single point, and
+            // there is no edge to fall off. Home and End take the first and
+            // the last of them, so the pair means inside a coin what it means
+            // outside one.
+            event.preventDefault();
+            const forward =
+              event.key === "ArrowRight" || event.key === "ArrowDown";
+            const next =
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? marks.length - 1
+                  : (drilled + (forward ? 1 : -1) + marks.length) %
+                    marks.length;
+            enterWedge(next);
+            return;
+          }
+          // Everything else leaves the coin as it found it. Tab in particular
+          // has to: it blurs the coin, and blur is what closes the drill.
+          return;
+        }
+        if (event.key === "Enter" && wedged) {
+          event.preventDefault();
+          enterWedge(0);
+          return;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          pick(values);
+          return;
+        }
+        if (
+          event.key === "ArrowLeft" ||
+          event.key === "ArrowRight" ||
+          event.key === "ArrowUp" ||
+          event.key === "ArrowDown" ||
+          event.key === "Home" ||
+          event.key === "End"
+        ) {
+          event.preventDefault();
+          onMoveFocus(town, event.key);
+        }
+      }}
       className={cn(
-        "group/pin transition-opacity motion-reduce:transition-none",
+        "group/pin outline-none transition-opacity motion-reduce:transition-none",
         live
           ? wedged
             ? "cursor-default"
@@ -341,9 +679,38 @@ export function Marker({
           />
         );
       })}
+
+      {/* Drawn after every mark and every target, so a focus ring can never
+          end up behind the coin it is meant to be around. It carries no width
+          until the group is focused from the keyboard, which is the only
+          state that is allowed to put the heaviest line on the plate.
+
+          It stands down while the coin is drilled into: the keyboard is on one
+          mark then, and the ring below says which. */}
+      {live && !drilledMark && (
+        <circle
+          data-marker-focus-ring=""
+          cx={town.x}
+          cy={town.y}
+          r={town.reach + FOCUS_RING_GAP}
+          className={cn("pointer-events-none", FOCUS_RING)}
+        />
+      )}
+
+      {/* The same ring one step in: around the one mark the keyboard has
+          drilled into, at the weight the coin's own ring would have taken. */}
+      {live && drilledMark && (
+        <circle
+          data-wedge-focus-ring={drilledMark.value}
+          cx={drilledMark.x}
+          cy={drilledMark.y}
+          r={drilledMark.r + WEDGE_FOCUS_RING_GAP}
+          className={cn("pointer-events-none", WEDGE_FOCUS_RING)}
+        />
+      )}
     </g>
   );
-}
+});
 
 function MarkerDisc({
   cx,

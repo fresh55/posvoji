@@ -1,10 +1,18 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cityAt } from "@/lib/geo";
 import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
+import { SHELTER_SPOTLIGHT_EVENT } from "@/lib/shelter-spotlight";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS } from "@/lib/map-layout";
 import type { ShelterSummary } from "@/lib/shelter-summary";
@@ -388,6 +396,45 @@ describe("LocationPicker off-site shelters", () => {
     expect(
       screen.getAllByText("Trenutno brez objavljenih živali"),
     ).toHaveLength(1);
+  });
+});
+
+// The off-site rows used to be hand-written <a> tags with none of ShelterRows'
+// map-hover wiring. They go through ShelterRows now (see shelter-rows.tsx's
+// href branch), so a marker hover has to echo on them exactly the way it
+// already does on a live row.
+describe("LocationPicker off-site hover echo", () => {
+  const scrollIntoView = vi.fn();
+
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = scrollIntoView;
+    scrollIntoView.mockClear();
+  });
+
+  it("highlights the off-site row when its marker is hovered, the same as a live row", async () => {
+    await openPicker({ offSite });
+
+    const marker = screen
+      .getByRole("dialog")
+      .querySelector('[data-marker-key*="celje" i]')!;
+    fireEvent.pointerEnter(marker);
+
+    const link = screen.getByRole("link", { name: /Zavetišče Vzhod/ });
+    expect(link.getAttribute("data-highlighted")).toBe("true");
+  });
+
+  it("scrolls the off-site row into view on that same hover", async () => {
+    await openPicker({ offSite });
+
+    const marker = screen
+      .getByRole("dialog")
+      .querySelector('[data-marker-key*="celje" i]')!;
+    fireEvent.pointerEnter(marker);
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(scrollIntoView.mock.calls[0]?.[0]).toMatchObject({
+      block: "nearest",
+    });
   });
 });
 
@@ -1000,7 +1047,11 @@ describe("LocationPicker floating panel", () => {
     await openPicker();
 
     const legend = dialog().querySelector<HTMLElement>("[data-map-legend]")!;
-    const block = legend.parentElement!.parentElement!;
+    // Three levels up, not two: the legend's own variant wrapper sits inside
+    // a group that folds away with the sheet (so the always-visible CC BY
+    // attribution paragraph can live as its sibling, outside that fold), and
+    // that group sits inside the block this test means to find.
+    const block = legend.parentElement!.parentElement!.parentElement!;
 
     // Inside the map's own container, so below lg it is the next thing after
     // the plate in that container's column and moves with the plate's bottom
@@ -1131,6 +1182,171 @@ describe("LocationPicker found-animal entry", () => {
   });
 });
 
+// The third way into this dialog, after the trigger and the found-animal
+// strip: an animal card's shelter name, asking where that shelter is.
+describe("LocationPicker shelter spotlight", () => {
+  const dialog = () => screen.getByRole("dialog");
+
+  function askForJug(
+    props: Partial<ComponentProps<typeof LocationPicker>> = {},
+  ) {
+    render(
+      <I18nProvider locale="sl">
+        <LocationPicker
+          options={options}
+          counts={counts}
+          selected={[]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          resultCount={11}
+          species="all"
+          // Answers below 64rem, and the matchMedia stub at the top of this
+          // file reports every query as unmatched, so this is the instance on
+          // screen and the one that must respond.
+          deepLink="mobile"
+          {...props}
+        />
+      </I18nProvider>,
+    );
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(SHELTER_SPOTLIGHT_EVENT, {
+          detail: { shelterId: "jug" },
+        }),
+      );
+    });
+  }
+
+  /** The spotlight's own annotation, found by the name it carries rather than
+   *  by document order: the region holding the dialog's opening focus wears
+   *  an annotation of its own, and it is drawn first. */
+  const spotlightCallout = () =>
+    Array.from(dialog().querySelectorAll("[data-map-callout]")).find(
+      (callout) =>
+        callout.querySelector("[data-callout-title]")?.textContent ===
+        "Zavetišče Jug",
+    );
+
+  it("opens the map with the asked-for shelter ringed and named", () => {
+    askForJug();
+
+    // One ring, on the town Zavetišče Jug sits in.
+    expect(dialog().querySelectorAll("[data-map-spotlight]")).toHaveLength(1);
+    // The shelter by name, not its town: that is the whole answer a card came
+    // here for.
+    expect(spotlightCallout()).toBeTruthy();
+  });
+
+  it("does not caption a card's shelter as anybody's responsible one", () => {
+    askForJug();
+
+    // That note belongs to the municipality answer. This shelter is not
+    // responsible for anywhere in particular; it is simply where this animal
+    // lives, and the ring says so on its own.
+    expect(screen.queryByText("pristojno zavetišče")).toBeNull();
+    expect(
+      spotlightCallout()!.querySelector("[data-callout-metadata]"),
+    ).toBeNull();
+  });
+
+  it("leaves the ask to whichever instance is on screen", () => {
+    askForJug({ deepLink: "desktop" });
+
+    // Two pickers are mounted on the page at once. The hidden one answering
+    // would put a second dialog behind the visible one.
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("answers without a municipality table, which it has nothing to do with", () => {
+    // The found-animal deep link needs the coverage data and refuses without
+    // it. This ask does not, and folding the two guards together would have
+    // made a card's shelter name inert wherever that table is missing.
+    askForJug({ municipalities: undefined });
+
+    expect(dialog().querySelectorAll("[data-map-spotlight]")).toHaveLength(1);
+  });
+});
+
+// The map's own answer for a region it draws no shelters in. The coverage
+// table is already in this component for the found-animal mode, and it knows
+// who takes a stray found there.
+describe("LocationPicker region coverage", () => {
+  const dialog = () => screen.getByRole("dialog");
+
+  // Nova Gorica lies in Goriška, which this roster leaves empty. Ljubljana
+  // lies in Osrednjeslovenska, which has Zavetišče Jug and is therefore live.
+  const municipalities = [
+    {
+      name: "Nova Gorica",
+      nearest: [],
+      coverage: [
+        {
+          shelterId: "zahod",
+          shelterName: "Zavetišče Nova Gorica",
+          city: "Nova Gorica",
+          detailHref: "/zavetisca/zahod",
+          animals: 0,
+          sourceLabel: "Test",
+          sourceDate: "2026-01-01",
+          confirmed: true,
+        },
+      ],
+    },
+    {
+      name: "Ljubljana",
+      nearest: [],
+      coverage: [
+        {
+          shelterId: "jug",
+          shelterName: "Zavetišče Jug",
+          city: "Ljubljana",
+          detailHref: "/zavetisca/jug",
+          animals: 7,
+          sourceLabel: "Test",
+          sourceDate: "2026-01-01",
+          confirmed: true,
+        },
+      ],
+    },
+  ];
+
+  const region = (name: string) =>
+    dialog().querySelector<SVGPathElement>(`[aria-label^="${name}"]`)!;
+
+  it("tells an empty region who answers for the občine inside it", async () => {
+    await openPicker({ municipalities });
+
+    fireEvent.pointerOver(region("Goriška"));
+
+    expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
+    // Placed by the same two steps a town is placed by, so a name lands in
+    // the region the map would have drawn that municipality in.
+    expect(
+      screen.getByText("Zanje skrbi Zavetišče Nova Gorica"),
+    ).toBeTruthy();
+  });
+
+  it("carries the same fact in the region's own label", async () => {
+    await openPicker({ municipalities });
+
+    expect(region("Goriška").getAttribute("aria-label")).toBe(
+      "Goriška: Ni zavetišč v tej regiji. Zanje skrbi Zavetišče Nova Gorica",
+    );
+  });
+
+  it("leaves a live region's own counts to speak for it", async () => {
+    await openPicker({ municipalities });
+
+    fireEvent.pointerOver(region("Osrednjeslovenska"));
+
+    // Ljubljana's coverage entry names a shelter for this region too, and a
+    // region that has its own shelters has no use for it: the counts are the
+    // answer there.
+    expect(dialog().querySelector("[data-callout-note]")).toBeNull();
+    expect(screen.getByText(/1 zavetišče · 7 živali/)).toBeTruthy();
+  });
+});
+
 describe("LocationPicker floating footer", () => {
   it("applies and closes from the pill on the paper", async () => {
     await openPicker();
@@ -1184,5 +1400,31 @@ describe("LocationPicker attribution", () => {
     // inline row for phones) with CSS choosing which one shows, so both
     // copies exist in jsdom regardless of viewport.
     expect(screen.getAllByText("Izhodišče").length).toBeGreaterThan(0);
+  });
+
+  it("keeps the GURS credit outside the wrapper that hides with the sheet, CC BY 4.0 requires it visible", async () => {
+    await openPicker();
+
+    // The mobile sheet opens by default (data-picker-sheet="open"), which is
+    // exactly the state that used to bury this paragraph: it lived inside the
+    // wrapper that folds away with the sheet, so it disappeared on every phone
+    // the moment the dialog opened.
+    //
+    // Asked by containment rather than by class: a restyle can rename every
+    // utility on that wrapper and this has to keep failing if the credit is
+    // moved inside it. The legend's own presence in the fold is what keeps
+    // the question honest, since a hook on the wrong element would let the
+    // credit pass by default.
+    const credit = screen.getByRole("dialog").querySelector(
+      "[data-slot='map-attribution']",
+    )!;
+    const fold = "[data-slot='map-legend-fold']";
+
+    expect(credit.textContent).toContain("GURS");
+    expect(screen.getByRole("dialog").querySelector(fold)).not.toBeNull();
+    expect(
+      screen.getByRole("dialog").querySelector("[data-map-legend]")!.closest(fold),
+    ).not.toBeNull();
+    expect(credit.closest(fold)).toBeNull();
   });
 });

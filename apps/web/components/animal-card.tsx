@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type MouseEvent } from "react";
-import { Hourglass } from "lucide-react";
+import { Hourglass, MapPin } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
@@ -21,11 +21,17 @@ export function AnimalCard({
   animal,
   reference,
   onOpen,
+  onShelterClick,
 }: {
   animal: Animal;
   /** The dataset's build time, so prerendered ages survive hydration. */
   reference: Date;
   onOpen: (id: string, origin?: DialogOrigin) => void;
+  /** Turns the shelter's name into a control that asks the map to spotlight
+   *  it. Opt-in, because only a page that also mounts the location picker has
+   *  anything to answer with: a shelter's own page renders these cards with no
+   *  picker in the tree, and there the name stays inert text. */
+  onShelterClick?: (shelterId: string) => void;
 }) {
   const { locale, messages, t } = useI18n();
   const cardRef = useRef<HTMLElement>(null);
@@ -40,6 +46,12 @@ export function AnimalCard({
   const href = animalPath(animal, locale);
   const label = translate(locale, "openDetails", {
     name: animal.name ?? messages.unnamed,
+  });
+  // The shelter's name is the visible label and the accessible name says more
+  // than it, so the name has to be inside the spoken sentence: WCAG 2.5.3 asks
+  // that what is read starts from what is written.
+  const shelterLabel = translate(locale, "showShelterOnMap", {
+    shelter: animal.shelter.name,
   });
 
   // The href is a real deep link, so a middle click or a held modifier gets
@@ -95,7 +107,12 @@ export function AnimalCard({
       <a
         href={href}
         onClick={openDialog}
-        className="block space-y-1 p-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+        // px-3 pt-3 and not p-3: the shelter line below is a sibling now, and
+        // the padding that used to close the anchor closes the card down
+        // there instead. The rhythm is unchanged, just split across the two:
+        // pt-1 on the sibling is the space-y-1 gap this anchor no longer
+        // spans, and its pb-3 is this one's missing bottom.
+        className="block space-y-1 px-3 pt-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
       >
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="truncate font-medium">{animal.name ?? messages.unnamed}</h3>
@@ -120,8 +137,38 @@ export function AnimalCard({
         <p className="text-sm text-muted-foreground tabular-nums">
           {animalMeta(animal, locale, reference)}
         </p>
-        <p className="truncate text-xs text-muted-foreground/80">{animal.shelter.name}</p>
       </a>
+
+      {/* Outside the anchor, because a control inside a link is a control
+          nothing can reach: a keyboard would have to walk through the card's
+          own link to get to it and a screen reader would announce one thing
+          sitting in another. The line keeps the anchor's place in the card, so
+          the split is only in the DOM.
+
+          The affordance is a pin at the same muted weight the line already
+          had, and the colour only moves on hover. The site says "clickable"
+          this quietly everywhere else (see the picker's own rail and clear
+          buttons), and a shelter's name on a card is a footnote, not the
+          card's offer. The outline is inset like the anchor's above it,
+          because the article clips its overflow and an outward one would be
+          cut off at the card's bottom edge. */}
+      {onShelterClick ? (
+        <button
+          type="button"
+          onClick={() => onShelterClick(animal.shelter.id)}
+          aria-label={shelterLabel}
+          // cursor-pointer because a bare <button> keeps the arrow cursor, and
+          // nothing else here says the line answers a click.
+          className="flex w-full cursor-pointer items-center gap-1 px-3 pb-3 pt-1 text-left text-xs text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+        >
+          <MapPin className="size-3 shrink-0" strokeWidth={1.75} aria-hidden />
+          <span className="min-w-0 truncate">{animal.shelter.name}</span>
+        </button>
+      ) : (
+        <p className="truncate px-3 pb-3 pt-1 text-xs text-muted-foreground/80">
+          {animal.shelter.name}
+        </p>
+      )}
     </article>
   );
 }

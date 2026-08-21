@@ -1,17 +1,25 @@
 "use client";
 
 import type { RefObject } from "react";
+import Image from "next/image";
 import { Check, Hourglass, X } from "lucide-react";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
+import { ShelterAvatar } from "@/components/shelter-avatar";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
+import { thumbnailUrl } from "@/lib/animal-images";
 import { formatKm } from "@/lib/geo";
 import { animalCount, shelterCount, speciesLabel } from "@/lib/labels";
 import type { MapPick } from "@/components/filters/shelter-map";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
+
+// Fixed per position, not random, so one shelter's fan leans the same way on
+// every render. PhotoSpread's own nudge is tuned for full-size photos and
+// disappears at chip scale, so this one leans harder.
+const FACE_TILT = [-5, 4, -6] as const;
 
 // The answer to a click on the map. The click itself already toggled, exactly
 // as it always did; this is what the toggle was about. It sits at the top of
@@ -64,6 +72,7 @@ export function MapPickCard({
   const title = pick.kind === "shelter" ? (shelterRow?.label ?? "") : pick.label;
   const checked = shelterRow ? selected.includes(shelterRow.value) : false;
   const summary = shelterRow ? summaries?.get(shelterRow.value) : undefined;
+  const faces = summary?.faces ?? [];
   const sublabel = shelterRow
     ? [
         shelterRow.city,
@@ -103,6 +112,12 @@ export function MapPickCard({
       )}
     >
       <div className="flex items-start gap-2">
+        {/* A group pick has no single shelter to put a face to, and
+            shelterRow is exactly the signal the rest of the card already
+            uses for that: it is set only when pick.kind is "shelter". */}
+        {shelterRow && (
+          <ShelterAvatar name={title} logo={summary?.logo} size="xs" />
+        )}
         <div className="min-w-0 flex-1">
           <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
             {checked && (
@@ -151,6 +166,40 @@ export function MapPickCard({
             );
           })}
         </p>
+      )}
+
+      {/* A mini photo-spread: the same tilt-and-overlap language the animal
+          dialog's gallery uses, at chip scale. The first face is whichever
+          animal longestWaiting names, whenever that animal has a photo at
+          all (see summarizeShelters), so this sits right above that line
+          rather than anywhere else in the card. The ring is drawn from the
+          card's own surface, neutral or accent, so an overlap reads as a cut
+          edge on either one instead of a mismatched halo. */}
+      {faces.length > 0 && (
+        <div className="mt-2 flex items-center">
+          {faces.map((face, index) => (
+            <span
+              key={face.src}
+              className={cn(
+                "relative size-11 shrink-0 overflow-hidden rounded-ui bg-muted ring-2",
+                index > 0 && "-ml-4",
+                checked ? "ring-[var(--filter-accent)]" : "ring-muted/40",
+              )}
+              style={{
+                zIndex: faces.length - index,
+                transform: `rotate(${FACE_TILT[index % FACE_TILT.length]}deg)`,
+              }}
+            >
+              <Image
+                src={thumbnailUrl(face.src)}
+                alt={face.name}
+                fill
+                sizes="3rem"
+                className="object-cover"
+              />
+            </span>
+          ))}
+        </div>
       )}
 
       {/* The one animal a number cannot stand in for. Same hourglass and same

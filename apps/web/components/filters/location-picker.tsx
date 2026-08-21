@@ -21,6 +21,10 @@ import {
   FOUND_ANIMAL_PARAM,
   OPEN_MUNICIPALITY_LOOKUP_EVENT,
 } from "@/lib/found-animal";
+import {
+  SHELTER_SPOTLIGHT_EVENT,
+  type ShelterSpotlightDetail,
+} from "@/lib/shelter-spotlight";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { ResultCount } from "@/components/filters/result-count";
 import { EmptyMarkerGlyph } from "@/components/filters/map-marker";
@@ -45,9 +49,10 @@ import {
 } from "@/components/ui/dialog";
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
-import { cityAt, distanceKm, formatKm, onMap, type LatLon } from "@/lib/geo";
+import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
+import { regionAt } from "@/lib/map-regions";
 import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import type { ShelterSummary } from "@/lib/shelter-summary";
@@ -364,6 +369,10 @@ export function LocationPicker({
   // until something is clicked, and again once the card is dismissed. A new
   // click replaces it: one card at a time, always about the newest click.
   const [pick, setPick] = useState<MapPick | null>(null);
+  // The shelter an animal card asked the map to point at. One at a time, like
+  // the pick above it, and gone when the dialog closes: it answers "where is
+  // this one", not "which ones did I choose".
+  const [spotlitShelterId, setSpotlitShelterId] = useState<string | null>(null);
   const pickCardRef = useRef<HTMLDivElement>(null);
   // The panel has two docks and they fold independently. One boolean would
   // have had to guess the breakpoint at click time; two let the control that is
@@ -408,6 +417,46 @@ export function LocationPicker({
     return () =>
       window.removeEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
   }, [canDeepLink, deepLink]);
+
+  // An animal card asking for its shelter on the map. Its own effect and not a
+  // branch of the one above, because canDeepLink also demands the municipality
+  // table and this ask has nothing to do with it: folded together, a build
+  // without coverage data would have left every card's shelter name pressing
+  // nothing. The breakpoint arbitration is the same, for the same reason: two
+  // instances are mounted and exactly one of them is on screen.
+  const canSpotlight = Boolean(deepLink);
+  useEffect(() => {
+    if (!canSpotlight) return;
+    const isMine = () => {
+      const isDesktop = window.matchMedia("(min-width: 64rem)").matches;
+      return deepLink === "desktop" ? isDesktop : !isDesktop;
+    };
+    const spotlight = (event: Event) => {
+      if (!isMine()) return;
+      const { shelterId } = (event as CustomEvent<ShelterSpotlightDetail>)
+        .detail;
+      setSpotlitShelterId(shelterId);
+      // The shelter list is where this question is answered, whatever tab the
+      // dialog was last left on: the map reads muniMode first when it decides
+      // what to light up, so the found-animal tab would have swallowed the
+      // spotlight outright. A stale search is cleared for the same reason, one
+      // step further down: it would filter the named row out of the list this
+      // is about to scroll.
+      setMuniMode(false);
+      setMuniShelterIds(null);
+      setMuniName(null);
+      setQuery("");
+      setOpen(true);
+      // Both docks, because the row below has to have somewhere to be brought
+      // into view; only the one at the current breakpoint is on screen and the
+      // other is a no-op there.
+      setPanelOpen(true);
+      setSheetOpen(true);
+    };
+    window.addEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
+    return () =>
+      window.removeEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
+  }, [canSpotlight, deepLink]);
   const searchRef = useRef<HTMLInputElement>(null);
   const [place, setPlace] = useState("");
   const placeRef = useRef<HTMLInputElement>(null);
@@ -456,6 +505,40 @@ export function LocationPicker({
     [offSite, origin],
   );
 
+  // Which shelters answer for the municipalities inside each region, by region
+  // id. An empty region on this map is not an empty part of the country:
+  // somebody is still responsible for a stray found there, and the coverage
+  // table already knows who, so the map can say it instead of stopping at "no
+  // shelters here".
+  //
+  // Placed the same way a town is placed (see groupTownsByRegion in
+  // lib/map-layout.ts): the občina's GURS centroid through project(), then
+  // regionAt() on the result. A name therefore lands in the region the map
+  // would have drawn that municipality in, rather than in one a second lookup
+  // table might disagree about.
+  const regionShelterNames = useMemo(() => {
+    const byRegion = new Map<number, string[]>();
+    for (const entry of municipalities ?? []) {
+      // `nearest` is a shortlist of neighbours, not an answer about who is
+      // responsible, so a municipality with no coverage contributes nothing.
+      if (entry.coverage.length === 0) continue;
+      const at = MUNICIPALITY_AT.get(entry.name);
+      if (!at) continue;
+      const region = regionAt(project(at));
+      if (!region) continue;
+      const names = byRegion.get(region.id) ?? [];
+      // Deduped, in the order the table lists them: one shelter answers for
+      // many občine and would otherwise be named once per municipality.
+      for (const covered of entry.coverage) {
+        if (!names.includes(covered.shelterName)) {
+          names.push(covered.shelterName);
+        }
+      }
+      byRegion.set(region.id, names);
+    }
+    return byRegion;
+  }, [municipalities]);
+
   // What the municipality cards may offer to select: only shelters that
   // exist as filter options, i.e. currently have animals to show.
   const selectableIds = useMemo(
@@ -495,6 +578,9 @@ export function LocationPicker({
       setMuniMode(false);
       setMuniShelterIds(null);
       setMuniName(null);
+      // A click on the country is a newer question than the one a card
+      // arrived with, and two rings at once would be two answers.
+      setSpotlitShelterId(null);
     },
     [onToggleMany],
   );
@@ -507,6 +593,16 @@ export function LocationPicker({
   useEffect(() => {
     if (pick) pickCardRef.current?.scrollIntoView({ block: "nearest" });
   }, [pick]);
+
+  // The spotlit shelter's own row, brought into view once there is a row. It
+  // cannot be done where the event is heard: the list is mounted by the dialog
+  // that same event opens, so at that point there is nothing to scroll to.
+  // "nearest" like the click path above, which leaves an already-visible row
+  // where it is, and focus is left alone for the same reason it is there.
+  useEffect(() => {
+    if (!open || !spotlitShelterId) return;
+    rowRefs.current.get(spotlitShelterId)?.scrollIntoView({ block: "nearest" });
+  }, [open, spotlitShelterId]);
 
   // Search narrows the list only. The map keeps every pin, so the country
   // stays whole while you type.
@@ -577,6 +673,7 @@ export function LocationPicker({
           setMuniShelterIds(null);
           setMuniName(null);
           setPick(null);
+          setSpotlitShelterId(null);
           // Neither dock's fold survives a close: reopening always lands with
           // both docks out, the panel beside the map at lg and the sheet over
           // it below lg.
@@ -733,11 +830,23 @@ export function LocationPicker({
                         )
                       : null
                 }
-                // The ring and named card that answer "so where is that?"
-                // once a municipality is picked. Stronger than the hover
-                // highlight on purpose, and the only signal phones get.
-                spotlightValues={muniMode ? muniShelterIds : null}
-                spotlightNote={messages.muniResponsible}
+                // The ring and named card that answer "so where is that?".
+                // Two questions land here: which shelters answer for a picked
+                // municipality, and where the one named on an animal card is.
+                // Stronger than the hover highlight on purpose, and the only
+                // signal phones get.
+                spotlightValues={
+                  muniMode
+                    ? muniShelterIds
+                    : spotlitShelterId
+                      ? [spotlitShelterId]
+                      : null
+                }
+                // The caption belongs to the municipality answer alone. A
+                // shelter named on an animal card is not "the responsible
+                // shelter" for anywhere, and an unconditional note said it
+                // was; the ring and the name are the whole answer there.
+                spotlightNote={muniMode ? messages.muniResponsible : undefined}
                 // The other half of that answer: which place is being
                 // answered for. Only in municipality mode, and only when the
                 // občina is one we hold a centroid for.
@@ -748,6 +857,14 @@ export function LocationPicker({
                 }
                 onHoverShelters={setHoveredMarkerValues}
                 highlightedDensity={highlightedDensity}
+                // The same breakdown the pick card reads. On the plate it is
+                // a line of species glyphs under the name of one hovered
+                // shelter, so the map answers "who lives here" without
+                // waiting for a click.
+                summaries={summaries}
+                // What an empty region has to say for itself. Computed here
+                // because this is where the coverage table already is.
+                regionShelterNames={regionShelterNames}
                 // lg+: the SVG takes the whole container and lets its own
                 // preserveAspectRatio letterbox the viewBox inside it. That is
                 // the letterboxing: no aspect-ratio arithmetic on this side,
@@ -779,52 +896,75 @@ export function LocationPicker({
 
                 It still steps out of the way entirely once the sheet is up:
                 more than half the screen is the list then, and the map behind
-                it has nothing left to explain. */}
+                it has nothing left to explain.
+
+                CC BY 4.0 requires the attribution paragraph below to stay
+                visible regardless, so it lives outside this hidden-when-open
+                wrapper: only the legend itself folds away with the sheet. */}
             <div
               className={cn(
                 "pointer-events-none z-10 mt-2 flex w-full max-w-[26rem] flex-col gap-1",
                 "lg:absolute lg:bottom-3 lg:left-3 lg:mt-0 lg:w-auto",
-                sheetOpen && "max-lg:hidden",
               )}
             >
-              <div className="pointer-events-auto hidden w-fit lg:block">
-                <MapLegend
-                  variant="panel"
-                  highlightedDensity={highlightedDensity}
-                  onHoverDensity={setHighlightedDensity}
-                  onLeaveDensity={() => setHighlightedDensity(null)}
-                  hasSelectedRegion={hasSelected}
-                  hasMixedRegion={hasMixed}
-                  hasEmptyMarker={hasEmpty}
-                  origin={origin}
-                  messages={messages}
-                />
-              </div>
+              <div
+                // The half of this corner that folds away with the sheet. It
+                // is named so the licence check can ask where the credit sits
+                // rather than which classes it wears: the paragraph below is
+                // outside this element on purpose and has to stay there.
+                data-slot="map-legend-fold"
+                className={cn(
+                  "flex flex-col gap-1",
+                  sheetOpen && "max-lg:hidden",
+                )}
+              >
+                <div className="pointer-events-auto hidden w-fit lg:block">
+                  <MapLegend
+                    variant="panel"
+                    highlightedDensity={highlightedDensity}
+                    onHoverDensity={setHighlightedDensity}
+                    onLeaveDensity={() => setHighlightedDensity(null)}
+                    hasSelectedRegion={hasSelected}
+                    hasMixedRegion={hasMixed}
+                    hasEmptyMarker={hasEmpty}
+                    origin={origin}
+                    messages={messages}
+                  />
+                </div>
 
-              {/* The wide-plate legend, which is now everything below lg:
-                  phones and tablets alike. It wraps rather than stacking,
-                  because there the plate is the width of the screen and the
-                  corner under it is that wide too. */}
-              <div className="pointer-events-auto lg:hidden">
-                <MapLegend
-                  variant="inline"
-                  highlightedDensity={highlightedDensity}
-                  onHoverDensity={setHighlightedDensity}
-                  onLeaveDensity={() => setHighlightedDensity(null)}
-                  hasSelectedRegion={hasSelected}
-                  hasMixedRegion={hasMixed}
-                  // Acted on here too, unlike before: this variant now covers
-                  // md to lg, where the plate is full width and draws every
-                  // marker. The row's own class is what keeps it off the phone.
-                  hasEmptyMarker={hasEmpty}
-                  origin={origin}
-                  messages={messages}
-                />
+                {/* The wide-plate legend, which is now everything below lg:
+                    phones and tablets alike. It wraps rather than stacking,
+                    because there the plate is the width of the screen and the
+                    corner under it is that wide too. */}
+                <div className="pointer-events-auto lg:hidden">
+                  <MapLegend
+                    variant="inline"
+                    highlightedDensity={highlightedDensity}
+                    onHoverDensity={setHighlightedDensity}
+                    onLeaveDensity={() => setHighlightedDensity(null)}
+                    hasSelectedRegion={hasSelected}
+                    hasMixedRegion={hasMixed}
+                    // Acted on here too, unlike before: this variant now
+                    // covers md to lg, where the plate is full width and
+                    // draws every marker. The row's own class is what keeps
+                    // it off the phone.
+                    hasEmptyMarker={hasEmpty}
+                    origin={origin}
+                    messages={messages}
+                  />
+                </div>
               </div>
 
               {/* CC BY 4.0 requires attribution, so this stays visible, just
-                  quieter than the legend it sits under. */}
-              <p className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70">
+                  quieter than the legend it sits under, even when the sheet
+                  is open on a phone. */}
+              <p
+                // Named, because the licence depends on it staying visible:
+                // a test can then find this paragraph and walk its ancestors
+                // rather than matching on the classes it happens to wear.
+                data-slot="map-attribution"
+                className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70"
+              >
                 {messages.regionBoundaries}:{" "}
                 <a
                   href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
@@ -903,11 +1043,15 @@ export function LocationPicker({
             <Button
               variant="outline"
               size="icon-sm"
-              // size-11 below md is the 44px touch target the mobile
-              // hardening asks of every control in this dialog; md and up gets
-              // the smaller square back. This gate follows the touch-target
-              // rule, not the dock, so it stayed at md when the dock moved.
-              className="absolute right-3 top-3 z-30 size-11 bg-background/85 shadow-xs backdrop-blur md:size-8"
+              // size-11 below lg is the 44px touch target the mobile
+              // hardening asks of every control in this dialog; lg and up gets
+              // the smaller square back. Touch targets gate at lg across this
+              // dialog because that is where the mobile layout actually ends:
+              // the panel is a bottom sheet below lg and a side panel from lg
+              // on, so a tablet on the sheet stage still needs a thumb-sized
+              // control. The other touch-target sites below follow the same
+              // rule without restating it.
+              className="absolute right-3 top-3 z-30 size-11 bg-background/85 shadow-xs backdrop-blur lg:size-8"
             >
               <X className="size-4" aria-hidden />
               <span className="sr-only">{messages.close}</span>
@@ -1063,12 +1207,11 @@ export function LocationPicker({
                         }}
                         data-picker-tab={mode ? "municipality" : "shelters"}
                         className={cn(
-                          // 44px of height below md, the touch target the rest
-                          // of this dialog's mobile chrome already keeps. Still
-                          // md and not lg: the dock moved, this did not, and
-                          // the touch-target rule is the same one the whole
-                          // dialog applies at the same width.
-                          "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors max-md:min-h-11 max-md:px-3.5",
+                          // 44px of height below lg, the touch target the rest
+                          // of this dialog's mobile chrome already keeps. See
+                          // the close button above for why this dialog's
+                          // touch-target gates sit at lg rather than at md.
+                          "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors max-lg:min-h-11 max-lg:px-3.5",
                           muniMode === mode
                             ? "bg-foreground text-background"
                             : "text-muted-foreground hover:text-foreground",
@@ -1172,7 +1315,10 @@ export function LocationPicker({
                 }}
                 placeholder={messages.searchShelters}
                 aria-label={messages.searchShelters}
-                className="h-8 pl-8 text-sm"
+                // 44px tall below lg, the same touch-target rule the rest of
+                // this dialog's mobile chrome keeps; lg and up gets the
+                // denser h-8 back.
+                className="h-11 pl-8 text-sm lg:h-8"
               />
             </div>
 
@@ -1231,7 +1377,8 @@ export function LocationPicker({
                 placeholder={messages.postcodeOrTown}
                 aria-label={messages.postcodeOrTown}
                 aria-describedby={statusId}
-                className="h-8 pl-8 pr-8 text-sm"
+                // Same 44px-below-lg rule as the search box above it.
+                className="h-11 pl-8 pr-8 text-sm lg:h-8"
               />
               {place !== "" && (
                 <button
@@ -1241,7 +1388,11 @@ export function LocationPicker({
                     placeRef.current?.focus();
                   }}
                   aria-label={messages.clearLocation}
-                  className="absolute right-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground"
+                  // The icon stays size-6, but below lg the button's own box
+                  // grows to the 44px touch target and re-centers on the same
+                  // spot the smaller icon sits at, so the field does not have
+                  // to widen for it.
+                  className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground lg:size-6"
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>
@@ -1273,7 +1424,12 @@ export function LocationPicker({
                   onClick={toggleNearby}
                   aria-pressed={nearbyOn}
                   className={cn(
-                    "inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors",
+                    // max-lg:min-h-9 rather than the full 44px: this row sits
+                    // beside the Clear button and a full min-h-11 on both
+                    // would force the row itself taller than the layout
+                    // wants. 36px still clears the WCAG 2.5.8 minimum and
+                    // is a real improvement on the old py-0.5 (about 22px).
+                    "inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors max-lg:min-h-9",
                     nearbyOn
                       ? "font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground",
@@ -1294,7 +1450,8 @@ export function LocationPicker({
                 <button
                   type="button"
                   onClick={() => onToggleMany(selected)}
-                  className="ml-auto rounded-ui py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  // Same max-lg:min-h-9 as the nearest-me toggle beside it.
+                  className="ml-auto inline-flex items-center rounded-ui py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground max-lg:min-h-9"
                 >
                   {messages.clear} ({selected.length})
                 </button>
@@ -1345,57 +1502,29 @@ export function LocationPicker({
                       heading so the zeroes read as "not here yet" rather
                       than as empty search results. There is nothing to
                       filter by, but there is a page for each of them, so
-                      the rows are links out rather than dead toggles. The
-                      layout copies ShelterRows down to the spacer where its
-                      check sits, so the two lists share their columns. */}
+                      the rows are links out rather than dead toggles:
+                      ShelterRows renders a row with an href as an <a>
+                      instead of a toggle button, so the two lists share
+                      their layout, their columns and their map-hover
+                      scroll echo instead of one copying the other by hand. */}
                   {visibleOffRows.length > 0 && (
                     <div className="mt-3">
                       <p className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
                         {messages.noAnimalsListedHeading}
                       </p>
-                      <div className="space-y-0.5 sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0">
-                        {visibleOffRows.map((row) => {
-                          const sublabel = [
-                            row.city,
-                            row.km === undefined
-                              ? undefined
-                              : formatKm(row.km, messages.lessThanOneKm),
-                          ]
-                            .filter(Boolean)
-                            .join(" · ");
-                          const isHighlighted =
-                            hoveredMarkerValues?.includes(row.value) ?? false;
-                          return (
-                            <a
-                              key={row.value}
-                              href={`${detailBase}/${row.value}`}
-                              onPointerEnter={() => setHoveredRowValue(row.value)}
-                              onPointerLeave={() => setHoveredRowValue(null)}
-                              data-highlighted={isHighlighted || undefined}
-                              className={cn(
-                                "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors",
-                                isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
-                              )}
-                            >
-                              <span className="size-3.5 shrink-0" aria-hidden />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm text-muted-foreground">
-                                  {row.label}
-                                </span>
-                                {sublabel && (
-                                  <span className="block truncate text-[11px] text-muted-foreground/80">
-                                    {sublabel}
-                                  </span>
-                                )}
-                              </span>
-                              <ChevronRight
-                                className="size-3 shrink-0 text-muted-foreground/60"
-                                aria-hidden
-                              />
-                            </a>
-                          );
-                        })}
-                      </div>
+                      <ShelterRows
+                        rows={visibleOffRows.map((row) => ({
+                          value: row.value,
+                          label: row.label,
+                          city: row.city,
+                          km: row.km,
+                          href: `${detailBase}/${row.value}`,
+                        }))}
+                        highlighted={hoveredMarkerValues ?? undefined}
+                        onHoverRow={setHoveredRowValue}
+                        lessThanOneKm={messages.lessThanOneKm}
+                        className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
+                      />
                     </div>
                   )}
                 </>

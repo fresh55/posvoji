@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
@@ -101,5 +101,62 @@ describe("AnimalCard long-stay mark", () => {
     );
 
     expect(screen.getByText("Waiting 3 years")).toBeTruthy();
+  });
+});
+
+describe("AnimalCard shelter control", () => {
+  it("leaves the shelter name as text when no handler is given", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard animal={animal()} reference={NOW} onOpen={() => undefined} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("Zavetišče Test")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Zavetišče Test/ })).toBeNull();
+  });
+
+  it("asks for the shelter without opening the animal", () => {
+    const opened: string[] = [];
+    const spotlit: string[] = [];
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          onOpen={(id) => opened.push(id)}
+          onShelterClick={(id) => spotlit.push(id)}
+        />
+      </I18nProvider>,
+    );
+
+    // The accessible name has to carry the shelter's own name, or the control
+    // is "show on the map" with nothing saying which map pin it means.
+    const control = screen.getByRole("button", {
+      name: "Pokaži Zavetišče Test na zemljevidu",
+    });
+    fireEvent.click(control);
+
+    expect(spotlit).toEqual(["test-shelter"]);
+    // The control sits beside the card's link rather than inside it, so a
+    // click here can never also be a click on the animal.
+    expect(opened).toEqual([]);
+  });
+
+  it("names the shelter in English too", () => {
+    render(
+      <I18nProvider locale="en">
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          onOpen={() => undefined}
+          onShelterClick={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Show Zavetišče Test on the map" }),
+    ).toBeTruthy();
   });
 });

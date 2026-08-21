@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatKm } from "@/lib/geo";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,23 @@ export type ShelterRow = {
   label: string;
   city?: string;
   km?: number;
+  /** Set on a registry shelter with nothing to filter by: the row links to
+   *  its own page instead of toggling a selection. Every toggle-only prop
+   *  below (counts, selected, onToggle) plays no part in a row carrying
+   *  this. */
+  href?: string;
 };
+
+// A toggle row is a <button>; a link row (href set) is an <a>. Both end up in
+// the same refs map, keyboard-walked or scrolled to by value alone, so the
+// map and the keyboard code that reach into it do not need to know which
+// element kind they got.
+type ShelterRowElement = HTMLButtonElement | HTMLAnchorElement;
+
+// Stable empty defaults, so a caller rendering link rows only is not made to
+// fabricate a Map and an array it will never read from.
+const EMPTY_COUNTS = new Map<string, number>();
+const EMPTY_SELECTED: string[] = [];
 
 // The list is not a fallback for narrow screens. It is the accessible path, it
 // always holds every shelter including the ones no marker could be placed for,
@@ -19,8 +35,8 @@ export type ShelterRow = {
 // Both the sidebar and the expanded map show the same rows.
 export function ShelterRows({
   rows,
-  counts,
-  selected,
+  counts = EMPTY_COUNTS,
+  selected = EMPTY_SELECTED,
   onToggle,
   refs,
   className,
@@ -30,15 +46,19 @@ export function ShelterRows({
   lessThanOneKm,
 }: {
   rows: ShelterRow[];
-  counts: Map<string, number>;
-  selected: string[];
-  onToggle: (value: string) => void;
-  refs?: RefObject<Map<string, HTMLButtonElement>>;
+  /** Per-shelter animal count, shown as a badge on a toggle row. Unused by a
+   *  link row; omit when every row in the list carries an href. */
+  counts?: Map<string, number>;
+  selected?: string[];
+  /** Toggles a row's selection. Never called for a link row, which navigates
+   *  instead; omit when every row in the list carries an href. */
+  onToggle?: (value: string) => void;
+  refs?: RefObject<Map<string, ShelterRowElement>>;
   className?: string;
   /** Values lit up because their marker is hovered on the map. */
   highlighted?: string[];
   /** Fired on row pointer enter/leave, so the map can highlight the matching
-   *  marker and region. Null on leave. */
+   *  marker and region. Null on leave. Fires for both row kinds. */
   onHoverRow?: (value: string | null) => void;
   /** ArrowUp on the first row leaves the list upward, so the search box and
    *  the rows read as one keyboard surface. */
@@ -48,7 +68,7 @@ export function ShelterRows({
    *  keeps them renderable outside a provider. */
   lessThanOneKm?: string;
 }) {
-  const localRefs = useRef(new Map<string, HTMLButtonElement>());
+  const localRefs = useRef(new Map<string, ShelterRowElement>());
   // True while the pointer sits inside the list. `highlighted` only ever
   // comes from the map (see location-picker.tsx: a row's own pointer hover
   // feeds a different piece of state, onHoverRow, not this prop), so the
@@ -64,6 +84,17 @@ export function ShelterRows({
   // not smooth: the repo already treats motion as something to justify (see
   // motion-reduce: in shelter-map.tsx), and a list that jumps rather than
   // glides never fights a scroll the visitor is mid-gesture on.
+  //
+  // Only highlighted[0] is ever scrolled to, and a list only acts when that
+  // value is one of its own rows. A town can hold a live shelter and an
+  // off-site one at once, and the live list and the off-site list both mount
+  // this same effect against the same `highlighted` array (see
+  // location-picker.tsx, which passes both lists the one hoveredMarkerValues
+  // state), so both effects run. localRefs.get returns undefined for a value
+  // that belongs to the other list, which makes the lookup itself the
+  // arbiter: exactly one of the two lists ever holds a row for
+  // highlighted[0], so exactly one of them ever calls scrollIntoView, and
+  // the two can never fight over where the shared scroll container lands.
   const highlightedKey = highlighted?.join(",");
   useEffect(() => {
     if (!highlightedKey || pointerInsideRef.current) return;
@@ -79,14 +110,17 @@ export function ShelterRows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightedKey]);
 
-  // Arrow keys walk the enabled rows only; a disabled row cannot take focus,
-  // so skipping it is what keeps the walk from dead-ending.
+  // Arrow keys walk the enabled toggle rows only. A link row takes the tab
+  // order's own focus instead and never joins this walk, and a disabled
+  // toggle row cannot take focus, so skipping both is what keeps the walk
+  // from dead-ending.
   const moveFocus = (event: KeyboardEvent, value: string) => {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const enabled = rows.filter(
       (row) =>
-        (counts.get(row.value) ?? 0) > 0 || selected.includes(row.value),
+        !row.href &&
+        ((counts.get(row.value) ?? 0) > 0 || selected.includes(row.value)),
     );
     const index = enabled.findIndex((row) => row.value === value);
     if (index < 0) return;
@@ -115,9 +149,7 @@ export function ShelterRows({
         pointerInsideRef.current = false;
       }}
     >
-      {rows.map(({ value, label, city, km }) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
+      {rows.map(({ value, label, city, km, href }) => {
         const isHighlighted = highlighted?.includes(value) ?? false;
         const sublabel = [
           city,
@@ -125,18 +157,66 @@ export function ShelterRows({
         ]
           .filter(Boolean)
           .join(" · ");
+        const setRef = (node: ShelterRowElement | null) => {
+          if (node) localRefs.current.set(value, node);
+          else localRefs.current.delete(value);
+          if (!refs) return;
+          if (node) refs.current.set(value, node);
+          else refs.current.delete(value);
+        };
+
+        // A registry shelter with nothing to filter by: there is a page for
+        // it, so the row is a link out rather than a dead toggle. It copies
+        // a toggle row's layout down to the size-3.5 spacer where the check
+        // sits, so the two lists share their columns.
+        if (href) {
+          return (
+            <a
+              key={value}
+              ref={setRef}
+              href={href}
+              onPointerEnter={() => onHoverRow?.(value)}
+              onPointerLeave={() => onHoverRow?.(null)}
+              data-highlighted={isHighlighted || undefined}
+              className={cn(
+                // max-lg:min-h-11 is the 44px touch target the comment above
+                // this function promises; lg and up keeps the denser row.
+                // Touch targets across the map dialog gate at lg rather than
+                // md, because lg is where the picker's list dock switches
+                // from a bottom sheet to a side panel, which is where the
+                // mobile layout actually ends (see location-picker.tsx's
+                // close button for the full statement of this rule).
+                "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors max-lg:min-h-11",
+                isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
+              )}
+            >
+              <span className="size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-muted-foreground">
+                  {label}
+                </span>
+                {sublabel && (
+                  <span className="block truncate text-[11px] text-muted-foreground/80">
+                    {sublabel}
+                  </span>
+                )}
+              </span>
+              <ChevronRight
+                className="size-3 shrink-0 text-muted-foreground/60"
+                aria-hidden
+              />
+            </a>
+          );
+        }
+
+        const count = counts.get(value) ?? 0;
+        const checked = selected.includes(value);
         return (
           <button
             key={value}
             type="button"
-            ref={(node) => {
-              if (node) localRefs.current.set(value, node);
-              else localRefs.current.delete(value);
-              if (!refs) return;
-              if (node) refs.current.set(value, node);
-              else refs.current.delete(value);
-            }}
-            onClick={() => onToggle(value)}
+            ref={setRef}
+            onClick={() => onToggle?.(value)}
             onKeyDown={(event) => moveFocus(event, value)}
             onPointerEnter={() => onHoverRow?.(value)}
             onPointerLeave={() => onHoverRow?.(null)}
@@ -150,7 +230,9 @@ export function ShelterRows({
               // the map gives a picked region (--filter-accent /
               // -foreground), so scanning the list at rest already answers
               // "what did I pick" instead of needing a hover to reveal it.
-              "flex w-full cursor-pointer items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+              // max-lg:min-h-11 is the 44px touch target, same rule as the
+              // link row above.
+              "flex w-full cursor-pointer items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors max-lg:min-h-11 disabled:cursor-not-allowed disabled:opacity-40",
               checked
                 ? "bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] hover:bg-[var(--filter-accent)]"
                 : isHighlighted

@@ -1,7 +1,17 @@
 import { Species, type Animal } from "@posvoji/schema";
+import { permittedImageUrls } from "@/lib/animal-images";
 import type { Locale } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import { ageLabel, monthsInShelter } from "@/lib/labels";
+import type { ShelterLogo } from "@/lib/shelter-logos";
+
+/** One waiting animal's face for the pick card's mini fan: the photo it is
+ *  already shown with elsewhere, and its name for the alt text. */
+export type ShelterFace = { src: string; name: string };
+
+// A fan past three stops reading as a fan and starts reading as a strip, and
+// the pick card has no room for a strip.
+const MAX_FACES = 3;
 
 /** What the location picker's card can say about one shelter beyond its name
  *  and its filtered count: who lives there, and who has waited longest. */
@@ -12,6 +22,16 @@ export type ShelterSummary = {
   /** The animal that has been in this shelter longest, already worded in the
    *  reader's language. Absent when no animal there carries an intake date. */
   longestWaiting?: { name: string; duration: string };
+  /** Up to three waiting animals with a photo, longest wait first. The first
+   *  entry is the same animal longestWaiting names whenever that animal has a
+   *  photo at all; a shelter where nobody has one gets no faces, same as a
+   *  shelter with no wait to report gets no longestWaiting. */
+  faces?: ShelterFace[];
+  /** The shelter's own mark, when the ingest logo fetch found one. Not set by
+   *  summarizeShelters itself, which only sees animals: the caller that has
+   *  the logo manifest in hand (see AnimalGrid) folds it in by shelter id
+   *  after this map is built. */
+  logo?: ShelterLogo;
 };
 
 // The order the site says species in everywhere else: the tabs, the result
@@ -51,6 +71,13 @@ export function summarizeShelters(
 ): Map<string, ShelterSummary> {
   const counts = new Map<string, Map<Species, number>>();
   const longest = new Map<string, { name: string; months: number }>();
+  // Every waiting animal with a photo, unsorted until a shelter's summary is
+  // built below. months is undefined for an animal with no usable intake
+  // date, which the sort keeps after the animals it can actually rank.
+  const faceCandidates = new Map<
+    string,
+    { name: string; months: number | undefined; src: string }[]
+  >();
 
   for (const animal of animals) {
     const id = animal.shelter.id;
@@ -58,20 +85,47 @@ export function summarizeShelters(
     perSpecies.set(animal.species, (perSpecies.get(animal.species) ?? 0) + 1);
     counts.set(id, perSpecies);
 
-    if (!animal.intakeDate || !isWaiting(animal)) continue;
-    const months = monthsInShelter(animal.intakeDate, now);
-    if (months === undefined) continue;
-    const current = longest.get(id);
-    if (current && current.months >= months) continue;
-    longest.set(id, {
-      name: animal.name ?? translate(locale, "unnamed"),
-      months,
-    });
+    if (!isWaiting(animal)) continue;
+    const name = animal.name ?? translate(locale, "unnamed");
+    const months = animal.intakeDate
+      ? monthsInShelter(animal.intakeDate, now)
+      : undefined;
+
+    if (months !== undefined) {
+      const current = longest.get(id);
+      if (!current || current.months < months) {
+        longest.set(id, { name, months });
+      }
+    }
+
+    // The same permitted photos the grid and the dialog already show: a
+    // shelter with display rights on nothing gets no faces, exactly as it
+    // gets no photos anywhere else on the site.
+    const [photo] = permittedImageUrls(animal.images);
+    if (photo) {
+      const candidates = faceCandidates.get(id) ?? [];
+      candidates.push({ name, months, src: photo });
+      faceCandidates.set(id, candidates);
+    }
   }
 
   const summaries = new Map<string, ShelterSummary>();
   for (const [id, perSpecies] of counts) {
     const waited = longest.get(id);
+    const faces = faceCandidates
+      .get(id)
+      // Longer waits first; an animal whose wait is unknown sorts after every
+      // animal whose wait is, never mixed in among them by array order.
+      ?.sort((a, b) => {
+        if (a.months !== undefined && b.months !== undefined) {
+          return b.months - a.months;
+        }
+        if (a.months !== undefined) return -1;
+        if (b.months !== undefined) return 1;
+        return 0;
+      })
+      .slice(0, MAX_FACES)
+      .map(({ name, src }) => ({ name, src }));
     summaries.set(id, {
       species: SPECIES_ORDER.flatMap((species) => {
         const count = perSpecies.get(species) ?? 0;
@@ -80,6 +134,7 @@ export function summarizeShelters(
       longestWaiting: waited
         ? { name: waited.name, duration: ageLabel(waited.months, locale) }
         : undefined,
+      faces: faces && faces.length > 0 ? faces : undefined,
     });
   }
   return summaries;

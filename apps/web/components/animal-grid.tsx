@@ -193,10 +193,19 @@ export function AnimalGrid({
       ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
     [locale, pool, shown],
   );
-  const shelters = useMemo(
-    () => (shown.shelter ? groupOptions("shelter", pool, locale) : undefined),
-    [locale, pool, shown],
-  );
+  // Not gated on shown.shelter, unlike every group above. visibleGroups drops a
+  // group with fewer than two distinct values, which is right for a facet: one
+  // value narrows nothing. The shelter picker is not that facet. It is a map of
+  // where every shelter in the country is, the way back out of a narrow result,
+  // and on a phone the mobile dock is built around it. Gating it on two
+  // distinct shelters took the whole dock off the page at /?vrsta=zajcek, where
+  // one rabbit sits at one shelter: the single state where a visitor most needs
+  // to widen the search was the one state with nothing left to press. Absent
+  // only when the pool has no shelter to show at all.
+  const shelters = useMemo(() => {
+    const options = groupOptions("shelter", pool, locale);
+    return options.length > 0 ? options : undefined;
+  }, [locale, pool]);
   const toggles = useMemo(
     () =>
       visibleToggles(pool, filters.species).map((toggle) => ({

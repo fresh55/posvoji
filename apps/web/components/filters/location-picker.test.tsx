@@ -531,10 +531,13 @@ describe("LocationPicker legend", () => {
     // The off-site shelter places in Celje with nothing listed, which is the
     // hollow circle the row is about.
     await openPicker({ offSite });
-    expect(screen.getAllByText("Zavetišče brez živali").length).toBe(1);
+    // Once per legend rendering: the panel column and the inline row are both
+    // in the markup, and CSS picks which one shows. See the row's own test
+    // below for which widths each of them draws it at.
+    expect(screen.getAllByText("Zavetišče brez živali").length).toBe(2);
   });
 
-  it("keeps that row out of the inline legend, which phones get and markers do not", async () => {
+  it("carries that row in both legends, and hides it below the marker breakpoint", async () => {
     await openPicker({ offSite });
 
     const legends = Array.from(
@@ -549,10 +552,22 @@ describe("LocationPicker legend", () => {
       (legend) => legend.dataset.mapLegend === "inline",
     )!;
 
+    // The panel legend only exists from lg up, where markers are always drawn.
     expect(panel.textContent).toContain("Zavetišče brez živali");
-    // Markers are drawn at md+ only, so the phone legend must not describe a
-    // mark the phone never draws.
-    expect(inline.textContent).not.toContain("Zavetišče brez živali");
+    const panelRow = Array.from(panel.children).find((row) =>
+      row.textContent?.includes("Zavetišče brez živali"),
+    )!;
+    expect(panelRow.className).not.toContain("hidden");
+
+    // The inline legend now covers everything below lg, which straddles the
+    // marker breakpoint: from md to lg the plate is full width and draws every
+    // marker, below md it draws none. The row follows the markers, so it is in
+    // the markup and gated on md rather than left out of the variant.
+    expect(inline.textContent).toContain("Zavetišče brez živali");
+    const inlineRow = Array.from(inline.children).find((row) =>
+      row.textContent?.includes("Zavetišče brez živali"),
+    )!;
+    expect(inlineRow.className).toContain("max-md:hidden");
   });
 
   it("draws the legend glyph from the marker's own hollow-circle classes", async () => {
@@ -832,18 +847,26 @@ describe("LocationPicker floating panel", () => {
 
     expect(stage().dataset.mapStage).toBe("panel");
     // The map is given the stage less the panel, its inset and the gutter, so
-    // nothing it draws can end up underneath the panel.
-    expect(stage().className).toContain("md:w-[calc(100%-25.5rem)]");
+    // nothing it draws can end up underneath the panel. lg and not md: the
+    // two-column stage starts at 1024 now, because at 768 it left a 295px map
+    // beside a 408px list.
+    expect(stage().className).toContain("lg:w-[calc(100%-25.5rem)]");
     expect(screen.getByLabelText("Išči zavetišče po imenu…")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Skrij seznam" }));
 
     expect(stage().dataset.mapStage).toBe("rail");
-    expect(stage().className).toContain("md:w-[calc(100%-4.5rem)]");
-    expect(panel().className).toContain("md:w-12");
-    // The rail is what is left: one control, and no list behind it.
+    expect(stage().className).toContain("lg:w-[calc(100%-4.5rem)]");
+    expect(panel().className).toContain("lg:w-12");
+    // The rail is what is left at lg: one control, and no list beside it. The
+    // list block stays mounted because the sheet below lg is still out and both
+    // docks share one copy of it, so what says "folded" here is the class that
+    // takes it off the screen at lg.
     expect(dialog().querySelector("[data-picker-rail]")).toBeTruthy();
-    expect(screen.queryByLabelText("Išči zavetišče po imenu…")).toBeNull();
+    const list = screen
+      .getByLabelText("Išči zavetišče po imenu…")
+      .closest("[data-picker-panel] > div")!;
+    expect(list.className).toContain("lg:hidden");
   });
 
   it("puts the list back when the rail is pressed", async () => {
@@ -898,20 +921,91 @@ describe("LocationPicker floating panel", () => {
     ).toContain("Podravska");
   });
 
-  it("raises the phone sheet and gives the map back the height it takes", async () => {
+  it("opens with the sheet expanded, and folds it to a peek bar on request", async () => {
     await openPicker();
 
     const peek = dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
-    expect(peek.getAttribute("aria-expanded")).toBe("false");
-    expect(stage().className).toContain("bottom-13");
-
-    fireEvent.click(peek);
-
+    // The dialog lands with the list up. Below lg the plate is limited by the
+    // width of the screen, so a folded sheet buys the map no pixels it can
+    // use: at 390x844 it bought 356x234 of plate in a 739px stage.
     expect(peek.getAttribute("aria-expanded")).toBe("true");
+    expect(panel().dataset.pickerSheet).toBe("open");
     // Same recentering as the panel, on the other axis: the container gives up
     // exactly the height the sheet takes.
     expect(panel().className).toContain("h-[55dvh]");
     expect(stage().className).toContain("bottom-[55dvh]");
+
+    fireEvent.click(peek);
+
+    // The fold is still there for anyone who wants the plate whole.
+    expect(peek.getAttribute("aria-expanded")).toBe("false");
+    expect(stage().className).toContain("bottom-13");
+  });
+
+  it("carries the current answer on the peek bar, not the name of the open tab", async () => {
+    await openPicker();
+
+    const peek = dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
+    // The same sentence the toolbar trigger wears, from the same computation:
+    // the strip says what the picking adds up to, and the tab row inside the
+    // sheet is what names and switches the tab.
+    expect(peek.textContent).toContain("Obe zavetišči");
+    expect(peek.textContent).not.toContain("Zavetišča");
+
+    cleanup();
+    render(
+      <I18nProvider locale="sl">
+        <LocationPicker
+          options={options}
+          counts={counts}
+          selected={["jug"]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          resultCount={7}
+          species="all"
+        />
+      </I18nProvider>,
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+
+    const picked = dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
+    expect(picked.textContent).toContain("1 od 2 zavetišč");
+    // And the badge it already had, which is the same fact at a glance.
+    expect(picked.textContent).toContain("1");
+  });
+
+  it("hangs the legend and the credits off the plate, not off the dialog frame", async () => {
+    await openPicker();
+
+    const legend = dialog().querySelector<HTMLElement>("[data-map-legend]")!;
+    const block = legend.parentElement!.parentElement!;
+
+    // Inside the map's own container, so below lg it is the next thing after
+    // the plate in that container's column and moves with the plate's bottom
+    // edge. Frame-anchored it sat 148px under the map on a 390px phone.
+    expect(stage().contains(block)).toBe(true);
+    expect(block.className).not.toContain("bottom-28");
+    // At lg the container is the map, so the same block goes back to the
+    // dialog's bottom-left corner.
+    expect(block.className).toContain("lg:absolute");
+    expect(block.className).toContain("lg:bottom-3");
+  });
+
+  it("answers a marker tap in the sheet, the way it answers one in the panel", async () => {
+    await openPicker();
+
+    // Fold the sheet first: a tap has to produce a visible answer, so it has to
+    // bring its own dock back up.
+    const peek = dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
+    fireEvent.click(peek);
+    expect(peek.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(dialog().querySelector('[data-marker-key*="maribor" i]')!);
+
+    expect(panel().dataset.pickerSheet).toBe("open");
+    expect(
+      dialog().querySelector("[data-map-pick-card]")?.textContent,
+    ).toContain("Zavetišče Sever");
   });
 
   // The paw layer asks this element how wide the plate is actually drawn, and
@@ -998,22 +1092,20 @@ describe("LocationPicker found-animal entry", () => {
   it("keeps the tabs in the sheet's fold, not behind the pointer breakpoint", async () => {
     await openPicker({ municipalities });
 
-    const tabs = dialog().querySelector<HTMLElement>(
-      "[data-picker-tab='municipality']",
-    )!;
-    const row = tabs.parentElement!.parentElement!;
-    // Folded with the sheet below md and with the panel above it, the same way
-    // the list below it folds. Never hidden by breakpoint alone: that is what
-    // made the second question unreachable on a phone.
-    expect(row.className).toContain("max-md:hidden");
-    expect(row.className).not.toContain("md:flex");
+    const tabRow = () =>
+      dialog().querySelector<HTMLElement>("[data-picker-tab='municipality']")!
+        .parentElement!.parentElement!;
+    // The sheet opens expanded, so the tabs are on screen from the start.
+    expect(tabRow().className).not.toContain("max-lg:hidden");
+    // Never hidden by breakpoint alone: that is what made the second question
+    // unreachable on a phone.
+    expect(tabRow().className).not.toContain("lg:flex");
 
     fireEvent.click(dialog().querySelector<HTMLElement>("[data-picker-peek]")!);
 
-    expect(
-      dialog().querySelector<HTMLElement>("[data-picker-tab='municipality']")!
-        .parentElement!.parentElement!.className,
-    ).not.toContain("max-md:hidden");
+    // Folded with the sheet below lg and with the panel above it, the same way
+    // the list below it folds.
+    expect(tabRow().className).toContain("max-lg:hidden");
   });
 });
 

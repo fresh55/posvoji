@@ -68,8 +68,9 @@ const LEGEND_SWATCH_GROUND =
 
 // The map legend. Both renderings live in the stage's bottom-left corner over
 // the paper, and both come out of this one component so they cannot drift
-// apart: a stacked column md+, a wrapping row on phones, where the corner is
-// the width of the screen and a column of it would be a wall.
+// apart: a stacked column at lg and up, where the list is a panel beside the
+// map, and a wrapping row below it, where the plate is the width of the screen
+// and a column in that corner would be a wall.
 //
 // It explains what nobody can guess and nothing else. The density ramp is the
 // one encoding with no other way in, so it is always here. Everything else
@@ -99,7 +100,7 @@ function MapLegend({
    *  is a state worth naming. */
   hasMixedRegion: boolean;
   /** At least one shelter with nothing listed is drawn as a hollow circle right
-   *  now. Only the panel variant acts on it: see the row below. */
+   *  now. Both variants act on it, at different widths: see the row below. */
   hasEmptyMarker: boolean;
   origin: LatLon | undefined;
   messages: ReturnType<typeof useI18n>["messages"];
@@ -111,7 +112,7 @@ function MapLegend({
         "leading-none text-muted-foreground",
         variant === "panel"
           ? "flex flex-col gap-y-1 text-[10px]"
-          : "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] md:hidden",
+          : "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] lg:hidden",
       )}
     >
       <span className="flex items-center gap-2">
@@ -205,12 +206,24 @@ function MapLegend({
           mark on the map either answers on hover or earns a row here the
           moment it appears; this one is too small to aim a pointer at, so the
           callout never gets asked and the row is the only way to learn it.
-          Panel only, unlike the hatch: markers are drawn at md+ and the inline
-          variant is the phone rendering, where no marker exists to explain.
           The glyph comes from map-marker.tsx, drawn from the same classes and
-          the same radius-to-stroke proportion the real circle uses. */}
-      {variant === "panel" && hasEmptyMarker && (
-        <span className="flex items-center gap-1.5">
+          the same radius-to-stroke proportion the real circle uses.
+
+          This row follows the markers, not the docks, and the two no longer
+          part at the same width. Markers are drawn from md up; the panel
+          variant of this legend only exists from lg up, so it can carry the row
+          unconditionally. The inline variant now covers everything below lg,
+          which spans both sides of the marker breakpoint: from md to lg the
+          plate is full width and draws every marker, below md it draws none.
+          max-md:hidden is what keeps the row off the phone, where there is no
+          hollow circle to explain. */}
+      {hasEmptyMarker && (
+        <span
+          className={cn(
+            "flex items-center gap-1.5",
+            variant === "inline" && "max-md:hidden",
+          )}
+        >
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
           {messages.emptyShelterLegend}
         </span>
@@ -315,14 +328,20 @@ export function LocationPicker({
   // click replaces it: one card at a time, always about the newest click.
   const [pick, setPick] = useState<MapPick | null>(null);
   const pickCardRef = useRef<HTMLDivElement>(null);
-  // The panel has two docks and they fold independently, because they open on
-  // opposite defaults: a desktop has room for the list beside the map and
-  // starts with it out, a phone does not and starts with the map whole. One
-  // boolean would have had to guess the breakpoint at click time; two let the
-  // control that is actually on screen own its own state, and the other one
-  // sits in a display:none branch where nothing can reach it.
+  // The panel has two docks and they fold independently. One boolean would
+  // have had to guess the breakpoint at click time; two let the control that is
+  // actually on screen own its own state, and the other one sits in a
+  // display:none branch where nothing can reach it.
+  //
+  // Both start out. The sheet used to start folded, on the theory that the map
+  // was worth the whole screen; measured at 390x844 that bought 356x234 of
+  // plate in a 739px stage and left two thirds of the dialog empty paper. The
+  // plate below lg is limited by the width of the screen, not by the height the
+  // sheet takes, so collapsing the sheet gives the map no pixels it can use.
+  // The fold stays for anyone who wants the plate alone; it is no longer where
+  // the dialog lands.
   const [panelOpen, setPanelOpen] = useState(true);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(true);
 
   // The found-animal strip and the ?najdena URL both land here: open the
   // dialog straight in municipality mode. Guarded by breakpoint because two
@@ -338,14 +357,12 @@ export function LocationPicker({
       if (!isMine()) return;
       setMuniMode(true);
       setOpen(true);
-      // The sheet comes up with it. A phone opens the picker on the map with
-      // the sheet peeked, which is right when the question is "which region",
-      // because the map is the answer. It is wrong here: this entry point was
-      // pressed by someone holding a found animal, and every part of the
-      // answer, the field to type an občina into and the shelter it returns,
-      // lives in the sheet. Landing on a shelter-density map with the one
-      // control folded away asks them to guess that the peek bar opens.
-      setSheetOpen(true);
+      // The sheet is already up: it is the dialog's own default now, and a
+      // close puts it back. This entry point was pressed by someone holding a
+      // found animal, and every part of the answer, the field to type an občina
+      // into and the shelter it returns, lives in the sheet, so it is the one
+      // flow that could never have tolerated a folded sheet. Nothing to force
+      // here any more.
     };
     if (new URLSearchParams(window.location.search).has(FOUND_ANIMAL_PARAM)) {
       openLookup();
@@ -526,8 +543,8 @@ export function LocationPicker({
     [pins, selected],
   );
   // Same deal for the hollow circles: asked of the towns the map lays out, so
-  // the row and the circles appear together. Only the panel legend reads it,
-  // because markers are md+ only.
+  // the row and the circles appear together. Both legends read it; each decides
+  // for itself at which widths its own rendering draws markers.
   const hasEmptyMarker = useMemo(
     () => anyEmptyMarker(pins, selected),
     [pins, selected],
@@ -583,10 +600,11 @@ export function LocationPicker({
           setMuniShelterIds(null);
           setMuniName(null);
           setPick(null);
-          // Neither dock's fold survives a close: reopening always lands on
-          // the panel on a desktop and on the map on a phone.
+          // Neither dock's fold survives a close: reopening always lands with
+          // both docks out, the panel beside the map at lg and the sheet over
+          // it below lg.
           setPanelOpen(true);
-          setSheetOpen(false);
+          setSheetOpen(true);
         }
       }}
     >
@@ -678,9 +696,16 @@ export function LocationPicker({
 
               Panel out: the full width less the panel, its right inset and the
               gutter before it, which is 24 + 0.75 + 0.75 rem. Folded: the same
-              two gutters around a 3rem rail. Below md the panel is a bottom
+              two gutters around a 3rem rail. Below lg the panel is a bottom
               sheet instead, so what the map gives up is height above the peek
               bar and the width stays whole.
+
+              lg and not md, everywhere the two-column stage is described here
+              and below. At 768 the old md dock gave the map 295px beside a
+              408px list, which is a map nobody can aim at next to a list that
+              still had to scroll. A tablet now gets the same full-width plate a
+              phone does, roughly 2.2px per viewBox unit, and the list comes up
+              over it in the sheet.
 
               width is what transitions, not a transform: a transform would
               scale the plate's type and hairlines mid-flight, and this SVG's
@@ -691,6 +716,11 @@ export function LocationPicker({
             data-map-stage={panelOpen ? "panel" : "rail"}
             className={cn(
               "absolute inset-x-0 top-0 flex items-center justify-center p-2 sm:p-3",
+              // Below lg the plate and the legend under it are one stack,
+              // centred together in whatever the sheet leaves: that is how the
+              // legend ends up hugging the map instead of the frame. See the
+              // legend block itself, which is a child of this container now.
+              "max-lg:flex-col max-lg:items-start",
               // Named, so the paw layer in map-marker.tsx can ask how wide the
               // plate is actually drawn rather than guessing from the viewport.
               // This element is the right one to ask: it is the box the SVG
@@ -699,16 +729,16 @@ export function LocationPicker({
               // insets and the width utilities below, never from its contents,
               // so inline-size containment costs nothing here.
               "@container/map-stage",
-              "md:right-auto md:bottom-0 md:p-4",
+              "lg:right-auto lg:bottom-0 lg:p-4",
               "transition-[width,bottom] duration-500 ease-out motion-reduce:transition-none",
-              // Below md the sheet takes height instead of width, so the same
+              // Below lg the sheet takes height instead of width, so the same
               // recentering happens on the other axis: the container gives up
               // exactly what the sheet takes and the plate recentres in what
               // is left. Nothing is ever drawn under the sheet either.
               sheetOpen ? "bottom-[55dvh]" : "bottom-13",
               panelOpen
-                ? "md:w-[calc(100%-25.5rem)]"
-                : "md:w-[calc(100%-4.5rem)]",
+                ? "lg:w-[calc(100%-25.5rem)]"
+                : "lg:w-[calc(100%-4.5rem)]",
             )}
           >
               <ShelterMap
@@ -741,16 +771,108 @@ export function LocationPicker({
                 }
                 onHoverShelters={setHoveredMarkerValues}
                 highlightedDensity={highlightedDensity}
-                // md+: the SVG takes the whole container and lets its own
+                // lg+: the SVG takes the whole container and lets its own
                 // preserveAspectRatio letterbox the viewBox inside it. That is
                 // the letterboxing: no aspect-ratio arithmetic on this side,
                 // and the paper it leaves showing is the dialog's ground.
-                // Below md it keeps the component's own h-auto instead, so the
+                // Below lg it keeps the component's own h-auto instead, so the
                 // plate is exactly as tall as 320:210 makes it and no taller,
                 // capped at the container so a raised sheet shrinks it rather
                 // than pushing it out of the frame.
-                className="max-h-full md:h-full"
+                className="max-h-full lg:h-full"
               />
+
+            {/* Bottom-left, over the paper: the legend and the credits, which
+                is where a printed sheet puts them. The plate's own furniture,
+                the scale bar, keeps the bottom-right of the viewBox, so the two
+                never meet; the confirm pill takes the dialog's bottom-right
+                corner, which is outside the map's container while the panel is
+                out and sixty-odd pixels of dialog edge while it is folded, well
+                under the scale bar's own height above the frame.
+
+                A child of the map's own container, not of the stage, and that
+                is the point below lg. Frame-anchored at bottom-28 it sat 148px
+                under the plate on a 390px phone, a key floating in paper with
+                no map near it. In the container's flow it is the next thing
+                after the plate, so it moves with the plate's bottom edge
+                whatever the sheet is doing to the height above it. At lg the
+                container is the map, so absolute bottom-3 left-3 inside it puts
+                the stack exactly where it has always been: the dialog's own
+                bottom-left corner.
+
+                It still steps out of the way entirely once the sheet is up:
+                more than half the screen is the list then, and the map behind
+                it has nothing left to explain. */}
+            <div
+              className={cn(
+                "pointer-events-none z-10 mt-2 flex w-full max-w-[26rem] flex-col gap-1",
+                "lg:absolute lg:bottom-3 lg:left-3 lg:mt-0 lg:w-auto",
+                sheetOpen && "max-lg:hidden",
+              )}
+            >
+              <div className="pointer-events-auto hidden w-fit lg:block">
+                <MapLegend
+                  variant="panel"
+                  highlightedDensity={highlightedDensity}
+                  onHoverDensity={setHighlightedDensity}
+                  onLeaveDensity={() => setHighlightedDensity(null)}
+                  hasSelectedRegion={hasSelectedRegion}
+                  hasMixedRegion={hasMixedRegion}
+                  hasEmptyMarker={hasEmptyMarker}
+                  origin={origin}
+                  messages={messages}
+                />
+              </div>
+
+              {/* The wide-plate legend, which is now everything below lg:
+                  phones and tablets alike. It wraps rather than stacking,
+                  because there the plate is the width of the screen and the
+                  corner under it is that wide too. */}
+              <div className="pointer-events-auto lg:hidden">
+                <MapLegend
+                  variant="inline"
+                  highlightedDensity={highlightedDensity}
+                  onHoverDensity={setHighlightedDensity}
+                  onLeaveDensity={() => setHighlightedDensity(null)}
+                  hasSelectedRegion={hasSelectedRegion}
+                  hasMixedRegion={hasMixedRegion}
+                  // Acted on here too, unlike before: this variant now covers
+                  // md to lg, where the plate is full width and draws every
+                  // marker. The row's own class is what keeps it off the phone.
+                  hasEmptyMarker={hasEmptyMarker}
+                  origin={origin}
+                  messages={messages}
+                />
+              </div>
+
+              {/* CC BY 4.0 requires attribution, so this stays visible, just
+                  quieter than the legend it sits under. */}
+              <p className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70">
+                {messages.regionBoundaries}:{" "}
+                <a
+                  href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
+                  className="underline underline-offset-2 hover:text-foreground"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GURS
+                </a>
+                , CC BY 4.0.{" "}
+                {/* Second sentence in the same paragraph, not a second line:
+                    the relief is one more thing this map is drawn from, and it
+                    does not deserve a block of its own under the legend. */}
+                {messages.reliefSource}:{" "}
+                <a
+                  href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
+                  className="underline underline-offset-2 hover:text-foreground"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Terrain Tiles
+                </a>{" "}
+                (AWS Open Data), SRTM / NASA.
+              </p>
+            </div>
           </div>
 
           {/* The title, floated on the paper rather than stacked above the
@@ -777,6 +899,12 @@ export function LocationPicker({
                   messages.mapInstructionsMuni
                 ) : (
                   <>
+                    {/* md and not lg, on purpose. The two lines differ in
+                        whether a single shelter can be clicked on the map,
+                        which is a question about markers, and markers are
+                        drawn from md up whichever dock the list is in. A
+                        tablet on the sheet stage still gets the plate with
+                        every marker on it, so it is told it can click one. */}
                     <span className="hidden md:inline">
                       {messages.mapInstructionsDesktop}
                     </span>
@@ -799,8 +927,9 @@ export function LocationPicker({
               variant="outline"
               size="icon-sm"
               // size-11 below md is the 44px touch target the mobile
-              // hardening asks of every control in this dialog; the pointer
-              // breakpoint gets the smaller square back.
+              // hardening asks of every control in this dialog; md and up gets
+              // the smaller square back. This gate follows the touch-target
+              // rule, not the dock, so it stayed at md when the dock moved.
               className="absolute right-3 top-3 z-30 size-11 bg-background/85 shadow-xs backdrop-blur md:size-8"
             >
               <X className="size-4" aria-hidden />
@@ -808,100 +937,14 @@ export function LocationPicker({
             </Button>
           </DialogClose>
 
-          {/* Bottom-left, over the paper: the legend and the credits, which is
-              where a printed sheet puts them. The plate's own furniture, the
-              scale bar, keeps the bottom-right of the viewBox, so the two
-              never meet; the confirm pill takes the dialog's bottom-right
-              corner, which is outside the map's container while the panel is
-              out and sixty-odd pixels of dialog edge while it is folded, well
-              under the scale bar's own height above the frame.
-
-              Below md the stack rides above the peek bar, and steps out of the
-              way entirely once the sheet is up: sixty percent of the screen is
-              already the list, and the map under it has nothing left to
-              explain. */}
-          <div
-            className={cn(
-              // Below md this sits above the confirm pill rather than beside
-              // it: a phone has no room for two things in one corner, and the
-              // credits set at 10px in half a screen's width are five lines of
-              // hyphenated nothing.
-              "pointer-events-none absolute bottom-28 left-3 z-10 flex max-w-[26rem] flex-col gap-1 md:bottom-3",
-              sheetOpen && "max-md:hidden",
-            )}
-          >
-            <div className="pointer-events-auto hidden w-fit md:block">
-              <MapLegend
-                variant="panel"
-                highlightedDensity={highlightedDensity}
-                onHoverDensity={setHighlightedDensity}
-                onLeaveDensity={() => setHighlightedDensity(null)}
-                hasSelectedRegion={hasSelectedRegion}
-                hasMixedRegion={hasMixedRegion}
-                hasEmptyMarker={hasEmptyMarker}
-                origin={origin}
-                messages={messages}
-              />
-            </div>
-
-            {/* The phone's legend, unchanged in what it says and in which
-                rows it carries. It wraps rather than stacking, because on a
-                phone this strip is the width of the screen. */}
-            <div className="pointer-events-auto md:hidden">
-              <MapLegend
-                variant="inline"
-                highlightedDensity={highlightedDensity}
-                onHoverDensity={setHighlightedDensity}
-                onLeaveDensity={() => setHighlightedDensity(null)}
-                hasSelectedRegion={hasSelectedRegion}
-                hasMixedRegion={hasMixedRegion}
-                // Passed and ignored: the inline legend is the phone rendering
-                // and phones draw no markers, so the row it would feed stays
-                // out of that variant. Kept in the shared prop shape so the two
-                // legends are still one component with one contract.
-                hasEmptyMarker={hasEmptyMarker}
-                origin={origin}
-                messages={messages}
-              />
-            </div>
-
-            {/* CC BY 4.0 requires attribution, so this stays visible, just
-                quieter than the legend it sits under. */}
-            <p className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70">
-              {messages.regionBoundaries}:{" "}
-              <a
-                href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
-                className="underline underline-offset-2 hover:text-foreground"
-                target="_blank"
-                rel="noreferrer"
-              >
-                GURS
-              </a>
-              , CC BY 4.0.{" "}
-              {/* Second sentence in the same paragraph, not a second line: the
-                  relief is one more thing this map is drawn from, and it does
-                  not deserve a block of its own under the legend. */}
-              {messages.reliefSource}:{" "}
-              <a
-                href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
-                className="underline underline-offset-2 hover:text-foreground"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Terrain Tiles
-              </a>{" "}
-              (AWS Open Data), SRTM / NASA.
-            </p>
-          </div>
-
           {/* The same closing move the filter sheet has, as a pill on the
               paper: the count answers "what did my picking do" before the
-              dialog goes away. Bottom-right, under the panel on md+ and above
+              dialog goes away. Bottom-right, under the panel at lg and above
               whatever the sheet is currently doing below it, so it is never
               the thing a phone has to scroll past. */}
           <div
             className={cn(
-              "absolute right-3 z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none md:bottom-3",
+              "absolute right-3 z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none lg:bottom-3",
               sheetOpen ? "bottom-[calc(55dvh+0.75rem)]" : "bottom-16",
             )}
           >
@@ -920,8 +963,8 @@ export function LocationPicker({
             </DialogClose>
           </div>
 
-          {/* The panel, one element in two docks. On md+ it is a card floated
-              against the right edge of the stage, folding to a rail; below md
+          {/* The panel, one element in two docks. At lg it is a card floated
+              against the right edge of the stage, folding to a rail; below lg
               the same card is a bottom sheet, folding to a peek bar. Both
               folds are the same DOM with different classes, so the list, the
               search and the card inside it keep their state and their
@@ -933,25 +976,33 @@ export function LocationPicker({
               "absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t bg-background/95 shadow-lg backdrop-blur",
               "transition-[height,width] duration-500 ease-out motion-reduce:transition-none",
               sheetOpen ? "h-[55dvh] rounded-t-ui" : "h-13",
-              "md:inset-x-auto md:right-3 md:top-16 md:bottom-16 md:h-auto md:rounded-ui md:border",
-              panelOpen ? "md:w-96" : "md:w-12 md:justify-center",
+              "lg:inset-x-auto lg:right-3 lg:top-16 lg:bottom-16 lg:h-auto lg:rounded-ui lg:border",
+              panelOpen ? "lg:w-96" : "lg:w-12 lg:justify-center",
             )}
           >
-            {/* The phone's peek bar. The whole strip is the control, because on
-                a sheet the strip is the affordance; naming the active tab and
-                the count is what makes it worth a tap. */}
+            {/* The peek bar, below lg. The whole strip is the control, because
+                on a sheet the strip is the affordance.
+
+                It says the current answer, not the open tab. The tab row inside
+                the sheet names the tab and switches it, so a strip repeating
+                that word was a label standing where a fact belonged: "Zavetišča"
+                over a sheet whose first control already said "Zavetišča". What
+                a collapsed sheet has to carry is what the picking added up to,
+                which is the same sentence the toolbar trigger wears, computed
+                once as `label` above and read here. The count badge stays
+                beside it as the at-a-glance form of the same thing. */}
             <button
               type="button"
               data-picker-peek
               aria-expanded={sheetOpen}
               onClick={() => setSheetOpen((current) => !current)}
-              className="flex h-13 shrink-0 items-center gap-2 px-4 text-left md:hidden"
+              className="flex h-13 shrink-0 items-center gap-2 px-4 text-left lg:hidden"
             >
-              <span className="text-sm font-medium">
-                {muniMode ? messages.muniTab : messages.shelters}
+              <span className="min-w-0 truncate text-sm font-medium">
+                {label}
               </span>
               {selected.length > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums text-muted-foreground">
+                <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums text-muted-foreground">
                   {selected.length}
                 </span>
               )}
@@ -974,7 +1025,7 @@ export function LocationPicker({
                 aria-expanded={false}
                 aria-label={messages.expandPanel}
                 onClick={() => setPanelOpen(true)}
-                className="hidden shrink-0 flex-col items-center gap-2 p-2 text-muted-foreground transition-colors hover:text-foreground md:flex"
+                className="hidden shrink-0 flex-col items-center gap-2 p-2 text-muted-foreground transition-colors hover:text-foreground lg:flex"
               >
                 <ChevronLeft className="size-4" aria-hidden />
                 {muniMode ? (
@@ -1000,14 +1051,14 @@ export function LocationPicker({
 
                 Same fold idiom as the list block below: the row is a flex row,
                 and each breakpoint hides it when its own dock is folded, so
-                neither a md:hidden nor a max-md:hidden ever has to outrank a
+                neither a lg:hidden nor a max-lg:hidden ever has to outrank a
                 display utility written beside it. */}
             {(panelOpen || sheetOpen) && (
               <div
                 className={cn(
-                  "flex shrink-0 items-center gap-1 px-4 pt-4 pb-2 max-md:pt-2",
-                  !panelOpen && "md:hidden",
-                  !sheetOpen && "max-md:hidden",
+                  "flex shrink-0 items-center gap-1 px-4 pt-4 pb-2 max-lg:pt-2",
+                  !panelOpen && "lg:hidden",
+                  !sheetOpen && "max-lg:hidden",
                 )}
               >
                 {municipalities && municipalities.length > 0 && (
@@ -1036,8 +1087,10 @@ export function LocationPicker({
                         data-picker-tab={mode ? "municipality" : "shelters"}
                         className={cn(
                           // 44px of height below md, the touch target the rest
-                          // of this dialog's mobile chrome already keeps; the
-                          // pointer breakpoint keeps the tighter row it had.
+                          // of this dialog's mobile chrome already keeps. Still
+                          // md and not lg: the dock moved, this did not, and
+                          // the touch-target rule is the same one the whole
+                          // dialog applies at the same width.
                           "inline-flex shrink-0 items-center justify-center rounded-ui px-2.5 py-1 text-sm transition-colors max-md:min-h-11 max-md:px-3.5",
                           muniMode === mode
                             ? "bg-foreground text-background"
@@ -1055,10 +1108,10 @@ export function LocationPicker({
                   aria-expanded
                   aria-label={messages.collapsePanel}
                   onClick={() => setPanelOpen(false)}
-                  // md+ only: below it the peek bar is what folds the dock, and
+                  // lg only: below it the peek bar is what folds the dock, and
                   // a second fold control in the sheet would be two answers to
                   // one question.
-                  className="ml-auto hidden size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:inline-flex"
+                  className="ml-auto hidden size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex"
                 >
                   <ChevronRight className="size-4" aria-hidden />
                 </button>
@@ -1071,9 +1124,9 @@ export function LocationPicker({
             {(panelOpen || sheetOpen) && (
               <div
                 className={cn(
-                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-md:pt-1",
-                  !panelOpen && "md:hidden",
-                  !sheetOpen && "max-md:hidden",
+                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pt-1",
+                  !panelOpen && "lg:hidden",
+                  !sheetOpen && "max-lg:hidden",
                 )}
               >
             {muniMode && municipalities ? (
@@ -1273,7 +1326,7 @@ export function LocationPicker({
               )}
             </div>
 
-            {/* The list scrolls inside the panel at every size. Below md it
+            {/* The list scrolls inside the panel at every size. In the sheet it
                 used to be the dialog that scrolled; the sheet has a fixed
                 height, so the scrolling has to happen here or the peek bar
                 gets pushed off the top of its own sheet. */}
@@ -1306,7 +1359,11 @@ export function LocationPicker({
                     onHoverRow={setHoveredRowValue}
                     onExitTop={() => searchRef.current?.focus()}
                     lessThanOneKm={messages.lessThanOneKm}
-                    className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0"
+                    // Two columns from sm up to lg, one column from lg: the
+                    // single column is the narrow panel's shape, and the panel
+                    // only exists from lg now. In the sheet the list has the
+                    // width of the screen and two columns is what fits it.
+                    className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
                   />
 
                   {/* Registry shelters without animals, under their own
@@ -1321,7 +1378,7 @@ export function LocationPicker({
                       <p className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
                         {messages.noAnimalsListedHeading}
                       </p>
-                      <div className="space-y-0.5 sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 md:grid-cols-1 md:gap-x-0">
+                      <div className="space-y-0.5 sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0">
                         {visibleOffRows.map((row) => {
                           const sublabel = [
                             row.city,

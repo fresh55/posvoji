@@ -168,6 +168,16 @@ export function AnimalFilters({
         )}
       </div>
 
+      {/* The dock is present at any result count, including one. It used to
+          vanish there, because both of its children were gated on a facet
+          having something left to narrow: with a single animal on screen no
+          group has two distinct values, so the sheet had no sections and the
+          shelter list came through undefined. That is exactly the state where
+          the picker is the way out, so `shelters` is now handed down whenever
+          any shelter has animals at all (see animal-grid.tsx) and this
+          condition holds. It still stands down when there is genuinely nothing
+          to put in the dock, which is an empty dataset: an empty floating box
+          is not a control. */}
       {(hasFilterSheet || shelters) && (
         <div
           data-slot="mobile-filter-dock"

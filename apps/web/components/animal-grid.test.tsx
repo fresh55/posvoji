@@ -136,6 +136,24 @@ describe("animal grid empty state", () => {
     ).toBeNull();
   });
 
+  it("keeps the mobile dock and its shelter picker at a single result", () => {
+    // One rabbit, at one shelter. Every facet collapses here: no group has two
+    // distinct values, so the filter sheet has no sections, and the shelter
+    // list used to be dropped for the same reason, which took the whole dock
+    // off the page. That is the one state where the picker is the way back out
+    // of a narrow search, so it has to be reachable.
+    window.history.replaceState(null, "", "/?vrsta=zajcek");
+    const { container } = renderGrid(ANIMALS);
+
+    expect(screen.getByText("Shelter druga")).toBeTruthy();
+    expect(
+      container.querySelector('[data-slot="mobile-filter-dock"]'),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("combobox", { name: /Zavetišče:/ }).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("renders the English recovery copy", () => {
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS, "en");

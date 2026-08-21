@@ -22,6 +22,7 @@ const sl = {
   showPhoto: "Pokaži fotografijo {n}",
   viewPhotoLarge: "Odpri fotografijo {n} čez cel zaslon",
   openDetails: "Odpri podrobnosti o {name}",
+  showShelterOnMap: "Pokaži {shelter} na zemljevidu",
   previousAnimal: "Prejšnja žival",
   nextAnimal: "Naslednja žival",
   share: "Deli",
@@ -114,7 +115,7 @@ const sl = {
   searchShelters: "Išči zavetišče po imenu…",
   noSheltersFound: "Ni zadetkov za",
   clearSearch: "Počisti iskanje",
-  muniPrompt: "Si našel žival? Preveri, katero zavetišče je pristojno za tvojo občino.",
+  muniPrompt: "Si našel žival? Poišči pristojno zavetišče.",
   muniPromptCta: "Poišči občino",
   muniTab: "Najdena žival",
   muniSearch: "Občina ali poštna številka …",
@@ -179,6 +180,17 @@ const sl = {
   // The metadata line an empty region's callout carries. Lowercase-calm like
   // the counts it stands in for, because it answers the same question.
   noSheltersInRegion: "Ni zavetišč v tej regiji",
+  // The second line under it, when the coverage table knows who answers for
+  // the občine inside that region. Same vocabulary as the found-animal mode's
+  // "pristojno zavetišče", said as a sentence because it stands on its own
+  // line here rather than after a middot.
+  //
+  // Three forms, because the verb agrees with how many shelters are named and
+  // Slovenian's dual is not optional: one skrbi, two skrbita, three or more
+  // skrbijo. English inflects nothing here, so its three read alike.
+  regionCoveredBy: "Zanje skrbi {shelters}",
+  regionCoveredByTwo: "Zanje skrbita {shelters}",
+  regionCoveredByMany: "Zanje skrbijo {shelters}",
   selectedRegionLegend: "Izbrana regija",
   mixedRegionLegend: "Delno izbrana regija",
   emptyShelterLegend: "Zavetišče brez živali",
@@ -277,6 +289,7 @@ const en: Messages = {
   showPhoto: "Show photo {n}",
   viewPhotoLarge: "Open photo {n} full screen",
   openDetails: "Open details for {name}",
+  showShelterOnMap: "Show {shelter} on the map",
   previousAnimal: "Previous animal",
   nextAnimal: "Next animal",
   share: "Share",
@@ -363,7 +376,7 @@ const en: Messages = {
   searchShelters: "Search shelters by name…",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
-  muniPrompt: "Found an animal? Check which shelter serves your municipality.",
+  muniPrompt: "Found an animal? Find the shelter for your area.",
   muniPromptCta: "Find your municipality",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
@@ -418,6 +431,9 @@ const en: Messages = {
   noAnimalsListed: "No animals listed right now",
   noAnimalsListedHeading: "No animals listed right now",
   noSheltersInRegion: "No shelters in this region",
+  regionCoveredBy: "Covered by {shelters}",
+  regionCoveredByTwo: "Covered by {shelters}",
+  regionCoveredByMany: "Covered by {shelters}",
   selectedRegionLegend: "Selected region",
   mixedRegionLegend: "Partly selected region",
   emptyShelterLegend: "Shelter with no animals",

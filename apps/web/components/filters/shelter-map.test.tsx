@@ -6,11 +6,20 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cityAt, distanceKm, project, type LatLon } from "@/lib/geo";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cityAt,
+  distanceKm,
+  formatKm,
+  project,
+  type LatLon,
+} from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS, layoutTowns, type ShelterPin } from "@/lib/map-layout";
-import { ShelterMap, legendFlags } from "./shelter-map";
+import { REGION_SHAPES } from "@/lib/map-regions";
+import type { ShelterSummary } from "@/lib/shelter-summary";
+import { Marker } from "./map-marker";
+import { Region, ShelterMap, legendFlags } from "./shelter-map";
 
 function pin(
   value: string,
@@ -175,12 +184,39 @@ describe("ShelterMap marker states", () => {
     expect(regionTag(html, "Osrednjeslovenska")).toContain("1 zavetišče");
   });
 
-  it("keeps pointer markers out of the accessibility tree", () => {
-    const html = renderMap([
-      pin("brezice", "Zavetišče Brežice", "Brežice", 5),
-    ]);
+  it("names a marker for assistive tech instead of hiding it", () => {
+    const marker = markerTag(
+      renderMap([pin("brezice", "Zavetišče Brežice", "Brežice", 5)]),
+      "brezice",
+    );
 
-    expect(html).toContain('aria-hidden="true" data-marker-kind="single"');
+    // Hidden outright once, which told a screen reader nothing about where
+    // the country's shelters are. It is a control now, and says what it holds
+    // in the same words the annotation over it does.
+    expect(marker).not.toContain("aria-hidden");
+    expect(marker).toContain('role="button"');
+    expect(marker).toContain('aria-label="Zavetišče Brežice: 5 živali"');
+  });
+
+  it("names a marker with nothing to pick without making it a control", () => {
+    const marker = markerTag(
+      renderMap([
+        {
+          ...pin("johanca", "Zavetišče Johanca", "Tolmin", 0),
+          selectable: false,
+        },
+      ]),
+      "tolmin",
+    );
+
+    // The same division the inert regions keep: an image that says what it
+    // is, with no tab stop and nothing pressed.
+    expect(marker).toContain('role="img"');
+    expect(marker).toContain(
+      'aria-label="Zavetišče Johanca: Trenutno brez objavljenih živali"',
+    );
+    expect(marker).not.toContain("tabindex");
+    expect(marker).not.toContain("aria-pressed");
   });
 
   it("hides pointer markers below the md breakpoint", () => {
@@ -819,11 +855,19 @@ describe("ShelterMap inert regions", () => {
   // design review named: large, obvious, and silent until now.
   const onlyLjubljana = [pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)];
 
-  function renderLive(pins: ShelterPin[]) {
+  function renderLive(
+    pins: ShelterPin[],
+    regionShelterNames?: Map<number, string[]>,
+  ) {
     const onPick = vi.fn();
     const { container } = render(
       <I18nProvider locale="sl">
-        <ShelterMap pins={pins} selected={[]} onPick={onPick} />
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={onPick}
+          regionShelterNames={regionShelterNames}
+        />
       </I18nProvider>,
     );
     // By name, not by document order: which region happens to be drawn first
@@ -904,6 +948,74 @@ describe("ShelterMap inert regions", () => {
     expect(goriska).toContain('aria-label="Goriška: Ni zavetišč v tej regiji"');
     expect(goriska).toContain('role="img"');
     expect(goriska).not.toContain("aria-hidden");
+  });
+
+  // A region with no shelters of its own is not a part of the country nobody
+  // answers for: the coverage table knows who takes a stray found there, and
+  // the annotation is where that stops being a dead end.
+  const GORISKA = REGION_SHAPES.find((region) => region.name === "Goriška")!.id;
+  const coveredGoriska = new Map([
+    [GORISKA, ["Zavetišče Nova Gorica", "Zavetišče Ajdovščina"]],
+  ]);
+
+  it("names who answers for the region, under the line saying it has none", () => {
+    const { inert } = renderLive(onlyLjubljana, coveredGoriska);
+
+    fireEvent.pointerOver(inert);
+
+    expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
+    // Both names, joined by the middot the map's other metadata pairs use,
+    // under a verb in the dual: two shelters are "skrbita", never "skrbi".
+    expect(
+      screen.getByText(
+        "Zanje skrbita Zavetišče Nova Gorica · Zavetišče Ajdovščina",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("counts the shelters the way Slovenian does, one, two and more", () => {
+    const named = (names: string[]) => {
+      const { inert } = renderLive(onlyLjubljana, new Map([[GORISKA, names]]));
+      fireEvent.pointerOver(inert);
+      return document.querySelector("[data-callout-note]")?.textContent;
+    };
+
+    // The dual is the form a two-shelter region actually hits most often, and
+    // it is the one a single plural would have got wrong.
+    expect(named(["A"])).toBe("Zanje skrbi A");
+    cleanup();
+    expect(named(["A", "B"])).toBe("Zanje skrbita A · B");
+    cleanup();
+    expect(named(["A", "B", "C"])).toBe("Zanje skrbijo A · B · C");
+  });
+
+  it("says nothing extra where the coverage table has nothing to say", () => {
+    const { inert } = renderLive(onlyLjubljana);
+
+    fireEvent.pointerOver(inert);
+
+    expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
+    expect(document.querySelector("[data-callout-note]")).toBeNull();
+  });
+
+  it("gives a screen reader the same second fact the hover shows", () => {
+    const html = renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={onlyLjubljana}
+          selected={[]}
+          onPick={() => undefined}
+          regionShelterNames={new Map([[GORISKA, ["Zavetišče Nova Gorica"]]])}
+        />
+      </I18nProvider>,
+    );
+
+    expect(regionTag(html, "Goriška")).toContain(
+      'aria-label="Goriška: Ni zavetišč v tej regiji. Zanje skrbi Zavetišče Nova Gorica"',
+    );
+    // Still not a control: naming a shelter somewhere else does not make this
+    // region pressable.
+    expect(regionTag(html, "Goriška")).toContain('role="img"');
   });
 });
 
@@ -1260,6 +1372,85 @@ describe("ShelterMap plate furniture", () => {
   });
 });
 
+// The annotation carries no card, so it is set straight across whatever the
+// plate had there already. Where that is a town anchor the two names
+// interleave letter for letter, and the halo rescues exactly one of them. The
+// convention is older than this map: the name answering a question stays and
+// the furniture gets out of the way.
+describe("ShelterMap label priority", () => {
+  const pins = [
+    pin("horjul", "Zavetišče Horjul", "Horjul", 12),
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  function renderMapDom(renderPins: ShelterPin[] = pins) {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={renderPins} selected={[]} onPick={() => undefined} />
+      </I18nProvider>,
+    );
+    return {
+      container,
+      anchor: (city: string) =>
+        container.querySelector(`[data-map-city="${city}"]`),
+      marker: (key: string) =>
+        container.querySelector(`[data-marker-key="${key}"]`)!,
+      region: (name: string) =>
+        container.querySelector(`[aria-label^="${name}"]`)!,
+    };
+  }
+
+  it("takes the anchor an annotation is drawn across off the plate", () => {
+    const map = renderMapDom();
+    expect(map.anchor("Ljubljana")).not.toBeNull();
+
+    // Horjul sits twenty units west of Ljubljana, so its annotation is set to
+    // the right and runs straight over the anchor captioning Ljubljana's coin.
+    fireEvent.pointerEnter(map.marker("horjul"));
+
+    expect(map.anchor("Ljubljana")).toBeNull();
+    // Maribor is
+    // most of a country away and keeps its name: what gives way is the type
+    // under the annotation, not the type on the plate.
+    expect(map.anchor("Maribor")).not.toBeNull();
+  });
+
+  it("gives the anchor straight back when the annotation goes", () => {
+    const map = renderMapDom();
+    fireEvent.pointerEnter(map.marker("horjul"));
+    expect(map.anchor("Ljubljana")).toBeNull();
+
+    fireEvent.pointerLeave(map.marker("horjul"));
+    expect(map.anchor("Ljubljana")).not.toBeNull();
+  });
+
+  it("moves no mark out of the way, only type", () => {
+    const map = renderMapDom();
+    fireEvent.pointerEnter(map.marker("horjul"));
+
+    // Anchor text and nothing else. The coins are the subject the annotation
+    // is about, and a plate that hid them to make room for their own labels
+    // would have answered a question nobody asked.
+    expect(map.marker("ljubljana")).not.toBeNull();
+    expect(map.container.querySelectorAll("[data-marker-key]").length).toBe(3);
+  });
+
+  it("obeys a region's annotation as well as a town's", () => {
+    // Gorenjska holds no shelter on this roster, so it is inert and answers a
+    // hover with its own name. Kranj's anchor stands inside it, carried on the
+    // projected point because no marker is drawn there, and the region sets
+    // its annotation from its label point straight over it.
+    const map = renderMapDom();
+    expect(map.anchor("Kranj")).not.toBeNull();
+
+    fireEvent.pointerEnter(map.region("Gorenjska"));
+
+    expect(map.anchor("Kranj")).toBeNull();
+    expect(map.anchor("Maribor")).not.toBeNull();
+  });
+});
+
 describe("ShelterMap municipality connector", () => {
   // Trebnje, well away from Ljubljana, so there is a line to draw.
   const from: LatLon = { lat: 45.908, lon: 15.01 };
@@ -1476,5 +1667,727 @@ describe("ShelterMap species morph", () => {
     expect(html.match(/<path[^>]*data-map-scale[^>]*>/)?.[0]).not.toContain(
       "transition",
     );
+  });
+});
+
+// Every hover anywhere on the map used to set state in ShelterMap and
+// re-render every Region and every Marker along with it: twelve regions and
+// however many towns the roster draws, all recomputing their JSX for a
+// pointer that only ever touched one of them. Region and Marker are
+// React.memo now, and every prop ShelterMap hands them is hoisted to a
+// stable identity (see the handleRegion*/handleTown* callbacks in
+// shelter-map.tsx and the equivalent note in map-marker.tsx), so a hover
+// that changes nothing about a region's or a marker's own props should skip
+// its render entirely, not merely produce identical output.
+//
+// React.memo's returned object exposes the function it wraps as `.type`,
+// the same property React's own reconciler reads to decide whether to call
+// it. Spying on that property counts real render invocations without
+// adding any instrumentation to the components themselves.
+//
+// vi.spyOn's own generics do not see `.type` as spyable: which of
+// React.memo's two overloads TypeScript infers for a given component
+// (NamedExoticComponent, with no `.type` at all, or MemoExoticComponent,
+// where it is readonly) depends on the exact shape of that component's own
+// props, and either way vi.spyOn's generics reject it. vi.spyOn is happy to
+// spy on the property at runtime regardless (confirmed by every count
+// below), so `component` is typed `unknown` and cast only to get past the
+// type checker, not to claim a shape TypeScript can actually verify here.
+function spyOnRender(component: unknown) {
+  return vi.spyOn(component as { type: (...args: any[]) => unknown }, "type");
+}
+
+describe("ShelterMap render isolation", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  function renderMapDom(renderPins: ShelterPin[] = pins, selected: string[] = []) {
+    return render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={renderPins} selected={selected} onPick={() => undefined} />
+      </I18nProvider>,
+    );
+  }
+
+  it("renders every region and every town's marker once on mount", () => {
+    const regionSpy = spyOnRender(Region);
+    const markerSpy = spyOnRender(Marker);
+
+    renderMapDom();
+
+    // Twelve regions make up the whole country (lib/map-regions.ts), live or
+    // inert alike; two towns are on this roster.
+    expect(regionSpy.mock.calls.length).toBe(12);
+    expect(markerSpy.mock.calls.length).toBe(2);
+
+    regionSpy.mockRestore();
+    markerSpy.mockRestore();
+  });
+
+  it("does not re-render any region when only one of them is hovered", () => {
+    const regionSpy = spyOnRender(Region);
+    const markerSpy = spyOnRender(Marker);
+    const { container } = renderMapDom();
+    regionSpy.mockClear();
+    markerSpy.mockClear();
+
+    const region = container.querySelector(
+      '[aria-label^="Osrednjeslovenska"]',
+    )!;
+    fireEvent.pointerEnter(region);
+    fireEvent.pointerLeave(region);
+
+    // A region's own pointer-hover look is plain CSS (:hover); nothing about
+    // any region's props changes just because hoveredRegionId now names one
+    // of them, so the whole plate sits still. Zero, not merely "fewer than
+    // twelve": the old, unmemoized code re-ran the same twelve renders (with
+    // identical output) on every hover regardless of which region moved, so
+    // a weaker bound would not have caught the bug this guards against.
+    expect(regionSpy.mock.calls.length).toBe(0);
+    expect(markerSpy.mock.calls.length).toBe(0);
+
+    regionSpy.mockRestore();
+    markerSpy.mockRestore();
+  });
+
+  it("does not re-render any marker when only one of them is hovered", () => {
+    const markerSpy = spyOnRender(Marker);
+    const regionSpy = spyOnRender(Region);
+    const { container } = renderMapDom();
+    markerSpy.mockClear();
+    regionSpy.mockClear();
+
+    const marker = container.querySelector('[data-marker-key="maribor"]')!;
+    fireEvent.pointerEnter(marker);
+    fireEvent.pointerLeave(marker);
+
+    expect(markerSpy.mock.calls.length).toBe(0);
+    expect(regionSpy.mock.calls.length).toBe(0);
+
+    markerSpy.mockRestore();
+    regionSpy.mockRestore();
+  });
+
+  it("re-renders only the cluster marker whose own wedge is hovered, not the other town", () => {
+    const clusterPins = [
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    ];
+    const markerSpy = spyOnRender(Marker);
+    const { container } = renderMapDom(clusterPins);
+    markerSpy.mockClear();
+
+    const wedge = container.querySelector('[data-wedge-shelter="zahod"]')!;
+    fireEvent.pointerEnter(wedge);
+
+    // hoveredShelterValue is scoped to the town it names (see
+    // shelter-map.tsx): Celje's marker is the only one whose own prop
+    // actually changes, so it is the only one that re-renders. Two towns
+    // are on this roster; a count of 2 here would mean Ljubljana's marker,
+    // which has nothing to do with this hover, redrew along with it.
+    expect(markerSpy.mock.calls.length).toBe(1);
+
+    markerSpy.mockRestore();
+  });
+
+  it("still re-renders regions once the selection actually changes", () => {
+    const regionSpy = spyOnRender(Region);
+    const { rerender } = renderMapDom();
+    regionSpy.mockClear();
+
+    rerender(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={["maribor"]} onPick={() => undefined} />
+      </I18nProvider>,
+    );
+
+    // The zero counts above are not a stuck memo: a selection change is a
+    // real change to `regions` (see the useMemo it comes from in
+    // shelter-map.tsx), and every region picks up a fresh stats object
+    // because of it.
+    expect(regionSpy.mock.calls.length).toBeGreaterThan(0);
+
+    regionSpy.mockRestore();
+  });
+});
+
+// The coins were pointer-only, on a plate whose regions have had a full
+// roving-focus system for a while. These mirror it: one tab stop for all of
+// them, arrows that move by direction rather than by list order, a press that
+// picks what a click picks, and focus that raises the annotation hover raises.
+//
+// Which press that is depends on what the coin holds. A lone coin takes Enter
+// and Space alike. A coin drawing one mark per shelter keeps the group on
+// Space and spends Enter on stepping inside itself, which is the block after
+// this one.
+describe("ShelterMap marker keyboard", () => {
+  const pins = [
+    pin("koper", "Zavetišče Koper", "Koper", 20),
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  // moveTownFocus hands the focus call to the next frame, so the walk is run
+  // synchronously here rather than left for a frame that never comes.
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  function renderKeyboard(renderPins: ShelterPin[] = pins) {
+    const onPick = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={renderPins} selected={[]} onPick={onPick} />
+      </I18nProvider>,
+    );
+    return {
+      onPick,
+      coin: (key: string) =>
+        container.querySelector<SVGGElement>(`[data-marker-key="${key}"]`)!,
+      tabStop: () =>
+        container
+          .querySelector('[data-marker-key][tabindex="0"]')
+          ?.getAttribute("data-marker-key"),
+      stops: () =>
+        container.querySelectorAll('[data-marker-key][tabindex="0"]').length,
+      rest: () =>
+        container.querySelectorAll('[data-marker-key][tabindex="-1"]').length,
+    };
+  }
+
+  it("gives the whole plate of coins one tab stop, not one each", () => {
+    const map = renderKeyboard();
+
+    expect(map.stops()).toBe(1);
+    expect(map.rest()).toBe(2);
+    // West to east, which is the one order reading a map has.
+    expect(map.tabStop()).toBe("koper");
+  });
+
+  it("moves the stop to the nearest coin in the direction pressed", () => {
+    const map = renderKeyboard();
+
+    fireEvent.keyDown(map.coin("koper"), { key: "ArrowRight" });
+    expect(map.tabStop()).toBe("ljubljana");
+
+    fireEvent.keyDown(map.coin("ljubljana"), { key: "ArrowRight" });
+    expect(map.tabStop()).toBe("maribor");
+
+    // The country has an eastern edge and nothing wraps: east of the last
+    // town is nowhere, and throwing focus back across the plate would be
+    // worse than leaving it where it is.
+    fireEvent.keyDown(map.coin("maribor"), { key: "ArrowRight" });
+    expect(map.tabStop()).toBe("maribor");
+
+    fireEvent.keyDown(map.coin("maribor"), { key: "Home" });
+    expect(map.tabStop()).toBe("koper");
+    fireEvent.keyDown(map.coin("koper"), { key: "End" });
+    expect(map.tabStop()).toBe("maribor");
+  });
+
+  it("picks with Enter and with Space what a click on the coin picks", () => {
+    const map = renderKeyboard();
+
+    fireEvent.keyDown(map.coin("ljubljana"), { key: "Enter" });
+    expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+      kind: "shelter",
+      value: "ljubljana",
+    });
+
+    fireEvent.keyDown(map.coin("maribor"), { key: " " });
+    expect(map.onPick).toHaveBeenCalledWith(["maribor"], {
+      kind: "shelter",
+      value: "maribor",
+    });
+  });
+
+  it("picks a shared town as the group its coin is, on Space", () => {
+    const map = renderKeyboard([
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
+    ]);
+
+    // Space and not Enter. A coin drawing one mark per shelter answers Enter
+    // by stepping inside itself (see the drill-in block below), so the town's
+    // own group pick moved to the other key rather than off the keyboard: this
+    // is the press that still toggles what a click on the coin toggles.
+    fireEvent.keyDown(map.coin("celje"), { key: " " });
+
+    expect(map.onPick).toHaveBeenCalledWith(["vzhod", "zahod"], {
+      kind: "group",
+      label: "Celje",
+      values: ["vzhod", "zahod"],
+    });
+  });
+
+  it("raises the annotation on focus and takes it away on blur", () => {
+    const map = renderKeyboard();
+
+    fireEvent.focusIn(map.coin("maribor"));
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(screen.getByText("40 živali")).toBeTruthy();
+
+    fireEvent.focusOut(map.coin("maribor"));
+    expect(screen.queryByText("Zavetišče Maribor")).toBeNull();
+  });
+
+  it("draws keyboard focus as the heaviest line on the plate", () => {
+    const html = renderMap([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    ]);
+    const ring =
+      html.match(/<circle[^>]*data-marker-focus-ring[^>]*>/)?.[0] ?? "";
+
+    expect(ring).not.toBe("");
+    // Nothing until the keyboard asks, then 2.1: the same weight a focused
+    // region draws, and above the 1.8 a selected one reaches on hover.
+    expect(ring).toContain("[stroke-width:0]");
+    expect(ring).toContain("group-focus-visible/pin:[stroke-width:2.1]");
+    expect(html).toContain("focus-visible:[stroke-width:2.1]");
+  });
+
+  it("keeps the coins' keyboard out of reach below md, with the coins", () => {
+    // display:none takes the whole marker group out of the tab order and out
+    // of the accessibility tree alike, which is the right answer: phones get
+    // the regions and the list.
+    expect(
+      renderMap([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)]),
+    ).toMatch(/<g class="hidden md:block"><g[^>]*role="button"/);
+  });
+});
+
+// A pointer has always been able to say which shelter of a shared town it
+// meant: the coin draws one mark each and hands each one its own target. The
+// keyboard could only ever take the town whole. This is the drill-in that
+// closes that gap, in the register the region and coin roving already keep.
+describe("ShelterMap wedge keyboard", () => {
+  const pins = [
+    pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+    pin("zahod", "Zavetišče Zahod", "Celje", 20),
+    pin("koper", "Zavetišče Koper", "Koper", 20),
+  ];
+
+  // The town walk hands its focus call to the next frame, exactly as the block
+  // above does, so the frame is run here rather than waited for.
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  function renderKeyboard(renderPins: ShelterPin[] = pins) {
+    const onPick = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={renderPins} selected={[]} onPick={onPick} />
+      </I18nProvider>,
+    );
+    return {
+      onPick,
+      container,
+      coin: (key: string) =>
+        container.querySelector<SVGGElement>(`[data-marker-key="${key}"]`)!,
+      tabStop: () =>
+        container
+          .querySelector('[data-marker-key][tabindex="0"]')
+          ?.getAttribute("data-marker-key"),
+    };
+  }
+
+  it("steps inside the coin on Enter and narrates the first mark", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    // The town's own annotation, before anything is drilled into.
+    expect(screen.getByText("Celje")).toBeTruthy();
+
+    fireEvent.keyDown(celje, { key: "Enter" });
+
+    // Nothing is picked by going in. Enter on a shared coin buys a level, not
+    // a selection.
+    expect(map.onPick).not.toHaveBeenCalled();
+    // The annotation is the pointer's own: the shelter by name, its count
+    // under it. Driven through the same onHoverShelter path a wedge hover
+    // takes, so the callout, the leaning disc and the list row cannot learn to
+    // answer a keyboard differently.
+    expect(screen.getByText("Zavetišče Vzhod")).toBeTruthy();
+    expect(screen.getByText("60 živali")).toBeTruthy();
+    // And the same fact out loud, for the reader who never sees either.
+    expect(celje.getAttribute("aria-label")).toBe("Zavetišče Vzhod: 60 živali");
+  });
+
+  it("puts the plate's heaviest line around the mark it is standing on", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+
+    const ring = map.container.querySelector(
+      '[data-wedge-focus-ring="vzhod"]',
+    );
+    expect(ring).not.toBeNull();
+    expect(ring!.getAttribute("class")).toContain("[stroke-width:2.1]");
+    // Exactly one ring on the plate at a time. The coin's own stands down
+    // while the keyboard is on one of its marks, or 2.1 would be two answers
+    // to where focus is.
+    expect(
+      map.container.querySelector(
+        '[data-marker-key="celje"] [data-marker-focus-ring]',
+      ),
+    ).toBeNull();
+  });
+
+  it("cycles the marks on the arrows without moving the town", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+
+    fireEvent.keyDown(celje, { key: "ArrowRight" });
+    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+    expect(screen.getByText("20 živali")).toBeTruthy();
+    // The press was consumed here. A keypress that walked the plate as well
+    // would leave the keyboard in two places at once.
+    expect(map.tabStop()).toBe("celje");
+
+    // These wrap, where the plate's own arrows do not: the marks in a coin are
+    // arranged around one point and there is no edge to fall off.
+    fireEvent.keyDown(celje, { key: "ArrowRight" });
+    expect(screen.getByText("Zavetišče Vzhod")).toBeTruthy();
+    fireEvent.keyDown(celje, { key: "ArrowLeft" });
+    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+  });
+
+  it("picks exactly the mark it is standing on", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+    fireEvent.keyDown(celje, { key: "ArrowRight" });
+    fireEvent.keyDown(celje, { key: "Enter" });
+
+    // One value, so the map's own wrapper reads it as a shelter and not as the
+    // town it sits in.
+    expect(map.onPick).toHaveBeenCalledWith(["zahod"], {
+      kind: "shelter",
+      value: "zahod",
+    });
+    // One shelter chosen is the end of the drill, the way Escape is the end of
+    // it without one.
+    expect(celje.getAttribute("data-marker-drilled")).toBeNull();
+  });
+
+  it("backs out on Escape, without picking and with the town back", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+    fireEvent.keyDown(celje, { key: "Escape" });
+
+    expect(map.onPick).not.toHaveBeenCalled();
+    expect(celje.getAttribute("aria-label")).toBe(
+      "Celje: 2 zavetišči, 80 živali",
+    );
+    expect(screen.getByText("Celje")).toBeTruthy();
+
+    // And the arrows belong to the plate again.
+    fireEvent.keyDown(celje, { key: "ArrowLeft" });
+    expect(map.tabStop()).toBe("koper");
+  });
+
+  it("keeps a drilled Escape away from the dialog that closes on it", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    // Stands in for the Radix dismissable layer the picker wraps this map in.
+    // It listens exactly where that layer listens: on the document, in the
+    // capture phase, which is ahead of every React handler on the plate and
+    // one step behind the window.
+    const dialog = vi.fn();
+    document.addEventListener("keydown", dialog, { capture: true });
+
+    try {
+      // At coin level Escape is the dialog's own and reaches it, so the picker
+      // still closes on a press that means "I am done with this map".
+      fireEvent.keyDown(celje, { key: "Escape" });
+      expect(dialog).toHaveBeenCalledTimes(1);
+
+      fireEvent.focusIn(celje);
+      fireEvent.keyDown(celje, { key: "Enter" });
+      dialog.mockClear();
+
+      fireEvent.keyDown(celje, { key: "Escape" });
+
+      // Drilled, it never gets there. It used to: backing out of one coin
+      // closed the entire picker and threw focus back to the trigger.
+      expect(dialog).not.toHaveBeenCalled();
+      expect(celje.getAttribute("data-marker-drilled")).toBeNull();
+    } finally {
+      document.removeEventListener("keydown", dialog, { capture: true });
+    }
+  });
+
+  it("closes the drill when focus leaves, and opens at the coin again", () => {
+    const map = renderKeyboard();
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+    fireEvent.focusOut(celje);
+
+    expect(screen.queryByText("Zavetišče Vzhod")).toBeNull();
+    expect(celje.getAttribute("data-marker-drilled")).toBeNull();
+
+    // A coin the visitor comes back to is always found at coin level, rather
+    // than remembering a mark that the species tabs may since have re-cut.
+    fireEvent.focusIn(celje);
+    expect(celje.getAttribute("aria-label")).toBe(
+      "Celje: 2 zavetišči, 80 živali",
+    );
+  });
+
+  it("names an off-site mark and still refuses to pick it", () => {
+    const map = renderKeyboard([
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      { ...pin("mimo", "Zavetišče Mimo", "Celje", 0), selectable: false },
+    ]);
+    const celje = map.coin("celje");
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+    fireEvent.keyDown(celje, { key: "ArrowRight" });
+
+    // The same sentence its dot has always answered a hover with.
+    expect(celje.getAttribute("aria-label")).toBe(
+      "Zavetišče Mimo: Trenutno brez objavljenih živali",
+    );
+
+    fireEvent.keyDown(celje, { key: "Enter" });
+    // Nothing happened, so the drill is still open on it rather than closed by
+    // a pick that never landed.
+    expect(map.onPick).not.toHaveBeenCalled();
+    expect(celje.getAttribute("data-marker-drilled")).toBe("mimo");
+  });
+
+  it("leaves a lone coin taking both keys, with nothing to drill into", () => {
+    const map = renderKeyboard();
+
+    fireEvent.keyDown(map.coin("koper"), { key: "Enter" });
+    fireEvent.keyDown(map.coin("koper"), { key: " " });
+
+    expect(map.onPick).toHaveBeenCalledTimes(2);
+    expect(map.onPick).toHaveBeenCalledWith(["koper"], {
+      kind: "shelter",
+      value: "koper",
+    });
+    expect(map.coin("koper").getAttribute("data-marker-drilled")).toBeNull();
+  });
+});
+
+// The plate already draws the visitor's own mark. This is the other half of
+// that: how far the town under the pointer actually is, in the ring's own
+// dashed language and in the same words the list rows use.
+describe("ShelterMap distance from the origin", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  function renderWithOrigin(origin?: LatLon) {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={() => undefined}
+          origin={origin}
+        />
+      </I18nProvider>,
+    );
+    return container;
+  }
+
+  function hover(container: HTMLElement, key: string) {
+    fireEvent.pointerEnter(
+      container.querySelector(`[data-marker-key="${key}"]`)!,
+    );
+  }
+
+  it("waits for both an origin and a hovered town", () => {
+    const container = renderWithOrigin(cityAt("Koper"));
+    expect(container.querySelector("[data-map-distance]")).toBeNull();
+
+    hover(container, "maribor");
+    expect(container.querySelector("[data-map-distance]")).not.toBeNull();
+
+    const noOrigin = renderWithOrigin(undefined);
+    hover(noOrigin, "maribor");
+    expect(noOrigin.querySelector("[data-map-distance]")).toBeNull();
+  });
+
+  it("draws nothing for a region hover, which measures to no one place", () => {
+    const container = renderWithOrigin(cityAt("Koper"));
+
+    fireEvent.pointerOver(container.querySelector('[aria-label^="Goriška"]')!);
+
+    expect(container.querySelector("[data-map-distance]")).toBeNull();
+  });
+
+  it("speaks the dashes the origin ring already wears", () => {
+    const container = renderWithOrigin(cityAt("Koper"));
+    hover(container, "maribor");
+    const line = container.querySelector("[data-map-distance]")!;
+
+    expect(line.getAttribute("stroke-dasharray")).toBe("2 2");
+    expect(line.getAttribute("stroke-width")).toBe("0.5");
+    // A step quieter than the municipality connector, which is 0.9 at 60%.
+    expect(line.getAttribute("class")).toContain("opacity-55");
+  });
+
+  it("leaves both marks alone at either end", () => {
+    const container = renderWithOrigin(cityAt("Koper"));
+    hover(container, "maribor");
+    const line = container.querySelector("[data-map-distance]")!;
+    const at = (name: string) => Number(line.getAttribute(name));
+    const from = project(cityAt("Koper")!);
+
+    // The origin ring's outer edge is 5.5 units out; the line starts there
+    // rather than at the middle of the mark.
+    expect(Math.hypot(at("x1") - from.x, at("y1") - from.y)).toBeCloseTo(
+      5.5,
+      5,
+    );
+  });
+
+  it("labels the line with the same kilometres the rows carry", () => {
+    const container = renderWithOrigin(cityAt("Koper"));
+    hover(container, "maribor");
+
+    expect(
+      container.querySelector("[data-map-distance-label]")?.textContent,
+    ).toBe(
+      formatKm(
+        distanceKm(cityAt("Koper")!, cityAt("Maribor")!),
+        "manj kot 1 km",
+      ),
+    );
+  });
+
+  it("drops the label, not the line, on a segment too short to hold it", () => {
+    // Fifteen-odd kilometres due north of Ljubljana: far enough that a line
+    // exists between the ring and the coin, too short to set type across.
+    const container = renderWithOrigin({ lat: 46.2, lon: 14.5058 });
+    hover(container, "ljubljana");
+
+    expect(container.querySelector("[data-map-distance]")).not.toBeNull();
+    expect(container.querySelector("[data-map-distance-label]")).toBeNull();
+  });
+
+  it("stays out of the accessibility tree and off the pointer", () => {
+    const container = renderWithOrigin(cityAt("Koper"));
+    hover(container, "maribor");
+    const group = container.querySelector("[data-map-distance]")!.parentElement!;
+
+    expect(group.getAttribute("aria-hidden")).toBe("true");
+    expect(group.getAttribute("class")).toContain("pointer-events-none");
+  });
+});
+
+// The third line of the annotation: who lives there, in the site's own species
+// glyphs. Only over one shelter, because a summed breakdown of a town is a
+// fact about no shelter in it.
+describe("ShelterMap species annotation", () => {
+  const summaries = new Map<string, ShelterSummary>([
+    [
+      "ljubljana",
+      {
+        species: [
+          { species: "dog", count: 31 },
+          { species: "cat", count: 19 },
+        ],
+      },
+    ],
+  ]);
+
+  function renderSummaries(renderPins: ShelterPin[]) {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={renderPins}
+          selected={[]}
+          onPick={() => undefined}
+          summaries={summaries}
+        />
+      </I18nProvider>,
+    );
+    return container;
+  }
+
+  it("adds the species line over a town holding one shelter", () => {
+    const container = renderSummaries([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+    ]);
+
+    fireEvent.pointerEnter(
+      container.querySelector('[data-marker-key="ljubljana"]')!,
+    );
+
+    const row = container.querySelector("[data-callout-species]");
+    expect(row).not.toBeNull();
+    expect(row!.textContent).toBe("3119");
+    expect(container.querySelector(".lucide-dog")).not.toBeNull();
+  });
+
+  it("adds none over a town answering for several shelters at once", () => {
+    // Four shelters, so the marker gives up on one disc each and answers as a
+    // town; hovering it names the town, not a house.
+    const container = renderSummaries([
+      pin("a", "Zavetišče A", "Celje", 10),
+      pin("b", "Zavetišče B", "Celje", 10),
+      pin("c", "Zavetišče C", "Celje", 10),
+      pin("d", "Zavetišče D", "Celje", 10),
+    ]);
+
+    fireEvent.pointerEnter(
+      container.querySelector('[data-marker-key="celje"]')!,
+    );
+
+    expect(screen.getByText("Celje")).toBeTruthy();
+    expect(container.querySelector("[data-callout-species]")).toBeNull();
+  });
+
+  it("adds none to a region's annotation", () => {
+    const container = renderSummaries([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
+    ]);
+
+    fireEvent.pointerOver(container.querySelector('[aria-label^="Goriška"]')!);
+
+    expect(container.querySelector("[data-callout-species]")).toBeNull();
+  });
+
+  it("says nothing extra when the picker was handed no summaries", () => {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50)]}
+          selected={[]}
+          onPick={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.pointerEnter(
+      container.querySelector('[data-marker-key="ljubljana"]')!,
+    );
+
+    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    expect(container.querySelector("[data-callout-species]")).toBeNull();
   });
 });

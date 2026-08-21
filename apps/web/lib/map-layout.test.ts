@@ -6,11 +6,15 @@ import {
   DENSITY_STEPS,
   densityScale,
   discFitsGlyph,
+  dominantShelterIndex,
   driftBudget,
   layoutTowns,
   markerGeometry,
   markerRadius,
   markerVisualReach,
+  MARKER_STROKE_WIDTH,
+  satelliteDiscs,
+  satelliteHitCircles,
   townLabel,
   type ClusterDisc,
   type ShelterPin,
@@ -38,25 +42,28 @@ function everyPair<T>(items: T[], visit: (a: T, b: T) => void): void {
   }
 }
 
-// The real roster, which is what the layout has to survive.
+// The real roster, which is what the layout has to survive. Counts measured
+// off data/dist on 2026-08: Celje is the one town holding two shelters, the
+// larger of them the busiest in the country and the other with nothing listed,
+// which is the case the satellite layout exists for.
 const ROSTER: [string, string, number][] = [
-  ["zonzani", "Dramlje", 40],
-  ["obalno", "Koper", 60],
-  ["ljubljana", "Ljubljana", 120],
+  ["zonzani", "Dramlje", 19],
+  ["obalno", "Koper", 38],
+  ["ljubljana", "Ljubljana", 50],
   ["oskar", "Vitovlje", 35],
-  ["horjul", "Horjul", 25],
-  ["turk", "Novo mesto", 30],
-  ["meli", "Trebnje", 20],
-  ["mala-hisa", "Moravske Toplice", 15],
-  ["maribor", "Maribor", 80],
-  ["macji-dol", "Škofja Loka", 18],
+  ["horjul", "Horjul", 72],
+  ["turk", "Novo mesto", 23],
+  ["meli", "Trebnje", 18],
+  ["mala-hisa", "Moravske Toplice", 13],
+  ["maribor", "Maribor", 23],
+  ["macji-dol", "Škofja Loka", 15],
   ["sevnica", "Sevnica", 12],
   ["brezice", "Brežice", 10],
-  ["macja-hisa", "Celje", 22],
+  ["macja-hisa", "Celje", 186],
   ["johanca", "Tolmin", 8],
-  ["muri", "Vransko", 14],
+  ["muri", "Vransko", 46],
   ["potepuhi", "Podlog", 16],
-  ["sia-in-lu", "Celje", 9],
+  ["sia-in-lu", "Celje", 0],
 ];
 
 const REAL_PINS = ROSTER.map(([value, city, count]) => pin(value, city, count));
@@ -75,12 +82,12 @@ describe("layoutTowns", () => {
   it("sizes a marker by the animals its town holds, in three steps", () => {
     const towns = layoutTowns(REAL_PINS);
     const at = (city: string) => towns.find((town) => town.city === city)!.r;
-    // Tolmin 8, Novo mesto 30, Ljubljana 120: one town per step.
+    // Tolmin 8, Novo mesto 23, Ljubljana 50: one town per step.
     expect(at("Ljubljana")).toBeGreaterThan(at("Novo mesto"));
     expect(at("Novo mesto")).toBeGreaterThan(at("Tolmin"));
-    // Steps, not a curve: Maribor holds 80 to Ljubljana's 120 and both are
-    // large, so the two markers are the same size.
-    expect(at("Maribor")).toBe(at("Ljubljana"));
+    // Steps, not a curve: Koper holds 38 to Novo mesto's 23 and both are
+    // middling, so the two markers are the same size.
+    expect(at("Koper")).toBe(at("Novo mesto"));
     expect(new Set(towns.map((town) => town.r)).size).toBe(3);
     for (const town of towns) {
       expect(town.r).toBeGreaterThanOrEqual(4.7);
@@ -135,6 +142,40 @@ describe("layoutTowns", () => {
     });
   });
 
+  // A dominated town draws outside its coin, so the coins clearing each other
+  // is no longer enough: the composite footprints have to clear each other
+  // too, or Celje's satellite lands on Dramlje.
+  it("leaves no two markers' whole footprints overlapping", () => {
+    const towns = layoutTowns(REAL_PINS);
+    everyPair(towns, (a, b) => {
+      expect(
+        Math.hypot(a.x - b.x, a.y - b.y) - a.reach - b.reach,
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  // Nothing a marker paints may cross into another marker's footprint, which
+  // is the invariant the reach exists to carry. Checked on the marks
+  // themselves rather than on the radius they were promised.
+  it("keeps every mark of every marker out of every other marker's reach", () => {
+    const towns = layoutTowns(REAL_PINS);
+    const marks = towns.flatMap((town) => [
+      { town, x: town.x, y: town.y, r: town.r },
+      ...clusterDiscs(town).map((disc) => ({ town, ...disc })),
+      ...satelliteDiscs(town).map((disc) => ({ town, ...disc })),
+    ]);
+    for (const mark of marks) {
+      for (const other of towns) {
+        if (other.key === mark.town.key) continue;
+        expect(
+          Math.hypot(mark.x - other.x, mark.y - other.y) -
+            mark.r -
+            MARKER_STROKE_WIDTH / 2,
+        ).toBeGreaterThan(other.reach);
+      }
+    }
+  });
+
   it("separates Dramlje from Celje, which overlapped by 6px before", () => {
     const towns = layoutTowns(REAL_PINS);
     const dramlje = towns.find((t) => t.city === "Dramlje")!;
@@ -144,24 +185,35 @@ describe("layoutTowns", () => {
 
   // At md and wider, a marker's target may fill the space around it but never
   // reaches inside a neighbour's dot.
-  it("never lets a marker's target reach inside another marker's dot", () => {
+  it("never lets a marker's target reach inside another marker's ink", () => {
     const towns = layoutTowns(REAL_PINS);
     everyPair(towns, (a, b) => {
       const centres = Math.hypot(a.x - b.x, a.y - b.y);
-      expect(a.hitR + b.r).toBeLessThanOrEqual(centres + 1e-9);
-      expect(b.hitR + a.r).toBeLessThanOrEqual(centres + 1e-9);
+      expect(a.hitR + b.reach).toBeLessThanOrEqual(centres + 1e-9);
+      expect(b.hitR + a.reach).toBeLessThanOrEqual(centres + 1e-9);
     });
   });
 
-  it("makes every marker's target larger than the dot it covers", () => {
+  it("makes every marker's target larger than the marks it covers", () => {
     for (const town of layoutTowns(REAL_PINS)) {
       expect(town.hitR).toBeGreaterThan(town.r);
+      expect(town.hitR).toBeGreaterThanOrEqual(town.reach);
     }
   });
 
-  it("keeps every visible marker element inside its protected radius", () => {
+  it("keeps every visible marker element inside its protected reach", () => {
     for (const town of layoutTowns(REAL_PINS)) {
-      expect(markerVisualReach(town)).toBeLessThanOrEqual(town.r + 1e-9);
+      expect(markerVisualReach(town)).toBeLessThanOrEqual(town.reach + 1e-9);
+    }
+  });
+
+  // A marker that draws nothing outside its coin has to protect exactly the
+  // radius it always protected, or the whole country relaxes differently for
+  // the sake of one town in Celje.
+  it("gives an undominated town a reach no larger than its coin", () => {
+    for (const town of layoutTowns(REAL_PINS)) {
+      if (satelliteDiscs(town).length > 0) continue;
+      expect(town.reach).toBe(town.r);
     }
   });
 
@@ -177,7 +229,7 @@ describe("layoutTowns", () => {
       );
       expect(towns).toHaveLength(1);
       expect(markerVisualReach(towns[0])).toBeLessThanOrEqual(
-        towns[0].r + 1e-9,
+        towns[0].reach + 1e-9,
       );
       for (const disc of clusterDiscs(towns[0])) {
         const reach =
@@ -232,17 +284,19 @@ describe("layoutTowns", () => {
       const x = ((home.lon - 13.35) / 3.3) * MAP_WIDTH;
       const y = ((46.9 - home.lat) / 1.5) * MAP_HEIGHT;
       expect(Math.hypot(town.x - x, town.y - y)).toBeLessThanOrEqual(
-        driftBudget(town.r) + 1e-6,
+        driftBudget(town.reach) + 1e-6,
       );
     }
   });
 
   it("keeps every marker inside the map", () => {
     for (const town of layoutTowns(REAL_PINS)) {
-      expect(town.x - town.r).toBeGreaterThanOrEqual(0);
-      expect(town.y - town.r).toBeGreaterThanOrEqual(0);
-      expect(town.x + town.r).toBeLessThanOrEqual(MAP_WIDTH);
-      expect(town.y + town.r).toBeLessThanOrEqual(MAP_HEIGHT);
+      // The whole composite, satellites included: a mark clipped by the frame
+      // is a shelter the map lost.
+      expect(town.x - town.reach).toBeGreaterThanOrEqual(0);
+      expect(town.y - town.reach).toBeGreaterThanOrEqual(0);
+      expect(town.x + town.reach).toBeLessThanOrEqual(MAP_WIDTH);
+      expect(town.y + town.reach).toBeLessThanOrEqual(MAP_HEIGHT);
     }
   });
 
@@ -317,23 +371,37 @@ function uniformOverlap(counts: number[]): number {
   return Math.max(...overlaps(clusterDiscs(even)));
 }
 
-// Every split the cap can be handed, plus the plain ones, over both cluster
-// sizes and all three marker bins.
+// Every split a coin is still divided over: no shelter holding four times
+// another, which is where the town changes layout instead. Both cluster sizes
+// and all three marker bins, and the near misses on both sides of the line.
 const SPLITS: number[][] = [
   [10, 10],
+  [30, 10],
+  [79, 20],
+  [0, 0],
+  [10, 10, 10],
+  [60, 20, 5],
+  [50, 20, 15],
+  [3, 2, 2],
+  [40, 30, 0],
+  [0, 0, 0],
+];
+
+// The splits that no longer divide a coin at all: one shelter holds at least
+// four times every other, so the town draws a coin and satellites.
+const DOMINATED: number[][] = [
   [186, 11],
+  [186, 0],
+  [80, 20],
   [1, 1000],
   [18, 1],
   [0, 12],
-  [0, 0],
-  [10, 10, 10],
   [186, 11, 11],
   [1000, 1, 1],
   [1, 1, 1000],
-  [60, 20, 5],
+  [180, 20, 6],
   [40, 0, 4],
   [0, 0, 30],
-  [0, 0, 0],
 ];
 
 describe("clusterDiscs", () => {
@@ -354,14 +422,15 @@ describe("clusterDiscs", () => {
     }
   });
 
-  // The whole point: Celje holds the largest shelter in the country next to an
-  // 11-animal one, and the two used to draw at the same size.
+  // Within a coin the discs still have to order by count. The lopsided pairs
+  // this used to be written against (Celje's 186 beside 11) leave by the
+  // satellite path now, so the case is a town that genuinely shares.
   it("gives the busier shelter in a town the larger disc", () => {
-    const [big, small] = clusterDiscs(cluster([186, 11], "Celje"));
+    const [big, small] = clusterDiscs(cluster([60, 20], "Celje"));
     expect(big.r).toBeGreaterThan(small.r);
     // The pair keeps the ink the uniform layout spent, so the coin does not
-    // change weight when its shelters are lopsided.
-    const uniform = markerGeometry(cluster([186, 11], "Celje")).clusterRadius;
+    // change weight when its shelters are uneven.
+    const uniform = markerGeometry(cluster([60, 20], "Celje")).clusterRadius;
     expect(big.r + small.r).toBeCloseTo(uniform * 2, 10);
   });
 
@@ -383,8 +452,9 @@ describe("clusterDiscs", () => {
     }
   });
 
-  // Four times the area, twice the radius. Sqrt sizing alone would draw
-  // Celje's second shelter at a quarter of the first's radius.
+  // Four times the area, twice the radius, and four times the animals is
+  // exactly where the town stops sharing a coin. The two limits are one line,
+  // so inside a coin this can only ever be reached, never crossed.
   it("never lets one disc out-measure another by more than 2:1 in radius", () => {
     for (const counts of SPLITS) {
       const radii = clusterDiscs(cluster(counts)).map((disc) => disc.r);
@@ -433,26 +503,196 @@ describe("clusterDiscs", () => {
   });
 
   // The hollow "nothing listed" mark carries no count, so it takes no part in
-  // the division and keeps the slot it always had.
-  it("leaves a shelter with nothing listed at the uniform size", () => {
-    const town = cluster([40, 0]);
-    const discs = clusterDiscs(town);
-    expect(discs[1].r).toBeCloseTo(markerGeometry(town).clusterRadius, 10);
-    expect(discs[0].r).toBeCloseTo(markerGeometry(town).clusterRadius, 10);
+  // the division: it holds a slot rather than a share. A zero beside one busy
+  // shelter is a dominated town and leaves by the satellite path, so the case
+  // that still divides a coin is a zero beside two shelters that share one.
+  it("leaves a shelter with nothing listed a slot of its own, not a share", () => {
+    const [, , empty] = clusterDiscs(cluster([40, 30, 0]));
+    const [, , busier] = clusterDiscs(cluster([400, 300, 0]));
+    // The slot is the space the mark is given, and the hollow circle drawn in
+    // it is a fraction of that (EMPTY_MARKER_RADIUS_SCALE), which is why the
+    // slot may measure more than a counted disc while the mark never does.
+    expect(empty.r).toBeGreaterThan(0);
+    // Ten times the animals in both counted shelters moves it not at all: it
+    // carries no count, so it takes no part in the division.
+    expect(empty.r).toBeCloseTo(busier.r, 10);
   });
 
   // A disc under the glyph floor drops its paw rather than drawing a smudge.
   // The wedge still names that shelter and the callout still counts it.
   it("lets the smaller disc of a lopsided small town fall under the glyph floor", () => {
-    const town = cluster([18, 1]);
+    const town = cluster([16, 5]);
     const [big, small] = clusterDiscs(town);
-    expect(town.r).toBe(markerRadius(19));
+    expect(town.r).toBe(markerRadius(21));
     expect(discFitsGlyph(big.r)).toBe(true);
     expect(discFitsGlyph(small.r)).toBe(false);
     expect(clusterHitWedges(town).map((wedge) => wedge.value)).toEqual([
       "s0",
       "s1",
     ]);
+  });
+
+  it("draws no discs at all in a town one shelter dominates", () => {
+    for (const counts of DOMINATED) {
+      expect(clusterDiscs(cluster(counts))).toEqual([]);
+      expect(clusterHitWedges(cluster(counts))).toEqual([]);
+    }
+  });
+});
+
+describe("satelliteDiscs", () => {
+  // The whole reason this layout exists. Mačja hiša holds 186 animals, more
+  // than any other shelter in the country, and shared a coin with a shelter
+  // that lists none: the biggest shelter in Slovenia drew a smaller mark than
+  // Horjul's 72 two regions away. Now it draws the coin Horjul draws, because
+  // it is sized by its own animals and nothing else.
+  it("gives the dominant shelter the coin its own count earns, as if it stood alone", () => {
+    const celje = cluster([186, 0], "Celje");
+    const [horjul] = layoutTowns([pin("horjul", "Horjul", 72)]);
+    expect(celje.r).toBe(markerRadius(186));
+    expect(markerGeometry(celje).discRadius).toBe(
+      markerGeometry(horjul).discRadius,
+    );
+
+    // And against the shelter it shares the town with, which is what the
+    // country reads: one coin, one small companion.
+    const [satellite] = satelliteDiscs(celje);
+    expect(satellite.value).toBe("s1");
+    expect(satellite.r).toBeLessThan(markerGeometry(celje).discRadius / 2);
+  });
+
+  it("still sizes an undominated town by everything it holds", () => {
+    // Two shelters under the line share a coin sized by the pair, which is
+    // larger than either of them alone would earn.
+    const town = cluster([30, 10]);
+    expect(town.r).toBe(markerRadius(40));
+    expect(satelliteDiscs(town)).toEqual([]);
+  });
+
+  it("switches mode at exactly four times, and not a shelter earlier", () => {
+    expect(dominantShelterIndex(cluster([80, 20]).shelters)).toBe(0);
+    expect(satelliteDiscs(cluster([80, 20]))).toHaveLength(1);
+    expect(dominantShelterIndex(cluster([79, 20]).shelters)).toBe(-1);
+    expect(satelliteDiscs(cluster([79, 20]))).toEqual([]);
+    // Three shelters: the dominant has to clear every one of them.
+    expect(satelliteDiscs(cluster([180, 20, 6]))).toHaveLength(2);
+    expect(satelliteDiscs(cluster([180, 50, 6]))).toEqual([]);
+  });
+
+  it("leaves a town nobody dominates alone", () => {
+    // Equal counts are the plainest undominated town there is, and a town
+    // with nothing listed anywhere has no shelter to promote.
+    expect(satelliteDiscs(cluster([10, 10]))).toEqual([]);
+    expect(satelliteDiscs(cluster([0, 0]))).toEqual([]);
+    expect(satelliteDiscs(cluster([0, 0, 0]))).toEqual([]);
+    // One shelter is already a whole coin; past three the marker counts
+    // instead of drawing marks.
+    expect(satelliteDiscs(cluster([50]))).toEqual([]);
+    expect(satelliteDiscs(cluster([200, 10, 10, 10]))).toEqual([]);
+  });
+
+  it("keeps every satellite small, ordered by its own count", () => {
+    for (const counts of DOMINATED) {
+      const town = cluster(counts);
+      const satellites = satelliteDiscs(town);
+      expect(satellites.length).toBe(counts.length - 1);
+      for (const satellite of satellites) {
+        expect(satellite.r).toBeGreaterThanOrEqual(2.2);
+        expect(satellite.r).toBeLessThanOrEqual(2.8);
+        // Never a coin of its own: the smallest marker the map draws is 4.7.
+        expect(satellite.r).toBeLessThan(markerRadius(0) * 0.7);
+      }
+      // The busier companion is the larger disc, same rule the coins keep.
+      const others = counts
+        .map((count, index) => ({ count, index }))
+        .filter(({ index }) => index !== dominantShelterIndex(town.shelters))
+        .map(({ count }, slot) => ({ count, r: satellites[slot].r }));
+      for (const a of others) {
+        for (const b of others) {
+          if (a.count > b.count) expect(a.r).toBeGreaterThan(b.r - 1e-9);
+        }
+      }
+    }
+  });
+
+  it("hangs every satellite on the rim, clear of the coin's glyph", () => {
+    for (const counts of DOMINATED) {
+      const town = cluster(counts);
+      const { discRadius } = markerGeometry(town);
+      for (const satellite of satelliteDiscs(town)) {
+        const offset = Math.hypot(satellite.x - town.x, satellite.y - town.y);
+        // Outside the coin's centre by more than the coin's own radius, so
+        // the satellite is a companion and not a disc cut out of the coin.
+        expect(offset).toBeGreaterThan(discRadius);
+        // Attached, not adrift: it bites into the rim rather than floating
+        // off it.
+        expect(offset).toBeLessThan(discRadius + satellite.r);
+        // The paw inside the coin is drawn at 1.15 times the coin's radius,
+        // so its box reaches 0.575 of that from the centre. Nothing may sit
+        // on it.
+        expect(offset - satellite.r).toBeGreaterThan(discRadius * 0.575);
+      }
+    }
+  });
+
+  it("keeps two satellites off each other", () => {
+    for (const counts of DOMINATED) {
+      const satellites = satelliteDiscs(cluster(counts));
+      everyPair(satellites, (a, b) => {
+        expect(gap(a, b)).toBeGreaterThan(0);
+      });
+    }
+  });
+
+  it("counts the whole composite as the marker's reach", () => {
+    for (const counts of DOMINATED) {
+      const town = cluster(counts);
+      expect(town.reach).toBeGreaterThan(town.r);
+      for (const satellite of satelliteDiscs(town)) {
+        const outer =
+          Math.hypot(satellite.x - town.x, satellite.y - town.y) + satellite.r;
+        expect(outer + MARKER_STROKE_WIDTH / 2).toBeLessThanOrEqual(
+          town.reach + 1e-9,
+        );
+      }
+    }
+  });
+});
+
+describe("satelliteHitCircles", () => {
+  it("gives every mark of a dominated town its own target, coin first", () => {
+    const town = cluster([186, 0], "Celje");
+    const hits = satelliteHitCircles(town);
+    expect(hits.map((hit) => hit.value)).toEqual(["s0", "s1"]);
+    // The coin takes the town's whole target: it holds most of the town, so
+    // ground the satellites do not cover answers for it.
+    expect(hits[0].r).toBe(town.hitR);
+    expect(hits[0].x).toBe(town.x);
+    // A satellite's target covers its own mark and no more.
+    const [satellite] = satelliteDiscs(town);
+    expect(hits[1].x).toBe(satellite.x);
+    expect(hits[1].r).toBeCloseTo(satellite.r + MARKER_STROKE_WIDTH / 2, 10);
+  });
+
+  it("covers every satellite it draws, in every dominated split", () => {
+    for (const counts of DOMINATED) {
+      const town = cluster(counts);
+      const hits = satelliteHitCircles(town);
+      // One target per shelter, none of them left without an answer.
+      expect([...hits.map((hit) => hit.value)].sort()).toEqual(
+        town.shelters.map((shelter) => shelter.value).sort(),
+      );
+      // The coin is painted first and the satellites over it, so the mark
+      // under the pointer is the one that answers.
+      expect(hits[0].value).toBe(
+        town.shelters[dominantShelterIndex(town.shelters)].value,
+      );
+    }
+  });
+
+  it("answers for nothing in a town that still shares its coin", () => {
+    expect(satelliteHitCircles(cluster([10, 10]))).toEqual([]);
+    expect(satelliteHitCircles(cluster([50]))).toEqual([]);
   });
 });
 

@@ -6,10 +6,14 @@ import {
   clusterHitWedges,
   type ClusterDisc,
   discFitsGlyph,
+  dominantShelterIndex,
   markerGeometry,
   markerRadius,
   MARKER_STROKE_WIDTH,
   MAX_CLUSTER_DISCS,
+  satelliteDiscs,
+  satelliteHitCircles,
+  type ShelterPin,
   selectionState,
   townIsLive,
   townSelectableValues,
@@ -172,13 +176,27 @@ export function Marker({
   const info = values.length === 0;
   const geometry = markerGeometry(town);
   // Two or three discs get one hit wedge each, so a click lands on the shelter
-  // it was aimed at instead of toggling the whole town. Empty for single and
-  // overflow markers, which keep answering as a whole.
+  // it was aimed at instead of toggling the whole town. Empty for single,
+  // overflow and dominated markers, which divide their target another way or
+  // not at all.
   const wedges = clusterHitWedges(town);
-  const wedged = wedges.length > 0;
   // Sized by each shelter's own count, so the discs order the same way the
-  // coins do. Empty unless this is a drawn cluster.
+  // coins do. Empty unless this is a town that still shares its coin.
   const discs = clusterDiscs(town);
+  // One shelter holds this town, so it takes the coin at its own count's bin
+  // and the rest ride the rim. Empty unless that is what the town is.
+  const satellites = satelliteDiscs(town);
+  const dominantIndex = dominantShelterIndex(town.shelters);
+  const dominant =
+    dominantIndex >= 0 ? town.shelters[dominantIndex] : undefined;
+  // Every per-shelter target on the marker, in painting order: a cluster's
+  // discs, or a dominated town's coin and satellites.
+  const hits: ClusterDisc[] = dominant
+    ? satelliteHitCircles(town)
+    : discs.map((disc) => ({ ...disc, r: disc.r + MARKER_STROKE_WIDTH / 2 }));
+  // Whether the marker's own marks answer for their shelters, which is when
+  // the group must stop answering for the town as a whole.
+  const wedged = hits.length > 0;
 
   // The pointer half of a cluster's per-shelter target, shared by the wedge
   // and by the disc circle painted over it.
@@ -204,7 +222,9 @@ export function Marker({
   return (
     <g
       aria-hidden
-      data-marker-kind={shared ? "cluster" : "single"}
+      data-marker-kind={
+        !shared ? "single" : satellites.length > 0 ? "satellite" : "cluster"
+      }
       data-marker-key={town.key}
       data-marker-live={live}
       data-marker-shelters={town.shelters.length}
@@ -252,6 +272,17 @@ export function Marker({
           live={live}
           highlighted={highlighted}
         />
+      ) : dominant ? (
+        <SatelliteMarker
+          town={town}
+          dominant={dominant}
+          satellites={satellites}
+          coinRadius={geometry.discRadius}
+          selected={selected}
+          live={live}
+          highlighted={highlighted}
+          hoveredShelterValue={hoveredShelterValue}
+        />
       ) : town.shelters.length > MAX_CLUSTER_DISCS ? (
         <CountDisc town={town} state={state} live={live} highlighted={highlighted} />
       ) : (
@@ -281,21 +312,25 @@ export function Marker({
         );
       })}
 
-      {/* A wedge splits the target by direction, which is right out at the rim
-          and wrong over the discs themselves: a large disc reaches past the
-          town centre into its neighbour's wedge. One circle per disc, painted
-          last and in the order the discs are drawn, so the disc under the
-          pointer is the one that answers and the top disc wins where two
-          overlap. */}
-      {discs.map((disc) => {
-        const { pickable, props } = hitHandlers(disc.value);
+      {/* One transparent circle per mark, painted last and in the order the
+          marks are drawn, so the mark under the pointer is the one that
+          answers and the top one wins where two overlap.
+
+          For a cluster this covers what a wedge cannot: a wedge splits the
+          target by direction, which is right out at the rim and wrong over the
+          discs themselves, because a large disc reaches past the town centre
+          into its neighbour's wedge. For a dominated town these circles are
+          the whole division, the coin taking the target and each satellite
+          covering itself. */}
+      {hits.map((hit) => {
+        const { pickable, props } = hitHandlers(hit.value);
         return (
           <circle
-            key={disc.value}
-            cx={disc.x}
-            cy={disc.y}
-            r={disc.r + MARKER_STROKE_WIDTH / 2}
-            data-disc-shelter={disc.value}
+            key={hit.value}
+            cx={hit.x}
+            cy={hit.y}
+            r={hit.r}
+            data-disc-shelter={hit.value}
             data-disc-pickable={pickable || undefined}
             {...props}
           />
@@ -314,8 +349,10 @@ function MarkerDisc({
   live,
   discAttribute,
   shelterValue,
+  markKind,
   highlighted,
   hoverScope = "group",
+  emptyScale = EMPTY_MARKER_RADIUS_SCALE,
 }: {
   cx: number;
   cy: number;
@@ -325,11 +362,21 @@ function MarkerDisc({
   live: boolean;
   discAttribute?: string;
   shelterValue?: string;
+  /** Which mark this is inside a dominated town, "coin" or "satellite".
+   *  Absent on a lone marker and on a cluster disc, which the marker's own
+   *  data-marker-kind already names. */
+  markKind?: "coin" | "satellite";
   highlighted?: boolean;
   /** "group" leans in whenever the marker is hovered anywhere. "self" waits to
    *  be told, which is what a wedged cluster needs: one disc answers, not all
    *  of them. */
   hoverScope?: "group" | "self";
+  /** What share of r the hollow "nothing listed" mark draws at. A coin is much
+   *  larger than that mark should ever be, so it shrinks by the scale the
+   *  legend teaches. A satellite is already sized as a small companion, so it
+   *  passes 1 and draws the hollow mark at its own radius, which lands it
+   *  within a rounding error of the size a lone empty marker draws. */
+  emptyScale?: number;
 }) {
   const glyph = r * glyphScale;
   const groupHover = hoverScope === "group";
@@ -342,6 +389,7 @@ function MarkerDisc({
       <g
         data-cluster-disc={discAttribute}
         data-cluster-shelter={shelterValue}
+        data-mark-kind={markKind}
         className={cn(
           "origin-center transition-[fill,transform] [transform-box:fill-box] motion-reduce:transition-none",
           groupHover &&
@@ -357,12 +405,12 @@ function MarkerDisc({
           data-marker-empty=""
           cx={cx}
           cy={cy}
-          r={r * EMPTY_MARKER_RADIUS_SCALE}
+          r={r * emptyScale}
           style={{
             strokeWidth: EMPTY_MARKER_STROKE_WIDTH,
             // See DISC_MORPH: the attributes above are the fallback, these are
             // what actually animate.
-            r: r * EMPTY_MARKER_RADIUS_SCALE,
+            r: r * emptyScale,
             cx,
             cy,
           }}
@@ -386,6 +434,7 @@ function MarkerDisc({
     <g
       data-cluster-disc={discAttribute}
       data-cluster-shelter={shelterValue}
+      data-mark-kind={markKind}
       className={cn(
         // Each disc grows around its own centre, so cluster discs breathe
         // apart instead of shifting as a block.
@@ -471,6 +520,85 @@ function ClusterMarker({
       hoverScope="self"
     />
   ));
+}
+
+// A town one shelter holds: the coin is that shelter's, drawn exactly as it
+// would be if it stood alone in its town, and its companions ride the rim as
+// small discs of their own. See satelliteDiscs in lib/map-layout.ts for why
+// the coin stopped being divided.
+//
+// Every mark answers for itself, the same deal a cluster's discs have: its own
+// selected fill, its own hover, its own hit circle, its own name in the
+// callout. What changes is only which shelter each mark is sized by.
+function SatelliteMarker({
+  town,
+  dominant,
+  satellites,
+  coinRadius,
+  selected,
+  live,
+  highlighted,
+  hoveredShelterValue,
+}: {
+  town: Town;
+  dominant: ShelterPin;
+  satellites: ClusterDisc[];
+  coinRadius: number;
+  selected: string[];
+  live: boolean;
+  highlighted: boolean;
+  hoveredShelterValue: string | null;
+}) {
+  const mark = (shelter: ShelterPin) => ({
+    selected: selected.includes(shelter.value),
+    // An off-site shelter keeps its hollow mark whatever its town holds: the
+    // mark, not the town, is what says "this one you can pick".
+    live: live && shelter.selectable !== false,
+    discAttribute: selected.includes(shelter.value) ? "selected" : "idle",
+    shelterValue: shelter.value,
+    // A list hover still names the town, so it lights every mark. A pointer on
+    // one mark lights that one.
+    highlighted: highlighted || hoveredShelterValue === shelter.value,
+    hoverScope: "self" as const,
+  });
+
+  const bySlot = town.shelters
+    .filter((shelter) => shelter.value !== dominant.value)
+    .map((shelter, index) => ({ shelter, disc: satellites[index] }));
+
+  return (
+    <>
+      {/* The paw at 1.15, which is the lone marker's scale and not the
+          cluster's 1.3: this coin is a lone marker in every respect but the
+          company it keeps. */}
+      <MarkerDisc
+        cx={town.x}
+        cy={town.y}
+        r={coinRadius}
+        glyphScale={1.15}
+        markKind="coin"
+        {...mark(dominant)}
+      />
+      {bySlot.map(({ shelter, disc }) => (
+        <MarkerDisc
+          key={shelter.value}
+          cx={disc.x}
+          cy={disc.y}
+          r={disc.r}
+          // A satellite this size only clears the glyph floor at the top of
+          // its band, so most of them drop the paw the way any small disc
+          // does. 1.3 is the cluster scale, because the ones that do keep it
+          // are as small as a cluster's quietest disc.
+          glyphScale={1.3}
+          markKind="satellite"
+          // The hollow mark draws at the satellite's own radius. See
+          // MarkerDisc's emptyScale.
+          emptyScale={1}
+          {...mark(shelter)}
+        />
+      ))}
+    </>
+  );
 }
 
 // Past three shelters the discs stop being readable and stop being honest, so

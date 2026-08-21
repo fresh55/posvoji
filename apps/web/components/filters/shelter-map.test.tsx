@@ -54,28 +54,28 @@ describe("ShelterMap marker states", () => {
   it("lights the disc of the shelter that is picked, not the first one", () => {
     const html = renderMap(
       [
-        pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
-        pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+        pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+        pin("zahod", "Zavetišče Zahod", "Celje", 20),
       ],
-      ["sia-in-lu"],
+      ["zahod"],
     );
 
     expect(html).toContain('data-marker-kind="cluster"');
     expect(html).toContain('data-marker-state="mixed"');
     expect(html).toContain('data-marker-shelters="2"');
     expect(html).toMatch(
-      /data-cluster-disc="idle" data-cluster-shelter="macja-hisa"/,
+      /data-cluster-disc="idle" data-cluster-shelter="vzhod"/,
     );
     expect(html).toMatch(
-      /data-cluster-disc="selected" data-cluster-shelter="sia-in-lu"/,
+      /data-cluster-disc="selected" data-cluster-shelter="zahod"/,
     );
     expect(html).not.toContain("Celje, Celje");
   });
 
   it("draws the busier shelter of a cluster as the larger disc", () => {
     const html = renderMap([
-      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 186),
-      pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
     ]);
 
     // The two coin circles of the cluster, in shelter order.
@@ -209,11 +209,11 @@ function wedgeOrder(html: string): string[] {
 describe("ShelterMap cluster wedges", () => {
   it("gives each shelter in a cluster its own hit target, in disc order", () => {
     const html = renderMap([
-      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
-      pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
     ]);
 
-    expect(wedgeOrder(html)).toEqual(["macja-hisa", "sia-in-lu"]);
+    expect(wedgeOrder(html)).toEqual(["vzhod", "zahod"]);
   });
 
   it("leaves a single-shelter marker whole", () => {
@@ -242,6 +242,130 @@ describe("ShelterMap cluster wedges", () => {
       <I18nProvider locale="sl">
         <ShelterMap
           pins={[
+            pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+            pin("zahod", "Zavetišče Zahod", "Celje", 20),
+          ]}
+          selected={[]}
+          onPick={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const disc = document.querySelector('[data-disc-shelter="zahod"]')!;
+    fireEvent.pointerEnter(disc);
+
+    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+    expect(screen.getByText("20 živali")).toBeTruthy();
+  });
+
+  it("covers each disc with its own hit circle, in the order they are drawn", () => {
+    const html = renderMap([
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
+    ]);
+
+    // A wedge splits the target by direction only, and the large disc reaches
+    // across the town centre into the other wedge.
+    expect(
+      [...html.matchAll(/data-disc-shelter="([^"]+)"/g)].map(([, v]) => v),
+    ).toEqual(["vzhod", "zahod"]);
+  });
+
+  it("keeps an off-site shelter's wedge hoverable but never clickable", () => {
+    // Three shelters, because a zero beside a single busy one is a town that
+    // one shelter dominates and it lays out as a coin with a satellite
+    // instead. Two that share the town keep the coin split, and the one with
+    // nothing listed rides along in it.
+    const html = renderMap([
+      pin("sever", "Zavetišče Sever", "Celje", 40),
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 30),
+      { ...pin("zahod", "Zavetišče Zahod", "Celje", 0), selectable: false },
+    ]);
+
+    expect(wedgeTag(html, "sever")).toContain("cursor-pointer");
+    expect(wedgeTag(html, "sever")).toContain('data-wedge-pickable="true"');
+    expect(wedgeTag(html, "zahod")).toContain("cursor-default");
+    expect(wedgeTag(html, "zahod")).not.toContain("data-wedge-pickable");
+  });
+});
+
+// Celje: the busiest shelter in the country beside one with nothing listed.
+// Sharing a coin sized for the town left Mačja hiša drawing a smaller mark
+// than Horjul's, which holds a third of its animals. It draws its own coin now
+// and its neighbour rides the rim.
+describe("ShelterMap satellite markers", () => {
+  const celje = [
+    pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 186),
+    { ...pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 0), selectable: false },
+  ];
+
+  function radiusOf(html: string, mark: string): number {
+    const tag =
+      html.match(
+        new RegExp(`data-mark-kind="${mark}"[^]*?<circle[^>]*\\sr="([\\d.]+)"`),
+      ) ?? [];
+    return Number(tag[1]);
+  }
+
+  it("draws the dominant shelter the coin it would draw standing alone", () => {
+    const shared = renderMap(celje);
+    const alone = renderMap([
+      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 186),
+    ]);
+
+    expect(shared).toContain('data-marker-kind="satellite"');
+    expect(shared).toContain('data-marker-shelters="2"');
+    // The same circle either way: the company a shelter keeps no longer
+    // changes the size of its mark.
+    const solo =
+      Number(
+        alone.match(/data-marker-kind="single"[^]*?<circle[^]*?<circle[^>]*\sr="([\d.]+)"/)?.[1],
+      );
+    expect(radiusOf(shared, "coin")).toBe(solo);
+    // And a lone marker in another town holding fewer animals is no larger.
+    const horjul = renderMap([pin("horjul", "Zavetišče Horjul", "Horjul", 72)]);
+    expect(
+      Number(
+        horjul.match(/data-marker-kind="single"[^]*?<circle[^]*?<circle[^>]*\sr="([\d.]+)"/)?.[1],
+      ),
+    ).toBe(radiusOf(shared, "coin"));
+  });
+
+  it("hangs the quiet shelter off the rim as a small mark of its own", () => {
+    const html = renderMap(celje);
+
+    expect(html).toContain('data-mark-kind="satellite"');
+    // Nothing listed, so it keeps the hollow mark, at the size a lone empty
+    // marker draws rather than a fraction of it.
+    const dot = html.match(/<circle[^>]*data-marker-empty[^>]*>/)?.[0] ?? "";
+    expect(dot).toContain("fill-none");
+    expect(Number(dot.match(/\sr="([\d.]+)"/)?.[1])).toBeCloseTo(2.2, 5);
+  });
+
+  it("splits the target per mark instead of cutting wedges", () => {
+    const html = renderMap(celje);
+
+    expect(wedgeOrder(html)).toEqual([]);
+    // The coin first, the satellite painted over it, so the mark under the
+    // pointer answers.
+    expect(
+      [...html.matchAll(/data-disc-shelter="([^"]+)"/g)].map(([, v]) => v),
+    ).toEqual(["macja-hisa", "sia-in-lu"]);
+    // The off-site shelter names itself and stops there, the deal its dot has
+    // always had.
+    const target = (value: string) =>
+      html.match(new RegExp(`<circle[^>]*data-disc-shelter="${value}"[^>]*>`))?.[0] ??
+      "";
+    expect(target("macja-hisa")).toContain('data-disc-pickable="true"');
+    expect(target("sia-in-lu")).toContain("cursor-default");
+    expect(target("sia-in-lu")).not.toContain("data-disc-pickable");
+  });
+
+  it("names the satellite's own shelter on hover, not its town", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[
             pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 186),
             pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
           ]}
@@ -251,36 +375,61 @@ describe("ShelterMap cluster wedges", () => {
       </I18nProvider>,
     );
 
-    const disc = document.querySelector('[data-disc-shelter="sia-in-lu"]')!;
-    fireEvent.pointerEnter(disc);
-
+    fireEvent.pointerEnter(
+      document.querySelector('[data-disc-shelter="sia-in-lu"]')!,
+    );
     expect(screen.getByText("Zavetišče Sia in Lu")).toBeTruthy();
     expect(screen.getByText("11 živali")).toBeTruthy();
   });
 
-  it("covers each disc with its own hit circle, in the order they are drawn", () => {
-    const html = renderMap([
-      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 186),
-      pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
-    ]);
+  it("inverts the mark that is picked, coin or satellite", () => {
+    const picked = renderMap(
+      [
+        pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 186),
+        pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+      ],
+      ["sia-in-lu"],
+    );
 
-    // A wedge splits the target by direction only, and the large disc reaches
-    // across the town centre into the other wedge.
-    expect(
-      [...html.matchAll(/data-disc-shelter="([^"]+)"/g)].map(([, v]) => v),
-    ).toEqual(["macja-hisa", "sia-in-lu"]);
+    expect(picked).toContain('data-marker-state="mixed"');
+    expect(picked).toMatch(
+      /data-cluster-disc="idle" data-cluster-shelter="macja-hisa" data-mark-kind="coin"/,
+    );
+    expect(picked).toMatch(
+      /data-cluster-disc="selected" data-cluster-shelter="sia-in-lu" data-mark-kind="satellite"/,
+    );
   });
 
-  it("keeps an off-site shelter's wedge hoverable but never clickable", () => {
+  it("gives a three-shelter dominated town one coin and two satellites", () => {
     const html = renderMap([
-      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
-      { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
+      pin("veliko", "Zavetišče Veliko", "Celje", 180),
+      pin("srednje", "Zavetišče Srednje", "Celje", 20),
+      pin("majhno", "Zavetišče Majhno", "Celje", 6),
     ]);
 
-    expect(wedgeTag(html, "macja-hisa")).toContain("cursor-pointer");
-    expect(wedgeTag(html, "macja-hisa")).toContain('data-wedge-pickable="true"');
-    expect(wedgeTag(html, "vzhod")).toContain("cursor-default");
-    expect(wedgeTag(html, "vzhod")).not.toContain("data-wedge-pickable");
+    expect(html).toContain('data-marker-kind="satellite"');
+    expect(html.match(/data-mark-kind="satellite"/g)).toHaveLength(2);
+    expect(html.match(/data-mark-kind="coin"/g)).toHaveLength(1);
+    // The busier companion draws the larger of the two.
+    const satellite = (value: string) =>
+      Number(
+        html.match(
+          new RegExp(
+            `data-cluster-shelter="${value}" data-mark-kind="satellite"[^]*?<circle[^>]*\\sr="([\\d.]+)"`,
+          ),
+        )?.[1],
+      );
+    expect(satellite("srednje")).toBeGreaterThan(satellite("majhno"));
+  });
+
+  it("keeps a town nobody dominates on the split coin", () => {
+    const html = renderMap([
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 79),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
+    ]);
+
+    expect(html).toContain('data-marker-kind="cluster"');
+    expect(html).not.toContain("data-mark-kind");
   });
 });
 

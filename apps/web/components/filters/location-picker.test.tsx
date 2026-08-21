@@ -585,10 +585,15 @@ describe("LocationPicker legend", () => {
   });
 });
 
-// The map lives in this dialog, and a cluster's wedges are the one part of it
-// that needs a real DOM to answer a click. The static render test next door
-// covers what the wedges look like.
-describe("ShelterMap cluster wedges", () => {
+// The map lives in this dialog, and a shared town's per-shelter targets are
+// the one part of it that needs a real DOM to answer a click. The static
+// render test next door covers what those targets look like.
+//
+// A town lays its marks out one of two ways, and both answer the same: a town
+// that shares its coin cuts wedges out of its target, and a town one shelter
+// dominates covers its coin and its satellites with a circle each. Every case
+// below is run through whichever of the two its counts earn.
+describe("ShelterMap per-shelter targets", () => {
   function clusterPin(
     value: string,
     label: string,
@@ -618,18 +623,21 @@ describe("ShelterMap cluster wedges", () => {
         />
       </I18nProvider>,
     );
-    const wedge = (value: string) =>
-      container.querySelector(`[data-wedge-shelter="${value}"]`)!;
-    return { onPick, onHoverShelters, wedge };
+    // The mark's own target, whichever shape the town's layout gave it: the
+    // disc circle when there is one, the wedge otherwise.
+    const target = (value: string) =>
+      (container.querySelector(`[data-disc-shelter="${value}"]`) ??
+        container.querySelector(`[data-wedge-shelter="${value}"]`))!;
+    return { onPick, onHoverShelters, target };
   }
 
-  it("picks only the shelter whose wedge was clicked", () => {
-    const { onPick, wedge } = renderCluster([
+  it("picks only the shelter whose satellite was clicked", () => {
+    const { onPick, target } = renderCluster([
       clusterPin("macja-hisa", "Zavetišče Mačja hiša", 185),
       clusterPin("sia-in-lu", "Zavetišče Sia in Lu", 11),
     ]);
 
-    fireEvent.click(wedge("sia-in-lu"));
+    fireEvent.click(target("sia-in-lu"));
 
     expect(onPick).toHaveBeenCalledTimes(1);
     // The values a click toggles come first; the second argument only says
@@ -641,24 +649,38 @@ describe("ShelterMap cluster wedges", () => {
     });
   });
 
-  it("ignores a click on an off-site shelter's wedge", () => {
-    const { onPick, wedge } = renderCluster([
+  it("picks only the shelter whose wedge was clicked", () => {
+    // 60 to 20 is under the four-times line, so this town still shares a coin
+    // and answers through wedges.
+    const { onPick, target } = renderCluster([
+      clusterPin("sever", "Zavetišče Sever", 60),
+      clusterPin("vzhod", "Zavetišče Vzhod", 20),
+    ]);
+
+    fireEvent.click(target("vzhod"));
+
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick.mock.calls[0][0]).toEqual(["vzhod"]);
+  });
+
+  it("ignores a click on an off-site shelter's target", () => {
+    const { onPick, target } = renderCluster([
       clusterPin("macja-hisa", "Zavetišče Mačja hiša", 185),
       clusterPin("vzhod", "Zavetišče Vzhod", 0, false),
     ]);
 
-    fireEvent.click(wedge("vzhod"));
+    fireEvent.click(target("vzhod"));
 
     expect(onPick).not.toHaveBeenCalled();
   });
 
   it("names the hovered shelter alone, not its town", () => {
-    const { onHoverShelters, wedge } = renderCluster([
+    const { onHoverShelters, target } = renderCluster([
       clusterPin("macja-hisa", "Zavetišče Mačja hiša", 185),
       clusterPin("sia-in-lu", "Zavetišče Sia in Lu", 11),
     ]);
 
-    fireEvent.pointerOver(wedge("sia-in-lu"));
+    fireEvent.pointerOver(target("sia-in-lu"));
 
     expect(onHoverShelters).toHaveBeenCalledWith(["sia-in-lu"]);
     expect(screen.getByText("Zavetišče Sia in Lu")).toBeTruthy();

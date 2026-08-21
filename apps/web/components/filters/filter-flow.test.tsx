@@ -27,6 +27,7 @@ import {
   type AgeGroup,
 } from "@/lib/filters";
 import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
 import { FilterChips, type Chip } from "./filter-chips";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
@@ -106,6 +107,7 @@ const ANIMALS = [
 function FilterFlowHarness() {
   const {
     filters,
+    sort,
     toggle,
     toggleMany,
     toggleProperty,
@@ -116,6 +118,7 @@ function FilterFlowHarness() {
     toggleManyHome,
     toggleCare,
     toggleManyCare,
+    setSort,
     clearAll,
   } = useAnimalFilters();
   const matching = applyFilters(ANIMALS, filters, NOW);
@@ -211,6 +214,15 @@ function FilterFlowHarness() {
           {matching.map(({ id }) => id).join(",")}
         </output>
         <output data-testid="query">{window.location.search}</output>
+        <output data-testid="sort">{sort}</output>
+        {(["newest-arrivals", "name"] as AnimalSort[]).map((option) => (
+          <button key={option} onClick={() => setSort(option)}>
+            {`Razvrsti: ${option}`}
+          </button>
+        ))}
+        <button onClick={() => setSort(DEFAULT_ANIMAL_SORT)}>
+          Razvrsti privzeto
+        </button>
       </main>
     </I18nProvider>
   );
@@ -226,6 +238,10 @@ function query() {
 
 function matchingIds() {
   return screen.getByTestId("matching-ids").textContent;
+}
+
+function sortValue() {
+  return screen.getByTestId("sort").textContent;
 }
 
 function pressed(name: RegExp) {
@@ -435,5 +451,72 @@ describe("filter flow interactions", () => {
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
     expect(matchingIds()).toBe("male-young");
     expect(query()).toBe("?spol=samec&lastnosti=sterilizacija");
+  });
+
+  it("writes and reads the sort order through the URL, keeping the default clean", () => {
+    renderFilters();
+    expect(sortValue()).toBe("longest-in-shelter");
+    expect(query()).toBe("");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Razvrsti: newest-arrivals" }),
+    );
+    expect(sortValue()).toBe("newest-arrivals");
+    expect(query()).toBe("?razvrsti=novi");
+
+    fireEvent.click(screen.getByRole("button", { name: "Razvrsti privzeto" }));
+    expect(sortValue()).toBe("longest-in-shelter");
+    expect(query()).toBe("");
+  });
+
+  it("hydrates the sort order from a deep link", () => {
+    window.history.replaceState(null, "", "/?razvrsti=ime");
+    renderFilters();
+    expect(sortValue()).toBe("name");
+  });
+
+  it("falls back to the default sort for an unknown razvrsti slug", () => {
+    window.history.replaceState(null, "", "/?razvrsti=neznano");
+    renderFilters();
+    expect(sortValue()).toBe("longest-in-shelter");
+  });
+
+  it("combines a chosen sort with active filters in one query", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /^Samica/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Razvrsti: newest-arrivals" }),
+    );
+
+    expect(query()).toBe("?spol=samica&razvrsti=novi");
+  });
+
+  it("keeps a foreign param a filter toggle does not know about", () => {
+    window.history.replaceState(null, "", "/?najdena=1");
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Samica/ }));
+
+    expect(query()).toBe("?najdena=1&spol=samica");
+  });
+
+  it("keeps a foreign param a sort change does not know about", () => {
+    window.history.replaceState(null, "", "/?najdena=1");
+    renderFilters();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Razvrsti: newest-arrivals" }),
+    );
+
+    expect(query()).toBe("?najdena=1&razvrsti=novi");
+  });
+
+  it("preserves history.state across a filter write", () => {
+    window.history.pushState({ animal: true }, "", "/");
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Samica/ }));
+
+    expect(window.history.state).toEqual({ animal: true });
   });
 });

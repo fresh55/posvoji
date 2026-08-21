@@ -23,6 +23,7 @@ import type {
   SpeciesFilter,
   ToggleDef,
 } from "@/lib/filters";
+import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 
 // Desktop has enough room for one quiet toolbar. Mobile keeps result and sort
@@ -43,6 +44,7 @@ export function AnimalFilters({
   shelterTally,
   municipalities,
   offSiteShelters,
+  shelterSummaries,
   chips,
   resultCount,
   clearTrailKey,
@@ -72,6 +74,9 @@ export function AnimalFilters({
   /** Registry shelters with no animals on the site, shown inert in the
    *  location picker's map and list. */
   offSiteShelters?: FilterOption[];
+  /** Species breakdown and longest wait per shelter, for the card the map's
+   *  own click leaves in the picker's panel. */
+  shelterSummaries?: Map<string, ShelterSummary>;
   chips: Chip[];
   resultCount: number;
   clearTrailKey: number;
@@ -128,6 +133,7 @@ export function AnimalFilters({
                   species={filters.species}
                   municipalities={municipalities}
                   offSite={offSiteShelters}
+                  summaries={shelterSummaries}
                   deepLink="desktop"
                 />
               </div>
@@ -162,6 +168,16 @@ export function AnimalFilters({
         )}
       </div>
 
+      {/* The dock is present at any result count, including one. It used to
+          vanish there, because both of its children were gated on a facet
+          having something left to narrow: with a single animal on screen no
+          group has two distinct values, so the sheet had no sections and the
+          shelter list came through undefined. That is exactly the state where
+          the picker is the way out, so `shelters` is now handed down whenever
+          any shelter has animals at all (see animal-grid.tsx) and this
+          condition holds. It still stands down when there is genuinely nothing
+          to put in the dock, which is an empty dataset: an empty floating box
+          is not a control. */}
       {(hasFilterSheet || shelters) && (
         <div
           data-slot="mobile-filter-dock"
@@ -200,6 +216,7 @@ export function AnimalFilters({
                 species={filters.species}
                 municipalities={municipalities}
                 offSite={offSiteShelters}
+                summaries={shelterSummaries}
                 deepLink="mobile"
               />
             </div>

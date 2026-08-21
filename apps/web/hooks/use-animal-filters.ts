@@ -4,6 +4,7 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
+  FILTER_PARAM_NAMES,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
@@ -20,13 +21,39 @@ import {
   commitSearch,
   getSearchSnapshot,
   getServerSearchSnapshot,
+  mergeOwnedParams,
   subscribeToLocation,
 } from "@/lib/location-search";
+import {
+  DEFAULT_ANIMAL_SORT,
+  parseSort,
+  serializeSort,
+  SORT_PARAM,
+  type AnimalSort,
+} from "@/lib/sort";
 
-// Filters live in the query, the open animal lives in the path, so a filter
-// write leaves the dialog where it is without having to carry anything over.
-function writeFilters(next: Filters): void {
-  commitSearch(serializeFilters(pruneHiddenFilters(next)), "replace");
+// Filters and sort are written by two independent codecs, each owning its
+// own slice of the query (mergeOwnedParams rebuilds only the params passed
+// in, so a foreign param already in the query, or the other codec's own
+// param, survives untouched). Filters live in the query, the open animal
+// lives in the path, so a write leaves the dialog where it is without having
+// to carry anything over.
+function writeFilters(filters: Filters): void {
+  commitSearch(
+    mergeOwnedParams(
+      getSearchSnapshot(),
+      FILTER_PARAM_NAMES,
+      serializeFilters(pruneHiddenFilters(filters)),
+    ),
+    "replace",
+  );
+}
+
+function writeSort(sort: AnimalSort): void {
+  commitSearch(
+    mergeOwnedParams(getSearchSnapshot(), [SORT_PARAM], serializeSort(sort)),
+    "replace",
+  );
 }
 
 export function useAnimalFilters() {
@@ -36,6 +63,7 @@ export function useAnimalFilters() {
     getServerSearchSnapshot,
   );
   const filters = useMemo(() => parseFilters(search), [search]);
+  const sort = useMemo(() => parseSort(search), [search]);
 
   const setSpecies = useCallback(
     (species: SpeciesFilter) => {
@@ -149,10 +177,13 @@ export function useAnimalFilters() {
     [filters],
   );
 
+  const setSort = useCallback((next: AnimalSort) => writeSort(next), []);
+
   const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
 
   return {
     filters,
+    sort,
     setSpecies,
     toggle,
     toggleMany,
@@ -164,6 +195,7 @@ export function useAnimalFilters() {
     toggleManyHome,
     toggleCare,
     toggleManyCare,
+    setSort,
     clearAll,
     activeCount: activeFilterCount(filters),
   };

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
-import { DEFAULT_ANIMAL_SORT, sortAnimals } from "./sort";
+import {
+  ANIMAL_SORTS,
+  DEFAULT_ANIMAL_SORT,
+  parseSort,
+  serializeSort,
+  sortAnimals,
+  type AnimalSort,
+} from "./sort";
 
 function animal(
   id: string,
@@ -84,5 +91,42 @@ describe("sortAnimals", () => {
     ];
 
     expect(sortAnimals(tied).map(({ id }) => id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("sort URL codec", () => {
+  it("serializes the default sort to nothing, like empty filters", () => {
+    expect(serializeSort(DEFAULT_ANIMAL_SORT)).toBe("");
+    expect(parseSort("")).toBe(DEFAULT_ANIMAL_SORT);
+  });
+
+  it("round-trips every non-default sort through a Slovenian ASCII slug", () => {
+    for (const sort of ANIMAL_SORTS) {
+      if (sort === DEFAULT_ANIMAL_SORT) continue;
+      const query = serializeSort(sort);
+      expect(query).toMatch(/^razvrsti=[a-z]+$/);
+      expect(parseSort(query)).toBe(sort);
+    }
+  });
+
+  it("falls back to the default for an unknown or garbled slug", () => {
+    expect(parseSort("razvrsti=nekaj-cudnega")).toBe(DEFAULT_ANIMAL_SORT);
+    expect(parseSort("razvrsti=")).toBe(DEFAULT_ANIMAL_SORT);
+  });
+
+  it("still parses the default's own slug back to the default", () => {
+    const slugs: Record<AnimalSort, string> = {
+      "longest-in-shelter": "cakajoci",
+      "newest-arrivals": "novi",
+      youngest: "najmlajsi",
+      oldest: "najstarejsi",
+      name: "ime",
+    };
+    for (const [sort, slug] of Object.entries(slugs) as [
+      AnimalSort,
+      string,
+    ][]) {
+      expect(parseSort(`razvrsti=${slug}`)).toBe(sort);
+    }
   });
 });

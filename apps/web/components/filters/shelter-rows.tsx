@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
 import { Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { formatKm } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,35 @@ export function ShelterRows({
   lessThanOneKm?: string;
 }) {
   const localRefs = useRef(new Map<string, HTMLButtonElement>());
+  // True while the pointer sits inside the list. `highlighted` only ever
+  // comes from the map (see location-picker.tsx: a row's own pointer hover
+  // feeds a different piece of state, onHoverRow, not this prop), so the
+  // effect below is already safe from a row lighting itself up. This flag
+  // guards the other direction instead: someone scrolling the list by hand
+  // must never have it yanked out from under their pointer by a hover event
+  // landing on the map at the same time.
+  const pointerInsideRef = useRef(false);
+
+  // A highlight arriving from the map scrolls its row into view, so the echo
+  // is visible even when the matched shelter has scrolled off. `block:
+  // "nearest"` means a row already on screen does not move at all. Instant,
+  // not smooth: the repo already treats motion as something to justify (see
+  // motion-reduce: in shelter-map.tsx), and a list that jumps rather than
+  // glides never fights a scroll the visitor is mid-gesture on.
+  const highlightedKey = highlighted?.join(",");
+  useEffect(() => {
+    if (!highlightedKey || pointerInsideRef.current) return;
+    const first = highlighted?.[0];
+    if (!first) return;
+    localRefs.current
+      .get(first)
+      ?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    // highlightedKey is the dependency on purpose: it is derived from
+    // `highlighted` in the same render, so the two never disagree, and
+    // listing the array itself would fire this on every render that passes a
+    // fresh-but-equal array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightedKey]);
 
   // Arrow keys walk the enabled rows only; a disabled row cannot take focus,
   // so skipping it is what keeps the walk from dead-ending.
@@ -76,7 +106,15 @@ export function ShelterRows({
   };
 
   return (
-    <div className={cn("space-y-0.5", className)}>
+    <div
+      className={cn("space-y-0.5", className)}
+      onPointerEnter={() => {
+        pointerInsideRef.current = true;
+      }}
+      onPointerLeave={() => {
+        pointerInsideRef.current = false;
+      }}
+    >
       {rows.map(({ value, label, city, km }) => {
         const count = counts.get(value) ?? 0;
         const checked = selected.includes(value);
@@ -106,9 +144,15 @@ export function ShelterRows({
             aria-pressed={checked}
             data-highlighted={isHighlighted || undefined}
             className={cn(
-              "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors disabled:opacity-40",
+              // cursor-pointer because a bare <button> defaults to the arrow
+              // cursor, not the hand: without it nothing at rest says this
+              // row is clickable. Selected rows wear the same accent surface
+              // the map gives a picked region (--filter-accent /
+              // -foreground), so scanning the list at rest already answers
+              // "what did I pick" instead of needing a hover to reveal it.
+              "flex w-full cursor-pointer items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40",
               checked
-                ? "bg-muted"
+                ? "bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] hover:bg-[var(--filter-accent)]"
                 : isHighlighted
                   ? "bg-muted/50"
                   : "hover:bg-muted/50",
@@ -121,22 +165,36 @@ export function ShelterRows({
               aria-hidden
             />
             <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block truncate text-sm",
-                  !checked && "text-muted-foreground",
-                )}
-              >
-                {label}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-sm",
+                    !checked && "text-muted-foreground",
+                  )}
+                >
+                  {label}
+                </span>
+                {/* The count as a pill tucked against the name it belongs to,
+                    not a number stranded across the row's own width. Same
+                    quiet-badge shape the sidebar already uses for a count
+                    (h-5 min-w-5 rounded-full, tabular-nums), so this reads as
+                    the site's one way of showing "how many" rather than a
+                    new one invented for this list. Its own muted surface
+                    stays put whether the row is selected or not, the same
+                    way a filter card's count never follows the card's own
+                    accent. */}
+                <Badge
+                  variant="secondary"
+                  className="h-5 min-w-5 shrink-0 rounded-full px-1 text-[11px] font-normal tabular-nums text-muted-foreground"
+                >
+                  {count}
+                </Badge>
               </span>
               {sublabel && (
                 <span className="block truncate text-[11px] text-muted-foreground/80">
                   {sublabel}
                 </span>
               )}
-            </span>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {count}
             </span>
           </button>
         );

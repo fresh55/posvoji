@@ -2,18 +2,140 @@
 
 import { PawPrint } from "lucide-react";
 import {
-  clusterDiscPositions,
+  clusterDiscs,
   clusterHitWedges,
+  type ClusterDisc,
   discFitsGlyph,
+  dominantShelterIndex,
+  mapStateName,
   markerGeometry,
+  markerRadius,
   MARKER_STROKE_WIDTH,
   MAX_CLUSTER_DISCS,
+  satelliteDiscs,
+  satelliteHitCircles,
+  type ShelterPin,
   selectionState,
-  townCount,
+  townIsLive,
   townSelectableValues,
   type Town,
 } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
+
+// The hollow disc a shelter with nothing listed draws: just over half the
+// radius the coin would have taken, no fill, foreground at 45%. The map legend
+// repeats this mark at legend size, and what it repeats is EmptyMarkerGlyph
+// below rather than these three numbers, so a lookalike painted from other
+// classes can never drift from the real one.
+//
+// 0.54 rather than the 0.5 it was, so the mark keeps the absolute size it had
+// before the smallest radius step dropped from 5 to 4.7: at 0.5 it would have
+// come out 2.125 units where it used to be 2.275, and this disc carries no
+// count to encode. Its whole message is "nothing listed here", so it has no
+// reason to shrink along with a scale it does not take part in. 0.54 puts it
+// at 2.295, within a rounding error of where it was.
+const EMPTY_MARKER_RADIUS_SCALE = 0.54;
+const EMPTY_MARKER_STROKE_WIDTH = 0.7;
+const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
+
+// The same mark at legend size. The viewBox runs in the map's own user units,
+// so the radius and the stroke keep the proportion they have on the country:
+// markerRadius(0) is the radius a shelter with no animals is sized at, less
+// half the coin stroke, times the scale the hollow disc takes. The box adds a
+// stroke's width of air on each side so the circle is not clipped by it.
+export function EmptyMarkerGlyph({ className }: { className?: string }) {
+  const r =
+    (markerRadius(0) - MARKER_STROKE_WIDTH / 2) * EMPTY_MARKER_RADIUS_SCALE;
+  const box = (r + EMPTY_MARKER_STROKE_WIDTH) * 2;
+  return (
+    <svg aria-hidden viewBox={`0 0 ${box} ${box}`} className={className}>
+      <circle
+        data-legend-empty=""
+        cx={box / 2}
+        cy={box / 2}
+        r={r}
+        strokeWidth={EMPTY_MARKER_STROKE_WIDTH}
+        className={EMPTY_MARKER_CLASS}
+      />
+    </svg>
+  );
+}
+
+// Lifts the coin off the country behind it. The values are in SVG units, which
+// the 320-wide viewBox renders about three times larger, so under a pixel here
+// is the shadow the eye gets. Dropped in dark mode: a black shadow on a dark
+// map is only mud.
+const COIN_SHADOW =
+  "[filter:drop-shadow(0_0.4px_0.5px_rgba(0,0,0,0.25))] dark:[filter:none]";
+
+// One timing for everything the species tabs redraw: the region density fills
+// over in shelter-map, the marker radii here, and the cluster discs inside
+// them. The map has to move as one object, so the number lives in one place and
+// both files spend it. 300ms is long enough to read as the same country under a
+// different question and short enough that running down the four tabs never
+// queues up a backlog of half-finished morphs. ease-out because the new shape
+// is the answer: leave the old one quickly, settle into the new one.
+//
+// Paired with an explicit transition-property list everywhere it is used, never
+// with transition-all, and always alongside motion-reduce:transition-none,
+// which is the convention the rest of this file already keeps.
+export const MAP_MORPH = "duration-300 ease-out motion-reduce:transition-none";
+
+// r, cx and cy are SVG presentation attributes, and SVG2 also makes them CSS
+// properties, which is the whole reason a radius can transition at all. Chrome
+// and Safari have taken them from CSS for years and Firefox has since 72. Every
+// circle below still sets the attribute as well as the style, so a browser that
+// ignores the declaration reads the attribute and gets an instant radius rather
+// than a missing one. A snap in an old browser is fine; a circle with no size
+// is not.
+//
+// Radius rides r rather than a transform scale on the group. The group already
+// spends transform on the hover scale-110, and a second scale on the same
+// element would multiply into the hover instead of composing with it: a marker
+// hovered mid-morph would jump, and one hovered at rest would sit at the wrong
+// size for 300ms. r and transform are separate declarations, so a coin can grow
+// and lean in at the same time without either knowing about the other.
+//
+// cx and cy come along because collision layout re-runs when the radii change,
+// and a disc whose radius glides while its centre snaps tears away from the rim
+// it is meant to be tangent to. The invisible hit geometry (the wedge paths and
+// the per-disc hit circles) stays on the attributes and snaps, so for the
+// length of the morph the target sits under a unit off the coin it belongs to.
+// That is a pointer aiming at a moving mark either way, and a path's d cannot
+// transition.
+const DISC_MORPH = cn("transition-[r,cx,cy]", MAP_MORPH);
+
+// The paw follows its disc. Width and height carry the glyph's size, x and y
+// keep it centred as the disc moves, and a nested svg takes all four from CSS
+// under the same geometry-properties rule the circles rely on.
+const GLYPH_MORPH = cn("transition-[x,y,width,height]", MAP_MORPH);
+
+// discFitsGlyph in lib/map-layout.ts decides which discs are big enough for a
+// paw, and it decides in user units against RENDER_SCALE, a fixed guess at how
+// many pixels a user unit is drawn at. That guess holds on a desktop and breaks
+// below it: measured live, the map stage is 573px wide at a 1024 viewport with
+// the panel out (smallest paw 6.6px), 400px on a landscape phone (4.5px) and
+// 327px on a 768 tablet, where the paws come out 3.6 to 6.0px. A lucide paw at
+// four pixels is not a quiet glyph, it is a smudge on the coin.
+//
+// So the per-disc gate keeps deciding which discs deserve a paw relative to
+// each other, and this answers the question it cannot: is the plate drawn large
+// enough for any paw to read at all. Below the cut the whole glyph layer comes
+// off and the markers stay plain discs, which still carry selection by fill and
+// count by radius.
+//
+// 512px, because the smallest paw the live roster draws is 3.9 user units and
+// the stage spends 32px of its width on padding: (512 - 32) / 320 = 1.5 px per
+// unit puts that paw at 5.85px, which is the floor. Above it every paw on the
+// plate clears six pixels.
+//
+// A container query and not a viewport breakpoint, for a reason no breakpoint
+// can cover: the panel folds to a rail, and the stage nearly doubles when it
+// does. At a 1024 viewport the same map is 573px wide with the panel out and
+// 909px with it folded, so the paws are wrong at one and right at the other
+// while the viewport never moves. The stage's own width is the only thing that
+// knows, and @container is how a child asks it.
+const GLYPH_TOO_SMALL = "@max-[512px]/map-stage:hidden";
 
 // Exact keyboard selection stays in the list, so markers remain pointer-only.
 export function Marker({
@@ -48,29 +170,66 @@ export function Marker({
   // marker so the map can show where it is, but never the pick.
   const values = townSelectableValues(town);
   const state = selectionState(values, selected);
-  const live =
-    values.length > 0 && (townCount(town) > 0 || state !== false);
+  const live = townIsLive(town, selected);
   // A town holding only shelters with nothing to pick is informational: hover
   // names it, nothing selects it. Unlike a dead marker it keeps its pointer
   // events, so the visitor can find out what the faint dot is.
   const info = values.length === 0;
   const geometry = markerGeometry(town);
   // Two or three discs get one hit wedge each, so a click lands on the shelter
-  // it was aimed at instead of toggling the whole town. Empty for single and
-  // overflow markers, which keep answering as a whole.
+  // it was aimed at instead of toggling the whole town. Empty for single,
+  // overflow and dominated markers, which divide their target another way or
+  // not at all.
   const wedges = clusterHitWedges(town);
-  const wedged = wedges.length > 0;
+  // Sized by each shelter's own count, so the discs order the same way the
+  // coins do. Empty unless this is a town that still shares its coin.
+  const discs = clusterDiscs(town);
+  // One shelter holds this town, so it takes the coin at its own count's bin
+  // and the rest ride the rim. Empty unless that is what the town is.
+  const satellites = satelliteDiscs(town);
+  const dominantIndex = dominantShelterIndex(town.shelters);
+  const dominant =
+    dominantIndex >= 0 ? town.shelters[dominantIndex] : undefined;
+  // Every per-shelter target on the marker, in painting order: a cluster's
+  // discs, or a dominated town's coin and satellites.
+  const hits: ClusterDisc[] = dominant
+    ? satelliteHitCircles(town)
+    : discs.map((disc) => ({ ...disc, r: disc.r + MARKER_STROKE_WIDTH / 2 }));
+  // Whether the marker's own marks answer for their shelters, which is when
+  // the group must stop answering for the town as a whole.
+  const wedged = hits.length > 0;
+
+  // The pointer half of a cluster's per-shelter target, shared by the wedge
+  // and by the disc circle painted over it.
+  const hitHandlers = (value: string) => {
+    const shelter = town.shelters.find((entry) => entry.value === value);
+    // An off-site shelter's target names it and stops there, the same deal its
+    // dot has always had.
+    const pickable = live && shelter?.selectable !== false;
+    return {
+      pickable,
+      props: {
+        onClick: pickable ? () => onPick([value]) : undefined,
+        onPointerEnter: () => onHoverShelter(value),
+        onPointerLeave: () => onHoverShelter(null),
+        className: cn(
+          "fill-transparent stroke-none",
+          pickable ? "cursor-pointer" : "cursor-default",
+        ),
+      },
+    };
+  };
 
   return (
     <g
       aria-hidden
-      data-marker-kind={shared ? "cluster" : "single"}
+      data-marker-kind={
+        !shared ? "single" : satellites.length > 0 ? "satellite" : "cluster"
+      }
       data-marker-key={town.key}
       data-marker-live={live}
       data-marker-shelters={town.shelters.length}
-      data-marker-state={
-        state === true ? "selected" : state === "mixed" ? "mixed" : "idle"
-      }
+      data-marker-state={mapStateName(state)}
       data-marker-info={info || undefined}
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
@@ -112,11 +271,29 @@ export function Marker({
           live={live}
           highlighted={highlighted}
         />
+      ) : dominant ? (
+        <SatelliteMarker
+          town={town}
+          dominant={dominant}
+          satellites={satellites}
+          coinRadius={geometry.discRadius}
+          selected={selected}
+          live={live}
+          highlighted={highlighted}
+          hoveredShelterValue={hoveredShelterValue}
+        />
       ) : town.shelters.length > MAX_CLUSTER_DISCS ? (
-        <CountDisc town={town} state={state} live={live} highlighted={highlighted} />
+        <CountDisc
+          town={town}
+          discRadius={geometry.discRadius}
+          state={state}
+          live={live}
+          highlighted={highlighted}
+        />
       ) : (
         <ClusterMarker
           town={town}
+          discs={discs}
           selected={selected}
           live={live}
           highlighted={highlighted}
@@ -128,23 +305,39 @@ export function Marker({
           discs alike. They are transparent: the discs stay the picture, the
           wedges only divide the target. */}
       {wedges.map(({ value, d }) => {
-        const shelter = town.shelters.find((entry) => entry.value === value);
-        // An off-site shelter's wedge names it and stops there, the same deal
-        // its dot has always had.
-        const pickable = live && shelter?.selectable !== false;
+        const { pickable, props } = hitHandlers(value);
         return (
           <path
             key={value}
             d={d}
             data-wedge-shelter={value}
             data-wedge-pickable={pickable || undefined}
-            onClick={pickable ? () => onPick([value]) : undefined}
-            onPointerEnter={() => onHoverShelter(value)}
-            onPointerLeave={() => onHoverShelter(null)}
-            className={cn(
-              "fill-transparent stroke-none",
-              pickable ? "cursor-pointer" : "cursor-default",
-            )}
+            {...props}
+          />
+        );
+      })}
+
+      {/* One transparent circle per mark, painted last and in the order the
+          marks are drawn, so the mark under the pointer is the one that
+          answers and the top one wins where two overlap.
+
+          For a cluster this covers what a wedge cannot: a wedge splits the
+          target by direction, which is right out at the rim and wrong over the
+          discs themselves, because a large disc reaches past the town centre
+          into its neighbour's wedge. For a dominated town these circles are
+          the whole division, the coin taking the target and each satellite
+          covering itself. */}
+      {hits.map((hit) => {
+        const { pickable, props } = hitHandlers(hit.value);
+        return (
+          <circle
+            key={hit.value}
+            cx={hit.x}
+            cy={hit.y}
+            r={hit.r}
+            data-disc-shelter={hit.value}
+            data-disc-pickable={pickable || undefined}
+            {...props}
           />
         );
       })}
@@ -161,8 +354,10 @@ function MarkerDisc({
   live,
   discAttribute,
   shelterValue,
+  markKind,
   highlighted,
   hoverScope = "group",
+  emptyScale = EMPTY_MARKER_RADIUS_SCALE,
 }: {
   cx: number;
   cy: number;
@@ -172,11 +367,21 @@ function MarkerDisc({
   live: boolean;
   discAttribute?: string;
   shelterValue?: string;
+  /** Which mark this is inside a dominated town, "coin" or "satellite".
+   *  Absent on a lone marker and on a cluster disc, which the marker's own
+   *  data-marker-kind already names. */
+  markKind?: "coin" | "satellite";
   highlighted?: boolean;
   /** "group" leans in whenever the marker is hovered anywhere. "self" waits to
    *  be told, which is what a wedged cluster needs: one disc answers, not all
    *  of them. */
   hoverScope?: "group" | "self";
+  /** What share of r the hollow "nothing listed" mark draws at. A coin is much
+   *  larger than that mark should ever be, so it shrinks by the scale the
+   *  legend teaches. A satellite is already sized as a small companion, so it
+   *  passes 1 and draws the hollow mark at its own radius, which lands it
+   *  within a rounding error of the size a lone empty marker draws. */
+  emptyScale?: number;
 }) {
   const glyph = r * glyphScale;
   const groupHover = hoverScope === "group";
@@ -189,6 +394,7 @@ function MarkerDisc({
       <g
         data-cluster-disc={discAttribute}
         data-cluster-shelter={shelterValue}
+        data-mark-kind={markKind}
         className={cn(
           "origin-center transition-[fill,transform] [transform-box:fill-box] motion-reduce:transition-none",
           groupHover &&
@@ -196,15 +402,33 @@ function MarkerDisc({
           highlighted && "scale-110 motion-reduce:scale-100",
         )}
       >
+        {/* Hollow, not filled: a speck read as dirt on the map. The radius,
+            the stroke and the classes come from the constants above, which the
+            legend's EmptyMarkerGlyph draws from as well, so the mark and the
+            row explaining it cannot drift. */}
         <circle
           data-marker-empty=""
           cx={cx}
           cy={cy}
-          r={r * 0.42}
+          r={r * emptyScale}
+          style={{
+            strokeWidth: EMPTY_MARKER_STROKE_WIDTH,
+            // See DISC_MORPH: the attributes above are the fallback, these are
+            // what actually animate.
+            r: r * emptyScale,
+            cx,
+            cy,
+          }}
           className={cn(
-            "fill-foreground/35 stroke-none transition-colors motion-reduce:transition-none",
-            groupHover && "group-hover/pin:fill-foreground/60",
-            highlighted && "fill-foreground/60",
+            EMPTY_MARKER_CLASS,
+            // The stroke colour a hover changes joins the geometry on the
+            // shared timing rather than keeping its own. One element carries
+            // one transition list, and a hollow disc is small enough that its
+            // whole answer, colour and size alike, should land together.
+            "transition-[stroke,r,cx,cy]",
+            MAP_MORPH,
+            groupHover && "group-hover/pin:stroke-foreground/75",
+            highlighted && "stroke-foreground/75",
           )}
         />
       </g>
@@ -215,10 +439,12 @@ function MarkerDisc({
     <g
       data-cluster-disc={discAttribute}
       data-cluster-shelter={shelterValue}
+      data-mark-kind={markKind}
       className={cn(
         // Each disc grows around its own centre, so cluster discs breathe
         // apart instead of shifting as a block.
         "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] motion-reduce:transition-none",
+        COIN_SHADOW,
         groupHover &&
           "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
         highlighted && "scale-110 motion-reduce:scale-100",
@@ -232,82 +458,202 @@ function MarkerDisc({
             ),
       )}
     >
-      <circle cx={cx} cy={cy} r={r} style={{ strokeWidth: MARKER_STROKE_WIDTH }} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        style={{ strokeWidth: MARKER_STROKE_WIDTH, r, cx, cy }}
+        className={DISC_MORPH}
+      />
       {discFitsGlyph(r) && (
         <PawPrint
           x={cx - glyph / 2}
           y={cy - glyph / 2}
           width={glyph}
           height={glyph}
+          style={{
+            x: cx - glyph / 2,
+            y: cy - glyph / 2,
+            width: glyph,
+            height: glyph,
+          }}
           fill="currentColor"
           strokeWidth={1.5}
           aria-hidden
-          className="stroke-current"
+          className={cn("stroke-current", GLYPH_MORPH, GLYPH_TOO_SMALL)}
         />
       )}
     </g>
   );
 }
 
-// One disc per shelter, each carrying that shelter's own selection. The old
-// cluster drew two discs whatever the town held, and lit the first of them on
-// "mixed" regardless of which shelter was picked.
+// What a mark answering for one shelter is told, whether it is a cluster disc,
+// a dominated town's coin or one of its satellites. All three divide their
+// marker per shelter and all three divide it the same way, so the bundle is
+// written once.
+function markProps(
+  shelter: ShelterPin,
+  {
+    selected,
+    live,
+    highlighted,
+    hoveredShelterValue,
+  }: {
+    selected: string[];
+    live: boolean;
+    highlighted: boolean;
+    hoveredShelterValue: string | null;
+  },
+) {
+  const picked = selected.includes(shelter.value);
+  return {
+    selected: picked,
+    // An off-site shelter keeps its own mark whatever its town holds: the
+    // mark, not the town, is what says "this one you can pick".
+    live: live && shelter.selectable !== false,
+    discAttribute: picked ? "selected" : "idle",
+    shelterValue: shelter.value,
+    // A list hover still names the town, so it lights every mark. A pointer on
+    // one mark lights that one.
+    highlighted: highlighted || hoveredShelterValue === shelter.value,
+    hoverScope: "self" as const,
+  };
+}
+
+// One disc per shelter, each carrying that shelter's own selection and its own
+// count. The old cluster drew two discs whatever the town held, lit the first
+// of them on "mixed" regardless of which shelter was picked, and drew them the
+// same size however lopsided the town was.
 function ClusterMarker({
   town,
+  discs,
   selected,
   live,
   highlighted,
   hoveredShelterValue,
 }: {
   town: Town;
+  discs: ClusterDisc[];
   selected: string[];
   live: boolean;
   highlighted: boolean;
   hoveredShelterValue: string | null;
 }) {
-  const { clusterRadius } = markerGeometry(town);
-  const positions = clusterDiscPositions(town);
-
   return town.shelters.map((shelter, index) => (
     <MarkerDisc
       key={shelter.value}
-      cx={positions[index].x}
-      cy={positions[index].y}
-      r={clusterRadius}
+      cx={discs[index].x}
+      cy={discs[index].y}
+      r={discs[index].r}
       glyphScale={1.3}
-      selected={selected.includes(shelter.value)}
-      // An off-site shelter keeps its dot even when its town has animals: the
-      // disc, not the town, is what says "this one you can pick".
-      live={live && shelter.selectable !== false}
-      discAttribute={selected.includes(shelter.value) ? "selected" : "idle"}
-      shelterValue={shelter.value}
-      // The hovered wedge picks the disc that leans in. A list hover still
-      // names the town, so it lights every disc, as before.
-      highlighted={highlighted || hoveredShelterValue === shelter.value}
-      hoverScope="self"
+      {...markProps(shelter, {
+        selected,
+        live,
+        highlighted,
+        hoveredShelterValue,
+      })}
     />
   ));
+}
+
+// A town one shelter holds: the coin is that shelter's, drawn exactly as it
+// would be if it stood alone in its town, and its companions ride the rim as
+// small discs of their own. See satelliteDiscs in lib/map-layout.ts for why
+// the coin stopped being divided.
+//
+// Every mark answers for itself, the same deal a cluster's discs have: its own
+// selected fill, its own hover, its own hit circle, its own name in the
+// callout. What changes is only which shelter each mark is sized by.
+function SatelliteMarker({
+  town,
+  dominant,
+  satellites,
+  coinRadius,
+  selected,
+  live,
+  highlighted,
+  hoveredShelterValue,
+}: {
+  town: Town;
+  dominant: ShelterPin;
+  satellites: ClusterDisc[];
+  coinRadius: number;
+  selected: string[];
+  live: boolean;
+  highlighted: boolean;
+  hoveredShelterValue: string | null;
+}) {
+  const mark = (shelter: ShelterPin) =>
+    markProps(shelter, { selected, live, highlighted, hoveredShelterValue });
+
+  return (
+    <>
+      {/* The paw at 1.15, which is the lone marker's scale and not the
+          cluster's 1.3: this coin is a lone marker in every respect but the
+          company it keeps. */}
+      <MarkerDisc
+        cx={town.x}
+        cy={town.y}
+        r={coinRadius}
+        glyphScale={1.15}
+        markKind="coin"
+        {...mark(dominant)}
+      />
+      {/* satelliteDiscs already put the companions in slot order and returns
+          the shelter each one stands for, so the shelter is looked up by
+          value rather than paired back by index: one ordering, not two that
+          have to silently agree. */}
+      {satellites.map((disc) => {
+        const shelter = town.shelters.find(
+          (entry) => entry.value === disc.value,
+        );
+        if (!shelter) return null;
+        return (
+        <MarkerDisc
+          key={shelter.value}
+          cx={disc.x}
+          cy={disc.y}
+          r={disc.r}
+          // A satellite this size only clears the glyph floor at the top of
+          // its band, so most of them drop the paw the way any small disc
+          // does. 1.3 is the cluster scale, because the ones that do keep it
+          // are as small as a cluster's quietest disc.
+          glyphScale={1.3}
+          markKind="satellite"
+          // The hollow mark draws at the satellite's own radius. See
+          // MarkerDisc's emptyScale.
+          emptyScale={1}
+          {...mark(shelter)}
+        />
+        );
+      })}
+    </>
+  );
 }
 
 // Past three shelters the discs stop being readable and stop being honest, so
 // the marker says the number instead.
 function CountDisc({
   town,
+  discRadius,
   state,
   live,
   highlighted,
 }: {
   town: Town;
+  /** The coin, handed down from the marker that already measured it, the same
+   *  way SatelliteMarker receives coinRadius. */
+  discRadius: number;
   state: boolean | "mixed";
   live: boolean;
   highlighted: boolean;
 }) {
-  const { discRadius } = markerGeometry(town);
   return (
     <g
       data-cluster-overflow={town.shelters.length}
       className={cn(
         "origin-center transition-[color,fill,stroke,transform] [transform-box:fill-box] group-hover/pin:scale-110 motion-reduce:transition-none motion-reduce:group-hover/pin:scale-100",
+        COIN_SHADOW,
         highlighted && "scale-110 motion-reduce:scale-100",
         state === true
           ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
@@ -321,18 +667,28 @@ function CountDisc({
               : "fill-background stroke-foreground/40 text-foreground/40",
       )}
     >
+      {/* Radius only, no cx or cy. A text element's x and y are coordinate
+          lists, not geometry properties, so the digits inside cannot ride CSS
+          the way a circle can. A coin that glided to a new position while its
+          own number snapped there would tear the number out of the disc, so
+          the two stay welded and move together instantly. The size is what
+          carries the species change here, and the size does animate. */}
       <circle
         cx={town.x}
         cy={town.y}
         r={discRadius}
-        style={{ strokeWidth: MARKER_STROKE_WIDTH }}
+        style={{ strokeWidth: MARKER_STROKE_WIDTH, r: discRadius }}
+        className={cn("transition-[r]", MAP_MORPH)}
       />
       <text
         x={town.x}
         y={town.y}
         textAnchor="middle"
         dominantBaseline="central"
-        className="fill-current stroke-none"
+        className={cn(
+          "fill-current stroke-none transition-[font-size]",
+          MAP_MORPH,
+        )}
         style={{ fontSize: discRadius * 1.1, fontWeight: 600 }}
       >
         {town.shelters.length}

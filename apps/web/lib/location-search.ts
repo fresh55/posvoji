@@ -33,6 +33,37 @@ export function getServerLocationSnapshot(): string {
   return "";
 }
 
+// Rebuilds a query so a codec's own write only touches the params it owns.
+// serializeFilters used to build a fresh URLSearchParams from scratch, which
+// silently deleted anything else in the query on the very next filter or
+// sort write (?najdena=..., or any param a future feature adds).
+//
+// Foreign params are kept as the exact substrings they already are in
+// currentSearch rather than round-tripped through URLSearchParams: reading
+// one into URLSearchParams and calling toString() again would re-encode
+// whatever it holds, and the %2C-unescape below is meant for this codec's
+// own freshly serialized output, not for bytes this codec doesn't own. Not
+// touching them at all is the only way to guarantee they survive exactly.
+//
+// Ordering: foreign params keep their original relative position and come
+// first, the codec's own params follow in the codec's order. Either choice
+// is defensible; this one is picked because it matches what a URL already
+// looks like today (codec params only) once foreign params are prepended,
+// rather than interleaving them.
+export function mergeOwnedParams(
+  currentSearch: string,
+  ownedParams: readonly string[],
+  ownedQuery: string,
+): string {
+  const owned = new Set(ownedParams);
+  const foreign = currentSearch
+    .replace(/^\?/, "")
+    .split("&")
+    .filter((pair) => pair.length > 0)
+    .filter((pair) => !owned.has(decodeURIComponent(pair.split("=")[0] ?? "")));
+  return [...foreign, ownedQuery].filter((part) => part.length > 0).join("&");
+}
+
 /** Writes a new query on the page the visitor is already on. */
 export function commitSearch(
   query: string,
@@ -49,7 +80,11 @@ export function commitLocation(
   state?: unknown,
 ): void {
   // Commas are legal unencoded, and these links get shared by hand. Done here
-  // so every writer produces the same shape.
+  // so every writer produces the same shape. Safe to run over the whole query
+  // even once mergeOwnedParams has spliced foreign params in: unescaping
+  // %2C to "," never changes what a param means, since a comma needs no
+  // encoding in a query string in the first place. What mergeOwnedParams
+  // protects against is re-encoding foreign bytes, not this replace.
   const search = query.replace(/%2C/g, ",");
   const url = search ? `${path}?${search}` : path;
   if (mode === "push") {

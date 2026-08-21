@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ShelterDetailPage } from "@/components/shelter-detail-page";
+import { shelterMetadata } from "@/lib/shelter-share";
 import { getShelterBySlug, loadShelters } from "@/lib/shelters";
 
 // Every registered shelter gets a page, even with zero animals in the
@@ -17,10 +18,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const shelter = getShelterBySlug(slug);
   if (!shelter) return {};
-  return {
-    title: `${shelter.name} | Posvoji.si`,
-    description: `${shelter.name}, ${shelter.city}. Contact details and animals for adoption on Posvoji.si.`,
-  };
+  return shelterMetadata(shelter, "en");
 }
 
 export default async function ShelterPage({

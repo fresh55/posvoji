@@ -145,7 +145,19 @@ const GLYPH_MORPH = cn("transition-[x,y,width,height]", MAP_MORPH);
 // 909px with it folded, so the paws are wrong at one and right at the other
 // while the viewport never moves. The stage's own width is the only thing that
 // knows, and @container is how a child asks it.
-const GLYPH_TOO_SMALL = "@max-[512px]/map-stage:hidden";
+// Everything the plate draws small enough to smudge measures itself against
+// the same width, so the paws, the plate's furniture and the marker layer all
+// leave at once rather than at three widths nobody chose together.
+export const PLATE_TOO_SMALL = "@max-[512px]/map-stage:hidden";
+
+/** The same threshold as a plate scale, in pixels to the user unit: the 1.5
+ *  the arithmetic above arrives at. A Tailwind class has to be a literal for
+ *  the scanner to find it, so the one gate that cannot be made in CSS (see
+ *  plateWide in shelter-map.tsx) reads the measured scale against this instead
+ *  of guessing the stage's padding back off a measured width. */
+export const PLATE_MIN_SCALE = 1.5;
+
+const GLYPH_TOO_SMALL = PLATE_TOO_SMALL;
 
 // The coin's focus ring, and how far outside the marker it sits. town.reach is
 // everything the marker draws, satellites included, so the ring never crosses

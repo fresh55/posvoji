@@ -1262,7 +1262,16 @@ describe("ShelterMap scale bar", () => {
 
   it("keeps the bar out of the tree and out of the way of the pointer", () => {
     expect(html).toMatch(
-      /<g aria-hidden="true" class="pointer-events-none"><path data-map-scale=/,
+      /<g aria-hidden="true" class="pointer-events-none[^"]*"><path data-map-scale=/,
+    );
+  });
+
+  // 4.2 units is about five pixels on a phone plate, which is a smudge and not
+  // a measure. The bar leaves at the same width the rest of the small type
+  // does.
+  it("leaves the plate once it is drawn too small to read the bar on", () => {
+    expect(html).toMatch(
+      /<g aria-hidden="true" class="[^"]*@max-\[512px\]\/map-stage:hidden[^"]*"><path data-map-scale=/,
     );
   });
 });
@@ -1343,11 +1352,20 @@ describe("ShelterMap plate furniture", () => {
 
   it("hides the town anchors below md, where the markers are hidden too", () => {
     expect(html).toMatch(/<g class="hidden md:block"><text[^>]*data-map-city/);
-    // The neighbours and the water stay at every size: they name the ground,
-    // not the roster.
+    // The neighbours and the water are drawn first, outside that group: they
+    // name the ground rather than the roster, and they leave at their own
+    // width rather than at the markers'.
     expect(html.indexOf("data-map-neighbor")).toBeLessThan(
       html.indexOf('<g class="hidden md:block"><text'),
     );
+  });
+
+  // Set in the map's own units, so a plate a third the size sets them a third
+  // the size: on a phone the country names and the water rendered four or five
+  // pixels tall, which is not quiet type. The whole layer leaves at the width
+  // the paws and the markers leave at.
+  it("takes the whole layer off a plate too small to read it on", () => {
+    expect(layer).toContain("@max-[512px]/map-stage:hidden");
   });
 
   it("is furniture and not content: inert, unnamed, off the pointer", () => {

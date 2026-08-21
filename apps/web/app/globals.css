@@ -334,6 +334,37 @@
   );
 }
 
+/* Horizontal counterpart to fade-scroll, for a strip that scrolls sideways
+   rather than up and down (the photo thumbnails under the phone hero). */
+@property --scroll-fade-start {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --scroll-fade-end {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@utility fade-scroll-x {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  transition:
+    --scroll-fade-start 0.25s ease,
+    --scroll-fade-end 0.25s ease;
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / calc(1 - var(--scroll-fade-start, 0))) 0,
+    black calc(var(--scroll-fade-start, 0) * 2.5rem),
+    black calc(100% - var(--scroll-fade-end, 0) * 2.5rem),
+    rgb(0 0 0 / calc(1 - var(--scroll-fade-end, 0))) 100%
+  );
+}
+
 @utility rounded-ui {
   border-radius: var(--radius-ui);
 }

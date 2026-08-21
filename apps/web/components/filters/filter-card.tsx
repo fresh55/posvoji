@@ -18,7 +18,7 @@ export type FilterCardLayout = "sidebar" | "sheet";
 // One shadcn-style surface contract for every compact filter choice. Layout
 // stays with the caller; interaction, state, and accessibility chrome do not.
 export const filterCardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:scale-[0.98] active:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       selected: {
@@ -327,9 +327,12 @@ export function FilterCardTail({
   if (layout === "sheet") {
     return (
       <>
+        {/* line-clamp-2, not truncate: at 320px in two columns a label like
+            "Sterilizacija" clips to a couple of letters on one line, and the
+            tile is tall enough (min-h-[4.75rem]) to hold a second line. */}
         <span
           className={cn(
-            "mt-0.5 max-w-full truncate text-xs",
+            "mt-0.5 line-clamp-2 max-w-full text-xs leading-tight",
             checked && "font-medium",
           )}
         >

@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css";
 
@@ -5,6 +6,10 @@ import "../globals.css";
 // own root layout to supply <html> and <body>. Kept minimal: no metadata,
 // nothing meant to ship, since the pages under here 404 in production.
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
+
+// Matches the locale layouts, so safe-area-aware spacing behaves the same
+// way under /dev as it does everywhere else.
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function DevLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -166,7 +166,11 @@ export function MunicipalityFinder({
             }}
             placeholder={messages.muniSearch}
             aria-label={messages.muniSearch}
-            className="h-8 pl-8 text-sm"
+            // 44px tall below lg, the touch target the shelter tab's own
+            // fields keep. text-base and not text-sm at that size: iOS Safari
+            // zooms the whole page when a focused input sets type under 16px,
+            // and this dialog is the map, so a zoom is a map nobody can aim at.
+            className="h-11 pl-8 text-base lg:h-8 lg:text-sm"
           />
           {query !== "" && (
             <button
@@ -177,7 +181,9 @@ export function MunicipalityFinder({
                 searchRef.current?.focus();
               }}
               aria-label={messages.clearSearch}
-              className="absolute right-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground"
+              // The icon stays small; below lg the button's own box grows to
+              // the touch target around it, centred on the same spot.
+              className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground lg:size-6"
             >
               <X className="size-3.5" aria-hidden />
             </button>
@@ -196,7 +202,8 @@ export function MunicipalityFinder({
           }}
           aria-pressed={state.status === "on"}
           className={cn(
-            "mt-2 inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors",
+            // Same 44px-below-lg rule the rest of this tab keeps.
+            "mt-2 inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors max-lg:min-h-11",
             state.status === "on"
               ? "font-medium text-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -215,8 +222,27 @@ export function MunicipalityFinder({
           on md+ and a bottom sheet below it, and both have a fixed height. It
           used to ride a scrolling dialog on phones, which no longer exists. */}
       <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        {/* A denied or timed-out fix used to be a dead end: one sentence and
+            nothing to press. Both ways out are here now, in the order they are
+            worth trying: ask again, or stop asking and type the postcode,
+            which is the answer somebody standing in the street already has. */}
         {state.status === "error" && (
-          <p className="text-sm text-muted-foreground">{state.message}</p>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{state.message}</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.muniPostcodeInstead}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={locate}
+              className="h-11 gap-1.5 text-xs lg:h-7"
+            >
+              <Navigation className="size-3" aria-hidden />
+              {messages.retryLocation}
+            </Button>
+          </div>
         )}
 
         {!query.trim() && !guess && !active && state.status !== "error" && (
@@ -241,7 +267,7 @@ export function MunicipalityFinder({
                     setQuery(name);
                     setPicked(null);
                   }}
-                  className="inline-flex h-6 items-center rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="inline-flex h-6 items-center rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-lg:min-h-11 max-lg:px-4"
                 >
                   {name}
                 </button>
@@ -276,7 +302,7 @@ export function MunicipalityFinder({
                   <button
                     type="button"
                     onClick={() => setPicked(entry.name)}
-                    className="flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60"
+                    className="flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 max-lg:min-h-11 max-lg:items-center"
                   >
                     <span className="font-medium">{entry.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
@@ -312,7 +338,7 @@ export function MunicipalityFinder({
               <button
                 type="button"
                 onClick={reset}
-                className="shrink-0 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                className="inline-flex shrink-0 items-center text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline max-lg:min-h-11"
               >
                 {messages.clear}
               </button>
@@ -333,7 +359,7 @@ export function MunicipalityFinder({
                         size="sm"
                         aria-pressed={selected.includes(coverage.shelterId)}
                         onClick={() => onToggle(coverage.shelterId)}
-                        className="h-7 gap-1.5 text-xs"
+                        className="h-11 gap-1.5 text-xs lg:h-7"
                       >
                         {selected.includes(coverage.shelterId) && (
                           <Check className="size-3" aria-hidden />
@@ -390,7 +416,7 @@ export function MunicipalityFinder({
                           {shelter.phone && (
                             <a
                               href={`tel:${shelter.phone.replace(/\s/g, "")}`}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2 py-1 text-xs transition-colors hover:bg-muted"
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2 py-1 text-xs transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
                             >
                               <Phone className="size-3" aria-hidden />
                               {shelter.phone}

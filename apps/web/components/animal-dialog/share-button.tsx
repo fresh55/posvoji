@@ -162,7 +162,7 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
           <Share2 aria-hidden />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-4">
+      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
         <div className="space-y-1">
           <p className="text-sm font-medium">{text.heading}</p>
           <p className="text-xs leading-relaxed text-muted-foreground">

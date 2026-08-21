@@ -172,6 +172,9 @@ function HealthToggleCards({
       resetAriaLabel={messages.resetHealthFilters}
       layout={layout}
       collapse={collapse}
+      // Health labels ("Sterilizacija", "Cepljenje") are long enough that
+      // three sheet columns clip them badly at 320px; two leaves room.
+      sheetColumns={toggles.length > 1 ? "grid-cols-2" : "grid-cols-1"}
     >
       {toggles.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;

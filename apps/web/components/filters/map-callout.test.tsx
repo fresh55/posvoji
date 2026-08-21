@@ -9,7 +9,7 @@
 
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MAP_HEIGHT } from "@/lib/geo";
+import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";
 import { calloutType, DEFAULT_PLATE_SCALE, MapCallout } from "./map-callout";
 
 afterEach(() => cleanup());
@@ -400,11 +400,27 @@ describe("MapCallout type scale", () => {
     expect(small * 2.2).toBeCloseTo(large * 3.2, 5);
   });
 
-  it("clamps both ends, so no plate can produce absurd type", () => {
+  it("clamps the large-plate end, so no plate can produce absurd type", () => {
     // Twenty pixels to the unit is a plate that exists nowhere, and the
     // honest division there would set the name under a pixel tall.
     expect(titleSize(20)).toBe(titleSize(10));
-    expect(titleSize(0.2)).toBe(titleSize(0.5));
+  });
+
+  // The other end is not a clamp in user units any more. It was, and on a
+  // phone plate (about 1.12 pixels to the unit) it set the title out at eight
+  // rendered pixels, which is the one thing this file exists to prevent.
+  it("never sets the title under eleven rendered pixels, whatever the plate", () => {
+    for (const scale of [0.5, 1.12, 1.6, 2.2, 4.4]) {
+      expect(titleSize(scale) * scale).toBeGreaterThanOrEqual(11 - 1e-9);
+    }
+  });
+
+  it("keeps the block of type off most of the country", () => {
+    // What the type floor above costs on a small plate: the column would grow
+    // to two thirds of the map, so it is capped instead.
+    for (const scale of [0.5, 1.12, 2.2, 4.4]) {
+      expect(calloutType(scale).width).toBeLessThanOrEqual(MAP_WIDTH * 0.55);
+    }
   });
 
   it("keeps the metadata a step under the title at every scale", () => {

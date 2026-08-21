@@ -122,6 +122,9 @@ const sl = {
   muniHint:
     "Vpiši občino ali poštno številko kraja, kjer je bila žival najdena, in dobiš pristojno zavetišče s kontakti.",
   muniHere: "Uporabi mojo lokacijo",
+  retryLocation: "Poskusi znova",
+  muniPostcodeInstead:
+    "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
   muniExampleLead: "Npr.:",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
@@ -383,6 +386,9 @@ const en: Messages = {
   muniHint:
     "Type the municipality or the postcode of the place where the animal was found to get the responsible shelter and its contacts.",
   muniHere: "Use my location",
+  retryLocation: "Try again",
+  muniPostcodeInstead:
+    "Or type the postcode of the place where the animal was found.",
   muniExampleLead: "E.g.:",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",

@@ -52,7 +52,9 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Čaka že 3 leta")).toBeTruthy();
+    // Two copies exist below/above the sm breakpoint (see the "name row on
+    // narrow phones" tests below for which is which).
+    expect(screen.getAllByText("Čaka že 3 leta").length).toBeGreaterThan(0);
   });
 
   it("shows nothing for an animal under the threshold", () => {
@@ -85,7 +87,8 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("rezerviran")).toBeTruthy();
+    // Two copies (the photo overlay and the name-row one), same reason.
+    expect(screen.getAllByText("rezerviran").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Čaka/)).toBeNull();
   });
 
@@ -100,7 +103,57 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Waiting 3 years")).toBeTruthy();
+    expect(screen.getAllByText("Waiting 3 years").length).toBeGreaterThan(0);
+  });
+});
+
+describe("AnimalCard name row on narrow phones", () => {
+  it("moves the reserved badge onto the photo and off the name's row below sm", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ status: "reserved" })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    // Two copies exist so each breakpoint gets its own: the photo overlay is
+    // the one below sm, the row copy is sm and up. Below sm the row copy
+    // used to fight the name and a reserved badge for the same line.
+    const badges = screen.getAllByText("rezerviran");
+    expect(badges).toHaveLength(2);
+    const overlayBadge = badges.find((node) => node.className.includes("sm:hidden"));
+    const rowBadge = badges.find((node) => node.className.includes("sm:inline"));
+    expect(overlayBadge).toBeTruthy();
+    expect(rowBadge).toBeTruthy();
+    expect(rowBadge?.className).toContain("hidden");
+  });
+
+  it("gives the long-stay wait its own line below sm instead of sharing the name's row", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    // The name's row keeps a copy hidden below sm (sm:inline-flex) and a
+    // second copy below the meta line, visible only below sm, takes over
+    // there instead.
+    const name = screen.getByText("Rex");
+    const nameRow = name.parentElement;
+    const rowWait = nameRow?.querySelector(".sm\\:inline-flex");
+    const ownLineWait = name
+      .closest("a")
+      ?.querySelector("p.sm\\:hidden");
+    expect(rowWait?.className).toContain("hidden");
+    expect(ownLineWait).toBeTruthy();
+    expect(ownLineWait?.textContent).toContain("Čaka");
   });
 });
 

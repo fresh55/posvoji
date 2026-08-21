@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
 import { AnimalFilters } from "./animal-filters";
+import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
 import { LocationPicker } from "./location-picker";
+import { SpeciesTabs } from "./species-tabs";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -134,12 +136,10 @@ describe("mobile filter hardening", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
-          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
           toggles={[]}
           toggleTally={new Map()}
           activeSectionCount={2}
           resultCount={0}
-          onSpeciesChange={vi.fn()}
           onClearAll={vi.fn()}
           {...filterActions}
         />
@@ -163,12 +163,10 @@ describe("mobile filter hardening", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
-          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
           toggles={[]}
           toggleTally={new Map()}
           activeSectionCount={0}
           resultCount={0}
-          onSpeciesChange={vi.fn()}
           onClearAll={vi.fn()}
           {...filterActions}
         />
@@ -198,12 +196,10 @@ describe("mobile filter hardening", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
-          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
           toggles={[]}
           toggleTally={new Map()}
           activeSectionCount={0}
           resultCount={0}
-          onSpeciesChange={vi.fn()}
           onClearAll={vi.fn()}
           {...filterActions}
         />
@@ -222,12 +218,10 @@ describe("mobile filter hardening", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
-          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
           toggles={[]}
           toggleTally={new Map()}
           activeSectionCount={1}
           resultCount={0}
-          onSpeciesChange={vi.fn()}
           onClearAll={vi.fn()}
           {...filterActions}
         />
@@ -246,12 +240,10 @@ describe("mobile filter hardening", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
-          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
           toggles={[]}
           toggleTally={new Map()}
           activeSectionCount={0}
           resultCount={0}
-          onSpeciesChange={vi.fn()}
           onClearAll={vi.fn()}
           {...filterActions}
         />
@@ -268,19 +260,19 @@ describe("mobile filter hardening", () => {
     expect(scrollBody?.contains(header as Node)).toBe(false);
   });
 
-  it("keeps the species tabs outside the scrolling body", async () => {
+  it("does not repeat the species tabs inside the sheet", async () => {
+    // The sticky bar behind the trigger already carries them; a second copy
+    // here used to cost the sheet 56px on top of an 85dvh takeover.
     render(
       <I18nProvider locale="en">
         <FilterSheet
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
-          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
           toggles={[]}
           toggleTally={new Map()}
           activeSectionCount={0}
           resultCount={0}
-          onSpeciesChange={vi.fn()}
           onClearAll={vi.fn()}
           {...filterActions}
         />
@@ -290,10 +282,7 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     const dialog = await screen.findByRole("dialog");
-    const scrollBody = dialog.querySelector(".overflow-y-auto");
-    const speciesToggle = screen.getByRole("button", { name: "All" });
-    expect(scrollBody).toBeTruthy();
-    expect(scrollBody?.contains(speciesToggle)).toBe(false);
+    expect(within(dialog).queryByRole("button", { name: "All" })).toBeNull();
   });
 
   it("returns focus to the shelter trigger after closing the dialog", async () => {
@@ -326,5 +315,78 @@ describe("mobile filter hardening", () => {
     });
 
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("gives each chip's remove button a real 44px target instead of an overlay that reaches the next chip", () => {
+    render(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[
+            { key: "a", label: "Dogs", onRemove: vi.fn() },
+            { key: "b", label: "Cats", onRemove: vi.fn() },
+          ]}
+          onClearAll={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    // Below md the button itself grows to the tap target, so it cannot bleed
+    // an invisible layer past its own box and into the next chip's row-gap.
+    const removeDogs = screen.getByRole("button", {
+      name: "Remove filter Dogs",
+    });
+    expect(removeDogs.className).toContain("max-md:size-11");
+    expect(removeDogs.className).not.toContain("tap-target");
+
+    // The chip that holds it grows to match, so the button isn't clipped.
+    expect(removeDogs.closest("span")?.className).toContain("max-md:min-h-11");
+
+    // And the row gives adjacent chips real breathing room rather than
+    // relying on an overlay's own restraint.
+    expect(removeDogs.closest("span")?.parentElement?.className).toContain(
+      "gap-3",
+    );
+  });
+
+  it("scrolls the active species tab into view on mount, for a deep link that lands off-screen", () => {
+    const scrollIntoView = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    render(
+      <I18nProvider locale="en">
+        <SpeciesTabs
+          value="other"
+          onChange={vi.fn()}
+          counts={{ all: 4, dog: 1, cat: 1, rabbit: 1, other: 1 }}
+          fullWidth
+        />
+      </I18nProvider>,
+    );
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    HTMLElement.prototype.scrollIntoView = original;
+  });
+
+  it("lets a fullWidth species tab shrink and truncate instead of forcing the row past the sheet's padding", () => {
+    render(
+      <I18nProvider locale="en">
+        <SpeciesTabs
+          value="all"
+          onChange={vi.fn()}
+          counts={{ all: 4, dog: 1, cat: 1, rabbit: 1, other: 1 }}
+          fullWidth
+        />
+      </I18nProvider>,
+    );
+
+    const otherTab = screen.getByRole("button", { name: "Other" });
+    expect(otherTab.className).toContain("flex-1");
+    expect(otherTab.className).not.toContain("shrink-0");
+    expect(otherTab.querySelector("span")?.className).toContain("truncate");
+    // The row itself keeps a scroll escape hatch rather than spilling past
+    // the sheet's padding when the tabs still don't fit.
+    const row = otherTab.parentElement;
+    expect(row?.className).toContain("overflow-x-auto");
   });
 });

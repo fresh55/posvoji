@@ -34,6 +34,20 @@ const MIN_BLOCK_PX = 26;
 const MIN_UNITS_PER_PX = 0.26;
 const MAX_UNITS_PER_PX = 0.6;
 
+// The size the title is never set under, in rendered pixels. The upper clamp
+// above is written in user units, so on a small plate it did the one thing
+// this file exists to prevent: a phone draws about 1.12 pixels to the unit,
+// where 0.6 units per pixel put the name out at eight pixels. The clamp is
+// still the right shape, it just cannot be the last word, so the rendered size
+// is checked in the units it is read in and the clamp gives way to it.
+const MIN_TITLE_PX = 11;
+
+// How much of the country's width one block of type may take, whatever the
+// clamp above did to the unit. On a phone plate the honest column comes out
+// near two thirds of the map, which is a label that has stopped naming a place
+// and started covering one.
+const MAX_BLOCK_SHARE = 0.55;
+
 /** How many pixels the plate draws one user unit at, before anything has
  *  measured it. Roughly what the picker draws the map at on a tablet, which is
  *  the size this type was tuned against. Server rendering and the first client
@@ -46,16 +60,21 @@ export const DEFAULT_PLATE_SCALE = 2.2;
  *  this register, the kilometre label on the origin line, and it has to come
  *  out the same size as the metadata it stands beside. */
 export function calloutType(scale: number) {
-  const unit = Math.min(
-    Math.max(1 / (scale > 0 ? scale : DEFAULT_PLATE_SCALE), MIN_UNITS_PER_PX),
+  const px = scale > 0 ? scale : DEFAULT_PLATE_SCALE;
+  const clamped = Math.min(
+    Math.max(1 / px, MIN_UNITS_PER_PX),
     MAX_UNITS_PER_PX,
   );
+  // The upper clamp cuts the unit down, and cutting the unit down is cutting
+  // the rendered type down with it. Whatever it just did, the title comes back
+  // up to a size that can be read.
+  const unit = Math.max(clamped, MIN_TITLE_PX / (TITLE_PX * px));
   return {
     unit,
     title: TITLE_PX * unit,
     metadata: META_PX * unit,
     halo: HALO_PX * unit,
-    width: BLOCK_PX * unit,
+    width: Math.min(BLOCK_PX * unit, MAP_WIDTH * MAX_BLOCK_SHARE),
     floor: MIN_BLOCK_PX * unit,
   };
 }

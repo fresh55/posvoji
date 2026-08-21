@@ -124,7 +124,7 @@ function MapLegend({
         <span
           className="flex items-center gap-0.5"
           aria-hidden
-          onMouseLeave={onLeaveDensity}
+          onPointerLeave={onLeaveDensity}
         >
           {DENSITY_STEPS.map((opacity, index) => (
             // The padded span, not the square, is the hover target: an 8px
@@ -132,10 +132,18 @@ function MapLegend({
             // grows without the visible swatch growing with it. cursor-help
             // rather than -default: this responds to hover with
             // information, closer to a tooltip than to inert decoration.
+            //
+            // Pointer events gated on a mouse, the idiom use-filter-motion.ts
+            // already uses. A tap synthesizes a mouseenter with no mouseleave
+            // after it, so the highlight latched and every unpicked region
+            // stayed dimmed for the rest of the session.
             <span
               key={opacity}
               className="cursor-help p-0.5"
-              onMouseEnter={() => onHoverDensity(index)}
+              onPointerEnter={(event) => {
+                if (event.pointerType !== "mouse") return;
+                onHoverDensity(index);
+              }}
             >
               {/* Two layers, not one. A region's fill composites over the
                   land it sits on, not over whatever happens to be behind the
@@ -999,7 +1007,11 @@ export function LocationPicker({
               one line that says the map is clickable, and a title attribute
               would have said it to nobody with a touch screen. */}
           <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,60%)]">
-            <DialogHeader className="pointer-events-auto rounded-ui border bg-background/85 px-3 py-2 shadow-xs backdrop-blur">
+            {/* Nothing in the chip is a control, so it takes no pointer: on a
+                phone it covers the top-left corner of the plate, and with
+                pointer-events-auto it swallowed the taps meant for the two
+                regions under it. */}
+            <DialogHeader className="pointer-events-none rounded-ui border bg-background/85 px-3 py-2 shadow-xs backdrop-blur">
               {/* The chip follows the question the dialog is currently
                   asking. One dialog answers two of them, and the found-animal
                   mode used to be titled "Kje iščeš?" over instructions to pick
@@ -1060,17 +1072,29 @@ export function LocationPicker({
 
           {/* The same closing move the filter sheet has, as a pill on the
               paper: the count answers "what did my picking do" before the
-              dialog goes away. Bottom-right, under the panel at lg and above
-              whatever the sheet is currently doing below it, so it is never
-              the thing a phone has to scroll past. */}
+              dialog goes away. Bottom-right at lg, under the panel.
+
+              Below lg it docks inside the sheet instead of floating over the
+              map above it. Sitting a gutter above the sheet's own top edge it
+              was a button belonging to nothing, laid across the plate and the
+              attribution line; at the foot of the sheet, full width, it reads
+              as what it is, the primary action of the panel the picking
+              happens in. The content block below reserves the height for it,
+              so it covers no row of the list. A folded sheet keeps the old
+              placement: there is no sheet to sit in, only the peek bar. */}
           <div
             className={cn(
-              "absolute right-3 z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none lg:bottom-3",
-              sheetOpen ? "bottom-[calc(55dvh+0.75rem)]" : "bottom-16",
+              "absolute z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none lg:left-auto lg:right-3 lg:bottom-3",
+              sheetOpen
+                ? "max-lg:inset-x-4 max-lg:bottom-4"
+                : "max-lg:right-3 max-lg:bottom-16",
             )}
           >
             <DialogClose asChild>
-              <Button size="lg" className="rounded-full px-5 shadow-lg">
+              <Button
+                size="lg"
+                className="rounded-full px-5 shadow-lg max-lg:w-full"
+              >
                 {messages.show}
                 <ResultCount
                   count={resultCount}
@@ -1244,7 +1268,11 @@ export function LocationPicker({
             {(panelOpen || sheetOpen) && (
               <div
                 className={cn(
-                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pt-1",
+                  // max-lg:pb-20 is the room the confirm pill docks into at
+                  // the foot of the sheet: the pill is drawn over this block,
+                  // not in it, so the padding is what keeps it off the last
+                  // row of the list.
+                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pt-1 max-lg:pb-20",
                   !panelOpen && "lg:hidden",
                   !sheetOpen && "max-lg:hidden",
                 )}
@@ -1276,7 +1304,14 @@ export function LocationPicker({
                   // The X is inside the panel, so dismissing it would drop
                   // keyboard focus on the body. Search is where the panel
                   // starts and where the dialog puts focus on open.
-                  searchRef.current?.focus();
+                  //
+                  // Pointers only, the same rule the dialog's own
+                  // onOpenAutoFocus keeps: focusing an input on a touch device
+                  // raises the soft keyboard over half the sheet, which is not
+                  // what dismissing a card asked for.
+                  if (!window.matchMedia?.("(pointer: coarse)").matches) {
+                    searchRef.current?.focus();
+                  }
                 }}
                 cardRef={pickCardRef}
               />
@@ -1317,8 +1352,10 @@ export function LocationPicker({
                 aria-label={messages.searchShelters}
                 // 44px tall below lg, the same touch-target rule the rest of
                 // this dialog's mobile chrome keeps; lg and up gets the
-                // denser h-8 back.
-                className="h-11 pl-8 text-sm lg:h-8"
+                // denser h-8 back. text-base below lg because iOS Safari
+                // zooms the page whenever a focused input sets type under
+                // 16px, and this dialog is a map: a zoom leaves it unaimable.
+                className="h-11 pl-8 text-base lg:h-8 lg:text-sm"
               />
             </div>
 
@@ -1377,8 +1414,8 @@ export function LocationPicker({
                 placeholder={messages.postcodeOrTown}
                 aria-label={messages.postcodeOrTown}
                 aria-describedby={statusId}
-                // Same 44px-below-lg rule as the search box above it.
-                className="h-11 pl-8 pr-8 text-sm lg:h-8"
+                // Same 44px-and-16px-below-lg rule as the search box above it.
+                className="h-11 pl-8 pr-8 text-base lg:h-8 lg:text-sm"
               />
               {place !== "" && (
                 <button

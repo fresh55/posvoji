@@ -45,7 +45,7 @@ export function LanguageSwitcher({
           asChild
           size="xs"
           variant={locale === language.locale ? "default" : "ghost"}
-          className="rounded-ui px-2 font-normal"
+          className="rounded-ui px-2 font-normal max-lg:tap-target"
         >
           <a
             href={paths?.[language.locale] ?? language.href}

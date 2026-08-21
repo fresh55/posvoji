@@ -32,24 +32,26 @@ import {
   type AnimalSort,
 } from "@/lib/sort";
 
-// Everything the filter codec and the sort codec together own. One writer
-// covers both, so a write to either can rebuild the query without disturbing
-// a param neither codec knows about.
-const OWNED_PARAMS = [...FILTER_PARAM_NAMES, SORT_PARAM];
-
-// Filters and sort live in the query, the open animal lives in the path, so
-// this write leaves the dialog where it is without having to carry anything
-// over. Rebuilds only the params this hook owns (mergeOwnedParams), so a
-// foreign param already in the query survives the write untouched.
-function writeQuery(filters: Filters, sort: AnimalSort): void {
-  const ownedQuery = [
-    serializeFilters(pruneHiddenFilters(filters)),
-    serializeSort(sort),
-  ]
-    .filter((part) => part.length > 0)
-    .join("&");
+// Filters and sort are written by two independent codecs, each owning its
+// own slice of the query (mergeOwnedParams rebuilds only the params passed
+// in, so a foreign param already in the query, or the other codec's own
+// param, survives untouched). Filters live in the query, the open animal
+// lives in the path, so a write leaves the dialog where it is without having
+// to carry anything over.
+function writeFilters(filters: Filters): void {
   commitSearch(
-    mergeOwnedParams(getSearchSnapshot(), OWNED_PARAMS, ownedQuery),
+    mergeOwnedParams(
+      getSearchSnapshot(),
+      FILTER_PARAM_NAMES,
+      serializeFilters(pruneHiddenFilters(filters)),
+    ),
+    "replace",
+  );
+}
+
+function writeSort(sort: AnimalSort): void {
+  commitSearch(
+    mergeOwnedParams(getSearchSnapshot(), [SORT_PARAM], serializeSort(sort)),
     "replace",
   );
 }
@@ -65,9 +67,9 @@ export function useAnimalFilters() {
 
   const setSpecies = useCallback(
     (species: SpeciesFilter) => {
-      writeQuery({ ...filters, species }, sort);
+      writeFilters({ ...filters, species });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggle = useCallback(
@@ -76,9 +78,9 @@ export function useAnimalFilters() {
       const next = selected.includes(value)
         ? selected.filter((selectedValue) => selectedValue !== value)
         : [...selected, value];
-      writeQuery({ ...filters, [group]: next }, sort);
+      writeFilters({ ...filters, [group]: next });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleMany = useCallback(
@@ -86,9 +88,9 @@ export function useAnimalFilters() {
       if (values.length === 0) return;
       const selected = filters[group] as string[];
       const next = toggleValues(selected, values);
-      writeQuery({ ...filters, [group]: next }, sort);
+      writeFilters({ ...filters, [group]: next });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleProperty = useCallback(
@@ -96,23 +98,20 @@ export function useAnimalFilters() {
       const next = filters.toggles.includes(key)
         ? filters.toggles.filter((k) => k !== key)
         : [...filters.toggles, key];
-      writeQuery({ ...filters, toggles: next }, sort);
+      writeFilters({ ...filters, toggles: next });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleManyProperties = useCallback(
     (values: ToggleKey[]) => {
       if (values.length === 0) return;
-      writeQuery(
-        {
-          ...filters,
-          toggles: toggleValues(filters.toggles, values) as ToggleKey[],
-        },
-        sort,
-      );
+      writeFilters({
+        ...filters,
+        toggles: toggleValues(filters.toggles, values) as ToggleKey[],
+      });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleGoodWith = useCallback(
@@ -120,23 +119,20 @@ export function useAnimalFilters() {
       const next = filters.goodWith.includes(key)
         ? filters.goodWith.filter((k) => k !== key)
         : [...filters.goodWith, key];
-      writeQuery({ ...filters, goodWith: next }, sort);
+      writeFilters({ ...filters, goodWith: next });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleManyGoodWith = useCallback(
     (values: GoodWithKey[]) => {
       if (values.length === 0) return;
-      writeQuery(
-        {
-          ...filters,
-          goodWith: toggleValues(filters.goodWith, values) as GoodWithKey[],
-        },
-        sort,
-      );
+      writeFilters({
+        ...filters,
+        goodWith: toggleValues(filters.goodWith, values) as GoodWithKey[],
+      });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleHome = useCallback(
@@ -144,20 +140,20 @@ export function useAnimalFilters() {
       const next = filters.home.includes(key)
         ? filters.home.filter((k) => k !== key)
         : [...filters.home, key];
-      writeQuery({ ...filters, home: next }, sort);
+      writeFilters({ ...filters, home: next });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleManyHome = useCallback(
     (values: HomeKey[]) => {
       if (values.length === 0) return;
-      writeQuery(
-        { ...filters, home: toggleValues(filters.home, values) as HomeKey[] },
-        sort,
-      );
+      writeFilters({
+        ...filters,
+        home: toggleValues(filters.home, values) as HomeKey[],
+      });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleCare = useCallback(
@@ -165,31 +161,25 @@ export function useAnimalFilters() {
       const next = filters.care.includes(key)
         ? filters.care.filter((k) => k !== key)
         : [...filters.care, key];
-      writeQuery({ ...filters, care: next }, sort);
+      writeFilters({ ...filters, care: next });
     },
-    [filters, sort],
+    [filters],
   );
 
   const toggleManyCare = useCallback(
     (values: CareKey[]) => {
       if (values.length === 0) return;
-      writeQuery(
-        { ...filters, care: toggleValues(filters.care, values) as CareKey[] },
-        sort,
-      );
+      writeFilters({
+        ...filters,
+        care: toggleValues(filters.care, values) as CareKey[],
+      });
     },
-    [filters, sort],
-  );
-
-  const setSort = useCallback(
-    (next: AnimalSort) => writeQuery(filters, next),
     [filters],
   );
 
-  const clearAll = useCallback(
-    () => writeQuery(EMPTY_FILTERS, sort),
-    [sort],
-  );
+  const setSort = useCallback((next: AnimalSort) => writeSort(next), []);
+
+  const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
 
   return {
     filters,

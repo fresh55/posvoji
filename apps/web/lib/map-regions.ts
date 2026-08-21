@@ -22,9 +22,30 @@ export function ringsPath(rings: Ring[]): string {
     .join("");
 }
 
+// An open path per line. ringsPath closes every ring it is given, which is
+// right for land and wrong for a coast or a river: closing one would rule a
+// chord back across the water it was drawing. Exported because the plate
+// generator draws the same coast and the same rivers.
+export function linesPath(lines: Ring[]): string {
+  return lines
+    .map(
+      ([first, ...rest]) =>
+        `M${first[0]} ${first[1]}${rest.map(([x, y]) => `L${x} ${y}`).join("")}`,
+    )
+    .join("");
+}
+
 export function regionPath(region: RegionShape): string {
   return ringsPath(region.rings);
 }
+
+// Every region's path string, keyed by region id, built once. The twelve
+// shapes carry about 2200 vertices between them and never change, so walking
+// them per render was the largest per-frame cost on the plate. Both the dialog
+// map and the trigger's mini map read this.
+export const REGION_PATHS = new Map<number, string>(
+  REGION_SHAPES.map((region) => [region.id, regionPath(region)]),
+);
 
 const at = (point: [number, number]) => `${point[0]},${point[1]}`;
 
@@ -105,8 +126,14 @@ function outlineRings(): Ring[] {
 
 const OUTLINE = outlineRings();
 
+// Same for every render, and the walk behind it is not free: the outline is
+// the same ~2200 vertices the regions carry. Every component reads this
+// constant; outlinePath stays for the plate generator, which imports this
+// module fresh per run.
+export const OUTLINE_PATH = ringsPath(OUTLINE);
+
 export function outlinePath(): string {
-  return ringsPath(OUTLINE);
+  return OUTLINE_PATH;
 }
 
 function inRing(point: Point, ring: [number, number][]): boolean {

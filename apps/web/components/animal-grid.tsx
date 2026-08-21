@@ -127,17 +127,18 @@ export function AnimalGrid({
 
   // Reachable zero state: every other facet is pre-guarded by isDeadOption
   // disabling, so a filtered-to-zero result in practice means a shelter
-  // selection with none of the active species. Computed only when a shelter
-  // is actually selected, by reusing applyFilters with that one group
-  // dropped, the same way the rest of the file measures facets.
-  const visibleWithoutShelter = useMemo(() => {
-    if (filters.shelter.length === 0) return undefined;
-    return applyFilters(animals, { ...filters, shelter: [] }, now);
-  }, [animals, filters, now]);
-  const shelterOnlyEmpty =
-    visible.length === 0 &&
-    filters.shelter.length > 0 &&
-    (visibleWithoutShelter?.length ?? 0) > 0;
+  // selection with none of the active species. Only worth a second full
+  // applyFilters pass (with the shelter group dropped, the same way the rest
+  // of the file measures facets) when the list is actually empty and a
+  // shelter is actually selected — otherwise this short-circuits and the
+  // normal case (a shelter picked, some animals showing) never pays for it.
+  const shelterOnlyEmpty = useMemo(
+    () =>
+      visible.length === 0 &&
+      filters.shelter.length > 0 &&
+      applyFilters(animals, { ...filters, shelter: [] }, now).length > 0,
+    [animals, filters, now, visible.length],
+  );
 
   const handleClearAll = useCallback(() => {
     if (activeCount > 0 || filters.species !== "all") {

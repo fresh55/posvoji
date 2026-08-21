@@ -113,7 +113,7 @@ export type RegionStats = {
   density: number;
 };
 
-export function getRegionStats(
+function getRegionStats(
   towns: Town[],
   selected: string[],
 ): Omit<RegionStats, "density"> {
@@ -169,16 +169,6 @@ export function regionStatsByRegion(
     region,
     stats: { ...stats, density: step(stats.animals) },
   }));
-}
-
-// The whole pipeline from pins to ranked region stats, for a caller with no
-// grouping of its own: MiniMap, and the two legend helpers below.
-export function regionDensities(
-  pins: ShelterPin[],
-  selected: string[],
-): { region: RegionShape; stats: RegionStats }[] {
-  const { byRegion } = groupTownsByRegion(layoutTowns(pins));
-  return regionStatsByRegion(byRegion, selected);
 }
 
 // Clear water between two markers, so touching circles still read as two.
@@ -380,6 +370,24 @@ export function selectionState(
   ).length;
   if (selectedCount === 0) return false;
   return selectedCount === values.length ? true : "mixed";
+}
+
+/** What selectionState says, as the word the map writes into a data attribute
+ *  and keys its looks off. "inert" is the fourth answer only a region can
+ *  give: nothing here to pick at all, which is not the same as nothing picked
+ *  yet. */
+export type MapStateName = "selected" | "mixed" | "idle" | "inert";
+
+// One home for the vocabulary, so the big map, its trigger preview and the
+// markers cannot spell the same state three ways. live defaults to true
+// because a marker has no inert state: a town with nothing to pick still
+// draws, and data-marker-live carries that fact separately.
+export function mapStateName(
+  state: boolean | "mixed",
+  live = true,
+): MapStateName {
+  if (!live) return "inert";
+  return state === true ? "selected" : state === "mixed" ? "mixed" : "idle";
 }
 
 // Whether a town's marker is a control or only a place: it needs something a

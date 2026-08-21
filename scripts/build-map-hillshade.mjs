@@ -26,12 +26,12 @@
 // Projection. Not a resampling of the tiles into some general grid. Every
 // output pixel is placed by inverting the map's own projection, the squeezed
 // equirectangular in apps/web/lib/geo.ts, and then sampled out of web mercator.
-// x = LON_MIN + (px / W) * LON_SPAN, y = LAT_MAX - (py / H) * LAT_SPAN, the
-// exact inverse of project(). This is what makes the Julian Alps sit inside the
-// bend of the Gorenjska border instead of near it. The constants below are
-// copied from geo.ts rather than imported because this is a plain .mjs script
-// outside the web workspace and its TypeScript path aliases; they are asserted
-// against geo.ts at the top of the run, so a drift fails loudly.
+// unproject() is imported straight from geo.ts, the exact inverse of project(),
+// so this file carries no copy of LON_MIN/LON_SPAN/LAT_MAX/LAT_SPAN and cannot
+// drift from the map: a resolve hook below lets plain Node load the .ts module
+// directly, the same pattern scripts/build-shelter-plates.mjs uses. This is
+// what makes the Julian Alps sit inside the bend of the Gorenjska border
+// instead of near it.
 //
 // Sun. Azimuth 315, altitude 45. The cartographic convention: light from the
 // northwest, because a reader's eye inverts relief lit from anywhere else.
@@ -50,23 +50,47 @@
 
 import { deflateSync, inflateSync } from "node:zlib";
 import { writeFileSync } from "node:fs";
+import { registerHooks } from "node:module";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+// The web app writes `import { x } from "./y"`, which TypeScript resolves and
+// Node does not. Retry once with the extension rather than rewrite the app.
+// Same hook scripts/build-shelter-plates.mjs uses to reach the same lib/.
+registerHooks({
+  resolve(specifier, context, next) {
+    try {
+      return next(specifier, context);
+    } catch (error) {
+      if (specifier.startsWith(".") && !specifier.endsWith(".ts")) {
+        return next(`${specifier}.ts`, context);
+      }
+      throw error;
+    }
+  },
+});
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "apps", "web", "public", "map-hillshade.png");
+const GEO = pathToFileURL(join(HERE, "..", "apps", "web", "lib", "geo.ts")).href;
 
-// The projection, from apps/web/lib/geo.ts. Kept in sync by assertion below.
-const LON_MIN = 13.35;
-const LON_SPAN = 3.3;
-const LAT_MAX = 46.9;
-const LAT_SPAN = 1.5;
+const { MAP_WIDTH, MAP_HEIGHT, unproject: projectUnproject } = await import(GEO);
+
+// The projection's bounding box, read back out of the real unproject() rather
+// than copied by hand. Everything below that needs a bound (tile selection,
+// cell size in metres) reads it from these four instead of from geo.ts's
+// private constants, which stay private.
+const LON_MIN = projectUnproject({ x: 0, y: 0 }).lon;
+const LON_SPAN = projectUnproject({ x: MAP_WIDTH, y: 0 }).lon - LON_MIN;
+const LAT_MAX = projectUnproject({ x: 0, y: 0 }).lat;
+const LAT_SPAN = LAT_MAX - projectUnproject({ x: 0, y: MAP_HEIGHT }).lat;
 
 // The viewBox the SVG draws in, and the raster at twice that. 640 x 420 is
 // about 400 m per pixel, fine enough that a ridge is a ridge and coarse enough
-// that the file stays small.
-const OUT_WIDTH = 640;
-const OUT_HEIGHT = 420;
+// that the file stays small. Tied to MAP_WIDTH/MAP_HEIGHT so the raster always
+// matches the viewBox's aspect ratio, not just its bounds.
+const OUT_WIDTH = MAP_WIDTH * 2;
+const OUT_HEIGHT = MAP_HEIGHT * 2;
 
 // Reprojection happens at twice the output and is box-averaged down. Sampling
 // straight to 640 would alias the 212 m source into moire on every slope.
@@ -260,25 +284,11 @@ function latToWorldY(lat) {
 }
 
 /** The inverse of project() in apps/web/lib/geo.ts, in normalized viewBox
- *  coordinates: u and v run 0..1 across the SVG's 320 x 210. */
+ *  coordinates: u and v run 0..1 across the SVG's 320 x 210. Thin wrapper
+ *  around the imported unproject(), which takes map units rather than
+ *  normalized ones. */
 function unproject(u, v) {
-  return { lon: LON_MIN + u * LON_SPAN, lat: LAT_MAX - v * LAT_SPAN };
-}
-
-function assertProjectionMatches() {
-  // project() maps lon LON_MIN to x 0 and LAT_MAX to y 0, and the far corner to
-  // the full viewBox. If geo.ts moves and this file does not, the corners stop
-  // agreeing and the run dies here rather than shipping a shifted raster.
-  const corner = unproject(1, 1);
-  const expected = { lon: 16.65, lat: 45.4 };
-  if (
-    Math.abs(corner.lon - expected.lon) > 1e-9 ||
-    Math.abs(corner.lat - expected.lat) > 1e-9
-  ) {
-    throw new Error(
-      `projection drift: southeast corner is ${corner.lon},${corner.lat}`,
-    );
-  }
+  return projectUnproject({ x: u * MAP_WIDTH, y: v * MAP_HEIGHT });
 }
 
 async function fetchTiles() {
@@ -294,8 +304,16 @@ async function fetchTiles() {
   // Float32Array is a few megabytes and there is nothing to be clever about.
   const elevation = new Float32Array(width * height);
 
+  // Fetched in parallel: 24 independent HTTP requests to the same public
+  // bucket, and nothing after this loop needs any one tile before another.
+  const jobs = [];
   for (let ty = y0; ty <= y1; ty++) {
     for (let tx = x0; tx <= x1; tx++) {
+      jobs.push({ tx, ty });
+    }
+  }
+  await Promise.all(
+    jobs.map(async ({ tx, ty }) => {
       const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${ZOOM}/${tx}/${ty}.png`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`${url}: ${response.status}`);
@@ -310,8 +328,8 @@ async function fetchTiles() {
         }
       }
       process.stdout.write(".");
-    }
-  }
+    }),
+  );
   process.stdout.write("\n");
   return { elevation, width, height, originX: x0 * TILE, originY: y0 * TILE };
 }
@@ -390,6 +408,9 @@ function hillshade(grid) {
   const cellY = ((LAT_SPAN / OUT_HEIGHT) * metresPerDegreeLat);
   const shade = new Uint8Array(OUT_WIDTH * OUT_HEIGHT);
   let darkest = 255;
+  // Constant across all 268,800 pixels; computed once rather than inside the
+  // loop below.
+  const step = 256 / LEVELS;
 
   for (let py = 0; py < OUT_HEIGHT; py++) {
     const lat = LAT_MAX - ((py + 0.5) / OUT_HEIGHT) * LAT_SPAN;
@@ -432,7 +453,6 @@ function hillshade(grid) {
       darkest = Math.min(darkest, value);
       // Quantize on a grid that always includes 255, so flat ground is exactly
       // white and multiplies to a no-op.
-      const step = 256 / LEVELS;
       shade[py * OUT_WIDTH + px] = Math.min(
         255,
         255 - Math.round((255 - value) / step) * step,
@@ -444,7 +464,6 @@ function hillshade(grid) {
 
 // ---------------------------------------------------------------------------
 
-assertProjectionMatches();
 const mosaic = await fetchTiles();
 const grid = reproject(mosaic);
 

@@ -14,19 +14,30 @@
 //
 // WHY IT IS DRAWN THIS WAY.
 //
-// Geometry. Nothing here is a copy of the map. The region shapes, the country
-// outline, the neighbours, the coast, the rivers, the projection and the
-// hillshade raster are the same modules apps/web/components/filters/shelter-map
-// draws from, imported straight out of the TypeScript. Node has no extensionless
-// resolution and the web app's imports are extensionless, so a resolve hook
-// retries a failed specifier with .ts and native type stripping does the rest.
-// The plate in the share image is therefore the plate on the site by
-// construction, and it cannot drift from it.
+// Geometry. The region shapes, the country outline, the neighbours, the coast,
+// the rivers, the projection and the hillshade raster are the same modules
+// apps/web/components/filters/shelter-map draws from, imported straight out of
+// the TypeScript. Node has no extensionless resolution and the web app's
+// imports are extensionless, so a resolve hook retries a failed specifier with
+// .ts and native type stripping does the rest. That geometry is the plate on
+// the site by construction and cannot drift from it.
 //
-// Renderer. Headless Chrome over CDP, the pattern build-map-hillshade.mjs
-// already establishes for build-time work. The alternative was the sharp
-// pipeline the animal share cards use (apps/ingest/src/share-cards.ts), and it
-// could not have drawn this: the plate leans on CSS custom properties, oklch
+// Furniture is not imported the same way, and is not claimed to be. The
+// neighbour labels, the sea label, the scale bar's placement, the context-fade
+// geometry and the spotlight ring size below (NEIGHBOR_LABELS, SEA_LABEL,
+// SCALE_BAR_*, CONTEXT_FADE, SEA_KEEP_*/SEA_FADE_RESUMES_*, SPOTLIGHT_RING,
+// contextFadeDefs()) are hand-copied literals, tuned against the live plate in
+// shelter-map.tsx and transcribed here. Retuning one on the site does not
+// retune it here; the fix is a shared apps/web/lib/map-furniture.ts that both
+// files import, which does not exist yet. Until it lands, a furniture change
+// on the site has to be brought over here by hand and this file rerun.
+//
+// Renderer. Headless Chrome over CDP. build-map-hillshade.mjs is a build-time
+// tool too, but it decodes PNGs and shades in pure JS; it uses no Chrome and
+// no CDP, so nothing here follows a pattern it establishes. The alternative
+// to Chrome was the sharp pipeline the animal share cards use
+// (apps/ingest/src/share-cards.ts), and it could not have drawn this: the
+// plate leans on CSS custom properties, oklch
 // colours, an SVG luminance mask and mix-blend-mode multiply for the relief,
 // and librsvg supports none of the four. Chrome renders the declarations a
 // browser renders, so the colours are the theme's own values rather than
@@ -100,7 +111,7 @@ const lib = (name) => pathToFileURL(join(WEB, "lib", name)).href;
 
 const { MAP_WIDTH, MAP_HEIGHT, KM_PER_MAP_UNIT, cityAt, project } =
   await import(lib("geo.ts"));
-const { outlinePath, regionPath, regionAt, ringsPath, REGION_SHAPES } =
+const { outlinePath, regionPath, regionAt, ringsPath, linesPath, REGION_SHAPES } =
   await import(lib("map-regions.ts"));
 const { COASTLINE, NEIGHBOR_SHAPES, RIVERS, SLOVENIA_UNDERLAY } =
   await import(lib("neighbor-shapes.ts"));
@@ -147,8 +158,9 @@ const QUIET_DENSITY = 0.2;
 // The lifted region, between that quiet step and the 0.9 a picked region wears.
 const REGION_LIFT = 0.62;
 
-// From shelter-map.tsx: the ring the spotlight draws outside a marker, and the
-// dot the phone layout puts inside it.
+// Copied from shelter-map.tsx, not imported (see the header note on
+// furniture): the ring the spotlight draws outside a marker, and the dot the
+// phone layout puts inside it.
 const SPOTLIGHT_RING = 3.5;
 const SPOTLIGHT_DOT = 2.2;
 // The mark's own label. 6 units rather than the callout's size because this
@@ -157,7 +169,9 @@ const SPOTLIGHT_DOT = 2.2;
 const MARK_LABEL_TYPE = 6;
 const MARK_LABEL_GAP = 2.5;
 
-// From shelter-map.tsx, so the furniture sits where it sits on the site.
+// Copied from shelter-map.tsx, not imported, so the furniture sits where it
+// sits on the site today. Retuning any of this on the site does not retune it
+// here until apps/web/lib/map-furniture.ts exists and both files import it.
 const NEIGHBOR_TYPE = 4.6;
 const NEIGHBOR_LABELS = [
   { text: "ITALIJA", x: 4, y: 136, anchor: "start" },
@@ -189,16 +203,8 @@ const SEA_FADE_RESUMES_RIGHT_OF_X = 50;
 const COUNTRY_OUTLINE = outlinePath();
 const UNDERLAY_PATH = ringsPath(SLOVENIA_UNDERLAY);
 
-// An open path per line: ringsPath closes what it is given, which is right for
-// land and wrong for a coast or a river.
-function linesPath(lines) {
-  return lines
-    .map(
-      ([first, ...rest]) =>
-        `M${first[0]} ${first[1]}${rest.map(([x, y]) => `L${x} ${y}`).join("")}`,
-    )
-    .join("");
-}
+// linesPath is imported from map-regions.ts: ringsPath closes what it is
+// given, which is right for land and wrong for a coast or a river.
 const COASTLINE_PATH = linesPath(COASTLINE);
 const RIVERS_PATH = linesPath(RIVERS.flatMap((river) => river.lines));
 

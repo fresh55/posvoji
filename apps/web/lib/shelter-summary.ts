@@ -1,4 +1,4 @@
-import type { Animal, Species } from "@posvoji/schema";
+import { Species, type Animal } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import { ageLabel, monthsInShelter } from "@/lib/labels";
@@ -15,8 +15,10 @@ export type ShelterSummary = {
 };
 
 // The order the site says species in everywhere else: the tabs, the result
-// count, the dialog's fact chips.
-const SPECIES_ORDER: Species[] = ["dog", "cat", "rabbit", "other"];
+// count, the dialog's fact chips. Reads straight off the schema enum, the
+// same way lib/filters.ts does, so a species added there shows up here
+// instead of silently vanishing from the pick card.
+const SPECIES_ORDER: Species[] = Species.options;
 
 // The same three statuses the animal card's long-stay mark skips (see
 // longStayLabel in labels.ts): an adopted animal's stay is history, and a

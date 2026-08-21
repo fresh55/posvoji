@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cityAt, distanceKm, project, type LatLon } from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS, layoutTowns, type ShelterPin } from "@/lib/map-layout";
-import { ShelterMap, anyEmptyMarker, anyRegionMixed } from "./shelter-map";
+import { ShelterMap, legendFlags } from "./shelter-map";
 
 function pin(
   value: string,
@@ -963,19 +963,28 @@ describe("ShelterMap density colour", () => {
   });
 });
 
-describe("anyRegionMixed", () => {
+describe("legendFlags: hasMixed", () => {
   const celje = [
     pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
     pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
   ];
 
   it("is false with nothing picked and false with a region picked whole", () => {
-    expect(anyRegionMixed(celje, [])).toBe(false);
-    expect(anyRegionMixed(celje, ["macja-hisa", "sia-in-lu"])).toBe(false);
+    expect(legendFlags(celje, []).hasMixed).toBe(false);
+    expect(legendFlags(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
+      false,
+    );
   });
 
   it("is true once one shelter of a region is picked and another is not", () => {
-    expect(anyRegionMixed(celje, ["macja-hisa"])).toBe(true);
+    expect(legendFlags(celje, ["macja-hisa"]).hasMixed).toBe(true);
+  });
+
+  it("says the region is picked whole only when it is", () => {
+    expect(legendFlags(celje, ["macja-hisa"]).hasSelected).toBe(false);
+    expect(legendFlags(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
+      true,
+    );
   });
 
   it("agrees with the state the map draws", () => {
@@ -993,20 +1002,20 @@ describe("anyRegionMixed", () => {
       { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
     ];
 
-    expect(anyRegionMixed(pins, ["ljubljana"])).toBe(false);
+    expect(legendFlags(pins, ["ljubljana"]).hasMixed).toBe(false);
   });
 });
 
-describe("anyEmptyMarker", () => {
+describe("legendFlags: hasEmpty", () => {
   it("is false while every shelter on the map lists animals", () => {
     expect(
-      anyEmptyMarker(
+      legendFlags(
         [
           pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
           pin("maribor", "Zavetišče Maribor", "Maribor", 40),
         ],
         [],
-      ),
+      ).hasEmpty,
     ).toBe(false);
   });
 
@@ -1016,7 +1025,7 @@ describe("anyEmptyMarker", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(anyEmptyMarker(pins, [])).toBe(true);
+    expect(legendFlags(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 
@@ -1026,7 +1035,7 @@ describe("anyEmptyMarker", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(anyEmptyMarker(pins, ["horjul"])).toBe(false);
+    expect(legendFlags(pins, ["horjul"]).hasEmpty).toBe(false);
     expect(renderMap(pins, ["horjul"])).not.toContain("data-marker-empty");
   });
 
@@ -1036,7 +1045,7 @@ describe("anyEmptyMarker", () => {
       { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
     ];
 
-    expect(anyEmptyMarker(pins, [])).toBe(true);
+    expect(legendFlags(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 });

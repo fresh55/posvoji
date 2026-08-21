@@ -24,11 +24,10 @@ import {
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { ResultCount } from "@/components/filters/result-count";
 import { EmptyMarkerGlyph } from "@/components/filters/map-marker";
+import { OriginGlyph } from "@/components/filters/map-callout";
 import {
   ShelterMap,
-  anyEmptyMarker,
-  anyRegionMixed,
-  anyRegionSelected,
+  legendFlags,
   type MapPick,
 } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
@@ -233,17 +232,7 @@ function MapLegend({
           circle the map draws at the origin, at legend size. */}
       {origin && (
         <span className="flex items-center gap-1.5">
-          <svg aria-hidden viewBox="0 0 16 16" className="size-4 shrink-0">
-            <circle
-              cx="8"
-              cy="8"
-              r="6"
-              strokeWidth="1.2"
-              strokeDasharray="2.4 2.4"
-              className="fill-none stroke-foreground opacity-70"
-            />
-            <circle cx="8" cy="8" r="2.1" className="fill-foreground" />
-          </svg>
+          <OriginGlyph className="size-4 shrink-0" />
           {messages.originLegend}
         </span>
       )}
@@ -267,6 +256,54 @@ function fold(text: string): string {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
+}
+
+// A row with the point its town projects to, and how far that is from the
+// origin. Both lists in this dialog carry it.
+type LocatedRow = ShelterRow & { at?: LatLon };
+
+// One list, placed on the map and put in the order the origin asks for. The
+// live shelters and the off-site ones are two lists of the same thing, so they
+// are located and sorted the same way.
+function locateAndSort(
+  options: FilterOption[],
+  origin: LatLon | undefined,
+): LocatedRow[] {
+  const located = options.map((option) => {
+    const at = option.city ? cityAt(option.city) : undefined;
+    return {
+      ...option,
+      at,
+      km: at && origin ? distanceKm(origin, at) : undefined,
+    };
+  });
+  if (!origin) return located;
+  // Shelters we cannot place keep their alphabetical order at the end, rather
+  // than being dropped from a sort they cannot join.
+  return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+}
+
+// The rows the map can actually draw, as pins. A row with no point is left
+// off rather than placed somewhere plausible; the count under the list says
+// how many those are. What differs between the two lists is only what a pin
+// carries beyond its place, so that is the argument.
+function toPins(
+  rows: LocatedRow[],
+  extra: (row: LocatedRow) => { count: number; selectable?: boolean },
+): ShelterPin[] {
+  return rows.flatMap((row) =>
+    row.at
+      ? [
+          {
+            value: row.value,
+            label: row.label,
+            city: row.city ?? "",
+            at: row.at,
+            ...extra(row),
+          },
+        ]
+      : [],
+  );
 }
 
 // The map is the dialog: a near-full-viewport plate with the list, the title,
@@ -407,36 +444,17 @@ export function LocationPicker({
     null,
   );
 
-  const rows: (ShelterRow & { at?: ReturnType<typeof cityAt> })[] = useMemo(() => {
-    const located = options.map((option) => {
-      const at = option.city ? cityAt(option.city) : undefined;
-      return {
-        ...option,
-        at,
-        km: at && origin ? distanceKm(origin, at) : undefined,
-      };
-    });
-    if (!origin) return located;
-    // Shelters we cannot place keep their alphabetical order at the end,
-    // rather than being dropped from a sort they cannot join.
-    return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
-  }, [options, origin]);
+  const rows: LocatedRow[] = useMemo(
+    () => locateAndSort(options, origin),
+    [options, origin],
+  );
 
   // Same locating and sorting as the live rows, in their own list: these are
   // real shelters someone may live next to, they just have nothing to filter.
-  const offRows: (ShelterRow & { at?: ReturnType<typeof cityAt> })[] =
-    useMemo(() => {
-      const located = (offSite ?? []).map((option) => {
-        const at = option.city ? cityAt(option.city) : undefined;
-        return {
-          ...option,
-          at,
-          km: at && origin ? distanceKm(origin, at) : undefined,
-        };
-      });
-      if (!origin) return located;
-      return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
-    }, [offSite, origin]);
+  const offRows: LocatedRow[] = useMemo(
+    () => locateAndSort(offSite ?? [], origin),
+    [offSite, origin],
+  );
 
   // What the municipality cards may offer to select: only shelters that
   // exist as filter options, i.e. currently have animals to show.
@@ -447,35 +465,10 @@ export function LocationPicker({
 
   const pins: ShelterPin[] = useMemo(
     () => [
-      ...rows.flatMap((row) =>
-        row.at
-          ? [
-              {
-                value: row.value,
-                label: row.label,
-                city: row.city ?? "",
-                at: row.at,
-                count: counts.get(row.value) ?? 0,
-              },
-            ]
-          : [],
-      ),
+      ...toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
       // selectable: false is what keeps these out of region picks: a region
       // click must never select a shelter that has nothing to show.
-      ...offRows.flatMap((row) =>
-        row.at
-          ? [
-              {
-                value: row.value,
-                label: row.label,
-                city: row.city ?? "",
-                at: row.at,
-                count: 0,
-                selectable: false,
-              },
-            ]
-          : [],
-      ),
+      ...toPins(offRows, () => ({ count: 0, selectable: false })),
     ],
     [counts, offRows, rows],
   );
@@ -517,36 +510,20 @@ export function LocationPicker({
 
   // Search narrows the list only. The map keeps every pin, so the country
   // stays whole while you type.
-  const visibleRows = query.trim()
-    ? rows.filter((row) =>
-        fold(`${row.label} ${row.city ?? ""}`).includes(fold(query)),
-      )
-    : rows;
-  const visibleOffRows = query.trim()
-    ? offRows.filter((row) =>
-        fold(`${row.label} ${row.city ?? ""}`).includes(fold(query)),
-      )
-    : offRows;
+  const matchesQuery = (row: ShelterRow) =>
+    fold(`${row.label} ${row.city ?? ""}`).includes(fold(query));
+  const visibleRows = query.trim() ? rows.filter(matchesQuery) : rows;
+  const visibleOffRows = query.trim() ? offRows.filter(matchesQuery) : offRows;
 
   const unplaced = rows.length + offRows.length - pins.length;
-  // Asked of the same grouping the map draws from, so the legend row and the
-  // hatch on the country appear and disappear together. Memoized because it
-  // walks every town through a point-in-polygon lookup.
-  const hasMixedRegion = useMemo(
-    () => anyRegionMixed(pins, selected),
-    [pins, selected],
-  );
-  // And for the solid selection green, so the row that says which green means
-  // "chosen" arrives with the first fully picked region.
-  const hasSelectedRegion = useMemo(
-    () => anyRegionSelected(pins, selected),
-    [pins, selected],
-  );
-  // Same deal for the hollow circles: asked of the towns the map lays out, so
-  // the row and the circles appear together. Both legends read it; each decides
-  // for itself at which widths its own rendering draws markers.
-  const hasEmptyMarker = useMemo(
-    () => anyEmptyMarker(pins, selected),
+  // Which legend rows the map has earned right now: the solid selection green,
+  // the hatch, the hollow circle. Asked of the same layout and the same
+  // grouping the map draws from, so a row and the thing it explains appear and
+  // disappear together. One memo and one pass, because laying the towns out
+  // and walking each one through a point-in-polygon lookup is the expensive
+  // part and all three answers come off it.
+  const { hasSelected, hasMixed, hasEmpty } = useMemo(
+    () => legendFlags(pins, selected),
     [pins, selected],
   );
   const nearbyOn = state.status === "on";
@@ -816,9 +793,9 @@ export function LocationPicker({
                   highlightedDensity={highlightedDensity}
                   onHoverDensity={setHighlightedDensity}
                   onLeaveDensity={() => setHighlightedDensity(null)}
-                  hasSelectedRegion={hasSelectedRegion}
-                  hasMixedRegion={hasMixedRegion}
-                  hasEmptyMarker={hasEmptyMarker}
+                  hasSelectedRegion={hasSelected}
+                  hasMixedRegion={hasMixed}
+                  hasEmptyMarker={hasEmpty}
                   origin={origin}
                   messages={messages}
                 />
@@ -834,12 +811,12 @@ export function LocationPicker({
                   highlightedDensity={highlightedDensity}
                   onHoverDensity={setHighlightedDensity}
                   onLeaveDensity={() => setHighlightedDensity(null)}
-                  hasSelectedRegion={hasSelectedRegion}
-                  hasMixedRegion={hasMixedRegion}
+                  hasSelectedRegion={hasSelected}
+                  hasMixedRegion={hasMixed}
                   // Acted on here too, unlike before: this variant now covers
                   // md to lg, where the plate is full width and draws every
                   // marker. The row's own class is what keeps it off the phone.
-                  hasEmptyMarker={hasEmptyMarker}
+                  hasEmptyMarker={hasEmpty}
                   origin={origin}
                   messages={messages}
                 />
@@ -1173,22 +1150,20 @@ export function LocationPicker({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
+                  // The top row a key may act on: the first match that has
+                  // something to toggle. Both branches below mean the same
+                  // row, so it is found once.
+                  const first = visibleRows.find(
+                    (row) =>
+                      (counts.get(row.value) ?? 0) > 0 ||
+                      selected.includes(row.value),
+                  );
                   // Enter takes the top match, so search-and-pick is one
                   // gesture. ArrowDown walks into the list instead.
                   if (event.key === "Enter" && query.trim()) {
-                    const first = visibleRows.find(
-                      (row) =>
-                        (counts.get(row.value) ?? 0) > 0 ||
-                        selected.includes(row.value),
-                    );
                     if (first) onToggle(first.value);
                     event.preventDefault();
                   } else if (event.key === "ArrowDown") {
-                    const first = visibleRows.find(
-                      (row) =>
-                        (counts.get(row.value) ?? 0) > 0 ||
-                        selected.includes(row.value),
-                    );
                     if (first) {
                       rowRefs.current.get(first.value)?.focus();
                       event.preventDefault();

@@ -32,6 +32,18 @@ export function project(at: LatLon): { x: number; y: number } {
   };
 }
 
+// The exact inverse of project(), in the same map units (0..MAP_WIDTH,
+// 0..MAP_HEIGHT). Exported so a build script that needs to walk the
+// projection backwards, such as scripts/build-map-hillshade.mjs reprojecting
+// terrain tiles onto the viewBox, can import the real thing instead of
+// keeping its own copy of LON_MIN/LON_SPAN/LAT_MAX/LAT_SPAN in sync by hand.
+export function unproject(point: { x: number; y: number }): LatLon {
+  return {
+    lon: LON_MIN + (point.x / MAP_WIDTH) * LON_SPAN,
+    lat: LAT_MAX - (point.y / MAP_HEIGHT) * LAT_SPAN,
+  };
+}
+
 export function onMap(at: LatLon): boolean {
   const { x, y } = project(at);
   return x >= 0 && x <= MAP_WIDTH && y >= 0 && y <= MAP_HEIGHT;

@@ -87,6 +87,16 @@ export function MapCallout({
   );
 }
 
+// The mark's own geometry, in the map's user units. Named because the legend
+// draws the same mark from the same numbers, so the ring on the country and
+// the ring in the key cannot drift apart.
+const ORIGIN_RING_RADIUS = 5;
+const ORIGIN_RING_STROKE = 1;
+const ORIGIN_RING_DASH = 2;
+const ORIGIN_DOT_RADIUS = 1.75;
+const ORIGIN_RING_CLASS = "fill-none stroke-foreground opacity-70";
+const ORIGIN_DOT_CLASS = "fill-foreground";
+
 // Dashed, so it reads as "you" rather than as one more shelter.
 export function Origin({ at }: { at: LatLon }) {
   const { x, y } = project(at);
@@ -95,12 +105,50 @@ export function Origin({ at }: { at: LatLon }) {
       <circle
         cx={x}
         cy={y}
-        r={5}
-        strokeWidth={1}
-        strokeDasharray="2 2"
-        className="fill-none stroke-foreground opacity-70"
+        r={ORIGIN_RING_RADIUS}
+        strokeWidth={ORIGIN_RING_STROKE}
+        strokeDasharray={`${ORIGIN_RING_DASH} ${ORIGIN_RING_DASH}`}
+        className={ORIGIN_RING_CLASS}
       />
-      <circle cx={x} cy={y} r={1.75} className="fill-foreground" />
+      <circle cx={x} cy={y} r={ORIGIN_DOT_RADIUS} className={ORIGIN_DOT_CLASS} />
     </g>
+  );
+}
+
+// The legend's box, and how much larger the mark is drawn inside it than on
+// the country. 1.2 is what fills a 16-unit box with the ring while leaving
+// room for its own stroke, and it is applied to every radius alike, so the
+// dashes, the ring and the dot keep exactly the proportions they have on the
+// map.
+const ORIGIN_GLYPH_BOX = 16;
+const ORIGIN_GLYPH_SCALE = 1.2;
+
+// The same mark at legend size, the way EmptyMarkerGlyph is the same hollow
+// disc at legend size: the key repeats the component, not a lookalike drawn
+// from hand-converted radii.
+export function OriginGlyph({ className }: { className?: string }) {
+  const centre = ORIGIN_GLYPH_BOX / 2;
+  const dash = ORIGIN_RING_DASH * ORIGIN_GLYPH_SCALE;
+  return (
+    <svg
+      aria-hidden
+      viewBox={`0 0 ${ORIGIN_GLYPH_BOX} ${ORIGIN_GLYPH_BOX}`}
+      className={className}
+    >
+      <circle
+        cx={centre}
+        cy={centre}
+        r={ORIGIN_RING_RADIUS * ORIGIN_GLYPH_SCALE}
+        strokeWidth={ORIGIN_RING_STROKE * ORIGIN_GLYPH_SCALE}
+        strokeDasharray={`${dash} ${dash}`}
+        className={ORIGIN_RING_CLASS}
+      />
+      <circle
+        cx={centre}
+        cy={centre}
+        r={ORIGIN_DOT_RADIUS * ORIGIN_GLYPH_SCALE}
+        className={ORIGIN_DOT_CLASS}
+      />
+    </svg>
   );
 }

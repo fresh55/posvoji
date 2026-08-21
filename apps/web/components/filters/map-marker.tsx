@@ -7,6 +7,7 @@ import {
   type ClusterDisc,
   discFitsGlyph,
   dominantShelterIndex,
+  mapStateName,
   markerGeometry,
   markerRadius,
   MARKER_STROKE_WIDTH,
@@ -22,10 +23,10 @@ import {
 import { cn } from "@/lib/utils";
 
 // The hollow disc a shelter with nothing listed draws: just over half the
-// radius the coin would have taken, no fill, foreground at 45%. Exported
-// because the map legend repeats this mark at legend size, and a lookalike
-// painted from other classes would drift from the real one the first time
-// either moved.
+// radius the coin would have taken, no fill, foreground at 45%. The map legend
+// repeats this mark at legend size, and what it repeats is EmptyMarkerGlyph
+// below rather than these three numbers, so a lookalike painted from other
+// classes can never drift from the real one.
 //
 // 0.54 rather than the 0.5 it was, so the mark keeps the absolute size it had
 // before the smallest radius step dropped from 5 to 4.7: at 0.5 it would have
@@ -33,9 +34,9 @@ import { cn } from "@/lib/utils";
 // count to encode. Its whole message is "nothing listed here", so it has no
 // reason to shrink along with a scale it does not take part in. 0.54 puts it
 // at 2.295, within a rounding error of where it was.
-export const EMPTY_MARKER_RADIUS_SCALE = 0.54;
-export const EMPTY_MARKER_STROKE_WIDTH = 0.7;
-export const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
+const EMPTY_MARKER_RADIUS_SCALE = 0.54;
+const EMPTY_MARKER_STROKE_WIDTH = 0.7;
+const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
 
 // The same mark at legend size. The viewBox runs in the map's own user units,
 // so the radius and the stroke keep the proportion they have on the country:
@@ -228,9 +229,7 @@ export function Marker({
       data-marker-key={town.key}
       data-marker-live={live}
       data-marker-shelters={town.shelters.length}
-      data-marker-state={
-        state === true ? "selected" : state === "mixed" ? "mixed" : "idle"
-      }
+      data-marker-state={mapStateName(state)}
       data-marker-info={info || undefined}
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
@@ -284,7 +283,13 @@ export function Marker({
           hoveredShelterValue={hoveredShelterValue}
         />
       ) : town.shelters.length > MAX_CLUSTER_DISCS ? (
-        <CountDisc town={town} state={state} live={live} highlighted={highlighted} />
+        <CountDisc
+          town={town}
+          discRadius={geometry.discRadius}
+          state={state}
+          live={live}
+          highlighted={highlighted}
+        />
       ) : (
         <ClusterMarker
           town={town}
@@ -482,6 +487,39 @@ function MarkerDisc({
   );
 }
 
+// What a mark answering for one shelter is told, whether it is a cluster disc,
+// a dominated town's coin or one of its satellites. All three divide their
+// marker per shelter and all three divide it the same way, so the bundle is
+// written once.
+function markProps(
+  shelter: ShelterPin,
+  {
+    selected,
+    live,
+    highlighted,
+    hoveredShelterValue,
+  }: {
+    selected: string[];
+    live: boolean;
+    highlighted: boolean;
+    hoveredShelterValue: string | null;
+  },
+) {
+  const picked = selected.includes(shelter.value);
+  return {
+    selected: picked,
+    // An off-site shelter keeps its own mark whatever its town holds: the
+    // mark, not the town, is what says "this one you can pick".
+    live: live && shelter.selectable !== false,
+    discAttribute: picked ? "selected" : "idle",
+    shelterValue: shelter.value,
+    // A list hover still names the town, so it lights every mark. A pointer on
+    // one mark lights that one.
+    highlighted: highlighted || hoveredShelterValue === shelter.value,
+    hoverScope: "self" as const,
+  };
+}
+
 // One disc per shelter, each carrying that shelter's own selection and its own
 // count. The old cluster drew two discs whatever the town held, lit the first
 // of them on "mixed" regardless of which shelter was picked, and drew them the
@@ -508,16 +546,12 @@ function ClusterMarker({
       cy={discs[index].y}
       r={discs[index].r}
       glyphScale={1.3}
-      selected={selected.includes(shelter.value)}
-      // An off-site shelter keeps its dot even when its town has animals: the
-      // disc, not the town, is what says "this one you can pick".
-      live={live && shelter.selectable !== false}
-      discAttribute={selected.includes(shelter.value) ? "selected" : "idle"}
-      shelterValue={shelter.value}
-      // The hovered wedge picks the disc that leans in. A list hover still
-      // names the town, so it lights every disc, as before.
-      highlighted={highlighted || hoveredShelterValue === shelter.value}
-      hoverScope="self"
+      {...markProps(shelter, {
+        selected,
+        live,
+        highlighted,
+        hoveredShelterValue,
+      })}
     />
   ));
 }
@@ -549,22 +583,8 @@ function SatelliteMarker({
   highlighted: boolean;
   hoveredShelterValue: string | null;
 }) {
-  const mark = (shelter: ShelterPin) => ({
-    selected: selected.includes(shelter.value),
-    // An off-site shelter keeps its hollow mark whatever its town holds: the
-    // mark, not the town, is what says "this one you can pick".
-    live: live && shelter.selectable !== false,
-    discAttribute: selected.includes(shelter.value) ? "selected" : "idle",
-    shelterValue: shelter.value,
-    // A list hover still names the town, so it lights every mark. A pointer on
-    // one mark lights that one.
-    highlighted: highlighted || hoveredShelterValue === shelter.value,
-    hoverScope: "self" as const,
-  });
-
-  const bySlot = town.shelters
-    .filter((shelter) => shelter.value !== dominant.value)
-    .map((shelter, index) => ({ shelter, disc: satellites[index] }));
+  const mark = (shelter: ShelterPin) =>
+    markProps(shelter, { selected, live, highlighted, hoveredShelterValue });
 
   return (
     <>
@@ -579,7 +599,16 @@ function SatelliteMarker({
         markKind="coin"
         {...mark(dominant)}
       />
-      {bySlot.map(({ shelter, disc }) => (
+      {/* satelliteDiscs already put the companions in slot order and returns
+          the shelter each one stands for, so the shelter is looked up by
+          value rather than paired back by index: one ordering, not two that
+          have to silently agree. */}
+      {satellites.map((disc) => {
+        const shelter = town.shelters.find(
+          (entry) => entry.value === disc.value,
+        );
+        if (!shelter) return null;
+        return (
         <MarkerDisc
           key={shelter.value}
           cx={disc.x}
@@ -596,7 +625,8 @@ function SatelliteMarker({
           emptyScale={1}
           {...mark(shelter)}
         />
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -605,16 +635,19 @@ function SatelliteMarker({
 // the marker says the number instead.
 function CountDisc({
   town,
+  discRadius,
   state,
   live,
   highlighted,
 }: {
   town: Town;
+  /** The coin, handed down from the marker that already measured it, the same
+   *  way SatelliteMarker receives coinRadius. */
+  discRadius: number;
   state: boolean | "mixed";
   live: boolean;
   highlighted: boolean;
 }) {
-  const { discRadius } = markerGeometry(town);
   return (
     <g
       data-cluster-overflow={town.shelters.length}

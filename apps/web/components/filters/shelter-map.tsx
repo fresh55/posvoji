@@ -15,6 +15,8 @@ import {
   DENSITY_STEPS,
   groupTownsByRegion,
   layoutTowns,
+  mapStateName,
+  type MapStateName,
   MAX_CLUSTER_DISCS,
   regionStatsByRegion,
   townCount,
@@ -26,8 +28,9 @@ import {
   type Town,
 } from "@/lib/map-layout";
 import {
-  outlinePath,
-  regionPath,
+  linesPath,
+  OUTLINE_PATH,
+  REGION_PATHS,
   ringsPath,
   type RegionShape,
 } from "@/lib/map-regions";
@@ -55,59 +58,56 @@ export type MapPick =
   | { kind: "shelter"; value: string }
   | { kind: "group"; label: string; values: string[] };
 
-/** Whether any region is partly picked right now. The legend's hatch row is
- *  drawn only while this is true, so the hatch explains itself the moment it
- *  first appears instead of standing in the legend unprovoked. Shares the
- *  grouping and the stats the map itself draws from, so the row cannot claim a
- *  state the country is not in. */
-export function anyRegionMixed(pins: ShelterPin[], selected: string[]): boolean {
-  const { byRegion } = groupTownsByRegion(layoutTowns(pins));
-  return regionStatsByRegion(byRegion, selected).some(
-    ({ stats }) => stats.live && stats.state === "mixed",
+// Whether this town draws the hollow "nothing listed" circle anywhere on it.
+// Read off townIsLive, which is what the marker itself decides from, so the
+// legend row appears exactly when the circles do.
+function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
+  // Past MAX_CLUSTER_DISCS the marker gives up on one disc per shelter and
+  // says the number instead, and a count disc is never hollow.
+  if (town.shelters.length > MAX_CLUSTER_DISCS) return false;
+  const live = townIsLive(town, selected);
+  // A single marker carries the town's own answer. It cannot be selected
+  // while it is not live, so liveness settles it alone.
+  if (town.shelters.length === 1) return !live;
+  // In a cluster each disc answers for its own shelter, and an off-site one
+  // stays hollow even in a town that has animals.
+  return town.shelters.some(
+    (shelter) =>
+      !selected.includes(shelter.value) &&
+      !(live && shelter.selectable !== false),
   );
 }
 
-/** Whether any region is fully picked right now, for the legend row that
- *  separates the solid selection green from the density ramp. The two share a
- *  hue on purpose, so the moment the saturated green first lands on the map is
- *  the moment the legend has to say which green means "chosen". Same sourcing
- *  as anyRegionMixed, so the row and the state cannot disagree. */
-export function anyRegionSelected(
+/** The three states the legend grows a row for, answered in one pass.
+ *
+ *  Each row waits for the thing it explains to exist: the solid selection
+ *  green the moment a region is picked whole, the hatch the moment one is
+ *  partly picked, the hollow circle the moment a shelter with nothing listed
+ *  is drawn. So all three questions are about the same country at the same
+ *  moment, and one layout, one grouping and one stats pass answer them
+ *  together rather than three times over.
+ *
+ *  Shares that layout and those stats with the map itself, so a row cannot
+ *  claim a state the country is not in.
+ *
+ *  hasEmpty is about markers, which are md+ only; the legend decides for
+ *  itself at which widths its own rendering acts on it. */
+export function legendFlags(
   pins: ShelterPin[],
   selected: string[],
-): boolean {
-  const { byRegion } = groupTownsByRegion(layoutTowns(pins));
-  return regionStatsByRegion(byRegion, selected).some(
-    ({ stats }) => stats.live && stats.state === true,
-  );
-}
-
-/** Whether any marker on the map is drawn as an empty shelter: the hollow
- *  circle a shelter with nothing listed and nothing picked gets. The legend's
- *  row for that circle is drawn only while this is true, the same deal the
- *  hatch row has, because a mark that small teaches nobody anything on its own.
- *  Read off layoutTowns and townIsLive, which is what the marker decides from,
- *  so the row appears exactly when the circles do.
- *
- *  Only the panel legend uses it. Markers are md+ only, and a phone must not be
- *  handed a row about a shape it never draws. */
-export function anyEmptyMarker(pins: ShelterPin[], selected: string[]): boolean {
-  return layoutTowns(pins).some((town) => {
-    // Past MAX_CLUSTER_DISCS the marker gives up on one disc per shelter and
-    // says the number instead, and a count disc is never hollow.
-    if (town.shelters.length > MAX_CLUSTER_DISCS) return false;
-    const live = townIsLive(town, selected);
-    // A single marker carries the town's own answer. It cannot be selected
-    // while it is not live, so liveness settles it alone.
-    if (town.shelters.length === 1) return !live;
-    // In a cluster each disc answers for its own shelter, and an off-site one
-    // stays hollow even in a town that has animals.
-    return town.shelters.some(
-      (shelter) =>
-        !selected.includes(shelter.value) &&
-        !(live && shelter.selectable !== false),
-    );
-  });
+): { hasSelected: boolean; hasMixed: boolean; hasEmpty: boolean } {
+  const towns = layoutTowns(pins);
+  const { byRegion } = groupTownsByRegion(towns);
+  const regions = regionStatsByRegion(byRegion, selected);
+  return {
+    hasSelected: regions.some(
+      ({ stats }) => stats.live && stats.state === true,
+    ),
+    hasMixed: regions.some(
+      ({ stats }) => stats.live && stats.state === "mixed",
+    ),
+    hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected)),
+  };
 }
 
 // Regions are the keyboard and narrow-screen controls; town markers add
@@ -220,7 +220,13 @@ export function ShelterMap({
     ? regionIdByTownKey.get(highlightedTown.key)
     : undefined;
 
-  const regions = regionStatsByRegion(byRegion, selected);
+  // Memoized alongside the grouping above it: ranking twelve regions is a pass
+  // over every town, and this component re-renders on every hover anywhere on
+  // the map.
+  const regions = useMemo(
+    () => regionStatsByRegion(byRegion, selected),
+    [byRegion, selected],
+  );
 
   const liveRegionIds = regions
     .filter(({ stats }) => stats.live)
@@ -540,8 +546,8 @@ const SPOTLIGHT_RING = 3.5;
 // foreground alpha well under the callouts, which are the type that answers
 // questions.
 //
-// Every number below is in viewBox units and was tuned against the live plate,
-// not copied off the mock in app/dev/map-stage. Two rules set them. Nothing
+// Every number below is in viewBox units and was tuned against the live plate.
+// Two rules set them. Nothing
 // sits within 4 units of a viewBox edge, because the SVG letterboxes into
 // containers of every aspect ratio and a label on the frame is a label waiting
 // to be clipped. And nothing comes within a marker's reach of a marker the real
@@ -861,60 +867,60 @@ const SEA_FADE_RESUMES_RIGHT_OF_X = 50;
 // are off there, so the sea and the Italian coast around Trieste run to the
 // viewBox edge at full strength. A map that ends at its frame is ordinary
 // cartography; a map with its only water washed out is not.
+const FADE_STRIPS = [
+  { key: "t", x: 0, y: 0, w: MAP_WIDTH, h: CONTEXT_FADE, from: [0, 0], to: [0, 1] },
+  {
+    key: "b",
+    x: 0,
+    y: MAP_HEIGHT - CONTEXT_FADE,
+    w: MAP_WIDTH,
+    h: CONTEXT_FADE,
+    from: [0, 1],
+    to: [0, 0],
+  },
+  { key: "l", x: 0, y: 0, w: CONTEXT_FADE, h: MAP_HEIGHT, from: [0, 0], to: [1, 0] },
+  {
+    key: "r",
+    x: MAP_WIDTH - CONTEXT_FADE,
+    y: 0,
+    w: CONTEXT_FADE,
+    h: MAP_HEIGHT,
+    from: [1, 0],
+    to: [0, 0],
+  },
+];
+
+// White lets the strip fade, black holds it off. Both run in user units so
+// the stops sit on the coastline the numbers were read from.
+const FADE_KEEPS = [
+  {
+    key: "l",
+    x1: 0,
+    y1: SEA_FADE_RESUMES_ABOVE_Y,
+    x2: 0,
+    y2: SEA_KEEP_BELOW_Y,
+    x: 0,
+    y: 0,
+    w: CONTEXT_FADE,
+    h: MAP_HEIGHT,
+  },
+  {
+    key: "b",
+    x1: SEA_FADE_RESUMES_RIGHT_OF_X,
+    y1: 0,
+    x2: SEA_KEEP_LEFT_OF_X,
+    y2: 0,
+    x: 0,
+    y: MAP_HEIGHT - CONTEXT_FADE,
+    w: MAP_WIDTH,
+    h: CONTEXT_FADE,
+  },
+];
+
 function ContextFade({ id }: { id: string }) {
-  const strips = [
-    { key: "t", x: 0, y: 0, w: MAP_WIDTH, h: CONTEXT_FADE, from: [0, 0], to: [0, 1] },
-    {
-      key: "b",
-      x: 0,
-      y: MAP_HEIGHT - CONTEXT_FADE,
-      w: MAP_WIDTH,
-      h: CONTEXT_FADE,
-      from: [0, 1],
-      to: [0, 0],
-    },
-    { key: "l", x: 0, y: 0, w: CONTEXT_FADE, h: MAP_HEIGHT, from: [0, 0], to: [1, 0] },
-    {
-      key: "r",
-      x: MAP_WIDTH - CONTEXT_FADE,
-      y: 0,
-      w: CONTEXT_FADE,
-      h: MAP_HEIGHT,
-      from: [1, 0],
-      to: [0, 0],
-    },
-  ];
-
-  // White lets the strip fade, black holds it off. Both run in user units so
-  // the stops sit on the coastline the numbers were read from.
-  const keeps = [
-    {
-      key: "l",
-      x1: 0,
-      y1: SEA_FADE_RESUMES_ABOVE_Y,
-      x2: 0,
-      y2: SEA_KEEP_BELOW_Y,
-      x: 0,
-      y: 0,
-      w: CONTEXT_FADE,
-      h: MAP_HEIGHT,
-    },
-    {
-      key: "b",
-      x1: SEA_FADE_RESUMES_RIGHT_OF_X,
-      y1: 0,
-      x2: SEA_KEEP_LEFT_OF_X,
-      y2: 0,
-      x: 0,
-      y: MAP_HEIGHT - CONTEXT_FADE,
-      w: MAP_WIDTH,
-      h: CONTEXT_FADE,
-    },
-  ];
-
   return (
     <>
-      {strips.map((strip) => (
+      {FADE_STRIPS.map((strip) => (
         <linearGradient
           key={strip.key}
           id={`${id}-${strip.key}`}
@@ -927,7 +933,7 @@ function ContextFade({ id }: { id: string }) {
           <stop offset="1" stopColor="black" stopOpacity={0} />
         </linearGradient>
       ))}
-      {keeps.map((keep) => (
+      {FADE_KEEPS.map((keep) => (
         <linearGradient
           key={keep.key}
           id={`${id}-${keep.key}-keep`}
@@ -941,7 +947,7 @@ function ContextFade({ id }: { id: string }) {
           <stop offset="1" stopColor="black" />
         </linearGradient>
       ))}
-      {keeps.map((keep) => (
+      {FADE_KEEPS.map((keep) => (
         <mask
           key={keep.key}
           id={`${id}-${keep.key}-keep-mask`}
@@ -969,7 +975,7 @@ function ContextFade({ id }: { id: string }) {
         height={MAP_HEIGHT}
       >
         <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="white" />
-        {strips.map((strip) => (
+        {FADE_STRIPS.map((strip) => (
           <rect
             key={strip.key}
             x={strip.x}
@@ -978,7 +984,7 @@ function ContextFade({ id }: { id: string }) {
             height={strip.h}
             fill={`url(#${id}-${strip.key})`}
             mask={
-              keeps.some((keep) => keep.key === strip.key)
+              FADE_KEEPS.some((keep) => keep.key === strip.key)
                 ? `url(#${id}-${strip.key}-keep-mask)`
                 : undefined
             }
@@ -987,18 +993,6 @@ function ContextFade({ id }: { id: string }) {
       </mask>
     </>
   );
-}
-
-// An open path per line. ringsPath closes every ring it is given, which is
-// right for land and wrong for a coast or a river: closing one would rule a
-// chord back across the water it was drawing.
-function linesPath(lines: [number, number][][]): string {
-  return lines
-    .map(
-      ([first, ...rest]) =>
-        `M${first[0]} ${first[1]}${rest.map(([x, y]) => `L${x} ${y}`).join("")}`,
-    )
-    .join("");
 }
 
 // Same for every render, and the walk behind them is not free.
@@ -1142,8 +1136,9 @@ function GeographicContext({
 // empty region still reads as part of the silhouette rather than as a hole.
 const REGION_STROKE = "stroke-foreground/30";
 
-// Same for every render, and the walk behind it is not free.
-const COUNTRY_OUTLINE = outlinePath();
+// Named locally because the JSX below reads it four times; the walk behind it
+// happens once, in lib/map-regions.ts.
+const COUNTRY_OUTLINE = OUTLINE_PATH;
 
 /** What a legend hover asks of one region: wear the hover look, fade back, or
  *  nothing. */
@@ -1180,11 +1175,9 @@ function densityStyle(density: number, dimmed = false): CSSProperties {
   } as CSSProperties;
 }
 
-type RegionStateName = "selected" | "mixed" | "idle";
-
-function regionStateName(state: boolean | "mixed"): RegionStateName {
-  return state === true ? "selected" : state === "mixed" ? "mixed" : "idle";
-}
+// The three a live region can wear. An inert one leaves before this table is
+// reached, and has no look to pick: it draws the one branch below.
+type LiveRegionState = Exclude<MapStateName, "inert">;
 
 // Selection and density share one hue and differ in commitment: density is
 // --map-density-fill, a muted green laid on at the ramp's alpha, and a
@@ -1196,7 +1189,7 @@ function regionStateName(state: boolean | "mixed"): RegionStateName {
 // declaration. Keyed by region state so the JSX picks a class string instead
 // of nesting a nine-way ternary.
 const REGION_LOOK: Record<
-  RegionStateName,
+  LiveRegionState,
   { rest: string; highlighted: string }
 > = {
   selected: {
@@ -1280,9 +1273,12 @@ function Region({
   hatchId: string;
 }) {
   const { locale, messages } = useI18n();
-  const d = regionPath(region);
+  const d = REGION_PATHS.get(region.id) ?? "";
+  // Computed before the branch so the branch is the state, rather than the
+  // state being read twice from two different tests of the same fact.
+  const stateName = mapStateName(stats.state, stats.live);
 
-  if (!stats.live) {
+  if (stateName === "inert") {
     return (
       <path
         d={d}
@@ -1331,7 +1327,6 @@ function Region({
     );
   }
 
-  const stateName = regionStateName(stats.state);
   // A list hover already asked for this region by name, so the legend never
   // fades it back.
   const dimmed = densityFocus === "dim" && !highlighted;

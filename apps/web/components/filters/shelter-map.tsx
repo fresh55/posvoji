@@ -155,6 +155,24 @@ function coveredByLine(
   return t(key, { shelters: names.join(" · ") });
 }
 
+/** How long a pointer has to rest on an empty region before the plate names
+ *  it.
+ *
+ *  The regions are the whole floor of this map: there is no gap between them,
+ *  so every trip to a marker, to the legend or out to the panel grazes two or
+ *  three on the way. A live region no longer answers a pointer at all, because
+ *  everything its name carried is on screen elsewhere already; an empty one
+ *  still does, because who answers for it is a fact with nowhere else to live.
+ *  The dwell is what keeps that one exception from becoming the same noise:
+ *  a pointer crossing an empty region has not asked it anything.
+ *
+ *  A marker is a small target somebody aimed at, so it answers on contact, and
+ *  so does keyboard focus, which is deliberate by definition.
+ *
+ *  Exported so a test advances by exactly this rather than by a number that
+ *  could drift from it. */
+export const REGION_DWELL_MS = 200;
+
 // Regions carry the narrow-screen controls; town markers add pointer precision
 // and their own keyboard roving from md up, where they are drawn at all.
 export function ShelterMap({
@@ -243,6 +261,17 @@ export function ShelterMap({
     null,
   );
   const [hoveredRegionId, setHoveredRegionId] = useState<number | null>(null);
+  /** The pending dwell, so a pointer only passing over a region never gets to
+   *  name it. A ref and not state: nothing on screen depends on a timer that
+   *  has not fired yet, and re-rendering the plate to say "still waiting"
+   *  would be the opposite of the point. */
+  const regionDwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (regionDwellRef.current !== null) clearTimeout(regionDwellRef.current);
+    },
+    [],
+  );
   const [focusedRegionId, setFocusedRegionId] = useState<number | null>(null);
   /** Region wearing keyboard focus right now, so it earns the same callout a
    *  pointer hover gets. Cleared on blur, unlike focusedRegionId, which the
@@ -452,16 +481,47 @@ export function ShelterMap({
 
   const handleRegionPointerEnter = useCallback(
     (regionId: number, stats: RegionStats) => {
-      setHoveredRegionId(regionId);
-      // Hovering a region previews the rows a click would change, which
-      // matters most here: one region click can toggle several shelters.
-      if (stats.live) onHoverShelters?.(stats.values);
+      // Whatever the pointer just left, it is not being named now.
+      if (regionDwellRef.current !== null) {
+        clearTimeout(regionDwellRef.current);
+        regionDwellRef.current = null;
+      }
+      if (stats.live) {
+        // Hovering a live region previews the rows a click would change, which
+        // matters most here: one region click can toggle several shelters.
+        // This is the whole of what a live region says to a pointer: a quiet
+        // tint on a list somebody is already reading.
+        onHoverShelters?.(stats.values);
+        // And no name. Everything a live region's callout carried is already
+        // on screen twice over: the counts are in the list beside the map, the
+        // ramp is in the legend under it, and every marker on it answers for
+        // itself. Naming the floor as well meant a label under the pointer on
+        // the way to any of them, which is the noise the dwell was trying to
+        // ration rather than remove.
+        return;
+      }
+      // An empty region is the exception, and the reason the dwell survives.
+      // Nothing else on the plate can say who answers for a region with no
+      // shelters in it, so this callout is the only way that fact is ever
+      // seen; the dwell is what keeps a pointer crossing it from being asked.
+      regionDwellRef.current = setTimeout(() => {
+        regionDwellRef.current = null;
+        setHoveredRegionId(regionId);
+      }, REGION_DWELL_MS);
     },
     [onHoverShelters],
   );
 
   const handleRegionPointerLeave = useCallback(
     (regionId: number, stats: RegionStats) => {
+      // A pointer that left before the dwell was up was passing through, so
+      // the name it never earned is cancelled rather than delivered late. A
+      // re-entry starts the wait over, which is what makes this dwell and not
+      // a debounce across the whole plate.
+      if (regionDwellRef.current !== null) {
+        clearTimeout(regionDwellRef.current);
+        regionDwellRef.current = null;
+      }
       setHoveredRegionId((current) => (current === regionId ? null : current));
       if (stats.live) onHoverShelters?.(null);
     },
@@ -546,13 +606,14 @@ export function ShelterMap({
   );
 
   // A marker sits on top of its region, so both would report a hover. The
-  // marker is the more precise answer and wins. Keyboard focus fills in when
-  // no pointer is on the map, so tabbing narrates the same card hovering does.
+  // marker is the more precise answer and wins.
   //
-  // Inert regions come through here too, and say they are empty instead of
-  // counting. One mechanism and one card: only one region can be under the
-  // pointer at a time, and calloutRegionId is only ever set by a live region's
-  // focus, so a live and an empty callout cannot stack.
+  // Two ways in, and they no longer cover the same regions. hoveredRegionId is
+  // set by the pointer and only ever for an empty one (see the enter handler);
+  // calloutRegionId is set by keyboard focus, which is only ever a live one,
+  // because an empty region takes no focus. So the two can never name the same
+  // region at once, and a sighted keyboard user still sees where they are on a
+  // plate that says nothing to a passing pointer.
   const hoveredRegion = activeTown
     ? undefined
     : regions.find(
@@ -1247,15 +1308,19 @@ function PlateFurniture({
 // is 31.4 units, about the width of the legend row it stands over.
 const SCALE_BAR_KM = 25;
 // The bottom-right corner, with the rest of the map's furniture. Right end six
-// units off the edge, matching the padding the legend keeps. y 176 rather than
-// lower because the legend overlay is HTML on the canvas and its height in
-// user units depends on the aspect ratio and on how many rows it is carrying:
-// three rows plus the canvas padding come to about 25 units at the tightest
-// sizes the dialog draws at, so the bar clears it from here. Everything in this
-// corner is Croatia at this projection (lon 15.9 east, lat 45.6 south), so the
-// bar crosses no shape of Slovenia's.
+// units off the edge, matching the margin the plate's other type keeps.
+//
+// y 194 and no longer 176: the bar used to be held that far up because the
+// legend was an HTML overlay on this canvas whose height moved with the aspect
+// ratio, so the only safe thing was to clear the tallest it could get. The
+// legend is a caption under the plate now (see location-picker.tsx), nothing
+// is drawn over this corner any more, and the bar can sit where a printed
+// sheet would put it: near the frame, with the four units of margin the rest
+// of the furniture keeps. Everything in this corner is Croatia at this
+// projection (lon 15.9 east, lat 45.6 south), so the bar crosses no shape of
+// Slovenia's.
 const SCALE_BAR_RIGHT = 314;
-const SCALE_BAR_Y = 176;
+const SCALE_BAR_Y = 194;
 const SCALE_BAR_TICK = 1.5;
 
 // The map's second piece of type, after the callouts, and it has to stay the

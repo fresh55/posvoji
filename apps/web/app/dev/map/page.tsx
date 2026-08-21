@@ -71,7 +71,9 @@ const DEMOS: Demo[] = [
     pins: [pin("marker-empty", "Zavetišče brez živali", "Sežana", 0)],
   },
   {
-    title: "Two-shelter cluster, one selected",
+    // The real Celje: the largest shelter in the country beside an 11-animal
+    // one. The discs are sized by their own counts, capped at 2:1 in radius.
+    title: "Two-shelter cluster, lopsided, one selected",
     pins: [
       pin("cluster2-a", "Zavetišče Mačja hiša", "Celje", 185),
       pin("cluster2-b", "Zavetišče Sia in Lu", "Celje", 11),
@@ -79,11 +81,31 @@ const DEMOS: Demo[] = [
     selected: ["cluster2-b"],
   },
   {
+    // Equal counts, which is what the uniform layout drew at every split
+    // before, and still draws.
+    title: "Two-shelter cluster, even split",
+    pins: [
+      pin("cluster2e-a", "Zavetišče Vzhod", "Ptuj", 20),
+      pin("cluster2e-b", "Zavetišče Zahod", "Ptuj", 20),
+    ],
+  },
+  {
     title: "Three-shelter cluster",
     pins: [
       pin("cluster3-a", "Zavetišče A", "Trbovlje", 10),
       pin("cluster3-b", "Zavetišče B", "Trbovlje", 10),
       pin("cluster3-c", "Zavetišče C", "Trbovlje", 10),
+    ],
+  },
+  {
+    // The worst split three discs can be handed: the cap holds the small two
+    // at half the big one's radius, and the packing shrinks the set a little
+    // so no disc eats its neighbour.
+    title: "Three-shelter cluster, lopsided",
+    pins: [
+      pin("cluster3x-a", "Zavetišče Veliko", "Murska Sobota", 180),
+      pin("cluster3x-b", "Zavetišče Srednje", "Murska Sobota", 20),
+      pin("cluster3x-c", "Zavetišče Majhno", "Murska Sobota", 6),
     ],
   },
   {

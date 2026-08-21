@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
 import {
-  clusterDiscPositions,
+  clusterDiscs,
   clusterHitWedges,
   DENSITY_STEPS,
   densityScale,
@@ -12,6 +12,7 @@ import {
   markerRadius,
   markerVisualReach,
   townLabel,
+  type ClusterDisc,
   type ShelterPin,
 } from "./map-layout";
 
@@ -82,24 +83,49 @@ describe("layoutTowns", () => {
     expect(at("Maribor")).toBe(at("Ljubljana"));
     expect(new Set(towns.map((town) => town.r)).size).toBe(3);
     for (const town of towns) {
-      expect(town.r).toBeGreaterThanOrEqual(5);
+      expect(town.r).toBeGreaterThanOrEqual(4.7);
       expect(town.r).toBeLessThanOrEqual(8);
     }
   });
 
   it("puts each town on the step its count earns", () => {
-    expect(markerRadius(0)).toBe(5);
-    expect(markerRadius(19)).toBe(5);
-    expect(markerRadius(20)).toBe(5.75);
-    expect(markerRadius(49)).toBe(5.75);
-    expect(markerRadius(50)).toBe(6.5);
-    expect(markerRadius(500)).toBe(6.5);
+    expect(markerRadius(0)).toBe(4.7);
+    expect(markerRadius(19)).toBe(4.7);
+    expect(markerRadius(20)).toBe(5.8);
+    expect(markerRadius(49)).toBe(5.8);
+    expect(markerRadius(50)).toBe(7.2);
+    expect(markerRadius(500)).toBe(7.2);
+  });
+
+  // The eye compares discs by area, not by radius, and the two markers being
+  // compared are never adjacent on the map. The steps this replaced held 1.32x
+  // and 1.28x and did not read as three sizes at all.
+  it("keeps each size step at least half again the area of the one below", () => {
+    const steps = [markerRadius(0), markerRadius(20), markerRadius(50)];
+    for (let index = 1; index < steps.length; index += 1) {
+      const ratio = (steps[index] / steps[index - 1]) ** 2;
+      expect(ratio).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+
+  // The smallest bin has to stay large enough that a two-shelter town in it
+  // still fits a paw in each of its discs. Pulling the floor lower drops the
+  // glyph without any test noticing otherwise.
+  it("keeps the paw in a two-shelter town at the smallest size", () => {
+    const [town] = layoutTowns([
+      pin("a", "Ljubljana", 0),
+      pin("b", "Ljubljana", 0),
+    ]);
+    expect(town.r).toBe(markerRadius(0));
+    for (const disc of clusterDiscs(town)) {
+      expect(discFitsGlyph(disc.r)).toBe(true);
+    }
   });
 
   it("gives a town with nothing available the smallest marker", () => {
     const towns = layoutTowns([pin("a", "Ljubljana", 0), pin("b", "Koper", 60)]);
-    expect(towns.find((town) => town.city === "Ljubljana")!.r).toBe(5);
-    expect(towns.find((town) => town.city === "Koper")!.r).toBe(6.5);
+    expect(towns.find((town) => town.city === "Ljubljana")!.r).toBe(4.7);
+    expect(towns.find((town) => town.city === "Koper")!.r).toBe(7.2);
   });
 
   it("leaves no two markers overlapping", () => {
@@ -153,10 +179,9 @@ describe("layoutTowns", () => {
       expect(markerVisualReach(towns[0])).toBeLessThanOrEqual(
         towns[0].r + 1e-9,
       );
-      for (const disc of clusterDiscPositions(towns[0])) {
+      for (const disc of clusterDiscs(towns[0])) {
         const reach =
-          Math.hypot(disc.x - towns[0].x, disc.y - towns[0].y) +
-          markerGeometry(towns[0]).clusterRadius;
+          Math.hypot(disc.x - towns[0].x, disc.y - towns[0].y) + disc.r;
         expect(reach).toBeLessThanOrEqual(markerGeometry(towns[0]).discRadius);
       }
     }
@@ -164,7 +189,7 @@ describe("layoutTowns", () => {
 
   it("draws one disc per shelter up to three, and none past it", () => {
     const cluster = (size: number) =>
-      clusterDiscPositions(
+      clusterDiscs(
         layoutTowns(
           Array.from({ length: size }, (_, index) =>
             pin(`s${index}`, "Ljubljana", 20),
@@ -184,7 +209,9 @@ describe("layoutTowns", () => {
       pin("b", "Ljubljana", 0),
       pin("c", "Ljubljana", 0),
     ]);
-    expect(discFitsGlyph(markerGeometry(tight).clusterRadius)).toBe(false);
+    for (const disc of clusterDiscs(tight)) {
+      expect(discFitsGlyph(disc.r)).toBe(false);
+    }
     expect(discFitsGlyph(markerGeometry(tight).discRadius)).toBe(true);
   });
 
@@ -266,6 +293,169 @@ describe("layoutTowns", () => {
   });
 });
 
+// One town holding the given counts, which is what a cluster is made of.
+function cluster(counts: number[], city = "Ljubljana") {
+  return layoutTowns(
+    counts.map((count, index) => pin(`s${index}`, city, count)),
+  )[0];
+}
+
+// How deep each pair of discs sits in the other. Negative is clear water.
+function overlaps(discs: ClusterDisc[]): number[] {
+  const found: number[] = [];
+  everyPair(discs, (a, b) =>
+    found.push(a.r + b.r - Math.hypot(a.x - b.x, a.y - b.y)),
+  );
+  return found;
+}
+
+// The overlap an equal-count town of the same size and the same bin draws,
+// which is the line an unequal one is not allowed to cross.
+function uniformOverlap(counts: number[]): number {
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  const even = cluster(counts.map(() => total / counts.length));
+  return Math.max(...overlaps(clusterDiscs(even)));
+}
+
+// Every split the cap can be handed, plus the plain ones, over both cluster
+// sizes and all three marker bins.
+const SPLITS: number[][] = [
+  [10, 10],
+  [186, 11],
+  [1, 1000],
+  [18, 1],
+  [0, 12],
+  [0, 0],
+  [10, 10, 10],
+  [186, 11, 11],
+  [1000, 1, 1],
+  [1, 1, 1000],
+  [60, 20, 5],
+  [40, 0, 4],
+  [0, 0, 30],
+  [0, 0, 0],
+];
+
+describe("clusterDiscs", () => {
+  it("draws an evenly split town exactly as the uniform layout did", () => {
+    for (const [size, radius, offset] of [
+      [2, 0.53, 0.46],
+      [3, 0.47, 0.52],
+    ]) {
+      const town = cluster(Array.from({ length: size }, () => 20));
+      const { discRadius } = markerGeometry(town);
+      for (const disc of clusterDiscs(town)) {
+        expect(disc.r).toBeCloseTo(discRadius * radius, 10);
+        expect(Math.hypot(disc.x - town.x, disc.y - town.y)).toBeCloseTo(
+          discRadius * offset,
+          10,
+        );
+      }
+    }
+  });
+
+  // The whole point: Celje holds the largest shelter in the country next to an
+  // 11-animal one, and the two used to draw at the same size.
+  it("gives the busier shelter in a town the larger disc", () => {
+    const [big, small] = clusterDiscs(cluster([186, 11], "Celje"));
+    expect(big.r).toBeGreaterThan(small.r);
+    // The pair keeps the ink the uniform layout spent, so the coin does not
+    // change weight when its shelters are lopsided.
+    const uniform = markerGeometry(cluster([186, 11], "Celje")).clusterRadius;
+    expect(big.r + small.r).toBeCloseTo(uniform * 2, 10);
+  });
+
+  // Counted discs only. A shelter with nothing listed keeps the uniform slot
+  // and draws the hollow mark at EMPTY_MARKER_RADIUS_SCALE of it, which is
+  // smaller than any counted disc the cap allows, so it never out-measures a
+  // shelter that has animals.
+  it("orders discs by count in every split, at both cluster sizes", () => {
+    for (const counts of SPLITS) {
+      const discs = clusterDiscs(cluster(counts));
+      counts.forEach((count, index) => {
+        counts.forEach((other, otherIndex) => {
+          if (count <= other || other === 0) return;
+          expect(discs[index].r).toBeGreaterThanOrEqual(
+            discs[otherIndex].r - 1e-9,
+          );
+        });
+      });
+    }
+  });
+
+  // Four times the area, twice the radius. Sqrt sizing alone would draw
+  // Celje's second shelter at a quarter of the first's radius.
+  it("never lets one disc out-measure another by more than 2:1 in radius", () => {
+    for (const counts of SPLITS) {
+      const radii = clusterDiscs(cluster(counts)).map((disc) => disc.r);
+      expect(Math.max(...radii) / Math.min(...radii)).toBeLessThanOrEqual(
+        2 + 1e-9,
+      );
+    }
+  });
+
+  it("keeps every disc inside the coin, whatever the split", () => {
+    for (const counts of SPLITS) {
+      const town = cluster(counts);
+      const { discRadius } = markerGeometry(town);
+      for (const disc of clusterDiscs(town)) {
+        expect(
+          Math.hypot(disc.x - town.x, disc.y - town.y) + disc.r,
+        ).toBeLessThanOrEqual(discRadius + 1e-9);
+      }
+    }
+  });
+
+  it("never packs two discs tighter than an evenly split town packs them", () => {
+    for (const counts of SPLITS) {
+      const allowed = uniformOverlap(counts);
+      for (const overlap of overlaps(clusterDiscs(cluster(counts)))) {
+        expect(overlap).toBeLessThanOrEqual(allowed + 1e-6);
+      }
+    }
+  });
+
+  it("keeps the real roster's shared towns inside the coin and apart", () => {
+    for (const town of layoutTowns(REAL_PINS)) {
+      const discs = clusterDiscs(town);
+      if (discs.length === 0) continue;
+      const { discRadius } = markerGeometry(town);
+      const allowed = uniformOverlap(town.shelters.map((s) => s.count));
+      for (const disc of discs) {
+        expect(
+          Math.hypot(disc.x - town.x, disc.y - town.y) + disc.r,
+        ).toBeLessThanOrEqual(discRadius + 1e-9);
+      }
+      for (const overlap of overlaps(discs)) {
+        expect(overlap).toBeLessThanOrEqual(allowed + 1e-6);
+      }
+    }
+  });
+
+  // The hollow "nothing listed" mark carries no count, so it takes no part in
+  // the division and keeps the slot it always had.
+  it("leaves a shelter with nothing listed at the uniform size", () => {
+    const town = cluster([40, 0]);
+    const discs = clusterDiscs(town);
+    expect(discs[1].r).toBeCloseTo(markerGeometry(town).clusterRadius, 10);
+    expect(discs[0].r).toBeCloseTo(markerGeometry(town).clusterRadius, 10);
+  });
+
+  // A disc under the glyph floor drops its paw rather than drawing a smudge.
+  // The wedge still names that shelter and the callout still counts it.
+  it("lets the smaller disc of a lopsided small town fall under the glyph floor", () => {
+    const town = cluster([18, 1]);
+    const [big, small] = clusterDiscs(town);
+    expect(town.r).toBe(markerRadius(19));
+    expect(discFitsGlyph(big.r)).toBe(true);
+    expect(discFitsGlyph(small.r)).toBe(false);
+    expect(clusterHitWedges(town).map((wedge) => wedge.value)).toEqual([
+      "s0",
+      "s1",
+    ]);
+  });
+});
+
 // Pulls the numbers out of a wedge's "M cx cy L x y A r r 0 0 1 x y A r r 0 0
 // 1 x y Z" path in the order the string emits them.
 function parseWedge(d: string) {
@@ -310,7 +500,7 @@ describe("clusterHitWedges", () => {
     const wedges = clusterHitWedges(town);
     expect(wedges.map((w) => w.value)).toEqual(["a", "b"]);
 
-    const discs = clusterDiscPositions(town);
+    const discs = clusterDiscs(town);
     wedges.forEach((wedge, index) => {
       const { center, start, mid, end, r } = parseWedge(wedge.d);
       expect(r).toBeCloseTo(town.hitR, 1);
@@ -340,7 +530,7 @@ describe("clusterHitWedges", () => {
     const wedges = clusterHitWedges(town);
     expect(wedges.map((w) => w.value)).toEqual(["a", "b", "c"]);
 
-    const discs = clusterDiscPositions(town);
+    const discs = clusterDiscs(town);
     wedges.forEach((wedge, index) => {
       const { center, start, mid, end, r } = parseWedge(wedge.d);
       expect(r).toBeCloseTo(town.hitR, 1);

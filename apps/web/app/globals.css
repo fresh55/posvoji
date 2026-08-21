@@ -106,9 +106,31 @@
   --filter-accent-foreground: oklch(0.32 0.075 151);
   --filter-accent-border: oklch(0.68 0.075 151);
   --filter-accent-strong: oklch(0.44 0.1 151);
+  /* The choropleth's ink. The density ramp is this one colour at the alphas in
+     DENSITY_STEPS, so a busy region and a picked one share a hue family and a
+     selected region reads as the same green, committed. Muted on purpose: it
+     sits at the selection green's hue and about four fifths of its chroma, and
+     the top step composites to oklch(0.727 0.047), a contrast of 2.37 against
+     the page where the selected fill carries 2.48. The ramp therefore stays
+     the quieter picture at every step, and the darkest region no longer
+     swallows its own border or the white marker discs.
+     Empty regions are not on this ramp. They stay neutral foreground, because
+     "no shelters here" is a different statement from "few animals here". */
+  --map-density-fill: oklch(0.52 0.085 151);
+  /* The chosen region's own fill, apart from --filter-accent-border. That
+     token sits in the same luminance band as the ramp's darkest step: at its
+     usual 0.9 fill-opacity it composited to a contrast of only 1.09:1 against
+     the top density step's 0.727 luminance, so on a busy map colour alone
+     could not say which region was picked. This token keeps the family's hue
+     and drops lightness from 0.68 to 0.60, which composites (0.9 alpha over
+     the page, WCAG relative luminance, the same method the ramp comment
+     above uses) to a luminance of 0.274 against the top step's 0.394: a
+     contrast of 1.37:1, clearing the 1.35:1 target. Chroma is left at 0.075,
+     the accent token's own value, so only lightness carries the separation. */
+  --map-selected-fill: oklch(0.6 0.075 151);
   /* The map's geographic context: the Adriatic and the land across the border.
-     Both stay quieter than the faintest live region, which fills at 12%
-     foreground, so the surroundings never read as part of the country. The
+     Both stay quieter than the faintest live region, which fills at 20% of the
+     density colour, so the surroundings never read as part of the country. The
      sea earns its blue from chroma rather than from lightness, so the only
      water on the map is findable without outweighing a region.
      --map-river is the sea's hue at a lightness that carries a hairline: the
@@ -118,6 +140,14 @@
   --map-sea: oklch(0.955 0.03 230);
   --map-abroad: oklch(0.972 0 0);
   --map-river: oklch(0.8 0.035 230);
+  /* How loudly the hillshade under the region fills is allowed to speak. The
+     raster is shadow only against a white flat, so on light it multiplies:
+     nothing happens on the plain and the Alps darken by a fifth of the shade
+     they carry. Above about 0.3 the relief starts competing with the density
+     ramp for the same reading, which is the one thing it must never do. */
+  --map-relief-blend: multiply;
+  --map-relief-opacity: 0.22;
+  --map-relief-invert: 0;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -157,9 +187,34 @@
   --filter-accent-foreground: oklch(0.88 0.055 151);
   --filter-accent-border: oklch(0.48 0.06 151);
   --filter-accent-strong: oklch(0.72 0.09 151);
+  /* Lighter than the light theme's ink, because here the ramp lays a colour
+     over a near-black page rather than under-painting a white one. Same hue,
+     lower chroma again, so the top step composites to oklch(0.425 0.041)
+     against a selected fill of oklch(0.450 0.055): still the quieter and less
+     saturated of the two, and less than half the weight the grey ramp used to
+     reach on dark. */
+  --map-density-fill: oklch(0.6 0.065 151);
+  /* Same reasoning as the light block, mirrored: --filter-accent-border on
+     dark composited to a contrast of only 1.15:1 against the top density
+     step, and the audit measured it reading darker than the busiest region
+     rather than plainly picked. Lightness moves up from 0.48 to 0.56 here,
+     the opposite direction from light, because dark composites a fill over a
+     near-black page rather than under-painting a white one: at 0.9 alpha over
+     the page this composites to a luminance of 0.148 against the top step's
+     0.080, a contrast of 1.53:1 and now the lighter of the two, which is the
+     read the audit was missing. */
+  --map-selected-fill: oklch(0.56 0.06 151);
   --map-sea: oklch(0.245 0.032 230);
   --map-abroad: oklch(0.215 0 0);
   --map-river: oklch(0.38 0.035 230);
+  /* The land base on dark is oklch(0.215), so multiply has nowhere left to go:
+     a fifth of a shadow taken off a near-black region is not a shadow. The
+     raster is inverted instead and screened, which puts the same slopes on the
+     plate as light rather than as dark. Lower opacity than light, because a
+     light mark on a dark ground carries further for the same number. */
+  --map-relief-blend: screen;
+  --map-relief-opacity: 0.14;
+  --map-relief-invert: 1;
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
@@ -201,9 +256,14 @@
     --filter-accent-foreground: oklch(0.88 0.055 151);
     --filter-accent-border: oklch(0.48 0.06 151);
     --filter-accent-strong: oklch(0.72 0.09 151);
+    --map-density-fill: oklch(0.6 0.065 151);
+    --map-selected-fill: oklch(0.56 0.06 151);
     --map-sea: oklch(0.245 0.032 230);
     --map-abroad: oklch(0.215 0 0);
     --map-river: oklch(0.38 0.035 230);
+    --map-relief-blend: screen;
+    --map-relief-opacity: 0.14;
+    --map-relief-invert: 1;
     --card: oklch(0.205 0 0);
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.205 0 0);

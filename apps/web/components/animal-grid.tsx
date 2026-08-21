@@ -36,16 +36,27 @@ import {
   visibleHome,
   visibleToggles,
   type FilterOption,
+  type SpeciesFilter,
 } from "@/lib/filters";
+import type { TranslationKey } from "@/lib/i18n";
 import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
-import {
-  DEFAULT_ANIMAL_SORT,
-  sortAnimals,
-  type AnimalSort,
-} from "@/lib/sort";
+import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+
+// Which species-absence message key fills the {species} slot of
+// noResultsShelterSingular/Plural. Keyed by the species tab rather than
+// spelled out inline, so a new species fails to compile here instead of
+// silently falling back to the wrong noun form.
+const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
+  all: "speciesAbsenceAll",
+  dog: "speciesAbsenceDogs",
+  cat: "speciesAbsenceCats",
+  rabbit: "speciesAbsenceRabbits",
+  other: "speciesAbsenceOther",
+};
 
 export function AnimalGrid({
   animals,
@@ -66,12 +77,12 @@ export function AnimalGrid({
    *  location picker's map and list. */
   offSiteShelters?: FilterOption[];
 }) {
-  const { locale, messages } = useI18n();
-  const [sort, setSort] = useState<AnimalSort>(DEFAULT_ANIMAL_SORT);
+  const { locale, messages, t } = useI18n();
   const [clearTrailKey, setClearTrailKey] = useState(0);
   const pendingClearCount = useRef<number | null>(null);
   const {
     filters,
+    sort,
     setSpecies,
     toggle,
     toggleMany,
@@ -83,6 +94,7 @@ export function AnimalGrid({
     toggleManyHome,
     toggleCare,
     toggleManyCare,
+    setSort,
     clearAll,
     activeCount,
   } = useAnimalFilters();
@@ -113,6 +125,20 @@ export function AnimalGrid({
 
   const isEmpty = animals.length === 0;
 
+  // Reachable zero state: every other facet is pre-guarded by isDeadOption
+  // disabling, so a filtered-to-zero result in practice means a shelter
+  // selection with none of the active species. Computed only when a shelter
+  // is actually selected, by reusing applyFilters with that one group
+  // dropped, the same way the rest of the file measures facets.
+  const visibleWithoutShelter = useMemo(() => {
+    if (filters.shelter.length === 0) return undefined;
+    return applyFilters(animals, { ...filters, shelter: [] }, now);
+  }, [animals, filters, now]);
+  const shelterOnlyEmpty =
+    visible.length === 0 &&
+    filters.shelter.length > 0 &&
+    (visibleWithoutShelter?.length ?? 0) > 0;
+
   const handleClearAll = useCallback(() => {
     if (activeCount > 0 || filters.species !== "all") {
       pendingClearCount.current = visible.length;
@@ -132,6 +158,16 @@ export function AnimalGrid({
   }, [activeCount, filters.species, visible.length]);
 
   const speciesTally = useMemo(() => speciesCounts(animals), [animals]);
+  // What the location picker's card says about a shelter beyond its filtered
+  // count: which species live there and who has waited longest. Built from the
+  // whole dataset and not from `visible`, so the card answers "who is this
+  // shelter" rather than "what matches my filter" — the count pill next to the
+  // shelter's name already carries the filtered number. `now` and not
+  // `reference`, because the wait is measured the same way the age buckets are.
+  const shelterSummaries = useMemo(
+    () => summarizeShelters(animals, locale, now),
+    [animals, locale, now],
+  );
   const counts = useMemo(
     () => facetCounts(animals, filters, now),
     [animals, filters, now],
@@ -329,6 +365,7 @@ export function AnimalGrid({
           shelterTally={counts.shelter}
           municipalities={municipalities}
           offSiteShelters={offSiteShelters}
+          shelterSummaries={shelterSummaries}
           chips={chips}
           resultCount={visible.length}
           clearTrailKey={clearTrailKey}
@@ -361,12 +398,36 @@ export function AnimalGrid({
               aria-hidden
             />
             <div className="space-y-1">
-              <p className="text-sm font-medium">{messages.noResults}</p>
-              <p className="text-sm text-muted-foreground">
-                {messages.tryFewerFilters}
+              <p className="text-sm font-medium">
+                {shelterOnlyEmpty
+                  ? t(
+                      filters.shelter.length === 1
+                        ? "noResultsShelterSingular"
+                        : "noResultsShelterPlural",
+                      { species: t(SPECIES_ABSENCE_KEY[filters.species]) },
+                    )
+                  : messages.noResults}
               </p>
+              {!shelterOnlyEmpty && (
+                <p className="text-sm text-muted-foreground">
+                  {messages.tryFewerFilters}
+                </p>
+              )}
             </div>
-            <Button variant="outline" size="sm" onClick={handleClearAll}>
+            {shelterOnlyEmpty && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleMany("shelter", filters.shelter)}
+              >
+                {messages.showFromAllShelters}
+              </Button>
+            )}
+            <Button
+              variant={shelterOnlyEmpty ? "ghost" : "outline"}
+              size="sm"
+              onClick={handleClearAll}
+            >
               {messages.clearFilters}
             </Button>
           </div>

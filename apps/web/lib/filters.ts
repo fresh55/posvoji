@@ -798,6 +798,17 @@ function fromSlug(group: MultiGroup, slug: string): string | undefined {
   return FILTER_METADATA[group].find((option) => option.slug === slug)?.value;
 }
 
+// Every param name this codec owns. A write that rebuilds the query (see
+// mergeOwnedParams in lib/location-search.ts) needs this list to know which
+// params it is allowed to erase and replace; anything else in the URL is not
+// its business and has to survive untouched.
+export const FILTER_PARAM_NAMES: readonly string[] = [
+  "vrsta",
+  ...Object.values(PARAM_NAMES),
+  "lastnosti",
+  ...Object.values(VALUE_PARAM_NAMES),
+];
+
 export function serializeFilters(filters: Filters): string {
   const params = new URLSearchParams();
   if (filters.species !== "all") {

@@ -14,6 +14,48 @@ export type AnimalSort = (typeof ANIMAL_SORTS)[number];
 
 export const DEFAULT_ANIMAL_SORT: AnimalSort = "longest-in-shelter";
 
+// URL codec for the sort order, in the same Slovenian ASCII style as
+// lib/filters.ts's slugs: ?razvrsti=novi
+//
+// Kept here rather than folded into Filters/serializeFilters: sort decides
+// the order of the list already matched by the filters, not which animals
+// are in it, and Filters is a plain data shape passed into applyFilters,
+// pruneHiddenFilters and a dozen count functions that have nothing to do with
+// ordering. Adding a sort field there would mean every one of those call
+// sites and every existing serializeFilters/parseFilters test carries a sort
+// argument it never uses. A sibling codec that the same query-writing code
+// path calls alongside the filter one gets the single-writer property FIX 2
+// needs without widening Filters' shape.
+export const SORT_PARAM = "razvrsti";
+
+const SORT_SLUGS: Record<AnimalSort, string> = {
+  // The default is never written to the URL, but it still gets a slug so a
+  // link carrying it explicitly (someone bookmarked it before this changed,
+  // or copied one from another visitor) still parses back to it.
+  "longest-in-shelter": "cakajoci",
+  "newest-arrivals": "novi",
+  youngest: "najmlajsi",
+  oldest: "najstarejsi",
+  name: "ime",
+};
+
+/** "" for the default, so a plain reset keeps the URL clean like empty filters do. */
+export function serializeSort(sort: AnimalSort): string {
+  if (sort === DEFAULT_ANIMAL_SORT) return "";
+  return `${SORT_PARAM}=${SORT_SLUGS[sort]}`;
+}
+
+// Unknown or missing slugs fall back to the default silently, the same
+// tolerance parseFilters gives a stale shared link.
+export function parseSort(search: string): AnimalSort {
+  const slug = new URLSearchParams(search).get(SORT_PARAM);
+  if (!slug) return DEFAULT_ANIMAL_SORT;
+  const entry = (Object.entries(SORT_SLUGS) as [AnimalSort, string][]).find(
+    ([, candidateSlug]) => candidateSlug === slug,
+  );
+  return entry?.[0] ?? DEFAULT_ANIMAL_SORT;
+}
+
 // Unknown values always follow known ones. In particular, firstSeenAt is not a
 // substitute for intakeDate: it says when Posvoji.si found the listing, not
 // when the animal entered the shelter.

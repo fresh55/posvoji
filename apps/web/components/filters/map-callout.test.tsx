@@ -39,7 +39,12 @@ describe("MapCallout height", () => {
   // and the floor are read off the same function the component itself
   // calls rather than copied as numbers that could drift from it.
   const type = calloutType(DEFAULT_PLATE_SCALE);
-  const pad = type.halo * 2;
+  // What the object carries beyond the measured type: the chip's own vertical
+  // padding, and the margin the shadow needs outside the chip. A chip with
+  // nothing under its title is padded like a tooltip and the rest like a card,
+  // so which padding applies is part of the arithmetic.
+  const padded = (content: number, dense = false) =>
+    content + (dense ? type.padYTight : type.padY) * 2 + type.bleed * 2;
 
   it("grows the block to fit a tall one, then shrinks it back for a shorter one", () => {
     mockedScrollHeight = 100;
@@ -55,7 +60,7 @@ describe("MapCallout height", () => {
       </svg>,
     );
 
-    expect(foreignObjectHeight(container)).toBeCloseTo(100 + pad * 2, 5);
+    expect(foreignObjectHeight(container)).toBeCloseTo(padded(100), 5);
 
     mockedScrollHeight = 50;
     rerender(
@@ -67,8 +72,9 @@ describe("MapCallout height", () => {
     // The bug this guards against measured a div bound to the block's own
     // height, so scrollHeight could only ever hold steady or climb. This
     // checks the number actually came back down, not merely that it moved.
-    expect(foreignObjectHeight(container)).toBeCloseTo(50 + pad * 2, 5);
-    expect(foreignObjectHeight(container)).toBeLessThan(100 + pad * 2);
+    // Title alone now, so it is a tooltip and padded as one.
+    expect(foreignObjectHeight(container)).toBeCloseTo(padded(50, true), 5);
+    expect(foreignObjectHeight(container)).toBeLessThan(padded(100));
   });
 
   it("still floors at the block's own minimum once content is shorter than it", () => {
@@ -79,7 +85,33 @@ describe("MapCallout height", () => {
       </svg>,
     );
 
-    expect(foreignObjectHeight(container)).toBeCloseTo(type.floor + pad * 2, 5);
+    expect(foreignObjectHeight(container)).toBeCloseTo(
+      padded(type.floor, true),
+      5,
+    );
+  });
+
+  it("pads a card more than a tooltip, and only vertically", () => {
+    mockedScrollHeight = 40;
+    const chipStyle = (props: { metadata: string }) =>
+      render(
+        <svg>
+          <MapCallout x={50} y={50} reach={5} title="Zavetišče" {...props} />
+        </svg>,
+      ).container.querySelector<HTMLElement>("[data-callout-chip]")!.style;
+
+    const card = chipStyle({ metadata: "63 živali" });
+    const tooltip = chipStyle({ metadata: "" });
+
+    // A name with a count under it is a small card and wants a card's room; a
+    // name on its own is a tooltip and nine points of air over one word is a
+    // plaque.
+    expect(Number.parseFloat(card.paddingBlock)).toBeGreaterThan(
+      Number.parseFloat(tooltip.paddingBlock),
+    );
+    // The left edge is the same on every chip the plate draws, whatever it is
+    // carrying.
+    expect(card.paddingInline).toBe(tooltip.paddingInline);
   });
 });
 
@@ -88,9 +120,8 @@ function fontSizeOf(container: HTMLElement, selector: string): number {
   return Number.parseFloat(node?.style.fontSize ?? "");
 }
 
-// The annotation is type on paper now: no border, no popover fill, no shadowed
-// rectangle and no caret. The halo is what replaces the chrome, and it is what
-// lets a name sit legibly straight on a dark region fill.
+// A tooltip chip and not a panel: the surface is the site's popover, drawn
+// small, and the plate's older card chrome is not coming back with it.
 describe("MapCallout as an annotation", () => {
   function annotation() {
     return render(
@@ -100,27 +131,16 @@ describe("MapCallout as an annotation", () => {
     ).container;
   }
 
-  it("draws no card behind the type", () => {
+  it("draws no caret and no chrome beyond the chip", () => {
     const container = annotation();
-    const html = container.innerHTML;
 
-    expect(html).not.toContain("bg-popover");
-    expect(html).not.toContain("border-border");
-    expect(html).not.toContain("shadow-[");
-    // The caret was the one path this component ever drew.
+    // The caret was the one path this component ever drew, and it is not
+    // coming back: the leader line already answers "which mark is this
+    // about", and only when the frame has actually moved the chip off it.
     expect(container.querySelector("path")).toBeNull();
-  });
-
-  it("haloes the type in the plate's own paper, off the theme's token", () => {
-    const title = annotation().querySelector<HTMLElement>(
-      "[data-callout-title]",
-    );
-
-    expect(title).not.toBeNull();
-    expect(title!.style.textShadow).toContain("var(--background)");
-    // Stacked passes, not one: a single shadow reads as a drop shadow, which
-    // is a card's language.
-    expect(title!.style.textShadow.split(",").length).toBeGreaterThan(2);
+    // The surface is one element. A chip with a second box behind it is the
+    // panel this stopped being.
+    expect(container.querySelectorAll("[data-callout-chip]")).toHaveLength(1);
   });
 
   it("keeps the foreignObject, which is what wraps the text", () => {
@@ -128,6 +148,184 @@ describe("MapCallout as an annotation", () => {
 
     expect(container.querySelector("foreignObject")).not.toBeNull();
     expect(container.innerHTML).toContain("break-words");
+  });
+});
+
+// The annotation sits on a surface now. It was haloed type laid straight on
+// the country, which put the contrast at the mercy of whatever region was
+// underneath: over the darkest density greens the knockout had to be pushed
+// until the names read as stickers. A popover chip makes the same question a
+// matter of tokens, and the plate keeps its own quiet by staying small.
+describe("MapCallout surface", () => {
+  function chipped() {
+    return render(
+      <svg>
+        <MapCallout
+          x={50}
+          y={100}
+          reach={5}
+          title="Zavetišče Ljubljana"
+          metadata="63 živali"
+          note="Zanje skrbi Zavetišče Nova Gorica"
+          species={[{ species: "dog", count: 41 }]}
+        />
+      </svg>,
+    ).container;
+  }
+
+  const chip = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>("[data-callout-chip]")!;
+
+  it("draws a real popover surface under the type", () => {
+    const surface = chip(chipped());
+
+    // The site's own popover tokens, so contrast is guaranteed in both themes
+    // rather than argued about per region fill.
+    expect(surface.className).toContain("bg-popover/95");
+    expect(surface.className).toContain("text-popover-foreground");
+    // The one corner every surface in the app carries, scaled to the plate.
+    expect(surface.className).toContain("rounded-ui");
+    expect(Number.parseFloat(surface.style.borderRadius)).toBeGreaterThan(0);
+  });
+
+  it("draws its edge as a spread ring, which is the only hairline available", () => {
+    const surface = chip(chipped());
+
+    // Never a border: this box is laid out in user units and scaled up by the
+    // plate, and Chrome floors a fractional border-width to one whole unit
+    // before that transform, which came out as a 2.6-pixel frame on a plate
+    // drawn at 2.63. A box-shadow spread honours the fraction.
+    expect(surface.style.borderWidth).toBe("");
+    expect(surface.className).not.toContain("border-border");
+    expect(surface.style.getPropertyValue("--callout-ring")).toMatch(
+      /^0 0 0 [\d.]+px var\(--border\)$/,
+    );
+  });
+
+  it("lifts on light and keeps the ring on dark, the way the coins do", () => {
+    const surface = chip(chipped());
+
+    expect(surface.className).toContain(
+      "shadow-[var(--callout-ring),var(--callout-lift)]",
+    );
+    // Black on a near-black plate is mud, so dark drops the lift. The ring is
+    // the chip's own edge and stays in both themes, off --border either way.
+    expect(surface.className).toContain("dark:shadow-[var(--callout-ring)]");
+    // The offsets are in plate units, so only this render knows them: the
+    // utility reads them out of a variable set here.
+    expect(surface.style.getPropertyValue("--callout-lift")).toMatch(
+      /^0 [\d.]+px [\d.]+px rgb\(0 0 0 \/ [\d.]+\)$/,
+    );
+  });
+
+  it("carries no halo on any line of the annotation", () => {
+    const container = chipped();
+
+    for (const selector of [
+      "[data-callout-title]",
+      "[data-callout-metadata]",
+      "[data-callout-note]",
+    ]) {
+      expect(
+        container.querySelector<HTMLElement>(selector)!.style.textShadow,
+      ).toBe("");
+    }
+    // And none on the glyphs, which took theirs as a filter.
+    expect(
+      container.querySelector<HTMLElement>("[data-callout-species]")!.style
+        .filter,
+    ).toBe("");
+  });
+
+  it("takes only the width its words need, up to the reserved column", () => {
+    const surface = chip(chipped());
+
+    // A one-word region name is a chip, not a plaque. The column is still what
+    // the plate lays out and reports against, so the cap is what keeps the
+    // measured height honest: the type wraps at the column either way.
+    expect(surface.className).toContain("w-fit");
+    expect(surface.className).toContain("max-w-full");
+  });
+
+  it("keeps the object's margin wide enough for the shadow it has to hold", () => {
+    const container = chipped();
+    const surface = chip(container);
+    const bleed = container.querySelector<HTMLElement>("foreignObject > div")!;
+    const lift = surface.style.getPropertyValue("--callout-lift");
+    const [, offset, blur] = lift.match(/([\d.]+)px ([\d.]+)px/) ?? [];
+
+    // A foreignObject clips at its own box, so the wrapper's inset has to
+    // cover everything the shadow puts outside the chip. Read off the DOM
+    // rather than restated as a number here: this is the guard against a
+    // heavier lift outgrowing the box that carries it. The tolerance is the
+    // three decimals the offsets are written to in the variable, and nothing
+    // more.
+    expect(
+      Number.parseFloat(bleed.style.padding) + 0.001,
+    ).toBeGreaterThanOrEqual(Number(offset) + Number(blur));
+  });
+});
+
+// Three facts on a card have to read as three lines. At a two-point size step,
+// one weight and 1.15 leading they read as one paragraph that changed its mind
+// twice, which is what the screenshot of the old chip showed.
+describe("MapCallout type hierarchy", () => {
+  function lines() {
+    const container = render(
+      <svg>
+        <MapCallout
+          x={50}
+          y={100}
+          reach={5}
+          title="Zavetišče Ljubljana"
+          metadata="63 živali"
+          note="Zanje skrbi Zavetišče Nova Gorica"
+          species={[{ species: "dog", count: 41 }]}
+        />
+      </svg>,
+    ).container;
+    const at = (selector: string) =>
+      container.querySelector<HTMLElement>(selector)!;
+    return {
+      title: at("[data-callout-title]"),
+      metadata: at("[data-callout-metadata]"),
+      note: at("[data-callout-note]"),
+      species: at("[data-callout-species]"),
+    };
+  }
+
+  it("leads with the title on size and on weight together", () => {
+    const { title, metadata } = lines();
+
+    expect(Number.parseFloat(title.style.fontSize)).toBeGreaterThan(
+      Number.parseFloat(metadata.style.fontSize),
+    );
+    expect(title.className).toContain("font-semibold");
+    // The answer under it is muted, so the two are a heading and a body and
+    // not two greys a point apart.
+    expect(metadata.className).toContain("text-muted-foreground");
+  });
+
+  it("sets the card at a card's leading", () => {
+    const { title, metadata, note } = lines();
+
+    for (const line of [title, metadata, note]) {
+      expect(Number(line.style.lineHeight)).toBeGreaterThan(1.15);
+    }
+    // One leading across the card: a heading set looser than its own body is
+    // two cards stacked.
+    expect(metadata.style.lineHeight).toBe(title.style.lineHeight);
+  });
+
+  it("gives the species row more air than the lines of words above it", () => {
+    const { metadata, note, species } = lines();
+    const gap = (node: HTMLElement) => Number.parseFloat(node.style.marginTop);
+
+    expect(gap(metadata)).toBeGreaterThan(0);
+    // The two muted lines are the same kind of thing and are spaced alike.
+    expect(gap(note)).toBeCloseTo(gap(metadata), 5);
+    // The glyph row is a different kind of fact and has to be seen arriving.
+    expect(gap(species)).toBeGreaterThan(gap(metadata));
   });
 });
 
@@ -198,7 +396,6 @@ describe("MapCallout note line", () => {
     // Its own line and not a longer first one, at the same size as the line it
     // follows, so the two read as one answer in two parts.
     expect(note!.style.fontSize).toBe(metadata!.style.fontSize);
-    expect(note!.style.textShadow).toContain("var(--background)");
     // Document order: the fact first, then who to call about it.
     expect(
       metadata!.compareDocumentPosition(note!) &
@@ -247,13 +444,16 @@ describe("MapCallout species line", () => {
     ).toHaveLength(2);
   });
 
-  it("haloes the glyphs with a filter, which is all an icon can take", () => {
+  it("leaves the glyphs bare, because the chip is their ground now", () => {
     const row = renderSpecies([
       { species: "dog", count: 41 },
     ]).querySelector<HTMLElement>("[data-callout-species]");
 
-    expect(row!.style.filter).toContain("drop-shadow");
-    expect(row!.style.filter).toContain("var(--background)");
+    // They used to carry a drop-shadow knockout of their own, which is what an
+    // icon takes instead of a text-shadow. On a surface there is nothing to
+    // knock out.
+    expect(row!.style.filter).toBe("");
+    expect(row!.className).toContain("text-muted-foreground");
   });
 
   it("draws no third line for an annotation that was given none", () => {
@@ -264,12 +464,15 @@ describe("MapCallout species line", () => {
   });
 });
 
-// The annotation has no card, so it interleaves with any of the plate's own
-// type it is drawn across. The map settles that by taking the losing name off
-// the plate, and this is the half of it the annotation owes: saying where its
-// own block of type ended up.
+// The chip is opaque, so anything of the plate's own type underneath it is
+// simply gone rather than interleaved with. The map settles that by taking the
+// covered name off the plate, and this is the half of it the annotation owes:
+// saying where its chip ended up, padding and all.
 describe("MapCallout rectangle report", () => {
   const type = calloutType(DEFAULT_PLATE_SCALE);
+  // The reported box is the chip, not the type inside it: the measured content
+  // at its floor, plus the padding above and below it.
+  const boxHeight = type.floor + type.padY * 2;
 
   function renderReporting(
     onRect: (key: string, rect: unknown) => void,
@@ -298,10 +501,10 @@ describe("MapCallout rectangle report", () => {
     // arithmetic the component lays the foreignObject out with, read back from
     // the outside.
     expect(onRect).toHaveBeenLastCalledWith("town", {
-      x: 50 + 5 + 4,
-      y: 100 - type.floor / 2,
+      x: 50 + 5 + type.labelGap,
+      y: 100 - boxHeight / 2,
       width: type.width,
-      height: type.floor,
+      height: boxHeight,
     });
   });
 
@@ -343,10 +546,10 @@ describe("MapCallout rectangle report", () => {
     );
 
     expect(onRect).toHaveBeenLastCalledWith("town", {
-      x: 120 + 5 + 4,
-      y: 100 - type.floor / 2,
+      x: 120 + 5 + type.labelGap,
+      y: 100 - boxHeight / 2,
       width: type.width,
-      height: type.floor,
+      height: boxHeight,
     });
   });
 
@@ -421,6 +624,40 @@ describe("MapCallout type scale", () => {
     for (const scale of [0.5, 1.12, 2.2, 4.4]) {
       expect(calloutType(scale).width).toBeLessThanOrEqual(MAP_WIDTH * 0.55);
     }
+  });
+
+  it("holds the chip's own geometry to one rendered size, like the type", () => {
+    const chipAt = (scale: number) => {
+      const { container } = render(
+        <svg>
+          <MapCallout
+            x={50}
+            y={100}
+            reach={5}
+            title="Ljubljana"
+            metadata="5 živali"
+            scale={scale}
+          />
+        </svg>,
+      );
+      const chip = container.querySelector<HTMLElement>("[data-callout-chip]")!;
+      return {
+        radius: Number.parseFloat(chip.style.borderRadius),
+        padX: Number.parseFloat(chip.style.paddingInline),
+        padY: Number.parseFloat(chip.style.paddingBlock),
+      };
+    };
+
+    const small = chipAt(2.2);
+    const large = chipAt(3.2);
+
+    // Corners, padding and border all divide by the plate's scale the way the
+    // type does, so a chip is the same object at every plate size. Written in
+    // user units they would have grown with the plate: a corner tuned on a
+    // tablet reads as square on a wide desktop.
+    expect(small.radius * 2.2).toBeCloseTo(large.radius * 3.2, 5);
+    expect(small.padX * 2.2).toBeCloseTo(large.padX * 3.2, 5);
+    expect(small.padY * 2.2).toBeCloseTo(large.padY * 3.2, 5);
   });
 
   it("keeps the metadata a step under the title at every scale", () => {

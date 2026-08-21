@@ -96,14 +96,26 @@ export function AnimalCard({
       ref={cardRef}
       className="group overflow-hidden rounded-ui border transition-colors hover:border-foreground/25 focus-within:border-foreground/25"
     >
-      <PhotoGallery
-        animal={animal}
-        sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
-        tone={settled ? QUIET_PHOTO : undefined}
-        href={href}
-        linkLabel={label}
-        onNavigate={openDialog}
-      />
+      <div className="relative">
+        <PhotoGallery
+          animal={animal}
+          sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
+          tone={settled ? QUIET_PHOTO : undefined}
+          href={href}
+          linkLabel={label}
+          onNavigate={openDialog}
+        />
+        {animal.status === "reserved" && (
+          // Below sm the 2-col phone grid leaves the name's row too narrow to
+          // also hold this badge and the wait label, and the name is what
+          // matters most there, so the badge moves onto the photo instead of
+          // competing for the row. At sm and up there is room, and it returns
+          // to sitting beside the name (its usual, higher-contrast spot).
+          <span className="absolute left-2 top-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 backdrop-blur-sm dark:text-amber-300 sm:hidden">
+            {statusLabel("reserved", locale)}
+          </span>
+        )}
+      </div>
       <a
         href={href}
         onClick={openDialog}
@@ -119,12 +131,13 @@ export function AnimalCard({
           {animal.status === "reserved" && (
             // Same amber-family recipe as the dialog's reserved badge
             // (animal-dialog.tsx STATUS_CLASS), scaled down to the grid card.
-            <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+            // Hidden below sm, where the photo overlay above carries it instead.
+            <span className="hidden shrink-0 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300 sm:inline">
               {statusLabel("reserved", locale)}
             </span>
           )}
           {wait && (
-            <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+            <span className="hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:inline-flex">
               <Hourglass
                 className="size-3.5 text-amber-600 dark:text-amber-400"
                 strokeWidth={1.75}
@@ -137,6 +150,19 @@ export function AnimalCard({
         <p className="text-sm text-muted-foreground tabular-nums">
           {animalMeta(animal, locale, reference)}
         </p>
+        {wait && (
+          // Below sm the wait label gets its own line under the meta text,
+          // instead of sharing the name's row where it forced the truncating
+          // name down to a character or two.
+          <p className="flex items-center gap-1 text-xs text-muted-foreground sm:hidden">
+            <Hourglass
+              className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            {t("longStayMark", { duration: wait })}
+          </p>
+        )}
       </a>
 
       {/* Outside the anchor, because a control inside a link is a control

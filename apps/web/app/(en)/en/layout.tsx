@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { getMessages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: "Posvoji.si",
   description: getMessages("en").metadataDescription,
 };
+
+// Without this, env(safe-area-inset-*) resolves to 0 on iOS: the page draws
+// under the notch and home indicator, but nothing is told it may.
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function EnglishLayout({ children }: LayoutProps<"/en">) {
   return (

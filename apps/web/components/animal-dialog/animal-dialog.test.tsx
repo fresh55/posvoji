@@ -323,7 +323,9 @@ describe("animal dialog", () => {
     expect(within(dialog).getByText("Sterilizacija")).toBeTruthy();
     expect(within(dialog).queryByText("na voljo")).toBeNull();
 
-    const cta = within(dialog).getByRole("link", {
+    // The sticky bar mirrors the same button on a phone, so the in-flow
+    // shelter block is what this checks against.
+    const cta = region(dialog, "shelter-block").getByRole("link", {
       name: /Odpri objavo pri zavetišču/,
     });
     expect(cta.getAttribute("href")).toBe("https://example.test/animals/rex");
@@ -746,7 +748,7 @@ describe("animal dialog", () => {
     ).toBeTruthy();
     // The listing stays reachable, quietly, and the source stays named.
     expect(
-      within(dialog)
+      region(dialog, "shelter-block")
         .getByRole("link", { name: /Odpri objavo/ })
         .getAttribute("href"),
     ).toBe("https://example.test/animals/lucky");
@@ -860,6 +862,53 @@ describe("animal dialog", () => {
 
     expect(window.location.pathname).toBe(animalPath(REX, "sl"));
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("mirrors the shelter's CTA in a sticky bar for the phone layout", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    const bar = region(dialog, "sticky-cta");
+    expect(
+      bar.getByRole("link", { name: /Odpri objavo pri zavetišču/ })
+        .getAttribute("href"),
+    ).toBe("https://example.test/animals/rex");
+  });
+
+  it("hides the sticky bar when there is no listing to send anyone to", async () => {
+    const noListing = animal("brez", "Brez", {
+      source: {
+        providerId: "test-shelter",
+        sourceAnimalId: "brez",
+        sourceUrl: "",
+        fetchedAt: "2026-01-01T00:00:00.000Z",
+        firstSeenAt: "2026-01-01T00:00:00.000Z",
+        lastSeenAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    window.history.replaceState(null, "", "/?zival=brez");
+    renderGrid([noListing]);
+    const dialog = await screen.findByRole("dialog");
+
+    expect(dialog.querySelector('[data-slot="sticky-cta"]')).toBeNull();
+  });
+
+  it("closes instead of leaving the site when a deep-linked dialog is popped", async () => {
+    window.history.replaceState(null, "", animalPath(REX, "sl"));
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeTruthy();
+    // Opened straight from a URL, so nothing pushed a marker for this entry;
+    // the effect has to have pushed its own throwaway one instead.
+    expect(window.history.state?.mobileDialogGesture).toBe(true);
+
+    await act(async () => {
+      window.history.back();
+    });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.pathname).toBe("/");
   });
 
   it("advances the card gallery without opening the dialog", () => {

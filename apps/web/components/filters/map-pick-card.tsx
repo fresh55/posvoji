@@ -136,7 +136,9 @@ export function MapPickCard({
           onClick={onDismiss}
           aria-label={messages.closePickCard}
           className={cn(
-            "-mr-1 -mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-ui transition-colors",
+            // The glyph stays small; below lg the button's box is the 44px
+            // touch target the rest of the picker's mobile chrome keeps.
+            "-mr-1 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-ui transition-colors lg:size-6",
             checked
               ? "text-[var(--filter-accent-foreground)]/70 hover:text-[var(--filter-accent-foreground)]"
               : "text-muted-foreground hover:text-foreground",

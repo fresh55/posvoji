@@ -195,7 +195,6 @@ export function AnimalFilters({
               filters={filters}
               groups={groups}
               counts={counts}
-              speciesTally={speciesTally}
               toggles={toggles}
               toggleTally={toggleTally}
               goodWith={goodWith}
@@ -207,7 +206,6 @@ export function AnimalFilters({
               onToggleMany={onToggleMany}
               onToggleProperty={onToggleProperty}
               onToggleManyProperties={onToggleManyProperties}
-              onSpeciesChange={onSpeciesChange}
               onClearAll={onClearAll}
             />
           )}

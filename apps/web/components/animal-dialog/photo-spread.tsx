@@ -33,6 +33,10 @@ const FAN_SPRING = {
 
 const ENTRANCE_STAGGER = 0.04;
 
+// Past this remainder the edge counts as reached, so the fade never blocks
+// the last few pixels of content.
+const THUMB_EDGE_SLACK_PX = 8;
+
 // A fixed nudge per photo keeps the fan from looking machine cut. It is picked
 // by position, never at random, so the same animal always fans out the same.
 const TILT_NUDGE = [0, -1.2, 0.8, -0.6, 1.4];
@@ -154,6 +158,34 @@ export function PhotoSpread({
     });
   }, [activeIndex, images.length]);
 
+  // The strip hides its scrollbar, so nothing else says there is more to
+  // find sideways. This drives fade-scroll-x the same way filter-sidebar.tsx
+  // drives the vertical fade, just measured across scrollLeft instead.
+  useEffect(() => {
+    const el = thumbsRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const fadeStart = el.scrollLeft > THUMB_EDGE_SLACK_PX;
+      const fadeEnd =
+        el.scrollLeft + el.clientWidth < el.scrollWidth - THUMB_EDGE_SLACK_PX;
+      el.style.setProperty("--scroll-fade-start", fadeStart ? "1" : "0");
+      el.style.setProperty("--scroll-fade-end", fadeEnd ? "1" : "0");
+    };
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    if (typeof ResizeObserver === "undefined") {
+      return () => el.removeEventListener("scroll", update);
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [images.length]);
+
   if (images.length === 0) {
     return (
       <PhotoGallery
@@ -195,7 +227,7 @@ export function PhotoSpread({
             <div
               ref={thumbsRef}
               data-slot="photo-thumbs"
-              className="relative z-10 flex gap-2 overflow-x-auto px-4 pt-4 no-scrollbar"
+              className="relative z-10 flex gap-2 overflow-x-auto px-4 pt-4 fade-scroll-x"
             >
               {/* One ring that travels, rather than one per thumb blinking on
                   and off. It is laid out in the scroller's own coordinates, so

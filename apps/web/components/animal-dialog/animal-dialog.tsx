@@ -8,7 +8,7 @@ import {
   type PointerEvent,
 } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { ChevronLeft, ChevronRight, XIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, XIcon } from "lucide-react";
 import {
   LazyMotion,
   animate,
@@ -67,7 +67,7 @@ export type DialogOrigin = {
 // hands that job to the card, so the scrollbar belongs to the card it scrolls
 // rather than hanging in the air beside the photos.
 const CONTENT_CLASS =
-  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none max-sm:h-dvh max-sm:overflow-y-auto max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
+  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none max-sm:h-dvh max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame, and pulls itself up
 // under the photos so the fan overlaps its top edge. The wide top padding is
@@ -175,6 +175,32 @@ export function AnimalDialog({
     dragging.current = false;
     dragY.set(0);
   }, [animal, dragY]);
+
+  // Android's back gesture calls history.back(), same as the routing hook's
+  // own close button. A dialog opened by a card click already has an entry
+  // pushed for it (window.history.state.animal) and the gesture closes it
+  // correctly. A dialog reached straight by a link has nothing local to pop,
+  // and the gesture leaves the site instead of closing the dialog. Pushing a
+  // throwaway entry here guarantees there is always one to consume, whatever
+  // way the dialog was opened.
+  useEffect(() => {
+    if (!open) return;
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia(PHONE_LAYOUT).matches) return;
+    if (window.history.state?.animal) return;
+
+    window.history.pushState(
+      { ...window.history.state, mobileDialogGesture: true },
+      "",
+    );
+
+    function handlePopState() {
+      onClose();
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [open, onClose]);
+
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
   // none. What the visitor left behind is the card they clicked.
   const returnFocus = useRef<HTMLElement | null>(null);
@@ -308,7 +334,7 @@ export function AnimalDialog({
               data-slot="dialog-close-photo"
               variant="ghost"
               size="icon-sm"
-              className="absolute top-2 right-2 z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:hidden"
+              className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:hidden"
             >
               <XIcon aria-hidden />
               <span className="sr-only">{messages.close}</span>
@@ -424,6 +450,29 @@ export function AnimalDialog({
                   <ShelterBlock animal={lastAnimal} logos={logos} />
                 </m.div>
               </div>
+
+              {/* The card's own CTA is the last thing in a long scroll on a
+                  phone. This mirrors it at the bottom of the screen instead,
+                  so the one action that matters is always a thumb-reach away.
+                  Hidden from sm up, where the card's own button is already in
+                  view without scrolling far. */}
+              {lastAnimal.source.sourceUrl && (
+                <div
+                  data-slot="sticky-cta"
+                  className="sticky inset-x-0 bottom-0 z-30 mt-auto border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:hidden"
+                >
+                  <Button asChild size="sm" className="h-11 w-full">
+                    <a
+                      href={lastAnimal.source.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {messages.viewOriginalListing}
+                      <ExternalLink aria-hidden />
+                    </a>
+                  </Button>
+                </div>
+              )}
             </m.div>
           </LazyMotion>
         </DialogPrimitive.Content>

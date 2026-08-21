@@ -19,7 +19,7 @@ export function ShelterBlock({
   const { shelter } = animal;
 
   return (
-    <div className="space-y-2">
+    <div data-slot="shelter-block" className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
         <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
 

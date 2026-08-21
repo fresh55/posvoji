@@ -63,7 +63,12 @@ import {
   ORIGIN_DASH,
   ORIGIN_REACH,
 } from "./map-callout";
-import { MAP_MORPH, Marker } from "./map-marker";
+import {
+  MAP_MORPH,
+  Marker,
+  PLATE_MIN_SCALE,
+  PLATE_TOO_SMALL,
+} from "./map-marker";
 
 export type { ShelterPin } from "@/lib/map-layout";
 
@@ -267,6 +272,19 @@ export function ShelterMap({
    *  calloutType in map-callout.tsx. */
   const [plateScale, setPlateScale] = useState(DEFAULT_PLATE_SCALE);
 
+  /** Whether the plate is drawn wide enough for the marker layer to be worth
+   *  mounting. The layer is hidden below that width either way, by the same
+   *  container query the paws use, but hidden is not free: some three dozen
+   *  Marker components with their collision geometry behind them are built,
+   *  committed and re-rendered on every hover for a plate nobody can see them
+   *  on. This is what actually takes them off a phone.
+   *
+   *  True until something measures otherwise, which is what keeps the server's
+   *  markup and the first client paint identical. Where nothing ever measures
+   *  (no ResizeObserver, i.e. the test environment) it simply stays true and
+   *  the CSS is left holding the question on its own, exactly as before. */
+  const [plateWide, setPlateWide] = useState(true);
+
   /** Where each annotation on the plate has put its block of type, keyed by
    *  the site that drew it. A table and not a single rectangle because more
    *  than one can stand at once: a spotlight card is persistent, and a hover
@@ -332,7 +350,13 @@ export function ShelterMap({
     const measure = () => {
       const box = node.getBoundingClientRect();
       const scale = Math.min(box.width / MAP_WIDTH, box.height / MAP_HEIGHT);
-      if (scale > 0) setPlateScale(scale);
+      if (scale > 0) {
+        setPlateScale(scale);
+        // The same threshold the container query gates the paws on, read off
+        // the scale that was just measured rather than off a width the stage's
+        // own padding would have to be subtracted from.
+        setPlateWide(scale >= PLATE_MIN_SCALE);
+      }
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -631,6 +655,7 @@ export function ShelterMap({
       <PlateFurniture
         towns={towns}
         calloutRects={Object.values(calloutRects)}
+        wide={plateWide}
       />
 
       {/* Under the callouts on purpose: a card is the answer someone just
@@ -639,6 +664,10 @@ export function ShelterMap({
 
       {origin && onMap(origin) && <Origin at={origin} />}
 
+      {/* The class is still what hides the layer, so the server and the first
+          paint agree; plateWide is what stops building it once the plate has
+          measured itself too small to show it. See the state's own note. */}
+      {plateWide && (
       <g className="hidden md:block">
         {towns.map((town) => (
           <Marker
@@ -740,6 +769,7 @@ export function ShelterMap({
           />
         )}
       </g>
+      )}
 
       {hoveredRegion && (
         <MapCallout
@@ -1135,15 +1165,30 @@ const CITY_ANCHORS: {
 function PlateFurniture({
   towns,
   calloutRects,
+  wide,
 }: {
   towns: Town[];
   /** Every annotation standing on the plate right now. A town anchor drawn
    *  across one of them comes off for as long as it is up; see the anchor
    *  branch below. */
   calloutRects: CalloutRect[];
+  /** Whether the plate has measured itself wide enough to draw the anchors at
+   *  all. The class below still hides them; this is what stops the layout work
+   *  behind them. See plateWide in ShelterMap. */
+  wide: boolean;
 }) {
   return (
-    <g aria-hidden data-map-furniture className="pointer-events-none">
+    // Every name on this layer is set in the map's own units, so a plate drawn
+    // a third the size sets them a third the size with it: on a phone the
+    // country names and the water came out four or five pixels, which is not
+    // quiet type, it is dirt on the paper. They leave at the same width the
+    // paws and the markers leave at, which is the width below which nothing
+    // this small can be read.
+    <g
+      aria-hidden
+      data-map-furniture
+      className={cn("pointer-events-none", PLATE_TOO_SMALL)}
+    >
       {NEIGHBOR_LABELS.map((label) => (
         <text
           key={label.text}
@@ -1187,6 +1232,7 @@ function PlateFurniture({
           the plate draws no markers at all and the whole map is about a third
           the size, where 3.8-unit type renders under five pixels: unreadable
           type is not quiet, it is dirt. */}
+      {wide && (
       <g className="hidden md:block">
         {CITY_ANCHORS.map((anchor) => {
           // The town's laid-out disc when the city has one, so the name stays
@@ -1238,6 +1284,7 @@ function PlateFurniture({
           );
         })}
       </g>
+      )}
     </g>
   );
 }
@@ -1272,7 +1319,9 @@ function ScaleBar() {
   const top = SCALE_BAR_Y - SCALE_BAR_TICK;
   const bottom = SCALE_BAR_Y + SCALE_BAR_TICK;
   return (
-    <g aria-hidden className="pointer-events-none">
+    // Off the plate below the width the rest of the small type leaves at: the
+    // bar's own label is 4.2 units, which is about five pixels on a phone.
+    <g aria-hidden className={cn("pointer-events-none", PLATE_TOO_SMALL)}>
       <path
         data-map-scale={SCALE_BAR_KM}
         d={`M${left} ${top}V${bottom}M${left} ${SCALE_BAR_Y}H${SCALE_BAR_RIGHT}M${SCALE_BAR_RIGHT} ${top}V${bottom}`}

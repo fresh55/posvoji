@@ -101,6 +101,146 @@ describe("mobile filter hardening", () => {
     );
   });
 
+  it("scrolls the body inside its own overflow element, separate from the drawer content", async () => {
+    render(
+      <I18nProvider locale="en">
+        <FilterSheet
+          filters={EMPTY_FILTERS}
+          groups={[]}
+          counts={emptyCounts}
+          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
+          toggles={[]}
+          toggleTally={new Map()}
+          activeSectionCount={0}
+          resultCount={0}
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const scrollBody = dialog.querySelector(".overflow-y-auto");
+    expect(scrollBody).toBeTruthy();
+    expect(scrollBody?.className).toContain("overflow-y-auto");
+    expect(scrollBody?.className).toContain("overscroll-contain");
+
+    // DrawerContent renders the dialog element itself, so its content lives
+    // on the dialog node rather than a descendant.
+    const content = dialog;
+    expect(content.getAttribute("data-slot")).toBe("drawer-content");
+    expect(content.className).not.toContain("overflow-y-auto");
+    expect(scrollBody).not.toBe(content);
+  });
+
+  it("disables the footer clear button only when no section is active", async () => {
+    const { rerender } = render(
+      <I18nProvider locale="en">
+        <FilterSheet
+          filters={EMPTY_FILTERS}
+          groups={[]}
+          counts={emptyCounts}
+          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
+          toggles={[]}
+          toggleTally={new Map()}
+          activeSectionCount={0}
+          resultCount={0}
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Clear" }).hasAttribute("disabled"),
+    ).toBe(true);
+
+    rerender(
+      <I18nProvider locale="en">
+        <FilterSheet
+          filters={EMPTY_FILTERS}
+          groups={[]}
+          counts={emptyCounts}
+          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
+          toggles={[]}
+          toggleTally={new Map()}
+          activeSectionCount={1}
+          resultCount={0}
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Clear" }).hasAttribute("disabled"),
+    ).toBe(false);
+  });
+
+  it("keeps the header outside the scrolling body", async () => {
+    render(
+      <I18nProvider locale="en">
+        <FilterSheet
+          filters={EMPTY_FILTERS}
+          groups={[]}
+          counts={emptyCounts}
+          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
+          toggles={[]}
+          toggleTally={new Map()}
+          activeSectionCount={0}
+          resultCount={0}
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const header = dialog.querySelector('[data-slot="filter-sheet-header"]');
+    const scrollBody = dialog.querySelector(".overflow-y-auto");
+    expect(header).toBeTruthy();
+    expect(scrollBody).toBeTruthy();
+    expect(scrollBody?.contains(header as Node)).toBe(false);
+  });
+
+  it("keeps the species tabs outside the scrolling body", async () => {
+    render(
+      <I18nProvider locale="en">
+        <FilterSheet
+          filters={EMPTY_FILTERS}
+          groups={[]}
+          counts={emptyCounts}
+          speciesTally={{ all: 0, dog: 0, cat: 0, rabbit: 0, other: 0 }}
+          toggles={[]}
+          toggleTally={new Map()}
+          activeSectionCount={0}
+          resultCount={0}
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const scrollBody = dialog.querySelector(".overflow-y-auto");
+    const speciesToggle = screen.getByRole("button", { name: "All" });
+    expect(scrollBody).toBeTruthy();
+    expect(scrollBody?.contains(speciesToggle)).toBe(false);
+  });
+
   it("returns focus to the shelter trigger after closing the dialog", async () => {
     render(
       <I18nProvider locale="en">

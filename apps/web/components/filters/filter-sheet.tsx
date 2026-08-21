@@ -1,6 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -63,6 +64,7 @@ export function FilterSheet({
   onClearAll: () => void;
 } & FilterActionContract) {
   const { locale, messages, t } = useI18n();
+  const [scrolled, setScrolled] = useState(false);
   return (
     <Drawer>
       <DrawerTrigger asChild>
@@ -90,18 +92,30 @@ export function FilterSheet({
       </DrawerTrigger>
       <DrawerContent
         closeLabel={messages.close}
-        className="max-h-[85dvh] gap-0 overflow-y-auto px-5 pt-1"
+        className="flex max-h-[85dvh] flex-col gap-0 pt-1"
       >
-        <DrawerTitle className="mt-3 text-base">{messages.filters}</DrawerTitle>
+        <div data-slot="filter-sheet-header" className="shrink-0 px-5 pb-3">
+          <DrawerTitle className="mt-3 text-base">
+            {messages.filters}
+          </DrawerTitle>
+        </div>
 
-        <div className="mt-4 space-y-6">
+        <div
+          data-scrolled={scrolled ? "" : undefined}
+          className="shrink-0 border-b border-transparent px-5 pb-4 data-scrolled:border-border"
+        >
           <SpeciesTabs
             value={filters.species}
             onChange={onSpeciesChange}
             counts={speciesTally}
             fullWidth
           />
+        </div>
 
+        <div
+          onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
+          className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
+        >
           <FilterGroupList
             filters={filters}
             groups={groups}
@@ -119,12 +133,17 @@ export function FilterSheet({
           />
         </div>
 
-        <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button variant="ghost" onClick={onClearAll}>
+        <div className="flex shrink-0 gap-3 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button
+            variant="ghost"
+            className="h-11"
+            disabled={activeSectionCount === 0}
+            onClick={onClearAll}
+          >
             {messages.clear}
           </Button>
           <DrawerClose asChild>
-            <Button className="flex-1">
+            <Button className="h-11 flex-1">
               {messages.show}
               <ResultCount
                 count={resultCount}

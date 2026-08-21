@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
@@ -32,7 +32,7 @@ const filterActions = {
 };
 
 describe("mobile filter hardening", () => {
-  it("keeps the 320px dock bounded with an active filter", () => {
+  it("spans the 320px viewport and shares the dock between both actions", () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       value: 320,
@@ -64,12 +64,67 @@ describe("mobile filter hardening", () => {
     );
 
     const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className).toContain("max-w-[calc(100vw-2rem)]");
-    expect(dock?.className).toContain("p-1.5");
-    expect(dock?.className).toContain("rounded-ui");
+    expect(dock).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Filters, active sections: 1" }),
     ).toBeTruthy();
+
+    // Both actions are in the dock, and each is a direct child, which is what
+    // splits the width between them evenly.
+    expect(dock?.children.length).toBe(2);
+    for (const slot of Array.from(dock?.children ?? [])) {
+      expect(slot.querySelector("button") ?? slot.closest("button")).toBeTruthy();
+    }
+  });
+
+  it("keeps the species tabs and a 44px sort control in the mobile toolbar", () => {
+    render(
+      <I18nProvider locale="en">
+        <AnimalFilters
+          isEmpty={false}
+          filters={EMPTY_FILTERS}
+          speciesTally={{ all: 2, dog: 1, cat: 1, rabbit: 0, other: 0 }}
+          groups={[
+            { group: "sex", options: [{ value: "male", label: "Male" }] },
+          ]}
+          counts={{ ...emptyCounts, sex: new Map([["male", 1]]) }}
+          toggles={[]}
+          toggleTally={new Map()}
+          shelters={[{ value: "test", label: "Test shelter" }]}
+          shelterTally={new Map([["test", 2]])}
+          chips={[]}
+          resultCount={2}
+          clearTrailKey={0}
+          sort="longest-in-shelter"
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          onSortChange={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    // The tabs live in the same sticky row as sort, not only behind the sheet.
+    const mobileToolbar = document.querySelector(
+      '[data-slot="mobile-toolbar"]',
+    ) as HTMLElement;
+    expect(mobileToolbar).toBeTruthy();
+    const mobileTab = within(mobileToolbar).getByRole("button", {
+      name: "Dogs",
+    });
+    expect(mobileTab.closest('[data-slot="drawer-content"]')).toBe(null);
+
+    // The pills are drawn smaller than a finger, so each carries the shared
+    // utility that grows the tap target around the drawing.
+    expect(mobileTab.className).toContain("max-lg:tap-target");
+
+    // Hiding the sort label on the narrowest phones must not take the current
+    // sort with it: it moves into the control's name.
+    const sort = within(mobileToolbar).getByRole("combobox");
+    expect(sort.getAttribute("aria-label")).toBe(
+      "Sort animals: Longest in shelter",
+    );
+    expect(sort.className).toContain("max-lg:min-h-11");
   });
 
   it("announces the active filter count and keeps a mobile-sized close target", async () => {

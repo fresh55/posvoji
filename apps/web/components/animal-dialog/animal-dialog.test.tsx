@@ -261,7 +261,11 @@ describe("animal dialog", () => {
 
     // The rest of the page is hidden from assistive tech while the dialog is
     // open, so the species tab has to be asked for by name including hidden.
-    fireEvent.click(screen.getByRole("button", { name: /Psi/, hidden: true }));
+    // The toolbar carries a mobile and a desktop copy of the tabs, one of
+    // which is always display:none, and either one writes the same filter.
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /Psi/, hidden: true })[0],
+    );
 
     await waitFor(() => expect(window.location.search).toBe("?vrsta=pes"));
     // The filter wrote the query and left the animal's own path standing.
@@ -755,7 +759,9 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
     const entries = window.history.length;
 
-    fireEvent.click(screen.getByRole("button", { name: /Psi/, hidden: true }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /Psi/, hidden: true })[0],
+    );
     await waitFor(() => expect(window.location.search).toBe("?vrsta=pes"));
     // The filter wrote the query and left the animal's own path standing.
     expect(window.location.pathname).toBe(animalPath(MURI, "sl"));

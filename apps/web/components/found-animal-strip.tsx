@@ -15,7 +15,7 @@ export function FoundAnimalStrip() {
     <button
       type="button"
       onClick={requestMunicipalityLookup}
-      className="group flex w-full items-center justify-between gap-3 rounded-ui border bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted/70"
+      className="group flex w-full items-center justify-between gap-3 rounded-ui border bg-muted/40 px-4 py-2 text-left transition-colors hover:bg-muted/70"
     >
       <span className="flex min-w-0 items-center gap-2.5">
         <PawPrint className="size-4 shrink-0 text-muted-foreground" aria-hidden />

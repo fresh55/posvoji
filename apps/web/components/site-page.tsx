@@ -40,8 +40,8 @@ export function SitePage({ locale }: { locale: Locale }) {
         />
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+          <div className="space-y-1.5">
+            <h1 className="text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
               {messages.heroTitle}
             </h1>
             {dataset && shelters > 0 && (
@@ -53,7 +53,7 @@ export function SitePage({ locale }: { locale: Locale }) {
               </p>
             )}
             {municipalities.length > 0 && (
-              <div className="pt-2">
+              <div className="pt-1.5">
                 <FoundAnimalStrip />
               </div>
             )}

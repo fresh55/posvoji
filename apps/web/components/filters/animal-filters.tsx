@@ -26,9 +26,9 @@ import type {
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 
-// Desktop has enough room for one quiet toolbar. Mobile keeps result and sort
-// in the sticky rail while the two primary discovery actions share a bottom
-// dock with enough internal space to read as one deliberate surface.
+// Desktop has enough room for one quiet toolbar. Mobile keeps the species
+// tabs, the result count and sort in the sticky rail while the two primary
+// discovery actions share a bottom dock that spans the viewport.
 export function AnimalFilters({
   isEmpty,
   filters,
@@ -97,12 +97,11 @@ export function AnimalFilters({
   return (
     <>
       <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
-        <div className="flex items-center justify-between gap-4">
-          <div
-            className={
-              hasFilterSheet ? "hidden min-w-0 sm:block" : "min-w-0"
-            }
-          >
+        <div
+          data-slot="desktop-toolbar"
+          className="hidden items-center justify-between gap-4 lg:flex"
+        >
+          <div className="min-w-0">
             <SpeciesTabs
               value={filters.species}
               onChange={onSpeciesChange}
@@ -118,11 +117,11 @@ export function AnimalFilters({
                 species={filters.species}
                 locale={locale}
                 clearTrailKey={clearTrailKey}
-                className="hidden min-w-24 text-muted-foreground lg:inline-flex"
+                className="text-muted-foreground"
               />
             )}
             {shelters && (
-              <div className="hidden lg:block">
+              <div>
                 <LocationPicker
                   options={shelters}
                   counts={shelterTally}
@@ -138,28 +137,36 @@ export function AnimalFilters({
                 />
               </div>
             )}
-            {!isEmpty && (
-              <SortPicker
-                value={sort}
-                onChange={onSortChange}
-                className="hidden lg:flex"
-              />
-            )}
+            {!isEmpty && <SortPicker value={sort} onChange={onSortChange} />}
           </div>
         </div>
 
-        {!isEmpty && (
-          <div className="mt-2 flex items-center justify-end gap-2 lg:hidden">
-            <ResultCount
-              count={resultCount}
-              species={filters.species}
-              locale={locale}
-              clearTrailKey={clearTrailKey}
-              className="min-w-fit text-muted-foreground sm:min-w-24"
+        <div
+          data-slot="mobile-toolbar"
+          className="flex items-center gap-2 lg:hidden"
+        >
+          <div className="min-w-0 flex-1">
+            <SpeciesTabs
+              value={filters.species}
+              onChange={onSpeciesChange}
+              counts={speciesTally}
+              disabled={isEmpty}
             />
-            <SortPicker value={sort} onChange={onSortChange} />
           </div>
-        )}
+
+          {!isEmpty && (
+            <div className="flex shrink-0 items-center gap-2">
+              <ResultCount
+                count={resultCount}
+                species={filters.species}
+                locale={locale}
+                clearTrailKey={clearTrailKey}
+                className="text-muted-foreground max-sm:min-w-fit"
+              />
+              <SortPicker value={sort} onChange={onSortChange} />
+            </div>
+          )}
+        </div>
 
         {!isEmpty && chips.length > 0 && (
           <div className="mt-2 min-w-0">
@@ -181,7 +188,7 @@ export function AnimalFilters({
       {(hasFilterSheet || shelters) && (
         <div
           data-slot="mobile-filter-dock"
-          className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 box-border flex max-w-[calc(100vw-2rem)] flex-row-reverse items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg ring-1 ring-foreground/5 lg:hidden"
+          className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg ring-1 ring-foreground/5 lg:hidden [&>*]:min-w-0 [&>*]:flex-1"
         >
           {hasFilterSheet && (
             <FilterSheet
@@ -205,7 +212,7 @@ export function AnimalFilters({
             />
           )}
           {shelters && (
-            <div className="min-w-0 max-w-[12rem] sm:max-w-[14rem] [&>button]:h-11 [&>button]:w-full [&>button]:rounded-ui">
+            <div className="[&>button]:h-11 [&>button]:w-full [&>button]:rounded-ui">
               <LocationPicker
                 options={shelters}
                 counts={shelterTally}

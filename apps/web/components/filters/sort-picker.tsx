@@ -40,14 +40,23 @@ export function SortPicker({
     >
       <SelectTrigger
         size="sm"
-        aria-label={messages.sortBy}
-        className={cn("max-w-44 text-xs", className)}
+        // The narrowest phones get the icon alone, to leave the species tabs
+        // beside it room to breathe. The label is the only thing carrying
+        // which sort is active, so it moves into the name rather than being
+        // dropped: hiding it visually must not also silence it.
+        aria-label={`${messages.sortBy}: ${labels[value]}`}
+        className={cn(
+          "max-w-44 text-xs max-lg:min-h-11 max-lg:justify-center max-lg:px-2.5",
+          className,
+        )}
       >
         <ArrowDownNarrowWide
-          className="size-3.5 text-muted-foreground"
+          className="size-3.5 text-muted-foreground max-lg:size-4"
           aria-hidden
         />
-        <SelectValue>{labels[value]}</SelectValue>
+        <SelectValue>
+          <span className="max-sm:hidden">{labels[value]}</span>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent position="popper" align="end">
         {ANIMAL_SORTS.map((sort) => (

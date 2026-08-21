@@ -41,7 +41,12 @@ export function SpeciesTabs({
     // Scrolling keeps it one row tall at every width.
     <div
       className={cn(
-        "flex min-w-0 gap-1 overflow-x-auto no-scrollbar",
+        // The vertical padding is what the tabs' touch overlays live in.
+        // Scrolling sideways makes this a scroll box in both axes, and a
+        // scroll box clips at its padding edge, so without the padding the
+        // overlays are cut back to the height of the pills. The matching
+        // negative margin keeps the row occupying its old height.
+        "flex min-w-0 gap-1 overflow-x-auto no-scrollbar max-lg:-my-2 max-lg:py-2",
         fullWidth && "w-full overflow-visible",
       )}
     >
@@ -56,8 +61,11 @@ export function SpeciesTabs({
             onClick={() => onChange(tab)}
             disabled={disabled}
             aria-pressed={value === tab}
+            // The pill stays 28px tall so the toolbar row keeps its height.
+            // Below lg, which is the only place this copy of the tabs is
+            // shown, the tap target grows to 44px around it.
             className={cn(
-              "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-ui px-2.5 py-1 text-sm transition-colors disabled:opacity-40",
+              "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-ui px-2.5 py-1 text-sm transition-colors disabled:opacity-40 max-lg:tap-target",
               fullWidth && "flex-1 py-1.5",
               value === tab
                 ? "bg-foreground text-background"

@@ -343,39 +343,26 @@
   border-top-right-radius: var(--radius-ui);
 }
 
-/* Registered so a fade eases in rather than snapping. Browsers without
-   @property still get the fade, just without the transition. */
-@property --scroll-fade-top {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-
-@property --scroll-fade-bottom {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-
-/* A scroll container without a scrollbar. use-scroll-edge-fades.ts flips the
-   two variables, and a soft mask on each clipped edge takes over the
-   scrollbar's job of saying there is more. A container that fits stays
-   untouched. */
-@utility fade-scroll {
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
+/* A finger needs 44px, and several controls here are drawn smaller than that
+   on purpose: chips and tabs read as small, and growing them would push the
+   rows they sit in taller. This lays an invisible layer over such a control
+   that reaches out to 44px in both axes, so the tappable area grows and the
+   drawing does not. Apply it behind a breakpoint, as in max-md:tap-target.
+   Two cautions. The control needs its own stacking context, which the
+   position here provides, and any scroll container between the control and
+   the viewport clips this layer at its padding edge, so that container needs
+   padding of its own to hold it. */
+@utility tap-target {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    height: max(100%, 44px);
+    width: max(100%, 44px);
   }
-  transition:
-    --scroll-fade-top 0.25s ease,
-    --scroll-fade-bottom 0.25s ease;
-  mask-image: linear-gradient(
-    to bottom,
-    rgb(0 0 0 / calc(1 - var(--scroll-fade-top, 0))) 0,
-    black calc(var(--scroll-fade-top, 0) * 2.5rem),
-    black calc(100% - var(--scroll-fade-bottom, 0) * 2.5rem),
-    rgb(0 0 0 / calc(1 - var(--scroll-fade-bottom, 0))) 100%
-  );
 }
 
 @layer base {

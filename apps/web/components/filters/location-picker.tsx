@@ -70,11 +70,13 @@ import { cn } from "@/lib/utils";
 const LEGEND_SWATCH_GROUND =
   "color-mix(in oklch, var(--muted) 40%, var(--background))";
 
-// The map legend. Both renderings live in the stage's bottom-left corner over
-// the paper, and both come out of this one component so they cannot drift
-// apart: a stacked column at lg and up, where the list is a panel beside the
-// map, and a wrapping row below it, where the plate is the width of the screen
-// and a column in that corner would be a wall.
+// The map legend, one rendering at every width. It used to be two, a column
+// floated into the plate's bottom-left corner from lg up and a wrapping row
+// under the plate below that, on the bet that the letterbox always left paper
+// in that corner. It does not: a plate limited by height fills its box, and
+// the column sat on the country. The legend is a caption under the map now,
+// which is one shape and one place, and a wrapping row is what a caption under
+// a plate wants to be at any width.
 //
 // It explains what nobody can guess and nothing else. The density ramp is the
 // one encoding with no other way in, so it is always here. Everything else
@@ -83,7 +85,6 @@ const LEGEND_SWATCH_GROUND =
 // and sizes explain themselves on hover, through the callout, so they say
 // nothing here at all.
 function MapLegend({
-  variant,
   highlightedDensity,
   onHoverDensity,
   onLeaveDensity,
@@ -93,7 +94,6 @@ function MapLegend({
   origin,
   messages,
 }: {
-  variant: "panel" | "inline";
   highlightedDensity: number | null;
   onHoverDensity: (index: number) => void;
   onLeaveDensity: () => void;
@@ -104,20 +104,16 @@ function MapLegend({
    *  is a state worth naming. */
   hasMixedRegion: boolean;
   /** At least one shelter with nothing listed is drawn as a hollow circle right
-   *  now. Both variants act on it, at different widths: see the row below. */
+   *  now. The row itself decides at which widths that is worth saying: see it
+   *  below. */
   hasEmptyMarker: boolean;
   origin: LatLon | undefined;
   messages: ReturnType<typeof useI18n>["messages"];
 }) {
   return (
     <div
-      data-map-legend={variant}
-      className={cn(
-        "leading-none text-muted-foreground",
-        variant === "panel"
-          ? "flex flex-col gap-y-1 text-[10px]"
-          : "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] lg:hidden",
-      )}
+      data-map-legend
+      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] leading-none text-muted-foreground"
     >
       <span className="flex items-center gap-2">
         <span>{messages.fewerAnimals}</span>
@@ -221,21 +217,11 @@ function MapLegend({
           The glyph comes from map-marker.tsx, drawn from the same classes and
           the same radius-to-stroke proportion the real circle uses.
 
-          This row follows the markers, not the docks, and the two no longer
-          part at the same width. Markers are drawn from md up; the panel
-          variant of this legend only exists from lg up, so it can carry the row
-          unconditionally. The inline variant now covers everything below lg,
-          which spans both sides of the marker breakpoint: from md to lg the
-          plate is full width and draws every marker, below md it draws none.
-          max-md:hidden is what keeps the row off the phone, where there is no
-          hollow circle to explain. */}
+          This row follows the markers and not the docks: markers are drawn
+          from md up, so max-md:hidden is what keeps the row off the phone,
+          where there is no hollow circle to explain. */}
       {hasEmptyMarker && (
-        <span
-          className={cn(
-            "flex items-center gap-1.5",
-            variant === "inline" && "max-md:hidden",
-          )}
-        >
+        <span className="flex items-center gap-1.5 max-md:hidden">
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
           {messages.emptyShelterLegend}
         </span>
@@ -593,6 +579,30 @@ export function LocationPicker({
     [onToggleMany],
   );
 
+  // A row click and a map click are the same act, so they get the same answer.
+  // The plate's path goes through handlePick above; the list had been handed
+  // the parent's raw toggle, so picking a shelter off the map produced faces,
+  // counts and the longest wait while picking the same shelter off the list
+  // only turned a row green.
+  //
+  // Only the selecting half opens a card: dropping a shelter is not a question
+  // about it. And the card only goes when it is the one being dropped, because
+  // deselecting some other row is not an answer to the question already on
+  // screen. The pick effect below does the scrolling either way.
+  const handleRowToggle = useCallback(
+    (value: string) => {
+      onToggle(value);
+      if (!selected.includes(value)) {
+        setPick({ kind: "shelter", value });
+        return;
+      }
+      setPick((current) =>
+        current?.kind === "shelter" && current.value === value ? null : current,
+      );
+    },
+    [onToggle, selected],
+  );
+
   // Bring the card into view when it appears. The panel scrolls on its own in
   // both docks, so a click made with the list scrolled down would otherwise
   // put its answer above the fold; "nearest" leaves an already-visible card
@@ -797,21 +807,27 @@ export function LocationPicker({
           <div
             data-map-stage={panelOpen ? "panel" : "rail"}
             className={cn(
-              "absolute inset-x-0 top-0 flex items-center justify-center p-2 sm:p-3",
-              // Below lg the plate and the legend under it are one stack,
-              // centred together in whatever the sheet leaves: that is how the
-              // legend ends up hugging the map instead of the frame. See the
-              // legend block itself, which is a child of this container now.
-              "max-lg:flex-col max-lg:items-start",
+              // One stack at every width: the plate, then the caption under
+              // it. The caption used to float into the plate's own bottom-left
+              // corner from lg up, which only works while the letterbox
+              // happens to leave paper there; a plate limited by height leaves
+              // none and the legend ended up on the country. In flow the plate
+              // is given what the caption does not take, so an overlap is not
+              // something to tune away, it is something that cannot be
+              // expressed.
+              "absolute inset-x-0 top-0 flex flex-col gap-2 p-2 sm:p-3",
               // Named, so the paw layer in map-marker.tsx can ask how wide the
               // plate is actually drawn rather than guessing from the viewport.
-              // This element is the right one to ask: it is the box the SVG
-              // fills, and it is the box that changes width when the panel
-              // folds to a rail. Both its width and its height come from the
-              // insets and the width utilities below, never from its contents,
-              // so inline-size containment costs nothing here.
+              // This element is the right one to ask: its width is the width
+              // the SVG fills, and it is the box that changes width when the
+              // panel folds to a rail. The container query is about width
+              // alone, so the caption sharing this column costs it nothing.
               "@container/map-stage",
-              "lg:right-auto lg:bottom-0 lg:p-4",
+              // p-3 and not p-4 at lg: every other edge in this dialog is
+              // inset by three, the title chip, the close, the pill and the
+              // panel alike, and the plate was the one thing keeping a
+              // different gutter.
+              "lg:right-auto lg:bottom-0 lg:p-3",
               "transition-[width,bottom] duration-500 ease-out motion-reduce:transition-none",
               // Below lg the sheet takes height instead of width, so the same
               // recentering happens on the other axis: the container gives up
@@ -823,6 +839,11 @@ export function LocationPicker({
                 : "lg:w-[calc(100%-4.5rem)]",
             )}
           >
+            {/* The plate gets what the caption leaves and no more. min-h-0 is
+                what lets a flex item give way at all, and the SVG letterboxes
+                inside whatever height it ends up with, so the map shrinks
+                rather than the caption being pushed off the stage. */}
+            <div className="flex min-h-0 flex-1 items-center justify-center">
               <ShelterMap
                 pins={pins}
                 selected={selected}
@@ -873,48 +894,38 @@ export function LocationPicker({
                 // What an empty region has to say for itself. Computed here
                 // because this is where the coverage table already is.
                 regionShelterNames={regionShelterNames}
-                // lg+: the SVG takes the whole container and lets its own
+                // lg+: the SVG takes the whole row above and lets its own
                 // preserveAspectRatio letterbox the viewBox inside it. That is
                 // the letterboxing: no aspect-ratio arithmetic on this side,
                 // and the paper it leaves showing is the dialog's ground.
                 // Below lg it keeps the component's own h-auto instead, so the
                 // plate is exactly as tall as 320:210 makes it and no taller,
-                // capped at the container so a raised sheet shrinks it rather
-                // than pushing it out of the frame.
+                // capped at the row so a raised sheet shrinks it rather than
+                // pushing it out of the frame.
                 className="max-h-full lg:h-full"
               />
+            </div>
 
-            {/* Bottom-left, over the paper: the legend and the credits, which
-                is where a printed sheet puts them. The plate's own furniture,
-                the scale bar, keeps the bottom-right of the viewBox, so the two
-                never meet; the confirm pill takes the dialog's bottom-right
-                corner, which is outside the map's container while the panel is
-                out and sixty-odd pixels of dialog edge while it is folded, well
-                under the scale bar's own height above the frame.
+            {/* The caption: the legend and the credits, under the plate, which
+                is where a printed sheet puts them and the one place they can
+                be that no aspect ratio can turn into an overlap. It is the
+                stage's last row, so the plate's bottom edge is always above
+                it, whatever the sheet is doing to the height they share.
 
-                A child of the map's own container, not of the stage, and that
-                is the point below lg. Frame-anchored at bottom-28 it sat 148px
-                under the plate on a 390px phone, a key floating in paper with
-                no map near it. In the container's flow it is the next thing
-                after the plate, so it moves with the plate's bottom edge
-                whatever the sheet is doing to the height above it. At lg the
-                container is the map, so absolute bottom-3 left-3 inside it puts
-                the stack exactly where it has always been: the dialog's own
-                bottom-left corner.
+                The plate's own furniture keeps its own corners inside the
+                viewBox and never meets this; the confirm pill takes the
+                dialog's bottom-right, which at lg is outside this column
+                entirely (the stage stops where the panel begins) and below lg
+                floats in the same band this sits in, as it did before.
 
-                It still steps out of the way entirely once the sheet is up:
-                more than half the screen is the list then, and the map behind
-                it has nothing left to explain.
+                It steps out of the way entirely once the sheet is up: more
+                than half the screen is the list then, and the map above it has
+                nothing left to explain.
 
                 CC BY 4.0 requires the attribution paragraph below to stay
                 visible regardless, so it lives outside this hidden-when-open
                 wrapper: only the legend itself folds away with the sheet. */}
-            <div
-              className={cn(
-                "pointer-events-none z-10 mt-2 flex w-full max-w-[26rem] flex-col gap-1",
-                "lg:absolute lg:bottom-3 lg:left-3 lg:mt-0 lg:w-auto",
-              )}
-            >
+            <div className="pointer-events-none z-10 flex w-full shrink-0 flex-col gap-1">
               <div
                 // The half of this corner that folds away with the sheet. It
                 // is named so the licence check can ask where the credit sits
@@ -926,36 +937,13 @@ export function LocationPicker({
                   sheetOpen && "max-lg:hidden",
                 )}
               >
-                <div className="pointer-events-auto hidden w-fit lg:block">
+                <div className="pointer-events-auto">
                   <MapLegend
-                    variant="panel"
                     highlightedDensity={highlightedDensity}
                     onHoverDensity={setHighlightedDensity}
                     onLeaveDensity={() => setHighlightedDensity(null)}
                     hasSelectedRegion={hasSelected}
                     hasMixedRegion={hasMixed}
-                    hasEmptyMarker={hasEmpty}
-                    origin={origin}
-                    messages={messages}
-                  />
-                </div>
-
-                {/* The wide-plate legend, which is now everything below lg:
-                    phones and tablets alike. It wraps rather than stacking,
-                    because there the plate is the width of the screen and the
-                    corner under it is that wide too. */}
-                <div className="pointer-events-auto lg:hidden">
-                  <MapLegend
-                    variant="inline"
-                    highlightedDensity={highlightedDensity}
-                    onHoverDensity={setHighlightedDensity}
-                    onLeaveDensity={() => setHighlightedDensity(null)}
-                    hasSelectedRegion={hasSelected}
-                    hasMixedRegion={hasMixed}
-                    // Acted on here too, unlike before: this variant now
-                    // covers md to lg, where the plate is full width and
-                    // draws every marker. The row's own class is what keeps
-                    // it off the phone.
                     hasEmptyMarker={hasEmpty}
                     origin={origin}
                     messages={messages}
@@ -971,7 +959,10 @@ export function LocationPicker({
                 // a test can then find this paragraph and walk its ancestors
                 // rather than matching on the classes it happens to wear.
                 data-slot="map-attribution"
-                className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70"
+                // The measure is capped here rather than on the caption as a
+                // whole: this is prose and wants a line length, while the
+                // legend beside it is a key and wants the plate's own width.
+                className="pointer-events-auto max-w-[26rem] text-[10px] leading-tight text-muted-foreground/70"
               >
                 {messages.regionBoundaries}:{" "}
                 <a
@@ -1268,11 +1259,13 @@ export function LocationPicker({
             {(panelOpen || sheetOpen) && (
               <div
                 className={cn(
-                  // max-lg:pb-20 is the room the confirm pill docks into at
-                  // the foot of the sheet: the pill is drawn over this block,
-                  // not in it, so the padding is what keeps it off the last
-                  // row of the list.
-                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pt-1 max-lg:pb-20",
+                  // No top padding of its own at any width: the tab row above
+                  // already ends with pb-2, and adding to it below lg made the
+                  // gap under the tabs two different gaps. max-lg:pb-20 is the
+                  // room the confirm pill docks into at the foot of the sheet:
+                  // the pill is drawn over this block, not in it, so the
+                  // padding is what keeps it off the last row of the list.
+                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pb-20",
                   !panelOpen && "lg:hidden",
                   !sheetOpen && "max-lg:hidden",
                 )}
@@ -1522,7 +1515,12 @@ export function LocationPicker({
                     rows={visibleRows}
                     counts={counts}
                     selected={selected}
-                    onToggle={onToggle}
+                    // The wrapped toggle, so a row answers with the card a
+                    // marker answers with. The municipality finder and the
+                    // card's own toggle keep the raw one: the finder asks a
+                    // different question, and the card must not dismiss itself
+                    // when its own button is pressed.
+                    onToggle={handleRowToggle}
                     refs={rowRefs}
                     highlighted={hoveredMarkerValues ?? undefined}
                     onHoverRow={setHoveredRowValue}

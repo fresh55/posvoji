@@ -78,7 +78,10 @@ export function FilterSidebar({
             <LazyMotion features={domAnimation}>
               <Badge
                 variant="secondary"
-                className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
+                // motion-reduce:duration-0, not motion-reduce:animate-none:
+                // see the comment on DialogOverlay in ui/dialog.tsx for why
+                // the animate-none guard does not actually take effect here.
+                className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
               >
                 <CountRoll value={activeSections} />
               </Badge>

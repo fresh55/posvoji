@@ -206,7 +206,7 @@ export function ShelterRows({
                   {label}
                 </span>
                 {sublabel && (
-                  <span className="block truncate text-[11px] text-muted-foreground/80">
+                  <span className="block truncate text-[11px] text-muted-foreground">
                     {sublabel}
                   </span>
                 )}
@@ -309,21 +309,28 @@ export function ShelterRows({
                       takes the accent tint: with the row surface kept clear,
                       the pill is the mark that stays visible at the right edge
                       when the left half of a long name is all a narrow panel
-                      shows. */}
+                      shows.
+
+                      An unpicked pill keeps the secondary variant's own
+                      foreground rather than overriding it to muted. Muted ink
+                      on the secondary surface measured 4.35:1, under the 4.5
+                      that 11px text has to clear, and the count is the number
+                      the row is picked on, not decoration. The variant's own
+                      pairing is the quiet one that was already designed to
+                      clear it. */}
                   <Badge
                     variant="secondary"
                     className={cn(
                       "h-5 min-w-5 shrink-0 rounded-full px-1 text-[11px] font-normal tabular-nums",
-                      checked
-                        ? "bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
-                        : "text-muted-foreground",
+                      checked &&
+                        "bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
                     )}
                   >
                     {count}
                   </Badge>
                 </span>
                 {sublabel && (
-                  <span className="block truncate text-[11px] text-muted-foreground/80">
+                  <span className="block truncate text-[11px] text-muted-foreground">
                     {sublabel}
                   </span>
                 )}

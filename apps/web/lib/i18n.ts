@@ -101,7 +101,6 @@ const sl = {
   locationNotFound: "Tega kraja ne najdem. Poskusi s poštno številko.",
   postcodeNotFound: "Te poštne številke ne najdem. Preveri vnos.",
   clearLocation: "Počisti kraj",
-  selectedShelters: "{selected} od {total} zavetišč",
   shelterPickerLabel: "Zavetišče: {label}. Odpri zemljevid.",
   whereSearching: "Kje iščeš?",
   mapInstructionsDesktop:
@@ -361,7 +360,6 @@ const en: Messages = {
   locationNotFound: "No such place. Try a postcode.",
   postcodeNotFound: "No such postcode. Check the number.",
   clearLocation: "Clear location",
-  selectedShelters: "{selected} of {total} shelters",
   shelterPickerLabel: "Shelter: {label}. Open map.",
   whereSearching: "Where are you looking?",
   mapInstructionsDesktop:

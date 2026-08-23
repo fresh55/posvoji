@@ -225,13 +225,41 @@ function wedgeLabel(
   return `${shelter.label}: ${animals}`;
 }
 
+/** What one click on this element would commit, written as one string.
+ *
+ *  The plate has three kinds of element a click picks with: a region, a coin
+ *  answering for its whole town, and one mark inside a coin answering for its
+ *  own shelter. A pointer that cannot hover has to be able to name the thing
+ *  under it before it picks it (see handlePlateClickCapture in
+ *  shelter-map.tsx), and naming it means recognising it again on the next tap.
+ *
+ *  The string is what makes that recognition cheap, and the rule around it is
+ *  what makes it honest: `data-map-commit` is written on the element carrying
+ *  the click and on no other, in the same expression that decides whether
+ *  there is a click at all. An off-site mark, a dead coin and an empty region
+ *  therefore carry nothing, and cannot be armed to pick nothing twice.
+ *
+ *  It lives in this file rather than in shelter-map.tsx because that is the
+ *  direction the value import between the two runs: shelter-map imports Marker
+ *  from here, so anything here can be imported there without the pair becoming
+ *  circular. The other way round is type-only, as the import above says. */
+export function commitKey(
+  kind: "region" | "town" | "shelter",
+  of: string | number,
+): string {
+  return `${kind}:${of}`;
+}
+
 // Coins were pointer-only once, and the list was the whole keyboard story for
 // picking one shelter out of a shared town. It is not any more. A wedge still
-// has no tab stop of its own, but the coin's stop drills into one: Enter on a
-// shared coin steps inside, the arrows walk the marks it holds, Enter or Space
-// picks the mark standing under them, and Escape comes back out. Space at coin
-// level still picks the town whole, so the group a click on the coin makes is
-// never out of reach.
+// has no tab stop of its own, but the coin's stop drills into one: Enter or
+// Space on a shared coin steps inside, the arrows walk the marks it holds,
+// Enter or Space picks the mark standing under them, and Escape comes back
+// out. Both keys agree at coin level too, drilling in rather than bulk-picking
+// the town: role="button" promises Enter and Space do the same thing, and a
+// wedged coin has no honest single answer for either. The group pick a click
+// on the coin makes is still one click away; the keyboard reaches it one
+// shelter at a time instead, which is the safer of the two paths in.
 //
 // Memoized: every hover anywhere on the map sets state in ShelterMap, which
 // re-renders its whole tree, and every town on the plate mounts one of these.
@@ -482,6 +510,12 @@ export const Marker = memo(function Marker({
       data-marker-highlighted={highlighted || undefined}
       data-marker-dimmed={dimmed || undefined}
       data-marker-drilled={drilledMark?.value}
+      // Exactly where the click below is, and nowhere else: a wedged coin
+      // divides its target per shelter and each of those marks carries its
+      // own, and a coin with nothing to pick carries none. See commitKey.
+      data-map-commit={
+        !wedged && live ? commitKey("town", town.key) : undefined
+      }
       onClick={wedged ? undefined : () => live && pick(values)}
       onPointerEnter={wedged ? undefined : () => onPointerEnter(town)}
       onPointerLeave={wedged ? undefined : () => onPointerLeave(town)}
@@ -500,12 +534,14 @@ export const Marker = memo(function Marker({
       // Two levels, and which one the coin is on decides what a key means.
       //
       // At coin level Enter and Space toggle what a click on the coin toggles,
-      // except on a coin whose own marks answer for their shelters: there
-      // Enter steps inside instead, because a shared coin never had one honest
-      // answer to Enter. The town is not what was aimed at when the plate is
-      // drawing three shelters, and a pointer has been able to say which of
-      // them it meant all along. Space keeps the whole group, so the pick that
-      // used to be Enter's is still one keypress away.
+      // except on a coin whose own marks answer for their shelters: there both
+      // keys step inside instead of picking, because a shared coin never had
+      // one honest answer to either. The town is not what was aimed at when
+      // the plate is drawing three shelters, and a pointer has been able to
+      // say which of them it meant all along. role="button" is why the two
+      // keys have to agree here: ARIA promises Enter and Space do the same
+      // thing, and drilling in is the outcome that never bulk-picks a group
+      // the visitor may only have meant to look at.
       //
       // Drilled, the coin belongs to the mark under the keyboard: the arrows
       // walk the marks, Enter and Space pick the one they are standing on,
@@ -564,7 +600,7 @@ export const Marker = memo(function Marker({
           // has to: it blurs the coin, and blur is what closes the drill.
           return;
         }
-        if (event.key === "Enter" && wedged) {
+        if ((event.key === "Enter" || event.key === " ") && wedged) {
           event.preventDefault();
           enterWedge(0);
           return;
@@ -662,6 +698,12 @@ export const Marker = memo(function Marker({
             d={d}
             data-wedge-shelter={value}
             data-wedge-pickable={pickable || undefined}
+            // Both halves of a mark's target carry it, because both carry the
+            // click: the wedge out at the rim and the circle over the disc
+            // answer for the same shelter and commit the same pick.
+            data-map-commit={
+              pickable ? commitKey("shelter", value) : undefined
+            }
             {...props}
           />
         );
@@ -687,6 +729,9 @@ export const Marker = memo(function Marker({
             r={hit.r}
             data-disc-shelter={hit.value}
             data-disc-pickable={pickable || undefined}
+            data-map-commit={
+              pickable ? commitKey("shelter", hit.value) : undefined
+            }
             {...props}
           />
         );

@@ -19,7 +19,13 @@ import { DENSITY_STEPS, layoutTowns, type ShelterPin } from "@/lib/map-layout";
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { Marker } from "./map-marker";
-import { Region, REGION_DWELL_MS, ShelterMap, legendFlags } from "./shelter-map";
+import {
+  NO_HOVER,
+  Region,
+  REGION_DWELL_MS,
+  ShelterMap,
+  mapFacts,
+} from "./shelter-map";
 
 function pin(
   value: string,
@@ -1038,12 +1044,13 @@ describe("ShelterMap inert regions", () => {
 // two or three of them, and naming each one it touched turned the plate into a
 // flicker of labels.
 //
-// A live region now says nothing at all to a pointer: its counts are in the
-// list beside the map, its density is in the legend under it, and its markers
-// answer for themselves. An empty one still answers, because who is
-// responsible for a region with no shelters in it is a fact with nowhere else
-// on the plate to live, and the dwell is what keeps that one exception from
-// being asked by every pointer passing over it.
+// Every region answers a pointer that stopped on it, and none answers one
+// passing through. A live region was silent here for a while, on the grounds
+// that its counts are in the list and its density is in the legend; what
+// neither of those carries is which shape under the cursor is Savinjska, and
+// the plate draws no region names of its own, so a mouse user clicked a
+// nameless province and took three shelters with it. The dwell is what lets
+// that be fixed without a label flashing under every pointer in transit.
 describe("ShelterMap region dwell", () => {
   const pins = [
     pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
@@ -1099,18 +1106,44 @@ describe("ShelterMap region dwell", () => {
     expect(screen.getByText("Zanje skrbi Zavetišče Nova Gorica")).toBeTruthy();
   });
 
-  it("never answers a live region's pointer, however long it rests there", () => {
+  it("answers a live region once the pointer has stayed, and names it", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
     fireEvent.pointerOver(map.live);
     act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS);
+    });
+
+    // The name is the point. Nothing else on the plate says which shape this
+    // is: the country labels name Italy and Austria, the list names shelters,
+    // and the legend names density steps.
+    expect(map.callout()).not.toBeNull();
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+    // The same two counts the region's own aria-label carries, out of the same
+    // helpers, so a hover and a screen reader cannot describe it two ways.
+    expect(screen.getByText("1 zavetišče · 5 živali")).toBeTruthy();
+    expect(map.live.getAttribute("aria-label")).toBe(
+      "Osrednjeslovenska: 1 zavetišče, 5 živali",
+    );
+  });
+
+  it("still says nothing to a pointer only crossing a live region", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.live);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS - 40);
+    });
+    fireEvent.pointerOut(map.live);
+    act(() => {
       vi.advanceTimersByTime(REGION_DWELL_MS * 3);
     });
 
-    // Not a longer dwell: no dwell. Everything the name carried is already on
-    // screen, and a label under the pointer on the way to a marker is the
-    // noise this removes rather than rations.
+    // The whole objection to naming live regions was a label under the pointer
+    // on the way to a marker. The dwell answers it: transit costs nothing, and
+    // a cancelled dwell is cancelled rather than deferred.
     expect(map.callout()).toBeNull();
     expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
   });
@@ -1162,24 +1195,79 @@ describe("ShelterMap region dwell", () => {
 
     fireEvent.pointerOver(map.live);
 
-    // The one thing a live region still says to a pointer, and it says it
-    // straight away: a quiet tint on rows somebody is already reading.
+    // The tint lands straight away and the name waits out the dwell. They are
+    // split on purpose: the tint was never the noisy part, being a quiet
+    // change to rows somebody is already reading, off to the side of the
+    // pointer and never drawn over the map.
     expect(map.onHoverShelters).toHaveBeenCalledWith(["ljubljana"]);
     expect(map.callout()).toBeNull();
   });
 
-  it("answers keyboard focus on the spot, where a pointer gets nothing", () => {
+  it("answers keyboard focus on the spot, without the dwell a pointer waits", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
     // Focus is deliberate by definition. Nobody tabs across a country by
-    // accident, so there is nothing here to wait out and nothing to ration:
-    // this is now the only way the plate names a live region, and a sighted
-    // keyboard user needs to see where they have got to.
+    // accident, so there is nothing here to wait out and nothing to ration.
     fireEvent.focus(map.live);
 
     expect(map.callout()).not.toBeNull();
     expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+    expect(screen.getByText("1 zavetišče · 5 živali")).toBeTruthy();
+  });
+
+  it("takes the name back when focus leaves", () => {
+    const map = renderRegions();
+
+    fireEvent.focus(map.live);
+    expect(map.callout()).not.toBeNull();
+
+    fireEvent.blur(map.live);
+    expect(map.callout()).toBeNull();
+  });
+
+  // Hover and focus can now both name a region, which they never could while
+  // one covered only empty regions and the other only live ones. The pair used
+  // to be read as `hovered ?? focused`, a precedence rule that gets one of the
+  // two orders below wrong whichever way round it is written. There is no
+  // precedence any more: the act that named a region last is the one being
+  // answered, and neither act can take back a name it is no longer holding.
+  it("lets keyboard focus outrank a region the pointer named first", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.inert);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS);
+    });
+    expect(screen.getByText("Goriška")).toBeTruthy();
+
+    fireEvent.focus(map.live);
+
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+    expect(screen.queryByText("Goriška")).toBeNull();
+  });
+
+  it("lets the pointer outrank a region that still holds focus", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    // Clicking a region focuses it, so this is the ordinary state of the plate
+    // a moment after any pick: focus parked on one region while the pointer
+    // goes somewhere else.
+    fireEvent.focus(map.live);
+    fireEvent.pointerOver(map.inert);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS);
+    });
+
+    expect(screen.getByText("Goriška")).toBeTruthy();
+    expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
+
+    // And the blur that eventually arrives for the region focus left behind
+    // must not take down the answer the pointer has since given.
+    fireEvent.blur(map.live);
+    expect(screen.getByText("Goriška")).toBeTruthy();
   });
 
   it("leaves an empty region out of the keyboard's way entirely", () => {
@@ -1253,26 +1341,26 @@ describe("ShelterMap density colour", () => {
   });
 });
 
-describe("legendFlags: hasMixed", () => {
+describe("mapFacts: hasMixed", () => {
   const celje = [
     pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
     pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
   ];
 
   it("is false with nothing picked and false with a region picked whole", () => {
-    expect(legendFlags(celje, []).hasMixed).toBe(false);
-    expect(legendFlags(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
+    expect(mapFacts(celje, []).hasMixed).toBe(false);
+    expect(mapFacts(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
       false,
     );
   });
 
   it("is true once one shelter of a region is picked and another is not", () => {
-    expect(legendFlags(celje, ["macja-hisa"]).hasMixed).toBe(true);
+    expect(mapFacts(celje, ["macja-hisa"]).hasMixed).toBe(true);
   });
 
   it("says the region is picked whole only when it is", () => {
-    expect(legendFlags(celje, ["macja-hisa"]).hasSelected).toBe(false);
-    expect(legendFlags(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
+    expect(mapFacts(celje, ["macja-hisa"]).hasSelected).toBe(false);
+    expect(mapFacts(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
       true,
     );
   });
@@ -1292,14 +1380,14 @@ describe("legendFlags: hasMixed", () => {
       { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
     ];
 
-    expect(legendFlags(pins, ["ljubljana"]).hasMixed).toBe(false);
+    expect(mapFacts(pins, ["ljubljana"]).hasMixed).toBe(false);
   });
 });
 
-describe("legendFlags: hasEmpty", () => {
+describe("mapFacts: hasEmpty", () => {
   it("is false while every shelter on the map lists animals", () => {
     expect(
-      legendFlags(
+      mapFacts(
         [
           pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
           pin("maribor", "Zavetišče Maribor", "Maribor", 40),
@@ -1315,7 +1403,7 @@ describe("legendFlags: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(legendFlags(pins, []).hasEmpty).toBe(true);
+    expect(mapFacts(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 
@@ -1325,7 +1413,7 @@ describe("legendFlags: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(legendFlags(pins, ["horjul"]).hasEmpty).toBe(false);
+    expect(mapFacts(pins, ["horjul"]).hasEmpty).toBe(false);
     expect(renderMap(pins, ["horjul"])).not.toContain("data-marker-empty");
   });
 
@@ -1335,7 +1423,7 @@ describe("legendFlags: hasEmpty", () => {
       { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
     ];
 
-    expect(legendFlags(pins, []).hasEmpty).toBe(true);
+    expect(mapFacts(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 });
@@ -2110,23 +2198,28 @@ describe("ShelterMap marker keyboard", () => {
     });
   });
 
-  it("picks a shared town as the group its coin is, on Space", () => {
+  it("steps inside a shared town on Space too, instead of bulk-picking it", () => {
     const map = renderKeyboard([
       pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
       pin("zahod", "Zavetišče Zahod", "Celje", 20),
     ]);
 
-    // Space and not Enter. A coin drawing one mark per shelter answers Enter
-    // by stepping inside itself (see the drill-in block below), so the town's
-    // own group pick moved to the other key rather than off the keyboard: this
-    // is the press that still toggles what a click on the coin toggles.
+    // Not a group pick. This used to be the one press that still toggled what
+    // a click on the coin toggles, on the theory that Enter had been claimed
+    // by the drill-in. But role="button" promises Enter and Space act alike,
+    // and a coin drawing one mark per shelter has no honest single answer for
+    // either of them: a visitor pressing Space to read the coin, not to
+    // choose for it, would have bulk-picked every shelter it held by
+    // accident. Space now drills exactly like Enter, narrating the first mark
+    // rather than picking anything; see "steps inside the coin on Enter and
+    // narrates the first mark" below for the same assertion on that key. The
+    // group pick a click on the coin makes is still reachable, just not from
+    // this key any more.
     fireEvent.keyDown(map.coin("celje"), { key: " " });
 
-    expect(map.onPick).toHaveBeenCalledWith(["vzhod", "zahod"], {
-      kind: "group",
-      label: "Celje",
-      values: ["vzhod", "zahod"],
-    });
+    expect(map.onPick).not.toHaveBeenCalled();
+    expect(screen.getByText("Zavetišče Vzhod")).toBeTruthy();
+    expect(screen.getByText("60 živali")).toBeTruthy();
   });
 
   it("raises the annotation on focus and takes it away on blur", () => {
@@ -2598,5 +2691,250 @@ describe("ShelterMap species annotation", () => {
 
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
     expect(container.querySelector("[data-callout-species]")).toBeNull();
+  });
+});
+
+// The plate names four neighbouring countries, the Adriatic and a scale bar,
+// and not one of the twelve regions it asks you to choose between. On a mouse
+// that is survivable: hover raises a callout that names what is under the
+// cursor, and the click is a second act taken after reading it. A finger has
+// no first act, so a single tap on an unnamed shape selected every shelter in
+// it before anything on screen had said which shape it was.
+//
+// So on a pointer that cannot hover, the tap that used to pick now names, and
+// the tap after it picks. Nothing else moves: a mouse still picks on the first
+// click, and Enter and Space still pick on the first press.
+//
+// fireEvent.click leaves MouseEvent.detail at 0, which is what a click no
+// pointer made looks like and what this gate deliberately lets through. Every
+// tap below therefore says detail: 1, which is the one press a real finger
+// makes.
+describe("ShelterMap without hover", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  // Only (hover: none) answers, so the stub also proves the plate is asking
+  // about the pointer and not about the width: every other query it could
+  // have asked comes back false.
+  const originalMatchMedia = window.matchMedia;
+  function onATouchscreen() {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation((media: string) => ({
+        matches: media === NO_HOVER,
+        media,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  }
+  afterEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: originalMatchMedia,
+    });
+  });
+
+  function renderPlate(renderPins: ShelterPin[] = pins) {
+    const onPick = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={renderPins} selected={[]} onPick={onPick} />
+      </I18nProvider>,
+    );
+    return {
+      onPick,
+      region: (name: string) =>
+        container.querySelector<SVGPathElement>(`[aria-label^="${name}"]`)!,
+      coin: (key: string) =>
+        container.querySelector<SVGGElement>(`[data-marker-key="${key}"]`)!,
+      wedge: (value: string) =>
+        container.querySelector<SVGPathElement>(
+          `[data-wedge-shelter="${value}"]`,
+        )!,
+    };
+  }
+
+  const tap = (node: Element) => fireEvent.click(node, { detail: 1 });
+
+  it("names the region the first tap lands on instead of picking it", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    tap(map.region("Osrednjeslovenska"));
+
+    expect(map.onPick).not.toHaveBeenCalled();
+    // The three facts the region's own aria-label composes, in the words it
+    // composes them from: no second phrasing was invented for the callout.
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+    expect(screen.getByText("1 zavetišče · 5 živali")).toBeTruthy();
+  });
+
+  it("picks on the second tap on the same region", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    tap(map.region("Osrednjeslovenska"));
+    tap(map.region("Osrednjeslovenska"));
+
+    expect(map.onPick).toHaveBeenCalledTimes(1);
+    expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+      kind: "group",
+      label: "Osrednjeslovenska",
+      values: ["ljubljana"],
+    });
+  });
+
+  it("moves the naming to another region rather than picking the first", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    tap(map.region("Osrednjeslovenska"));
+    tap(map.region("Podravska"));
+
+    expect(map.onPick).not.toHaveBeenCalled();
+    expect(screen.getByText("Podravska")).toBeTruthy();
+    expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
+  });
+
+  it("names a region again after picking it, rather than toggling it twice", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    tap(map.region("Osrednjeslovenska"));
+    tap(map.region("Osrednjeslovenska"));
+    tap(map.region("Osrednjeslovenska"));
+
+    // A third tap is a fresh question, not a second answer: a stray double
+    // tap must not put a region back exactly as it was.
+    expect(map.onPick).toHaveBeenCalledTimes(1);
+  });
+
+  it("names a coin on the first tap and picks it on the second", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    tap(map.coin("ljubljana"));
+    expect(map.onPick).not.toHaveBeenCalled();
+    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    expect(screen.getByText("5 živali")).toBeTruthy();
+
+    tap(map.coin("ljubljana"));
+    expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+      kind: "shelter",
+      value: "ljubljana",
+    });
+  });
+
+  it("names one mark inside a shared coin, not the town it sits in", () => {
+    onATouchscreen();
+    const map = renderPlate([
+      pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+      pin("zahod", "Zavetišče Zahod", "Celje", 20),
+    ]);
+
+    tap(map.wedge("zahod"));
+    expect(map.onPick).not.toHaveBeenCalled();
+    // The wedge answers for its own shelter, which is the one question the
+    // town's own name cannot answer.
+    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+
+    tap(map.wedge("zahod"));
+    expect(map.onPick).toHaveBeenCalledWith(["zahod"], {
+      kind: "shelter",
+      value: "zahod",
+    });
+  });
+
+  it("leaves Enter and Space picking on the first press", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    // A keyboard activation produces no click at all, so it never reaches the
+    // gate. The region said what it was before the press, in its own label.
+    fireEvent.keyDown(map.region("Osrednjeslovenska"), { key: "Enter" });
+    expect(map.onPick).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(map.region("Podravska"), { key: " " });
+    expect(map.onPick).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets an activation no pointer made through on the first press", () => {
+    onATouchscreen();
+    const map = renderPlate();
+
+    // detail counts the presses a pointer made. A screen reader activating the
+    // region it has just read out makes none, and asking it to name a region
+    // it has already named would be the gate charging for something it does
+    // not supply.
+    fireEvent.click(map.region("Osrednjeslovenska"), { detail: 0 });
+
+    expect(map.onPick).toHaveBeenCalledTimes(1);
+  });
+
+  it("arms nothing on a region with nothing to pick", () => {
+    onATouchscreen();
+    const map = renderPlate([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    ]);
+
+    // An empty region has no click to hold back. It carries no commit key at
+    // all, so both taps below reach the handlers it always had, which is to
+    // say nothing happens either time.
+    const inert = map.region("Goriška");
+    expect(inert.getAttribute("data-map-commit")).toBeNull();
+
+    tap(inert);
+    tap(inert);
+
+    expect(map.onPick).not.toHaveBeenCalled();
+  });
+});
+
+// The other half of the same rule: a pointer that can hover has already been
+// told what it is on, so nothing about it changes.
+describe("ShelterMap with hover", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  function renderPlate() {
+    const onPick = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={[]} onPick={onPick} />
+      </I18nProvider>,
+    );
+    return { onPick, container };
+  }
+
+  it("picks a region on the first click", () => {
+    const map = renderPlate();
+
+    fireEvent.click(
+      map.container.querySelector('[aria-label^="Osrednjeslovenska"]')!,
+      { detail: 1 },
+    );
+
+    expect(map.onPick).toHaveBeenCalledTimes(1);
+    expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+      kind: "group",
+      label: "Osrednjeslovenska",
+      values: ["ljubljana"],
+    });
+  });
+
+  it("picks a coin on the first click", () => {
+    const map = renderPlate();
+
+    fireEvent.click(
+      map.container.querySelector('[data-marker-key="maribor"]')!,
+      { detail: 1 },
+    );
+
+    expect(map.onPick).toHaveBeenCalledTimes(1);
   });
 });

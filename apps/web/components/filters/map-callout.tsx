@@ -374,7 +374,10 @@ export function MapCallout({
       aria-hidden
       data-map-callout
       className={cn(
-        "pointer-events-none animate-in fade-in duration-150 motion-reduce:animate-none",
+        // motion-reduce:duration-0, not motion-reduce:animate-none: see the
+        // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
+        // guard does not actually take effect here either.
+        "pointer-events-none animate-in fade-in duration-150 motion-reduce:duration-0",
         onRight ? "slide-in-from-left-0.5" : "slide-in-from-right-0.5",
       )}
     >

@@ -213,11 +213,22 @@ export function AnimalGrid({
   // distinct shelters took the whole dock off the page at /?vrsta=zajcek, where
   // one rabbit sits at one shelter: the single state where a visitor most needs
   // to widen the search was the one state with nothing left to press. Absent
-  // only when the pool has no shelter to show at all.
+  // only when the dataset has no shelter to show at all.
+  //
+  // Measured against `animals` and not `pool`, which is the same reason. This
+  // is the picker's roster, not a facet of the current query: together with the
+  // off-site registry shelters the page hands down beside it, it is every
+  // shelter that exists, and the species tab may not take one off it. Measured
+  // against the species-filtered pool it did: the trigger read "Vseh 11
+  // zavetišč" over a list of seventeen rows, and at
+  // /?zavetisce=macja-hisa,macji-dol&vrsta=zajcek it read "2 od 1 zavetišč",
+  // because the selection came from the URL and the total came from the facet.
+  // What the species tab moves is each shelter's own number, which is
+  // `counts.shelter` below and is measured with every active filter applied.
   const shelters = useMemo(() => {
-    const options = groupOptions("shelter", pool, locale);
+    const options = groupOptions("shelter", animals, locale);
     return options.length > 0 ? options : undefined;
-  }, [locale, pool]);
+  }, [animals, locale]);
   const toggles = useMemo(
     () =>
       visibleToggles(pool, filters.species).map((toggle) => ({

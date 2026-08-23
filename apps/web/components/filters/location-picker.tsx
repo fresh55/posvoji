@@ -31,7 +31,7 @@ import { EmptyMarkerGlyph } from "@/components/filters/map-marker";
 import { OriginGlyph } from "@/components/filters/map-callout";
 import {
   ShelterMap,
-  legendFlags,
+  mapFacts,
   type MapPick,
 } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
@@ -51,8 +51,13 @@ import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
 import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
 import { isDrop } from "@/lib/filters";
+import type { Locale } from "@/lib/i18n";
 import {
   allShelters,
+  inRegions,
+  sheltersOf,
+  animalCount,
+  shelterCount,
   sheltersDropped,
   sheltersMissingFromMap,
 } from "@/lib/labels";
@@ -102,6 +107,15 @@ const LEGEND_SWATCH_GROUND =
 // partial selection, the origin ring with the first origin. The marker shapes
 // and sizes explain themselves on hover, through the callout, so they say
 // nothing here at all.
+//
+// One rendering, compacted by CSS below lg rather than replaced by a second
+// one. The sheet used to take the whole caption away with it, which left a
+// phone reading a density ramp, a hatch and an origin ring with nothing on
+// screen to explain any of them. What a phone gets is the same set of rows in
+// a tighter register: 10px instead of 11, half the gaps, and no hover
+// affordance on the swatches, because the highlight they drive is gated on a
+// mouse and a touch device has none. The empty-marker row is the one that is
+// genuinely absent below md, and it says so itself.
 function MapLegend({
   highlightedDensity,
   onHoverDensity,
@@ -131,7 +145,7 @@ function MapLegend({
   return (
     <div
       data-map-legend
-      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] leading-none text-muted-foreground"
+      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-none text-muted-foreground lg:gap-x-4 lg:gap-y-1.5 lg:text-[11px]"
     >
       <span className="flex items-center gap-2">
         <span>{messages.fewerAnimals}</span>
@@ -146,6 +160,9 @@ function MapLegend({
             // grows without the visible swatch growing with it. cursor-help
             // rather than -default: this responds to hover with
             // information, closer to a tooltip than to inert decoration.
+            // Both are lg-only, because both are about a pointer: below lg
+            // the padding buys a touch device nothing but width it does not
+            // have, and a help cursor advertises an answer it cannot get.
             //
             // Pointer events gated on a mouse, the idiom use-filter-motion.ts
             // already uses. A tap synthesizes a mouseenter with no mouseleave
@@ -153,7 +170,7 @@ function MapLegend({
             // stayed dimmed for the rest of the session.
             <span
               key={opacity}
-              className="cursor-help p-0.5"
+              className="lg:cursor-help lg:p-0.5"
               onPointerEnter={(event) => {
                 if (event.pointerType !== "mouse") return;
                 onHoverDensity(index);
@@ -274,6 +291,42 @@ function fold(text: string): string {
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
 }
+
+// The words only this dialog says, which the shared messages do not carry.
+// Kept here as a locale pair rather than as bare strings, the shape
+// animal-page.tsx and shelters-page.tsx use for the same job, so the second
+// locale cannot be forgotten.
+//
+// Every one of them is a label followed by a colon, the shape the origin line
+// in this same dialog already announces in, because it sidesteps the agreement
+// Slovenian would otherwise demand of a verb with a counted noun and it leaves
+// the noun itself to the helpers in lib/labels.ts. `withAnimals` carries its
+// own noun in the label for the same reason: "7 od 17" is two bare numbers,
+// which no case can be wrong about.
+//
+// The search announcement's zero case is not here: it reuses noSheltersFound,
+// so the sentence a screen reader hears and the sentence drawn in the empty
+// list are the same sentence.
+const pickerText = {
+  sl: {
+    matches: "Zadetki",
+    withAnimals: "Zavetišč z živalmi",
+    of: "od",
+    showing: "Prikazano",
+    done: "Končano",
+    clearSelection: "Počisti izbor",
+    selected: "Izbrano",
+  },
+  en: {
+    matches: "Matches",
+    withAnimals: "Shelters with animals",
+    of: "of",
+    showing: "Showing",
+    done: "Done",
+    clearSelection: "Clear selection",
+    selected: "Selected",
+  },
+} satisfies Record<Locale, Record<string, string>>;
 
 // A row with the point its town projects to, and how far that is from the
 // origin. Both lists in this dialog carry it.
@@ -747,15 +800,34 @@ export function LocationPicker({
   const visibleRows = query.trim() ? rows.filter(matchesQuery) : rows;
   const visibleOffRows = query.trim() ? offRows.filter(matchesQuery) : offRows;
 
+  // What typing just did to the list. Refiltering was silent: the count is
+  // only readable off the rows themselves, and the "no matches" state is drawn
+  // inside the scroller, which nobody is looking at while they type into the
+  // box above it. Neither of the dialog's other two live regions moves when
+  // the query does, so this is said in the one below them that is about the
+  // list as a whole.
+  //
+  // Both lists count, because both are what the query narrowed: an off-site
+  // shelter is still a shelter the search found. Undefined while the box is
+  // empty, so an unsearched dialog says nothing about a search.
+  const matched = visibleRows.length + visibleOffRows.length;
+  const searchNews = query.trim()
+    ? matched === 0
+      ? `${messages.noSheltersFound} »${query.trim()}«`
+      : `${pickerText[locale].matches}: ${shelterCount(matched, locale)}`
+    : undefined;
+
   const unplaced = rows.length + offRows.length - pins.length;
   // Which legend rows the map has earned right now: the solid selection green,
-  // the hatch, the hollow circle. Asked of the same layout and the same
-  // grouping the map draws from, so a row and the thing it explains appear and
-  // disappear together. One memo and one pass, because laying the towns out
-  // and walking each one through a point-in-polygon lookup is the expensive
-  // part and all three answers come off it.
-  const { hasSelected, hasMixed, hasEmpty } = useMemo(
-    () => legendFlags(pins, selected),
+  // the hatch, the hollow circle. Plus where the picking has landed, for the
+  // panel's own sentence below. Asked of the same layout and the same grouping
+  // the map draws from, so a row and the thing it explains appear and
+  // disappear together, and the sentence cannot place a shelter in a region
+  // the map draws it outside of. One memo and one pass, because laying the
+  // towns out and walking each one through a point-in-polygon lookup is the
+  // expensive part and all four answers come off it.
+  const { hasSelected, hasMixed, hasEmpty, selectedRegions } = useMemo(
+    () => mapFacts(pins, selected),
     [pins, selected],
   );
   const nearbyOn = state.status === "on";
@@ -786,15 +858,90 @@ export function LocationPicker({
       ? sheltersMissingFromMap(unplaced, locale)
       : undefined;
 
-  // The trigger has to answer "what is behind this" before it is clicked, and
-  // the count is what answers it: eleven shelters exist and this is where they
-  // are. "Vsa zavetišča" alone read as a filter state, not as a way in.
-  const total = options.length;
+  // One roster, and every count in this dialog is read off it. The four
+  // quantities are kept apart on purpose, because conflating any two of them
+  // is what made the trigger lie:
+  //
+  //   total       every shelter in the registry, the live ones and the ones
+  //               with nothing listed alike. This is what the list renders and
+  //               what the trigger promises, and it does not move when a
+  //               species tab does.
+  //   withAnimals how many of those have animals under the filters that are
+  //               active right now. This is the one that moves with the
+  //               species tab, and it is said in its own words below.
+  //   selected    how many are picked. Always a subset of the roster, so
+  //               "2 od 1 zavetišč" cannot be written any more.
+  //   resultCount the animals the whole filter state matches, which is about
+  //               animals and not about shelters at all.
+  //
+  // `total` used to be options.length, which is the shelter facet of the
+  // species-filtered set: the trigger read "Vseh 11 zavetišč" over a list of
+  // seventeen rows, and /?zavetisce=macja-hisa,macji-dol&vrsta=zajcek read
+  // "2 od 1 zavetišč". The roster is the registry now, so the sentence on the
+  // trigger and the rows under it are the same set of shelters.
+  const total = rows.length + offRows.length;
+  const withAnimals = rows.filter(
+    (row) => (counts.get(row.value) ?? 0) > 0,
+  ).length;
   const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
+  // The trigger has to answer "what is behind this" before it is clicked, and
+  // the count is what answers it: seventeen shelters exist and this is where
+  // they are. "Vsa zavetišča" alone read as a filter state, not as a way in.
   const label =
     selected.length === 0
       ? allShelters(total, locale)
-      : t("selectedShelters", { selected: selected.length, total });
+      : sheltersOf(selected.length, total, locale);
+
+  // The panel's own sentence about the filter: how many shelters are picked
+  // and whereabouts they are. It exists because the panel had no drawn answer
+  // to "what have I chosen" at all from lg up. The trigger's `label` is behind
+  // the modal, the peek bar carrying it is lg:hidden, the rail badge only
+  // appears while the panel is folded, and the live region is sr-only: with
+  // the panel open on a desktop the only visible trace of a five-shelter
+  // selection was the count on the clear button. The card above the list
+  // answers a different question, the one about the target of the last click,
+  // and a click is not a selection.
+  //
+  // Derived from `selected` and from the regions the shared map projection
+  // puts those shelters in. Never from `pick`: that is inspection, it is what
+  // the hover-to-row scroll, the Escape ladder and the marker's own metadata
+  // are gated on, and a summary reading it would both lie and break them.
+  //
+  // The count comes from selected.length rather than from summing the regions,
+  // which is what keeps it honest when a picked shelter has no place on the
+  // map: the names are an answer to "whereabouts", the number is the filter
+  // itself, and a shelter the map cannot place still counts. For the same
+  // reason the region clause disappears entirely rather than being faked when
+  // nothing placed.
+  //
+  // Names up to MAX_NAMED_REGIONS, a count past it. Three is the most that
+  // still reads at a glance, which is the only thing this line is for; past
+  // it the names stop being a place and become a list to parse, and the count
+  // says the same thing in four words.
+  //
+  // Three does not always fit one line: measured in the lg:w-96 panel,
+  // "Podravska, Osrednjeslovenska, Obalno-kraška" takes two, 290px and 80px in
+  // a 332px box. That is a wrap and not an overflow, the paragraph is in flow
+  // above a scroller and nothing below it moves, so the second line is
+  // accepted rather than bought back by naming fewer regions than the visitor
+  // picked.
+  //
+  // It says nothing about intent. "Izbrano: 5 zavetišč · Pomurska, Podravska"
+  // describes where the picked shelters are; it never claims the regions
+  // themselves were chosen, because a flat shelter-id selection does not know
+  // that and four of the regions holding shelters hold exactly one, where a
+  // polygon click and a marker click are indistinguishable after the fact.
+  const MAX_NAMED_REGIONS = 3;
+  const whereSelected =
+    selectedRegions.length === 0
+      ? ""
+      : selectedRegions.length <= MAX_NAMED_REGIONS
+        ? ` · ${selectedRegions.join(", ")}`
+        : ` ${inRegions(selectedRegions.length, locale)}`;
+  const selectionLine = `${pickerText[locale].selected}: ${shelterCount(
+    selected.length,
+    locale,
+  )}${whereSelected}`;
 
   return (
     <Dialog
@@ -822,7 +969,12 @@ export function LocationPicker({
         <Button
           variant="outline"
           size="sm"
-          role="combobox"
+          // A plain button, which is what it is. It used to report
+          // role="combobox", and a combobox promises a value and a listbox to
+          // pick it from; this one opens a dialog with a map in it and owns
+          // neither, so the promise was one no screen reader could collect on.
+          // aria-haspopup says what actually happens and aria-expanded says
+          // whether it has happened yet, which is the whole of the contract.
           aria-expanded={open}
           aria-haspopup="dialog"
           aria-label={t("shelterPickerLabel", { label })}
@@ -908,11 +1060,36 @@ export function LocationPicker({
             cannot drift.
             A bulk drop gets a line in front of it, because the label is a
             running total and a total cannot say that twelve shelters just came
-            off. */}
+            off.
+
+            The search result follows it in the same region rather than in a
+            third one: this region is already the dialog's answer to "what does
+            the list hold now", and a live region per fact would have three of
+            them competing for the same moment. The clauses are assembled in
+            reading order, and every one of them can be absent.
+
+            The running result count is the third clause, because filtering is
+            live: a click on a region changes the URL on that click, and this
+            is the only place the consequence is spoken. It reads as a
+            statement rather than as the promise the footer button used to
+            carry.
+
+            Silent in found-animal mode, all of it. Every clause here is about
+            the adoption filter, and somebody who came in holding a stray does
+            not need their shelter selection read out at them. */}
         <p aria-live="polite" className="sr-only">
-          {dropNote && sameValues(dropNote.after, selected)
-            ? `${dropNote.text} ${label}`
-            : label}
+          {muniMode
+            ? ""
+            : [
+                dropNote && sameValues(dropNote.after, selected)
+                  ? dropNote.text
+                  : undefined,
+                label,
+                `${pickerText[locale].showing}: ${animalCount(resultCount, locale)}`,
+                searchNews,
+              ]
+                .filter(Boolean)
+                .join(" ")}
         </p>
 
         {/* The stage. Everything below is absolutely placed against one of its
@@ -974,7 +1151,17 @@ export function LocationPicker({
               // recentering happens on the other axis: the container gives up
               // exactly what the sheet takes and the plate recentres in what
               // is left. Nothing is ever drawn under the sheet either.
-              sheetOpen ? "bottom-[55dvh]" : "bottom-13",
+              //
+              // This expression is the sheet's own height and has to stay
+              // character-for-character what the panel below writes on itself,
+              // or the map is drawn under the sheet or leaves a band of paper
+              // above it. Tailwind reads class names out of the source text,
+              // so it cannot be a shared constant; it can only be written
+              // twice and kept honest by this note. See the panel for what the
+              // three terms are for.
+              sheetOpen
+                ? "bottom-[min(max(55dvh,27.5rem),calc(100%_-_9rem))]"
+                : "bottom-13",
               panelOpen
                 ? "lg:w-[calc(100%-25.5rem)]"
                 : "lg:w-[calc(100%-4.5rem)]",
@@ -1065,42 +1252,40 @@ export function LocationPicker({
                 entirely (the stage stops where the panel begins) and below lg
                 floats in the same band this sits in, as it did before.
 
-                It steps out of the way entirely once the sheet is up: more
-                than half the screen is the list then, and the map above it has
-                nothing left to explain.
+                Nothing in it folds any more. The legend used to be taken away
+                with the sheet, on the reasoning that an open sheet leaves the
+                map nothing worth explaining; measured, it leaves a plate, and
+                the density ramp, the selection green, the hatch and the origin
+                ring are all still drawn on it. What a phone gets is the
+                compact register MapLegend writes for itself, not a smaller
+                share of the same rows. The stage's floor pays for it: see the
+                sheet's ceiling term below, which reserves the room this whole
+                caption needs rather than the room the credit alone needs.
 
-                CC BY 4.0 requires the attribution paragraph below to stay
-                visible regardless, so it lives outside this hidden-when-open
-                wrapper: only the legend itself folds away with the sheet. */}
+                CC BY 4.0 requires the attribution paragraph to stay visible,
+                which with nothing folding is now a property of the caption as
+                a whole rather than of where inside it the paragraph sits. */}
             <div className="pointer-events-none z-10 flex w-full shrink-0 flex-col gap-1">
-              <div
-                // The half of this corner that folds away with the sheet. It
-                // is named so the licence check can ask where the credit sits
-                // rather than which classes it wears: the paragraph below is
-                // outside this element on purpose and has to stay there.
-                data-slot="map-legend-fold"
-                className={cn(
-                  "flex flex-col gap-1",
-                  sheetOpen && "max-lg:hidden",
-                )}
-              >
-                <div className="pointer-events-auto">
-                  <MapLegend
-                    highlightedDensity={highlightedDensity}
-                    onHoverDensity={setHighlightedDensity}
-                    onLeaveDensity={() => setHighlightedDensity(null)}
-                    hasSelectedRegion={hasSelected}
-                    hasMixedRegion={hasMixed}
-                    hasEmptyMarker={hasEmpty}
-                    origin={origin}
-                    messages={messages}
-                  />
-                </div>
+              <div className="pointer-events-auto">
+                <MapLegend
+                  highlightedDensity={highlightedDensity}
+                  onHoverDensity={setHighlightedDensity}
+                  onLeaveDensity={() => setHighlightedDensity(null)}
+                  hasSelectedRegion={hasSelected}
+                  hasMixedRegion={hasMixed}
+                  hasEmptyMarker={hasEmpty}
+                  origin={origin}
+                  messages={messages}
+                />
               </div>
 
-              {/* CC BY 4.0 requires attribution, so this stays visible, just
-                  quieter than the legend it sits under, even when the sheet
-                  is open on a phone. */}
+              {/* CC BY 4.0 requires attribution, so this stays visible even
+                  when the sheet is open on a phone. It reads quieter than the
+                  legend it sits under through size alone: at 10px the token
+                  was carrying a /70 as well, which measured 2.71:1 against
+                  the paper and put the one line the licence requires below
+                  the 4.5:1 that normal-size text has to clear. Full strength
+                  is the smallest change that clears it. */}
               <p
                 // Named, because the licence depends on it staying visible:
                 // a test can then find this paragraph and walk its ancestors
@@ -1109,7 +1294,7 @@ export function LocationPicker({
                 // The measure is capped here rather than on the caption as a
                 // whole: this is prose and wants a line length, while the
                 // legend beside it is a key and wants the plate's own width.
-                className="pointer-events-auto max-w-[26rem] text-[10px] leading-tight text-muted-foreground/70"
+                className="pointer-events-auto max-w-[26rem] text-[10px] leading-tight text-muted-foreground"
               >
                 {messages.regionBoundaries}:{" "}
                 <a
@@ -1208,43 +1393,54 @@ export function LocationPicker({
             </Button>
           </DialogClose>
 
-          {/* The same closing move the filter sheet has, as a pill on the
-              paper: the count answers "what did my picking do" before the
-              dialog goes away. Bottom-right at lg, under the panel.
+          {/* The way out of the dialog, as a pill on the paper. Bottom-right
+              at lg, under the panel.
+
+              It says "Končano" and nothing else. It used to say "Prikaži N
+              živali" over a count that moved as you picked, which promised an
+              apply this dialog has never performed: a click on a region writes
+              the URL on that click (writeFilters → commitSearch), and both
+              this pill and the X are plain DialogClose. Deselecting inside the
+              dialog had already changed the filter before anything was
+              pressed, and the X and Escape cancelled nothing. Live filtering
+              is the behaviour we keep, so the button gave up the promise
+              rather than the dialog growing a draft layer to make the promise
+              true. The count it used to wear is a status line in the panel
+              now, and the live region above says the same thing out loud.
+
+              Absent in found-animal mode, not disabled and not restyled.
+              Somebody who came in holding a stray is answered by one shelter's
+              phone number, and this pill stood beside it as a second near-black
+              button about an adoption filter they never set.
 
               Below lg it docks inside the sheet instead of floating over the
               map above it. Sitting a gutter above the sheet's own top edge it
               was a button belonging to nothing, laid across the plate and the
               attribution line; at the foot of the sheet, full width, it reads
-              as what it is, the primary action of the panel the picking
-              happens in. The content block below reserves the height for it,
-              so it covers no row of the list. A folded sheet keeps the old
-              placement: there is no sheet to sit in, only the peek bar. */}
-          <div
-            className={cn(
-              "absolute z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none lg:left-auto lg:right-3 lg:bottom-3",
-              sheetOpen
-                ? "max-lg:inset-x-4 max-lg:bottom-4"
-                : "max-lg:right-3 max-lg:bottom-16",
-            )}
-          >
-            <DialogClose asChild>
-              <Button
-                size="lg"
-                className="rounded-full px-5 shadow-lg max-lg:w-full"
-              >
-                {messages.show}
-                <ResultCount
-                  count={resultCount}
-                  species={species}
-                  locale={locale}
-                  announce={false}
-                  variant="inline"
-                  className="justify-start text-current"
-                />
-              </Button>
-            </DialogClose>
-          </div>
+              as what it is, the panel's own way out. The content block below
+              reserves the height for it, so it covers no row of the list, and
+              stops reserving it in the mode where the pill is not drawn. A
+              folded sheet keeps the old placement: there is no sheet to sit
+              in, only the peek bar. */}
+          {!muniMode && (
+            <div
+              className={cn(
+                "absolute z-30 transition-[bottom] duration-500 ease-out motion-reduce:transition-none lg:left-auto lg:right-3 lg:bottom-3",
+                sheetOpen
+                  ? "max-lg:inset-x-4 max-lg:bottom-4"
+                  : "max-lg:right-3 max-lg:bottom-16",
+              )}
+            >
+              <DialogClose asChild>
+                <Button
+                  size="lg"
+                  className="rounded-full px-5 shadow-lg max-lg:w-full"
+                >
+                  {pickerText[locale].done}
+                </Button>
+              </DialogClose>
+            </div>
+          )}
 
           {/* The panel, one element in two docks. At lg it is a card floated
               against the right edge of the stage, folding to a rail; below lg
@@ -1258,7 +1454,47 @@ export function LocationPicker({
             className={cn(
               "absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t bg-background/95 shadow-lg backdrop-blur",
               "transition-[height,width] duration-500 ease-out motion-reduce:transition-none",
-              sheetOpen ? "h-[55dvh] rounded-t-ui" : "h-13",
+              // The sheet used to be a flat 55dvh, which is a fraction of the
+              // screen picked for a tall phone and then charged to every
+              // short one. Its chrome does not shrink with the viewport: the
+              // peek bar, the tab row, the two 44px inputs, the sort row and
+              // the pill's reserve come to about 320px whatever the screen
+              // is, so at 375x667 the list scroller was left 18px and at
+              // 320x568 it was left none at all, with the confirm pill
+              // sitting where the first row should have been.
+              //
+              // Three terms, innermost first:
+              //
+              //   55dvh          what a tall phone gets, unchanged. At 390x844
+              //                  this is still the term that wins, so that
+              //                  layout is exactly what it was.
+              //   max(…,27.5rem) the floor: 320px of chrome plus three rows of
+              //                  about 40px. This is what a short viewport
+              //                  gets instead of a fraction, and it is why the
+              //                  sheet is sized by what it holds rather than
+              //                  by how tall the screen happens to be.
+              //   min(…,100%-9rem) the ceiling, against the stage rather than
+              //                  the viewport, so the floor can never push the
+              //                  sheet past the dialog it lives in. The 9rem
+              //                  is the map stage's own floor, and it is what
+              //                  the whole caption costs: the legend no longer
+              //                  folds away under an open sheet, so the
+              //                  reserve has to cover its compact rows, the
+              //                  gap and the CC BY attribution together, which
+              //                  is about 128px at the narrowest width we draw
+              //                  at. It was 6rem while the credit was the only
+              //                  thing left standing there; at 6rem with the
+              //                  legend back the caption overruns the stage
+              //                  and the credit ends up behind the sheet,
+              //                  which the licence does not allow.
+              //
+              // Below that ceiling the plate is a sliver, which is the honest
+              // answer on a 568px screen: the sheet is what was opened, and
+              // the peek bar folds it away when the map is what is wanted.
+              // Keep this identical to the stage's bottom inset above.
+              sheetOpen
+                ? "h-[min(max(55dvh,27.5rem),calc(100%_-_9rem))] rounded-t-ui"
+                : "h-13",
               "lg:inset-x-auto lg:right-3 lg:top-16 lg:bottom-16 lg:h-auto lg:rounded-ui lg:border",
               panelOpen ? "lg:w-96" : "lg:w-12 lg:justify-center",
             )}
@@ -1273,7 +1509,15 @@ export function LocationPicker({
                 a collapsed sheet has to carry is what the picking added up to,
                 which is the same sentence the toolbar trigger wears, computed
                 once as `label` above and read here. The count badge stays
-                beside it as the at-a-glance form of the same thing. */}
+                beside it as the at-a-glance form of the same thing.
+
+                Except in found-animal mode, where there is no picking and the
+                adoption selection is not the current answer to anything on
+                screen. A strip reading "2 od 17 zavetišč" over a form asking
+                where a stray was found is that selection riding along under a
+                question it has nothing to do with. There the strip names the
+                question instead, which is the one case where the tab's own
+                word is the fact. */}
             <button
               type="button"
               data-picker-peek
@@ -1282,9 +1526,9 @@ export function LocationPicker({
               className="flex h-13 shrink-0 items-center gap-2 px-4 text-left lg:hidden"
             >
               <span className="min-w-0 truncate text-sm font-medium">
-                {label}
+                {muniMode ? messages.muniTab : label}
               </span>
-              {selected.length > 0 && (
+              {!muniMode && selected.length > 0 && (
                 <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums text-muted-foreground">
                   {selected.length}
                 </span>
@@ -1300,7 +1544,10 @@ export function LocationPicker({
 
             {/* The rail: everything the folded panel still has to say, which is
                 which question is open and how much has been picked. One
-                control, so the whole rail head takes the click. */}
+                control, so the whole rail head takes the click.
+                The badge follows the same rule the peek bar does: it counts
+                the adoption selection, so it is not shown beside the paw that
+                stands for the found-animal question. */}
             {!panelOpen && (
               <button
                 type="button"
@@ -1316,7 +1563,7 @@ export function LocationPicker({
                 ) : (
                   <List className="size-4" aria-hidden />
                 )}
-                {selected.length > 0 && (
+                {!muniMode && selected.length > 0 && (
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums">
                     {selected.length}
                   </span>
@@ -1412,11 +1659,25 @@ export function LocationPicker({
                 className={cn(
                   // No top padding of its own at any width: the tab row above
                   // already ends with pb-2, and adding to it below lg made the
-                  // gap under the tabs two different gaps. max-lg:pb-20 is the
-                  // room the confirm pill docks into at the foot of the sheet:
-                  // the pill is drawn over this block, not in it, so the
-                  // padding is what keeps it off the last row of the list.
-                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pb-20",
+                  // gap under the tabs two different gaps. The bottom padding
+                  // below lg is the room the confirm pill docks into at the
+                  // foot of the sheet: the pill is drawn over this block, not
+                  // in it, so the padding is what keeps it off the last row of
+                  // the list.
+                  //
+                  // pb-16 and not pb-20, because the reserve is now measured
+                  // rather than rounded up: the pill is a size="lg" button, so
+                  // 40px tall, and it floats at bottom-4, so it occupies the
+                  // 56px above the sheet's bottom edge. 64px is that plus one
+                  // gap. The extra 16px used to come out of the list, which on
+                  // a short screen was the only thing paying for it.
+                  //
+                  // Reserved only where the pill is drawn. In found-animal
+                  // mode there is no pill, and holding 64px open under the
+                  // shelter it just named would be a band of nothing at the
+                  // foot of the answer.
+                  "flex min-h-0 flex-1 flex-col px-4 pb-4",
+                  !muniMode && "max-lg:pb-16",
                   !panelOpen && "lg:hidden",
                   !sheetOpen && "max-lg:hidden",
                 )}
@@ -1601,6 +1862,13 @@ export function LocationPicker({
                 </button>
               )}
 
+              {/* The way back to no shelter at all, and the only reset in the
+                  dialog. Named for what it clears rather than with the bare
+                  "Počisti" every other sheet in the site uses: this one sits
+                  beside a search box and a place box that both have a clear of
+                  their own, and the word alone did not say which of the three
+                  it meant. Ghost weight, because live filtering means the
+                  primary act is picking, not undoing it. */}
               {selected.length > 0 && (
                 <button
                   type="button"
@@ -1610,16 +1878,103 @@ export function LocationPicker({
                   // so it reads as a button rather than a stray line of text.
                   className="ml-auto inline-flex items-center rounded-ui px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-lg:min-h-9"
                 >
-                  {messages.clear} ({selected.length})
+                  {pickerText[locale].clearSelection} ({selected.length})
                 </button>
               )}
             </div>
 
+            {/* What is picked, and whereabouts. The one line in this panel that
+                answers "which animals will I see when I close this map", so it
+                leads the status block rather than joining it: full-strength
+                foreground at 12px over the muted 11px facts below, which is
+                the smallest weight that makes it the line the eye lands on.
+
+                lg and up only, deliberately. Below lg the peek bar at the head
+                of this same sheet already carries the selection as `label` and
+                a count badge, and a second copy would cost the list a row in a
+                sheet whose scroller is already down to a 5rem last resort. The
+                pick card is absent below lg for the same reason, so the
+                hierarchy problem this fixes does not exist there.
+
+                Nothing to say with nothing picked: the trigger and the peek bar
+                both read "Vseh 17 zavetišč" in that state, and a line repeating
+                it under two inputs would be chrome standing where a fact goes.
+                It carries no "od 17" fraction on purpose. The status line
+                directly below it already says "Zavetišč z živalmi: 7 od 17",
+                which is a fact about the roster and not about the selection,
+                and two different fractions over the same 17 on neighbouring
+                lines is exactly the arithmetic this line exists to spare
+                anyone.
+
+                Not announced. The dialog's live region above already speaks for
+                every selection change, and a second one saying the same news
+                would race it. */}
+            {selected.length > 0 && (
+              <p
+                data-picker-selection
+                className="mt-2 hidden shrink-0 text-xs font-medium leading-tight text-foreground lg:block"
+              >
+                {selectionLine}
+              </p>
+            )}
+
+            {/* What the picking currently adds up to, said as a fact. Filtering
+                is live, so this is the feedback that makes the footer button's
+                honesty affordable: the count moved on the button before, where
+                it read as a promise about a press that had already happened.
+
+                Two facts, kept apart. The left one is about shelters and is the
+                one the species tab moves: the roster does not shrink when the
+                tab changes, only how many of it have anything to show. The
+                right one is about animals and answers for every active filter,
+                not just this dialog's. Neither is the selection count, which
+                the peek bar, the rail and the clear button beside it already
+                carry three times over.
+
+                One 11px muted line, the same register as the origin status
+                above it and the missing-from-the-map note below, because it is
+                the same kind of thing: the panel saying where it stands. The
+                animal half is the shared ResultCount in its inline variant, so
+                the number here is the same component, the same wording and the
+                same tick-over as the count in the toolbar behind the dialog.
+                announce=false because the region at the top of the dialog is
+                what speaks for this panel, and two live regions saying the
+                same number would race. */}
+            <p className="mt-2 flex shrink-0 flex-wrap items-baseline gap-x-1.5 text-[11px] leading-tight text-muted-foreground">
+              <span>
+                {pickerText[locale].withAnimals}: {withAnimals}{" "}
+                {pickerText[locale].of} {total}
+              </span>
+              <span aria-hidden>·</span>
+              <span>{pickerText[locale].showing}:</span>
+              <ResultCount
+                count={resultCount}
+                species={species}
+                locale={locale}
+                announce={false}
+                variant="inline"
+                className="text-[11px]"
+              />
+            </p>
+
             {/* The list scrolls inside the panel at every size. In the sheet it
-                used to be the dialog that scrolled; the sheet has a fixed
-                height, so the scrolling has to happen here or the peek bar
-                gets pushed off the top of its own sheet. */}
-            <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
+                used to be the dialog that scrolled; the sheet's height is
+                bounded, so the scrolling has to happen here or the peek bar
+                gets pushed off the top of its own sheet.
+
+                min-h-0 is what lets it give way to the fixed rows above it.
+                Below lg it may only give way so far: this is the one child of
+                the column that is allowed to shrink, so every pixel the chrome
+                wants comes out of here, and with a hard zero as the limit the
+                list is what disappears first. 5rem is the last resort, not the
+                normal case, and it only bites if something above grows past
+                what the sheet's own floor budgeted for it, a two-line status
+                line under the place field being the likely one. When it does,
+                the overflow lands in the pill's reserve below rather than in
+                the list, which is the right thing to spend: a row under the
+                pill can still be scrolled up to, a row that was never given a
+                height cannot. */}
+            <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1 max-lg:min-h-20">
               {/* At the head of the list rather than above the search: the
                   click's answer belongs next to the rows it is about, and a
                   card that shoved the search boxes down took away what the
@@ -1729,12 +2084,13 @@ export function LocationPicker({
             </div>
 
             {/* This one is about the map, not about the input, so it stays at
-                the bottom of the column. */}
-            <div className="mt-2 shrink-0">
-              <p className="text-[11px] leading-tight text-muted-foreground empty:hidden">
-                {missing}
-              </p>
-            </div>
+                the bottom of the column. No wrapper: the margin belongs on the
+                paragraph itself, so empty:hidden takes the gap away with the
+                line. Wrapped, the note cost the list 8px of height on every
+                screen where there was no note to read. */}
+            <p className="mt-2 shrink-0 text-[11px] leading-tight text-muted-foreground empty:hidden">
+              {missing}
+            </p>
               </>
             )}
               </div>

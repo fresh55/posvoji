@@ -693,18 +693,33 @@ export function LocationPicker({
   // Taking the card down by hand, wherever that is asked for. The focus
   // restore is the reason this is one function: the control that asks sits
   // inside the panel, so letting it vanish would drop keyboard focus on the
-  // body. Search is where the panel starts and where the dialog puts focus on
-  // open.
+  // body.
   //
-  // Pointers only, the same rule the dialog's own onOpenAutoFocus keeps:
-  // focusing an input on a touch device raises the soft keyboard over half the
-  // sheet, which is not what dismissing a card asked for.
+  // A shelter card hands focus back to that shelter's own row, which is the
+  // same shelter one step down the same panel and the thing the card was an
+  // answer about. Search used to take it in every case, which threw a keyboard
+  // back to the top of the panel and left it to walk down to the row again.
+  // A group card has no single row to return to, and neither has a shelter the
+  // list is not currently rendering, so both fall back to search, which is
+  // where the panel starts and where the dialog puts focus on open.
+  //
+  // The coarse-pointer guard covers that fallback alone, the same rule the
+  // dialog's own onOpenAutoFocus keeps: focusing an input on a touch device
+  // raises the soft keyboard over half the sheet, which is not what dismissing
+  // a card asked for. A row is a button and raises nothing, so it is focused
+  // whatever the pointer is.
   const dismissPick = useCallback(() => {
     setPick(null);
+    const row =
+      pick?.kind === "shelter" ? rowRefs.current.get(pick.value) : undefined;
+    if (row) {
+      row.focus();
+      return;
+    }
     if (!window.matchMedia?.("(pointer: coarse)").matches) {
       searchRef.current?.focus();
     }
-  }, []);
+  }, [pick]);
 
   // Bring the card into view when it appears. The panel scrolls on its own in
   // both docks, so a click made with the list scrolled down would otherwise
@@ -845,17 +860,35 @@ export function LocationPicker({
         showCloseButton={false}
         closeLabel={messages.close}
         onEscapeKeyDown={(event) => {
-          // Escape empties the box it is pressed in first, and only closes the
-          // panel once that box is already empty: clearing a search should not
-          // cost the whole map. It has to be handled here rather than on the
-          // inputs, because the dialog listens for the key on the document in
-          // the capture phase, before it ever reaches the field.
+          // A ladder, one rung per press, innermost first. Escape empties the
+          // box it is pressed in before anything else: clearing a search
+          // should not cost the whole map. With the boxes settled, a card on
+          // screen is the next thing to go, through the same dismissPick the
+          // card's own X calls, so Escape and the X leave focus in the same
+          // place. The dialog itself goes on the press after that.
+          //
+          // The card rung asks the breakpoint because the card is drawn from
+          // lg up and nowhere else (max-lg:hidden in map-pick-card.tsx). Below
+          // lg a pick is state with nothing on screen behind it, and a press
+          // spent taking that down would read as Escape doing nothing. Read
+          // here rather than in render because this runs on a keypress, where
+          // matchMedia has no hydration to disagree with.
+          //
+          // It has to be handled here rather than on the inputs, because the
+          // dialog listens for the key on the document in the capture phase,
+          // before it ever reaches the field.
           const target = event.target;
           if (target === placeRef.current && place !== "") {
             setPlace("");
             event.preventDefault();
           } else if (target === searchRef.current && query !== "") {
             setQuery("");
+            event.preventDefault();
+          } else if (
+            pick &&
+            window.matchMedia?.("(min-width: 64rem)").matches
+          ) {
+            dismissPick();
             event.preventDefault();
           }
         }}
@@ -1573,7 +1606,9 @@ export function LocationPicker({
                   type="button"
                   onClick={() => onToggleMany(selected)}
                   // Same max-lg:min-h-9 as the nearest-me toggle beside it.
-                  className="ml-auto inline-flex items-center rounded-ui py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground max-lg:min-h-9"
+                  // px-2 and a hover surface give the press a body to land on,
+                  // so it reads as a button rather than a stray line of text.
+                  className="ml-auto inline-flex items-center rounded-ui px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-lg:min-h-9"
                 >
                   {messages.clear} ({selected.length})
                 </button>
@@ -1635,6 +1670,17 @@ export function LocationPicker({
                     // different question, and a row dropped from inside a
                     // group card is not a reason to take that card away.
                     onToggle={handleRowToggle}
+                    // Asking about a shelter again, without touching what is
+                    // picked. The row itself cannot carry this: it reports
+                    // aria-pressed, so its click has to toggle, which means a
+                    // picked shelter's card could never be re-opened from the
+                    // list once dismissed. Only the live list gets it: an
+                    // off-site row leads to a page instead, and the rows
+                    // inside a group card are already in a card.
+                    onInfo={(value) => setPick({ kind: "shelter", value })}
+                    infoLabel={(rowLabel) =>
+                      t("showShelterDetails", { label: rowLabel })
+                    }
                     refs={rowRefs}
                     highlighted={hoveredMarkerValues ?? undefined}
                     scrollTo={hoverScrollTo}

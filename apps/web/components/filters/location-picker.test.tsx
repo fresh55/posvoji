@@ -1605,6 +1605,176 @@ describe("LocationPicker row card", () => {
   });
 });
 
+// Taking the card down is one act, and two controls ask for it: the card's own
+// X and Escape. Both run through dismissPick, so both leave the keyboard in
+// the same place, and Escape unwinds the dialog one layer at a time rather
+// than closing the whole map over a card.
+describe("LocationPicker pick card dismissal", () => {
+  const dialog = () => screen.getByRole("dialog");
+  const card = () => dialog().querySelector<HTMLElement>("[data-map-pick-card]");
+  const close = () => screen.getByRole("button", { name: "Zapri kartico" });
+  const search = () => screen.getByLabelText("Išči zavetišče po imenu…");
+
+  // The card is drawn from lg up, so the Escape rung that takes it down asks
+  // the same 64rem this file's stub otherwise answers "no" to. The stub is
+  // replaced for this block alone and only that one query is made to match:
+  // the pointer queries stay unmatched, which is what keeps the search-box
+  // fallback reachable.
+  const originalMatchMedia = window.matchMedia;
+  function atDesktopWidth() {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation((media: string) => ({
+        matches: media === "(min-width: 64rem)",
+        media,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  }
+  afterEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: originalMatchMedia,
+    });
+  });
+
+  /** Both toggles are real: a card only stands while what it stands for is
+   *  still selected, so a fixed `selected` prop would take the card away
+   *  before anything could dismiss it. */
+  function openList(initial: string[] = []) {
+    function Harness() {
+      const [selected, setSelected] = useState<string[]>(initial);
+      const apply = (values: string[]) =>
+        setSelected((current) => toggleValues(current, values));
+      return (
+        <I18nProvider locale="sl">
+          <LocationPicker
+            options={options}
+            counts={counts}
+            selected={selected}
+            onToggle={(value) => apply([value])}
+            onToggleMany={apply}
+            resultCount={11}
+            species="all"
+          />
+        </I18nProvider>
+      );
+    }
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+  }
+
+  /** The list's own toggle for a shelter. The card carries the same name, so
+   *  the search is scoped to the rows rather than to the panel. */
+  function row(label: string): HTMLElement {
+    return Array.from(
+      dialog().querySelectorAll<HTMLElement>("[aria-pressed]"),
+    ).find(
+      (button) =>
+        button.textContent?.includes(label) &&
+        !button.closest("[data-map-pick-card]"),
+    )!;
+  }
+
+  it("hands focus back to the row the card was about", () => {
+    atDesktopWidth();
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+    expect(card()).not.toBeNull();
+
+    fireEvent.click(close());
+
+    expect(card()).toBeNull();
+    // The shelter's own row, not the search box at the top of the panel: the
+    // card was an answer about that shelter, so that is where the keyboard is
+    // left standing.
+    expect(document.activeElement).toBe(row("Zavetišče Jug"));
+    // Closing a preview is not un-choosing. The shelter stays picked.
+    expect(row("Zavetišče Jug").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("re-opens the card from a picked row, without dropping the shelter", () => {
+    atDesktopWidth();
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+    fireEvent.click(close());
+    expect(card()).toBeNull();
+
+    // A second click on the row itself would drop Jug: the row reports
+    // aria-pressed, so activating it flips it. The info control beside it is
+    // the only way back to the card of a shelter that is already picked.
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Pokaži podrobnosti za Zavetišče Jug",
+      }),
+    );
+
+    expect(card()?.textContent).toContain("Zavetišče Jug");
+    expect(row("Zavetišče Jug").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("falls back to search when the card stands for no single row", () => {
+    atDesktopWidth();
+    openList();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Podravska:/ }));
+    expect(card()?.dataset.mapPickCard).toBe("group");
+
+    fireEvent.click(close());
+
+    expect(document.activeElement).toBe(search());
+  });
+
+  it("closes the card on Escape and leaves the dialog open", async () => {
+    atDesktopWidth();
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+    fireEvent.keyDown(dialog(), { key: "Escape" });
+
+    expect(card()).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeTruthy();
+    // The same landing as the X, because it is the same dismissal.
+    expect(document.activeElement).toBe(row("Zavetišče Jug"));
+
+    // Nothing inside the dialog is left to unwind, so the next press takes the
+    // dialog itself.
+    fireEvent.keyDown(dialog(), { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("empties the box Escape was pressed in before it reaches the card", () => {
+    atDesktopWidth();
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+    type(search(), "Jug");
+
+    fireEvent.keyDown(search(), { key: "Escape" });
+
+    // The innermost rung takes the press, so the search clears and the card is
+    // still standing for the next one.
+    expect((search() as HTMLInputElement).value).toBe("");
+    expect(card()).not.toBeNull();
+  });
+
+  it("keeps Escape closing the dialog below lg, where no card is drawn", async () => {
+    // The stub at the top of this file answers every query "no", which is the
+    // narrow stage: the card is display:none there, so a pick is state with
+    // nothing behind it and Escape must not spend a press on it.
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+    fireEvent.keyDown(dialog(), { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});
+
 // The third way into this dialog, after the trigger and the found-animal
 // strip: an animal card's shelter name, asking where that shelter is.
 describe("LocationPicker shelter spotlight", () => {

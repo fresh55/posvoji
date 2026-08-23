@@ -20,6 +20,15 @@ const counts = new Map([
   ["sia-in-lu", 2],
 ]);
 
+// A toggle row is a wrapper marked data-shelter-row, holding the toggle
+// button and, when the caller passes onInfo, the info control beside it.
+// Splitting the markup on that attribute is what keeps this helper working
+// whatever a row ends up holding; splitting on "<button" broke the moment a
+// row held two of them. The chunk for a row runs to the start of the next
+// row, so an assertion about one row never reads another's markup.
+const rowTag = (html: string, label: string) =>
+  html.split("data-shelter-row=").find((chunk) => chunk.includes(label)) ?? "";
+
 describe("ShelterRows hover linking", () => {
   it("tints the row(s) named by the highlighted prop, not the others", () => {
     const html = renderToStaticMarkup(
@@ -32,13 +41,10 @@ describe("ShelterRows hover linking", () => {
       />,
     );
 
-    // Each row is one <button>...</button>; find the one that contains the
-    // shelter's own label text.
-    const rowTag = (label: string) =>
-      html.split("<button").find((chunk) => chunk.includes(label)) ?? "";
-
-    expect(rowTag("Sia in Lu")).toContain('data-highlighted="true"');
-    expect(rowTag("Mačja hiša")).not.toContain("data-highlighted");
+    // data-highlighted stays on the toggle button inside the row, which is
+    // what the map and the keyboard code already reach for.
+    expect(rowTag(html, "Sia in Lu")).toContain('data-highlighted="true"');
+    expect(rowTag(html, "Mačja hiša")).not.toContain("data-highlighted");
   });
 
   it("leaves every row untinted when nothing is highlighted", () => {
@@ -56,10 +62,7 @@ describe("ShelterRows hover linking", () => {
 });
 
 describe("ShelterRows selection and counts", () => {
-  const rowTag = (html: string, label: string) =>
-    html.split("<button").find((chunk) => chunk.includes(label)) ?? "";
-
-  it("gives a selected row the map's own accent surface, not the plain hover tint", () => {
+  it("marks a selected row inside the row, never on its surface", () => {
     const html = renderToStaticMarkup(
       <ShelterRows
         rows={rows}
@@ -72,11 +75,40 @@ describe("ShelterRows selection and counts", () => {
     const selected = rowTag(html, "Sia in Lu");
     const unselected = rowTag(html, "Mačja hiša");
 
-    // Same token family the map uses for a picked region, so the selected
-    // state reads as "chosen" at rest instead of only on hover.
-    expect(selected).toContain("var(--filter-accent)");
-    expect(selected).toContain("var(--filter-accent-foreground)");
+    // The check turns visible and green, the label gains weight and the
+    // count pill takes the accent tint. Any shared fill on the row surface,
+    // however faint, made two adjacent picked rows read as one shape across
+    // the 2px gap between them, so the surface carries no selection at all.
+    expect(selected).toContain("text-[var(--filter-accent-strong)]");
+    expect(selected).toContain("font-medium");
+    expect(selected).toContain("bg-[var(--filter-accent)]");
+    expect(selected).not.toContain("bg-[var(--filter-accent)]/");
     expect(unselected).not.toContain("var(--filter-accent)");
+  });
+
+  it("keeps the hover and marker highlight the same on a selected row", () => {
+    const highlighted = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={["sia-in-lu"]}
+        onToggle={() => undefined}
+        highlighted={["sia-in-lu"]}
+      />,
+    );
+    const resting = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={["sia-in-lu"]}
+        onToggle={() => undefined}
+      />,
+    );
+
+    // The surface is free for feedback because it carries no selection: a
+    // selected row answers hover and the map's echo like any other row.
+    expect(rowTag(resting, "Sia in Lu")).toContain("hover:bg-muted/50");
+    expect(rowTag(highlighted, "Sia in Lu")).toContain("bg-muted/50");
   });
 
   it("marks every row as clickable at rest", () => {
@@ -90,6 +122,26 @@ describe("ShelterRows selection and counts", () => {
     );
 
     expect(rowTag(html, "Mačja hiša")).toContain("cursor-pointer");
+  });
+
+  it("dims a row with nothing to pick and offers it neither hand nor hover", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={new Map([["macja-hisa", 5]])}
+        selected={[]}
+        onToggle={() => undefined}
+      />,
+    );
+
+    // Sia in Lu has no animals and is not picked, so there is nothing its row
+    // could toggle. It used to get all three of these from the <button> that
+    // was the whole row; the surface is a div now, so the row says them.
+    const dead = rowTag(html, "Sia in Lu");
+    expect(dead).toContain("opacity-40");
+    expect(dead).toContain("cursor-not-allowed");
+    expect(dead).not.toContain("hover:bg-muted/50");
+    expect(dead).toContain("disabled=");
   });
 
   it("keeps the count next to the shelter name as a quiet badge, not a far-right number", () => {
@@ -112,6 +164,85 @@ describe("ShelterRows selection and counts", () => {
     expect(countIndex).toBeGreaterThan(labelIndex);
     expect(row).toContain("rounded-full");
     expect(row).toContain("tabular-nums");
+  });
+});
+
+// Every row and every marker reports aria-pressed, so activating one has to
+// flip it: a click on a picked row drops that shelter and can never also
+// re-open the card about it. The info control is the second act the row makes
+// room for, and it only exists where a caller has a card to open.
+describe("ShelterRows info control", () => {
+  afterEach(() => cleanup());
+
+  const infoLabel = (label: string) => `Pokaži podrobnosti za ${label}`;
+
+  it("puts the control on a picked row and reserves its slot on the others", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={["sia-in-lu"]}
+        onToggle={() => undefined}
+        onInfo={() => undefined}
+        infoLabel={infoLabel}
+      />,
+    );
+
+    const picked = rowTag(html, "Sia in Lu");
+    expect(picked).toContain("lucide-info");
+    expect(picked).toContain(
+      'aria-label="Pokaži podrobnosti za Zavetišče Sia in Lu"',
+    );
+
+    // The unpicked row holds an inert span of the same size, so picking a row
+    // does not shove the count pills of the rows around it sideways.
+    const unpicked = rowTag(html, "Mačja hiša");
+    expect(unpicked).not.toContain("lucide-info");
+    expect(unpicked).toContain(
+      '<span aria-hidden="true" class="hidden size-6 shrink-0 lg:block">',
+    );
+  });
+
+  it("reserves no slot at all for a caller with nothing to open", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={["sia-in-lu"]}
+        onToggle={() => undefined}
+      />,
+    );
+
+    // The rows inside a group card (map-pick-card.tsx) render this way, and
+    // they keep the layout they had before the control existed.
+    expect(html).not.toContain("lucide-info");
+    expect(html).not.toContain("size-6");
+  });
+
+  it("asks about a shelter without un-picking it", () => {
+    const onToggle = vi.fn();
+    const onInfo = vi.fn();
+    render(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={["sia-in-lu"]}
+        onToggle={onToggle}
+        onInfo={onInfo}
+        infoLabel={infoLabel}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Pokaži podrobnosti za Zavetišče Sia in Lu",
+      }),
+    );
+
+    expect(onInfo).toHaveBeenCalledWith("sia-in-lu");
+    // It sits beside the toggle rather than inside it, so the selection is
+    // untouched: that is the whole point of the second control.
+    expect(onToggle).not.toHaveBeenCalled();
   });
 });
 

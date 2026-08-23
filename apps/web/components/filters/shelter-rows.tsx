@@ -44,6 +44,7 @@ export function ShelterRows({
   onHoverRow,
   onExitTop,
   lessThanOneKm,
+  scrollTo,
 }: {
   rows: ShelterRow[];
   /** Per-shelter animal count, shown as a badge on a toggle row. Unused by a
@@ -63,6 +64,14 @@ export function ShelterRows({
   /** ArrowUp on the first row leaves the list upward, so the search box and
    *  the rows read as one keyboard surface. */
   onExitTop?: () => void;
+  /** The one row to bring into view, when there is one. Separate from
+   *  `highlighted` on purpose: the tint and the scroll answer to different
+   *  things. A hover always tints, but it only scrolls while the caller has
+   *  nothing on screen worth more than the hover, and the caller is the only
+   *  one that knows. Undefined scrolls nothing. A value belonging to the other
+   *  list is simply not found here, which is what lets both lists take the
+   *  same one without fighting over the scroller. */
+  scrollTo?: string;
   /** The words for a sub-kilometre distance, in the reader's language. The
    *  rows take it as a prop rather than reading the locale themselves, which
    *  keeps them renderable outside a provider. */
@@ -78,37 +87,26 @@ export function ShelterRows({
   // landing on the map at the same time.
   const pointerInsideRef = useRef(false);
 
-  // A highlight arriving from the map scrolls its row into view, so the echo
-  // is visible even when the matched shelter has scrolled off. `block:
-  // "nearest"` means a row already on screen does not move at all. Instant,
-  // not smooth: the repo already treats motion as something to justify (see
-  // motion-reduce: in shelter-map.tsx), and a list that jumps rather than
-  // glides never fights a scroll the visitor is mid-gesture on.
+  // The row the caller named is brought into view, so an echo is visible even
+  // when the matched shelter has scrolled off. `block: "nearest"` means a row
+  // already on screen does not move at all. Instant, not smooth: the repo
+  // already treats motion as something to justify (see motion-reduce: in
+  // shelter-map.tsx), and a list that jumps rather than glides never fights a
+  // scroll the visitor is mid-gesture on.
   //
-  // Only highlighted[0] is ever scrolled to, and a list only acts when that
-  // value is one of its own rows. A town can hold a live shelter and an
-  // off-site one at once, and the live list and the off-site list both mount
-  // this same effect against the same `highlighted` array (see
-  // location-picker.tsx, which passes both lists the one hoveredMarkerValues
-  // state), so both effects run. localRefs.get returns undefined for a value
-  // that belongs to the other list, which makes the lookup itself the
-  // arbiter: exactly one of the two lists ever holds a row for
-  // highlighted[0], so exactly one of them ever calls scrollIntoView, and
-  // the two can never fight over where the shared scroll container lands.
-  const highlightedKey = highlighted?.join(",");
+  // A town can hold a live shelter and an off-site one at once, and the live
+  // list and the off-site list both mount this effect against the one
+  // `scrollTo` the picker hands them, so both run. localRefs.get returns
+  // undefined for a value that belongs to the other list, which makes the
+  // lookup itself the arbiter: exactly one of the two ever holds that row, so
+  // exactly one of them ever calls scrollIntoView, and the two can never fight
+  // over where the shared scroll container lands.
   useEffect(() => {
-    if (!highlightedKey || pointerInsideRef.current) return;
-    const first = highlighted?.[0];
-    if (!first) return;
+    if (!scrollTo || pointerInsideRef.current) return;
     localRefs.current
-      .get(first)
+      .get(scrollTo)
       ?.scrollIntoView({ block: "nearest", behavior: "auto" });
-    // highlightedKey is the dependency on purpose: it is derived from
-    // `highlighted` in the same render, so the two never disagree, and
-    // listing the array itself would fire this on every render that passes a
-    // fresh-but-equal array.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlightedKey]);
+  }, [scrollTo]);
 
   // Arrow keys walk the enabled toggle rows only. A link row takes the tab
   // order's own focus instead and never joins this walk, and a disabled

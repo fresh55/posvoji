@@ -50,6 +50,7 @@ import {
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
 import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
+import { isDrop } from "@/lib/filters";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { regionAt } from "@/lib/map-regions";
@@ -58,6 +59,19 @@ import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { looksLikePostcode } from "@/lib/postal-lookup";
 import { cn } from "@/lib/utils";
+
+/** Every shelter a pick stands for, whichever kind it is. A shelter pick is
+ *  one, a region pick is all the ones the click toggled. */
+function pickValues(pick: MapPick): string[] {
+  return pick.kind === "shelter" ? [pick.value] : pick.values;
+}
+
+/** Whether two picks stand for the same shelters, whatever order they list
+ *  them in. Both sides come from the same layout pass and hold no duplicates,
+ *  so equal lengths plus one-way membership is set equality. */
+function sameValues(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value) => b.includes(value));
+}
 
 // The ground a density swatch sits on, so its alpha composites over something
 // close to the land a region fill actually composites over rather than over
@@ -70,11 +84,13 @@ import { cn } from "@/lib/utils";
 const LEGEND_SWATCH_GROUND =
   "color-mix(in oklch, var(--muted) 40%, var(--background))";
 
-// The map legend. Both renderings live in the stage's bottom-left corner over
-// the paper, and both come out of this one component so they cannot drift
-// apart: a stacked column at lg and up, where the list is a panel beside the
-// map, and a wrapping row below it, where the plate is the width of the screen
-// and a column in that corner would be a wall.
+// The map legend, one rendering at every width. It used to be two, a column
+// floated into the plate's bottom-left corner from lg up and a wrapping row
+// under the plate below that, on the bet that the letterbox always left paper
+// in that corner. It does not: a plate limited by height fills its box, and
+// the column sat on the country. The legend is a caption under the map now,
+// which is one shape and one place, and a wrapping row is what a caption under
+// a plate wants to be at any width.
 //
 // It explains what nobody can guess and nothing else. The density ramp is the
 // one encoding with no other way in, so it is always here. Everything else
@@ -83,7 +99,6 @@ const LEGEND_SWATCH_GROUND =
 // and sizes explain themselves on hover, through the callout, so they say
 // nothing here at all.
 function MapLegend({
-  variant,
   highlightedDensity,
   onHoverDensity,
   onLeaveDensity,
@@ -93,7 +108,6 @@ function MapLegend({
   origin,
   messages,
 }: {
-  variant: "panel" | "inline";
   highlightedDensity: number | null;
   onHoverDensity: (index: number) => void;
   onLeaveDensity: () => void;
@@ -104,20 +118,16 @@ function MapLegend({
    *  is a state worth naming. */
   hasMixedRegion: boolean;
   /** At least one shelter with nothing listed is drawn as a hollow circle right
-   *  now. Both variants act on it, at different widths: see the row below. */
+   *  now. The row itself decides at which widths that is worth saying: see it
+   *  below. */
   hasEmptyMarker: boolean;
   origin: LatLon | undefined;
   messages: ReturnType<typeof useI18n>["messages"];
 }) {
   return (
     <div
-      data-map-legend={variant}
-      className={cn(
-        "leading-none text-muted-foreground",
-        variant === "panel"
-          ? "flex flex-col gap-y-1 text-[10px]"
-          : "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] lg:hidden",
-      )}
+      data-map-legend
+      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] leading-none text-muted-foreground"
     >
       <span className="flex items-center gap-2">
         <span>{messages.fewerAnimals}</span>
@@ -221,21 +231,11 @@ function MapLegend({
           The glyph comes from map-marker.tsx, drawn from the same classes and
           the same radius-to-stroke proportion the real circle uses.
 
-          This row follows the markers, not the docks, and the two no longer
-          part at the same width. Markers are drawn from md up; the panel
-          variant of this legend only exists from lg up, so it can carry the row
-          unconditionally. The inline variant now covers everything below lg,
-          which spans both sides of the marker breakpoint: from md to lg the
-          plate is full width and draws every marker, below md it draws none.
-          max-md:hidden is what keeps the row off the phone, where there is no
-          hollow circle to explain. */}
+          This row follows the markers and not the docks: markers are drawn
+          from md up, so max-md:hidden is what keeps the row off the phone,
+          where there is no hollow circle to explain. */}
       {hasEmptyMarker && (
-        <span
-          className={cn(
-            "flex items-center gap-1.5",
-            variant === "inline" && "max-md:hidden",
-          )}
-        >
+        <span className="flex items-center gap-1.5 max-md:hidden">
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
           {messages.emptyShelterLegend}
         </span>
@@ -566,15 +566,40 @@ export function LocationPicker({
 
   // Picking a region picks every shelter in it, which is as fine as a map of a
   // country can honestly be. The list is where you drop the ones you did not
-  // mean, so bringing the first of them into view is what shows what happened.
+  // mean, and the card at the head of it is what shows what happened.
   //
-  // The toggle is unchanged and still lands in one click. What is added is the
-  // card: the same click also says what it just picked, in the panel, where
-  // there is room to say it.
+  // The map asks questions. The list rows and the card's X are what edit the
+  // selection, and a map click only ever drops the thing whose card is already
+  // the answer on screen. So a click on something not picked yet picks it and
+  // opens its card, and a click on something already picked either re-asks
+  // about it, which puts its card back up and takes nothing off the filter, or
+  // drops it, when that card is the one already standing there.
+  //
+  // The card that stands there has to be about this target and nothing wider,
+  // which is why the test is set equality and not containment. Under
+  // containment, clicking a fully picked region while one member shelter's
+  // card was up would drop the whole region, and no card had ever asked about
+  // the region: one shelter's answer would have been read as consent for
+  // twelve. Under equality that click re-opens the region's own group card,
+  // and the click after it drops the region.
   const handlePick = useCallback(
     (values: string[], from: MapPick) => {
-      onToggleMany(values);
-      rowRefs.current.get(values[0])?.scrollIntoView({ block: "nearest" });
+      // The same predicate toggleValues branches on, read before it runs so
+      // the card and the filter cannot disagree about what this click did.
+      const dropping = isDrop(selected, values);
+      // The card on screen already stands for exactly this target, so the
+      // question was asked and this click is the answer to it.
+      const aboutThis = pick !== null && sameValues(pickValues(pick), values);
+      if (dropping && aboutThis) {
+        onToggleMany(values);
+        setPick(null);
+        return;
+      }
+      // Everything below is a question, not an edit. The picking half toggles
+      // on its way through; the re-ask half leaves the selection alone and
+      // only puts the card back, which is why the toggle is gated here rather
+      // than run before the branch.
+      if (!dropping) onToggleMany(values);
       setPick(from);
       // The card lives in the panel, so a click has to bring the panel out
       // wherever it is folded. Both docks, because only the one at the
@@ -590,8 +615,75 @@ export function LocationPicker({
       // arrived with, and two rings at once would be two answers.
       setSpotlitShelterId(null);
     },
-    [onToggleMany],
+    // `pick` is read here, not just written: the drop is only allowed while
+    // the card on screen is this target's, and that is a fact about the pick
+    // at click time. The functional setPick form cannot carry it, because the
+    // toggle it gates is a side effect and has no business in an updater.
+    [onToggleMany, pick, selected],
   );
+
+  // A row click and a map click are the same act, so they get the same answer.
+  // The plate's path goes through handlePick above; the list had been handed
+  // the parent's raw toggle, so picking a shelter off the map produced faces,
+  // counts and the longest wait while picking the same shelter off the list
+  // only turned a row green.
+  //
+  // Only the selecting half opens a card: dropping a shelter is not a question
+  // about it. Taking a card down on the dropping half is left to the effect
+  // below, which already does it for every path and gets the group case right
+  // as well: a group card outlives one member coming off and goes with the
+  // last of them.
+  const handleRowToggle = useCallback(
+    (value: string) => {
+      onToggle(value);
+      if (!selected.includes(value)) setPick({ kind: "shelter", value });
+    },
+    [onToggle, selected],
+  );
+
+  // The card must never outlive the selection it describes. handlePick and
+  // the X resolve it themselves, but two paths change the selection without
+  // knowing a card exists: the clear-all button and the rows inside a group
+  // card. A third kind is not a path through this dialog at all, and is the
+  // reason this watches state rather than wrapping those two: `selected`
+  // comes from the URL, so a back button or a filter pruned elsewhere can
+  // empty it while the dialog is open. Whatever emptied it, a card standing
+  // for nothing has nothing left to say. A group card keeps standing while
+  // any member is still on, which is the same rule its own rows follow.
+  useEffect(() => {
+    if (!pick) return;
+    if (pickValues(pick).some((value) => selected.includes(value))) return;
+    setPick(null);
+  }, [pick, selected]);
+
+  // Which row a marker hover brings into view, and whether it brings one at
+  // all. A card on screen is the answer to a click, and a click outranks a
+  // pointer passing over the map: the hover still tints its row, but it stops
+  // scrolling the list, which used to carry the card off the top of it. Worst
+  // on the shelters with nothing listed, whose rows sit at the very bottom
+  // under their own heading, so grazing one of those hollow circles threw the
+  // list all the way down to a row that cannot even be picked.
+  //
+  // Computed here rather than handed to the lists as a flag they each have to
+  // remember: both take this one value, and neither can forget a rule it is
+  // not carrying.
+  const hoverScrollTo = pick ? undefined : hoveredMarkerValues?.[0];
+
+  // Taking the card down by hand, wherever that is asked for. The focus
+  // restore is the reason this is one function: the control that asks sits
+  // inside the panel, so letting it vanish would drop keyboard focus on the
+  // body. Search is where the panel starts and where the dialog puts focus on
+  // open.
+  //
+  // Pointers only, the same rule the dialog's own onOpenAutoFocus keeps:
+  // focusing an input on a touch device raises the soft keyboard over half the
+  // sheet, which is not what dismissing a card asked for.
+  const dismissPick = useCallback(() => {
+    setPick(null);
+    if (!window.matchMedia?.("(pointer: coarse)").matches) {
+      searchRef.current?.focus();
+    }
+  }, []);
 
   // Bring the card into view when it appears. The panel scrolls on its own in
   // both docks, so a click made with the list scrolled down would otherwise
@@ -797,21 +889,27 @@ export function LocationPicker({
           <div
             data-map-stage={panelOpen ? "panel" : "rail"}
             className={cn(
-              "absolute inset-x-0 top-0 flex items-center justify-center p-2 sm:p-3",
-              // Below lg the plate and the legend under it are one stack,
-              // centred together in whatever the sheet leaves: that is how the
-              // legend ends up hugging the map instead of the frame. See the
-              // legend block itself, which is a child of this container now.
-              "max-lg:flex-col max-lg:items-start",
+              // One stack at every width: the plate, then the caption under
+              // it. The caption used to float into the plate's own bottom-left
+              // corner from lg up, which only works while the letterbox
+              // happens to leave paper there; a plate limited by height leaves
+              // none and the legend ended up on the country. In flow the plate
+              // is given what the caption does not take, so an overlap is not
+              // something to tune away, it is something that cannot be
+              // expressed.
+              "absolute inset-x-0 top-0 flex flex-col gap-2 p-2 sm:p-3",
               // Named, so the paw layer in map-marker.tsx can ask how wide the
               // plate is actually drawn rather than guessing from the viewport.
-              // This element is the right one to ask: it is the box the SVG
-              // fills, and it is the box that changes width when the panel
-              // folds to a rail. Both its width and its height come from the
-              // insets and the width utilities below, never from its contents,
-              // so inline-size containment costs nothing here.
+              // This element is the right one to ask: its width is the width
+              // the SVG fills, and it is the box that changes width when the
+              // panel folds to a rail. The container query is about width
+              // alone, so the caption sharing this column costs it nothing.
               "@container/map-stage",
-              "lg:right-auto lg:bottom-0 lg:p-4",
+              // p-3 and not p-4 at lg: every other edge in this dialog is
+              // inset by three, the title chip, the close, the pill and the
+              // panel alike, and the plate was the one thing keeping a
+              // different gutter.
+              "lg:right-auto lg:bottom-0 lg:p-3",
               "transition-[width,bottom] duration-500 ease-out motion-reduce:transition-none",
               // Below lg the sheet takes height instead of width, so the same
               // recentering happens on the other axis: the container gives up
@@ -823,11 +921,22 @@ export function LocationPicker({
                 : "lg:w-[calc(100%-4.5rem)]",
             )}
           >
+            {/* The plate gets what the caption leaves and no more. min-h-0 is
+                what lets a flex item give way at all, and the SVG letterboxes
+                inside whatever height it ends up with, so the map shrinks
+                rather than the caption being pushed off the stage. */}
+            <div className="flex min-h-0 flex-1 items-center justify-center">
               <ShelterMap
                 pins={pins}
                 selected={selected}
                 onPick={handlePick}
                 origin={origin}
+                // The card in the panel is already carrying this shelter's
+                // count and species line, so the marker under the pointer
+                // says its name and stops there.
+                describedElsewhere={
+                  pick?.kind === "shelter" ? pick.value : null
+                }
                 highlightedValue={muniMode ? null : hoveredRowValue}
                 matchedValues={
                   muniMode
@@ -873,48 +982,38 @@ export function LocationPicker({
                 // What an empty region has to say for itself. Computed here
                 // because this is where the coverage table already is.
                 regionShelterNames={regionShelterNames}
-                // lg+: the SVG takes the whole container and lets its own
+                // lg+: the SVG takes the whole row above and lets its own
                 // preserveAspectRatio letterbox the viewBox inside it. That is
                 // the letterboxing: no aspect-ratio arithmetic on this side,
                 // and the paper it leaves showing is the dialog's ground.
                 // Below lg it keeps the component's own h-auto instead, so the
                 // plate is exactly as tall as 320:210 makes it and no taller,
-                // capped at the container so a raised sheet shrinks it rather
-                // than pushing it out of the frame.
+                // capped at the row so a raised sheet shrinks it rather than
+                // pushing it out of the frame.
                 className="max-h-full lg:h-full"
               />
+            </div>
 
-            {/* Bottom-left, over the paper: the legend and the credits, which
-                is where a printed sheet puts them. The plate's own furniture,
-                the scale bar, keeps the bottom-right of the viewBox, so the two
-                never meet; the confirm pill takes the dialog's bottom-right
-                corner, which is outside the map's container while the panel is
-                out and sixty-odd pixels of dialog edge while it is folded, well
-                under the scale bar's own height above the frame.
+            {/* The caption: the legend and the credits, under the plate, which
+                is where a printed sheet puts them and the one place they can
+                be that no aspect ratio can turn into an overlap. It is the
+                stage's last row, so the plate's bottom edge is always above
+                it, whatever the sheet is doing to the height they share.
 
-                A child of the map's own container, not of the stage, and that
-                is the point below lg. Frame-anchored at bottom-28 it sat 148px
-                under the plate on a 390px phone, a key floating in paper with
-                no map near it. In the container's flow it is the next thing
-                after the plate, so it moves with the plate's bottom edge
-                whatever the sheet is doing to the height above it. At lg the
-                container is the map, so absolute bottom-3 left-3 inside it puts
-                the stack exactly where it has always been: the dialog's own
-                bottom-left corner.
+                The plate's own furniture keeps its own corners inside the
+                viewBox and never meets this; the confirm pill takes the
+                dialog's bottom-right, which at lg is outside this column
+                entirely (the stage stops where the panel begins) and below lg
+                floats in the same band this sits in, as it did before.
 
-                It still steps out of the way entirely once the sheet is up:
-                more than half the screen is the list then, and the map behind
-                it has nothing left to explain.
+                It steps out of the way entirely once the sheet is up: more
+                than half the screen is the list then, and the map above it has
+                nothing left to explain.
 
                 CC BY 4.0 requires the attribution paragraph below to stay
                 visible regardless, so it lives outside this hidden-when-open
                 wrapper: only the legend itself folds away with the sheet. */}
-            <div
-              className={cn(
-                "pointer-events-none z-10 mt-2 flex w-full max-w-[26rem] flex-col gap-1",
-                "lg:absolute lg:bottom-3 lg:left-3 lg:mt-0 lg:w-auto",
-              )}
-            >
+            <div className="pointer-events-none z-10 flex w-full shrink-0 flex-col gap-1">
               <div
                 // The half of this corner that folds away with the sheet. It
                 // is named so the licence check can ask where the credit sits
@@ -926,36 +1025,13 @@ export function LocationPicker({
                   sheetOpen && "max-lg:hidden",
                 )}
               >
-                <div className="pointer-events-auto hidden w-fit lg:block">
+                <div className="pointer-events-auto">
                   <MapLegend
-                    variant="panel"
                     highlightedDensity={highlightedDensity}
                     onHoverDensity={setHighlightedDensity}
                     onLeaveDensity={() => setHighlightedDensity(null)}
                     hasSelectedRegion={hasSelected}
                     hasMixedRegion={hasMixed}
-                    hasEmptyMarker={hasEmpty}
-                    origin={origin}
-                    messages={messages}
-                  />
-                </div>
-
-                {/* The wide-plate legend, which is now everything below lg:
-                    phones and tablets alike. It wraps rather than stacking,
-                    because there the plate is the width of the screen and the
-                    corner under it is that wide too. */}
-                <div className="pointer-events-auto lg:hidden">
-                  <MapLegend
-                    variant="inline"
-                    highlightedDensity={highlightedDensity}
-                    onHoverDensity={setHighlightedDensity}
-                    onLeaveDensity={() => setHighlightedDensity(null)}
-                    hasSelectedRegion={hasSelected}
-                    hasMixedRegion={hasMixed}
-                    // Acted on here too, unlike before: this variant now
-                    // covers md to lg, where the plate is full width and
-                    // draws every marker. The row's own class is what keeps
-                    // it off the phone.
                     hasEmptyMarker={hasEmpty}
                     origin={origin}
                     messages={messages}
@@ -971,7 +1047,10 @@ export function LocationPicker({
                 // a test can then find this paragraph and walk its ancestors
                 // rather than matching on the classes it happens to wear.
                 data-slot="map-attribution"
-                className="pointer-events-auto text-[10px] leading-tight text-muted-foreground/70"
+                // The measure is capped here rather than on the caption as a
+                // whole: this is prose and wants a line length, while the
+                // legend beside it is a key and wants the plate's own width.
+                className="pointer-events-auto max-w-[26rem] text-[10px] leading-tight text-muted-foreground/70"
               >
                 {messages.regionBoundaries}:{" "}
                 <a
@@ -1224,6 +1303,10 @@ export function LocationPicker({
                         aria-pressed={muniMode === mode}
                         onClick={() => {
                           setMuniMode(mode);
+                          // Either direction: the card was the answer to a
+                          // question asked on the tab being left, and coming
+                          // back should not replay it as if just asked.
+                          setPick(null);
                           if (!mode) {
                             setMuniShelterIds(null);
                             setMuniName(null);
@@ -1268,11 +1351,13 @@ export function LocationPicker({
             {(panelOpen || sheetOpen) && (
               <div
                 className={cn(
-                  // max-lg:pb-20 is the room the confirm pill docks into at
-                  // the foot of the sheet: the pill is drawn over this block,
-                  // not in it, so the padding is what keeps it off the last
-                  // row of the list.
-                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pt-1 max-lg:pb-20",
+                  // No top padding of its own at any width: the tab row above
+                  // already ends with pb-2, and adding to it below lg made the
+                  // gap under the tabs two different gaps. max-lg:pb-20 is the
+                  // room the confirm pill docks into at the foot of the sheet:
+                  // the pill is drawn over this block, not in it, so the
+                  // padding is what keeps it off the last row of the list.
+                  "flex min-h-0 flex-1 flex-col px-4 pb-4 max-lg:pb-20",
                   !panelOpen && "lg:hidden",
                   !sheetOpen && "max-lg:hidden",
                 )}
@@ -1288,35 +1373,6 @@ export function LocationPicker({
               />
             ) : (
               <>
-            {/* Above the search boxes and in the flow, so it pushes them down
-                instead of covering them: the click's answer arrives without
-                taking away what was already there. */}
-            {pick && (
-              <MapPickCard
-                pick={pick}
-                rows={rows}
-                counts={counts}
-                selected={selected}
-                summaries={summaries}
-                onToggle={onToggle}
-                onDismiss={() => {
-                  setPick(null);
-                  // The X is inside the panel, so dismissing it would drop
-                  // keyboard focus on the body. Search is where the panel
-                  // starts and where the dialog puts focus on open.
-                  //
-                  // Pointers only, the same rule the dialog's own
-                  // onOpenAutoFocus keeps: focusing an input on a touch device
-                  // raises the soft keyboard over half the sheet, which is not
-                  // what dismissing a card asked for.
-                  if (!window.matchMedia?.("(pointer: coarse)").matches) {
-                    searchRef.current?.focus();
-                  }
-                }}
-                cardRef={pickCardRef}
-              />
-            )}
-
             <div className="relative shrink-0">
               <Search
                 className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -1339,7 +1395,10 @@ export function LocationPicker({
                   // Enter takes the top match, so search-and-pick is one
                   // gesture. ArrowDown walks into the list instead.
                   if (event.key === "Enter" && query.trim()) {
-                    if (first) onToggle(first.value);
+                    // The wrapped toggle, not the raw one: search-and-pick is
+                    // a row click by keyboard, so it opens the same card and
+                    // clears it on the same drop.
+                    if (first) handleRowToggle(first.value);
                     event.preventDefault();
                   } else if (event.key === "ArrowDown") {
                     if (first) {
@@ -1500,6 +1559,42 @@ export function LocationPicker({
                 height, so the scrolling has to happen here or the peek bar
                 gets pushed off the top of its own sheet. */}
             <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
+              {/* At the head of the list rather than above the search: the
+                  click's answer belongs next to the rows it is about, and a
+                  card that shoved the search boxes down took away what the
+                  visitor was already reading. Inside the scroller, so it costs
+                  a short sheet no height it needs for rows; the effect that
+                  brings it into view is what makes it findable when the list
+                  is scrolled. */}
+              {pick && (
+                <MapPickCard
+                  pick={pick}
+                  rows={rows}
+                  counts={counts}
+                  selected={selected}
+                  summaries={summaries}
+                  onToggle={onToggle}
+                  // A shelter card's X un-chooses its shelter; a group card's
+                  // only closes, because a region comes off through its own
+                  // rows. The picker decides which, because whether a pick is
+                  // droppable is a fact about the selection and not about the
+                  // shape of the pick.
+                  onDrop={
+                    pick.kind === "shelter" && selected.includes(pick.value)
+                      ? () => {
+                          onToggle(pick.value);
+                          // The effect above takes the card down on the next
+                          // render regardless; this is here for the focus
+                          // restore that goes with it.
+                          dismissPick();
+                        }
+                      : undefined
+                  }
+                  onDismiss={dismissPick}
+                  cardRef={pickCardRef}
+                />
+              )}
+
               {visibleRows.length === 0 && visibleOffRows.length === 0 ? (
                 <div className="space-y-1.5 px-2 py-2 text-sm text-muted-foreground">
                   <p>
@@ -1522,9 +1617,15 @@ export function LocationPicker({
                     rows={visibleRows}
                     counts={counts}
                     selected={selected}
-                    onToggle={onToggle}
+                    // The wrapped toggle, so a row answers with the card a
+                    // marker answers with. The municipality finder and the
+                    // card's own rows keep the raw one: the finder asks a
+                    // different question, and a row dropped from inside a
+                    // group card is not a reason to take that card away.
+                    onToggle={handleRowToggle}
                     refs={rowRefs}
                     highlighted={hoveredMarkerValues ?? undefined}
+                    scrollTo={hoverScrollTo}
                     onHoverRow={setHoveredRowValue}
                     onExitTop={() => searchRef.current?.focus()}
                     lessThanOneKm={messages.lessThanOneKm}
@@ -1558,6 +1659,7 @@ export function LocationPicker({
                           href: `${detailBase}/${row.value}`,
                         }))}
                         highlighted={hoveredMarkerValues ?? undefined}
+                        scrollTo={hoverScrollTo}
                         onHoverRow={setHoveredRowValue}
                         lessThanOneKm={messages.lessThanOneKm}
                         className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"

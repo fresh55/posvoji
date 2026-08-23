@@ -1,6 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { Species } from "@posvoji/schema";
 
 import { SPECIES_ICONS } from "@/lib/animal-icons";
@@ -14,18 +19,91 @@ import { cn } from "@/lib/utils";
 // tablet and twenty-odd on a wide desktop, which is not one size, it is two.
 // ShelterMap measures the plate and the division below turns these back into
 // user units.
-const TITLE_PX = 12;
-const META_PX = 10.5;
-// The paper showing through around the letters. A hairline and not a glow:
-// this is a knockout, and a wide soft one is only a card by another name.
+// A hierarchy and not two sizes a point apart: the title leads on weight and
+// on size together, and the muted lines under it are clearly the answer to it
+// rather than more of it. shadcn's own card sets a semibold heading over muted
+// body copy, which is the same relationship at a larger size.
+const TITLE_PX = 13;
+const META_PX = 11;
+// Relaxed, the way a card is set and a label is not. At 1.15 three stacked
+// facts read as one compressed block; this is what makes them three lines.
+const LEADING = 1.35;
+// Between the title and the muted lines under it. Written here rather than as
+// a fraction of the type, because it is the gap the eye reads as "a new line
+// of this card", not a property of the letters on either side of it.
+const LINE_GAP_PX = 4;
+// Above the species row, which is a different kind of fact from the words over
+// it and needs to be seen as one: glyphs and counts, not a sentence.
+const SPECIES_GAP_PX = 7;
+// The knockout radius for the plate's one piece of SVG text, the kilometre
+// label on the origin line, which is set straight on the country and has a
+// dashed line running through it. The annotation itself carries a surface now
+// and needs none of this; see the chip's own geometry below.
 const HALO_PX = 1.7;
+
+// The chip the annotation sits on, written in the pixels it is meant to be
+// seen at like the type above it, and divided by the plate's scale in
+// calloutType. Tooltip register throughout: this is the site's popover, drawn
+// small on a map, not a panel.
+//
+// A halo was tried first and rejected on sight: with no surface at all the
+// type has to be read against whatever the region under it happens to be, and
+// strengthening the knockout until that worked turned the names into sticker
+// lettering. A real surface makes the contrast a matter of tokens instead of
+// luck.
+
+// Card padding, not label padding. A chip carrying a name, a count and a row
+// of species is a small hover card and wants a hover card's room; at nine by
+// six the three lines sat against the corners and the whole thing read square.
+const PAD_X_PX = 12;
+const PAD_Y_PX = 9;
+// A callout with nothing under its title is not a card at all, it is a
+// tooltip, and it keeps a tooltip's tighter vertical padding: nine points of
+// air over and under a single word is a plaque. The horizontal padding does
+// not change with it, so every chip on the plate keeps one left edge.
+const PAD_Y_TIGHT_PX = 6;
+// The corner that reads as rounded at that padding. --radius-ui is 0.625rem,
+// which is tuned for a dialog and looks barely turned on a box this small, so
+// the chip takes the popover end of the family instead.
+const RADIUS_PX = 8;
+// The hairline around the chip, drawn as the first layer of the box-shadow
+// rather than as a border. A border cannot be a hairline here: this type is
+// laid out in user units and scaled up by the plate, so the width that comes
+// out to one screen pixel is a fraction of a unit, and Chrome floors any
+// positive border-width to a used value of 1 unit before the transform. At a
+// plate drawn 2.63 pixels to the unit that turned a 0.38-unit specification
+// into a 2.6-pixel frame: a widget border where a map wants a hairline.
+// Measured in the browser; getComputedStyle reports the flooring outright.
+// box-shadow spreads honour the fraction, so the ring is one.
+const RING_PX = 1;
+// The lift the old card had, in the same register: a hairline shadow, not a
+// drop. Dark mode drops it entirely, the way the coins do (COIN_SHADOW in
+// map-marker.tsx), because black on a near-black plate is only mud.
+const SHADOW_Y_PX = 1;
+const SHADOW_BLUR_PX = 2;
+const SHADOW_ALPHA = 0.18;
+// How far off the mark's own reach a chip sits when nothing displaces it, and
+// how far short of the chip the leader stops. In pixels and divided by the
+// plate's scale, like the rest of the chip: written in user units this gap was
+// five rendered pixels on a phone plate and eighteen on a wide desktop one,
+// and the distance between a mark and the thing naming it is a reading
+// distance, so it is one distance.
+const LABEL_GAP_PX = 12;
+const LEADER_GAP_PX = 3;
+// A box-shadow is drawn outside the element and a foreignObject clips at its
+// own box, so the object carries exactly the shadow's reach as a margin and
+// the chip is inset back into place.
+const BLEED_PX = SHADOW_Y_PX + SHADOW_BLUR_PX;
 // The column the text wraps inside. The card was 108 units wide and the picker
 // draws the plate near 2.2 pixels a unit, so this is that same column, held to
 // the same rendered width whatever size the plate is drawn at.
 const BLOCK_PX = 238;
-// One line of title over one of metadata at 1.15 leading. Used until the real
-// content is measured, and as the floor after.
-const MIN_BLOCK_PX = 26;
+// One line of title over one of metadata, at this leading and with the gap
+// between them. Used until the real content is measured, and as the floor
+// after.
+const MIN_BLOCK_PX = Math.round(
+  TITLE_PX * LEADING + LINE_GAP_PX + META_PX * LEADING,
+);
 
 // What one rendered pixel is worth in user units. Clamped at both ends,
 // because past them the honest division stops being the right answer: below,
@@ -74,38 +152,37 @@ export function calloutType(scale: number) {
     title: TITLE_PX * unit,
     metadata: META_PX * unit,
     halo: HALO_PX * unit,
+    /** The chip's own outer width, and so the width the plate reserves for an
+     *  annotation whatever the words turn out to be. The type wraps inside it
+     *  less the padding; a chip with less to say draws narrower than this (see
+     *  w-fit below) but is still laid out and reported against it. The share
+     *  of the map above is the ceiling a narrow plate imposes, because a
+     *  column held to its rendered width covers a phone's map rather than
+     *  labelling it. */
     width: Math.min(BLOCK_PX * unit, MAP_WIDTH * MAX_BLOCK_SHARE),
     floor: MIN_BLOCK_PX * unit,
+    /** Unitless, so it is the one thing here the plate's scale does not
+     *  divide: leading is a ratio of the type it is set on. */
+    leading: LEADING,
+    padX: PAD_X_PX * unit,
+    /** A card's vertical padding, and a tooltip's. Which one a chip wears is
+     *  decided by how much it has to say; see `dense` below. */
+    padY: PAD_Y_PX * unit,
+    padYTight: PAD_Y_TIGHT_PX * unit,
+    lineGap: LINE_GAP_PX * unit,
+    speciesGap: SPECIES_GAP_PX * unit,
+    radius: RADIUS_PX * unit,
+    /** The hairline's width. Named for what draws it, because what draws it is
+     *  a shadow spread and not a border: see RING_PX. */
+    ring: RING_PX * unit,
+    shadowY: SHADOW_Y_PX * unit,
+    shadowBlur: SHADOW_BLUR_PX * unit,
+    bleed: BLEED_PX * unit,
+    labelGap: LABEL_GAP_PX * unit,
+    leaderGap: LEADER_GAP_PX * unit,
   };
 }
 
-// Four passes of the same small blur: three build a core the ground cannot
-// come through, and one carried twice as far softens the edge. A single pass
-// reads as a drop shadow, which is a card's language and not a plate's.
-//
-// --background and never a literal. It is the dialog's own paper, so on dark
-// the halo is nearly black, which is exactly what a dark plate needs.
-function haloShadow(r: number): string {
-  return [r, r, r, r * 2]
-    .map((blur) => `0 0 ${blur.toFixed(3)}px var(--background)`)
-    .join(", ");
-}
-
-// An icon has no text for a shadow to follow, so the same halo arrives as a
-// filter. Three passes and not four: drop-shadow spreads from the whole glyph
-// silhouette rather than from the letterform edges text-shadow follows, so it
-// reaches further for the same radius.
-function haloFilter(r: number): string {
-  return [r, r, r]
-    .map((blur) => `drop-shadow(0 0 ${blur.toFixed(3)}px var(--background))`)
-    .join(" ");
-}
-
-// How far off the marker's edge a label sits when nothing displaces it, and
-// how far short of the label the leader stops. Both in user units, like the
-// connector's own gaps: this is plate geometry and does not move with the type.
-const LABEL_GAP = 4;
-const LEADER_GAP = 1.2;
 // Under this much displacement, no leader. An atlas draws one only when the
 // label has left the place it belongs to, and a unit or two of clamping at the
 // frame is not that.
@@ -127,13 +204,15 @@ export type CalloutRect = {
   height: number;
 };
 
-/** One annotation for markers and regions alike: haloed type laid straight on
- *  the country, the way a plate names a place, with a leader only when the
- *  frame has pushed the name off the thing it names.
+/** One annotation for markers and regions alike: a quiet popover chip set
+ *  beside the thing it names, with a leader only when the frame has pushed it
+ *  off that thing.
  *
- *  It was a bordered popover with a caret once, which is the most web-widget
- *  thing that was ever drawn on this plate. A native <title> before that, which
- *  waited half a second and came in the browser's own colours. */
+ *  Type laid straight on the country was tried and failed here: the plate's
+ *  ground is a density ramp, so contrast depended on which region happened to
+ *  be underneath. The chip makes it a matter of tokens. A native <title>
+ *  before all of it, which waited half a second and came in the browser's own
+ *  colours. */
 export function MapCallout({
   x,
   y,
@@ -150,7 +229,11 @@ export function MapCallout({
   y: number;
   reach: number;
   title: string;
-  metadata: string;
+  /** The line under the title. Optional, and leaving it out is a real state,
+   *  not an oversight: with no note and no species line either, the annotation
+   *  draws as the dense one-line label rather than as a card. See `dense`
+   *  below. */
+  metadata?: string;
   /** A second metadata line, for an annotation with a second thing to say. An
    *  empty region uses it to name the shelters answering for the municipalities
    *  inside it: the first line says there are none here, and this one says who
@@ -212,28 +295,40 @@ export function MapCallout({
     if (needed !== height) setHeight(needed);
   }, [title, metadata, note, speciesKey, type.floor, height]);
 
-  // Which side of the marker the name belongs on, and where it would sit if
+  // A chip with a title and nothing under it is a tooltip and is padded like
+  // one; anything with a second line is a card. The species row counts, since
+  // it is a line of the card whether or not it is made of words.
+  const dense = !metadata && !note && !species?.length;
+  const padY = dense ? type.padYTight : type.padY;
+
+  // The chip's own box: the reserved column, and the measured type plus the
+  // padding around it. Everything below places and reports this box rather
+  // than the type inside it, which is what keeps the chip's edge, the leader's
+  // end and the rectangle the plate suppresses anchors against all one thing.
+  const boxWidth = type.width;
+  const boxHeight = height + padY * 2;
+  const { labelGap, leaderGap } = type;
+
+  // Which side of the marker the chip belongs on, and where it would sit if
   // nothing were in the way.
-  const onRight =
-    x + reach + LABEL_GAP + type.width <= MAP_WIDTH - FRAME_MARGIN;
+  const onRight = x + reach + labelGap + boxWidth <= MAP_WIDTH - FRAME_MARGIN;
   const naturalX = onRight
-    ? x + reach + LABEL_GAP
-    : x - reach - LABEL_GAP - type.width;
-  const naturalY = y - height / 2;
+    ? x + reach + labelGap
+    : x - reach - labelGap - boxWidth;
+  const naturalY = y - boxHeight / 2;
   const blockX = Math.min(
     Math.max(naturalX, FRAME_MARGIN),
-    MAP_WIDTH - type.width - FRAME_MARGIN,
+    MAP_WIDTH - boxWidth - FRAME_MARGIN,
   );
   const blockY = Math.min(
     Math.max(naturalY, FRAME_MARGIN),
-    MAP_HEIGHT - height - FRAME_MARGIN,
+    MAP_HEIGHT - boxHeight - FRAME_MARGIN,
   );
 
-  // The halo blurs outward from the letters and a foreignObject clips at its
-  // own box, so the box carries a margin of exactly the halo's reach and the
-  // text is inset back into place. Without it the knockout is sheared off flat
-  // along the left edge of every label.
-  const pad = type.halo * 2;
+  // The margin the foreignObject carries beyond the chip, so the shadow drawn
+  // outside it is not sheared off along the object's own edge. Derived from
+  // the shadow's reach rather than written as a number here.
+  const pad = type.bleed;
 
   // A leader is drawn for a displaced label and for no other. The measure is
   // how far the frame pushed the block off the position it asked for, which is
@@ -241,12 +336,13 @@ export function MapCallout({
   // decided above.
   const displaced =
     Math.hypot(blockX - naturalX, blockY - naturalY) > LEADER_SLACK;
-  // The label's own end of the line: the edge that faces the marker, a hair
-  // short of the type, level with the middle of the block.
+  // The label's own end of the line: the chip's edge that faces the marker, a
+  // hair short of the surface rather than under the type, level with the
+  // middle of the chip.
   const leaderX = onRight
-    ? blockX - LEADER_GAP
-    : blockX + type.width + LEADER_GAP;
-  const leaderY = blockY + height / 2;
+    ? blockX - leaderGap
+    : blockX + boxWidth + leaderGap;
+  const leaderY = blockY + boxHeight / 2;
   const dx = leaderX - x;
   const dy = leaderY - y;
   const span = Math.hypot(dx, dy) || 1;
@@ -269,9 +365,9 @@ export function MapCallout({
   // flashes back in between.
   useLayoutEffect(() => {
     if (!onRect) return;
-    onRect(rectKey, { x: blockX, y: blockY, width: type.width, height });
+    onRect(rectKey, { x: blockX, y: blockY, width: boxWidth, height: boxHeight });
     return () => onRect(rectKey, null);
-  }, [onRect, rectKey, blockX, blockY, type.width, height]);
+  }, [onRect, rectKey, blockX, blockY, boxWidth, boxHeight]);
 
   return (
     <g
@@ -298,97 +394,139 @@ export function MapCallout({
       <foreignObject
         x={blockX - pad}
         y={blockY - pad}
-        width={type.width + pad * 2}
-        height={height + pad * 2}
+        width={boxWidth + pad * 2}
+        height={boxHeight + pad * 2}
       >
+        {/* The bleed, and nothing else: the chip below is the box, and this
+            wrapper only holds the room its shadow needs. A chip to the left of
+            its marker is pushed against the edge the leader leaves from, so
+            the two always meet. */}
         <div
-          className={cn(
-            "flex h-full flex-col justify-center text-foreground",
-            // A label to the left of its marker sets ragged-left, so the type
-            // ends where the leader starts instead of trailing off away from
-            // the thing it names.
-            !onRight && "text-right",
-          )}
+          className={cn("flex h-full w-full", !onRight && "justify-end")}
           style={{ padding: pad }}
         >
-          {/* Measured, not the padded block above: see the effect's own
-              comment for why the ref has to sit here. */}
-          <div ref={contentRef} className="w-full">
-            <span
-              data-callout-title
-              className="block w-full break-words font-medium"
-              style={{
-                fontSize: type.title,
-                lineHeight: 1.15,
-                textShadow: haloShadow(type.halo),
-              }}
-            >
-              {title}
-            </span>
-            {metadata && (
-              <span
-                data-callout-metadata
-                className="block w-full break-words text-muted-foreground"
-                style={{
-                  fontSize: type.metadata,
-                  lineHeight: 1.15,
-                  marginTop: type.metadata * 0.3,
-                  textShadow: haloShadow(type.halo),
-                }}
-              >
-                {metadata}
-              </span>
+          <div
+            data-callout-chip
+            className={cn(
+              "flex flex-col justify-center",
+              // The surface. bg-popover at 95% and not a backdrop-filter:
+              // filters inside a foreignObject are unreliable across
+              // browsers, and a chip that is only translucent enough to hint
+              // at the country under it never has to be read against one.
+              "rounded-ui bg-popover/95 text-popover-foreground",
+              // Two layers, and two variables, because they answer to
+              // different things: the ring is the chip's edge and belongs in
+              // both themes, the lift is a light-mode shadow the way the coins
+              // have one (COIN_SHADOW in map-marker.tsx), since black on a
+              // near-black plate is only mud. Both carry offsets in plate
+              // units, which only this render knows, so the numbers arrive as
+              // variables and the utilities compose them.
+              "shadow-[var(--callout-ring),var(--callout-lift)] dark:shadow-[var(--callout-ring)]",
+              // As wide as the words need and never wider than the column the
+              // plate reserved: a one-word region name is a chip, not a
+              // plaque. The type still wraps at the column, because that is
+              // what the height was measured against.
+              "w-fit max-w-full",
+              // A chip to the left of its marker sets ragged-left, so the
+              // type ends where the leader starts instead of trailing off
+              // away from the thing it names.
+              !onRight && "text-right",
             )}
-            {/* Same size and same halo as the line above it: this is the other
-                half of one answer, not a footnote to it. */}
-            {note && (
+            style={
+              {
+                borderRadius: type.radius,
+                paddingBlock: padY,
+                paddingInline: type.padX,
+                // A spread ring and no offset or blur, which is a border in
+                // everything but the property it is set on. It paints just
+                // outside the box rather than just inside it, so the chip
+                // draws one screen pixel larger on each side than a border
+                // would have: that is well inside the bleed the object
+                // already carries for the shadow, and immaterial against the
+                // twelve pixels the chip stands off its mark.
+                "--callout-ring": `0 0 0 ${type.ring.toFixed(3)}px var(--border)`,
+                "--callout-lift": `0 ${type.shadowY.toFixed(3)}px ${type.shadowBlur.toFixed(3)}px rgb(0 0 0 / ${SHADOW_ALPHA})`,
+              } as CSSProperties
+            }
+          >
+            {/* Measured, not the padded chip around it: see the effect's own
+                comment for why the ref has to sit here. */}
+            <div ref={contentRef} className="w-full">
               <span
-                data-callout-note
-                className="block w-full break-words text-muted-foreground"
-                style={{
-                  fontSize: type.metadata,
-                  lineHeight: 1.15,
-                  marginTop: type.metadata * 0.3,
-                  textShadow: haloShadow(type.halo),
-                }}
+                data-callout-title
+                // Semibold and not medium: the title has to lead on weight as
+                // well as on size, or a two-point difference between two greys
+                // reads as one paragraph in two sizes.
+                className="block w-full break-words font-semibold"
+                style={{ fontSize: type.title, lineHeight: type.leading }}
               >
-                {note}
+                {title}
               </span>
-            )}
-            {species && species.length > 0 && (
-              <span
-                data-callout-species
-                className={cn(
-                  "flex w-full flex-wrap items-center text-muted-foreground tabular-nums",
-                  !onRight && "justify-end",
-                )}
-                style={{
-                  fontSize: type.metadata,
-                  lineHeight: 1.15,
-                  marginTop: type.metadata * 0.3,
-                  columnGap: type.metadata * 0.65,
-                  rowGap: type.metadata * 0.2,
-                  // One halo for the whole row, glyphs and digits together:
-                  // text-shadow would leave the icons bare.
-                  filter: haloFilter(type.halo),
-                }}
-              >
-                {species.map((entry) => {
-                  const Icon = SPECIES_ICONS[entry.species];
-                  return (
-                    <span
-                      key={entry.species}
-                      data-callout-species-entry={entry.species}
-                      className="inline-flex shrink-0 items-center"
-                      style={{ gap: type.metadata * 0.22 }}
-                    >
-                      <Icon size={type.metadata} aria-hidden />
-                      {entry.count}
-                    </span>
-                  );
-                })}
-              </span>
-            )}
+              {metadata && (
+                <span
+                  data-callout-metadata
+                  className="block w-full break-words text-muted-foreground"
+                  style={{
+                    fontSize: type.metadata,
+                    lineHeight: type.leading,
+                    marginTop: type.lineGap,
+                  }}
+                >
+                  {metadata}
+                </span>
+              )}
+              {/* Same size and same ink as the line above it: this is the
+                  other half of one answer, not a footnote to it. */}
+              {note && (
+                <span
+                  data-callout-note
+                  className="block w-full break-words text-muted-foreground"
+                  style={{
+                    fontSize: type.metadata,
+                    lineHeight: type.leading,
+                    marginTop: type.lineGap,
+                  }}
+                >
+                  {note}
+                </span>
+              )}
+              {species && species.length > 0 && (
+                <span
+                  data-callout-species
+                  className={cn(
+                    "flex w-full flex-wrap items-center text-muted-foreground tabular-nums",
+                    !onRight && "justify-end",
+                  )}
+                  style={{
+                    fontSize: type.metadata,
+                    lineHeight: type.leading,
+                    // More air than between the lines of words above it: this
+                    // is a different kind of fact and has to be seen arriving.
+                    marginTop: type.speciesGap,
+                    // Wide enough that two species read as two facts. At two
+                    // thirds of the type they ran together into one number
+                    // with pictures in it.
+                    columnGap: type.metadata * 0.9,
+                    rowGap: type.metadata * 0.35,
+                  }}
+                >
+                  {species.map((entry) => {
+                    const Icon = SPECIES_ICONS[entry.species];
+                    return (
+                      <span
+                        key={entry.species}
+                        data-callout-species-entry={entry.species}
+                        className="inline-flex shrink-0 items-center"
+                        style={{ gap: type.metadata * 0.35 }}
+                      >
+                        <Icon size={type.metadata} aria-hidden />
+                        {entry.count}
+                      </span>
+                    );
+                  })}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </foreignObject>

@@ -6,8 +6,6 @@ import { Check, Hourglass, X } from "lucide-react";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import { useI18n } from "@/components/i18n-provider";
-import { Button } from "@/components/ui/button";
-import { DialogClose } from "@/components/ui/dialog";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { thumbnailUrl } from "@/lib/animal-images";
 import { formatKm } from "@/lib/geo";
@@ -21,10 +19,19 @@ import { cn } from "@/lib/utils";
 // disappears at chip scale, so this one leans harder.
 const FACE_TILT = [-5, 4, -6] as const;
 
-// The answer to a click on the map. The click itself already toggled, exactly
-// as it always did; this is what the toggle was about. It sits at the top of
-// the shelter panel and pushes the search boxes down rather than covering
-// them, so nothing the visitor was reading is taken away.
+// The answer to a click on the map. Not always to a toggle: a click on
+// something already picked re-asks about it and changes no filter at all (see
+// handlePick), so this is what the click was about rather than what it
+// changed. It sits directly above the list, under the search boxes, so it
+// reads as the row you just picked opened up rather than as a panel dropped
+// on top of the search.
+//
+// It carries no button. The dialog has one primary action, the confirm pill in
+// the footer, and that pill is the only control that knows the real number:
+// a second "show animals" next to one shelter's own count promised that
+// shelter's animals and applied every filter in the dialog. What is left here
+// is the one thing nothing else on this screen says, the faces and the longest
+// wait, plus enough naming to know which shelter they belong to.
 //
 // Hover is deliberately not wired to it: hover keeps the lightweight callout
 // on the map, and the card is what a click buys.
@@ -36,6 +43,7 @@ export function MapPickCard({
   summaries,
   onToggle,
   onDismiss,
+  onDrop,
   cardRef,
 }: {
   pick: MapPick;
@@ -50,6 +58,12 @@ export function MapPickCard({
   summaries?: Map<string, ShelterSummary>;
   onToggle: (value: string) => void;
   onDismiss: () => void;
+  /** Set only when the corner control should un-choose what the card stands
+   *  for, which the picker decides: a shelter card's X drops its shelter,
+   *  a group card's X only closes, because a region comes off through its own
+   *  rows. Whether a pick is droppable is a fact about the selection, and the
+   *  card has no business deriving it from the shape of its pick. */
+  onDrop?: () => void;
   /** So the panel can bring the card into view when it appears. */
   cardRef?: RefObject<HTMLDivElement | null>;
 }) {
@@ -87,14 +101,6 @@ export function MapPickCard({
         locale,
       )}`;
 
-  // A selected shelter's card wears the same accent surface its row does, so
-  // the card and the row say "picked" in one language. Inside that surface the
-  // quiet lines cannot use text-muted-foreground, which is mixed for the page
-  // and not for the accent, so they step down from the accent's own ink.
-  const quiet = checked
-    ? "text-[var(--filter-accent-foreground)]/75"
-    : "text-muted-foreground";
-
   return (
     <div
       ref={cardRef}
@@ -104,11 +110,15 @@ export function MapPickCard({
       // second live region would say the same news twice.
       role="group"
       aria-label={t("shelterPickCardLabel", { label: title })}
+      // The card used to be filled with --filter-accent, which made a
+      // confirmation the loudest object in a panel whose real work happens in
+      // the quiet list under it. "Picked" is already said by the row's own
+      // accent, by the region on the map and by the count in the footer; here
+      // it needs a rule, not a flood. The recessed surface reads as a peek at
+      // the list rather than as a card laid over it.
       className={cn(
-        "mb-3 shrink-0 rounded-ui border p-3",
-        checked
-          ? "border-[var(--filter-accent-strong)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
-          : "bg-muted/40",
+        "mb-2 shrink-0 rounded-ui border bg-muted/40 p-3",
+        checked && "border-l-2 border-l-[var(--filter-accent-strong)]",
       )}
     >
       <div className="flex items-start gap-2">
@@ -121,28 +131,33 @@ export function MapPickCard({
         <div className="min-w-0 flex-1">
           <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
             {checked && (
-              <Check className="size-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+              <Check
+                className="size-3.5 shrink-0 text-[var(--filter-accent-strong)]"
+                strokeWidth={2.25}
+                aria-hidden
+              />
             )}
             <span className="truncate">{title}</span>
           </p>
           {sublabel && (
-            <p className={cn("truncate text-[11px]", quiet)}>{sublabel}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {sublabel}
+            </p>
           )}
         </div>
-        {/* Quiet on purpose: the card is an answer, not a dialog of its own,
-            and the next click replaces it anyway. */}
+        {/* Given an onDrop, this drops what the card stands for rather than
+            just hiding the card: an X that left the filter in place behind it
+            was the one control here anybody would reach for to correct a
+            misclick, and it silently did nothing. Without one it closes, which
+            is what a group card gets, because a region comes off through its
+            own rows one at a time. The label says which of the two it is. */}
         <button
           type="button"
-          onClick={onDismiss}
-          aria-label={messages.closePickCard}
-          className={cn(
-            // The glyph stays small; below lg the button's box is the 44px
-            // touch target the rest of the picker's mobile chrome keeps.
-            "-mr-1 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-ui transition-colors lg:size-6",
-            checked
-              ? "text-[var(--filter-accent-foreground)]/70 hover:text-[var(--filter-accent-foreground)]"
-              : "text-muted-foreground hover:text-foreground",
-          )}
+          onClick={onDrop ?? onDismiss}
+          aria-label={onDrop ? messages.dropPickCard : messages.closePickCard}
+          // The glyph stays small; below lg the button's box is the 44px
+          // touch target the rest of the picker's mobile chrome keeps.
+          className="-mr-1 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground lg:size-6"
         >
           <X className="size-3.5" aria-hidden />
         </button>
@@ -175,17 +190,16 @@ export function MapPickCard({
           animal longestWaiting names, whenever that animal has a photo at
           all (see summarizeShelters), so this sits right above that line
           rather than anywhere else in the card. The ring is drawn from the
-          card's own surface, neutral or accent, so an overlap reads as a cut
-          edge on either one instead of a mismatched halo. */}
+          card's own surface, so an overlap reads as a cut edge rather than as
+          a mismatched halo. */}
       {faces.length > 0 && (
         <div className="mt-2 flex items-center">
           {faces.map((face, index) => (
             <span
               key={face.src}
               className={cn(
-                "relative size-11 shrink-0 overflow-hidden rounded-ui bg-muted ring-2",
+                "relative size-11 shrink-0 overflow-hidden rounded-ui bg-muted ring-2 ring-muted/40",
                 index > 0 && "-ml-4",
-                checked ? "ring-[var(--filter-accent)]" : "ring-muted/40",
               )}
               style={{
                 zIndex: faces.length - index,
@@ -208,12 +222,9 @@ export function MapPickCard({
           amber the animal card gives a long wait, so the two marks are one
           mark. */}
       {summary?.longestWaiting && (
-        <p className={cn("mt-2 flex items-center gap-1.5 text-xs", quiet)}>
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Hourglass
-            className={cn(
-              "size-3.5 shrink-0",
-              !checked && "text-amber-600 dark:text-amber-400",
-            )}
+            className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
             strokeWidth={1.75}
             aria-hidden
           />
@@ -237,16 +248,6 @@ export function MapPickCard({
           />
         </div>
       )}
-
-      {/* The dialog's own way out, the same one the footer button uses:
-          DialogClose closes through onOpenChange, which is where this picker
-          keeps its closing logic. The selection is already applied, because a
-          toggle applies the moment it happens. */}
-      <DialogClose asChild>
-        <Button size="sm" className="mt-3 w-full">
-          {messages.showAnimals}
-        </Button>
-      </DialogClose>
     </div>
   );
 }

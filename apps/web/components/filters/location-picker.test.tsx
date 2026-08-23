@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 import {
   act,
   cleanup,
@@ -10,6 +10,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { toggleValues } from "@/lib/filters";
 import { cityAt } from "@/lib/geo";
 import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
 import { SHELTER_SPOTLIGHT_EVENT } from "@/lib/shelter-spotlight";
@@ -17,7 +18,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS } from "@/lib/map-layout";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { LocationPicker } from "./location-picker";
-import { ShelterMap, type ShelterPin } from "./shelter-map";
+import { REGION_DWELL_MS, ShelterMap, type ShelterPin } from "./shelter-map";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -52,23 +53,33 @@ const counts = new Map([
 // they also become the faint markers the legend explains.
 const offSite = [{ value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" }];
 
-async function openPicker(
-  props: Partial<ComponentProps<typeof LocationPicker>> = {},
-) {
-  render(
-    <I18nProvider locale="sl">
-      <LocationPicker
-        options={options}
-        counts={counts}
-        selected={[]}
-        onToggle={vi.fn()}
-        onToggleMany={vi.fn()}
-        resultCount={11}
-        species="all"
-        {...props}
-      />
-    </I18nProvider>,
-  );
+// Stateful for the same reason the pick-card harness below is: the card
+// folds once nothing it stands for is selected, so toggles have to land in
+// the next render's `selected` the way animal-grid's real handlers land them.
+async function openPicker({
+  selected: initialSelected = [],
+  ...props
+}: Partial<ComponentProps<typeof LocationPicker>> = {}) {
+  function Harness() {
+    const [selected, setSelected] = useState<string[]>(initialSelected);
+    const toggleMany = (values: string[]) =>
+      setSelected((current) => toggleValues(current, values));
+    return (
+      <I18nProvider locale="sl">
+        <LocationPicker
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={(value) => toggleMany([value])}
+          onToggleMany={toggleMany}
+          resultCount={11}
+          species="all"
+          {...props}
+        />
+      </I18nProvider>
+    );
+  }
+  render(<Harness />);
 
   fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
   await screen.findByRole("dialog");
@@ -87,6 +98,19 @@ function rowOrder(): string[] {
 
 function type(input: HTMLElement, value: string) {
   fireEvent.change(input, { target: { value } });
+}
+
+// A region is named only once the pointer has settled on it (REGION_DWELL_MS
+// in shelter-map.tsx). Fake timers are installed for the dwell alone: opening
+// the dialog above is an async find, and it has no business running on a
+// frozen clock.
+function hoverRegion(node: Element) {
+  vi.useFakeTimers();
+  fireEvent.pointerOver(node);
+  act(() => {
+    vi.advanceTimersByTime(REGION_DWELL_MS);
+  });
+  vi.useRealTimers();
 }
 
 describe("LocationPicker trigger", () => {
@@ -436,6 +460,30 @@ describe("LocationPicker off-site hover echo", () => {
       block: "nearest",
     });
   });
+
+  it("holds that scroll while a card is up, and tints the row anyway", async () => {
+    await openPicker({ offSite });
+    const dialog = screen.getByRole("dialog");
+
+    // A click first: from here on there is an answer on screen worth more
+    // than any hover.
+    fireEvent.click(dialog.querySelector('[data-marker-key*="maribor" i]')!);
+    expect(dialog.querySelector("[data-map-pick-card]")).toBeTruthy();
+    scrollIntoView.mockClear();
+
+    fireEvent.pointerEnter(dialog.querySelector('[data-marker-key*="celje" i]')!);
+
+    // The echo still happens where it costs nothing.
+    expect(
+      screen
+        .getByRole("link", { name: /Zavetišče Vzhod/ })
+        .getAttribute("data-highlighted"),
+    ).toBe("true");
+    // What is gone is the list being dragged out from under the card. The
+    // off-site rows sit at the very bottom of the list under their own
+    // heading, so this was the hover that threw the card furthest off.
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
 });
 
 describe("LocationPicker legend", () => {
@@ -447,16 +495,41 @@ describe("LocationPicker legend", () => {
     const legends = Array.from(
       screen.getByRole("dialog").querySelectorAll("[data-map-legend]"),
     );
-    // Both copies exist in markup (an on-map row for md+, an inline row for
-    // phones) with CSS choosing which one shows.
-    expect(legends).toHaveLength(2);
-    for (const legend of legends) {
-      // The one encoding with no other way in, and nothing else: no paw
-      // swatch, no marker sizes, no off-site ring. Those answer for
-      // themselves on the map.
-      expect(legend.textContent).toBe("Manj živaliVeč živali");
-      expect(legend.querySelector(".lucide-paw-print")).toBeNull();
+    // One legend, in one place: a caption under the plate. It was two
+    // renderings with CSS choosing between them while the wide one floated
+    // into the map's own corner, which is the arrangement that put it on the
+    // country.
+    expect(legends).toHaveLength(1);
+    // The one encoding with no other way in, and nothing else: no paw swatch,
+    // no marker sizes, no off-site ring. Those answer for themselves on the
+    // map.
+    expect(legends[0].textContent).toBe("Manj živaliVeč živali");
+    expect(legends[0].querySelector(".lucide-paw-print")).toBeNull();
+  });
+
+  it("sits under the plate rather than over it, at every width", async () => {
+    await openPicker();
+
+    const stage = screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>("[data-map-stage]")!;
+    const legend = stage.querySelector<HTMLElement>("[data-map-legend]")!;
+
+    // In the stage's own flow and after the plate, so the map is given what
+    // the caption leaves. jsdom lays nothing out, so what is checked here is
+    // the construction: no absolute positioning anywhere between the legend
+    // and the stage, and the plate's row ahead of it in document order.
+    let node: HTMLElement | null = legend;
+    while (node && node !== stage) {
+      expect(node.className).not.toContain("absolute");
+      node = node.parentElement;
     }
+    expect(node).toBe(stage);
+    expect(stage.className).toContain("flex-col");
+    const plate = stage.querySelector("svg")!;
+    expect(
+      plate.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("draws the swatches from the map's own ramp, colour and steps", async () => {
@@ -578,43 +651,24 @@ describe("LocationPicker legend", () => {
     // The off-site shelter places in Celje with nothing listed, which is the
     // hollow circle the row is about.
     await openPicker({ offSite });
-    // Once per legend rendering: the panel column and the inline row are both
-    // in the markup, and CSS picks which one shows. See the row's own test
-    // below for which widths each of them draws it at.
-    expect(screen.getAllByText("Zavetišče brez živali").length).toBe(2);
+    // Once, because there is one legend now.
+    expect(screen.getAllByText("Zavetišče brez živali").length).toBe(1);
   });
 
-  it("carries that row in both legends, and hides it below the marker breakpoint", async () => {
+  it("hides that row below the marker breakpoint, where there is no circle", async () => {
     await openPicker({ offSite });
 
-    const legends = Array.from(
-      screen.getByRole("dialog").querySelectorAll<HTMLElement>(
-        "[data-map-legend]",
-      ),
-    );
-    const panel = legends.find(
-      (legend) => legend.dataset.mapLegend === "panel",
-    )!;
-    const inline = legends.find(
-      (legend) => legend.dataset.mapLegend === "inline",
+    const legend = screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>("[data-map-legend]")!;
+    const row = Array.from(legend.children).find((child) =>
+      child.textContent?.includes("Zavetišče brez živali"),
     )!;
 
-    // The panel legend only exists from lg up, where markers are always drawn.
-    expect(panel.textContent).toContain("Zavetišče brez živali");
-    const panelRow = Array.from(panel.children).find((row) =>
-      row.textContent?.includes("Zavetišče brez živali"),
-    )!;
-    expect(panelRow.className).not.toContain("hidden");
-
-    // The inline legend now covers everything below lg, which straddles the
-    // marker breakpoint: from md to lg the plate is full width and draws every
-    // marker, below md it draws none. The row follows the markers, so it is in
-    // the markup and gated on md rather than left out of the variant.
-    expect(inline.textContent).toContain("Zavetišče brez živali");
-    const inlineRow = Array.from(inline.children).find((row) =>
-      row.textContent?.includes("Zavetišče brez živali"),
-    )!;
-    expect(inlineRow.className).toContain("max-md:hidden");
+    // The row follows the markers, which are drawn from md up, and not the
+    // docks: from md to lg the plate is full width and draws every one of
+    // them, below md it draws none.
+    expect(row.className).toContain("max-md:hidden");
   });
 
   it("draws the legend glyph from the marker's own hollow-circle classes", async () => {
@@ -752,26 +806,43 @@ describe("LocationPicker pick card", () => {
     ],
   ]) as Map<string, ShelterSummary>;
 
-  function openMap(
-    props: Partial<Parameters<typeof LocationPicker>[0]> = {},
-  ) {
-    const onToggle = vi.fn();
+  // Stateful on purpose: the card watches `selected` and folds once nothing
+  // it stands for is on (see location-picker.tsx), so a harness whose toggles
+  // land nowhere shows a card for exactly one render. The spies still record
+  // every call; they just also do what animal-grid's real handlers do.
+  function openMap({
+    selected: initialSelected = [],
+    ...props
+  }: Partial<Parameters<typeof LocationPicker>[0]> = {}) {
     const onToggleMany = vi.fn();
-    render(
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={options}
-          counts={counts}
-          selected={[]}
-          onToggle={onToggle}
-          onToggleMany={onToggleMany}
-          resultCount={11}
-          species="all"
-          summaries={summaries}
-          {...props}
-        />
-      </I18nProvider>,
-    );
+    const onToggle = vi.fn();
+    function Harness() {
+      const [selected, setSelected] = useState<string[]>(initialSelected);
+      const apply = (values: string[]) =>
+        setSelected((current) => toggleValues(current, values));
+      return (
+        <I18nProvider locale="sl">
+          <LocationPicker
+            options={options}
+            counts={counts}
+            selected={selected}
+            onToggle={(value) => {
+              onToggle(value);
+              apply([value]);
+            }}
+            onToggleMany={(values) => {
+              onToggleMany(values);
+              apply(values);
+            }}
+            resultCount={11}
+            species="all"
+            summaries={summaries}
+            {...props}
+          />
+        </I18nProvider>
+      );
+    }
+    render(<Harness />);
     fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
     return { onToggle, onToggleMany };
   }
@@ -784,6 +855,20 @@ describe("LocationPicker pick card", () => {
    *  answer as a whole, so the group itself is what takes the click. */
   function marker(city: string): Element {
     return dialog().querySelector(`[data-marker-key*="${city}" i]`)!;
+  }
+
+  /** A shelter's own list row. Its name is on the marker as well, so the row
+   *  is told apart by being the real <button> of the two. */
+  /** A shelter's row in the list. The name is on the marker too, and a group
+   *  card renders rows of its own at the head of the same scroller, so the
+   *  list's row is the real <button> that is not inside the card. */
+  function row(label: RegExp): HTMLElement | undefined {
+    return screen
+      .getAllByRole("button", { name: label })
+      .find(
+        (node) =>
+          node.tagName === "BUTTON" && !node.closest("[data-map-pick-card]"),
+      );
   }
 
   it("toggles the shelter and answers with its card in one click", () => {
@@ -855,18 +940,227 @@ describe("LocationPicker pick card", () => {
     expect(dialog().querySelectorAll("[data-map-pick-card]")).toHaveLength(1);
     expect(card()?.textContent).toContain("Zavetišče Jug");
 
-    fireEvent.click(screen.getByRole("button", { name: "Zapri kartico" }));
+    // A selected shelter's X is the drop control, so it takes the shelter
+    // and the card together; Sever stays picked.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Odstrani zavetišče iz izbire" }),
+    );
+
+    expect(card()).toBeNull();
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("leaves confirming to the footer pill, which is the one that knows the count", () => {
+    openMap();
+
+    fireEvent.click(marker("maribor"));
+
+    // The card used to end in its own "Prikaži živali", directly under one
+    // shelter's own count, and clicking it applied every filter in the
+    // dialog rather than that shelter's animals. One primary, in the footer,
+    // wearing the number it actually means.
+    expect(screen.queryByRole("button", { name: "Prikaži živali" })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Prikaži/ })).toBeTruthy();
+  });
+
+  it("points at a picked shelter again rather than dropping it unasked", () => {
+    // Already picked and no card on screen, so the map has nothing standing
+    // for this shelter to be the answer to. The click asks about it instead
+    // of taking it off a filter the visitor cannot see it leaving.
+    const { onToggleMany } = openMap({ selected: ["sever"] });
+
+    fireEvent.click(marker("maribor"));
+
+    expect(onToggleMany).not.toHaveBeenCalled();
+    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    expect(card()?.textContent).toContain("Zavetišče Sever");
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("drops it on the click after that, once its own card is the answer", () => {
+    const { onToggleMany } = openMap({ selected: ["sever"] });
+
+    fireEvent.click(marker("maribor"));
+    onToggleMany.mockClear();
+
+    // The card describing exactly this shelter is on screen now, so the
+    // second click un-chooses what it describes and the card goes with it.
+    fireEvent.click(marker("maribor"));
+
+    expect(onToggleMany).toHaveBeenCalledWith(["sever"]);
+    expect(card()).toBeNull();
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("replaces another shelter's card instead of dropping what was clicked", () => {
+    const { onToggleMany } = openMap({ selected: ["sever"] });
+
+    fireEvent.click(marker("ljubljana"));
+    expect(card()?.textContent).toContain("Zavetišče Jug");
+    onToggleMany.mockClear();
+
+    // Jug's card is not an answer about Sever, so clicking Sever asks about
+    // Sever. The newest question wins the card and nothing comes off.
+    fireEvent.click(marker("maribor"));
+
+    expect(onToggleMany).not.toHaveBeenCalled();
+    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    expect(card()?.textContent).toContain("Zavetišče Sever");
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("asks about a member of a picked region before dropping it", () => {
+    // Ptuj sits in Podravska with Maribor, so the region card holds both.
+    const { onToggleMany } = openMap({
+      options: [
+        ...options,
+        { value: "vzhod", label: "Zavetišče Vzhod", city: "Ptuj" },
+      ],
+      counts: new Map([...counts, ["vzhod", 5]]),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Podravska:/ }));
+    expect(card()?.dataset.mapPickCard).toBe("group");
+    onToggleMany.mockClear();
+
+    // The group card answers for the region, not for Sever alone, so the
+    // click is a question about Sever and the card becomes Sever's.
+    fireEvent.click(marker("maribor"));
+
+    expect(onToggleMany).not.toHaveBeenCalled();
+    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    expect(card()?.textContent).toContain("Zavetišče Sever");
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+
+    // Now the card is Sever's, so the next click on Sever drops Sever and
+    // nothing else the region had picked.
+    fireEvent.click(marker("maribor"));
+
+    expect(onToggleMany).toHaveBeenCalledWith(["sever"]);
+    expect(card()).toBeNull();
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
+    expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("picks a region on one click and drops it on the next", () => {
+    const { onToggleMany } = openMap({
+      options: [
+        ...options,
+        { value: "vzhod", label: "Zavetišče Vzhod", city: "Ptuj" },
+      ],
+      counts: new Map([...counts, ["vzhod", 5]]),
+    });
+    const region = () => screen.getByRole("button", { name: /^Podravska:/ });
+
+    fireEvent.click(region());
+    expect(card()?.dataset.mapPickCard).toBe("group");
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+    expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("true");
+    onToggleMany.mockClear();
+
+    // The region's own card is the answer on screen, so the second click on
+    // it un-chooses every shelter it stands for.
+    fireEvent.click(region());
+
+    // The region hands its shelters over in map order, which is the layout's
+    // business and not this test's, so the two are compared as a set.
+    expect(onToggleMany).toHaveBeenCalledTimes(1);
+    expect([...onToggleMany.mock.calls[0][0]].sort()).toEqual([
+      "sever",
+      "vzhod",
+    ]);
+    expect(card()).toBeNull();
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
+    expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("re-opens a picked region's card when a member's card is the one up", () => {
+    const { onToggleMany } = openMap({
+      options: [
+        ...options,
+        { value: "vzhod", label: "Zavetišče Vzhod", city: "Ptuj" },
+      ],
+      counts: new Map([...counts, ["vzhod", 5]]),
+    });
+    const region = () => screen.getByRole("button", { name: /^Podravska:/ });
+
+    fireEvent.click(region());
+    fireEvent.click(marker("maribor"));
+    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    onToggleMany.mockClear();
+
+    // One member's card is not consent to drop the twelve shelters a region
+    // can hold. The region is fully picked, so the click puts the region's
+    // own card back and the selection stands.
+    fireEvent.click(region());
+
+    expect(onToggleMany).not.toHaveBeenCalled();
+    expect(card()?.dataset.mapPickCard).toBe("group");
+    expect(card()?.textContent).toContain("Podravska");
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+    expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("takes the card down once nothing it stands for is selected", () => {
+    openMap();
+
+    fireEvent.click(marker("maribor"));
+    expect(card()?.textContent).toContain("Zavetišče Sever");
+
+    // "Počisti (n)" empties the selection without going anywhere near the
+    // card's own handlers; the card must go with it rather than stand over
+    // an empty selection with an X that no longer drops anything.
+    fireEvent.click(screen.getByRole("button", { name: /Počisti/ }));
 
     expect(card()).toBeNull();
   });
 
-  it("applies and closes from the card, the same way the footer does", () => {
+  it("answers a search-box Enter with the same card a row click earns", () => {
     openMap();
 
-    fireEvent.click(marker("maribor"));
-    fireEvent.click(screen.getByRole("button", { name: "Prikaži živali" }));
+    const search = screen.getByPlaceholderText("Išči zavetišče po imenu…");
+    fireEvent.change(search, { target: { value: "sever" } });
+    fireEvent.keyDown(search, { key: "Enter" });
 
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(card()?.textContent).toContain("Zavetišče Sever");
+  });
+
+  it("clears the card on a tab switch instead of replaying it on return", () => {
+    openMap({
+      municipalities: [
+        { name: "Maribor", nearest: [], coverage: [] },
+      ] as never,
+    });
+
+    fireEvent.click(marker("maribor"));
+    expect(card()).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Najdena žival" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zavetišča" }));
+
+    // The shelter is still selected; the card was the answer to a question
+    // asked before the tab switch, and coming back is not asking it again.
+    expect(card()).toBeNull();
+  });
+
+  it("stops the hovered marker repeating what the card already says", () => {
+    openMap();
+
+    // With no card up, the marker annotates in full.
+    fireEvent.pointerEnter(marker("maribor"));
+    expect(dialog().querySelector("[data-callout-metadata]")).toBeTruthy();
+    expect(dialog().querySelector("[data-callout-species]")).toBeTruthy();
+
+    fireEvent.pointerLeave(marker("maribor"));
+    fireEvent.click(marker("maribor"));
+    fireEvent.pointerEnter(marker("maribor"));
+
+    // The name stays: a mark under the pointer still has to say what it is.
+    // The count and the species breakdown go, because the card in the panel
+    // is already carrying both.
+    expect(dialog().querySelector("[data-callout-metadata]")).toBeNull();
+    expect(dialog().querySelector("[data-callout-species]")).toBeNull();
+    expect(screen.getAllByText("Zavetišče Sever").length).toBeGreaterThan(0);
   });
 
   it("comes back to the shelter tab when the map is clicked from the other one", () => {
@@ -1047,21 +1341,21 @@ describe("LocationPicker floating panel", () => {
     await openPicker();
 
     const legend = dialog().querySelector<HTMLElement>("[data-map-legend]")!;
-    // Three levels up, not two: the legend's own variant wrapper sits inside
-    // a group that folds away with the sheet (so the always-visible CC BY
-    // attribution paragraph can live as its sibling, outside that fold), and
-    // that group sits inside the block this test means to find.
+    // Three levels up, not two: the legend's own wrapper sits inside a group
+    // that folds away with the sheet (so the always-visible CC BY attribution
+    // paragraph can live as its sibling, outside that fold), and that group
+    // sits inside the block this test means to find.
     const block = legend.parentElement!.parentElement!.parentElement!;
 
-    // Inside the map's own container, so below lg it is the next thing after
-    // the plate in that container's column and moves with the plate's bottom
-    // edge. Frame-anchored it sat 148px under the map on a 390px phone.
+    // The stage's own last row at every width, so it moves with the plate's
+    // bottom edge instead of being anchored to a frame the plate may not
+    // reach. Frame-anchored it sat 148px under the map on a 390px phone;
+    // floated into the map's corner at lg it sat on the country.
     expect(stage().contains(block)).toBe(true);
     expect(block.className).not.toContain("bottom-28");
-    // At lg the container is the map, so the same block goes back to the
-    // dialog's bottom-left corner.
-    expect(block.className).toContain("lg:absolute");
-    expect(block.className).toContain("lg:bottom-3");
+    expect(block.className).not.toContain("absolute");
+    expect(block.className).toContain("shrink-0");
+    expect(block.parentElement).toBe(stage());
   });
 
   it("answers a marker tap in the sheet, the way it answers one in the panel", async () => {
@@ -1179,6 +1473,102 @@ describe("LocationPicker found-animal entry", () => {
     // Folded with the sheet below lg and with the panel above it, the same way
     // the list below it folds.
     expect(tabRow().className).toContain("max-lg:hidden");
+  });
+});
+
+// Picking a shelter off the list and picking the same shelter off the plate
+// are one act with one answer. The map path had the card to itself for a
+// while, which made the list the poor relation of a control that sits right
+// beside it.
+describe("LocationPicker row card", () => {
+  const dialog = () => screen.getByRole("dialog");
+  const card = () => dialog().querySelector<HTMLElement>("[data-map-pick-card]");
+
+  const summaries = new Map<string, ShelterSummary>([
+    ["jug", { species: [{ species: "dog", count: 7 }] }],
+  ]);
+
+  /** Selection has to be real here: the whole behaviour turns on whether the
+   *  value was already picked, so a fixed `selected` prop would only ever
+   *  exercise one half of it. */
+  function openList(initial: string[] = []) {
+    function Harness() {
+      const [selected, setSelected] = useState(initial);
+      return (
+        <I18nProvider locale="sl">
+          <LocationPicker
+            options={options}
+            counts={counts}
+            selected={selected}
+            onToggle={(value) =>
+              setSelected((current) =>
+                current.includes(value)
+                  ? current.filter((entry) => entry !== value)
+                  : [...current, value],
+              )
+            }
+            onToggleMany={vi.fn()}
+            resultCount={11}
+            species="all"
+            summaries={summaries}
+          />
+        </I18nProvider>
+      );
+    }
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+  }
+
+  /** The list's own toggle for a shelter, by the name it carries. The pick
+   *  card holds a button carrying the same name, so the search is scoped to
+   *  the rows rather than to the panel. */
+  function row(label: string): HTMLElement {
+    return Array.from(
+      dialog().querySelectorAll<HTMLElement>("[aria-pressed]"),
+    ).find(
+      (button) =>
+        button.textContent?.includes(label) &&
+        !button.closest("[data-map-pick-card]"),
+    )!;
+  }
+
+  it("answers a row click with the same card a marker click leaves", () => {
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+
+    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    expect(card()?.textContent).toContain("Zavetišče Jug");
+    // The breakdown the map's card carries, from the same summaries prop.
+    expect(card()?.querySelector("[data-pick-species='dog']")?.textContent).toBe(
+      "7",
+    );
+  });
+
+  it("takes the card away when its own shelter is dropped", () => {
+    openList();
+
+    fireEvent.click(row("Zavetišče Jug"));
+    expect(card()).not.toBeNull();
+
+    fireEvent.click(row("Zavetišče Jug"));
+
+    // Dropping a shelter is not a question about it, so nothing is left
+    // standing to answer.
+    expect(card()).toBeNull();
+  });
+
+  it("leaves a card about another shelter alone", () => {
+    openList(["sever"]);
+
+    fireEvent.click(row("Zavetišče Jug"));
+    expect(card()?.textContent).toContain("Zavetišče Jug");
+
+    // Sever was already picked, so this click drops it. The card on screen is
+    // about Jug and has nothing to do with that.
+    fireEvent.click(row("Zavetišče Sever"));
+
+    expect(card()?.textContent).toContain("Zavetišče Jug");
   });
 });
 
@@ -1316,7 +1706,7 @@ describe("LocationPicker region coverage", () => {
   it("tells an empty region who answers for the občine inside it", async () => {
     await openPicker({ municipalities });
 
-    fireEvent.pointerOver(region("Goriška"));
+    hoverRegion(region("Goriška"));
 
     expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
     // Placed by the same two steps a town is placed by, so a name lands in
@@ -1337,13 +1727,29 @@ describe("LocationPicker region coverage", () => {
   it("leaves a live region's own counts to speak for it", async () => {
     await openPicker({ municipalities });
 
-    fireEvent.pointerOver(region("Osrednjeslovenska"));
+    // Keyboard focus, because a live region no longer answers a pointer at
+    // all (see the region dwell tests in shelter-map.test.tsx): this is the
+    // one path that still names one.
+    fireEvent.focus(region("Osrednjeslovenska"));
 
     // Ljubljana's coverage entry names a shelter for this region too, and a
     // region that has its own shelters has no use for it: the counts are the
     // answer there.
     expect(dialog().querySelector("[data-callout-note]")).toBeNull();
     expect(screen.getByText(/1 zavetišče · 7 živali/)).toBeTruthy();
+  });
+
+  it("says nothing at all when a pointer crosses a live region", async () => {
+    await openPicker({ municipalities });
+
+    hoverRegion(region("Osrednjeslovenska"));
+
+    // Not even after the dwell: the covered-by line exists for regions the map
+    // draws no shelters in, and this one has its own. Asked by name rather
+    // than by counting callouts, because the region holding the dialog's
+    // opening focus is wearing one of its own the whole time.
+    expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
+    expect(screen.queryByText(/1 zavetišče · 7 živali/)).toBeNull();
   });
 });
 

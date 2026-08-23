@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { Dialog } from "@/components/ui/dialog";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { MapPickCard } from "./map-pick-card";
 import type { ShelterRow } from "./shelter-rows";
@@ -26,22 +25,20 @@ function renderCard(
 ) {
   const onToggle = vi.fn();
   const onDismiss = vi.fn();
+  // No Dialog around it any more: the card used to end in a DialogClose
+  // button and needed the context for it, and now the dialog's one primary
+  // action lives in the footer where the count is.
   const view = render(
-    // The card's footer button is a DialogClose, which only ever needs the
-    // real LocationPicker dialog it renders inside; a plain open Dialog
-    // gives it the same context without pulling that whole picker in here.
-    <Dialog open>
-      <I18nProvider locale="sl">
-        <MapPickCard
-          rows={rows}
-          counts={counts}
-          selected={[]}
-          onToggle={onToggle}
-          onDismiss={onDismiss}
-          {...props}
-        />
-      </I18nProvider>
-    </Dialog>,
+    <I18nProvider locale="sl">
+      <MapPickCard
+        rows={rows}
+        counts={counts}
+        selected={[]}
+        onToggle={onToggle}
+        onDismiss={onDismiss}
+        {...props}
+      />
+    </I18nProvider>,
   );
   return { ...view, onToggle, onDismiss };
 }
@@ -168,5 +165,48 @@ describe("MapPickCard avatar", () => {
 
     // No fallback letter and no logo image anywhere in the card.
     expect(container.querySelectorAll("img").length).toBe(0);
+  });
+});
+
+describe("MapPickCard corner control", () => {
+  it("drops what it stands for when the caller says it is droppable", () => {
+    const onDrop = vi.fn();
+    const { onDismiss } = renderCard({
+      pick: { kind: "shelter", value: "sever" },
+      selected: ["sever"],
+      onDrop,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Odstrani zavetišče iz izbire" }),
+    );
+
+    expect(onDrop).toHaveBeenCalled();
+    // The drop is the caller's whole answer, dismissal included, so the card
+    // does not also fire its own.
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it("only closes without one, which is what a group card gets", () => {
+    const { onToggle, onDismiss } = renderCard({
+      pick: { kind: "group", label: "Obala", values: ["sever", "jug"] },
+      selected: ["sever", "jug"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Zapri kartico" }));
+
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalled();
+  });
+
+  it("carries no confirm button of its own", () => {
+    renderCard({
+      pick: { kind: "shelter", value: "sever" },
+      selected: ["sever"],
+    });
+
+    // It used to end in "Prikaži živali", which sat under one shelter's own
+    // count and applied every filter in the dialog.
+    expect(screen.queryByRole("button", { name: /Prikaži/ })).toBeNull();
   });
 });

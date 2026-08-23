@@ -146,6 +146,7 @@ describe("ShelterRows map-hover scroll echo", () => {
         selected={[]}
         onToggle={() => undefined}
         highlighted={["sia-in-lu"]}
+        scrollTo="sia-in-lu"
       />,
     );
 
@@ -179,6 +180,7 @@ describe("ShelterRows map-hover scroll echo", () => {
         selected={[]}
         onToggle={() => undefined}
         highlighted={["sia-in-lu"]}
+        scrollTo="sia-in-lu"
       />,
     );
 
@@ -194,6 +196,7 @@ describe("ShelterRows map-hover scroll echo", () => {
         selected={[]}
         onToggle={() => undefined}
         highlighted={["macja-hisa"]}
+        scrollTo="macja-hisa"
       />,
     );
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
@@ -213,8 +216,8 @@ describe("ShelterRows map-hover scroll echo", () => {
 
     // A row's own hover feeds onHoverRow, a different prop entirely (see
     // location-picker.tsx: it becomes hoveredRowValue, which drives the
-    // map's highlight, not this list's). It never sets `highlighted`, so it
-    // can never trigger the scroll on its own.
+    // map's highlight, not this list's). It never sets `scrollTo`, so it can
+    // never trigger the scroll on its own.
     const row = getByText("Zavetišče Mačja hiša").closest("button")!;
     fireEvent.pointerEnter(row);
 
@@ -360,7 +363,15 @@ describe("ShelterRows two lists sharing one highlight", () => {
     ];
     const celjeCounts = new Map([["macja-hisa", 5]]);
 
-    function Lists({ highlighted }: { highlighted: string[] }) {
+    // Both lists take the one scrollTo the picker computes, which is what
+    // makes the ref lookup the arbiter between them.
+    function Lists({
+      highlighted,
+      scrollTo,
+    }: {
+      highlighted: string[];
+      scrollTo?: string;
+    }) {
       return (
         <>
           <ShelterRows
@@ -369,8 +380,13 @@ describe("ShelterRows two lists sharing one highlight", () => {
             selected={[]}
             onToggle={() => undefined}
             highlighted={highlighted}
+            scrollTo={scrollTo}
           />
-          <ShelterRows rows={siaInLu} highlighted={highlighted} />
+          <ShelterRows
+            rows={siaInLu}
+            highlighted={highlighted}
+            scrollTo={scrollTo}
+          />
         </>
       );
     }
@@ -392,7 +408,9 @@ describe("ShelterRows two lists sharing one highlight", () => {
 
     // The off-site shelter named first in the shared array, as it would be
     // if the marker that shares their town put it first.
-    rerender(<Lists highlighted={["sia-in-lu", "macja-hisa"]} />);
+    rerender(
+      <Lists highlighted={["sia-in-lu", "macja-hisa"]} scrollTo="sia-in-lu" />,
+    );
 
     await waitFor(() => expect(linkScroll).toHaveBeenCalledTimes(1));
     expect(toggleScroll).not.toHaveBeenCalled();

@@ -108,19 +108,21 @@ export function MapPickCard({
       // second live region would say the same news twice.
       role="group"
       aria-label={t("shelterPickCardLabel", { label: title })}
-      // The card used to be filled with --filter-accent, which made a
-      // confirmation the loudest object in a panel whose real work happens in
-      // the quiet list under it. "Picked" is already said by the row's own
-      // accent, by the region on the map and by the count in the footer; here
-      // it needs a rule, not a flood. The recessed surface reads as a peek at
-      // the list rather than as a card laid over it.
+      // The rows below keep their surface clear and say "picked" with the
+      // check, the label's weight and the count pill's tint, so the card no
+      // longer needs to stay recessed to avoid outshouting them. It is
+      // elevated instead: bg-card and a small shadow make it read as the one
+      // answer floating above the quiet list, the card a click bought rather
+      // than another row in the same scroller. Checked adds the green left
+      // rule: the card is a single object, so a rule on it cannot run into a
+      // neighbour the way one on the rows could.
       //
       // max-lg:hidden rather than a breakpoint read in JS: display:none takes
       // the card out of the accessibility tree as well as out of the layout,
       // and it is right from the first paint, which a matchMedia read after
       // hydration is not.
       className={cn(
-        "mb-2 shrink-0 rounded-ui border bg-muted/40 p-3 max-lg:hidden",
+        "mb-2 shrink-0 rounded-ui border bg-card shadow-sm p-3 max-lg:hidden",
         checked && "border-l-2 border-l-[var(--filter-accent-strong)]",
       )}
     >
@@ -200,7 +202,7 @@ export function MapPickCard({
             <span
               key={face.src}
               className={cn(
-                "relative size-11 shrink-0 overflow-hidden rounded-ui bg-muted ring-2 ring-muted/40",
+                "relative size-11 shrink-0 overflow-hidden rounded-ui bg-muted ring-2 ring-card",
                 index > 0 && "-ml-4",
               )}
               style={{

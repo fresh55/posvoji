@@ -229,7 +229,11 @@ export function MapCallout({
   y: number;
   reach: number;
   title: string;
-  metadata: string;
+  /** The line under the title. Optional, and leaving it out is a real state,
+   *  not an oversight: with no note and no species line either, the annotation
+   *  draws as the dense one-line label rather than as a card. See `dense`
+   *  below. */
+  metadata?: string;
   /** A second metadata line, for an annotation with a second thing to say. An
    *  empty region uses it to name the shelters answering for the municipalities
    *  inside it: the first line says there are none here, and this one says who

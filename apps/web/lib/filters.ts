@@ -911,11 +911,22 @@ export function activeFilterSectionCount(filters: Filters): number {
   );
 }
 
+/** Whether toggling these values would take them off rather than add them.
+ *  Exported because callers need the answer before the toggle runs: the map
+ *  picker asks it to tell a click that drops from a click that picks, and a
+ *  second copy of the rule there would be free to drift from this one. */
+export function isDrop(
+  selected: readonly string[],
+  values: readonly string[],
+): boolean {
+  return values.every((value) => selected.includes(value));
+}
+
 export function toggleValues(
   selected: readonly string[],
   values: readonly string[],
 ): string[] {
-  if (values.every((value) => selected.includes(value))) {
+  if (isDrop(selected, values)) {
     return selected.filter((value) => !values.includes(value));
   }
   return [...new Set([...selected, ...values])];

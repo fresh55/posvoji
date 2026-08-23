@@ -195,6 +195,7 @@ export function ShelterMap({
   highlightedDensity,
   summaries,
   regionShelterNames,
+  describedElsewhere,
 }: {
   pins: ShelterPin[];
   selected: string[];
@@ -247,6 +248,12 @@ export function ShelterMap({
    *  them instead of ending at "none here". Regions the table says nothing
    *  about are simply absent from the map, and say nothing extra. */
   regionShelterNames?: Map<number, string[]>;
+  /** A shelter something off the map already describes in full, if there is
+   *  one. Its hover annotation drops to the bare name: whatever is carrying
+   *  the count and the species breakdown elsewhere would otherwise have those
+   *  same facts on screen twice at once, a few hundred pixels apart. The name
+   *  stays, because a mark under the pointer still has to say what it is. */
+  describedElsewhere?: string | null;
 }) {
   const { locale, messages, t } = useI18n();
   // The dev gallery mounts several maps on one page, and every one of them
@@ -410,6 +417,38 @@ export function ShelterMap({
   const calloutShelter =
     hoveredShelter ??
     (activeTown?.shelters.length === 1 ? activeTown.shelters[0] : undefined);
+  /** This annotation is about the shelter something else already describes,
+   *  so everything that other thing says is dropped from it and only the name
+   *  is left. Both the count and the species line go, which is what makes
+   *  MapCallout draw its dense one-line label instead of a card: see `dense`
+   *  there. The other shelter in a shared town is untouched, because
+   *  calloutShelter is the wedge under the pointer. */
+  const saidElsewhere =
+    Boolean(describedElsewhere) &&
+    calloutShelter?.value === describedElsewhere;
+
+  /** The line under the annotation's title, when the annotation carries one.
+   *  A wedge under the pointer answers for its own shelter; a town answers for
+   *  itself, and one with nothing to pick says so rather than counting out the
+   *  nought it has. */
+  const townMetadata = !activeTown
+    ? undefined
+    : hoveredShelter
+      ? hoveredShelter.selectable === false
+        ? messages.noAnimalsListed
+        : animalCount(hoveredShelter.count, locale)
+      : townSelectableValues(activeTown).length === 0
+        ? messages.noAnimalsListed
+        : activeTown.shelters.length > 1
+          ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
+          : animalCount(townCount(activeTown), locale);
+
+  /** Who lives there, when the annotation is about one house. A cluster's own
+   *  card answers for its town, and the breakdown of a town is a fact about no
+   *  shelter in it. */
+  const calloutSpecies = calloutShelter
+    ? summaries?.get(calloutShelter.value)?.species
+    : undefined;
 
   // Memoized so the highlighted town's region is a lookup rather than a second
   // point-in-polygon pass over every render.
@@ -802,31 +841,15 @@ export function ShelterMap({
             // one name covers the site rather than one per town.
             rectKey="town"
             onRect={handleCalloutRect}
-            // Who lives there, when the annotation is about one house. A
-            // cluster's own card answers for its town, and the breakdown of a
-            // town is a fact about no shelter in it.
-            species={
-              calloutShelter
-                ? summaries?.get(calloutShelter.value)?.species
-                : undefined
-            }
             // A wedge under the pointer names its own shelter. Without that a
             // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
             // at, which is the one question the cluster cannot answer.
             title={hoveredShelter ? hoveredShelter.label : townLabel(activeTown)}
-            metadata={
-              hoveredShelter
-                ? hoveredShelter.selectable === false
-                  ? messages.noAnimalsListed
-                  : animalCount(hoveredShelter.count, locale)
-                : // A town with nothing to pick says so, rather than counting
-                  // out the nought it has.
-                  townSelectableValues(activeTown).length === 0
-                  ? messages.noAnimalsListed
-                  : activeTown.shelters.length > 1
-                    ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
-                    : animalCount(townCount(activeTown), locale)
-            }
+            // The name always; the rest only when nothing else is already
+            // saying it. Both lines go together, which is what leaves
+            // MapCallout drawing its dense one-line label.
+            metadata={saidElsewhere ? undefined : townMetadata}
+            species={saidElsewhere ? undefined : calloutSpecies}
           />
         )}
       </g>

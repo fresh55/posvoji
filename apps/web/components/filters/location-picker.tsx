@@ -50,6 +50,7 @@ import {
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
 import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
+import { isDrop } from "@/lib/filters";
 import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { regionAt } from "@/lib/map-regions";
@@ -58,6 +59,19 @@ import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { looksLikePostcode } from "@/lib/postal-lookup";
 import { cn } from "@/lib/utils";
+
+/** Every shelter a pick stands for, whichever kind it is. A shelter pick is
+ *  one, a region pick is all the ones the click toggled. */
+function pickValues(pick: MapPick): string[] {
+  return pick.kind === "shelter" ? [pick.value] : pick.values;
+}
+
+/** Whether two picks stand for the same shelters, whatever order they list
+ *  them in. Both sides come from the same layout pass and hold no duplicates,
+ *  so equal lengths plus one-way membership is set equality. */
+function sameValues(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value) => b.includes(value));
+}
 
 // The ground a density swatch sits on, so its alpha composites over something
 // close to the land a region fill actually composites over rather than over
@@ -552,15 +566,40 @@ export function LocationPicker({
 
   // Picking a region picks every shelter in it, which is as fine as a map of a
   // country can honestly be. The list is where you drop the ones you did not
-  // mean, so bringing the first of them into view is what shows what happened.
+  // mean, and the card at the head of it is what shows what happened.
   //
-  // The toggle is unchanged and still lands in one click. What is added is the
-  // card: the same click also says what it just picked, in the panel, where
-  // there is room to say it.
+  // The map asks questions. The list rows and the card's X are what edit the
+  // selection, and a map click only ever drops the thing whose card is already
+  // the answer on screen. So a click on something not picked yet picks it and
+  // opens its card, and a click on something already picked either re-asks
+  // about it, which puts its card back up and takes nothing off the filter, or
+  // drops it, when that card is the one already standing there.
+  //
+  // The card that stands there has to be about this target and nothing wider,
+  // which is why the test is set equality and not containment. Under
+  // containment, clicking a fully picked region while one member shelter's
+  // card was up would drop the whole region, and no card had ever asked about
+  // the region: one shelter's answer would have been read as consent for
+  // twelve. Under equality that click re-opens the region's own group card,
+  // and the click after it drops the region.
   const handlePick = useCallback(
     (values: string[], from: MapPick) => {
-      onToggleMany(values);
-      rowRefs.current.get(values[0])?.scrollIntoView({ block: "nearest" });
+      // The same predicate toggleValues branches on, read before it runs so
+      // the card and the filter cannot disagree about what this click did.
+      const dropping = isDrop(selected, values);
+      // The card on screen already stands for exactly this target, so the
+      // question was asked and this click is the answer to it.
+      const aboutThis = pick !== null && sameValues(pickValues(pick), values);
+      if (dropping && aboutThis) {
+        onToggleMany(values);
+        setPick(null);
+        return;
+      }
+      // Everything below is a question, not an edit. The picking half toggles
+      // on its way through; the re-ask half leaves the selection alone and
+      // only puts the card back, which is why the toggle is gated here rather
+      // than run before the branch.
+      if (!dropping) onToggleMany(values);
       setPick(from);
       // The card lives in the panel, so a click has to bring the panel out
       // wherever it is folded. Both docks, because only the one at the
@@ -576,7 +615,11 @@ export function LocationPicker({
       // arrived with, and two rings at once would be two answers.
       setSpotlitShelterId(null);
     },
-    [onToggleMany],
+    // `pick` is read here, not just written: the drop is only allowed while
+    // the card on screen is this target's, and that is a fact about the pick
+    // at click time. The functional setPick form cannot carry it, because the
+    // toggle it gates is a side effect and has no business in an updater.
+    [onToggleMany, pick, selected],
   );
 
   // A row click and a map click are the same act, so they get the same answer.
@@ -586,22 +629,61 @@ export function LocationPicker({
   // only turned a row green.
   //
   // Only the selecting half opens a card: dropping a shelter is not a question
-  // about it. And the card only goes when it is the one being dropped, because
-  // deselecting some other row is not an answer to the question already on
-  // screen. The pick effect below does the scrolling either way.
+  // about it. Taking a card down on the dropping half is left to the effect
+  // below, which already does it for every path and gets the group case right
+  // as well: a group card outlives one member coming off and goes with the
+  // last of them.
   const handleRowToggle = useCallback(
     (value: string) => {
       onToggle(value);
-      if (!selected.includes(value)) {
-        setPick({ kind: "shelter", value });
-        return;
-      }
-      setPick((current) =>
-        current?.kind === "shelter" && current.value === value ? null : current,
-      );
+      if (!selected.includes(value)) setPick({ kind: "shelter", value });
     },
     [onToggle, selected],
   );
+
+  // The card must never outlive the selection it describes. handlePick and
+  // the X resolve it themselves, but two paths change the selection without
+  // knowing a card exists: the clear-all button and the rows inside a group
+  // card. A third kind is not a path through this dialog at all, and is the
+  // reason this watches state rather than wrapping those two: `selected`
+  // comes from the URL, so a back button or a filter pruned elsewhere can
+  // empty it while the dialog is open. Whatever emptied it, a card standing
+  // for nothing has nothing left to say. A group card keeps standing while
+  // any member is still on, which is the same rule its own rows follow.
+  useEffect(() => {
+    if (!pick) return;
+    if (pickValues(pick).some((value) => selected.includes(value))) return;
+    setPick(null);
+  }, [pick, selected]);
+
+  // Which row a marker hover brings into view, and whether it brings one at
+  // all. A card on screen is the answer to a click, and a click outranks a
+  // pointer passing over the map: the hover still tints its row, but it stops
+  // scrolling the list, which used to carry the card off the top of it. Worst
+  // on the shelters with nothing listed, whose rows sit at the very bottom
+  // under their own heading, so grazing one of those hollow circles threw the
+  // list all the way down to a row that cannot even be picked.
+  //
+  // Computed here rather than handed to the lists as a flag they each have to
+  // remember: both take this one value, and neither can forget a rule it is
+  // not carrying.
+  const hoverScrollTo = pick ? undefined : hoveredMarkerValues?.[0];
+
+  // Taking the card down by hand, wherever that is asked for. The focus
+  // restore is the reason this is one function: the control that asks sits
+  // inside the panel, so letting it vanish would drop keyboard focus on the
+  // body. Search is where the panel starts and where the dialog puts focus on
+  // open.
+  //
+  // Pointers only, the same rule the dialog's own onOpenAutoFocus keeps:
+  // focusing an input on a touch device raises the soft keyboard over half the
+  // sheet, which is not what dismissing a card asked for.
+  const dismissPick = useCallback(() => {
+    setPick(null);
+    if (!window.matchMedia?.("(pointer: coarse)").matches) {
+      searchRef.current?.focus();
+    }
+  }, []);
 
   // Bring the card into view when it appears. The panel scrolls on its own in
   // both docks, so a click made with the list scrolled down would otherwise
@@ -849,6 +931,12 @@ export function LocationPicker({
                 selected={selected}
                 onPick={handlePick}
                 origin={origin}
+                // The card in the panel is already carrying this shelter's
+                // count and species line, so the marker under the pointer
+                // says its name and stops there.
+                describedElsewhere={
+                  pick?.kind === "shelter" ? pick.value : null
+                }
                 highlightedValue={muniMode ? null : hoveredRowValue}
                 matchedValues={
                   muniMode
@@ -1215,6 +1303,10 @@ export function LocationPicker({
                         aria-pressed={muniMode === mode}
                         onClick={() => {
                           setMuniMode(mode);
+                          // Either direction: the card was the answer to a
+                          // question asked on the tab being left, and coming
+                          // back should not replay it as if just asked.
+                          setPick(null);
                           if (!mode) {
                             setMuniShelterIds(null);
                             setMuniName(null);
@@ -1281,35 +1373,6 @@ export function LocationPicker({
               />
             ) : (
               <>
-            {/* Above the search boxes and in the flow, so it pushes them down
-                instead of covering them: the click's answer arrives without
-                taking away what was already there. */}
-            {pick && (
-              <MapPickCard
-                pick={pick}
-                rows={rows}
-                counts={counts}
-                selected={selected}
-                summaries={summaries}
-                onToggle={onToggle}
-                onDismiss={() => {
-                  setPick(null);
-                  // The X is inside the panel, so dismissing it would drop
-                  // keyboard focus on the body. Search is where the panel
-                  // starts and where the dialog puts focus on open.
-                  //
-                  // Pointers only, the same rule the dialog's own
-                  // onOpenAutoFocus keeps: focusing an input on a touch device
-                  // raises the soft keyboard over half the sheet, which is not
-                  // what dismissing a card asked for.
-                  if (!window.matchMedia?.("(pointer: coarse)").matches) {
-                    searchRef.current?.focus();
-                  }
-                }}
-                cardRef={pickCardRef}
-              />
-            )}
-
             <div className="relative shrink-0">
               <Search
                 className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -1332,7 +1395,10 @@ export function LocationPicker({
                   // Enter takes the top match, so search-and-pick is one
                   // gesture. ArrowDown walks into the list instead.
                   if (event.key === "Enter" && query.trim()) {
-                    if (first) onToggle(first.value);
+                    // The wrapped toggle, not the raw one: search-and-pick is
+                    // a row click by keyboard, so it opens the same card and
+                    // clears it on the same drop.
+                    if (first) handleRowToggle(first.value);
                     event.preventDefault();
                   } else if (event.key === "ArrowDown") {
                     if (first) {
@@ -1493,6 +1559,42 @@ export function LocationPicker({
                 height, so the scrolling has to happen here or the peek bar
                 gets pushed off the top of its own sheet. */}
             <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
+              {/* At the head of the list rather than above the search: the
+                  click's answer belongs next to the rows it is about, and a
+                  card that shoved the search boxes down took away what the
+                  visitor was already reading. Inside the scroller, so it costs
+                  a short sheet no height it needs for rows; the effect that
+                  brings it into view is what makes it findable when the list
+                  is scrolled. */}
+              {pick && (
+                <MapPickCard
+                  pick={pick}
+                  rows={rows}
+                  counts={counts}
+                  selected={selected}
+                  summaries={summaries}
+                  onToggle={onToggle}
+                  // A shelter card's X un-chooses its shelter; a group card's
+                  // only closes, because a region comes off through its own
+                  // rows. The picker decides which, because whether a pick is
+                  // droppable is a fact about the selection and not about the
+                  // shape of the pick.
+                  onDrop={
+                    pick.kind === "shelter" && selected.includes(pick.value)
+                      ? () => {
+                          onToggle(pick.value);
+                          // The effect above takes the card down on the next
+                          // render regardless; this is here for the focus
+                          // restore that goes with it.
+                          dismissPick();
+                        }
+                      : undefined
+                  }
+                  onDismiss={dismissPick}
+                  cardRef={pickCardRef}
+                />
+              )}
+
               {visibleRows.length === 0 && visibleOffRows.length === 0 ? (
                 <div className="space-y-1.5 px-2 py-2 text-sm text-muted-foreground">
                   <p>
@@ -1517,12 +1619,13 @@ export function LocationPicker({
                     selected={selected}
                     // The wrapped toggle, so a row answers with the card a
                     // marker answers with. The municipality finder and the
-                    // card's own toggle keep the raw one: the finder asks a
-                    // different question, and the card must not dismiss itself
-                    // when its own button is pressed.
+                    // card's own rows keep the raw one: the finder asks a
+                    // different question, and a row dropped from inside a
+                    // group card is not a reason to take that card away.
                     onToggle={handleRowToggle}
                     refs={rowRefs}
                     highlighted={hoveredMarkerValues ?? undefined}
+                    scrollTo={hoverScrollTo}
                     onHoverRow={setHoveredRowValue}
                     onExitTop={() => searchRef.current?.focus()}
                     lessThanOneKm={messages.lessThanOneKm}
@@ -1556,6 +1659,7 @@ export function LocationPicker({
                           href: `${detailBase}/${row.value}`,
                         }))}
                         highlighted={hoveredMarkerValues ?? undefined}
+                        scrollTo={hoverScrollTo}
                         onHoverRow={setHoveredRowValue}
                         lessThanOneKm={messages.lessThanOneKm}
                         className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"

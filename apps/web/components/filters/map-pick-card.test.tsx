@@ -168,26 +168,25 @@ describe("MapPickCard avatar", () => {
   });
 });
 
+// The X used to drop a selected shelter outright (see the onDrop prop this
+// card no longer takes) and only close for a group. Every map activation is a
+// plain toggle now, so the corner control has one job for both pick kinds:
+// close the card, and never touch the selection. Un-picking a shelter is what
+// clicking it again, or its row's own toggle, is for.
 describe("MapPickCard corner control", () => {
-  it("drops what it stands for when the caller says it is droppable", () => {
-    const onDrop = vi.fn();
-    const { onDismiss } = renderCard({
+  it("only closes the card for a shelter pick, leaving the selection alone", () => {
+    const { onToggle, onDismiss } = renderCard({
       pick: { kind: "shelter", value: "sever" },
       selected: ["sever"],
-      onDrop,
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Odstrani zavetišče iz izbire" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Zapri kartico" }));
 
-    expect(onDrop).toHaveBeenCalled();
-    // The drop is the caller's whole answer, dismissal included, so the card
-    // does not also fire its own.
-    expect(onDismiss).not.toHaveBeenCalled();
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalled();
   });
 
-  it("only closes without one, which is what a group card gets", () => {
+  it("only closes the card for a group pick, the same as for a shelter", () => {
     const { onToggle, onDismiss } = renderCard({
       pick: { kind: "group", label: "Obala", values: ["sever", "jug"] },
       selected: ["sever", "jug"],
@@ -208,5 +207,20 @@ describe("MapPickCard corner control", () => {
     // It used to end in "Prikaži živali", which sat under one shelter's own
     // count and applied every filter in the dialog.
     expect(screen.queryByRole("button", { name: /Prikaži/ })).toBeNull();
+  });
+});
+
+// jsdom never evaluates a media query, so this checks the class that hides
+// the card below lg rather than a computed layout. The real assertion that
+// the card is actually invisible on a phone lives in e2e/shelter-map.spec.ts.
+describe("MapPickCard breakpoint visibility", () => {
+  it("carries the class that hides it below lg", () => {
+    const { container } = renderCard({
+      pick: { kind: "shelter", value: "sever" },
+      selected: ["sever"],
+    });
+
+    const root = container.querySelector("[data-map-pick-card]")!;
+    expect(root.className).toContain("max-lg:hidden");
   });
 });

@@ -19,12 +19,17 @@ import { cn } from "@/lib/utils";
 // disappears at chip scale, so this one leans harder.
 const FACE_TILT = [-5, 4, -6] as const;
 
-// The answer to a click on the map. Not always to a toggle: a click on
-// something already picked re-asks about it and changes no filter at all (see
-// handlePick), so this is what the click was about rather than what it
-// changed. It sits directly above the list, under the search boxes, so it
-// reads as the row you just picked opened up rather than as a panel dropped
-// on top of the search.
+// A preview of what a click on the map just picked. Every click is a toggle
+// (see handlePick), so the card only ever stands for something that is now
+// selected, and nothing on it can change that: closing it closes a preview.
+// It sits directly above the list, under the search boxes, so it reads as the
+// row you just picked opened up rather than as a panel dropped on top of the
+// search.
+//
+// lg and up only. Below that the panel is a bottom sheet about 55dvh tall,
+// which leaves the list scroller near 115px: the card filled it, clipped
+// itself, and pushed the rows it is supposed to introduce off the bottom. The
+// map, the rows and the footer count all still say what was picked there.
 //
 // It carries no button. The dialog has one primary action, the confirm pill in
 // the footer, and that pill is the only control that knows the real number:
@@ -43,7 +48,6 @@ export function MapPickCard({
   summaries,
   onToggle,
   onDismiss,
-  onDrop,
   cardRef,
 }: {
   pick: MapPick;
@@ -58,12 +62,6 @@ export function MapPickCard({
   summaries?: Map<string, ShelterSummary>;
   onToggle: (value: string) => void;
   onDismiss: () => void;
-  /** Set only when the corner control should un-choose what the card stands
-   *  for, which the picker decides: a shelter card's X drops its shelter,
-   *  a group card's X only closes, because a region comes off through its own
-   *  rows. Whether a pick is droppable is a fact about the selection, and the
-   *  card has no business deriving it from the shape of its pick. */
-  onDrop?: () => void;
   /** So the panel can bring the card into view when it appears. */
   cardRef?: RefObject<HTMLDivElement | null>;
 }) {
@@ -116,8 +114,13 @@ export function MapPickCard({
       // accent, by the region on the map and by the count in the footer; here
       // it needs a rule, not a flood. The recessed surface reads as a peek at
       // the list rather than as a card laid over it.
+      //
+      // max-lg:hidden rather than a breakpoint read in JS: display:none takes
+      // the card out of the accessibility tree as well as out of the layout,
+      // and it is right from the first paint, which a matchMedia read after
+      // hydration is not.
       className={cn(
-        "mb-2 shrink-0 rounded-ui border bg-muted/40 p-3",
+        "mb-2 shrink-0 rounded-ui border bg-muted/40 p-3 max-lg:hidden",
         checked && "border-l-2 border-l-[var(--filter-accent-strong)]",
       )}
     >
@@ -145,19 +148,18 @@ export function MapPickCard({
             </p>
           )}
         </div>
-        {/* Given an onDrop, this drops what the card stands for rather than
-            just hiding the card: an X that left the filter in place behind it
-            was the one control here anybody would reach for to correct a
-            misclick, and it silently did nothing. Without one it closes, which
-            is what a group card gets, because a region comes off through its
-            own rows one at a time. The label says which of the two it is. */}
+        {/* Closes the preview and nothing else, for a shelter card and a group
+            card alike. It used to drop the shelter a card stood for, which
+            made one X mean two different things depending on the pick it sat
+            on; un-choosing is what the map target and the row now both do on
+            a second press, and this control does not compete with them. */}
         <button
           type="button"
-          onClick={onDrop ?? onDismiss}
-          aria-label={onDrop ? messages.dropPickCard : messages.closePickCard}
-          // The glyph stays small; below lg the button's box is the 44px
-          // touch target the rest of the picker's mobile chrome keeps.
-          className="-mr-1 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground lg:size-6"
+          onClick={onDismiss}
+          aria-label={messages.closePickCard}
+          // No touch-target branch: the card only ever draws from lg up, where
+          // the pointer is fine and the glyph's own box is enough.
+          className="-mr-1 -mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="size-3.5" aria-hidden />
         </button>

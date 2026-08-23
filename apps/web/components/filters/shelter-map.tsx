@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   cityAt,
@@ -64,6 +65,7 @@ import {
   ORIGIN_REACH,
 } from "./map-callout";
 import {
+  commitKey,
   MAP_MORPH,
   Marker,
   PLATE_MIN_SCALE,
@@ -160,16 +162,24 @@ function coveredByLine(
   return t(key, { shelters: names.join(" · ") });
 }
 
-/** How long a pointer has to rest on an empty region before the plate names
- *  it.
+/** How long a pointer has to rest on a region before the plate names it.
  *
  *  The regions are the whole floor of this map: there is no gap between them,
  *  so every trip to a marker, to the legend or out to the panel grazes two or
- *  three on the way. A live region no longer answers a pointer at all, because
- *  everything its name carried is on screen elsewhere already; an empty one
- *  still does, because who answers for it is a fact with nowhere else to live.
- *  The dwell is what keeps that one exception from becoming the same noise:
- *  a pointer crossing an empty region has not asked it anything.
+ *  three on the way. Naming each one it touched turned the plate into a
+ *  flicker of labels, and that is the noise the dwell exists to stop. It stops
+ *  it by asking one question of the pointer: did you come here, or were you
+ *  only on your way somewhere? A pointer crossing a region has asked it
+ *  nothing.
+ *
+ *  Every region answers once that question is settled, live or empty. A live
+ *  one was silent for a while, on the grounds that its counts are in the list
+ *  and its density is in the legend, and that was wrong for the same reason
+ *  the touch path was: the one fact neither of those carries is which shape
+ *  under the cursor is Savinjska. The plate names four countries and a sea and
+ *  not one of the twelve things it asks you to choose between, so a mouse user
+ *  clicked a nameless shape and took three shelters with it. The dwell is what
+ *  lets the fix cost nothing in transit.
  *
  *  A marker is a small target somebody aimed at, so it answers on contact, and
  *  so does keyboard focus, which is deliberate by definition.
@@ -177,6 +187,25 @@ function coveredByLine(
  *  Exported so a test advances by exactly this rather than by a number that
  *  could drift from it. */
 export const REGION_DWELL_MS = 200;
+
+/** Whether this pointer can look at a mark without pressing it.
+ *
+ *  Everything the plate says about a region before it is picked, it says to a
+ *  hover: the callout under the cursor, the rows tinting in the list beside
+ *  the map. A finger has none of that. Tap is the pointing and the pressing at
+ *  once, and the plate carries no region names of its own (twelve of them at
+ *  339 x 222 collide into a smudge, which is worse than none), so on a phone
+ *  the first thing that ever happened was a dozen shelters selected out of a
+ *  shape nothing on screen had named.
+ *
+ *  Asked of the pointer and never of the viewport. A desktop window dragged
+ *  narrow still hovers, and a tablet held in two hands still does not, so a
+ *  breakpoint would answer for the wrong half of both. (hover: none) and not
+ *  (pointer: coarse), because the absence of hover is precisely the gap: a
+ *  coarse pointer that can hover has already been told what it is on.
+ *
+ *  Exported so a test asks the same question the plate asks. */
+export const NO_HOVER = "(hover: none)";
 
 // Regions carry the narrow-screen controls; town markers add pointer precision
 // and their own keyboard roving from md up, where they are drawn at all.
@@ -272,7 +301,26 @@ export function ShelterMap({
   const [hoveredShelterValue, setHoveredShelterValue] = useState<string | null>(
     null,
   );
-  const [hoveredRegionId, setHoveredRegionId] = useState<number | null>(null);
+  /** The region the plate is naming right now, whoever asked for it: a pointer
+   *  that has rested on it for the dwell, or keyboard focus landing on it.
+   *
+   *  One value and not one per act, which is what it used to be. That worked
+   *  only for as long as the two could not overlap: a pointer named empty
+   *  regions, focus named live ones, and reading them as `hovered ?? focused`
+   *  was safe because they were never both set. Now that every region answers
+   *  a pointer as well, that chain would be a rule about which act matters,
+   *  and it would have got it wrong in both directions: a stale hover would
+   *  outrank the keyboard, and clicking a region (which focuses it) would have
+   *  pinned its name up while the pointer moved on to another one.
+   *
+   *  So there is no precedence to get wrong. Whichever act named a region last
+   *  is the one being answered, and each act takes its name back only if it is
+   *  still the one standing: see the pointer-leave and blur handlers, which
+   *  both clear on a match rather than unconditionally. A pointer leaving a
+   *  region the keyboard also happens to be on does take the name down, and
+   *  that is the right way round. The focus ring still says where the keyboard
+   *  is, and the pointer withdrawing its question is an answer to it. */
+  const [namedRegionId, setNamedRegionId] = useState<number | null>(null);
   /** The pending dwell, so a pointer only passing over a region never gets to
    *  name it. A ref and not state: nothing on screen depends on a timer that
    *  has not fired yet, and re-rendering the plate to say "still waiting"
@@ -284,11 +332,14 @@ export function ShelterMap({
     },
     [],
   );
+  /** The mark a pointer that cannot hover has named and not yet picked, as the
+   *  data-map-commit string that mark carries. Null on every other pointer,
+   *  where the first click is still the pick: see handlePlateClickCapture. */
+  const [armed, setArmed] = useState<string | null>(null);
+  /** The region the roving tabindex remembers as the plate's one tab stop.
+   *  Kept past a blur, unlike namedRegionId above, which is about what the
+   *  plate is saying rather than about where the tab order resumes. */
   const [focusedRegionId, setFocusedRegionId] = useState<number | null>(null);
-  /** Region wearing keyboard focus right now, so it earns the same callout a
-   *  pointer hover gets. Cleared on blur, unlike focusedRegionId, which the
-   *  roving tabindex keeps as the remembered tab stop. */
-  const [calloutRegionId, setCalloutRegionId] = useState<number | null>(null);
   const regionRefs = useRef(new Map<number, SVGPathElement>());
   /** The same pair the regions keep, for the coins: the town the roving tab
    *  stop remembers, and the town wearing focus right now, which earns the
@@ -533,13 +584,19 @@ export function ShelterMap({
     [],
   );
 
+  // Focus names its region on contact and waits out no dwell. Nobody tabs
+  // across a country by accident, so there is nothing here to ration.
   const handleRegionFocus = useCallback((regionId: number) => {
     setFocusedRegionId(regionId);
-    setCalloutRegionId(regionId);
+    setNamedRegionId(regionId);
   }, []);
 
   const handleRegionBlur = useCallback((regionId: number) => {
-    setCalloutRegionId((current) => (current === regionId ? null : current));
+    // Only if this region is still the one being named. A pointer that has
+    // since named another one is the more recent act, and a blur arriving
+    // after it must not take that answer down. Same shape as the pointer's own
+    // leave below, for the same reason.
+    setNamedRegionId((current) => (current === regionId ? null : current));
   }, []);
 
   const handleRegionPointerEnter = useCallback(
@@ -549,27 +606,21 @@ export function ShelterMap({
         clearTimeout(regionDwellRef.current);
         regionDwellRef.current = null;
       }
-      if (stats.live) {
-        // Hovering a live region previews the rows a click would change, which
-        // matters most here: one region click can toggle several shelters.
-        // This is the whole of what a live region says to a pointer: a quiet
-        // tint on a list somebody is already reading.
-        onHoverShelters?.(stats.values);
-        // And no name. Everything a live region's callout carried is already
-        // on screen twice over: the counts are in the list beside the map, the
-        // ramp is in the legend under it, and every marker on it answers for
-        // itself. Naming the floor as well meant a label under the pointer on
-        // the way to any of them, which is the noise the dwell was trying to
-        // ration rather than remove.
-        return;
-      }
-      // An empty region is the exception, and the reason the dwell survives.
-      // Nothing else on the plate can say who answers for a region with no
-      // shelters in it, so this callout is the only way that fact is ever
-      // seen; the dwell is what keeps a pointer crossing it from being asked.
+      // Hovering a live region previews the rows a click would change, which
+      // matters most here: one region click can toggle several shelters. The
+      // tint is instant because it was never the noisy part: it lands on a
+      // list somebody is already reading, off to the side of the pointer, and
+      // it says nothing over the map itself.
+      if (stats.live) onHoverShelters?.(stats.values);
+      // The name waits, and every region has one to give. An empty region says
+      // who answers for it, which is a fact with nowhere else on the plate to
+      // live. A live one says which shape this is, which is the fact the plate
+      // draws no label for and neither the list nor the legend can supply:
+      // without it a click here picks a province by shape alone. Both are only
+      // owed to a pointer that stopped to ask.
       regionDwellRef.current = setTimeout(() => {
         regionDwellRef.current = null;
-        setHoveredRegionId(regionId);
+        setNamedRegionId(regionId);
       }, REGION_DWELL_MS);
     },
     [onHoverShelters],
@@ -585,7 +636,7 @@ export function ShelterMap({
         clearTimeout(regionDwellRef.current);
         regionDwellRef.current = null;
       }
-      setHoveredRegionId((current) => (current === regionId ? null : current));
+      setNamedRegionId((current) => (current === regionId ? null : current));
       if (stats.live) onHoverShelters?.(null);
     },
     [onHoverShelters],
@@ -668,20 +719,115 @@ export function ShelterMap({
     [focusableTowns],
   );
 
+  /** The whole of the coarse-pointer path: identify, then commit.
+   *
+   *  On a pointer that cannot hover (see NO_HOVER), the first tap on a mark is
+   *  the hover the device does not have. It raises exactly the callout a
+   *  keyboard focus raises: the name, the shelters and the animals, which are
+   *  the three facts the mark's own aria-label already composes, in the same
+   *  words. It picks nothing. A second tap on the same mark picks it, and a
+   *  tap on another one moves the naming there instead, which is what moving
+   *  a pointer does.
+   *
+   *  A capture listener on the plate, and not a wrapper around onPick, for one
+   *  reason worth writing down: a keyboard activation never produces a click.
+   *  Enter and Space go straight to the region's or the coin's own onKeyDown
+   *  and pick on the first press exactly as they always have, because nothing
+   *  here ever sees them. A wrapper around onPick could not have told the two
+   *  apart, and would have made the keyboard press twice for everything.
+   *
+   *  It reads data-map-commit, which is written on the element that carries
+   *  the click and on no other; see commitKey in map-marker.tsx. So an empty
+   *  region, an off-site mark and a coin whose own marks answer for themselves
+   *  are all invisible here, and go on doing what they did. */
+  const handlePlateClickCapture = (event: ReactMouseEvent<SVGSVGElement>) => {
+    if (!window.matchMedia?.(NO_HOVER).matches) return;
+    // A click no pointer made. detail counts the presses one made, and a
+    // keyboard activation or a screen reader's own makes none: both knew what
+    // they were standing on before they pressed, because the label said so,
+    // and this gate exists only for the eye that has no label to read.
+    if (event.detail === 0) return;
+    const key = (event.target as Element)
+      .closest("[data-map-commit]")
+      ?.getAttribute("data-map-commit");
+    // Nothing under the finger picks anything. It answers as it always has.
+    if (!key) return;
+    if (key === armed) {
+      // The tap that commits, which is this handler's only job here: stand
+      // aside and let the mark's own onClick run. Disarmed first, so picking
+      // the same region again is named again rather than toggled straight
+      // back off by a stray double tap.
+      setArmed(null);
+      return;
+    }
+
+    // Which mark the key names, found by writing the keys again rather than by
+    // taking this one apart. One function spells every one of them, so a
+    // lookup that spells them the same way cannot read a key nothing wrote.
+    const region = regions.find(
+      (candidate) => commitKey("region", candidate.region.id) === key,
+    );
+    const town = towns.find(
+      (candidate) => commitKey("town", candidate.key) === key,
+    );
+    const mark = towns
+      .flatMap((candidate) =>
+        candidate.shelters.map((shelter) => ({ town: candidate, shelter })),
+      )
+      .find(({ shelter }) => commitKey("shelter", shelter.value) === key);
+    // A key naming nothing on this plate arms nothing. Nothing writes one, and
+    // if something ever did, the tap it belongs to is better spent as the pick
+    // it already was than as a preview of a mark that is not here.
+    if (!region && !town && !mark) return;
+
+    // From here the tap is spent on naming, so it never reaches the onClick
+    // that would have picked. React dispatches capture and bubble out of one
+    // queue, so stopping it here stops the handler on the mark below.
+    event.stopPropagation();
+    setArmed(key);
+
+    if (region) {
+      // The region names itself through `armed` alone; see armedRegion below.
+      // A town annotation left standing comes down with it, because the plate
+      // names one thing at a time and a town's callout outranks a region's.
+      setHoveredTownKey(null);
+      setHoveredShelterValue(null);
+      onHoverShelters?.(region.stats.values);
+      return;
+    }
+    // The coin's and the mark's own hover paths, unadapted: the same
+    // annotation, over the same anchor, tinting the same rows in the list.
+    if (town) {
+      handleTownPointerEnter(town);
+      return;
+    }
+    if (mark) handleTownHoverShelter(mark.town, mark.shelter.value);
+  };
+
+  /** The region a coarse tap has named and not yet picked, when the armed mark
+   *  is a region at all.
+   *
+   *  It outranks both ways in below rather than joining their chain. A live
+   *  region says nothing to a pointer hover by design, and keyboard focus
+   *  cannot be wearing a tap, so there is no case where one of those is the
+   *  better answer than the region the visitor just put a finger on. */
+  const armedRegion = armed
+    ? regions.find(({ region }) => commitKey("region", region.id) === armed)
+    : undefined;
+
   // A marker sits on top of its region, so both would report a hover. The
   // marker is the more precise answer and wins.
   //
-  // Two ways in, and they no longer cover the same regions. hoveredRegionId is
-  // set by the pointer and only ever for an empty one (see the enter handler);
-  // calloutRegionId is set by keyboard focus, which is only ever a live one,
-  // because an empty region takes no focus. So the two can never name the same
-  // region at once, and a sighted keyboard user still sees where they are on a
-  // plate that says nothing to a passing pointer.
-  const hoveredRegion = activeTown
-    ? undefined
-    : regions.find(
-        ({ region }) => region.id === (hoveredRegionId ?? calloutRegionId),
-      );
+  // One region is named at a time and namedRegionId is the whole of who says
+  // so, whether a rested pointer or keyboard focus put it there; the state's
+  // own note says why that is one value and not two. A tap that armed a region
+  // outranks it, because on a pointer with no hover the tap is the only way to
+  // ask and its answer has to stand until the next one.
+  const hoveredRegion =
+    armedRegion ??
+    (activeTown
+      ? undefined
+      : regions.find(({ region }) => region.id === namedRegionId));
 
   return (
     <svg
@@ -689,6 +835,9 @@ export function ShelterMap({
       viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
       role="group"
       aria-label={messages.shelterMapLabel}
+      // One listener for the whole plate, above every mark on it, so a tap is
+      // read before the mark it landed on can act on it. See the handler.
+      onClickCapture={handlePlateClickCapture}
       className={cn("h-auto w-full shrink-0", className)}
     >
       <defs>
@@ -2057,6 +2206,9 @@ export const Region = memo(function Region({
       // written as a Tailwind fill utility.
       fill={stateName === "mixed" ? `url(#${hatchId})` : undefined}
       data-region-state={stateName}
+      // Only on this branch, which is the only one with a click to commit: an
+      // empty region returns above and carries none. See commitKey.
+      data-map-commit={commitKey("region", region.id)}
       data-region-density={stats.density}
       data-region-highlighted={highlighted || undefined}
       data-region-density-focus={densityFocus}

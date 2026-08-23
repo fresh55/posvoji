@@ -51,7 +51,11 @@ import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption, SpeciesFilter } from "@/lib/filters";
 import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
 import { isDrop } from "@/lib/filters";
-import { allShelters, sheltersMissingFromMap } from "@/lib/labels";
+import {
+  allShelters,
+  sheltersDropped,
+  sheltersMissingFromMap,
+} from "@/lib/labels";
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { regionAt } from "@/lib/map-regions";
 import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
@@ -377,6 +381,16 @@ export function LocationPicker({
   // until something is clicked, and again once the card is dismissed. A new
   // click replaces it: one card at a time, always about the newest click.
   const [pick, setPick] = useState<MapPick | null>(null);
+  // The news of a region click that took several shelters off at once, and the
+  // selection it left behind. It is carried with that selection rather than
+  // cleared by hand because every other path that edits the selection would
+  // otherwise have to remember to clear it: the note is read only while
+  // `after` is still what is selected, so the next change of any kind retires
+  // it.
+  const [dropNote, setDropNote] = useState<{
+    text: string;
+    after: string[];
+  } | null>(null);
   // The shelter an animal card asked the map to point at. One at a time, like
   // the pick above it, and gone when the dialog closes: it answers "where is
   // this one", not "which ones did I choose".
@@ -568,46 +582,53 @@ export function LocationPicker({
   // country can honestly be. The list is where you drop the ones you did not
   // mean, and the card at the head of it is what shows what happened.
   //
-  // The map asks questions. The list rows and the card's X are what edit the
-  // selection, and a map click only ever drops the thing whose card is already
-  // the answer on screen. So a click on something not picked yet picks it and
-  // opens its card, and a click on something already picked either re-asks
-  // about it, which puts its card back up and takes nothing off the filter, or
-  // drops it, when that card is the one already standing there.
+  // Every target on the map is a toggle and nothing else: a click on something
+  // not picked yet picks it and brings the panel out to show it, a click on
+  // something already picked drops it, on that same click, with nothing in
+  // between. Click, tap, Enter and Space all land here, and a list row does
+  // the same through handleRowToggle below.
   //
-  // The card that stands there has to be about this target and nothing wider,
-  // which is why the test is set equality and not containment. Under
-  // containment, clicking a fully picked region while one member shelter's
-  // card was up would drop the whole region, and no card had ever asked about
-  // the region: one shelter's answer would have been read as consent for
-  // twelve. Under equality that click re-opens the region's own group card,
-  // and the click after it drops the region.
+  // That is what the markers and the regions have been saying all along
+  // through aria-pressed, and the picker used to disagree with them: a click
+  // on a picked target re-asked about it and changed no filter, so the first
+  // press of a pressed control did nothing to the selection. The card is a
+  // preview of what was picked, never a question standing between a click and
+  // its effect, so what is on screen no longer decides what a click does.
   const handlePick = useCallback(
     (values: string[], from: MapPick) => {
       // The same predicate toggleValues branches on, read before it runs so
       // the card and the filter cannot disagree about what this click did.
       const dropping = isDrop(selected, values);
-      // The card on screen already stands for exactly this target, so the
-      // question was asked and this click is the answer to it.
-      const aboutThis = pick !== null && sameValues(pickValues(pick), values);
-      if (dropping && aboutThis) {
-        onToggleMany(values);
+      onToggleMany(values);
+      if (dropping) {
+        // Dropping asks nothing, so it opens nothing: the card goes with what
+        // it stood for, and the rest of the dialog's state is about what is
+        // being looked at, which a drop does not move.
         setPick(null);
+        // aria-pressed can say one marker came off; it cannot say twelve did,
+        // and the running total in the live region is a total, not a
+        // difference. Only for a region, because a single shelter's own
+        // pressed state is the whole of that news. Stale notes need no
+        // clearing: the note is only read while the selection is still the one
+        // this click left behind.
+        if (values.length > 1) {
+          setDropNote({
+            text: sheltersDropped(values.length, locale),
+            after: selected.filter((value) => !values.includes(value)),
+          });
+        }
         return;
       }
-      // Everything below is a question, not an edit. The picking half toggles
-      // on its way through; the re-ask half leaves the selection alone and
-      // only puts the card back, which is why the toggle is gated here rather
-      // than run before the branch.
-      if (!dropping) onToggleMany(values);
       setPick(from);
-      // The card lives in the panel, so a click has to bring the panel out
+      // What was picked is read off the panel, as the card from lg up and as
+      // the rows' own accent everywhere, so a click has to bring the panel out
       // wherever it is folded. Both docks, because only the one at the
       // current breakpoint is on screen and the other is a no-op there.
       setPanelOpen(true);
       setSheetOpen(true);
-      // The card lives in the shelter panel, so a click while the found-animal
-      // tab is open comes back to it. Same clearing the tab button does.
+      // The shelter list is in the panel's other tab, so a click while the
+      // found-animal tab is open comes back to it. Same clearing the tab
+      // button does.
       setMuniMode(false);
       setMuniShelterIds(null);
       setMuniName(null);
@@ -615,11 +636,11 @@ export function LocationPicker({
       // arrived with, and two rings at once would be two answers.
       setSpotlitShelterId(null);
     },
-    // `pick` is read here, not just written: the drop is only allowed while
-    // the card on screen is this target's, and that is a fact about the pick
-    // at click time. The functional setPick form cannot carry it, because the
-    // toggle it gates is a side effect and has no business in an updater.
-    [onToggleMany, pick, selected],
+    // `selected` is read, not just written through: the click has to know
+    // whether it drops before the toggle runs, and what the selection it
+    // leaves behind looks like. Both are facts about the selection at click
+    // time, which the functional setter form cannot carry.
+    [locale, onToggleMany, selected],
   );
 
   // A row click and a map click are the same act, so they get the same answer.
@@ -851,9 +872,14 @@ export function LocationPicker({
         {/* Selection changes narrate themselves: a region click can toggle
             several shelters at once, and aria-pressed alone does not say how
             many. The label is the one already on the trigger, so the wording
-            cannot drift. */}
+            cannot drift.
+            A bulk drop gets a line in front of it, because the label is a
+            running total and a total cannot say that twelve shelters just came
+            off. */}
         <p aria-live="polite" className="sr-only">
-          {label}
+          {dropNote && sameValues(dropNote.after, selected)
+            ? `${dropNote.text} ${label}`
+            : label}
         </p>
 
         {/* The stage. Everything below is absolutely placed against one of its
@@ -1562,10 +1588,12 @@ export function LocationPicker({
               {/* At the head of the list rather than above the search: the
                   click's answer belongs next to the rows it is about, and a
                   card that shoved the search boxes down took away what the
-                  visitor was already reading. Inside the scroller, so it costs
-                  a short sheet no height it needs for rows; the effect that
-                  brings it into view is what makes it findable when the list
-                  is scrolled. */}
+                  visitor was already reading. The effect that brings it into
+                  view is what makes it findable when the list is scrolled.
+                  The card draws itself lg and up only (see map-pick-card.tsx),
+                  so the sheet keeps its short list whole; rendering it anyway
+                  costs nothing, because display:none takes it out of the
+                  layout and out of the accessibility tree alike. */}
               {pick && (
                 <MapPickCard
                   pick={pick}
@@ -1574,22 +1602,6 @@ export function LocationPicker({
                   selected={selected}
                   summaries={summaries}
                   onToggle={onToggle}
-                  // A shelter card's X un-chooses its shelter; a group card's
-                  // only closes, because a region comes off through its own
-                  // rows. The picker decides which, because whether a pick is
-                  // droppable is a fact about the selection and not about the
-                  // shape of the pick.
-                  onDrop={
-                    pick.kind === "shelter" && selected.includes(pick.value)
-                      ? () => {
-                          onToggle(pick.value);
-                          // The effect above takes the card down on the next
-                          // render regardless; this is here for the focus
-                          // restore that goes with it.
-                          dismissPick();
-                        }
-                      : undefined
-                  }
                   onDismiss={dismissPick}
                   cardRef={pickCardRef}
                 />

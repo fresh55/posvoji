@@ -104,6 +104,21 @@ export function sheltersMissingFromMap(n: number, locale: Locale): string {
   return `${shelterCount(n, locale)} ${verb} na zemljevidu.`;
 }
 
+// What one region click took off the filter, for the picker's live region: a
+// running total cannot say that twelve shelters just came off. The participle
+// agrees with the count the same way the verb above it does, so a dual is not
+// read out as a plural.
+export function sheltersDropped(n: number, locale: Locale): string {
+  if (locale === "en") return `Removed ${shelterCount(n, locale)}.`;
+  const participle = pick(n, [
+    "Odstranjeno",
+    "Odstranjeni",
+    "Odstranjena",
+    "Odstranjenih",
+  ]);
+  return `${participle} ${shelterCount(n, locale)}.`;
+}
+
 // An age of zero months is a number nobody says out loud.
 export function ageLabel(months: number, locale: Locale): string {
   if (months === 0) return translate(locale, "lessThanMonth");

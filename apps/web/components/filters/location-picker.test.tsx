@@ -12,6 +12,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toggleValues } from "@/lib/filters";
 import { cityAt } from "@/lib/geo";
+import { sheltersDropped } from "@/lib/labels";
 import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
 import { SHELTER_SPOTLIGHT_EVENT } from "@/lib/shelter-spotlight";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -930,7 +931,7 @@ describe("LocationPicker pick card", () => {
     ).toContain("Zavetišče Sever");
   });
 
-  it("replaces the card with the next click and takes it away on dismiss", () => {
+  it("replaces the card with the next click, and dismiss closes it without touching the selection", () => {
     openMap();
 
     fireEvent.click(marker("maribor"));
@@ -940,14 +941,13 @@ describe("LocationPicker pick card", () => {
     expect(dialog().querySelectorAll("[data-map-pick-card]")).toHaveLength(1);
     expect(card()?.textContent).toContain("Zavetišče Jug");
 
-    // A selected shelter's X is the drop control, so it takes the shelter
-    // and the card together; Sever stays picked.
-    fireEvent.click(
-      screen.getByRole("button", { name: "Odstrani zavetišče iz izbire" }),
-    );
+    // The X only ever closes the card now; both shelters stay picked, and
+    // dropping one is left to clicking it again or its own row.
+    fireEvent.click(screen.getByRole("button", { name: "Zapri kartico" }));
 
     expect(card()).toBeNull();
     expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+    expect(row(/^Zavetišče Jug/)?.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("leaves confirming to the footer pill, which is the one that knows the count", () => {
@@ -963,28 +963,11 @@ describe("LocationPicker pick card", () => {
     expect(screen.getByRole("button", { name: /^Prikaži/ })).toBeTruthy();
   });
 
-  it("points at a picked shelter again rather than dropping it unasked", () => {
-    // Already picked and no card on screen, so the map has nothing standing
-    // for this shelter to be the answer to. The click asks about it instead
-    // of taking it off a filter the visitor cannot see it leaving.
+  it("drops an already-picked shelter on a single click, with no card on screen", () => {
+    // Already picked and no card open for it: a click still un-chooses it
+    // outright. There is no "ask first" step any more.
     const { onToggleMany } = openMap({ selected: ["sever"] });
 
-    fireEvent.click(marker("maribor"));
-
-    expect(onToggleMany).not.toHaveBeenCalled();
-    expect(card()?.dataset.mapPickCard).toBe("shelter");
-    expect(card()?.textContent).toContain("Zavetišče Sever");
-    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("drops it on the click after that, once its own card is the answer", () => {
-    const { onToggleMany } = openMap({ selected: ["sever"] });
-
-    fireEvent.click(marker("maribor"));
-    onToggleMany.mockClear();
-
-    // The card describing exactly this shelter is on screen now, so the
-    // second click un-chooses what it describes and the card goes with it.
     fireEvent.click(marker("maribor"));
 
     expect(onToggleMany).toHaveBeenCalledWith(["sever"]);
@@ -992,25 +975,41 @@ describe("LocationPicker pick card", () => {
     expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("replaces another shelter's card instead of dropping what was clicked", () => {
+  it("picks it straight back up on the click after a drop", () => {
+    const { onToggleMany } = openMap({ selected: ["sever"] });
+
+    fireEvent.click(marker("maribor"));
+    onToggleMany.mockClear();
+
+    // Every click is a plain toggle, so the next one on the same marker picks
+    // Sever again and opens its card.
+    fireEvent.click(marker("maribor"));
+
+    expect(onToggleMany).toHaveBeenCalledWith(["sever"]);
+    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    expect(card()?.textContent).toContain("Zavetišče Sever");
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("drops an already-picked shelter even while another shelter's card is on screen", () => {
     const { onToggleMany } = openMap({ selected: ["sever"] });
 
     fireEvent.click(marker("ljubljana"));
     expect(card()?.textContent).toContain("Zavetišče Jug");
     onToggleMany.mockClear();
 
-    // Jug's card is not an answer about Sever, so clicking Sever asks about
-    // Sever. The newest question wins the card and nothing comes off.
+    // Sever is already picked, so this click drops it outright, and dropping
+    // clears whatever card happens to be up, Jug's included: a drop answers
+    // nothing, so there is nothing left for a card to say.
     fireEvent.click(marker("maribor"));
 
-    expect(onToggleMany).not.toHaveBeenCalled();
-    expect(card()?.dataset.mapPickCard).toBe("shelter");
-    expect(card()?.textContent).toContain("Zavetišče Sever");
-    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
+    expect(onToggleMany).toHaveBeenCalledWith(["sever"]);
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
+    expect(card()).toBeNull();
   });
 
-  it("asks about a member of a picked region before dropping it", () => {
-    // Ptuj sits in Podravska with Maribor, so the region card holds both.
+  it("drops just its own shelter when a member of a picked region is clicked", () => {
+    // Ptuj sits in Podravska with Maribor, so the region holds both.
     const { onToggleMany } = openMap({
       options: [
         ...options,
@@ -1023,23 +1022,15 @@ describe("LocationPicker pick card", () => {
     expect(card()?.dataset.mapPickCard).toBe("group");
     onToggleMany.mockClear();
 
-    // The group card answers for the region, not for Sever alone, so the
-    // click is a question about Sever and the card becomes Sever's.
-    fireEvent.click(marker("maribor"));
-
-    expect(onToggleMany).not.toHaveBeenCalled();
-    expect(card()?.dataset.mapPickCard).toBe("shelter");
-    expect(card()?.textContent).toContain("Zavetišče Sever");
-    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
-
-    // Now the card is Sever's, so the next click on Sever drops Sever and
-    // nothing else the region had picked.
+    // A marker click names one shelter, not the region it sits in, so it
+    // drops only that shelter, in one click, and takes the card down with it:
+    // dropping never leaves a card standing, even the region's own.
     fireEvent.click(marker("maribor"));
 
     expect(onToggleMany).toHaveBeenCalledWith(["sever"]);
-    expect(card()).toBeNull();
     expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
     expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("true");
+    expect(card()).toBeNull();
   });
 
   it("picks a region on one click and drops it on the next", () => {
@@ -1058,8 +1049,8 @@ describe("LocationPicker pick card", () => {
     expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("true");
     onToggleMany.mockClear();
 
-    // The region's own card is the answer on screen, so the second click on
-    // it un-chooses every shelter it stands for.
+    // The region is a plain toggle like everything else: it is fully picked,
+    // so this click un-chooses every shelter it holds in one go.
     fireEvent.click(region());
 
     // The region hands its shelters over in map order, which is the layout's
@@ -1074,7 +1065,12 @@ describe("LocationPicker pick card", () => {
     expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("re-opens a picked region's card when a member's card is the one up", () => {
+  it("drops the whole region in one click, clearing an unrelated card on screen", () => {
+    // The old rule needed the region's own card on screen before a click
+    // would drop it; a click on it while some other card was up only put the
+    // region's card back. That "ask first" step is gone: a picked region
+    // drops every shelter it holds on the very next click and clears
+    // whatever card happens to be showing, related or not.
     const { onToggleMany } = openMap({
       options: [
         ...options,
@@ -1085,20 +1081,57 @@ describe("LocationPicker pick card", () => {
     const region = () => screen.getByRole("button", { name: /^Podravska:/ });
 
     fireEvent.click(region());
-    fireEvent.click(marker("maribor"));
-    expect(card()?.dataset.mapPickCard).toBe("shelter");
+    // Jug is not in Podravska; picking it replaces the card with one that has
+    // nothing to do with the region.
+    fireEvent.click(marker("ljubljana"));
+    expect(card()?.textContent).toContain("Zavetišče Jug");
     onToggleMany.mockClear();
 
-    // One member's card is not consent to drop the twelve shelters a region
-    // can hold. The region is fully picked, so the click puts the region's
-    // own card back and the selection stands.
     fireEvent.click(region());
 
-    expect(onToggleMany).not.toHaveBeenCalled();
-    expect(card()?.dataset.mapPickCard).toBe("group");
-    expect(card()?.textContent).toContain("Podravska");
-    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
-    expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("true");
+    // The region hands its shelters over in map order, which is the layout's
+    // business and not this test's, so the two are compared as a set.
+    expect(onToggleMany).toHaveBeenCalledTimes(1);
+    expect([...onToggleMany.mock.calls[0][0]].sort()).toEqual([
+      "sever",
+      "vzhod",
+    ]);
+    expect(card()).toBeNull();
+    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("false");
+    expect(row(/^Zavetišče Vzhod/)?.getAttribute("aria-pressed")).toBe("false");
+    // Jug was never part of the region and was never dropped.
+    expect(row(/^Zavetišče Jug/)?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("announces how many shelters a region drop removed", () => {
+    const { onToggleMany } = openMap({
+      options: [
+        ...options,
+        { value: "vzhod", label: "Zavetišče Vzhod", city: "Ptuj" },
+      ],
+      counts: new Map([...counts, ["vzhod", 5]]),
+    });
+    const region = () => screen.getByRole("button", { name: /^Podravska:/ });
+
+    fireEvent.click(region());
+    onToggleMany.mockClear();
+    // The region holds two shelters, so dropping it is a multi-shelter drop:
+    // the one case the live region has something new to say about.
+    fireEvent.click(region());
+
+    const live = dialog().querySelector("p.sr-only[aria-live='polite']");
+    expect(live?.textContent).toContain(sheltersDropped(2, "sl"));
+  });
+
+  it("says nothing extra when a single shelter is dropped", () => {
+    openMap({ selected: ["sever"] });
+
+    fireEvent.click(marker("maribor"));
+
+    const live = dialog().querySelector("p.sr-only[aria-live='polite']");
+    // A single shelter dropping is exactly what a plain toggle already reads
+    // out through the trigger's own label; it earns no extra sentence.
+    expect(live?.textContent).not.toMatch(/Odstranj/);
   });
 
   it("takes the card down once nothing it stands for is selected", () => {

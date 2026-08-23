@@ -221,4 +221,21 @@ test.describe("mobile", () => {
     );
     expect(overflow).toBeLessThanOrEqual(1);
   });
+
+  // The unit tests can only assert the class that hides the card below lg
+  // (jsdom never evaluates a media query); this is the assertion that it is
+  // actually invisible on a phone-sized viewport.
+  test("tapping a region selects it without ever showing the pick card", async ({
+    page,
+  }) => {
+    const dialog = await openPicker(page);
+    const region = liveRegions(dialog).first();
+
+    const point = await pointOnRegion(region);
+    await page.mouse.click(point.x, point.y);
+
+    await expect(region).toHaveAttribute("aria-pressed", "true");
+    await expect(region).toHaveAttribute("data-region-state", "selected");
+    await expect(dialog.locator("[data-map-pick-card]")).toBeHidden();
+  });
 });

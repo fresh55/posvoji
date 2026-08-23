@@ -12,7 +12,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toggleValues } from "@/lib/filters";
 import { cityAt } from "@/lib/geo";
-import { sheltersDropped } from "@/lib/labels";
+import { shelterCount, sheltersDropped } from "@/lib/labels";
 import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
 import { SHELTER_SPOTLIGHT_EVENT } from "@/lib/shelter-spotlight";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -82,7 +82,7 @@ async function openPicker({
   }
   render(<Harness />);
 
-  fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
   await screen.findByRole("dialog");
 
   return screen.getByLabelText("Bližina: kraj ali pošta");
@@ -130,7 +130,7 @@ describe("LocationPicker trigger", () => {
       </I18nProvider>,
     );
 
-    const trigger = screen.getByRole("combobox", { name: /Zavetišče:/ });
+    const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
     const svg = trigger.querySelector("svg")!;
 
     expect(svg).toBeTruthy();
@@ -155,7 +155,7 @@ describe("LocationPicker trigger", () => {
       </I18nProvider>,
     );
 
-    const trigger = screen.getByRole("combobox", { name: /Zavetišče:/ });
+    const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
     const selectedRegion = trigger.querySelector(
       '[data-minimap-region-state="selected"]',
     );
@@ -164,6 +164,36 @@ describe("LocationPicker trigger", () => {
     expect(selectedRegion?.getAttribute("class")).toContain(
       "fill-[var(--filter-accent-strong)]",
     );
+  });
+
+  it("opens a dialog and says so, rather than posing as a combobox", () => {
+    render(
+      <I18nProvider locale="sl">
+        <LocationPicker
+          options={options}
+          counts={counts}
+          selected={[]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          resultCount={11}
+          species="all"
+        />
+      </I18nProvider>,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
+
+    // A combobox promises a value and a list to choose it from. This one has
+    // neither: it opens a map in a dialog, which is what haspopup says and
+    // what expanded then tracks.
+    expect(trigger.getAttribute("role")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(trigger);
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
   });
 });
 
@@ -399,6 +429,127 @@ describe("LocationPicker keyboard", () => {
   });
 });
 
+describe("LocationPicker search announcement", () => {
+  const live = () =>
+    screen
+      .getByRole("dialog")
+      .querySelector("p.sr-only[aria-live='polite']")!.textContent ?? "";
+
+  it("says how many shelters the query left", async () => {
+    await openPicker();
+    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+
+    // Nothing typed is nothing to say: the region carries the selection alone
+    // until there is a search to report on.
+    expect(live()).not.toContain("Zadetki");
+
+    type(search, "Sever");
+
+    expect(live()).toContain(`Zadetki: ${shelterCount(1, "sl")}`);
+    // The selection summary the region already carried is still in it. The
+    // search is a clause on the end, not a replacement.
+    expect(live()).toContain("Obe zavetišči");
+  });
+
+  it("counts the off-site rows too, because the query narrowed them as well", async () => {
+    await openPicker({ offSite });
+    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+
+    // "Zavetišče" matches all three rows, the two live ones and the registry
+    // one under its own heading.
+    type(search, "Zavetišče");
+
+    expect(live()).toContain(`Zadetki: ${shelterCount(3, "sl")}`);
+  });
+
+  it("announces the empty state in the same words it draws it", async () => {
+    await openPicker();
+    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+
+    type(search, "zzzzz");
+
+    // The visible empty state is inside the list scroller, which nobody is
+    // looking at while typing into the box above it. Same sentence either way,
+    // so the two cannot drift apart: the drawn one and the announced one are
+    // both here, which is why this has to pick the drawn one out by hand.
+    const drawn = screen
+      .getAllByText(/Ni zadetkov za/)
+      .find((node) => !node.classList.contains("sr-only"))!;
+    expect(drawn.textContent).toContain("zzzzz");
+    expect(live()).toContain("Ni zadetkov za »zzzzz«");
+  });
+
+  it("goes quiet again when the query is cleared", async () => {
+    await openPicker();
+    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+
+    type(search, "zzzzz");
+    type(search, "");
+
+    expect(live()).not.toContain("Ni zadetkov");
+    expect(live()).not.toContain("Zadetki");
+  });
+});
+
+describe("LocationPicker sheet height", () => {
+  const dialog = () => screen.getByRole("dialog");
+
+  /** The arbitrary value inside the first `prefix-[…]` class on an element,
+   *  which is how both sides of the sheet/stage agreement are written. */
+  function arbitrary(element: Element, prefix: string): string | undefined {
+    return element.className
+      .split(/\s+/)
+      .find((name) => name.startsWith(`${prefix}-[`))
+      ?.slice(prefix.length + 2, -1);
+  }
+
+  it("gives the stage back exactly what the sheet takes", async () => {
+    await openPicker();
+
+    const stage = dialog().querySelector("[data-map-stage]")!;
+    const panel = dialog().querySelector("[data-picker-panel]")!;
+
+    // Two elements, one number, written twice because Tailwind reads class
+    // names out of the source text and cannot be handed a constant. If they
+    // ever disagree the map is drawn under the sheet or leaves a band of bare
+    // paper above it, and neither shows up in a test that only looks at one
+    // of them.
+    expect(arbitrary(panel, "h")).toBe(arbitrary(stage, "bottom"));
+    expect(arbitrary(panel, "h")).toBeTruthy();
+  });
+
+  it("floors the sheet rather than taking a flat fraction of the screen", async () => {
+    await openPicker();
+
+    const panel = dialog().querySelector("[data-picker-panel]")!;
+    const height = arbitrary(panel, "h")!;
+
+    // The fraction is still what a tall phone gets. The floor under it is the
+    // fix: the sheet's chrome does not shrink with the viewport, so on a short
+    // screen a fraction left the list nothing. The ceiling is measured against
+    // the stage, so the floor can never push the sheet past the dialog, and it
+    // reserves the whole caption now that the legend no longer folds away with
+    // the sheet: the compact rows, the gap and the CC BY credit together.
+    expect(height).toContain("55dvh");
+    expect(height).toContain("max(55dvh,27.5rem)");
+    expect(height).toContain("calc(100%_-_9rem)");
+  });
+
+  it("keeps the list a height of its own below lg", async () => {
+    await openPicker();
+
+    const list = screen
+      .getByLabelText("Išči zavetišče po imenu…")
+      .closest("[data-picker-panel] > div")!
+      .querySelector(".overflow-y-auto")!;
+
+    // The one child of the column allowed to shrink, so everything the chrome
+    // wants comes out of it. Below lg it may only give way so far.
+    expect(list.className).toContain("min-h-0");
+    expect(list.className).toContain("max-lg:min-h-20");
+  });
+});
+
 describe("LocationPicker off-site shelters", () => {
   it("links a shelter with no animals to its page", async () => {
     await openPicker({ offSite });
@@ -579,7 +730,7 @@ describe("LocationPicker legend", () => {
           />
         </I18nProvider>,
       );
-      fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
     }
 
     renderWith([]);
@@ -632,7 +783,7 @@ describe("LocationPicker legend", () => {
         />
       </I18nProvider>,
     );
-    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
 
     const label = screen.getAllByText("Izbrana regija")[0];
     const swatch = label.querySelector("span[aria-hidden]") as HTMLElement;
@@ -844,7 +995,7 @@ describe("LocationPicker pick card", () => {
       );
     }
     render(<Harness />);
-    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
     return { onToggle, onToggleMany };
   }
 
@@ -950,17 +1101,19 @@ describe("LocationPicker pick card", () => {
     expect(row(/^Zavetišče Jug/)?.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("leaves confirming to the footer pill, which is the one that knows the count", () => {
+  it("leaves the way out to the footer pill, and the card claims nothing", () => {
     openMap();
 
     fireEvent.click(marker("maribor"));
 
     // The card used to end in its own "Prikaži živali", directly under one
-    // shelter's own count, and clicking it applied every filter in the
-    // dialog rather than that shelter's animals. One primary, in the footer,
-    // wearing the number it actually means.
+    // shelter's own count, and clicking it applied every filter in the dialog
+    // rather than that shelter's animals. One button in the footer, and it no
+    // longer wears a number either: filtering is live, so "Prikaži N" promised
+    // an apply that had already happened on the click.
     expect(screen.queryByRole("button", { name: "Prikaži živali" })).toBeNull();
-    expect(screen.getByRole("button", { name: /^Prikaži/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Prikaži/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Končano" })).toBeTruthy();
   });
 
   it("drops an already-picked shelter on a single click, with no card on screen", () => {
@@ -1290,7 +1443,7 @@ describe("LocationPicker floating panel", () => {
         />
       </I18nProvider>,
     );
-    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Skrij seznam" }));
 
     const rail = screen.getByRole("button", { name: "Pokaži seznam" });
@@ -1327,9 +1480,14 @@ describe("LocationPicker floating panel", () => {
     expect(peek.getAttribute("aria-expanded")).toBe("true");
     expect(panel().dataset.pickerSheet).toBe("open");
     // Same recentering as the panel, on the other axis: the container gives up
-    // exactly the height the sheet takes.
-    expect(panel().className).toContain("h-[55dvh]");
-    expect(stage().className).toContain("bottom-[55dvh]");
+    // exactly the height the sheet takes. What that height is, and why it is
+    // no longer a flat fraction, is asserted in "LocationPicker sheet height".
+    expect(panel().className).toContain(
+      "h-[min(max(55dvh,27.5rem),calc(100%_-_9rem))]",
+    );
+    expect(stage().className).toContain(
+      "bottom-[min(max(55dvh,27.5rem),calc(100%_-_9rem))]",
+    );
 
     fireEvent.click(peek);
 
@@ -1362,7 +1520,7 @@ describe("LocationPicker floating panel", () => {
         />
       </I18nProvider>,
     );
-    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
 
     const picked = dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
     expect(picked.textContent).toContain("1 od 2 zavetišč");
@@ -1374,11 +1532,12 @@ describe("LocationPicker floating panel", () => {
     await openPicker();
 
     const legend = dialog().querySelector<HTMLElement>("[data-map-legend]")!;
-    // Three levels up, not two: the legend's own wrapper sits inside a group
-    // that folds away with the sheet (so the always-visible CC BY attribution
-    // paragraph can live as its sibling, outside that fold), and that group
-    // sits inside the block this test means to find.
-    const block = legend.parentElement!.parentElement!.parentElement!;
+    // Two levels up: the legend's own pointer-events wrapper, then the caption
+    // block this test means to find. It was three while a fold sat between
+    // them, taking the legend off a phone and leaving the CC BY credit behind
+    // as its sibling; nothing folds any more, so the two are siblings inside
+    // the caption itself.
+    const block = legend.parentElement!.parentElement!;
 
     // The stage's own last row at every width, so it moves with the plate's
     // bottom edge instead of being anchored to a frame the plate may not
@@ -1507,6 +1666,76 @@ describe("LocationPicker found-animal entry", () => {
     // the list below it folds.
     expect(tabRow().className).toContain("max-lg:hidden");
   });
+
+  // Two jobs in one dialog, and the adoption half may not lean on the other
+  // one's shoulder. Someone arriving with a stray gets one thing to press,
+  // the responsible shelter's phone number; a near-black "Prikaži 186 živali"
+  // beside it was a second primary about an adoption filter they never set,
+  // and it counted animals at an unrelated shelter.
+  describe("kept apart from the adoption filter", () => {
+    const tab = (which: "shelters" | "municipality") =>
+      dialog().querySelector<HTMLElement>(`[data-picker-tab='${which}']`)!;
+
+    it("does not render the adoption footer at all", async () => {
+      await openPicker({ municipalities, selected: ["sever"] });
+
+      expect(screen.getByRole("button", { name: "Končano" })).toBeTruthy();
+
+      fireEvent.click(tab("municipality"));
+
+      // Absent, not disabled and not restyled: there is nothing here for it
+      // to be the primary action of.
+      expect(screen.queryByRole("button", { name: "Končano" })).toBeNull();
+
+      fireEvent.click(tab("shelters"));
+
+      expect(screen.getByRole("button", { name: "Končano" })).toBeTruthy();
+    });
+
+    it("stops the shelter selection riding along on the strip and in the live region", async () => {
+      await openPicker({ municipalities, selected: ["sever"] });
+
+      const peek = () =>
+        dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
+      const live = () =>
+        dialog().querySelector("p.sr-only[aria-live='polite']")!.textContent ??
+        "";
+
+      expect(peek().textContent).toContain("1 od 2 zavetišč");
+      expect(live()).toContain("1 od 2 zavetišč");
+
+      fireEvent.click(tab("municipality"));
+
+      // The strip names the question instead of summarising a filter that has
+      // nothing to do with the found animal, and the count badge goes with it.
+      expect(peek().textContent).toContain("Najdena žival");
+      expect(peek().textContent).not.toContain("zavetišč");
+      expect(live()).toBe("");
+
+      // The selection itself is untouched: switching back finds it whole. It
+      // is isolated, not cleared, because ?najdena opens this mode straight
+      // from a link and clearing would rewrite the visitor's URL for them.
+      fireEvent.click(tab("shelters"));
+      expect(peek().textContent).toContain("1 od 2 zavetišč");
+    });
+
+    it("stops holding the footer's height open under the answer", async () => {
+      await openPicker({ municipalities });
+
+      const body = () =>
+        dialog().querySelector<HTMLElement>("[data-picker-tab='shelters']")!
+          .parentElement!.parentElement!.nextElementSibling as HTMLElement;
+
+      // The sheet reserves the pill's 64px so it covers no row of the list.
+      expect(body().className).toContain("max-lg:pb-16");
+
+      fireEvent.click(tab("municipality"));
+
+      // With no pill, that reserve is a band of nothing at the foot of the
+      // shelter this mode just named.
+      expect(body().className).not.toContain("max-lg:pb-16");
+    });
+  });
 });
 
 // Picking a shelter off the list and picking the same shelter off the plate
@@ -1549,7 +1778,7 @@ describe("LocationPicker row card", () => {
       );
     }
     render(<Harness />);
-    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
   }
 
   /** The list's own toggle for a shelter, by the name it carries. The pick
@@ -1662,7 +1891,7 @@ describe("LocationPicker pick card dismissal", () => {
       );
     }
     render(<Harness />);
-    fireEvent.click(screen.getByRole("combobox", { name: /Zavetišče:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
   }
 
   /** The list's own toggle for a shelter. The card carries the same name, so
@@ -1930,9 +2159,8 @@ describe("LocationPicker region coverage", () => {
   it("leaves a live region's own counts to speak for it", async () => {
     await openPicker({ municipalities });
 
-    // Keyboard focus, because a live region no longer answers a pointer at
-    // all (see the region dwell tests in shelter-map.test.tsx): this is the
-    // one path that still names one.
+    // Keyboard focus, which names a region on contact where a pointer waits
+    // out the dwell (see the region dwell tests in shelter-map.test.tsx).
     fireEvent.focus(region("Osrednjeslovenska"));
 
     // Ljubljana's coverage entry names a shelter for this region too, and a
@@ -1942,31 +2170,105 @@ describe("LocationPicker region coverage", () => {
     expect(screen.getByText(/1 zavetišče · 7 živali/)).toBeTruthy();
   });
 
-  it("says nothing at all when a pointer crosses a live region", async () => {
+  it("names a live region to a rested pointer, and still owes it no note", async () => {
     await openPicker({ municipalities });
 
     hoverRegion(region("Osrednjeslovenska"));
 
-    // Not even after the dwell: the covered-by line exists for regions the map
-    // draws no shelters in, and this one has its own. Asked by name rather
-    // than by counting callouts, because the region holding the dialog's
-    // opening focus is wearing one of its own the whole time.
-    expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
-    expect(screen.queryByText(/1 zavetišče · 7 živali/)).toBeNull();
+    // The name and the counts, which are what a region owes a pointer that
+    // stopped on it. Not the covered-by line: that exists for regions the map
+    // draws no shelters in, and this one has its own.
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+    expect(screen.getByText(/1 zavetišče · 7 živali/)).toBeTruthy();
+    expect(dialog().querySelector("[data-callout-note]")).toBeNull();
   });
 });
 
 describe("LocationPicker floating footer", () => {
-  it("applies and closes from the pill on the paper", async () => {
+  it("closes from the pill on the paper, and promises nothing else", async () => {
     await openPicker();
 
-    const pill = screen.getByRole("button", { name: /Prikaži/ });
+    const pill = screen.getByRole("button", { name: "Končano" });
     // Floating on the stage, not in a footer bar under the map.
     expect(pill.closest("[data-picker-panel]")).toBeNull();
+    // No count on it. Every filter write in this dialog goes straight to the
+    // URL on the click that made it, so a button carrying a running total read
+    // as an apply step that does not exist.
+    expect(pill.textContent).toBe("Končano");
 
     fireEvent.click(pill);
 
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("says how many animals are showing in the panel, as a fact and not a promise", async () => {
+    await openPicker();
+
+    // The count moved off the button and into the panel's status line, beside
+    // the roster it is not to be confused with: how many shelters exist, how
+    // many of them have animals under the filters that are on, and how many
+    // animals that comes to.
+    const status = screen.getByText(/Zavetišč z živalmi/).closest("p")!;
+    expect(status.textContent).toContain("Zavetišč z živalmi: 2 od 2");
+    expect(status.textContent).toContain("Prikazano:");
+    expect(status.textContent).toContain("11 živali");
+    expect(status.closest("[data-picker-panel]")).not.toBeNull();
+  });
+
+  it("counts the roster, not the species facet, on both sides of the fraction", async () => {
+    // One live shelter with nothing left under the active filters, one with
+    // animals, one off-site. Seventeen-versus-eleven in miniature: the roster
+    // is every shelter the list renders, and only the left number moves.
+    await openPicker({
+      counts: new Map([["jug", 7]]),
+      offSite,
+      resultCount: 7,
+    });
+
+    const status = screen.getByText(/Zavetišč z živalmi/).closest("p")!;
+    expect(status.textContent).toContain("Zavetišč z živalmi: 1 od 3");
+    // And the sentence the trigger and the peek bar share counts the same
+    // three, so neither can promise fewer shelters than the list under it
+    // renders. Read off the peek bar because radix hides the trigger from the
+    // accessibility tree while its dialog is open.
+    const peek = screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>("[data-picker-peek]")!;
+    expect(peek.textContent).toContain("Vsa 3 zavetišča");
+  });
+
+  it("keeps a shelter with nothing left under the filters, saying so in its row", async () => {
+    await openPicker({ counts: new Map([["jug", 7]]), resultCount: 7 });
+
+    // Dropped from the list, it would have been a shelter the trigger counted
+    // and the visitor could not find. It stays, wearing the zero, and it is
+    // not selectable: the map cannot pick it either, so the list and the
+    // country agree about what a click can do.
+    const row = screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>("[data-shelter-row='sever']")!;
+
+    expect(row.textContent).toContain("Zavetišče Sever");
+    expect(row.textContent).toContain("0");
+    expect(
+      row.querySelector("button")!.hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("offers a named reset only while something is selected", async () => {
+    await openPicker();
+    expect(screen.queryByRole("button", { name: /Počisti izbor/ })).toBeNull();
+
+    cleanup();
+    await openPicker({ selected: ["jug"] });
+
+    // Named for what it clears: the panel holds a search box and a place box
+    // that each have a clear of their own, so a bare "Počisti" said which of
+    // the three to nobody.
+    const reset = screen.getByRole("button", { name: "Počisti izbor (1)" });
+    fireEvent.click(reset);
+
+    expect(screen.queryByRole("button", { name: /Počisti izbor/ })).toBeNull();
   });
 
   it("floats the title on the paper and keeps it the dialog's own name", async () => {
@@ -2011,29 +2313,54 @@ describe("LocationPicker attribution", () => {
     expect(screen.getAllByText("Izhodišče").length).toBeGreaterThan(0);
   });
 
-  it("keeps the GURS credit outside the wrapper that hides with the sheet, CC BY 4.0 requires it visible", async () => {
+  it("keeps the GURS credit on screen at every width, CC BY 4.0 requires it visible", async () => {
     await openPicker();
 
     // The mobile sheet opens by default (data-picker-sheet="open"), which is
-    // exactly the state that used to bury this paragraph: it lived inside the
-    // wrapper that folds away with the sheet, so it disappeared on every phone
-    // the moment the dialog opened.
+    // exactly the state that used to bury this paragraph: it lived inside a
+    // wrapper that folded away with the sheet, so it disappeared on every
+    // phone the moment the dialog opened.
     //
-    // Asked by containment rather than by class: a restyle can rename every
-    // utility on that wrapper and this has to keep failing if the credit is
-    // moved inside it. The legend's own presence in the fold is what keeps
-    // the question honest, since a hook on the wrong element would let the
-    // credit pass by default.
-    const credit = screen.getByRole("dialog").querySelector(
-      "[data-slot='map-attribution']",
-    )!;
-    const fold = "[data-slot='map-legend-fold']";
+    // Nothing folds there any more, so the guard is no longer "which named
+    // wrapper is it in" but the thing that actually matters: no element on the
+    // path from the credit up to the dialog may hide it, however that hiding
+    // is spelled. That covers a fold coming back under a new name, and it
+    // covers the credit being moved into one.
+    const dialogNode = screen.getByRole("dialog");
+    const credit = dialogNode.querySelector("[data-slot='map-attribution']")!;
 
     expect(credit.textContent).toContain("GURS");
-    expect(screen.getByRole("dialog").querySelector(fold)).not.toBeNull();
-    expect(
-      screen.getByRole("dialog").querySelector("[data-map-legend]")!.closest(fold),
-    ).not.toBeNull();
-    expect(credit.closest(fold)).toBeNull();
+
+    let node: Element | null = credit;
+    while (node && node !== dialogNode) {
+      expect(node.className).not.toMatch(/(^|:)hidden(\s|$)/);
+      node = node.parentElement;
+    }
+    expect(node).toBe(dialogNode);
+  });
+
+  it("keeps the legend on a phone too, where the states it explains are drawn", async () => {
+    const input = await openPicker({ offSite });
+    type(input, "1000");
+
+    // The legend used to be taken away with the sheet below lg, which is the
+    // dialog's own default state: a phone was left with a density ramp, a
+    // hollow marker and an origin ring and no key to any of them. It is one
+    // legend at every width now, compacted by CSS rather than replaced.
+    const legend = screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>("[data-map-legend]")!;
+
+    let node: Element | null = legend;
+    while (node && node.hasAttribute("data-map-stage") === false) {
+      expect(node.className).not.toContain("max-lg:hidden");
+      node = node.parentElement;
+    }
+
+    // Tighter type and tighter gaps below lg, the full register from lg up.
+    expect(legend.className).toContain("text-[10px]");
+    expect(legend.className).toContain("lg:text-[11px]");
+    expect(legend.className).toContain("gap-x-3");
+    expect(legend.className).toContain("lg:gap-x-4");
   });
 });

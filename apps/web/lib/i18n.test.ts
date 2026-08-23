@@ -16,8 +16,8 @@ import {
 
 describe("translations", () => {
   it("interpolates translated messages", () => {
-    expect(translate("en", "selectedShelters", { selected: 2, total: 7 })).toBe(
-      "2 of 7 shelters",
+    expect(translate("en", "photoCount", { current: 2, total: 7 })).toBe(
+      "Photo 2 of 7",
     );
   });
 });

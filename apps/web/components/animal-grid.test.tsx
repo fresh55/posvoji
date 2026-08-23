@@ -150,8 +150,34 @@ describe("animal grid empty state", () => {
       container.querySelector('[data-slot="mobile-filter-dock"]'),
     ).toBeTruthy();
     expect(
-      screen.getAllByRole("combobox", { name: /Zavetišče:/ }).length,
+      screen.getAllByRole("button", { name: /Zavetišče:/ }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("hands the picker every shelter, whatever the species tab says", () => {
+    // The roster the picker counts and renders is the registry, not the
+    // shelter facet of the current query. Measured against the species-filtered
+    // pool, /?vrsta=zajcek left it holding only druga, so the trigger promised
+    // one shelter over a list that still drew the others and a URL that could
+    // already name two of them. Only each shelter's own number moves with the
+    // tab.
+    window.history.replaceState(null, "", "/?vrsta=zajcek");
+    renderGrid(ANIMALS);
+
+    const trigger = screen.getAllByRole("button", { name: /Zavetišče:/ })[0];
+    expect(trigger.getAttribute("aria-label")).toContain("Vsa 3 zavetišča");
+
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole("dialog");
+    for (const id of ["muri", "tretje", "druga"]) {
+      expect(dialog.querySelector(`[data-shelter-row='${id}']`)).toBeTruthy();
+    }
+    // One of the three has the rabbit; the other two say zero rather than
+    // disappearing.
+    expect(
+      dialog.querySelector("[data-picker-panel]")!.textContent,
+    ).toContain("Zavetišč z živalmi: 1 od 3");
   });
 
   it("renders the English recovery copy", () => {

@@ -302,7 +302,7 @@ describe("mobile filter hardening", () => {
       </I18nProvider>,
     );
 
-    const trigger = screen.getByRole("combobox", { name: /Shelter:/ });
+    const trigger = screen.getByRole("button", { name: /Shelter:/ });
     trigger.focus();
     fireEvent.click(trigger);
     expect(await screen.findByRole("dialog")).toBeTruthy();

@@ -24,7 +24,7 @@ import {
   Region,
   REGION_DWELL_MS,
   ShelterMap,
-  legendFlags,
+  mapFacts,
 } from "./shelter-map";
 
 function pin(
@@ -1341,26 +1341,26 @@ describe("ShelterMap density colour", () => {
   });
 });
 
-describe("legendFlags: hasMixed", () => {
+describe("mapFacts: hasMixed", () => {
   const celje = [
     pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
     pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
   ];
 
   it("is false with nothing picked and false with a region picked whole", () => {
-    expect(legendFlags(celje, []).hasMixed).toBe(false);
-    expect(legendFlags(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
+    expect(mapFacts(celje, []).hasMixed).toBe(false);
+    expect(mapFacts(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
       false,
     );
   });
 
   it("is true once one shelter of a region is picked and another is not", () => {
-    expect(legendFlags(celje, ["macja-hisa"]).hasMixed).toBe(true);
+    expect(mapFacts(celje, ["macja-hisa"]).hasMixed).toBe(true);
   });
 
   it("says the region is picked whole only when it is", () => {
-    expect(legendFlags(celje, ["macja-hisa"]).hasSelected).toBe(false);
-    expect(legendFlags(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
+    expect(mapFacts(celje, ["macja-hisa"]).hasSelected).toBe(false);
+    expect(mapFacts(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
       true,
     );
   });
@@ -1380,14 +1380,14 @@ describe("legendFlags: hasMixed", () => {
       { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
     ];
 
-    expect(legendFlags(pins, ["ljubljana"]).hasMixed).toBe(false);
+    expect(mapFacts(pins, ["ljubljana"]).hasMixed).toBe(false);
   });
 });
 
-describe("legendFlags: hasEmpty", () => {
+describe("mapFacts: hasEmpty", () => {
   it("is false while every shelter on the map lists animals", () => {
     expect(
-      legendFlags(
+      mapFacts(
         [
           pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
           pin("maribor", "Zavetišče Maribor", "Maribor", 40),
@@ -1403,7 +1403,7 @@ describe("legendFlags: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(legendFlags(pins, []).hasEmpty).toBe(true);
+    expect(mapFacts(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 
@@ -1413,7 +1413,7 @@ describe("legendFlags: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(legendFlags(pins, ["horjul"]).hasEmpty).toBe(false);
+    expect(mapFacts(pins, ["horjul"]).hasEmpty).toBe(false);
     expect(renderMap(pins, ["horjul"])).not.toContain("data-marker-empty");
   });
 
@@ -1423,7 +1423,7 @@ describe("legendFlags: hasEmpty", () => {
       { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
     ];
 
-    expect(legendFlags(pins, []).hasEmpty).toBe(true);
+    expect(mapFacts(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 });

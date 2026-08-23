@@ -31,7 +31,7 @@ import { EmptyMarkerGlyph } from "@/components/filters/map-marker";
 import { OriginGlyph } from "@/components/filters/map-callout";
 import {
   ShelterMap,
-  legendFlags,
+  mapFacts,
   type MapPick,
 } from "@/components/filters/shelter-map";
 import { ShelterRows, type ShelterRow } from "@/components/filters/shelter-rows";
@@ -54,6 +54,7 @@ import { isDrop } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
   allShelters,
+  inRegions,
   sheltersOf,
   animalCount,
   shelterCount,
@@ -314,6 +315,7 @@ const pickerText = {
     showing: "Prikazano",
     done: "Končano",
     clearSelection: "Počisti izbor",
+    selected: "Izbrano",
   },
   en: {
     matches: "Matches",
@@ -322,6 +324,7 @@ const pickerText = {
     showing: "Showing",
     done: "Done",
     clearSelection: "Clear selection",
+    selected: "Selected",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -816,13 +819,15 @@ export function LocationPicker({
 
   const unplaced = rows.length + offRows.length - pins.length;
   // Which legend rows the map has earned right now: the solid selection green,
-  // the hatch, the hollow circle. Asked of the same layout and the same
-  // grouping the map draws from, so a row and the thing it explains appear and
-  // disappear together. One memo and one pass, because laying the towns out
-  // and walking each one through a point-in-polygon lookup is the expensive
-  // part and all three answers come off it.
-  const { hasSelected, hasMixed, hasEmpty } = useMemo(
-    () => legendFlags(pins, selected),
+  // the hatch, the hollow circle. Plus where the picking has landed, for the
+  // panel's own sentence below. Asked of the same layout and the same grouping
+  // the map draws from, so a row and the thing it explains appear and
+  // disappear together, and the sentence cannot place a shelter in a region
+  // the map draws it outside of. One memo and one pass, because laying the
+  // towns out and walking each one through a point-in-polygon lookup is the
+  // expensive part and all four answers come off it.
+  const { hasSelected, hasMixed, hasEmpty, selectedRegions } = useMemo(
+    () => mapFacts(pins, selected),
     [pins, selected],
   );
   const nearbyOn = state.status === "on";
@@ -886,6 +891,57 @@ export function LocationPicker({
     selected.length === 0
       ? allShelters(total, locale)
       : sheltersOf(selected.length, total, locale);
+
+  // The panel's own sentence about the filter: how many shelters are picked
+  // and whereabouts they are. It exists because the panel had no drawn answer
+  // to "what have I chosen" at all from lg up. The trigger's `label` is behind
+  // the modal, the peek bar carrying it is lg:hidden, the rail badge only
+  // appears while the panel is folded, and the live region is sr-only: with
+  // the panel open on a desktop the only visible trace of a five-shelter
+  // selection was the count on the clear button. The card above the list
+  // answers a different question, the one about the target of the last click,
+  // and a click is not a selection.
+  //
+  // Derived from `selected` and from the regions the shared map projection
+  // puts those shelters in. Never from `pick`: that is inspection, it is what
+  // the hover-to-row scroll, the Escape ladder and the marker's own metadata
+  // are gated on, and a summary reading it would both lie and break them.
+  //
+  // The count comes from selected.length rather than from summing the regions,
+  // which is what keeps it honest when a picked shelter has no place on the
+  // map: the names are an answer to "whereabouts", the number is the filter
+  // itself, and a shelter the map cannot place still counts. For the same
+  // reason the region clause disappears entirely rather than being faked when
+  // nothing placed.
+  //
+  // Names up to MAX_NAMED_REGIONS, a count past it. Three is the most that
+  // still reads at a glance, which is the only thing this line is for; past
+  // it the names stop being a place and become a list to parse, and the count
+  // says the same thing in four words.
+  //
+  // Three does not always fit one line: measured in the lg:w-96 panel,
+  // "Podravska, Osrednjeslovenska, Obalno-kraška" takes two, 290px and 80px in
+  // a 332px box. That is a wrap and not an overflow, the paragraph is in flow
+  // above a scroller and nothing below it moves, so the second line is
+  // accepted rather than bought back by naming fewer regions than the visitor
+  // picked.
+  //
+  // It says nothing about intent. "Izbrano: 5 zavetišč · Pomurska, Podravska"
+  // describes where the picked shelters are; it never claims the regions
+  // themselves were chosen, because a flat shelter-id selection does not know
+  // that and four of the regions holding shelters hold exactly one, where a
+  // polygon click and a marker click are indistinguishable after the fact.
+  const MAX_NAMED_REGIONS = 3;
+  const whereSelected =
+    selectedRegions.length === 0
+      ? ""
+      : selectedRegions.length <= MAX_NAMED_REGIONS
+        ? ` · ${selectedRegions.join(", ")}`
+        : ` ${inRegions(selectedRegions.length, locale)}`;
+  const selectionLine = `${pickerText[locale].selected}: ${shelterCount(
+    selected.length,
+    locale,
+  )}${whereSelected}`;
 
   return (
     <Dialog
@@ -1826,6 +1882,41 @@ export function LocationPicker({
                 </button>
               )}
             </div>
+
+            {/* What is picked, and whereabouts. The one line in this panel that
+                answers "which animals will I see when I close this map", so it
+                leads the status block rather than joining it: full-strength
+                foreground at 12px over the muted 11px facts below, which is
+                the smallest weight that makes it the line the eye lands on.
+
+                lg and up only, deliberately. Below lg the peek bar at the head
+                of this same sheet already carries the selection as `label` and
+                a count badge, and a second copy would cost the list a row in a
+                sheet whose scroller is already down to a 5rem last resort. The
+                pick card is absent below lg for the same reason, so the
+                hierarchy problem this fixes does not exist there.
+
+                Nothing to say with nothing picked: the trigger and the peek bar
+                both read "Vseh 17 zavetišč" in that state, and a line repeating
+                it under two inputs would be chrome standing where a fact goes.
+                It carries no "od 17" fraction on purpose. The status line
+                directly below it already says "Zavetišč z živalmi: 7 od 17",
+                which is a fact about the roster and not about the selection,
+                and two different fractions over the same 17 on neighbouring
+                lines is exactly the arithmetic this line exists to spare
+                anyone.
+
+                Not announced. The dialog's live region above already speaks for
+                every selection change, and a second one saying the same news
+                would race it. */}
+            {selected.length > 0 && (
+              <p
+                data-picker-selection
+                className="mt-2 hidden shrink-0 text-xs font-medium leading-tight text-foreground lg:block"
+              >
+                {selectionLine}
+              </p>
+            )}
 
             {/* What the picking currently adds up to, said as a fact. Filtering
                 is live, so this is the feedback that makes the footer button's

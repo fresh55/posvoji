@@ -105,24 +105,44 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
   );
 }
 
-/** The three states the legend grows a row for, answered in one pass.
+/** What one look at the laid-out country says, for the panel and its legend.
  *
- *  Each row waits for the thing it explains to exist: the solid selection
- *  green the moment a region is picked whole, the hatch the moment one is
- *  partly picked, the hollow circle the moment a shelter with nothing listed
- *  is drawn. So all three questions are about the same country at the same
- *  moment, and one layout, one grouping and one stats pass answer them
- *  together rather than three times over.
+ *  Three of the four are the states the legend grows a row for, and each row
+ *  waits for the thing it explains to exist: the solid selection green the
+ *  moment a region is picked whole, the hatch the moment one is partly picked,
+ *  the hollow circle the moment a shelter with nothing listed is drawn.
  *
- *  Shares that layout and those stats with the map itself, so a row cannot
- *  claim a state the country is not in.
+ *  The fourth is whereabouts the picking has landed, which the panel says in
+ *  its own sentence above the list. It belongs here and not in a second helper
+ *  because laying the towns out and walking each one through a point-in-polygon
+ *  lookup is the expensive part, and all four answers come off that one pass.
+ *
+ *  All four share that layout and those stats with the map itself, so neither
+ *  a legend row nor the panel's sentence can claim a state the country is not
+ *  in. This is the shared projection the panel is required to read: a second
+ *  definition of what "in a region" means is what would let the map and the
+ *  sentence disagree.
  *
  *  hasEmpty is about markers, which are md+ only; the legend decides for
  *  itself at which widths its own rendering acts on it. */
-export function legendFlags(
+export function mapFacts(
   pins: ShelterPin[],
   selected: string[],
-): { hasSelected: boolean; hasMixed: boolean; hasEmpty: boolean } {
+): {
+  hasSelected: boolean;
+  hasMixed: boolean;
+  hasEmpty: boolean;
+  /** Every region holding at least one picked shelter, whole or partly, in the
+   *  canonical order REGION_SHAPES lists them in rather than in the order they
+   *  were clicked: the sentence they feed is a description of where the filter
+   *  stands, not a history of how it got there.
+   *
+   *  A partly picked region is named the same as a whole one. The names answer
+   *  "whereabouts", so a region with one of its three shelters picked is still
+   *  somewhere the visitor is looking; leaving it out would name fewer places
+   *  than the count beside it accounts for. */
+  selectedRegions: string[];
+} {
   const towns = layoutTowns(pins);
   const { byRegion } = groupTownsByRegion(towns);
   const regions = regionStatsByRegion(byRegion, selected);
@@ -134,6 +154,12 @@ export function legendFlags(
       ({ stats }) => stats.live && stats.state === "mixed",
     ),
     hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected)),
+    // No `live` test beside it: a region whose state is anything but false has
+    // a picked shelter among its values, which is one of the two things live
+    // itself asks for.
+    selectedRegions: regions
+      .filter(({ stats }) => stats.state !== false)
+      .map(({ region }) => region.name),
   };
 }
 

@@ -2364,3 +2364,106 @@ describe("LocationPicker attribution", () => {
     expect(legend.className).toContain("lg:gap-x-4");
   });
 });
+
+// The panel's own sentence about what is picked. The desktop panel used to
+// have no drawn answer to "what have I chosen": the trigger's label sits
+// behind the modal, the peek bar carrying it is lg:hidden, the rail badge only
+// exists while the panel is folded, and the live region is sr-only, which left
+// the count on the clear button as the only visible trace of a selection.
+describe("LocationPicker selection line", () => {
+  const line = () =>
+    screen
+      .getByRole("dialog")
+      .querySelector<HTMLElement>("[data-picker-selection]");
+
+  it("names how many shelters are picked and whereabouts they are", async () => {
+    await openPicker({ selected: ["sever", "jug"] });
+
+    // Maribor is Podravska and Ljubljana is Osrednjeslovenska, in the order
+    // REGION_SHAPES lists them rather than the order they were picked in: the
+    // sentence describes where the filter stands, not how it got there.
+    expect(line()!.textContent).toBe(
+      "Izbrano: 2 zavetišči · Podravska, Osrednjeslovenska",
+    );
+    // Drawn, not read out: sr-only is where this fact already lived, and
+    // moving it onto the panel is the whole point.
+    expect(line()!.className).not.toContain("sr-only");
+    expect(line()!.className).toContain("lg:block");
+  });
+
+  it("counts the selection itself, not the shelters the map could place", async () => {
+    // A shelter with no town has no point to project, so it never becomes a
+    // pin and lands in no region. It is still picked, and the number has to
+    // say so: the names answer "whereabouts", the count is the filter.
+    await openPicker({
+      options: [...options, { value: "tajno", label: "Zavetišče Tajno" }],
+      counts: new Map([...counts, ["tajno", 2]]),
+      selected: ["sever", "jug", "tajno"],
+    });
+
+    expect(line()!.textContent).toBe(
+      "Izbrano: 3 zavetišča · Podravska, Osrednjeslovenska",
+    );
+  });
+
+  it("counts the regions instead of naming them once there are too many", async () => {
+    await openPicker({
+      options: [
+        { value: "sever", label: "Zavetišče Sever", city: "Maribor" },
+        { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
+        { value: "zahod", label: "Zavetišče Zahod", city: "Koper" },
+        { value: "gora", label: "Zavetišče Gora", city: "Kranj" },
+      ],
+      counts: new Map([
+        ["sever", 4],
+        ["jug", 7],
+        ["zahod", 3],
+        ["gora", 5],
+      ]),
+      selected: ["sever", "jug", "zahod", "gora"],
+    });
+
+    // Four names do not fit the lg:w-96 panel on one line, and four names have
+    // stopped being readable at a glance anyway. The locative is the point of
+    // the helper: "v 4 regijah", never "v 4 regije".
+    expect(line()!.textContent).toBe("Izbrano: 4 zavetišča v 4 regijah");
+  });
+
+  it("says nothing at all with nothing picked", async () => {
+    await openPicker();
+
+    // The trigger and the peek bar both read "Obe zavetišči" in this state.
+    // A line repeating it under two inputs is chrome where a fact belongs.
+    expect(line()).toBeNull();
+  });
+
+  it("survives the pick card it must never be derived from", async () => {
+    // The critical guard. `pick` is inspection: it gates the hover-to-row
+    // scroll, the Escape ladder and the marker's own metadata, so a sentence
+    // derived from it would both lie about the filter and break those three.
+    // Asking about one shelter and closing the answer are both inspection, and
+    // neither may move a line that is about the selection.
+    await openPicker({ selected: ["sever", "jug"] });
+
+    const before = line()!.textContent;
+    expect(before).toContain("2 zavetišči");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Pokaži podrobnosti za Zavetišče Sever",
+      }),
+    );
+
+    expect(
+      screen.getByRole("dialog").querySelector("[data-map-pick-card]"),
+    ).not.toBeNull();
+    expect(line()!.textContent).toBe(before);
+
+    fireEvent.click(screen.getByRole("button", { name: "Zapri kartico" }));
+
+    expect(
+      screen.getByRole("dialog").querySelector("[data-map-pick-card]"),
+    ).toBeNull();
+    expect(line()!.textContent).toBe(before);
+  });
+});

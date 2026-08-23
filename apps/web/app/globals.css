@@ -407,3 +407,28 @@
     @apply font-sans;
   }
 }
+
+/* Every spinner on the site is animate-spin on a LoaderCircle icon, and the
+   callers are spread across the portal, the location picker and the
+   municipality finder rather than sharing one component this rule could sit
+   beside instead. None of those files are touched here, so one rule that
+   reaches every animate-spin at once is the only way to give all of them
+   the same reduced-motion guard.
+   Deliberately outside every @layer, including the base block just above:
+   Tailwind orders its layers theme, base, components, utilities, and a rule
+   in an earlier layer loses to one in a later layer whatever its specificity,
+   so a guard placed in @layer base could never outrank the plain
+   .animate-spin utility that lives in @layer utilities. A rule with no layer
+   at all outranks every layered rule regardless of specificity or source
+   order, which is the same reason shadcn/tailwind.css's own .shimmer guard
+   (imported at the top of this file) is written unlayered rather than
+   folded into a layer.
+   animation: none, not display: none. A spinner that disappears reads as
+   nothing happening, which is worse than one that stopped moving; the icon
+   is a broken ring even standing still, so frozen it still reads as
+   "loading", just without the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+}

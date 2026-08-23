@@ -66,8 +66,11 @@ export type DialogOrigin = {
 // The phone scrolls the whole dialog; from sm the shell stops scrolling and
 // hands that job to the card, so the scrollbar belongs to the card it scrolls
 // rather than hanging in the air beside the photos.
+// motion-reduce:duration-0, not motion-reduce:animate-none: see the comment
+// on DialogOverlay in ui/dialog.tsx for why the animate-none guard does not
+// actually take effect on a data-open:/data-closed: element.
 const CONTENT_CLASS =
-  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none max-sm:h-dvh max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
+  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 max-sm:h-dvh max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame, and pulls itself up
 // under the photos so the fan overlaps its top edge. The wide top padding is

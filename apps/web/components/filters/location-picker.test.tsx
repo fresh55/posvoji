@@ -1640,12 +1640,10 @@ describe("LocationPicker found-animal entry", () => {
 
     expect(screen.getByRole("dialog", { name: "Najdena žival" })).toBeTruthy();
     expect(dialog().textContent).toContain(
-      "Zemljevid pokaže, katero zavetišče je pristojno.",
+      "Zemljevid pokaže pristojno zavetišče",
     );
     // The shelter-picking instructions belong to the other tab.
-    expect(dialog().textContent).not.toContain(
-      "Izberi regijo na zemljevidu ali zavetišče s seznama.",
-    );
+    expect(dialog().textContent).not.toContain("Klikni regijo ali zavetišče");
   });
 
   it("keeps the tabs in the sheet's fold, not behind the pointer breakpoint", async () => {

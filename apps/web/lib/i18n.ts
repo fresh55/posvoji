@@ -103,12 +103,13 @@ const sl = {
   clearLocation: "Počisti kraj",
   shelterPickerLabel: "Zavetišče: {label}. Odpri zemljevid.",
   whereSearching: "Kje iščeš?",
-  mapInstructionsDesktop:
-    "Klikni zavetišče ali celo regijo na zemljevidu, ali izbiraj s seznama.",
-  mapInstructionsMobile:
-    "Izberi regijo na zemljevidu ali zavetišče s seznama.",
-  mapInstructionsMuni:
-    "Zemljevid pokaže, katero zavetišče je pristojno.",
+  // The chip over the map says the one thing the map alone has to say, and
+  // stops. Naming the list as a third way in was a third line of copy about
+  // something already on screen: the panel is docked beside the map at lg and
+  // open as a sheet below it.
+  mapInstructionsDesktop: "Klikni regijo ali zavetišče",
+  mapInstructionsMobile: "Izberi regijo na zemljevidu",
+  mapInstructionsMuni: "Zemljevid pokaže pristojno zavetišče",
   locating: "Iščem lokacijo…",
   nearestFirst: "Najbližje prvo",
   searchShelters: "Išči zavetišče po imenu…",
@@ -362,12 +363,9 @@ const en: Messages = {
   clearLocation: "Clear location",
   shelterPickerLabel: "Shelter: {label}. Open map.",
   whereSearching: "Where are you looking?",
-  mapInstructionsDesktop:
-    "Select a shelter or region on the map, or choose from the list.",
-  mapInstructionsMobile:
-    "Select a region on the map or a shelter from the list.",
-  mapInstructionsMuni:
-    "The map shows which shelter is responsible.",
+  mapInstructionsDesktop: "Click a region or a shelter",
+  mapInstructionsMobile: "Pick a region on the map",
+  mapInstructionsMuni: "The map shows the responsible shelter",
   locating: "Finding your location…",
   nearestFirst: "Nearest first",
   searchShelters: "Search shelters by name…",

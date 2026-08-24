@@ -1329,12 +1329,12 @@ export function LocationPicker({
               are drawn has changed. The subtitle stays in the chip: it is the
               one line that says the map is clickable, and a title attribute
               would have said it to nobody with a touch screen. */}
-          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,60%)]">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(17rem,65%)]">
             {/* Nothing in the chip is a control, so it takes no pointer: on a
                 phone it covers the top-left corner of the plate, and with
                 pointer-events-auto it swallowed the taps meant for the two
                 regions under it. */}
-            <DialogHeader className="pointer-events-none rounded-ui border bg-background/85 px-3 py-2 shadow-xs backdrop-blur">
+            <DialogHeader className="pointer-events-none gap-0.5 rounded-ui border bg-background/80 px-2.5 py-1.5 shadow-xs backdrop-blur">
               {/* The chip follows the question the dialog is currently
                   asking. One dialog answers two of them, and the found-animal
                   mode used to be titled "Kje iščeš?" over instructions to pick
@@ -1343,10 +1343,15 @@ export function LocationPicker({
                   municipality mode says what it is and what the map is doing
                   for it; the instruction is one line at both breakpoints,
                   because the answer arrives in the panel either way. */}
-              <DialogTitle className="text-base leading-none">
+              <DialogTitle className="text-sm leading-tight">
                 {muniMode ? messages.muniTab : messages.whereSearching}
               </DialogTitle>
-              <DialogDescription className="text-[11px] leading-snug">
+              {/* One line, and short enough to stay one line at the widths
+                  this chip is given. The instruction used to name the list as
+                  a third way in, which cost it a second and a third line over
+                  a list that is already on screen in both docks. What is left
+                  is the part only the map has to say. */}
+              <DialogDescription className="text-xs leading-tight">
                 {muniMode ? (
                   messages.mapInstructionsMuni
                 ) : (

@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-import { Hourglass, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
@@ -144,7 +144,7 @@ export function AnimalCard({
         // unnamed ones say nothing at all. The heading is the name it should
         // have been carrying.
         aria-labelledby={headingId}
-        className="group flex flex-col overflow-hidden transition-colors hover:border-foreground/40 focus-within:border-foreground/40"
+        className="group flex flex-col overflow-hidden transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm"
       >
         <div className="relative shrink-0">
           <PhotoGallery
@@ -165,9 +165,8 @@ export function AnimalCard({
           <StatusBadge
             status={animal.status}
             locale={locale}
-            size="sm"
             overlay
-            className="absolute left-2 top-2"
+            className="absolute left-1.5 top-1.5"
           />
           {wait && (
             // On the photo, opposite the counter, for the same reason the
@@ -176,20 +175,20 @@ export function AnimalCard({
             // with the shelter for a line that three of the registry's
             // seventeen names cannot fit even on their own.
             //
-            // The duration alone, because the hourglass says what kind of
-            // duration it is. The full phrase is what gets spoken and what a
-            // hover shows.
+            // One string, seen and spoken. It used to be three: the duration
+            // alone for the eye, an hourglass to say what kind of duration it
+            // was, and the full phrase again for a screen reader and a hover.
+            // The eye's copy was "3 leta" over a meta line reading
+            // "Mačka · samec · 3 leta", which is the same number twice, told
+            // apart by a 12px icon; 54 of the 101 cards carrying the mark are
+            // that case, because an animal that grew up in the shelter has
+            // waited exactly as long as it has been alive. The verb settles it
+            // in four characters and pays for them with the icon.
             <Badge
-              variant="outline"
-              size="sm"
-              title={t("longStayMark", { duration: wait })}
-              className="absolute bottom-1.5 left-1.5 gap-1 border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)] shadow-xs backdrop-blur-sm"
+              variant="overlay-warn"
+              className="absolute bottom-1.5 left-1.5"
             >
-              <Hourglass strokeWidth={1.75} aria-hidden />
-              <span aria-hidden>{wait}</span>
-              <span className="sr-only">
-                {t("longStayMark", { duration: wait })}
-              </span>
+              {t("longStayMark", { duration: wait })}
             </Badge>
           )}
         </div>
@@ -197,11 +196,16 @@ export function AnimalCard({
           href={href}
           onClick={openDialog}
           onKeyDown={stepPhoto}
+          // stepPhoto is good keyboard behaviour that nothing announces. A
+          // visible hint would print an instruction 503 times for the one
+          // visitor in a hundred it is aimed at, so the announcement goes
+          // where the behaviour already is.
+          aria-keyshortcuts={photoCount > 1 ? "ArrowLeft ArrowRight" : undefined}
           // px-3 pt-3 and not p-3: the shelter line below is a sibling now, and
           // the padding that used to close the anchor closes the card down
           // there instead. The rhythm is unchanged, just split across the two:
-          // pt-1 on the sibling is the gap this anchor no longer spans, and its
-          // pb-3 is this one's missing bottom.
+          // the pt on the sibling is the gap this anchor no longer spans, and
+          // its pb-3 is this one's missing bottom.
           //
           // gap-1 and not space-y-1. space-y-* puts a margin on
           // :not(:last-child), and :last-child is structural: at sm and up the
@@ -217,11 +221,18 @@ export function AnimalCard({
               badge and the wait mark, where an amber icon was the loudest
               thing on a card about an animal and, on a 208px card, left the
               name about eight characters. */}
-          <h3
-            id={headingId}
-            className="truncate font-medium"
-            title={animal.name ?? messages.unnamed}
-          >
+          {/* line-clamp-2 and not truncate, and no title to make up for it.
+              Of 503 names, 487 are twelve characters or shorter and 3 run past
+              sixteen, the longest being a shelter's listing title typed into a
+              name field. Reserving a second line for three animals costs every
+              card a row of pixels; letting sixteen of them take one costs
+              nothing, because mt-auto on the footer below already absorbs a
+              card that runs taller than its neighbours. A title tooltip was
+              the fallback for the clipping, and it is one touch cannot open.
+
+              font-semibold is shadcn's own card-title weight. The name sits
+              next to a photograph four times its size and was losing. */}
+          <h3 id={headingId} className="line-clamp-2 font-semibold">
             {animal.name ?? messages.unnamed}
           </h3>
           {/* Allowed to wrap, for the same reason the shelter line below is:
@@ -266,7 +277,15 @@ export function AnimalCard({
             // name that may run to two.
             // cursor-pointer because a bare <button> keeps the arrow cursor,
             // and nothing else here says the line answers a click.
-            className="mt-auto flex w-full cursor-pointer items-start gap-1 px-3 pb-3 pt-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background"
+            // border-t, min-h-11 and a hover ground: three ways of saying the
+            // same thing, which is that this line answers a click. It reads as
+            // passive metadata and behaves as a control that moves the map, and
+            // the divider also gives the gap above it a reason to exist: that
+            // gap is mt-auto holding the footer down so cards in a stretched
+            // row agree about their bottom edge, and with no line drawn under
+            // it, it read as a card that had run out of things to say.
+            // min-h-11 is the 44px touch target the row never had at text-xs.
+            className="mt-auto flex min-h-11 w-full cursor-pointer items-start gap-1 border-t px-3 pb-3 pt-2.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background"
           >
             <MapPin
               className="mt-0.5 size-3 shrink-0"
@@ -290,7 +309,7 @@ export function AnimalCard({
 
 // Matched to the live card block for block, so whoever wires this to a real
 // loading state does not inherit a 12px jump: pt-3, a 24px heading, a 20px
-// meta line, then the shelter line's own pt-1 and pb-3.
+// meta line, then the footer's own border, pt-2.5 and pb-3.
 export function AnimalCardSkeleton() {
   return (
     <Card asChild>
@@ -303,7 +322,7 @@ export function AnimalCardSkeleton() {
           <Skeleton className="h-6 w-20" />
           <Skeleton className="h-5 w-32" />
         </div>
-        <div className="px-3 pb-3 pt-1">
+        <div className="min-h-11 border-t px-3 pb-3 pt-2.5">
           <Skeleton className="h-4 w-24" />
         </div>
       </div>

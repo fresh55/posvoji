@@ -199,19 +199,25 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  /* 4.73:1 on --background, which clears WCAG AA for normal text with almost
-     nothing to spare. That is the whole budget: every alpha below full
-     strength spends past it. On white, /80 measures 3.23:1, /70 2.71, /60
-     2.29 and /50 1.96, so text-muted-foreground/80 on a 12px label is not a
-     quieter shade of legible, it is illegible with a shade of quiet.
+  /* 5.49:1 on --background and 5.04:1 on --muted. At oklch(0.556 0 0) those
+     were 4.73:1 and 4.34:1, and the second number is the one that moved this:
+     bg-muted text-muted-foreground is the adopted and hold badge, so the label
+     saying an animal is already taken was under AA on the only surface it ever
+     sits on. 4.73 was also the whole budget on white, with nothing left over
+     for a 12px shelter line on a laptop panel in daylight.
 
-     Seven call sites were doing exactly that and now use the token whole.
-     The alpha is kept only for icons and illustrations, which carry no text
-     and are aria-hidden where they carry no meaning either: the empty-state
-     paw, the chevron on a link row, the info glyph beside a section title.
-     If a shade between muted and background is ever wanted for text, it has
-     to come from a darker token rather than from thinning this one. */
-  --muted-foreground: oklch(0.556 0 0);
+     Darkened here rather than beside it. A second muted tone would be a third
+     text colour every call site then has to choose between, and shadcn ships
+     two on purpose.
+
+     There is still no room for alpha. On white, /80 now measures 3.59:1, /70
+     2.96, /60 2.46 and /50 2.07, so text-muted-foreground/80 on a 12px label
+     is not a quieter shade of legible, it is illegible with a shade of quiet.
+     Seven call sites were doing exactly that and use the token whole. The
+     alpha is kept only for icons and illustrations, which carry no text and
+     are aria-hidden where they carry no meaning either: the empty-state paw,
+     the chevron on a link row, the info glyph beside a section title. */
+  --muted-foreground: oklch(0.52 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);

@@ -1,8 +1,8 @@
+import type { VariantProps } from "class-variance-authority";
 import type { AdoptionStatus } from "@posvoji/schema";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import type { Locale } from "@/lib/i18n";
 import { statusLabel } from "@/lib/labels";
-import { cn } from "@/lib/utils";
 
 // One badge, three surfaces. The grid card, the dialog and the animal page all
 // answer the same question and used to answer it three different ways: an
@@ -17,38 +17,37 @@ import { cn } from "@/lib/utils";
 // the three of them drifted apart in the first place.
 type NamedStatus = Exclude<AdoptionStatus, "unknown" | "available">;
 
+type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
+
 // Reserved is a maybe and says so in the site's one warm family. Adopted and
-// hold are over, and go quiet.
-const TONE: Record<NamedStatus, string> = {
-  reserved:
-    "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
-  adopted: "border-transparent bg-muted text-muted-foreground",
-  hold: "border-transparent bg-muted text-muted-foreground",
+// hold are over, and go quiet. Which of the two, and whether it is the flat
+// page tone or the one that carries its own ground onto a photograph, is all
+// these maps decide; the colours themselves are variants in ui/badge.tsx.
+const TONE: Record<NamedStatus, BadgeVariant> = {
+  reserved: "warn",
+  adopted: "quiet",
+  hold: "quiet",
 };
 
-// On a photograph the wash has nothing to sit on. A 15% fill tints an
-// arbitrary backdrop rather than covering it, and backdrop-blur takes out
-// detail without moving luminance, so amber ink over a mid-tone photo was
-// 1.38:1. The overlay brings its own opaque ground instead.
-const OVERLAY_TONE: Record<NamedStatus, string> = {
-  reserved:
-    "border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)]",
-  adopted: "border-transparent bg-background text-muted-foreground",
-  hold: "border-transparent bg-background text-muted-foreground",
+const OVERLAY_TONE: Record<NamedStatus, BadgeVariant> = {
+  reserved: "overlay-warn",
+  adopted: "overlay-quiet",
+  hold: "overlay-quiet",
 };
 
+// One tier, everywhere. The grid card used to take a size="sm" of its own, so
+// the same fact was 11px on a card and 12px in the dialog that card opens. The
+// card is where the badge is smallest and furthest from the reader, which is
+// the worst place to shave a pixel off it.
 export function StatusBadge({
   status,
   locale,
-  /** "sm" is the grid card's tier; the dialog and the animal page take the default. */
-  size = "default",
   /** Set when the badge sits on a photo rather than on the page. */
   overlay = false,
   className,
 }: {
   status: AdoptionStatus;
   locale: Locale;
-  size?: "default" | "sm";
   overlay?: boolean;
   className?: string;
 }) {
@@ -58,13 +57,8 @@ export function StatusBadge({
 
   return (
     <Badge
-      variant="outline"
-      size={size}
-      className={cn(
-        overlay ? OVERLAY_TONE[status] : TONE[status],
-        overlay && "shadow-xs backdrop-blur-sm",
-        className,
-      )}
+      variant={overlay ? OVERLAY_TONE[status] : TONE[status]}
+      className={className}
     >
       {label}
     </Badge>

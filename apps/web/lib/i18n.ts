@@ -40,10 +40,16 @@ const sl = {
   // A label, not a plea. The dialog's longStay above is the plea, and it has a
   // sentence, a box and a link to act on: that is where it can do something. On
   // a card the same words repeat twenty times a screen and decay into
-  // wallpaper, and worse, an animal that grew up in the shelter printed its age
-  // and its wait as the same string twice ("3 leta" over "Čaka že 3 leta") on
-  // 54 of the 101 cards that carry the mark.
-  longStayMark: "{duration} v zavetišču",
+  // wallpaper.
+  //
+  // The verb is the part that cannot come off. Those same 54 of 101 cards are
+  // an animal that grew up in the shelter, where the age and the wait are one
+  // number, and a mark printing the number alone leaves a 12px hourglass to
+  // say which of the two it is. "Čaka" says it in four characters and lets
+  // the icon go. The trailing "v zavetišču" that used to carry the sense is
+  // what pays for it: it is the one thing on a card about a shelter's animal
+  // that every card already says.
+  longStayMark: "Čaka {duration}",
   healthAllClear: "Vse zdravstveno urejeno ({count}/{count})",
   showHealthDetails: "Pokaži podrobnosti",
   readMore: "Preberi več",
@@ -350,7 +356,7 @@ const en: Messages = {
   factOrigin: "Found in",
   longStay: "At the shelter for {duration} now.",
   longStayLink: "See who has waited longest",
-  longStayMark: "{duration} in the shelter",
+  longStayMark: "Waiting {duration}",
   healthAllClear: "Full health record ({count}/{count})",
   showHealthDetails: "Show details",
   readMore: "Read more",

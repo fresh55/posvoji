@@ -29,6 +29,20 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // The status family, in one place. It used to be spelled out in three:
+        // two Record maps in status-badge.tsx and five utilities inline on the
+        // card's long-stay mark, two of them raw var(--status-warn-*) reads.
+        // A badge is where a badge's colours belong.
+        warn: "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
+        quiet: "border-transparent bg-muted text-muted-foreground",
+        // On a photograph a wash has nothing to sit on. A 15% fill tints an
+        // arbitrary backdrop rather than covering it, and backdrop-blur takes
+        // detail out without moving luminance, so amber ink over a mid-tone
+        // photo was 1.38:1. These two bring their own opaque ground instead.
+        "overlay-warn":
+          "border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)] shadow-xs backdrop-blur-sm",
+        "overlay-quiet":
+          "border-transparent bg-background text-muted-foreground shadow-xs backdrop-blur-sm",
       },
     },
     defaultVariants: {

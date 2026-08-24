@@ -87,6 +87,24 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Two steps below text-xs, because the site has been writing them as raw
+     pixels all along: text-[11px] at 36 call sites and text-[10px] at 7.
+     That is not a pair of one-offs, it is the tier the captions, sublabels,
+     counts and legend type live in, and a tier that exists only as an
+     arbitrary value cannot be moved in one place or checked for contrast as
+     a group.
+
+     Font size and nothing else. Tailwind only emits a line-height for a
+     --text-* entry that has a --text-*--line-height beside it, and most of
+     these call sites set leading-none or leading-tight for themselves; a
+     paired default would quietly outrank them.
+
+     Not every small number is a tier. energy-cards.tsx draws 9px and 7px
+     inside an icon, where the size is a property of the glyph rather than of
+     the type scale, and those stay arbitrary on purpose. */
+  --text-2xs: 0.6875rem;
+  --text-3xs: 0.625rem;
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

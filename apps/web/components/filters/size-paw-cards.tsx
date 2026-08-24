@@ -487,7 +487,7 @@ export function SizePawCards({
                 {label}
               </span>
               <m.span
-                className="text-[11px] tabular-nums text-muted-foreground"
+                className="text-2xs tabular-nums text-muted-foreground"
                 initial={false}
                 animate={
                   celebrating && landing.countJolt && !shouldReduceMotion

@@ -46,7 +46,7 @@ export function ShelterCard({
       <div className="mt-auto flex flex-wrap items-center gap-2">
         <span
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium",
             hasAnimals
               ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
               : "border-border bg-muted/50 text-muted-foreground",

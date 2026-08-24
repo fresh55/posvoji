@@ -20,7 +20,7 @@ export function OverrideMark({
     <span
       {...props}
       className={cn(
-        "inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border px-1.5 text-[11px] font-medium",
+        "inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border px-1.5 text-2xs font-medium",
         pending
           ? "border-border bg-muted text-muted-foreground"
           : "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
@@ -56,7 +56,7 @@ export function RevertButton({
       title={portalText.revertHint}
       aria-label={fill(portalText.revertField, { field })}
       className={cn(
-        "h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground",
+        "h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground hover:text-foreground",
         className,
       )}
     >

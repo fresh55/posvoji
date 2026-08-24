@@ -38,7 +38,7 @@ export function ShelterSwitcher({
             >
               <span
                 aria-hidden
-                className="grid size-6 shrink-0 place-items-center rounded-sm border border-current/25 text-[11px]"
+                className="grid size-6 shrink-0 place-items-center rounded-sm border border-current/25 text-2xs"
               >
                 {shelter.name.slice(0, 1).toUpperCase()}
               </span>

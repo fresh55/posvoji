@@ -96,7 +96,7 @@ export function FilterSidebar({
           aria-hidden={activeSections === 0}
           tabIndex={activeSections > 0 ? undefined : -1}
           className={cn(
-            "h-auto p-0 text-[11px] font-normal text-muted-foreground transition-opacity hover:text-foreground",
+            "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
             activeSections === 0 && "pointer-events-none opacity-0",
           )}
         >

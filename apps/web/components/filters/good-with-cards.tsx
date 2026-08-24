@@ -131,7 +131,7 @@ export function GoodWithCards({
       footer={
         <p
           aria-live="polite"
-          className="mt-2 text-[11px] leading-snug text-muted-foreground empty:mt-0"
+          className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0"
         >
           {outcome}
         </p>

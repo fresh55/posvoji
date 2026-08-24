@@ -258,7 +258,7 @@ export function PhotoGallery({
           <Badge
             variant="secondary"
             aria-hidden
-            className="absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-[10px] tabular-nums shadow-xs backdrop-blur-sm"
+            className="absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm"
           >
             {imageIndex + 1} / {images.length}
           </Badge>

@@ -152,7 +152,7 @@ function MapLegend({
   return (
     <div
       data-map-legend
-      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-none text-muted-foreground lg:gap-x-4 lg:gap-y-1.5 lg:text-[11px]"
+      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-3xs leading-none text-muted-foreground lg:gap-x-4 lg:gap-y-1.5 lg:text-2xs"
     >
       <span className="flex items-center gap-2">
         <span>{messages.fewerAnimals}</span>
@@ -1314,7 +1314,7 @@ export function LocationPicker({
                 // The measure is capped here rather than on the caption as a
                 // whole: this is prose and wants a line length, while the
                 // legend beside it is a key and wants the plate's own width.
-                className="pointer-events-auto max-w-[26rem] text-[10px] leading-tight text-muted-foreground"
+                className="pointer-events-auto max-w-[26rem] text-3xs leading-tight text-muted-foreground"
               >
                 {messages.regionBoundaries}:{" "}
                 <a
@@ -1505,7 +1505,7 @@ export function LocationPicker({
                 {muniMode ? messages.muniTab : label}
               </span>
               {!muniMode && selected.length > 0 && (
-                <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums text-muted-foreground">
+                <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums text-muted-foreground">
                   {selected.length}
                 </span>
               )}
@@ -1540,7 +1540,7 @@ export function LocationPicker({
                   <List className="size-4" aria-hidden />
                 )}
                 {!muniMode && selected.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[11px] tabular-nums">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums">
                     {selected.length}
                   </span>
                 )}
@@ -1782,7 +1782,7 @@ export function LocationPicker({
                     <p
                       id={statusId}
                       aria-live="polite"
-                      className="mt-1 shrink-0 text-[11px] leading-tight text-muted-foreground empty:hidden"
+                      className="mt-1 shrink-0 text-2xs leading-tight text-muted-foreground empty:hidden"
                     >
                       {status}
                     </p>
@@ -1984,7 +1984,7 @@ export function LocationPicker({
                               <div className="mt-3">
                                 <p
                                   id={offGroupId}
-                                  className="px-2 pb-1 text-[11px] font-medium text-muted-foreground"
+                                  className="px-2 pb-1 text-2xs font-medium text-muted-foreground"
                                 >
                                   {offGroupHeading}
                                 </p>
@@ -2002,7 +2002,7 @@ export function LocationPicker({
                             home rather than a copy handed down as a prop. */}
                                 <CollapsibleTrigger
                                   id={offGroupId}
-                                  className="group flex w-full items-center gap-1 rounded-ui px-2 py-1 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] max-lg:min-h-9"
+                                  className="group flex w-full items-center gap-1 rounded-ui px-2 py-1 text-left text-2xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] max-lg:min-h-9"
                                 >
                                   <ChevronRight
                                     className="size-3 shrink-0 transition-transform group-data-open:rotate-90 motion-reduce:transition-none"
@@ -2024,7 +2024,7 @@ export function LocationPicker({
                 paragraph itself, so empty:hidden takes the gap away with the
                 line. Wrapped, the note cost the list 8px of height on every
                 screen where there was no note to read. */}
-                    <p className="mt-2 shrink-0 text-[11px] leading-tight text-muted-foreground empty:hidden">
+                    <p className="mt-2 shrink-0 text-2xs leading-tight text-muted-foreground empty:hidden">
                       {missing}
                     </p>
 

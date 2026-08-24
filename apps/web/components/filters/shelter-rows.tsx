@@ -315,7 +315,7 @@ export function ShelterRows({
                     {label}
                   </span>
                   {sublabel && (
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-2xs text-muted-foreground">
                       {sublabel}
                     </span>
                   )}
@@ -456,7 +456,7 @@ export function ShelterRows({
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "h-5 min-w-5 shrink-0 rounded-full px-1 text-[11px] font-normal tabular-nums",
+                        "h-5 min-w-5 shrink-0 rounded-full px-1 text-2xs font-normal tabular-nums",
                         checked &&
                           "bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
                       )}
@@ -472,7 +472,7 @@ export function ShelterRows({
                     </Badge>
                   </span>
                   {sublabel && (
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-2xs text-muted-foreground">
                       {sublabel}
                     </span>
                   )}

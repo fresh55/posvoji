@@ -157,59 +157,57 @@ describe("AnimalCard name row on narrow phones", () => {
   });
 });
 
-describe("AnimalCard shelter control", () => {
-  it("leaves the shelter name as text when no handler is given", () => {
+describe("AnimalCard shelter line", () => {
+  it("draws no shelter line at all unless asked for one", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard animal={animal()} reference={NOW} onOpen={() => undefined} />
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Zavetišče Test")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Zavetišče Test/ })).toBeNull();
+    // A shelter's own page renders these cards. There the line would be the
+    // page linking to itself once per animal on it.
+    expect(screen.queryByText("Zavetišče Test")).toBeNull();
   });
 
-  it("asks for the shelter without opening the animal", () => {
+  it("links to the shelter's own page without opening the animal", () => {
     const opened: string[] = [];
-    const spotlit: string[] = [];
     render(
       <I18nProvider locale="sl">
         <AnimalCard
           animal={animal()}
           reference={NOW}
           onOpen={(id) => opened.push(id)}
-          onShelterClick={(id) => spotlit.push(id)}
+          showShelter
         />
       </I18nProvider>,
     );
 
-    // The accessible name has to carry the shelter's own name, or the control
-    // is "show on the map" with nothing saying which map pin it means.
-    const control = screen.getByRole("button", {
-      name: "Pokaži Zavetišče Test na zemljevidu",
-    });
-    fireEvent.click(control);
+    // The link's own text is its accessible name, so this is also the check
+    // that nothing wrapped it in a label that talks over the visible words.
+    const link = screen.getByRole("link", { name: "Zavetišče Test" });
+    expect(link.getAttribute("href")).toBe("/zavetisca/test-shelter");
 
-    expect(spotlit).toEqual(["test-shelter"]);
-    // The control sits beside the card's link rather than inside it, so a
+    fireEvent.click(link);
+    // The line sits beside the card's own link rather than inside it, so a
     // click here can never also be a click on the animal.
     expect(opened).toEqual([]);
   });
 
-  it("names the shelter in English too", () => {
+  it("keeps the link inside the English tree of pages", () => {
     render(
       <I18nProvider locale="en">
         <AnimalCard
           animal={animal()}
           reference={NOW}
           onOpen={() => undefined}
-          onShelterClick={() => undefined}
+          showShelter
         />
       </I18nProvider>,
     );
 
     expect(
-      screen.getByRole("button", { name: "Show Zavetišče Test on the map" }),
-    ).toBeTruthy();
+      screen.getByRole("link", { name: "Zavetišče Test" }).getAttribute("href"),
+    ).toBe("/en/shelters/test-shelter");
   });
 });

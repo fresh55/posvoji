@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
+import { shelterPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
 
 const CARD_WIDTH = 1200;
@@ -41,9 +42,10 @@ export function shelterPlateUrl(id: string): string | undefined {
   return known.get(id);
 }
 
-export function shelterPath(id: string, locale: Locale): string {
-  return locale === "sl" ? `/zavetisca/${id}` : `/en/shelters/${id}`;
-}
+// Re-exported so the callers that want a path and the metadata in one import
+// keep getting both. It lives in shelter-path.ts because this module cannot be
+// imported from the browser (see the note there).
+export { shelterPath };
 
 const text = {
   sl: {

@@ -1,15 +1,17 @@
 "use client";
 
 import { useRef, type MouseEvent } from "react";
-import { Hourglass, MapPin } from "lucide-react";
+import { ChevronRight, Hourglass, House } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { animalPath } from "@/lib/animal-path";
 import { translate } from "@/lib/i18n";
 import { animalMeta, longStayLabel, statusLabel } from "@/lib/labels";
+import { shelterPath } from "@/lib/shelter-path";
 
 // Adopted and hold are over, and the card agrees with them the way the
 // dialog's stage light does: about half the colour goes and the photo settles
@@ -21,17 +23,16 @@ export function AnimalCard({
   animal,
   reference,
   onOpen,
-  onShelterClick,
+  showShelter = false,
 }: {
   animal: Animal;
   /** The dataset's build time, so prerendered ages survive hydration. */
   reference: Date;
   onOpen: (id: string, origin?: DialogOrigin) => void;
-  /** Turns the shelter's name into a control that asks the map to spotlight
-   *  it. Opt-in, because only a page that also mounts the location picker has
-   *  anything to answer with: a shelter's own page renders these cards with no
-   *  picker in the tree, and there the name stays inert text. */
-  onShelterClick?: (shelterId: string) => void;
+  /** Draws the shelter line, which links to that shelter's own page. Opt-in,
+   *  because a shelter's own page renders these cards and there the line would
+   *  be the page linking to itself under every animal on it. */
+  showShelter?: boolean;
 }) {
   const { locale, messages, t } = useI18n();
   const cardRef = useRef<HTMLElement>(null);
@@ -46,12 +47,6 @@ export function AnimalCard({
   const href = animalPath(animal, locale);
   const label = translate(locale, "openDetails", {
     name: animal.name ?? messages.unnamed,
-  });
-  // The shelter's name is the visible label and the accessible name says more
-  // than it, so the name has to be inside the spoken sentence: WCAG 2.5.3 asks
-  // that what is read starts from what is written.
-  const shelterLabel = translate(locale, "showShelterOnMap", {
-    shelter: animal.shelter.name,
   });
 
   // The href is a real deep link, so a middle click or a held modifier gets
@@ -121,9 +116,10 @@ export function AnimalCard({
         onClick={openDialog}
         // px-3 pt-3 and not p-3: the shelter line below is a sibling now, and
         // the padding that used to close the anchor closes the card down
-        // there instead. The rhythm is unchanged, just split across the two:
-        // pt-1 on the sibling is the space-y-1 gap this anchor no longer
-        // spans, and its pb-3 is this one's missing bottom.
+        // there instead. The sibling's pt-0.5 and pb-2 are smaller than the
+        // pt-1 and pb-3 this anchor gave up, because the button it now holds
+        // is 24px tall where the old text line was 16, and the card ends up
+        // within a couple of pixels of the height it always had.
         className="block space-y-1 px-3 pt-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -165,35 +161,58 @@ export function AnimalCard({
         )}
       </a>
 
-      {/* Outside the anchor, because a control inside a link is a control
-          nothing can reach: a keyboard would have to walk through the card's
-          own link to get to it and a screen reader would announce one thing
-          sitting in another. The line keeps the anchor's place in the card, so
-          the split is only in the DOM.
+      {/* Outside the anchor, because a link inside a link is not markup a
+          browser or a screen reader can make sense of. The line keeps the
+          anchor's place in the card, so the split is only in the DOM.
 
-          The affordance is a pin at the same muted weight the line already
-          had, and the colour only moves on hover. The site says "clickable"
-          this quietly everywhere else (see the picker's own rail and clear
-          buttons), and a shelter's name on a card is a footnote, not the
-          card's offer. The outline is inset like the anchor's above it,
-          because the article clips its overflow and an outward one would be
-          cut off at the card's bottom edge. */}
-      {onShelterClick ? (
-        <button
-          type="button"
-          onClick={() => onShelterClick(animal.shelter.id)}
-          aria-label={shelterLabel}
-          // cursor-pointer because a bare <button> keeps the arrow cursor, and
-          // nothing else here says the line answers a click.
-          className="flex w-full cursor-pointer items-center gap-1 px-3 pb-3 pt-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
-        >
-          <MapPin className="size-3 shrink-0" strokeWidth={1.75} aria-hidden />
-          <span className="min-w-0 truncate">{animal.shelter.name}</span>
-        </button>
-      ) : (
-        <p className="truncate px-3 pb-3 pt-1 text-xs text-muted-foreground">
-          {animal.shelter.name}
-        </p>
+          It goes to the shelter's own page, which is the one destination that
+          answers both questions somebody presses a shelter's name to ask: who
+          they are, and what else they have. Being a real href, it also costs
+          no hydration, opens in a tab on a middle click, and links 500 animal
+          cards into 17 shelter pages for a crawler that would otherwise only
+          reach them from the index.
+
+          Button asChild over an <a> is the house pattern (shelter-block.tsx
+          wraps its listing link the same way), and at size xs the design system
+          already has this exact control: h-6, text-xs, size-3 icons, the focus
+          ring and the press shift every other control here has. The wrapper's
+          px-1 plus the button's own px-2 put the text back on the same 12px
+          rail as the heading above, and leave the hover fill an inset pill
+          rather than a band across the card.
+
+          House and not MapPin. The pin means "place" everywhere else on the
+          site (shelter-card.tsx draws it beside a city), and this line is not
+          where the animal is, it is who is keeping it.
+
+          The chevron is the affordance and it is drawn at rest. Hover was
+          carrying that alone, which says nothing at all on a phone. */}
+      {showShelter && (
+        <div className="px-1 pb-2 pt-0.5">
+          <Button
+            asChild
+            variant="ghost"
+            size="xs"
+            // font-normal because the button's own font-medium would put this
+            // footnote at the weight of the animal's name above it.
+            className="w-full justify-start font-normal text-muted-foreground hover:text-foreground"
+          >
+            <a href={shelterPath(animal.shelter.id, locale)}>
+              <House aria-hidden />
+              {/* The link's own text is its accessible name, the way the
+                  shelter card's is. An aria-label here could only repeat the
+                  name with words around it, and WCAG 2.5.3 asks that what is
+                  spoken start from what is written. */}
+              <span className="min-w-0 truncate">{animal.shelter.name}</span>
+              {/* data-icon is what tells the button to tighten its right
+                  padding for a trailing icon (see buttonVariants). */}
+              <ChevronRight
+                data-icon="inline-end"
+                aria-hidden
+                className="ml-auto opacity-60"
+              />
+            </a>
+          </Button>
+        </div>
       )}
     </article>
   );

@@ -40,7 +40,6 @@ import {
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
-import { requestShelterSpotlight } from "@/lib/shelter-spotlight";
 import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
@@ -471,11 +470,10 @@ export function AnimalGrid({
                 animal={animal}
                 reference={reference}
                 onOpen={handleOpen}
-                // This grid is the one place the shelter name has somewhere
-                // to go: the pickers are mounted below it, inside
-                // AnimalFilters. The event is how the ask crosses that
-                // distance without either side holding a ref to the other.
-                onShelterClick={requestShelterSpotlight}
+                // A shelter's own page renders these same cards and leaves
+                // this off, because there the line would be the page linking
+                // to itself under every animal on it.
+                showShelter
               />
             ))}
           </div>

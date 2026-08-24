@@ -25,7 +25,6 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import {
-  DEFAULT_ANIMAL_SORT,
   parseSort,
   serializeSort,
   SORT_PARAM,

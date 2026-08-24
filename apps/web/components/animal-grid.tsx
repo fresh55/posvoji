@@ -19,6 +19,8 @@ import {
   bySpecies,
   careCounts,
   careOptions,
+  chipGains,
+  chipKey,
   facetCounts,
   goodWithCounts,
   goodWithOptions,
@@ -114,19 +116,24 @@ export function AnimalGrid({
     activeCount,
   } = useAnimalFilters();
 
-  const reference = useMemo(
-    () => new Date(referenceDate),
-    [referenceDate],
-  );
-  // One Date per mount keeps age buckets stable across re-renders.
-  const now = useMemo(() => new Date(), []);
+  // The one clock on this page, and deliberately not the visitor's. Everything
+  // below measures the dataset against it: which age bucket an animal falls in,
+  // how the youngest and oldest orders come out, and how long the longest wait
+  // at a shelter has been. The clock was used for the first three and the
+  // dataset's own date for what the card and the dialog then printed, so the
+  // filter and the words under the photo were answering from two different
+  // days. Prerendering makes it worse than a rounding error: the HTML is built
+  // with the build machine's clock and hydrated with the visitor's, so the two
+  // renders could bucket an animal differently. Ages here are a property of
+  // the export, so they are read off the export.
+  const reference = useMemo(() => new Date(referenceDate), [referenceDate]);
   const visible = useMemo(
-    () => applyFilters(animals, filters, now),
-    [animals, filters, now],
+    () => applyFilters(animals, filters, reference),
+    [animals, filters, reference],
   );
   const sorted = useMemo(
-    () => sortAnimals(visible, sort, locale, now),
-    [visible, sort, locale, now],
+    () => sortAnimals(visible, sort, locale, reference),
+    [visible, sort, locale, reference],
   );
 
   // What the dialog steps through is what the visitor is looking at: the list
@@ -151,8 +158,8 @@ export function AnimalGrid({
     () =>
       visible.length === 0 &&
       filters.shelter.length > 0 &&
-      applyFilters(animals, { ...filters, shelter: [] }, now).length > 0,
-    [animals, filters, now, visible.length],
+      applyFilters(animals, { ...filters, shelter: [] }, reference).length > 0,
+    [animals, filters, reference, visible.length],
   );
 
   const handleClearAll = useCallback(() => {
@@ -202,8 +209,8 @@ export function AnimalGrid({
   // count: which species live there and who has waited longest. Built from the
   // whole dataset and not from `visible`, so the card answers "who is this
   // shelter" rather than "what matches my filter" — the count pill next to the
-  // shelter's name already carries the filtered number. `now` and not
-  // `reference`, because the wait is measured the same way the age buckets are.
+  // shelter's name already carries the filtered number. Measured from
+  // `reference`, the same way the age buckets above are.
   //
   // summarizeShelters only ever sees animals, so the logo is folded in here:
   // `logos` is keyed by the same shelter id (see shelter-block.tsx for the
@@ -211,16 +218,16 @@ export function AnimalGrid({
   // never found a logo for is simply left for ShelterAvatar's initial-letter
   // fallback to answer.
   const shelterSummaries = useMemo(() => {
-    const summaries = summarizeShelters(animals, locale, now);
+    const summaries = summarizeShelters(animals, locale, reference);
     for (const [id, summary] of summaries) {
       const logo = logos[id];
       if (logo) summary.logo = logo;
     }
     return summaries;
-  }, [animals, locale, logos, now]);
+  }, [animals, locale, logos, reference]);
   const counts = useMemo(
-    () => facetCounts(animals, filters, now),
-    [animals, filters, now],
+    () => facetCounts(animals, filters, reference),
+    [animals, filters, reference],
   );
   // The panel follows the species tab: measured against the whole dataset it
   // would offer groups the animals on screen don't vary on.
@@ -233,8 +240,8 @@ export function AnimalGrid({
   // where you adopt from is a map, and it goes next to the species tabs as the
   // other question people arrive with.
   const shown = useMemo(
-    () => visibleGroups(pool, filters.species, now),
-    [pool, filters.species, now],
+    () => visibleGroups(pool, filters.species, reference),
+    [pool, filters.species, reference],
   );
   const groups = useMemo(
     () =>
@@ -267,6 +274,14 @@ export function AnimalGrid({
     const options = groupOptions("shelter", animals, locale);
     return options.length > 0 ? options : undefined;
   }, [animals, locale]);
+  // Their names, by id. The chips row used to ask optionLabel for each one,
+  // and optionLabel rebuilds the whole roster from every animal to answer,
+  // so a row of shelter chips walked the dataset once per pill on every
+  // render. The roster above is that same walk, already done.
+  const shelterLabels = useMemo(
+    () => new Map((shelters ?? []).map(({ value, label }) => [value, label])),
+    [shelters],
+  );
   const toggles = useMemo(
     () =>
       visibleToggles(pool, filters.species).map((toggle) => ({
@@ -276,8 +291,8 @@ export function AnimalGrid({
     [locale, pool, filters.species],
   );
   const toggleTally = useMemo(
-    () => toggleCounts(animals, filters, now),
-    [animals, filters, now],
+    () => toggleCounts(animals, filters, reference),
+    [animals, filters, reference],
   );
   // The section carries its own options, tally and actions, and is left out
   // entirely while no facet has enough answers to narrow anything.
@@ -286,7 +301,7 @@ export function AnimalGrid({
     if (keys.length === 0) return undefined;
     return {
       options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: goodWithCounts(animals, filters, now),
+      counts: goodWithCounts(animals, filters, reference),
       resultCount: visible.length,
       total: pool.length,
       onToggle: toggleGoodWith,
@@ -296,7 +311,7 @@ export function AnimalGrid({
     animals,
     filters,
     locale,
-    now,
+    reference,
     pool,
     visible.length,
     toggleGoodWith,
@@ -310,7 +325,7 @@ export function AnimalGrid({
     if (keys.length === 0) return undefined;
     return {
       options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: homeCounts(animals, filters, now),
+      counts: homeCounts(animals, filters, reference),
       resultCount: visible.length,
       total: pool.length,
       onToggle: toggleHome,
@@ -320,7 +335,7 @@ export function AnimalGrid({
     animals,
     filters,
     locale,
-    now,
+    reference,
     pool,
     visible.length,
     toggleHome,
@@ -332,7 +347,7 @@ export function AnimalGrid({
     if (keys.length === 0) return undefined;
     return {
       options: careOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: careCounts(animals, filters, now),
+      counts: careCounts(animals, filters, reference),
       resultCount: visible.length,
       total: pool.length,
       onToggle: toggleCare,
@@ -342,7 +357,7 @@ export function AnimalGrid({
     animals,
     filters,
     locale,
-    now,
+    reference,
     pool,
     visible.length,
     toggleCare,
@@ -354,59 +369,17 @@ export function AnimalGrid({
   // hover, and, when nothing matches at all, a mark on the single chip that is
   // the cheapest way out.
   //
-  // The number is signed, and negative is a real answer. Values inside one
-  // facet are OR-ed, so dropping one of two sexes leaves a narrower filter,
-  // not a wider one, and the row correctly offers nothing there: no tooltip,
-  // and never a "way out" that is not one.
-  //
-  // A full applyFilters pass per chip, which is the cost of that being true.
-  // The obvious saving is not available: counting, in one pass, the animals
-  // that fail exactly one filter answers a different question, and gets every
-  // multi-value facet backwards. Measured at roughly 15ms for the whole
-  // click-to-paint with ten chips over five hundred animals, and it costs
-  // nothing at all when nothing is filtered, which is most visits.
-  const chipGain = useMemo(() => {
-    const gains = new Map<string, number>();
-    if (activeCount === 0) return gains;
-    const without = (key: string, next: Filters) => {
-      gains.set(key, applyFilters(animals, next, now).length - visible.length);
-    };
-    for (const group of GROUPS) {
-      for (const value of filters[group]) {
-        without(`${group}:${value}`, {
-          ...filters,
-          [group]: (filters[group] as string[]).filter(
-            (selected) => selected !== value,
-          ),
-        });
-      }
-    }
-    for (const key of filters.toggles) {
-      without(`toggle:${key}`, {
-        ...filters,
-        toggles: filters.toggles.filter((selected) => selected !== key),
-      });
-    }
-    for (const key of filters.goodWith) {
-      without(`goodWith:${key}`, {
-        ...filters,
-        goodWith: filters.goodWith.filter((selected) => selected !== key),
-      });
-    }
-    for (const key of filters.home) {
-      without(`home:${key}`, {
-        ...filters,
-        home: filters.home.filter((selected) => selected !== key),
-      });
-    }
-    for (const key of filters.care) {
-      without(`care:${key}`, {
-        ...filters,
-        care: filters.care.filter((selected) => selected !== key),
-      });
-    }
-    return gains;
-  }, [activeCount, animals, filters, now, visible.length]);
+  // This used to be a full applyFilters pass per chip, on the reasoning that
+  // no one-pass shortcut could answer it: counting the animals that fail
+  // exactly one filter is a different question, and gets every multi-value
+  // facet backwards. True as far as it went. The answer was to stop counting
+  // failures and count the two things that actually move, which chipGains does
+  // in one walk (lib/filters.ts), so a row of chips now costs what one chip
+  // used to.
+  const chipGain = useMemo(
+    () => chipGains(animals, filters, reference),
+    [animals, filters, reference],
+  );
 
   // The pressed species tab already shows itself, so chips cover only the
   // sidebar/sheet groups and the shelter picker. The rule is not "everything
@@ -420,51 +393,51 @@ export function AnimalGrid({
   const chips: Chip[] = [
     ...GROUPS.flatMap((group) =>
       filters[group].map((value) => ({
-        key: `${group}:${value}`,
+        key: chipKey(group, value),
         facet: group,
         value,
         label:
           group === "shelter"
-            ? shelterChipLabel(optionLabel(group, value, animals, locale))
+            ? shelterChipLabel(shelterLabels.get(value) ?? value)
             : optionLabel(group, value, animals, locale),
-        gain: chipGain.get(`${group}:${value}`),
+        gain: chipGain.get(chipKey(group, value)),
         onRemove: () => toggle(group, value),
       })),
     ),
     ...filters.toggles.map((key) => ({
-      key: `toggle:${key}`,
+      key: chipKey("toggles", key),
       facet: "toggles" as const,
       value: key,
       label: toggleLabel(key, locale),
-      gain: chipGain.get(`toggle:${key}`),
+      gain: chipGain.get(chipKey("toggles", key)),
       onRemove: () => toggleProperty(key),
     })),
     // Not the card label: on a row of chips "Psi" would read as the species
     // tab, so these name the household instead.
     ...filters.goodWith.map((key) => ({
-      key: `goodWith:${key}`,
+      key: chipKey("goodWith", key),
       facet: "goodWith" as const,
       value: key,
       label: goodWithChipLabel(key, locale),
-      gain: chipGain.get(`goodWith:${key}`),
+      gain: chipGain.get(chipKey("goodWith", key)),
       onRemove: () => toggleGoodWith(key),
     })),
     // Both of these read as whole phrases on the card already, so a chip says
     // the same words rather than a second wording of them.
     ...filters.home.map((key) => ({
-      key: `home:${key}`,
+      key: chipKey("home", key),
       facet: "home" as const,
       value: key,
       label: homeLabel(key, locale),
-      gain: chipGain.get(`home:${key}`),
+      gain: chipGain.get(chipKey("home", key)),
       onRemove: () => toggleHome(key),
     })),
     ...filters.care.map((key) => ({
-      key: `care:${key}`,
+      key: chipKey("care", key),
       facet: "care" as const,
       value: key,
       label: careLabel(key, locale),
-      gain: chipGain.get(`care:${key}`),
+      gain: chipGain.get(chipKey("care", key)),
       onRemove: () => toggleCare(key),
     })),
   ];

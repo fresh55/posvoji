@@ -31,13 +31,13 @@ export function ShelterAnimalGrid({
 }) {
   const { locale } = useI18n();
 
-  // One Date per mount keeps ages stable across re-renders, same as the home
-  // page grid.
-  const now = useMemo(() => new Date(), []);
+  // The dataset's own date and not the clock, same as the home page grid: the
+  // order and the ages printed on the cards in it have to be read off the same
+  // day, and prerendered HTML has no access to the visitor's.
   const reference = useMemo(() => new Date(referenceDate), [referenceDate]);
   const sorted = useMemo(
-    () => sortAnimals(animals, DEFAULT_ANIMAL_SORT, locale, now),
-    [animals, locale, now],
+    () => sortAnimals(animals, DEFAULT_ANIMAL_SORT, locale, reference),
+    [animals, locale, reference],
   );
 
   // The dialog steps through this shelter's animals in the order shown.

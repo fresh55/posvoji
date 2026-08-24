@@ -50,6 +50,33 @@ export function getServerLocationSnapshot(): string {
 // is defensible; this one is picked because it matches what a URL already
 // looks like today (codec params only) once foreign params are prepended,
 // rather than interleaving them.
+/** decodeURIComponent, for the parts of a URL a visitor can hand us.
+ *
+ *  It throws on a malformed escape, and a URL is not required to be well
+ *  formed to reach us: ?100%=x and /zival/a%zz/x/y are both addresses a
+ *  browser will happily sit on. The throw then comes out of whatever reads the
+ *  location next, which is a render or a filter write, and takes the page with
+ *  it rather than degrading to a link that does not resolve.
+ *
+ *  Nothing the site writes into a URL needs escaping to be understood, so the
+ *  raw bytes are the right answer whenever the decode cannot be made: a name
+ *  that will not decode is not one of ours, and a slug that will not decode
+ *  matches no animal. Reading the URL must never throw, and this is the one
+ *  function that has to hold that. */
+export function decodeOrRaw(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+// The name a query pair carries, for the one question asked of it here: is
+// this one of ours.
+function paramName(pair: string): string {
+  return decodeOrRaw(pair.split("=")[0] ?? "");
+}
+
 export function mergeOwnedParams(
   currentSearch: string,
   ownedParams: readonly string[],
@@ -60,7 +87,7 @@ export function mergeOwnedParams(
     .replace(/^\?/, "")
     .split("&")
     .filter((pair) => pair.length > 0)
-    .filter((pair) => !owned.has(decodeURIComponent(pair.split("=")[0] ?? "")));
+    .filter((pair) => !owned.has(paramName(pair)));
   return [...foreign, ownedQuery].filter((part) => part.length > 0).join("&");
 }
 

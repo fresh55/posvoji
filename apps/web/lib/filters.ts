@@ -162,25 +162,9 @@ export function toggleLabel(key: ToggleKey, locale: Locale = "sl"): string {
     : TOGGLE_LABELS_EN[key];
 }
 
-function matchesToggles(animal: Animal, selected: ToggleKey[]): boolean {
-  if (selected.length === 0) return true;
-  return TOGGLES.some(
-    (toggle) => selected.includes(toggle.key) && toggle.matches(animal),
-  );
-}
-
 /** Only a recorded yes counts, so "unknown" and no both drop out. */
 export function goodWithMatches(animal: Animal, key: GoodWithKey): boolean {
   return animal.goodWith?.[key] === "yes";
-}
-
-// AND within this section, unlike every other one. The other sections offer
-// alternatives of a single attribute, so widening them is what the visitor
-// asked for. These are independent constraints of one household: a family with
-// a child and a dog needs both answered yes, and an OR here would put
-// dog-intolerant animals in front of dog owners.
-function matchesGoodWith(animal: Animal, selected: GoodWithKey[]): boolean {
-  return selected.every((key) => goodWithMatches(animal, key));
 }
 
 /** Only a recorded yes counts, so "unknown" and no both drop out. */
@@ -199,16 +183,6 @@ export function careMatches(animal: Animal, key: CareKey): boolean {
   }
 }
 
-function matchesHome(animal: Animal, selected: HomeKey[]): boolean {
-  if (selected.length === 0) return true;
-  return selected.some((key) => homeMatches(animal, key));
-}
-
-function matchesCare(animal: Animal, selected: CareKey[]): boolean {
-  if (selected.length === 0) return true;
-  return selected.some((key) => careMatches(animal, key));
-}
-
 // Boundaries in months: under a year is a baby, past eight a senior.
 const PUPPY_MAX_EXCLUSIVE = 12;
 const ADULT_MAX_EXCLUSIVE = 96;
@@ -222,18 +196,37 @@ export function ageInMonths(
   animal: { birthDate?: string; approximateAgeMonths?: number },
   now: Date,
 ): number | undefined {
-  if (animal.approximateAgeMonths !== undefined) {
-    return animal.approximateAgeMonths;
-  }
-  if (animal.birthDate) {
-    const birth = new Date(animal.birthDate);
-    if (Number.isNaN(birth.getTime())) return undefined;
-    const months =
-      (now.getUTCFullYear() - birth.getUTCFullYear()) * 12 +
-      (now.getUTCMonth() - birth.getUTCMonth());
-    return Math.max(0, months);
-  }
-  return undefined;
+  // The approximate answer first, and only then the parse: passing bornAt() as
+  // an argument made it eager, which put a Date construction back into the
+  // youngest/oldest sort for every animal that carries both fields.
+  if (animal.approximateAgeMonths !== undefined) return animal.approximateAgeMonths;
+  return ageFrom(undefined, bornAt(animal.birthDate), monthsOf(now));
+}
+
+// Whole months, the unit the subtraction above is done in. Split out because
+// the index below holds a birth date as one of these: a number that does not
+// move is a column it can build once, where a date has to be parsed again
+// every time somebody asks how old the animal is.
+function monthsOf(date: Date): number {
+  return date.getUTCFullYear() * 12 + date.getUTCMonth();
+}
+
+function bornAt(birthDate: string | undefined): number | undefined {
+  if (!birthDate) return undefined;
+  const birth = new Date(birthDate);
+  return Number.isNaN(birth.getTime()) ? undefined : monthsOf(birth);
+}
+
+// The rule itself, with both callers going through it so the index and the
+// dialog can never come to different answers about the same animal.
+function ageFrom(
+  approximate: number | undefined,
+  born: number | undefined,
+  nowMonths: number,
+): number | undefined {
+  if (approximate !== undefined) return approximate;
+  if (born === undefined) return undefined;
+  return Math.max(0, nowMonths - born);
 }
 
 // Exported so the dialog can show the same life stage the filter buckets by.
@@ -247,39 +240,320 @@ function matchesSpecies(animal: Animal, species: SpeciesFilter): boolean {
   return species === "all" || animal.species === species;
 }
 
-// "unknown" sex is semantically the same as absent: we don't know.
-function groupValue(
-  animal: Animal,
+// ---------------------------------------------------------------------------
+// The index.
+//
+// Every question the panel asks is a walk over the same animals: the result,
+// five facet tallies, four section tallies, five "has this section anything
+// left to narrow", and, since the chips row started pricing its pills, one
+// more walk per active chip. Each of those re-read every animal's fields and
+// re-parsed every birth date, so a screen with ten chips did the same date
+// arithmetic eighty times over. That is fine at five hundred animals and it is
+// the first thing that stops being fine.
+//
+// So the fields the filter cares about are read once into columns, and the
+// four key sections are reduced to a bitmask each: "which of these does this
+// animal answer" becomes one number, and "does it answer any of the ones I
+// picked" becomes one &. Every walk below is then integer work over arrays.
+// ---------------------------------------------------------------------------
+
+/** One bit per key, in the order that section's key list declares them. */
+function maskOf(count: number, answers: (bit: number) => boolean): number {
+  let mask = 0;
+  for (let bit = 0; bit < count; bit += 1) {
+    if (answers(bit)) mask |= 1 << bit;
+  }
+  return mask;
+}
+
+/** The toggle keys in the order TOGGLES declares them, which is the bit order
+ *  of every toggle mask in the index. Exported so nothing has to re-derive it
+ *  and risk a different order. */
+export const TOGGLE_KEYS: readonly ToggleKey[] = TOGGLES.map(
+  (toggle) => toggle.key,
+);
+
+// One bit per group, in GROUPS order. Written out rather than derived, so a
+// sixth group fails to compile here instead of quietly sharing a bit with one
+// of these.
+const GROUP_BITS: Record<MultiGroup, number> = {
+  sex: 1 << 0,
+  age: 1 << 1,
+  size: 1 << 2,
+  energy: 1 << 3,
+  shelter: 1 << 4,
+};
+
+type Column<Value> = readonly (Value | undefined)[];
+
+/** The dataset as the filter reads it: one slot per animal, in the order the
+ *  animals were given. Every column here is a property of the animal alone,
+ *  which is what lets one index answer for any date. Age is the exception, and
+ *  it is held as its two date-free halves. */
+type FilterIndex = {
+  readonly species: readonly Species[];
+  readonly sex: Column<string>;
+  readonly size: Column<string>;
+  readonly energy: Column<string>;
+  readonly shelter: readonly string[];
+  readonly approximate: Column<number>;
+  readonly born: Column<number>;
+  readonly toggles: readonly number[];
+  readonly goodWith: readonly number[];
+  readonly home: readonly number[];
+  readonly care: readonly number[];
+  /** The age buckets, worked out on demand and kept for as long as the same
+   *  date keeps being asked about. The one column a clock moves. */
+  ages: { at: number; values: Column<AgeGroup> } | null;
+};
+
+function buildIndex(animals: readonly Animal[]): FilterIndex {
+  const species: Species[] = [];
+  const sex: (string | undefined)[] = [];
+  const size: (string | undefined)[] = [];
+  const energy: (string | undefined)[] = [];
+  const shelter: string[] = [];
+  const approximate: (number | undefined)[] = [];
+  const born: (number | undefined)[] = [];
+  const toggles: number[] = [];
+  const goodWith: number[] = [];
+  const home: number[] = [];
+  const care: number[] = [];
+  for (const animal of animals) {
+    species.push(animal.species);
+    // "unknown" sex is semantically the same as absent: we do not know.
+    sex.push(animal.sex === "unknown" ? undefined : animal.sex);
+    size.push(animal.size);
+    energy.push(animal.energy);
+    shelter.push(animal.shelter.id);
+    approximate.push(animal.approximateAgeMonths);
+    born.push(bornAt(animal.birthDate));
+    toggles.push(maskOf(TOGGLES.length, (bit) => TOGGLES[bit].matches(animal)));
+    goodWith.push(
+      maskOf(GOOD_WITH_KEYS.length, (bit) =>
+        goodWithMatches(animal, GOOD_WITH_KEYS[bit]),
+      ),
+    );
+    home.push(
+      maskOf(HOME_KEYS.length, (bit) => homeMatches(animal, HOME_KEYS[bit])),
+    );
+    care.push(
+      maskOf(CARE_KEYS.length, (bit) => careMatches(animal, CARE_KEYS[bit])),
+    );
+  }
+  return {
+    species,
+    sex,
+    size,
+    energy,
+    shelter,
+    approximate,
+    born,
+    toggles,
+    goodWith,
+    home,
+    care,
+    ages: null,
+  };
+}
+
+// One index per list, held weakly so a list the page has let go takes its
+// index with it. Identity is the key, and that is what makes it safe: these
+// lists come from an import or a memo and are never written to, and a list
+// rebuilt from different animals is a different array with an index of its
+// own. The page asks its eleven questions of the same two lists on every
+// render, so in practice this builds twice per dataset and is read from
+// thereafter.
+const indexes = new WeakMap<readonly Animal[], FilterIndex>();
+
+function indexOf(animals: readonly Animal[]): FilterIndex {
+  const cached = indexes.get(animals);
+  if (cached !== undefined) return cached;
+  const index = buildIndex(animals);
+  indexes.set(animals, index);
+  return index;
+}
+
+function ageColumn(index: FilterIndex, nowMonths: number): Column<AgeGroup> {
+  if (index.ages !== null && index.ages.at === nowMonths) {
+    return index.ages.values;
+  }
+  const values = index.approximate.map((approximate, slot) => {
+    const months = ageFrom(approximate, index.born[slot], nowMonths);
+    return months === undefined ? undefined : ageGroup(months);
+  });
+  index.ages = { at: nowMonths, values };
+  return values;
+}
+
+/** A selection resolved once per question rather than once per animal: the
+ *  group choices as sets, the key sections as masks. */
+type Query = {
+  species: SpeciesFilter;
+  groups: Record<MultiGroup, ReadonlySet<string> | null>;
+  toggles: number;
+  goodWith: number;
+  home: number;
+  care: number;
+};
+
+function queryOf(filters: Filters): Query {
+  // null and not an empty set: the difference between a section asking nothing
+  // and a section asking for something no animal has.
+  const chosen = (group: MultiGroup): ReadonlySet<string> | null =>
+    filters[group].length === 0 ? null : new Set<string>(filters[group]);
+  return {
+    species: filters.species,
+    groups: {
+      sex: chosen("sex"),
+      age: chosen("age"),
+      size: chosen("size"),
+      energy: chosen("energy"),
+      shelter: chosen("shelter"),
+    },
+    toggles: maskOf(TOGGLES.length, (bit) =>
+      filters.toggles.includes(TOGGLE_KEYS[bit]),
+    ),
+    goodWith: maskOf(GOOD_WITH_KEYS.length, (bit) =>
+      filters.goodWith.includes(GOOD_WITH_KEYS[bit]),
+    ),
+    home: maskOf(HOME_KEYS.length, (bit) =>
+      filters.home.includes(HOME_KEYS[bit]),
+    ),
+    care: maskOf(CARE_KEYS.length, (bit) =>
+      filters.care.includes(CARE_KEYS[bit]),
+    ),
+  };
+}
+
+/** Everything a walk over the animals needs, worked out before it starts. */
+type Pass = {
+  index: FilterIndex;
+  ages: Column<AgeGroup>;
+  query: Query;
+};
+
+function passOf(animals: Animal[], filters: Filters, now: Date): Pass {
+  const index = indexOf(animals);
+  return {
+    index,
+    ages: ageColumn(index, monthsOf(now)),
+    query: queryOf(filters),
+  };
+}
+
+/** How many animals the pass walks. The index's own columns say, so a Pass
+ *  cannot hold an extent that disagrees with the columns it reads. */
+function lengthOf(pass: Pass): number {
+  return pass.index.species.length;
+}
+
+function valueAt(
+  pass: Pass,
+  slot: number,
   group: MultiGroup,
-  now: Date,
 ): string | undefined {
   switch (group) {
     case "sex":
-      return animal.sex === "unknown" ? undefined : animal.sex;
-    case "age": {
-      const months = ageInMonths(animal, now);
-      return months === undefined ? undefined : ageGroup(months);
-    }
+      return pass.index.sex[slot];
+    case "age":
+      return pass.ages[slot];
     case "size":
-      return animal.size;
+      return pass.index.size[slot];
     case "energy":
-      return animal.energy;
+      return pass.index.energy[slot];
     case "shelter":
-      return animal.shelter.id;
+      return pass.index.shelter[slot];
   }
 }
 
-// An animal without the field only drops out once the group is actively
-// filtered: selecting "samica" is a requirement, not a preference.
-function matchesGroup(
-  animal: Animal,
-  group: MultiGroup,
-  selected: string[],
-  now: Date,
+function speciesAt(pass: Pass, slot: number): boolean {
+  return (
+    pass.query.species === "all" ||
+    pass.index.species[slot] === pass.query.species
+  );
+}
+
+/** Which group sections this animal fails, one bit each. An animal without the
+ *  field only drops out once the group is actively filtered: selecting
+ *  "samica" is a requirement, not a preference. */
+function groupsFailedAt(pass: Pass, slot: number): number {
+  let failed = 0;
+  for (const group of GROUPS) {
+    const chosen = pass.query.groups[group];
+    if (chosen === null) continue;
+    const value = valueAt(pass, slot, group);
+    if (value === undefined || !chosen.has(value)) failed |= GROUP_BITS[group];
+  }
+  return failed;
+}
+
+/** OR within the section: any one of the picked keys is enough, and a section
+ *  with nothing picked asks nothing. Lastnosti, Dom and Skrb all read this
+ *  way. */
+function answersAny(answered: number, picked: number): boolean {
+  return picked === 0 || (answered & picked) !== 0;
+}
+
+// AND within this section, unlike every other one. The other sections offer
+// alternatives of a single attribute, so widening them is what the visitor
+// asked for. These are independent constraints of one household: a family with
+// a child and a dog needs both answered yes, and an OR here would put
+// dog-intolerant animals in front of dog owners. What comes back is which
+// picked facets went unanswered rather than merely whether any did, because
+// the counters below have to tell one missing answer from two.
+function goodWithFailedAt(pass: Pass, slot: number): number {
+  return pass.query.goodWith & ~pass.index.goodWith[slot];
+}
+
+/** The sections that are not groups, all of them except the one being
+ *  measured. Every counter below wants this and each wants a different line
+ *  left out, which is the faceting rule: a number next to an option is what
+ *  you get when you pick it, so everything applies except the axis being
+ *  counted.
+ *
+ *  Druzba is not among the axes that can be lifted here, and that is the AND
+ *  exception showing through: the OR sections drop whole, so measuring one
+ *  means switching it off, while an AND section has to keep the facets it is
+ *  not measuring. goodWithCounts therefore passes null and does its own
+ *  lifting. The groups are the caller's business too: facetCounts wants the
+ *  mask of which ones failed, everyone else only wants it to be zero. */
+type LiftedSection = "toggles" | "home" | "care";
+
+function sectionsPass(
+  pass: Pass,
+  slot: number,
+  lift: LiftedSection | null,
 ): boolean {
-  if (selected.length === 0) return true;
-  const value = groupValue(animal, group, now);
-  return value !== undefined && selected.includes(value);
+  if (!speciesAt(pass, slot)) return false;
+  if (
+    lift !== "toggles" &&
+    !answersAny(pass.index.toggles[slot], pass.query.toggles)
+  ) {
+    return false;
+  }
+  // Cheapest guard of the four and the one that rejects most, so it goes
+  // early rather than behind the two that walk a key list.
+  if (goodWithFailedAt(pass, slot) !== 0) return false;
+  if (lift !== "home" && !answersAny(pass.index.home[slot], pass.query.home)) {
+    return false;
+  }
+  if (lift !== "care" && !answersAny(pass.index.care[slot], pass.query.care)) {
+    return false;
+  }
+  return true;
+}
+
+function bump(counts: Map<string, number>, key: string): void {
+  counts.set(key, (counts.get(key) ?? 0) + 1);
+}
+
+/** How one answer is named where a facet and a value have to travel together:
+ *  the key chipGains prices under, and the key the chips row is built with.
+ *  Exported because both sides need the same spelling and neither should be
+ *  free to invent it. */
+export function chipKey(facet: FilterFacet, value: string): string {
+  return `${facet}:${value}`;
 }
 
 export function applyFilters(
@@ -287,51 +561,34 @@ export function applyFilters(
   filters: Filters,
   now: Date,
 ): Animal[] {
+  const pass = passOf(animals, filters, now);
   return animals.filter(
-    (animal) =>
-      matchesSpecies(animal, filters.species) &&
-      matchesToggles(animal, filters.toggles) &&
-      matchesGoodWith(animal, filters.goodWith) &&
-      matchesHome(animal, filters.home) &&
-      matchesCare(animal, filters.care) &&
-      GROUPS.every((group) => matchesGroup(animal, group, filters[group], now)),
+    (_, slot) =>
+      speciesAt(pass, slot) &&
+      answersAny(pass.index.toggles[slot], pass.query.toggles) &&
+      goodWithFailedAt(pass, slot) === 0 &&
+      answersAny(pass.index.home[slot], pass.query.home) &&
+      answersAny(pass.index.care[slot], pass.query.care) &&
+      groupsFailedAt(pass, slot) === 0,
   );
 }
 
-// The faceting rule, shared by both counters: a number next to an option is
-// what you get when you pick it, so every filter applies except the one axis
-// being counted. Groups skip themselves; toggles drop themselves from the set.
-function passesFacet(
-  animal: Animal,
-  filters: Filters,
-  now: Date,
-  applied: {
-    toggles: ToggleKey[];
-    goodWith: GoodWithKey[];
-    home: HomeKey[];
-    care: CareKey[];
-    skipGroup?: MultiGroup;
-  },
-): boolean {
-  return (
-    matchesSpecies(animal, filters.species) &&
-    matchesToggles(animal, applied.toggles) &&
-    matchesGoodWith(animal, applied.goodWith) &&
-    matchesHome(animal, applied.home) &&
-    matchesCare(animal, applied.care) &&
-    GROUPS.every(
-      (group) =>
-        group === applied.skipGroup ||
-        matchesGroup(animal, group, filters[group], now),
-    )
-  );
-}
-
+// The faceting rule, shared by every counter here: a number next to an option
+// is what you get when you pick it, so every filter applies except the one
+// axis being counted. Groups skip themselves; the key sections drop themselves
+// from the selection.
+//
+// One walk and not one per group. An animal belongs in a group's tally exactly
+// when the only group it fails, if any, is that group itself: fail nothing and
+// it counts under every group, fail one and it counts under that one alone,
+// fail two and no single pick can bring it back. That is the answer the five
+// separate walks gave, read off one pass.
 export function facetCounts(
   animals: Animal[],
   filters: Filters,
   now: Date,
 ): Record<MultiGroup, Map<string, number>> {
+  const pass = passOf(animals, filters, now);
   const counts = {
     sex: new Map<string, number>(),
     age: new Map<string, number>(),
@@ -339,46 +596,36 @@ export function facetCounts(
     energy: new Map<string, number>(),
     shelter: new Map<string, number>(),
   };
-  for (const group of GROUPS) {
-    const applied = {
-      toggles: filters.toggles,
-      goodWith: filters.goodWith,
-      home: filters.home,
-      care: filters.care,
-      skipGroup: group,
-    };
-    for (const animal of animals) {
-      if (!passesFacet(animal, filters, now, applied)) continue;
-      const value = groupValue(animal, group, now);
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!sectionsPass(pass, slot, null)) continue;
+    const failed = groupsFailedAt(pass, slot);
+    for (const group of GROUPS) {
+      if ((failed & ~GROUP_BITS[group]) !== 0) continue;
+      const value = valueAt(pass, slot, group);
       if (value === undefined) continue;
-      counts[group].set(value, (counts[group].get(value) ?? 0) + 1);
+      bump(counts[group], value);
     }
   }
   return counts;
 }
 
+// Count each choice with the health axis removed, just like facetCounts
+// removes the group it is measuring. The number then answers what this choice
+// itself can add under the filters from every other section.
 export function toggleCounts(
   animals: Animal[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const toggle of TOGGLES) {
-    // Count each choice with the health axis removed, just like facetCounts
-    // removes the group it is measuring. The number then answers what this
-    // choice itself can add under the filters from every other section.
-    const applied = {
-      toggles: [],
-      goodWith: filters.goodWith,
-      home: filters.home,
-      care: filters.care,
-    };
-    let total = 0;
-    for (const animal of animals) {
-      if (!passesFacet(animal, filters, now, applied)) continue;
-      if (toggle.matches(animal)) total += 1;
+  const pass = passOf(animals, filters, now);
+  const counts = new Map<string, number>(TOGGLE_KEYS.map((key) => [key, 0]));
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!sectionsPass(pass, slot, "toggles")) continue;
+    if (groupsFailedAt(pass, slot) !== 0) continue;
+    const answered = pass.index.toggles[slot];
+    for (let bit = 0; bit < TOGGLE_KEYS.length; bit += 1) {
+      if ((answered & (1 << bit)) !== 0) bump(counts, TOGGLE_KEYS[bit]);
     }
-    counts.set(toggle.key, total);
   }
   return counts;
 }
@@ -386,54 +633,63 @@ export function toggleCounts(
 // The number beside a choice still answers "what do I get if I pick this",
 // but an AND section cannot drop its whole axis to work that out. Only the
 // facet being measured comes off the selection; the rest stay on, and the
-// facet itself is then required on top of them.
+// facet itself is then required on top of them. Written out, that is: the
+// animals that answer this facet and leave no other picked one unanswered,
+// since an animal answering this facet cannot be failing on it.
 export function goodWithCounts(
   animals: Animal[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const key of GOOD_WITH_KEYS) {
-    const applied = {
-      toggles: filters.toggles,
-      goodWith: filters.goodWith.filter((selected) => selected !== key),
-      home: filters.home,
-      care: filters.care,
-    };
-    let total = 0;
-    for (const animal of animals) {
-      if (!passesFacet(animal, filters, now, applied)) continue;
-      if (goodWithMatches(animal, key)) total += 1;
+  const pass = passOf(animals, filters, now);
+  const counts = new Map<string, number>(GOOD_WITH_KEYS.map((key) => [key, 0]));
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!sectionsPass(pass, slot, null)) continue;
+    if (groupsFailedAt(pass, slot) !== 0) continue;
+    const answered = pass.index.goodWith[slot];
+    for (let bit = 0; bit < GOOD_WITH_KEYS.length; bit += 1) {
+      if ((answered & (1 << bit)) !== 0) bump(counts, GOOD_WITH_KEYS[bit]);
     }
-    counts.set(key, total);
   }
   return counts;
 }
 
-// Same rule again, one section over: the facet being measured comes off its
-// own selection, every other section stays on, and the facet is required on
+// Same rule again, one section over, and this one ORs: the facet being
+// measured comes off its own selection, whatever is left of that selection
+// still applies, every other section stays on, and the facet is required on
 // top of them.
+//
+// Dom and Skrb ask the same question of different columns, so they ask it
+// through one walk rather than two copies of it. The line that does the real
+// work is the second answersAny: it is the "whatever is left of that
+// selection" clause, and it was the part worth not having twice.
+function orSectionCounts(
+  pass: Pass,
+  section: LiftedSection,
+  keys: readonly string[],
+): Map<string, number> {
+  const counts = new Map<string, number>(keys.map((key) => [key, 0]));
+  const picked = pass.query[section];
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!sectionsPass(pass, slot, section)) continue;
+    if (groupsFailedAt(pass, slot) !== 0) continue;
+    const answered = pass.index[section][slot];
+    for (let bit = 0; bit < keys.length; bit += 1) {
+      const own = 1 << bit;
+      if ((answered & own) === 0) continue;
+      if (!answersAny(answered, picked & ~own)) continue;
+      bump(counts, keys[bit]);
+    }
+  }
+  return counts;
+}
+
 export function homeCounts(
   animals: Animal[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const key of HOME_KEYS) {
-    const applied = {
-      toggles: filters.toggles,
-      goodWith: filters.goodWith,
-      home: filters.home.filter((selected) => selected !== key),
-      care: filters.care,
-    };
-    let total = 0;
-    for (const animal of animals) {
-      if (!passesFacet(animal, filters, now, applied)) continue;
-      if (homeMatches(animal, key)) total += 1;
-    }
-    counts.set(key, total);
-  }
-  return counts;
+  return orSectionCounts(passOf(animals, filters, now), "home", HOME_KEYS);
 }
 
 export function careCounts(
@@ -441,27 +697,152 @@ export function careCounts(
   filters: Filters,
   now: Date,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const key of CARE_KEYS) {
-    const applied = {
-      toggles: filters.toggles,
-      goodWith: filters.goodWith,
-      home: filters.home,
-      care: filters.care.filter((selected) => selected !== key),
-    };
-    let total = 0;
-    for (const animal of animals) {
-      if (!passesFacet(animal, filters, now, applied)) continue;
-      if (careMatches(animal, key)) total += 1;
+  return orSectionCounts(passOf(animals, filters, now), "care", CARE_KEYS);
+}
+
+/** What each active value is costing: how many more animals show if it comes
+ *  off, everything else left alone. Keyed the way the chips row keys itself.
+ *
+ *  The number is signed, and negative is a real answer. Values inside one
+ *  facet are OR-ed, so dropping one of two sexes leaves a narrower filter, not
+ *  a wider one, and the row correctly offers nothing there.
+ *
+ *  One walk, where the row used to buy a full pass over the dataset per chip.
+ *  What makes that possible is that dropping one value moves the result in
+ *  exactly one of two ways, and both can be counted while walking:
+ *
+ *  - It empties its section, and the section stops asking. What comes back is
+ *    everything that failed nothing but that section, which is the population
+ *    the section's own facet counts are already measured over.
+ *  - It leaves the section with alternatives. Nothing new can come in, and
+ *    what goes out is the animals in the result this value alone was letting
+ *    through.
+ *
+ *  Druzba is the exception to both, because it ANDs: dropping a facet there
+ *  only ever widens, by exactly the animals that fail that facet and nothing
+ *  else. */
+export function chipGains(
+  animals: Animal[],
+  filters: Filters,
+  now: Date,
+): Map<string, number> {
+  const gains = new Map<string, number>();
+  if (activeFilterCount(filters) === 0) return gains;
+  const pass = passOf(animals, filters, now);
+  const { index, query } = pass;
+
+  let result = 0;
+  // Per section: the population left if that section stopped asking.
+  const freedGroup: Record<MultiGroup, number> = {
+    sex: 0,
+    age: 0,
+    size: 0,
+    energy: 0,
+    shelter: 0,
+  };
+  let freedToggles = 0;
+  let freedHome = 0;
+  let freedCare = 0;
+  // Druzba's facets are counted one by one, since dropping one of them widens
+  // by itself rather than by emptying the section.
+  const freedGoodWith = new Map<string, number>();
+  // Inside the result, what each picked value is holding up on its own.
+  const sole = new Map<string, number>();
+
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!speciesAt(pass, slot)) continue;
+    const groupsFailed = groupsFailedAt(pass, slot);
+    const goodWithFailed = goodWithFailedAt(pass, slot);
+    const togglesOk = answersAny(index.toggles[slot], query.toggles);
+    const homeOk = answersAny(index.home[slot], query.home);
+    const careOk = answersAny(index.care[slot], query.care);
+    const orSectionsOk = togglesOk && homeOk && careOk;
+
+    if (orSectionsOk && groupsFailed === 0) {
+      for (let bit = 0; bit < GOOD_WITH_KEYS.length; bit += 1) {
+        if (goodWithFailed === 1 << bit) {
+          bump(freedGoodWith, GOOD_WITH_KEYS[bit]);
+        }
+      }
     }
-    counts.set(key, total);
+    if (goodWithFailed !== 0) continue;
+
+    if (orSectionsOk) {
+      for (const group of GROUPS) {
+        if ((groupsFailed & ~GROUP_BITS[group]) === 0) freedGroup[group] += 1;
+      }
+    }
+    if (groupsFailed !== 0) continue;
+
+    // Each of the three measured with itself lifted, which for an OR section
+    // means the whole section.
+    if (homeOk && careOk) freedToggles += 1;
+    if (togglesOk && careOk) freedHome += 1;
+    if (togglesOk && homeOk) freedCare += 1;
+    if (!orSectionsOk) continue;
+
+    // Everything passes, so this animal is in the result, and the result is
+    // the only place a value can be the sole reason something is showing.
+    result += 1;
+    for (const group of GROUPS) {
+      if (query.groups[group] === null) continue;
+      const value = valueAt(pass, slot, group);
+      if (value !== undefined) bump(sole, chipKey(group, value));
+    }
+    // An exact match on one bit is the test: this animal answers that value
+    // and no other the section picked, so the value is holding it up alone.
+    for (let bit = 0; bit < TOGGLE_KEYS.length; bit += 1) {
+      if ((index.toggles[slot] & query.toggles) === 1 << bit) {
+        bump(sole, chipKey("toggles", TOGGLE_KEYS[bit]));
+      }
+    }
+    for (let bit = 0; bit < HOME_KEYS.length; bit += 1) {
+      if ((index.home[slot] & query.home) === 1 << bit) {
+        bump(sole, chipKey("home", HOME_KEYS[bit]));
+      }
+    }
+    for (let bit = 0; bit < CARE_KEYS.length; bit += 1) {
+      if ((index.care[slot] & query.care) === 1 << bit) {
+        bump(sole, chipKey("care", CARE_KEYS[bit]));
+      }
+    }
   }
-  return counts;
+
+  // A section with one value picked empties when that value comes off; a
+  // section with more keeps asking, so what leaves is what only that value
+  // was answering for.
+  const price = (key: string, last: boolean, freed: number) => {
+    gains.set(key, last ? freed - result : -(sole.get(key) ?? 0));
+  };
+  for (const group of GROUPS) {
+    const chosen = filters[group];
+    for (const value of chosen) {
+      price(chipKey(group, value), chosen.length === 1, freedGroup[group]);
+    }
+  }
+  for (const key of filters.toggles) {
+    price(chipKey("toggles", key), filters.toggles.length === 1, freedToggles);
+  }
+  for (const key of filters.home) {
+    price(chipKey("home", key), filters.home.length === 1, freedHome);
+  }
+  for (const key of filters.care) {
+    price(chipKey("care", key), filters.care.length === 1, freedCare);
+  }
+  for (const key of filters.goodWith) {
+    gains.set(chipKey("goodWith", key), freedGoodWith.get(key) ?? 0);
+  }
+  return gains;
 }
 
 // The panel measures itself against the species tab rather than the whole
 // dataset, so what it offers is what the animals on screen can be narrowed by.
 export function bySpecies(animals: Animal[], species: SpeciesFilter): Animal[] {
+  // The same array back on the Vse tab, and deliberately: a copy is a second
+  // identity, and a second identity is a second index over the very same
+  // animals (see indexOf). Every caller treats the pool as read-only, and the
+  // landing state is the one where the copy bought nothing at all.
+  if (species === "all") return animals;
   return animals.filter((animal) => matchesSpecies(animal, species));
 }
 
@@ -479,42 +860,57 @@ function toggleFitsSpecies(
   return only === undefined || only === species;
 }
 
+/** How many animals answer each key of one section, in a single walk. All four
+ *  callers below want the same thing from it: a key every animal answers, or
+ *  none do, cannot narrow anything. */
+function answeredCounts(masks: readonly number[], keys: number): number[] {
+  const counts = new Array<number>(keys).fill(0);
+  for (const mask of masks) {
+    for (let bit = 0; bit < keys; bit += 1) {
+      if ((mask & (1 << bit)) !== 0) counts[bit] += 1;
+    }
+  }
+  return counts;
+}
+
+function narrows(matching: number, total: number): boolean {
+  return matching > 0 && matching < total;
+}
+
 // A toggle that every animal passes (or none do) can't narrow anything.
 export function visibleToggles(
   animals: Animal[],
   species: SpeciesFilter,
 ): ToggleDef[] {
-  return TOGGLES.filter((toggle) => {
-    if (!toggleFitsSpecies(toggle.species, species)) return false;
-    const matching = animals.filter((a) => toggle.matches(a)).length;
-    return matching > 0 && matching < animals.length;
-  });
+  const counts = answeredCounts(indexOf(animals).toggles, TOGGLES.length);
+  return TOGGLES.filter(
+    (toggle, bit) =>
+      toggleFitsSpecies(toggle.species, species) &&
+      narrows(counts[bit], animals.length),
+  );
 }
 
 // Same rule as visibleToggles, and no species pinning: every one of these
 // questions is asked of dogs and cats alike. The section therefore reveals
 // itself facet by facet as shelters start answering.
 export function visibleGoodWith(animals: Animal[]): GoodWithKey[] {
-  return GOOD_WITH_KEYS.filter((key) => {
-    const matching = animals.filter((a) => goodWithMatches(a, key)).length;
-    return matching > 0 && matching < animals.length;
-  });
+  const counts = answeredCounts(
+    indexOf(animals).goodWith,
+    GOOD_WITH_KEYS.length,
+  );
+  return GOOD_WITH_KEYS.filter((_, bit) => narrows(counts[bit], animals.length));
 }
 
 // Same rule, and no species pinning either: a flat is a flat whether a dog or
 // a cat lives in it.
 export function visibleHome(animals: Animal[]): HomeKey[] {
-  return HOME_KEYS.filter((key) => {
-    const matching = animals.filter((a) => homeMatches(a, key)).length;
-    return matching > 0 && matching < animals.length;
-  });
+  const counts = answeredCounts(indexOf(animals).home, HOME_KEYS.length);
+  return HOME_KEYS.filter((_, bit) => narrows(counts[bit], animals.length));
 }
 
 export function visibleCare(animals: Animal[]): CareKey[] {
-  return CARE_KEYS.filter((key) => {
-    const matching = animals.filter((a) => careMatches(a, key)).length;
-    return matching > 0 && matching < animals.length;
-  });
+  const counts = answeredCounts(indexOf(animals).care, CARE_KEYS.length);
+  return CARE_KEYS.filter((_, bit) => narrows(counts[bit], animals.length));
 }
 
 export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> {
@@ -537,6 +933,8 @@ export function visibleGroups(
   species: SpeciesFilter,
   now: Date,
 ): Record<MultiGroup, boolean> {
+  const index = indexOf(animals);
+  const ages = ageColumn(index, monthsOf(now));
   const distinct = {
     sex: new Set<string>(),
     age: new Set<string>(),
@@ -544,11 +942,15 @@ export function visibleGroups(
     energy: new Set<string>(),
     shelter: new Set<string>(),
   };
-  for (const animal of animals) {
-    for (const group of GROUPS) {
-      const value = groupValue(animal, group, now);
-      if (value !== undefined) distinct[group].add(value);
-    }
+  const add = (group: MultiGroup, value: string | undefined) => {
+    if (value !== undefined) distinct[group].add(value);
+  };
+  for (let slot = 0; slot < animals.length; slot += 1) {
+    add("sex", index.sex[slot]);
+    add("age", ages[slot]);
+    add("size", index.size[slot]);
+    add("energy", index.energy[slot]);
+    add("shelter", index.shelter[slot]);
   }
   const shown = (group: MultiGroup) =>
     groupFitsSpecies(group, species) && distinct[group].size >= 2;
@@ -857,40 +1259,63 @@ export function serializeFilters(filters: Filters): string {
 // Unknown slugs are dropped silently: a stale shared link should degrade to
 // fewer filters, not break the page. So is anything the link's own species tab
 // hides, such as a cat-only toggle carried onto ?vrsta=pes.
+// What one param is allowed to put into state. Four of the five groups are
+// bounded by their own metadata, but Zavetisce is not: its slugs are shelter
+// ids, which the codec passes through because it has no dataset to check them
+// against. Everything downstream then pays per value: a chip in the sticky
+// header, and a full pass over the dataset to price that chip (chipGain in
+// animal-grid.tsx). ?zavetisce= with five thousand ids in it was five thousand
+// of each, on the phone, from a link anyone can write. The cap is well past
+// the longest real selection, which is every shelter in the country at eleven.
+const MAX_VALUES_PER_PARAM = 32;
+// Past the longest real slug, which is ten characters.
+const MAX_VALUE_LENGTH = 64;
+
+// The comma-separated values of one param, bounded and deduplicated before
+// anything is looked up. An empty one is dropped rather than kept: ?zavetisce=,
+// used to parse to a single "" shelter, which no animal has, so the page went
+// to nothing matching behind a chip with no words on it and no way to reason
+// about what was on.
+function paramValues(params: URLSearchParams, name: string): string[] {
+  // getAll and not get: this codec writes one param carrying a comma list, but
+  // a URL is free to repeat a param instead, and hand-edited and hand-built
+  // links do. get() returns only the first, so ?spol=samec&spol=samica quietly
+  // filtered on samec alone. Joining the repeats reads both shapes as the one
+  // list they mean, and the dedup below covers a value written in both.
+  //
+  // No empty-string guard: an absent or empty param splits to [""], which the
+  // length filter drops, so the empty case already lands on [].
+  const raw = params.getAll(name).join(",");
+  return [
+    ...new Set(
+      raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter(
+          (value) => value.length > 0 && value.length <= MAX_VALUE_LENGTH,
+        ),
+    ),
+  ].slice(0, MAX_VALUES_PER_PARAM);
+}
+
 export function parseFilters(search: string): Filters {
   const params = new URLSearchParams(search);
   const slug = params.get("vrsta");
   const species =
     Species.options.find((value) => SPECIES_SLUGS[value] === slug) ?? "all";
-  const values = (group: MultiGroup): string[] => {
-    const raw = params.get(PARAM_NAMES[group]);
-    if (!raw) return [];
-    return [
-      ...new Set(
-        raw
-          .split(",")
-          .map((slug) => fromSlug(group, slug))
-          .filter((v): v is string => v !== undefined),
-      ),
-    ];
-  };
-  const toggles = (params.get("lastnosti") ?? "")
-    .split(",")
-    .filter((slug): slug is ToggleKey =>
-      TOGGLES.some((t) => t.key === slug),
-    );
-  const codedValues = (group: ValueGroup): string[] => {
-    const raw = params.get(VALUE_PARAM_NAMES[group]);
-    if (!raw) return [];
-    return [
-      ...new Set(
-        raw
-          .split(",")
-          .map((slug) => valueFromSlug(group, slug))
-          .filter((value): value is string => value !== undefined),
-      ),
-    ];
-  };
+  // No second dedupe below: paramValues has already made the slugs unique, and
+  // every slug-to-value lookup here is one-to-one.
+  const values = (group: MultiGroup): string[] =>
+    paramValues(params, PARAM_NAMES[group])
+      .map((slug) => fromSlug(group, slug))
+      .filter((value): value is string => value !== undefined);
+  const toggles = paramValues(params, "lastnosti").filter(
+    (slug): slug is ToggleKey => TOGGLES.some((t) => t.key === slug),
+  );
+  const codedValues = (group: ValueGroup): string[] =>
+    paramValues(params, VALUE_PARAM_NAMES[group])
+      .map((slug) => valueFromSlug(group, slug))
+      .filter((value): value is string => value !== undefined);
   return pruneHiddenFilters({
     species,
     sex: values("sex") as Sex[],
@@ -898,7 +1323,7 @@ export function parseFilters(search: string): Filters {
     size: values("size") as AnimalSize[],
     energy: values("energy") as EnergyLevel[],
     shelter: values("shelter"),
-    toggles: [...new Set(toggles)],
+    toggles,
     goodWith: codedValues("goodWith") as GoodWithKey[],
     home: codedValues("home") as HomeKey[],
     care: codedValues("care") as CareKey[],

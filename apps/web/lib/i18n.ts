@@ -54,8 +54,7 @@ const sl = {
   statusHold: "trenutno ni za posvojitev",
   lessThanMonth: "manj kot mesec",
   unnamed: "Brez imena",
-  animalsComingSoon:
-    "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
+  animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
   noResults: "Ni zadetkov.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
@@ -112,6 +111,12 @@ const sl = {
   mapInstructionsMuni: "Zemljevid pokaže pristojno zavetišče",
   locating: "Iščem lokacijo…",
   nearestFirst: "Najbližje prvo",
+  // The picker's way out, naming what is behind it rather than the press
+  // itself. {count} arrives already formatted by animalCount, so the noun and
+  // its agreement are decided in lib/labels.ts and this string only supplies
+  // the verb. Accusative after "Pokaži", which for žival is the same in every
+  // form as the nominative animalCount returns.
+  showAnimals: "Pokaži {count}",
   searchShelters: "Išči zavetišče po imenu…",
   noSheltersFound: "Ni zadetkov za",
   clearSearch: "Počisti iskanje",
@@ -141,8 +146,7 @@ const sl = {
     "Pokliči zavetišče in povej, kje je žival. Odlov in prevoz sta del javne službe.",
   muniStep2:
     "Če je žival označena s čipom, zavetišče preveri register in v 24 urah obvesti lastnika.",
-  muniStep3:
-    "Poškodovane živali ne premikaj na silo. To povej po telefonu.",
+  muniStep3: "Poškodovane živali ne premikaj na silo. To povej po telefonu.",
   muniLost: "Si žival izgubil? Poglej živali v tem zavetišču",
   muniNearestTitle: "Najbližja zavetišča",
   muniNearestNote:
@@ -167,15 +171,21 @@ const sl = {
   speciesAbsenceRabbits: "zajčkov",
   speciesAbsenceOther: "drugih živali",
   longestWaiting: "Najdlje čaka: {name}, {duration}",
-  closePickCard: "Zapri kartico",
-  shelterPickCardLabel: "Izbrano na zemljevidu: {label}",
   showShelterDetails: "Pokaži podrobnosti za {label}",
+  hideShelterDetailsFor: "Skrij podrobnosti za {label}",
+  showShelterDetailsShort: "Pokaži podrobnosti",
+  hideShelterDetails: "Skrij podrobnosti",
   lessThanOneKm: "manj kot 1 km",
   fewerAnimals: "Manj živali",
   moreAnimals: "Več živali",
   shelter: "Zavetišče",
   noAnimalsListed: "Trenutno brez objavljenih živali",
-  noAnimalsListedHeading: "Trenutno brez objavljenih živali",
+  // The heading now carries how many, because the group folds shut and a
+  // closed group has to say what is inside it before anyone opens it. It is
+  // also where "Zavetišč z živalmi: 11 od 17" went: that fraction only ever
+  // explained this group, so it is said on the group instead of in a status
+  // line above a list the group sits at the foot of.
+  noAnimalsListedHeadingCount: "Trenutno brez objavljenih živali ({count})",
   // The metadata line an empty region's callout carries. Lowercase-calm like
   // the counts it stands in for, because it answers the same question.
   noSheltersInRegion: "Ni zavetišč v tej regiji",
@@ -368,6 +378,7 @@ const en: Messages = {
   mapInstructionsMuni: "The map shows the responsible shelter",
   locating: "Finding your location…",
   nearestFirst: "Nearest first",
+  showAnimals: "Show {count}",
   searchShelters: "Search shelters by name…",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
@@ -419,15 +430,16 @@ const en: Messages = {
   speciesAbsenceRabbits: "rabbits",
   speciesAbsenceOther: "other animals",
   longestWaiting: "Waiting longest: {name}, {duration}",
-  closePickCard: "Close the card",
-  shelterPickCardLabel: "Picked on the map: {label}",
   showShelterDetails: "Show details for {label}",
+  hideShelterDetailsFor: "Hide details for {label}",
+  showShelterDetailsShort: "Show details",
+  hideShelterDetails: "Hide details",
   lessThanOneKm: "less than 1 km",
   fewerAnimals: "Fewer animals",
   moreAnimals: "More animals",
   shelter: "Shelter",
   noAnimalsListed: "No animals listed right now",
-  noAnimalsListedHeading: "No animals listed right now",
+  noAnimalsListedHeadingCount: "No animals listed right now ({count})",
   noSheltersInRegion: "No shelters in this region",
   regionCoveredBy: "Covered by {shelters}",
   regionCoveredByTwo: "Covered by {shelters}",
@@ -450,7 +462,8 @@ const en: Messages = {
   resetGoodWithFilters: "Reset who lives with you",
   goodWithFilterHint:
     "Tell us who already lives with you. Animals the shelter has not answered for stay hidden.",
-  goodWithOutcome: "Showing animals that get on with {list}. {count} of {total}.",
+  goodWithOutcome:
+    "Showing animals that get on with {list}. {count} of {total}.",
   goodWithLeadKids: "kids",
   goodWithLeadDogs: "dogs",
   goodWithLeadCats: "cats",
@@ -518,4 +531,3 @@ export function translate(
 ): string {
   return interpolate(messages[locale][key], values);
 }
-

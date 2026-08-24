@@ -15,7 +15,6 @@ import {
   cityAt,
   distanceKm,
   formatKm,
-  KM_PER_MAP_UNIT,
   MAP_HEIGHT,
   MAP_WIDTH,
   onMap,
@@ -107,21 +106,17 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
 
 /** What one look at the laid-out country says, for the panel and its legend.
  *
- *  Three of the four are the states the legend grows a row for, and each row
- *  waits for the thing it explains to exist: the solid selection green the
- *  moment a region is picked whole, the hatch the moment one is partly picked,
- *  the hollow circle the moment a shelter with nothing listed is drawn.
+ *  Each is a state the legend grows a row for, and each row waits for the
+ *  thing it explains to exist: the solid selection green the moment a region
+ *  is picked whole, the hatch the moment one is partly picked, the hollow
+ *  circle the moment a shelter with nothing listed is drawn.
  *
- *  The fourth is whereabouts the picking has landed, which the panel says in
- *  its own sentence above the list. It belongs here and not in a second helper
- *  because laying the towns out and walking each one through a point-in-polygon
- *  lookup is the expensive part, and all four answers come off that one pass.
- *
- *  All four share that layout and those stats with the map itself, so neither
- *  a legend row nor the panel's sentence can claim a state the country is not
- *  in. This is the shared projection the panel is required to read: a second
- *  definition of what "in a region" means is what would let the map and the
- *  sentence disagree.
+ *  One helper and one pass, because laying the towns out and walking each one
+ *  through a point-in-polygon lookup is the expensive part and every answer
+ *  comes off it. All three share that layout and those stats with the map
+ *  itself, so a legend row cannot claim a state the country is not in: a
+ *  second definition of what "in a region" means is what would let the map and
+ *  its own legend disagree.
  *
  *  hasEmpty is about markers, which are md+ only; the legend decides for
  *  itself at which widths its own rendering acts on it. */
@@ -132,16 +127,6 @@ export function mapFacts(
   hasSelected: boolean;
   hasMixed: boolean;
   hasEmpty: boolean;
-  /** Every region holding at least one picked shelter, whole or partly, in the
-   *  canonical order REGION_SHAPES lists them in rather than in the order they
-   *  were clicked: the sentence they feed is a description of where the filter
-   *  stands, not a history of how it got there.
-   *
-   *  A partly picked region is named the same as a whole one. The names answer
-   *  "whereabouts", so a region with one of its three shelters picked is still
-   *  somewhere the visitor is looking; leaving it out would name fewer places
-   *  than the count beside it accounts for. */
-  selectedRegions: string[];
 } {
   const towns = layoutTowns(pins);
   const { byRegion } = groupTownsByRegion(towns);
@@ -154,12 +139,6 @@ export function mapFacts(
       ({ stats }) => stats.live && stats.state === "mixed",
     ),
     hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected)),
-    // No `live` test beside it: a region whose state is anything but false has
-    // a picked shelter among its values, which is one of the two things live
-    // itself asks for.
-    selectedRegions: regions
-      .filter(({ stats }) => stats.state !== false)
-      .map(({ region }) => region.name),
   };
 }
 
@@ -501,8 +480,7 @@ export function ShelterMap({
    *  there. The other shelter in a shared town is untouched, because
    *  calloutShelter is the wedge under the pointer. */
   const saidElsewhere =
-    Boolean(describedElsewhere) &&
-    calloutShelter?.value === describedElsewhere;
+    Boolean(describedElsewhere) && calloutShelter?.value === describedElsewhere;
 
   /** The line under the annotation's title, when the annotation carries one.
    *  A wedge under the pointer answers for its own shelter; a town answers for
@@ -592,8 +570,7 @@ export function ShelterMap({
           : key === "End"
             ? liveRegionIds.length - 1
             : key === "ArrowLeft" || key === "ArrowUp"
-              ? (currentIndex - 1 + liveRegionIds.length) %
-                liveRegionIds.length
+              ? (currentIndex - 1 + liveRegionIds.length) % liveRegionIds.length
               : (currentIndex + 1) % liveRegionIds.length;
       const nextId = liveRegionIds[nextIndex];
       setFocusedRegionId(nextId);
@@ -688,9 +665,7 @@ export function ShelterMap({
   const handleTownHoverShelter = useCallback(
     (town: Town, value: string | null) => {
       if (value === null) {
-        setHoveredTownKey((current) =>
-          current === town.key ? null : current,
-        );
+        setHoveredTownKey((current) => (current === town.key ? null : current));
         setHoveredShelterValue(null);
         onHoverShelters?.(null);
         return;
@@ -933,101 +908,100 @@ export function ShelterMap({
         wide={plateWide}
       />
 
-      {/* Under the callouts on purpose: a card is the answer someone just
-          asked for, and the bar is furniture that can wait behind it. */}
-      <ScaleBar />
-
       {origin && onMap(origin) && <Origin at={origin} />}
 
       {/* The class is still what hides the layer, so the server and the first
           paint agree; plateWide is what stops building it once the plate has
           measured itself too small to show it. See the state's own note. */}
       {plateWide && (
-      <g className="hidden md:block">
-        {towns.map((town) => (
-          <Marker
-            key={town.key}
-            town={town}
-            selected={selected}
-            // Handed straight through, unadapted: Marker already has town as
-            // its own prop, and builds the MapPick itself. Same reasoning as
-            // Region's own onPick above.
-            onPick={onPick}
-            highlighted={town.key === highlightedTown?.key}
-            dimmed={
-              matchedValues != null &&
-              !town.shelters.some((shelter) =>
-                matchedValues.includes(shelter.value),
-              )
-            }
-            // Scoped to the town it names rather than handed to every
-            // marker: this state is which single shelter inside one town's
-            // cluster holds the pointer, and every other town's marker would
-            // otherwise see that value change on a render that has nothing
-            // to do with it.
-            hoveredShelterValue={
-              town.key === hoveredTownKey ? hoveredShelterValue : null
-            }
-            onPointerEnter={handleTownPointerEnter}
-            onPointerLeave={handleTownPointerLeave}
-            onHoverShelter={handleTownHoverShelter}
-            // One tab stop for the whole plate of coins; the arrows move
-            // between them from there. A town that is not a control never
-            // takes the stop, and the marker refuses it as well.
-            tabIndex={town.key === tabStopTownKey ? 0 : -1}
-            elementRef={setTownRef}
-            onFocus={handleTownFocus}
-            onBlur={handleTownBlur}
-            onMoveFocus={handleTownMoveFocus}
-          />
-        ))}
+        <g className="hidden md:block">
+          {towns.map((town) => (
+            <Marker
+              key={town.key}
+              town={town}
+              selected={selected}
+              // Handed straight through, unadapted: Marker already has town as
+              // its own prop, and builds the MapPick itself. Same reasoning as
+              // Region's own onPick above.
+              onPick={onPick}
+              highlighted={town.key === highlightedTown?.key}
+              dimmed={
+                matchedValues != null &&
+                !town.shelters.some((shelter) =>
+                  matchedValues.includes(shelter.value),
+                )
+              }
+              // Scoped to the town it names rather than handed to every
+              // marker: this state is which single shelter inside one town's
+              // cluster holds the pointer, and every other town's marker would
+              // otherwise see that value change on a render that has nothing
+              // to do with it.
+              hoveredShelterValue={
+                town.key === hoveredTownKey ? hoveredShelterValue : null
+              }
+              onPointerEnter={handleTownPointerEnter}
+              onPointerLeave={handleTownPointerLeave}
+              onHoverShelter={handleTownHoverShelter}
+              // One tab stop for the whole plate of coins; the arrows move
+              // between them from there. A town that is not a control never
+              // takes the stop, and the marker refuses it as well.
+              tabIndex={town.key === tabStopTownKey ? 0 : -1}
+              elementRef={setTownRef}
+              onFocus={handleTownFocus}
+              onBlur={handleTownBlur}
+              onMoveFocus={handleTownMoveFocus}
+            />
+          ))}
 
-        {/* Under the annotation and over the coins: how far the visitor is
+          {/* Under the annotation and over the coins: how far the visitor is
             from the town they are pointing at, in the dashes the origin ring
             already wears, because both marks are about the same person.
             A town only. A region hover asks about a dozen shelters spread
             over a province, and a line from one point to a polygon measures
             nothing anybody asked for. */}
-        {origin && onMap(origin) && activeTown && (
-          <OriginDistance
-            origin={origin}
-            town={activeTown}
-            scale={plateScale}
-            // The same number the list rows carry, from the same two
-            // functions, so the map and the row cannot disagree about how far
-            // away a town is.
-            label={formatKm(
-              distanceKm(origin, activeTown.shelters[0].at),
-              messages.lessThanOneKm,
-            )}
-          />
-        )}
+          {origin && onMap(origin) && activeTown && (
+            <OriginDistance
+              origin={origin}
+              town={activeTown}
+              scale={plateScale}
+              // The same number the list rows carry, from the same two
+              // functions, so the map and the row cannot disagree about how far
+              // away a town is.
+              label={formatKm(
+                distanceKm(origin, activeTown.shelters[0].at),
+                messages.lessThanOneKm,
+              )}
+            />
+          )}
 
-        {/* Keep the active tooltip above every marker. A spotlighted town
+          {/* Keep the active tooltip above every marker. A spotlighted town
             already wears a persistent card saying the same thing, so hover
             must not stack a second card on top of it. */}
-        {activeTown && !spotlightTowns.some((t) => t.key === activeTown.key) && (
-          <MapCallout
-            x={activeTown.x}
-            y={activeTown.y}
-            reach={activeTown.r}
-            scale={plateScale}
-            // One town annotation at a time, whichever town it is about, so
-            // one name covers the site rather than one per town.
-            rectKey="town"
-            onRect={handleCalloutRect}
-            // A wedge under the pointer names its own shelter. Without that a
-            // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
-            // at, which is the one question the cluster cannot answer.
-            title={hoveredShelter ? hoveredShelter.label : townLabel(activeTown)}
-            // The name always; the rest only when nothing else is already
-            // saying it. Both lines go together, which is what leaves
-            // MapCallout drawing its dense one-line label.
-            metadata={saidElsewhere ? undefined : townMetadata}
-            species={saidElsewhere ? undefined : calloutSpecies}
-          />
-        )}
-      </g>
+          {activeTown &&
+            !spotlightTowns.some((t) => t.key === activeTown.key) && (
+              <MapCallout
+                x={activeTown.x}
+                y={activeTown.y}
+                reach={activeTown.r}
+                scale={plateScale}
+                // One town annotation at a time, whichever town it is about, so
+                // one name covers the site rather than one per town.
+                rectKey="town"
+                onRect={handleCalloutRect}
+                // A wedge under the pointer names its own shelter. Without that a
+                // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
+                // at, which is the one question the cluster cannot answer.
+                title={
+                  hoveredShelter ? hoveredShelter.label : townLabel(activeTown)
+                }
+                // The name always; the rest only when nothing else is already
+                // saying it. Both lines go together, which is what leaves
+                // MapCallout drawing its dense one-line label.
+                metadata={saidElsewhere ? undefined : townMetadata}
+                species={saidElsewhere ? undefined : calloutSpecies}
+              />
+            )}
+        </g>
       )}
 
       {hoveredRegion && (
@@ -1103,22 +1077,12 @@ export function ShelterMap({
             strokeWidth={1.5}
             className="fill-none stroke-[var(--filter-accent-strong)]"
           />
-          {/* The ring that travels, over the static one that always marks the
-              spot. The ping keyframes hold the last quarter of the cycle
-              invisible, so a slow duration leaves a pause between rings
-              rather than a sonar sweep. The duration is inline because
-              animate-ping sets the animation shorthand, which would win over
-              a utility. transform-box and transform-origin are set because
-              an SVG shape otherwise scales from the viewBox origin instead
-              of its own centre. */}
-          <circle
-            cx={town.x}
-            cy={town.y}
-            r={town.r + SPOTLIGHT_RING}
-            strokeWidth={1.5}
-            style={{ animationDuration: "2.2s" }}
-            className="origin-center fill-none stroke-[var(--filter-accent-strong)] [transform-box:fill-box] animate-ping motion-reduce:animate-none"
-          />
+          {/* No second, travelling ring over this one. A pulse repeating for
+              as long as the spotlight stands is motion with nothing left to
+              say after the first cycle: the spotlight is already the only
+              accented mark on the map, it is painted last, and the callout
+              beside it names the shelter outright. The static ring marks the
+              spot and then holds still. */}
           <circle
             cx={town.x}
             cy={town.y}
@@ -1492,115 +1456,62 @@ function PlateFurniture({
           the size, where 3.8-unit type renders under five pixels: unreadable
           type is not quiet, it is dirt. */}
       {wide && (
-      <g className="hidden md:block">
-        {CITY_ANCHORS.map((anchor) => {
-          // The town's laid-out disc when the city has one, so the name stays
-          // welded to the mark it captions however far collision layout nudged
-          // it; the raw projection when it does not.
-          const town = towns.find((candidate) => candidate.city === anchor.city);
-          const at = town ?? (() => {
-            const raw = cityAt(anchor.city);
-            return raw ? { ...project(raw), r: 0 } : null;
-          })();
-          if (!at) return null;
-          const dx =
-            anchor.anchor === "start"
-              ? at.r + CITY_ANCHOR_GAP
-              : -(at.r + CITY_ANCHOR_GAP + 0.7);
-          const textX = at.x + dx;
-          const textY = at.y + (town ? 1.4 : -3.5);
-          // The cartographic convention, and the whole reason the annotations
-          // report where they landed. An annotation carries no card, so a name
-          // drawn under one interleaves with it letter for letter: the halo
-          // keeps the annotation readable and does nothing at all for the
-          // anchor. The anchor is the one that gives way, because it answers
-          // no question. It is simply not on the plate while the annotation
-          // is, with no transition of its own: this is not a state the name is
-          // in, it is a name that is not being drawn.
-          //
-          // Anchor text only. The coins never move for an annotation, being
-          // the subject it is about, and the neighbour and sea names are set
-          // out over ground that draws no markers and raises no annotations.
-          const covered = calloutRects.some((rect) =>
-            boxesOverlap(
-              anchorBox(anchor.city, textX, textY, anchor.anchor),
-              rect,
-            ),
-          );
-          if (covered) return null;
-          return (
-            <text
-              key={anchor.city}
-              data-map-city={anchor.city}
-              x={textX}
-              y={textY}
-              textAnchor={anchor.anchor}
-              fontSize={CITY_ANCHOR_TYPE}
-              className={cn("tracking-[0.04em]", FURNITURE_INK)}
-            >
-              {anchor.city}
-            </text>
-          );
-        })}
-      </g>
+        <g className="hidden md:block">
+          {CITY_ANCHORS.map((anchor) => {
+            // The town's laid-out disc when the city has one, so the name stays
+            // welded to the mark it captions however far collision layout nudged
+            // it; the raw projection when it does not.
+            const town = towns.find(
+              (candidate) => candidate.city === anchor.city,
+            );
+            const at =
+              town ??
+              (() => {
+                const raw = cityAt(anchor.city);
+                return raw ? { ...project(raw), r: 0 } : null;
+              })();
+            if (!at) return null;
+            const dx =
+              anchor.anchor === "start"
+                ? at.r + CITY_ANCHOR_GAP
+                : -(at.r + CITY_ANCHOR_GAP + 0.7);
+            const textX = at.x + dx;
+            const textY = at.y + (town ? 1.4 : -3.5);
+            // The cartographic convention, and the whole reason the annotations
+            // report where they landed. An annotation carries no card, so a name
+            // drawn under one interleaves with it letter for letter: the halo
+            // keeps the annotation readable and does nothing at all for the
+            // anchor. The anchor is the one that gives way, because it answers
+            // no question. It is simply not on the plate while the annotation
+            // is, with no transition of its own: this is not a state the name is
+            // in, it is a name that is not being drawn.
+            //
+            // Anchor text only. The coins never move for an annotation, being
+            // the subject it is about, and the neighbour and sea names are set
+            // out over ground that draws no markers and raises no annotations.
+            const covered = calloutRects.some((rect) =>
+              boxesOverlap(
+                anchorBox(anchor.city, textX, textY, anchor.anchor),
+                rect,
+              ),
+            );
+            if (covered) return null;
+            return (
+              <text
+                key={anchor.city}
+                data-map-city={anchor.city}
+                x={textX}
+                y={textY}
+                textAnchor={anchor.anchor}
+                fontSize={CITY_ANCHOR_TYPE}
+                className={cn("tracking-[0.04em]", FURNITURE_INK)}
+              >
+                {anchor.city}
+              </text>
+            );
+          })}
+        </g>
       )}
-    </g>
-  );
-}
-
-// A round number that stays a caption. 50 km would be 62.9 units, a fifth of
-// the map's width, and would read as a graphic rather than as a measure; 25 km
-// is 31.4 units, about the width of the legend row it stands over.
-const SCALE_BAR_KM = 25;
-// The bottom-right corner, with the rest of the map's furniture. Right end six
-// units off the edge, matching the margin the plate's other type keeps.
-//
-// y 194 and no longer 176: the bar used to be held that far up because the
-// legend was an HTML overlay on this canvas whose height moved with the aspect
-// ratio, so the only safe thing was to clear the tallest it could get. The
-// legend is a caption under the plate now (see location-picker.tsx), nothing
-// is drawn over this corner any more, and the bar can sit where a printed
-// sheet would put it: near the frame, with the four units of margin the rest
-// of the furniture keeps. Everything in this corner is Croatia at this
-// projection (lon 15.9 east, lat 45.6 south), so the bar crosses no shape of
-// Slovenia's.
-const SCALE_BAR_RIGHT = 314;
-const SCALE_BAR_Y = 194;
-const SCALE_BAR_TICK = 1.5;
-
-// The map's second piece of type, after the callouts, and it has to stay the
-// quieter one. Upright: italic is the water's register on a map. Both the line
-// and the label run at the silhouette's alpha and under half its width, so the
-// bar sits below the country rather than beside it.
-const SCALE_BAR_TEXT = 4.2;
-
-// Digits and "km" read in every language the site has, so the one label on the
-// map needs no message key.
-function ScaleBar() {
-  const length = SCALE_BAR_KM / KM_PER_MAP_UNIT;
-  const left = SCALE_BAR_RIGHT - length;
-  const top = SCALE_BAR_Y - SCALE_BAR_TICK;
-  const bottom = SCALE_BAR_Y + SCALE_BAR_TICK;
-  return (
-    // Off the plate below the width the rest of the small type leaves at: the
-    // bar's own label is 4.2 units, which is about five pixels on a phone.
-    <g aria-hidden className={cn("pointer-events-none", PLATE_TOO_SMALL)}>
-      <path
-        data-map-scale={SCALE_BAR_KM}
-        d={`M${left} ${top}V${bottom}M${left} ${SCALE_BAR_Y}H${SCALE_BAR_RIGHT}M${SCALE_BAR_RIGHT} ${top}V${bottom}`}
-        strokeWidth={0.5}
-        strokeLinecap="round"
-        className="fill-none stroke-foreground/45"
-      />
-      <text
-        x={SCALE_BAR_RIGHT}
-        y={SCALE_BAR_Y - 2.5}
-        textAnchor="end"
-        fontSize={SCALE_BAR_TEXT}
-        className="fill-foreground/45 stroke-none"
-      >
-        {`${SCALE_BAR_KM} km`}
-      </text>
     </g>
   );
 }
@@ -1713,7 +1624,15 @@ const SEA_FADE_RESUMES_RIGHT_OF_X = 50;
 // viewBox edge at full strength. A map that ends at its frame is ordinary
 // cartography; a map with its only water washed out is not.
 const FADE_STRIPS = [
-  { key: "t", x: 0, y: 0, w: MAP_WIDTH, h: CONTEXT_FADE, from: [0, 0], to: [0, 1] },
+  {
+    key: "t",
+    x: 0,
+    y: 0,
+    w: MAP_WIDTH,
+    h: CONTEXT_FADE,
+    from: [0, 0],
+    to: [0, 1],
+  },
   {
     key: "b",
     x: 0,
@@ -1723,7 +1642,15 @@ const FADE_STRIPS = [
     from: [0, 1],
     to: [0, 0],
   },
-  { key: "l", x: 0, y: 0, w: CONTEXT_FADE, h: MAP_HEIGHT, from: [0, 0], to: [1, 0] },
+  {
+    key: "l",
+    x: 0,
+    y: 0,
+    w: CONTEXT_FADE,
+    h: MAP_HEIGHT,
+    from: [0, 0],
+    to: [1, 0],
+  },
   {
     key: "r",
     x: MAP_WIDTH - CONTEXT_FADE,
@@ -2083,12 +2010,7 @@ const REGION_LOOK: Record<
 // that could drift apart. Exported for map-marker.tsx, type-only, which is why
 // the two files can import from each other without becoming circular.
 export type RegionMoveKey =
-  | "ArrowLeft"
-  | "ArrowRight"
-  | "ArrowUp"
-  | "ArrowDown"
-  | "Home"
-  | "End";
+  "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" | "Home" | "End";
 
 // Empty regions remain visible and answer a hover with their name and "no
 // shelters", but nothing more: no click, no tab stop. Every other mark on this
@@ -2273,9 +2195,7 @@ export const Region = memo(function Region({
         }
       }}
       style={
-        stats.state === false
-          ? densityStyle(stats.density, dimmed)
-          : undefined
+        stats.state === false ? densityStyle(stats.density, dimmed) : undefined
       }
       className={cn(
         // fill-opacity was already in the list and already animated a species

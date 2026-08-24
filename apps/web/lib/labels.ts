@@ -113,16 +113,6 @@ export function sheltersOf(
   return `${selected} od ${total} ${total === 1 ? "zavetišča" : "zavetišč"}`;
 }
 
-// Where the picked shelters are, once there are too many regions to name them
-// all. Locative, because the phrase answers "where" and not "how many", and
-// the locative singular is the one form that differs: "v 1 regiji" against
-// "v 2 regijah" and everything above it. shelterCount's nominative shape
-// cannot stand in for it, the same reason sheltersOf carries its own genitive.
-export function inRegions(n: number, locale: Locale): string {
-  if (locale === "en") return `across ${n} ${n === 1 ? "region" : "regions"}`;
-  return `v ${n} ${pick(n, ["regiji", "regijah", "regijah", "regijah"])}`;
-}
-
 export function sheltersMissingFromMap(n: number, locale: Locale): string {
   if (locale === "en") {
     return `${shelterCount(n, locale)} ${n === 1 ? "is" : "are"} not on the map.`;

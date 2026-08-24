@@ -297,7 +297,6 @@ describe("mobile filter hardening", () => {
           onToggle={vi.fn()}
           onToggleMany={vi.fn()}
           resultCount={1}
-          species="all"
         />
       </I18nProvider>,
     );

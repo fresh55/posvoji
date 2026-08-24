@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useRef, useState, type PointerEvent } from "react";
 import { ChevronLeft, ChevronRight, XIcon } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -98,20 +98,30 @@ export function PhotoLightbox({
 
   // Where the double tap that zoomed in landed, as a percentage of the frame,
   // so the zoom grows out from under the finger rather than the middle of the
-  // photo. Null means the photo is shown at its normal size.
-  const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(
-    null,
-  );
+  // photo. Null means the photo is shown at its normal size. The photo it was
+  // taken on is stored with it: a zoom belongs to one picture, and reading it
+  // back only when the index still matches is what makes a step to the next
+  // photo start unzoomed. Doing that by hand in an effect would set state on
+  // every index change just to reach the same place a render later.
+  const [zoom, setZoom] = useState<{
+    index: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  const zoomOrigin = zoom?.index === index ? zoom : null;
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(
     null,
   );
   const lastTap = useRef<{ x: number; y: number; time: number } | null>(null);
 
-  // A fresh photo, or the lightbox closing, starts unzoomed rather than
-  // carrying the last photo's zoom across.
-  useEffect(() => {
-    setZoomOrigin(null);
-  }, [index, open]);
+  // The lightbox stays mounted across visits, so the zoom has to be dropped on
+  // the way out or the next visit to the same photo would open into it. Every
+  // close goes through here: Escape, the close button and the overlay all
+  // reach the caller's setter through Radix's onOpenChange.
+  function handleOpenChange(next: boolean) {
+    if (!next) setZoom(null);
+    onOpenChange(next);
+  }
 
   function step(direction: -1 | 1) {
     onIndexChange((index + direction + images.length) % images.length);
@@ -145,8 +155,8 @@ export function PhotoLightbox({
           DOUBLE_TAP_SLOP_PX
       ) {
         lastTap.current = null;
-        setZoomOrigin((current) =>
-          current ? null : { x: originX, y: originY },
+        setZoom((current) =>
+          current?.index === index ? null : { index, x: originX, y: originY },
         );
         return;
       }
@@ -174,7 +184,7 @@ export function PhotoLightbox({
   if (!image) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogPortal>
         <DialogOverlay className="z-60 bg-black/80 supports-backdrop-filter:backdrop-blur-none" />
         <DialogPrimitive.Content

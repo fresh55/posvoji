@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { ROW, openPicker, pickerTrigger, rows } from "./picker";
 
 // The unit tests render the picker to static markup and read its data-*
 // attributes, which covers the state contract. Three things are left over that
@@ -10,24 +11,18 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 // Selectors stay on roles and data-* attributes, which are the contract the map
 // components keep. Class names are not used to find anything.
 
-// Both the desktop bar and the mobile dock render a picker trigger, and one of
-// the two is display:none at any given width.
-function pickerTrigger(page: Page): Locator {
-  return page
-    .getByRole("combobox", { name: /^Zavetišče:/ })
-    .filter({ visible: true });
-}
-
-// The shelter rows are buttons with aria-pressed, and so is the sort toggle
-// that sits above them. Only a row wraps its label in spans.
-const ROW = "button[aria-pressed]:has(span)";
-
-function rows(dialog: Locator): Locator {
-  return dialog.locator(ROW);
-}
-
 function markers(dialog: Locator): Locator {
   return dialog.locator("g[data-marker-key]");
+}
+
+// Only the markers standing for a shelter with animals. The registry's empty
+// shelters draw a marker too, and their row in the list is a link out rather
+// than a toggle, so a test reaching for a tinted `button[aria-pressed]` has to
+// hover one of these or it is asking the list for a row that does not exist.
+// Which marker comes first in document order is a fact about the dataset, not
+// about the map: the first one is currently Brežice, which has no animals.
+function liveMarkers(dialog: Locator): Locator {
+  return dialog.locator('g[data-marker-key][data-marker-live="true"]');
 }
 
 // Regions the map treats as live carry role=button. Empty ones are aria-hidden
@@ -39,15 +34,6 @@ function liveRegions(dialog: Locator): Locator {
 // One card serves markers and regions alike.
 function callout(dialog: Locator): Locator {
   return dialog.locator("foreignObject");
-}
-
-async function openPicker(page: Page): Promise<Locator> {
-  await page.goto("/");
-  await pickerTrigger(page).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator('svg[role="group"]')).toBeVisible();
-  return dialog;
 }
 
 // A region is not a rectangle, so the centre of its bounding box is often
@@ -118,7 +104,7 @@ test.describe("desktop", () => {
     page,
   }) => {
     const dialog = await openPicker(page);
-    const marker = markers(dialog).first();
+    const marker = liveMarkers(dialog).first();
     await expect(marker).toBeVisible();
     await marker.hover();
 
@@ -129,8 +115,9 @@ test.describe("desktop", () => {
     // The card names the town for a cluster and the shelter for a single
     // marker. Either name is text the tinted row carries too, so the two can be
     // checked against each other without hardcoding a shelter.
-    const title = (await callout(dialog).locator("span").first().textContent())
-      ?.trim();
+    const title = (
+      await callout(dialog).locator("span").first().textContent()
+    )?.trim();
     expect(title).toBeTruthy();
     expect(await tinted.first().textContent()).toContain(title);
 
@@ -222,10 +209,17 @@ test.describe("mobile", () => {
     expect(overflow).toBeLessThanOrEqual(1);
   });
 
-  // The unit tests can only assert the class that hides the card below lg
-  // (jsdom never evaluates a media query); this is the assertion that it is
-  // actually invisible on a phone-sized viewport.
-  test("tapping a region selects it without ever showing the pick card", async ({
+  // A tap on the map is selection and nothing else. Inspection is the info
+  // control's job on the row, and the two verbs stay apart at every width now
+  // that the details are inline in the list rather than a card the phone never
+  // drew (see shelter-rows.tsx).
+  //
+  // The closed-state check is what keeps the absence check honest. An absence
+  // passes just as readily for a selector that matches nothing at all, which is
+  // exactly what this test had become when it was still looking for the deleted
+  // pick card: proving the rows did render their controls, and that the tap
+  // left every one of them shut, is the difference between the two readings.
+  test("tapping a region selects it without opening any shelter details", async ({
     page,
   }) => {
     const dialog = await openPicker(page);
@@ -236,6 +230,13 @@ test.describe("mobile", () => {
 
     await expect(region).toHaveAttribute("aria-pressed", "true");
     await expect(region).toHaveAttribute("data-region-state", "selected");
-    await expect(dialog.locator("[data-map-pick-card]")).toBeHidden();
+
+    await expect(dialog.locator("[data-shelter-details]")).toHaveCount(0);
+    await expect(
+      dialog.getByRole("button", { name: /^Pokaži podrobnosti za / }).first(),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: /^Skrij podrobnosti za / }),
+    ).toHaveCount(0);
   });
 });

@@ -26,8 +26,15 @@ import { ageInMonths } from "@/lib/filters";
 import { formatAge } from "@/lib/labels";
 import type { PortalAnimal, PortalAnimalPatch } from "@/lib/portal-api";
 
-// The public site's arithmetic, read through the API's nulls, so a shelter
-// and a visitor never read a different age off the same birth date.
+// The public site's arithmetic, read through the API's nulls, so the same
+// birth date turns into the same number of months on both sides.
+//
+// The date it is measured from is deliberately not the same one. The public
+// site reads ages off the export it is serving (see animal-grid.tsx), because
+// its pages are prerendered and the ages printed on them have to match the
+// list they were filtered into. The portal is looking at live records, so
+// today is the honest answer here, and at a month boundary the two can differ
+// by one month for the same animal.
 function ageMonths(animal: PortalAnimal, now: Date): number | undefined {
   return ageInMonths(
     {

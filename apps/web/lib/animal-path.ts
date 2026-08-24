@@ -1,5 +1,6 @@
 import type { Animal } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
+import { decodeOrRaw } from "@/lib/location-search";
 
 // One readable address per animal per language: its name, a short suffix cut
 // from its id, the shelter's town, and the shelter itself. Those are the words
@@ -80,7 +81,11 @@ const PATHNAME = new RegExp(
  */
 export function animalSlugFromPath(pathname: string): string | null {
   const match = PATHNAME.exec(pathname);
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
+  // decodeOrRaw and not a bare decode: this runs inside the dialog host's
+  // useMemo, off the live location, so a malformed escape in a path anyone
+  // can hold would throw during render. A slug that will not decode simply
+  // matches no animal, which is what a bad address should do.
+  return match?.[1] ? decodeOrRaw(match[1]) : null;
 }
 
 export function findAnimalBySlug(

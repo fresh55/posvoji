@@ -42,6 +42,16 @@ describe("mergeOwnedParams", () => {
       ),
     ).toBe("najdena=1&spol=samica");
   });
+
+  it("survives a foreign param whose name is not decodable", () => {
+    // A browser will sit on ?100%=x quite happily. decodeURIComponent will not:
+    // it threw, and the throw came out of the next filter write rather than out
+    // of the link, so the first press of any filter took the page down.
+    expect(mergeOwnedParams("?100%=x&spol=samec", ["spol"], "spol=samica")).toBe(
+      "100%=x&spol=samica",
+    );
+    expect(mergeOwnedParams("?%zz=1", ["spol"], "")).toBe("%zz=1");
+  });
 });
 
 describe("commitLocation", () => {

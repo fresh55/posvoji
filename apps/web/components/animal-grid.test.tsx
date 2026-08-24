@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnimalGrid } from "./animal-grid";
+import { AnimalGrid, UNDO_WINDOW_MS } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 
 // AnimalGrid renders its own I18nProvider-consuming children, but the
@@ -202,5 +209,86 @@ describe("animal grid empty state", () => {
     expect(
       screen.getByRole("button", { name: "Show from all shelters" }),
     ).toBeTruthy();
+  });
+});
+
+describe("the chips row inside the grid", () => {
+  it("takes a cleared filter state back, and drops the offer once something else is picked", () => {
+    vi.useFakeTimers();
+    try {
+      window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+      renderGrid(ANIMALS);
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Počisti vse filtre" }),
+      );
+      expect(query()).toBe("");
+
+      // The offer stands, and it puts the query back exactly as it was.
+      fireEvent.click(
+        screen.getByRole("button", { name: "Razveljavi čiščenje filtrov" }),
+      );
+      expect(query()).toBe("?zavetisce=muri,druga");
+      expect(
+        screen.queryByRole("button", { name: "Razveljavi čiščenje filtrov" }),
+      ).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("lets the offer expire rather than leaving a way back that no longer fits", async () => {
+    window.history.replaceState(null, "", "/?zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Počisti vse filtre" }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Razveljavi čiščenje filtrov" }),
+      ).toBeTruthy();
+
+      act(() => {
+        vi.advanceTimersByTime(UNDO_WINDOW_MS + 1000);
+      });
+    } finally {
+      // The row fades out rather than vanishing, and that animation runs on
+      // frames rather than on timers, so the assertion waits for real ones.
+      vi.useRealTimers();
+    }
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Razveljavi čiščenje filtrov" }),
+      ).toBeNull(),
+    );
+  });
+
+  it("offers no cost for a value whose removal would narrow rather than widen", () => {
+    // Values inside one facet are OR-ed, so dropping one of two shelters
+    // leaves a stricter filter. A row that showed "+N" there would be
+    // promising animals that taking it off cannot deliver. The tooltip
+    // wrapper is what marks a pill as having a cost worth showing.
+    window.history.replaceState(null, "", "/?zavetisce=muri,tretje");
+    renderGrid(ANIMALS);
+
+    const chip = screen.getByRole("button", {
+      name: "Odstrani filter Shelter muri",
+    });
+    expect(chip.hasAttribute("data-slot")).toBe(false);
+  });
+
+  it("marks the filter that is costing the most when nothing matches", () => {
+    // A shelter with only dogs plus the rabbit tab: nothing matches, and
+    // dropping the shelter is the cheaper of the two ways out.
+    window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    const chip = screen.getByRole("button", {
+      name: "Odstrani filter Shelter muri",
+    });
+    expect(chip.textContent).toContain("+1");
   });
 });

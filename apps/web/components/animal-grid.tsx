@@ -36,16 +36,27 @@ import {
   visibleHome,
   visibleToggles,
   type FilterOption,
+  type Filters,
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
-import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import {
+  careLabel,
+  goodWithChipLabel,
+  homeLabel,
+  shelterChipLabel,
+} from "@/lib/labels";
 import { requestShelterSpotlight } from "@/lib/shelter-spotlight";
 import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+
+// How long a cleared filter state can still be taken back. Long enough to
+// read the row and reach for it, short enough that the offer is gone before
+// it becomes part of the furniture.
+export const UNDO_WINDOW_MS = 7000;
 
 // Which species-absence message key fills the {species} slot of
 // noResultsShelterSingular/Plural. Keyed by the species tab rather than
@@ -81,6 +92,8 @@ export function AnimalGrid({
   const { locale, messages, t } = useI18n();
   const [clearTrailKey, setClearTrailKey] = useState(0);
   const pendingClearCount = useRef<number | null>(null);
+  // The filter state a clear took away, while the row still offers it back.
+  const [cleared, setCleared] = useState<Filters | null>(null);
   const {
     filters,
     sort,
@@ -97,6 +110,7 @@ export function AnimalGrid({
     toggleManyCare,
     setSort,
     clearAll,
+    restore,
     activeCount,
   } = useAnimalFilters();
 
@@ -144,9 +158,33 @@ export function AnimalGrid({
   const handleClearAll = useCallback(() => {
     if (activeCount > 0 || filters.species !== "all") {
       pendingClearCount.current = visible.length;
+      // Held for as long as the row offers the way back, and only that long.
+      // A snapshot with no offer beside it is a trap: nothing on screen would
+      // say it existed.
+      setCleared(filters);
     }
     clearAll();
-  }, [activeCount, clearAll, filters.species, visible.length]);
+  }, [activeCount, clearAll, filters, visible.length]);
+
+  // Every other filter action undoes itself by being repeated. This one
+  // cannot, so the row keeps a way back for a few seconds, and then drops it.
+  //
+  // Time is the only thing that ends the offer. Picking a filter during the
+  // window hides it without cancelling it, because the row shows the offer
+  // only where the chips would be and chips win that space (filter-chips.tsx).
+  // Undoing after that still restores the state that was cleared, which is
+  // what the words promise, so there is nothing to guard against.
+  useEffect(() => {
+    if (!cleared) return;
+    const timer = window.setTimeout(() => setCleared(null), UNDO_WINDOW_MS);
+    return () => window.clearTimeout(timer);
+  }, [cleared]);
+
+  const handleUndo = useCallback(() => {
+    if (!cleared) return;
+    restore(cleared);
+    setCleared(null);
+  }, [cleared, restore]);
 
   useEffect(() => {
     const previousCount = pendingClearCount.current;
@@ -311,38 +349,122 @@ export function AnimalGrid({
     toggleManyCare,
   ]);
 
+  // What each active value is costing: how many more animals show if it comes
+  // off, everything else left alone. The row spends it two ways: a tooltip on
+  // hover, and, when nothing matches at all, a mark on the single chip that is
+  // the cheapest way out.
+  //
+  // The number is signed, and negative is a real answer. Values inside one
+  // facet are OR-ed, so dropping one of two sexes leaves a narrower filter,
+  // not a wider one, and the row correctly offers nothing there: no tooltip,
+  // and never a "way out" that is not one.
+  //
+  // A full applyFilters pass per chip, which is the cost of that being true.
+  // The obvious saving is not available: counting, in one pass, the animals
+  // that fail exactly one filter answers a different question, and gets every
+  // multi-value facet backwards. Measured at roughly 15ms for the whole
+  // click-to-paint with ten chips over five hundred animals, and it costs
+  // nothing at all when nothing is filtered, which is most visits.
+  const chipGain = useMemo(() => {
+    const gains = new Map<string, number>();
+    if (activeCount === 0) return gains;
+    const without = (key: string, next: Filters) => {
+      gains.set(key, applyFilters(animals, next, now).length - visible.length);
+    };
+    for (const group of GROUPS) {
+      for (const value of filters[group]) {
+        without(`${group}:${value}`, {
+          ...filters,
+          [group]: (filters[group] as string[]).filter(
+            (selected) => selected !== value,
+          ),
+        });
+      }
+    }
+    for (const key of filters.toggles) {
+      without(`toggle:${key}`, {
+        ...filters,
+        toggles: filters.toggles.filter((selected) => selected !== key),
+      });
+    }
+    for (const key of filters.goodWith) {
+      without(`goodWith:${key}`, {
+        ...filters,
+        goodWith: filters.goodWith.filter((selected) => selected !== key),
+      });
+    }
+    for (const key of filters.home) {
+      without(`home:${key}`, {
+        ...filters,
+        home: filters.home.filter((selected) => selected !== key),
+      });
+    }
+    for (const key of filters.care) {
+      without(`care:${key}`, {
+        ...filters,
+        care: filters.care.filter((selected) => selected !== key),
+      });
+    }
+    return gains;
+  }, [activeCount, animals, filters, now, visible.length]);
+
   // The pressed species tab already shows itself, so chips cover only the
-  // sidebar/sheet groups.
+  // sidebar/sheet groups and the shelter picker. The rule is not "everything
+  // that is on": it is "everything with no other one-click way off". A
+  // species goes back to Vse in one press of its own tab; a shelter takes a
+  // dialog, which is why it is here and the species is not.
+  //
+  // Each chip carries the facet that set it, because the row groups by facet
+  // and draws one icon per facet: flat, they were nine questions' answers
+  // wearing the same pill.
   const chips: Chip[] = [
     ...GROUPS.flatMap((group) =>
       filters[group].map((value) => ({
         key: `${group}:${value}`,
-        label: optionLabel(group, value, animals, locale),
+        facet: group,
+        value,
+        label:
+          group === "shelter"
+            ? shelterChipLabel(optionLabel(group, value, animals, locale))
+            : optionLabel(group, value, animals, locale),
+        gain: chipGain.get(`${group}:${value}`),
         onRemove: () => toggle(group, value),
       })),
     ),
     ...filters.toggles.map((key) => ({
       key: `toggle:${key}`,
+      facet: "toggles" as const,
+      value: key,
       label: toggleLabel(key, locale),
+      gain: chipGain.get(`toggle:${key}`),
       onRemove: () => toggleProperty(key),
     })),
     // Not the card label: on a row of chips "Psi" would read as the species
     // tab, so these name the household instead.
     ...filters.goodWith.map((key) => ({
       key: `goodWith:${key}`,
+      facet: "goodWith" as const,
+      value: key,
       label: goodWithChipLabel(key, locale),
+      gain: chipGain.get(`goodWith:${key}`),
       onRemove: () => toggleGoodWith(key),
     })),
     // Both of these read as whole phrases on the card already, so a chip says
     // the same words rather than a second wording of them.
     ...filters.home.map((key) => ({
       key: `home:${key}`,
+      facet: "home" as const,
+      value: key,
       label: homeLabel(key, locale),
+      gain: chipGain.get(`home:${key}`),
       onRemove: () => toggleHome(key),
     })),
     ...filters.care.map((key) => ({
       key: `care:${key}`,
+      facet: "care" as const,
+      value: key,
       label: careLabel(key, locale),
+      gain: chipGain.get(`care:${key}`),
       onRemove: () => toggleCare(key),
     })),
   ];
@@ -399,6 +521,7 @@ export function AnimalGrid({
           offSiteShelters={offSiteShelters}
           shelterSummaries={shelterSummaries}
           chips={chips}
+          undo={cleared ? handleUndo : undefined}
           resultCount={visible.length}
           clearTrailKey={clearTrailKey}
           sort={sort}

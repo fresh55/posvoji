@@ -137,27 +137,37 @@ function FilterFlowHarness() {
     ...GROUPS.flatMap((group) =>
       filters[group].map((value) => ({
         key: `${group}:${value}`,
+        facet: group,
+        value,
         label: optionLabel(group, value, ANIMALS, "sl"),
         onRemove: () => toggle(group, value),
       })),
     ),
     ...filters.toggles.map((key) => ({
       key: `toggle:${key}`,
+      facet: "toggles" as const,
+      value: key,
       label: toggleLabel(key, "sl"),
       onRemove: () => toggleProperty(key),
     })),
     ...filters.goodWith.map((key) => ({
       key: `goodWith:${key}`,
+      facet: "goodWith" as const,
+      value: key,
       label: goodWithChipLabel(key, "sl"),
       onRemove: () => toggleGoodWith(key),
     })),
     ...filters.home.map((key) => ({
       key: `home:${key}`,
+      facet: "home" as const,
+      value: key,
       label: homeLabel(key, "sl"),
       onRemove: () => toggleHome(key),
     })),
     ...filters.care.map((key) => ({
       key: `care:${key}`,
+      facet: "care" as const,
+      value: key,
       label: careLabel(key, "sl"),
       onRemove: () => toggleCare(key),
     })),
@@ -315,7 +325,7 @@ describe("filter flow interactions", () => {
     renderFilters();
     fireEvent.click(screen.getByRole("button", { name: /^Samec/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
 
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
@@ -437,7 +447,7 @@ describe("filter flow interactions", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
   });

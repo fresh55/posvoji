@@ -68,6 +68,21 @@ export const EMPTY_FILTERS: Filters = {
 
 export const GROUPS: MultiGroup[] = ["sex", "age", "size", "energy", "shelter"];
 
+/** Every question the filter asks, as one union. MultiGroup covers the five
+ *  that share a codec; the four below each carry their own key type, so they
+ *  are named here rather than folded in. The chips row is the one surface that
+ *  has to talk about all nine at once: it groups by facet and it draws one
+ *  icon per facet, and both need a single name for "which question is this". */
+export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "home" | "care";
+
+export const FILTER_FACETS: FilterFacet[] = [
+  ...GROUPS,
+  "toggles",
+  "goodWith",
+  "home",
+  "care",
+];
+
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
   sl: {
     sex: "Spol",
@@ -897,17 +912,6 @@ export function activeFilterCount(filters: Filters): number {
     filters.goodWith.length +
     filters.home.length +
     filters.care.length
-  );
-}
-
-/** Count selected filter sections, rather than individual selected values. */
-export function activeFilterSectionCount(filters: Filters): number {
-  return (
-    GROUPS.filter((group) => filters[group].length > 0).length +
-    (filters.toggles.length > 0 ? 1 : 0) +
-    (filters.goodWith.length > 0 ? 1 : 0) +
-    (filters.home.length > 0 ? 1 : 0) +
-    (filters.care.length > 0 ? 1 : 0)
   );
 }
 

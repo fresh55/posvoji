@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Animal, Species, TestResult } from "@posvoji/schema";
 import {
   activeFilterCount,
-  activeFilterSectionCount,
   applyFilters,
   bySpecies,
   careCounts,
@@ -386,10 +385,10 @@ describe("URL codec", () => {
   });
 });
 
-describe("active filter section count", () => {
-  it("counts each selected axis once, including health as one section", () => {
+describe("active filter count", () => {
+  it("counts every selected value, not the axes they sit on", () => {
     expect(
-      activeFilterSectionCount({
+      activeFilterCount({
         ...EMPTY_FILTERS,
         species: "cat",
         sex: ["male", "female"],
@@ -397,34 +396,22 @@ describe("active filter section count", () => {
         shelter: ["s1", "s2"],
         toggles: ["cepljenje", "sterilizacija"],
       }),
-    ).toBe(4);
+    ).toBe(9);
   });
 
-  it("counts družba as one more section", () => {
+  it("counts družba, dom and skrb values too", () => {
     expect(
-      activeFilterSectionCount({
+      activeFilterCount({
         ...EMPTY_FILTERS,
-        toggles: ["cepljenje"],
         goodWith: ["kids", "dogs"],
-      }),
-    ).toBe(2);
-  });
-
-  it("counts dom and skrb as two more sections", () => {
-    expect(
-      activeFilterSectionCount({
-        ...EMPTY_FILTERS,
-        goodWith: ["kids"],
         home: ["apartment"],
         care: ["patient"],
       }),
-    ).toBe(3);
+    ).toBe(4);
   });
 
-  it("does not count the species tab or empty sections", () => {
-    expect(activeFilterSectionCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(
-      0,
-    );
+  it("does not count the species tab", () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(0);
   });
 });
 

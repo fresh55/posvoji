@@ -68,7 +68,7 @@ describe("mobile filter hardening", () => {
     const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Filters, active sections: 1" }),
+      screen.getByRole("button", { name: "Filters, 1 active" }),
     ).toBeTruthy();
 
     // Both actions are in the dock, and each is a direct child, which is what
@@ -138,7 +138,7 @@ describe("mobile filter hardening", () => {
           counts={emptyCounts}
           toggles={[]}
           toggleTally={new Map()}
-          activeSectionCount={2}
+          activeCount={2}
           resultCount={0}
           onClearAll={vi.fn()}
           {...filterActions}
@@ -147,7 +147,7 @@ describe("mobile filter hardening", () => {
     );
 
     const trigger = screen.getByRole("button", {
-      name: "Filters, active sections: 2",
+      name: "Filters, 2 active",
     });
     expect(trigger).toBeTruthy();
     fireEvent.click(trigger);
@@ -165,7 +165,7 @@ describe("mobile filter hardening", () => {
           counts={emptyCounts}
           toggles={[]}
           toggleTally={new Map()}
-          activeSectionCount={0}
+          activeCount={0}
           resultCount={0}
           onClearAll={vi.fn()}
           {...filterActions}
@@ -198,7 +198,7 @@ describe("mobile filter hardening", () => {
           counts={emptyCounts}
           toggles={[]}
           toggleTally={new Map()}
-          activeSectionCount={0}
+          activeCount={0}
           resultCount={0}
           onClearAll={vi.fn()}
           {...filterActions}
@@ -209,7 +209,7 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(await screen.findByRole("dialog")).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Clear" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
     ).toBe(true);
 
     rerender(
@@ -220,7 +220,7 @@ describe("mobile filter hardening", () => {
           counts={emptyCounts}
           toggles={[]}
           toggleTally={new Map()}
-          activeSectionCount={1}
+          activeCount={1}
           resultCount={0}
           onClearAll={vi.fn()}
           {...filterActions}
@@ -229,7 +229,7 @@ describe("mobile filter hardening", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Clear" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
     ).toBe(false);
   });
 
@@ -242,7 +242,7 @@ describe("mobile filter hardening", () => {
           counts={emptyCounts}
           toggles={[]}
           toggleTally={new Map()}
-          activeSectionCount={0}
+          activeCount={0}
           resultCount={0}
           onClearAll={vi.fn()}
           {...filterActions}
@@ -271,7 +271,7 @@ describe("mobile filter hardening", () => {
           counts={emptyCounts}
           toggles={[]}
           toggleTally={new Map()}
-          activeSectionCount={0}
+          activeCount={0}
           resultCount={0}
           onClearAll={vi.fn()}
           {...filterActions}
@@ -316,34 +316,44 @@ describe("mobile filter hardening", () => {
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
-  it("gives each chip's remove button a real 44px target instead of an overlay that reaches the next chip", () => {
+  it("makes the whole chip the 44px remove target rather than a circle inside it", () => {
     render(
       <I18nProvider locale="en">
         <FilterChips
           chips={[
-            { key: "a", label: "Dogs", onRemove: vi.fn() },
-            { key: "b", label: "Cats", onRemove: vi.fn() },
+            {
+              key: "a",
+              facet: "sex",
+              value: "male",
+              label: "Dogs",
+              onRemove: vi.fn(),
+            },
+            {
+              key: "b",
+              facet: "sex",
+              value: "female",
+              label: "Cats",
+              onRemove: vi.fn(),
+            },
           ]}
           onClearAll={vi.fn()}
         />
       </I18nProvider>,
     );
 
-    // Below md the button itself grows to the tap target, so it cannot bleed
-    // an invisible layer past its own box and into the next chip's row-gap.
+    // The pill is the button. There used to be a 24px circle inside a 28px
+    // pill, with the rest of the pill inert, and below md an invisible 44px
+    // overlay over the circle that reached into the next chip's row gap.
     const removeDogs = screen.getByRole("button", {
       name: "Remove filter Dogs",
     });
-    expect(removeDogs.className).toContain("max-md:size-11");
+    expect(removeDogs.className).toContain("max-md:min-h-11");
     expect(removeDogs.className).not.toContain("tap-target");
+    expect(removeDogs.querySelector("button")).toBeNull();
 
-    // The chip that holds it grows to match, so the button isn't clipped.
-    expect(removeDogs.closest("span")?.className).toContain("max-md:min-h-11");
-
-    // And the row gives adjacent chips real breathing room rather than
-    // relying on an overlay's own restraint.
+    // And the row still keeps adjacent pills apart.
     expect(removeDogs.closest("span")?.parentElement?.className).toContain(
-      "gap-3",
+      "max-md:gap-2",
     );
   });
 

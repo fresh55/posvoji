@@ -451,12 +451,27 @@ export function AnimalGrid({
 
   return (
     <section
+      aria-labelledby="rezultati"
       className={cn(
         "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0",
         hasSidebar &&
           "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
       )}
     >
+      {/* The page went from its h1 straight to one h3 per card, so there was
+          nothing between the top of the document and the results to navigate
+          by and nothing for a skip link to aim at. Every animal on the page
+          sits below this, and the whole grid is one tab stop per card, so
+          without a way past it a keyboard cannot reach the footer at all. */}
+      <h2 id="rezultati" className="sr-only">
+        {messages.resultsHeading}
+      </h2>
+      <a
+        href="#za-rezultati"
+        className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+      >
+        {messages.skipResults}
+      </a>
       {hasSidebar && (
         <FilterSidebar
           className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto"
@@ -561,13 +576,19 @@ export function AnimalGrid({
           </div>
         ) : (
           <div className={CARD_GRID}>
-            {sorted.map((animal) => (
+            {sorted.map((animal, ordinal) => (
               <AnimalCard
                 key={animal.id}
                 animal={animal}
                 reference={reference}
+                // The tab already named the species, so the card's one fact
+                // line does not have to spend itself saying it again.
+                species={filters.species}
+                // The first row, which is the largest image on the screen and
+                // was queueing behind the bundle like the other 499.
+                priority={ordinal < 4}
                 onOpen={handleOpen}
-                // This grid is the one place the shelter name has somewhere
+                // This grid is the one place the shelter line has somewhere
                 // to go: the pickers are mounted below it, inside
                 // AnimalFilters. The event is how the ask crosses that
                 // distance without either side holding a ref to the other.
@@ -576,6 +597,10 @@ export function AnimalGrid({
             ))}
           </div>
         )}
+        {/* Where the skip link lands: the end of the grid, whatever the grid
+            currently holds. tabIndex so focus actually moves here rather than
+            only scrolling the page. */}
+        <div id="za-rezultati" tabIndex={-1} />
       </div>
 
       <AnimalDialog

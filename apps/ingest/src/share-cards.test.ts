@@ -71,7 +71,8 @@ describe("cardText", () => {
       ).age;
     expect(at(1)).toBe("1 mesec");
     expect(at(2)).toBe("2 meseca");
-    expect(at(3)).toBe("3 mesece");
+    expect(at(3)).toBe("3 meseci");
+    expect(at(4)).toBe("4 meseci");
     expect(at(7)).toBe("7 mesecev");
     expect(at(12)).toBe("1 leto");
     expect(at(24)).toBe("2 leti");

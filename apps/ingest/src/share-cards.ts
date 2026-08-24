@@ -72,7 +72,7 @@ function formatAge(months: number, locale: CardLocale): string {
   }
   const forms: [string, string, string, string] =
     months < 12
-      ? ["mesec", "meseca", "mesece", "mesecev"]
+      ? ["mesec", "meseca", "meseci", "mesecev"]
       : ["leto", "leti", "leta", "let"];
   const n = months < 12 ? months : Math.floor(months / 12);
   const rest = n % 100;

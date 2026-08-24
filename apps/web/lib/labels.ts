@@ -7,6 +7,7 @@ import {
   type CareKey,
   type GoodWithKey,
   type HomeKey,
+  type SpeciesFilter,
 } from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
@@ -55,7 +56,18 @@ export function formatAge(months: number, locale: Locale): string {
     return `${years} ${years === 1 ? "year" : "years"}`;
   }
   if (months < 12) {
-    return plural(months, ["mesec", "meseca", "mesece", "mesecev"]);
+    // Nominative plural for 3 and 4: "trije meseci", "štirje meseci". The
+    // third slot held "mesece", which is the accusative, and every place this
+    // string lands is nominative: the card's middot list, the dialog's
+    // "Starost:" badge, the "V zavetišču:" aside. The years array below never
+    // showed the same bug because neuter nominative and accusative plural are
+    // both "leta".
+    //
+    // That makes ageLabel explicitly nominative. The one accusative context on
+    // the site is the dialog's longStay sentence, and it is safe only because
+    // LONG_STAY_MONTHS is 36 and it can never be handed a month string. If
+    // that constant ever drops below 12, that sentence needs its own forms.
+    return plural(months, ["mesec", "meseca", "meseci", "mesecev"]);
   }
   return plural(Math.floor(months / 12), ["leto", "leti", "leta", "let"]);
 }
@@ -147,16 +159,39 @@ export function speciesLabel(species: Species, locale: Locale): string {
 }
 
 // "Mačka · samica · 2 leti", skipping whatever we don't know.
+//
+// `species` is the grid's active tab. When it names one species, the word
+// comes off: the tab already said it, and repeating it costs the line the room
+// it needs. At a 390px phone the content box is 145px and
+// "Mačka · samica · 11 mesecev" is 192px, so 263 of 503 cards wrapped and
+// orphaned the unit onto a second line ("Mačka · samica · 11" / "mesecev").
+// Without the species word exactly one animal in the registry still wraps.
+// "Mačka" is 43px against "Pes" at 24px, which is why this read as a cat
+// problem.
+//
+// Size takes the slot the species word vacated, and only that slot. It is on
+// 44% of dogs and 16% of cats, which is thin, but it is the only field left
+// with enough coverage to be worth a place, and it is a thing people decide
+// on. Adding it as a fourth item instead put the line straight back over the
+// edge it had just been pulled off: three items is what the card's width buys
+// at every breakpoint, so the line trades one for one rather than growing.
+// Lowercased, because in a middot list of lowercase attributes "Srednja"
+// reads as the start of a new sentence.
 export function animalMeta(
   animal: Animal,
   locale: Locale = "sl",
   now: Date = new Date(),
+  species: SpeciesFilter = "all",
 ): string {
   const months = ageInMonths(animal, now);
+  const named = species !== "all";
   return [
-    speciesLabel(animal.species, locale),
+    named ? "" : speciesLabel(animal.species, locale),
     animal.sex ? SEX[locale][animal.sex] : "",
     months !== undefined ? ageLabel(months, locale) : "",
+    named && animal.size
+      ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)
+      : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -205,11 +240,11 @@ export function longStayLabel(
   now: Date,
 ): string | undefined {
   if (!animal.intakeDate) return undefined;
-  if (
-    animal.status === "adopted" ||
-    animal.status === "hold" ||
-    animal.status === "reserved"
-  ) {
+  // An allowlist and not a denylist of the other three. A fifth status added
+  // to the schema would silently inherit the mark under a denylist, and this
+  // is a plea about an animal a visitor can still act on: available, or an
+  // unknown that the shelter's own listing still carries.
+  if (animal.status !== "available" && animal.status !== "unknown") {
     return undefined;
   }
   const months = monthsInShelter(animal.intakeDate, now);

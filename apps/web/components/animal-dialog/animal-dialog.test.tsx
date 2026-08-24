@@ -165,9 +165,14 @@ function drag(
   pointer(element, "pointerup", { x: 104, y: 80 + distance, pointerType });
 }
 
-// The gallery surface and the text block are two links to the same place.
+// One link per card. The photo is a second anchor to the same place, but it is
+// aria-hidden and out of the tab order on purpose, so the card's link is the
+// text block and its name comes from the content it wraps.
 function cardLink(name: string) {
-  return screen.getByRole("link", { name: `Odpri podrobnosti o ${name}` });
+  const heading = screen.getByRole("heading", { name });
+  const link = heading.closest("a");
+  if (!link) throw new Error(`no card link for ${name}`);
+  return link;
 }
 
 function openCard(name: string) {
@@ -309,7 +314,7 @@ describe("animal dialog", () => {
     renderGrid();
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("rezerviran")).toBeTruthy();
+    expect(within(dialog).getByText("rezervirano")).toBeTruthy();
   });
 
   it("shows the attribution, the shelter link and the animal's own facts", async () => {

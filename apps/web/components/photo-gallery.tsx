@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import type { Animal } from "@posvoji/schema";
@@ -13,20 +19,28 @@ import { translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 // Shared with the dialog's photo spread, so both sets of chevrons behave and
-// look the same.
-// Hidden until a pointer or the keyboard asks for them, at every width. The
-// hiding used to start at sm, which left the two of them drawn over every
-// photo on exactly the screens where the photo is smallest and the animal is
-// the whole point of the card: at 390px they are two 32px discs sitting on a
-// 170px-wide picture of a cat.
-//
-// Below sm the way through the gallery is the swipe this component already
-// implements (see SWIPE_DISTANCE_RATIO), and the "1 / 13" counter in the
-// corner is what says there is anything to swipe to. group-focus-within is
-// kept rather than dropped with the hover, so a keyboard reaches them on a
-// touch device too.
+// look the same. The spread drives its own reveal off its own ancestor, so the
+// group here is unqualified and this constant carries no pointer-events of its
+// own; see OWN_BUTTON_CLASS below for what this component uses.
 export const GALLERY_BUTTON_CLASS =
   "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-focus-within:opacity-100";
+
+// This component's own chevrons, which differ from the shared constant in two
+// ways.
+//
+// They gate pointer events on the same conditions as the opacity. opacity: 0
+// does not remove hit-testing, and touch has no hover, so on a phone these
+// were two permanently invisible, permanently tappable 32px discs sitting on
+// the photo: 64px of a 171px card, over a 32px band, about a tenth of the
+// photo's area. A tap meant to open the animal advanced the picture instead.
+// pointer-events never blocks focus, so the keyboard is unaffected.
+//
+// And they scope the group to the photo rather than to whatever ancestor
+// happens to carry `group`. Only the grid card ever had one, which left these
+// permanently invisible on the animal page and in the dialog's phone hero -
+// invisible and, until this change, still tappable.
+const OWN_BUTTON_CLASS =
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
 const DEFAULT_WRAPPER_CLASS =
   "relative aspect-[4/3] overflow-hidden rounded-ui-top bg-muted";
@@ -39,6 +53,17 @@ type SwipeStart = { x: number; y: number; time: number; width: number };
 // too hard to pull off on purpose, so a swipe only has to clear one of them.
 const SWIPE_DISTANCE_RATIO = 0.22;
 const SWIPE_VELOCITY_PX_MS = 0.5;
+// The flick heuristic used to be velocity and nothing else, which let a 2px
+// twitch over 3ms clear 0.5px/ms and commit. That is a tap with finger drift,
+// and the result was the worst of both: the photo advanced and the tap that
+// meant to open the animal was swallowed.
+const MIN_SWIPE_PX = 24;
+// How far a gesture has to travel before it is allowed to declare its axis.
+const AXIS_SLOP_PX = 8;
+// A pointer that crosses the photo and leaves again was not asking for the
+// next picture. Mean image weight is about 52KB and a mouse can cross a whole
+// grid row in a second, so an ungated preload on enter pulled megabytes.
+const PRELOAD_DWELL_MS = 150;
 
 type PhotoGalleryProps = {
   animal: Animal;
@@ -51,7 +76,6 @@ type PhotoGalleryProps = {
   tone?: string;
   /** Set to make the photo a link; leave out for a plain surface. */
   href?: string;
-  linkLabel?: string;
   // Runs only for a click the swipe handler did not already swallow. The
   // event comes along because the caller decides whether to keep the
   // navigation (a modified click) or take it over.
@@ -59,6 +83,8 @@ type PhotoGalleryProps = {
   /** Set to drive the gallery from outside; leave out to keep its own index. */
   index?: number;
   onIndexChange?: (index: number) => void;
+  /** Above-the-fold cards, so the largest image on screen is not lazy. */
+  priority?: boolean;
 };
 
 export function PhotoGallery({
@@ -67,16 +93,28 @@ export function PhotoGallery({
   className,
   tone,
   href,
-  linkLabel,
   onNavigate,
   index,
   onIndexChange,
+  priority = false,
 }: PhotoGalleryProps) {
   const images = permittedImageUrls(animal.images);
   const [ownIndex, setOwnIndex] = useState(0);
   const swipeStart = useRef<SwipeStart | null>(null);
   const suppressImageLink = useRef(false);
   const preloadedImages = useRef(new Set<string>());
+  // One gesture at a time. swipeStart is a single slot, so a second finger
+  // used to overwrite the first one's origin and steal the capture, which made
+  // finishSwipe measure one finger's position against the other's start - a
+  // large bogus number that cleared the distance threshold every time.
+  const activePointer = useRef<number | null>(null);
+  // Decided once, past the slop, and then remembered. The dominance test used
+  // to run again on the two endpoints, so a long horizontal drag that curled
+  // downward before release failed it, returned before setting the suppress
+  // flag, and let the click through: the photo snapped back and the dialog
+  // opened.
+  const axis = useRef<"x" | "y" | null>(null);
+  const preloadTimer = useRef<number | undefined>(undefined);
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   // The finger's own position while dragging, so the photo moves with it
@@ -84,13 +122,23 @@ export function PhotoGallery({
   // this and reacts only once the gesture is over.
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [announce, setAnnounce] = useState(false);
   // The card owns nothing and keeps its own index; the dialog shares one index
   // between the swipeable photo and the thumbnails under it.
   const imageIndex = index ?? ownIndex;
   const image = images[imageIndex];
   const hasGallery = images.length > 1;
 
+  useEffect(() => {
+    return () => window.clearTimeout(preloadTimer.current);
+  }, []);
+
   function setImageIndex(next: number) {
+    // Only a gallery the visitor has actually driven gets to speak. The grid
+    // mounts one of these per multi-photo card, which was 425 live regions in
+    // one document, and a filter change inserts new nodes that already carry
+    // their text. result-count.tsx gates the same shape the same way.
+    setAnnounce(true);
     if (index === undefined) setOwnIndex(next);
     onIndexChange?.(next);
   }
@@ -100,6 +148,10 @@ export function PhotoGallery({
       if (preloadedImages.current.has(source)) continue;
       preloadedImages.current.add(source);
       const preload = new window.Image();
+      // The visitor has not asked for these yet, so they must not compete with
+      // the photo they are actually looking at.
+      preload.fetchPriority = "low";
+      preload.decoding = "async";
       preload.src = source;
     }
   }
@@ -111,28 +163,51 @@ export function PhotoGallery({
     setImageIndex(nextIndex);
   }
 
+  function endGesture() {
+    swipeStart.current = null;
+    activePointer.current = null;
+    axis.current = null;
+    setDragging(false);
+    setDragOffset(0);
+  }
+
   function startSwipe(event: PointerEvent<HTMLElement>) {
+    // Cleared before any early return. It used to be cleared after them, so a
+    // swipe whose compatibility click never arrived left the flag set, and the
+    // next mouse click or Enter on the same photo was swallowed instead.
+    suppressImageLink.current = false;
     if (!hasGallery || event.pointerType === "mouse") return;
+    if (activePointer.current !== null) return;
+    activePointer.current = event.pointerId;
+    axis.current = null;
     swipeStart.current = {
       x: event.clientX,
       y: event.clientY,
       time: event.timeStamp,
       width: event.currentTarget.clientWidth || 1,
     };
-    suppressImageLink.current = false;
     setDragging(true);
     preloadAdjacent(imageIndex);
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // Optional call: jsdom has no pointer capture, and a gesture that cannot
+    // be captured still works, it just stops tracking a finger that leaves the
+    // element.
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function moveSwipe(event: PointerEvent<HTMLElement>) {
     const start = swipeStart.current;
     if (!start || shouldReduceMotion) return;
+    if (event.pointerId !== activePointer.current) return;
 
     const distanceX = event.clientX - start.x;
     const distanceY = event.clientY - start.y;
-    // A vertical drag belongs to the page's own scroll, not to the photo.
-    if (Math.abs(distanceX) <= Math.abs(distanceY)) return;
+
+    if (axis.current === null) {
+      if (Math.hypot(distanceX, distanceY) < AXIS_SLOP_PX) return;
+      // A vertical drag belongs to the page's own scroll, not to the photo.
+      axis.current = Math.abs(distanceX) > Math.abs(distanceY) ? "x" : "y";
+    }
+    if (axis.current !== "x") return;
 
     const clamped = Math.max(-start.width, Math.min(start.width, distanceX));
     setDragOffset(clamped);
@@ -140,43 +215,61 @@ export function PhotoGallery({
 
   function finishSwipe(event: PointerEvent<HTMLElement>) {
     const start = swipeStart.current;
-    swipeStart.current = null;
-    setDragging(false);
-    setDragOffset(0);
-    if (!start) return;
-
+    if (!start || event.pointerId !== activePointer.current) {
+      endGesture();
+      return;
+    }
+    const committedAxis = axis.current;
     const distanceX = event.clientX - start.x;
-    const distanceY = event.clientY - start.y;
-    if (Math.abs(distanceX) <= Math.abs(distanceY)) return;
-
     const elapsed = Math.max(1, event.timeStamp - start.time);
+    endGesture();
+
+    if (committedAxis !== "x") return;
+    // Any gesture that committed to the horizontal is the photo's, whether or
+    // not it travelled far enough to turn the page. One that snaps back must
+    // not also navigate.
+    suppressImageLink.current = true;
+
     const velocity = Math.abs(distanceX) / elapsed;
     const farEnough = Math.abs(distanceX) > start.width * SWIPE_DISTANCE_RATIO;
-    const flicked = velocity > SWIPE_VELOCITY_PX_MS;
+    const flicked =
+      velocity > SWIPE_VELOCITY_PX_MS && Math.abs(distanceX) > MIN_SWIPE_PX;
     if (!farEnough && !flicked) return;
 
-    suppressImageLink.current = true;
     changeImage(distanceX < 0 ? 1 : -1);
   }
 
   function handleSwipeCancel() {
-    swipeStart.current = null;
-    setDragging(false);
-    setDragOffset(0);
+    suppressImageLink.current = false;
+    endGesture();
   }
 
   function handlePointerEnter() {
-    preloadAdjacent(imageIndex);
+    window.clearTimeout(preloadTimer.current);
+    preloadTimer.current = window.setTimeout(
+      () => preloadAdjacent(imageIndex),
+      PRELOAD_DWELL_MS,
+    );
   }
 
-  function handleFocus() {
-    preloadAdjacent(imageIndex);
+  function handlePointerLeave() {
+    window.clearTimeout(preloadTimer.current);
   }
 
   function openImageLink(event: MouseEvent<HTMLAnchorElement>) {
-    if (suppressImageLink.current) {
+    // A held modifier or a non-primary button is asking the browser for a tab,
+    // and that has to win over a stale suppression: the card's own handler
+    // deliberately lets those through, and this path used to swallow them.
+    const modified =
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      event.button !== 0;
+    const suppressed = suppressImageLink.current;
+    suppressImageLink.current = false;
+    if (suppressed && !modified) {
       event.preventDefault();
-      suppressImageLink.current = false;
       return;
     }
     onNavigate?.(event);
@@ -187,14 +280,24 @@ export function PhotoGallery({
   // transition both live on this element rather than on imageContent, so the
   // fallback "no photo yet" note tracks the finger too instead of sitting
   // still while its surface moves.
+  //
+  // touch-pinch-zoom alongside touch-pan-y: in the touch-action grammar pan-y
+  // excludes pinch-zoom, so declaring it alone turned off zoom on the one
+  // element a low-vision visitor most wants to zoom. Composing the two keeps
+  // the horizontal capture the swipe needs and gives the pinch back.
   const surface = {
     onPointerDown: startSwipe,
     onPointerMove: moveSwipe,
     onPointerEnter: handlePointerEnter,
-    onFocus: handleFocus,
+    onPointerLeave: handlePointerLeave,
     onPointerUp: finishSwipe,
     onPointerCancel: handleSwipeCancel,
-    className: "absolute inset-0 touch-pan-y",
+    onLostPointerCapture: handleSwipeCancel,
+    // tone lands here and not on the wrapper. On the wrapper every child
+    // inherited it, so a settled animal's chevrons and its "3 / 12" counter
+    // were dimmed and desaturated along with the photograph. Here it reaches
+    // the picture and the "no photo yet" note and stops.
+    className: cn("absolute inset-0 touch-pan-y touch-pinch-zoom", tone),
     style: {
       transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
       transition:
@@ -207,9 +310,18 @@ export function PhotoGallery({
   const imageContent = image ? (
     <Image
       src={image}
-      alt={animal.name ?? messages.unnamed}
+      // Empty when the photo is a link, because that anchor is aria-hidden and
+      // the card names the animal twice over already: in its heading and in
+      // the link the heading sits inside. "Rex" is not a text alternative for
+      // a photograph of Rex, and it does not change when the gallery does.
+      alt={href ? "" : (animal.name ?? messages.unnamed)}
       fill
+      // Inert while next.config.ts keeps images unoptimized: that emits a bare
+      // <img> with no srcset, so there is one candidate at every width and
+      // nothing for this to choose between. Kept because it is correct for the
+      // day optimization is turned on, and wrong to silently drop until then.
       sizes={sizes}
+      priority={priority}
       className="object-cover"
     />
   ) : (
@@ -219,11 +331,25 @@ export function PhotoGallery({
   );
 
   return (
-    <div className={cn(className ?? DEFAULT_WRAPPER_CLASS, tone)}>
+    // data-slot, because the card hands the dialog this box to grow its zoom
+    // out of and used to find it by walking to the article's firstElementChild.
+    // That is the wrapper div, not this one, and it only returned the right
+    // rectangle because the wrapper happens to have exactly one in-flow child.
+    <div
+      data-slot="photo-frame"
+      className={cn("group/photo", className ?? DEFAULT_WRAPPER_CLASS)}
+    >
       {href ? (
+        // A pointer affordance, not a second name for the animal. It stays a
+        // real anchor so a held modifier still deep links, but it leaves the
+        // tab order and the accessibility tree: every card used to offer the
+        // same animal as two links under two unrelated names, which put 503
+        // "Odpri podrobnosti o ..." rows in the rotor ahead of the headings
+        // that actually distinguish them.
         <a
           href={href}
-          aria-label={linkLabel}
+          aria-hidden="true"
+          tabIndex={-1}
           onClick={openImageLink}
           {...surface}
         >
@@ -239,9 +365,14 @@ export function PhotoGallery({
             type="button"
             variant="outline"
             size="icon-sm"
+            // Out of the tab order: two chevrons on every card came to 850 of
+            // the grid's tab stops. The keyboard route through a gallery is
+            // the arrow keys on the card's own link, which is one stop instead
+            // of two and faster than pressing Enter on a disc.
+            tabIndex={-1}
             onClick={() => changeImage(-1)}
             aria-label={messages.previousPhoto}
-            className={`${GALLERY_BUTTON_CLASS} left-1.5`}
+            className={`${OWN_BUTTON_CLASS} left-1.5`}
           >
             <ChevronLeft className="size-4" aria-hidden />
           </Button>
@@ -249,20 +380,28 @@ export function PhotoGallery({
             type="button"
             variant="outline"
             size="icon-sm"
+            tabIndex={-1}
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
-            className={`${GALLERY_BUTTON_CLASS} right-1.5`}
+            className={`${OWN_BUTTON_CLASS} right-1.5`}
           >
             <ChevronRight className="size-4" aria-hidden />
           </Button>
           <Badge
             variant="secondary"
             aria-hidden
-            className="absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm"
+            // pointer-events-none because it is decoration sitting on top of
+            // the photo's link: a tap in the corner used to land on the badge
+            // and do nothing at all.
+            className="pointer-events-none absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm"
           >
             {imageIndex + 1} / {images.length}
           </Badge>
-          <span className="sr-only" aria-live="polite" aria-atomic="true">
+          <span
+            className="sr-only"
+            aria-live={announce ? "polite" : undefined}
+            aria-atomic={announce ? "true" : undefined}
+          >
             {translate(locale, "photoCount", {
               current: imageIndex + 1,
               total: images.length,

@@ -5,6 +5,7 @@ import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { speciesLabel, statusLabel } from "@/lib/labels";
+import { speciesLabel } from "@/lib/labels";
 
 const pageText = {
   sl: {
@@ -91,12 +92,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                   <Badge variant="secondary">
                     {speciesLabel(animal.species, locale)}
                   </Badge>
-                  {animal.status !== "available" &&
-                    animal.status !== "unknown" && (
-                      <Badge variant="outline">
-                        {statusLabel(animal.status, locale)}
-                      </Badge>
-                    )}
+                  <StatusBadge status={animal.status} locale={locale} />
                 </div>
               </div>
 

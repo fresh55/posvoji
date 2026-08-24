@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
-import { activeFilterSectionCount } from "@/lib/filters";
+import { activeFilterCount } from "@/lib/filters";
 import type {
   FilterOption,
   Filters,
@@ -53,8 +53,10 @@ export function FilterSidebar({
   const { messages } = useI18n();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
   // The chips row scrolls away with the page while the sidebar stays; this
-  // count and its clear keep the state and the way out in view.
-  const activeSections = activeFilterSectionCount(filters);
+  // count and its clear keep the state and the way out in view. Selected
+  // values and not sections, so it agrees with the row it outlives: a badge
+  // reading 1 above two chips was two answers to one question.
+  const activeValues = activeFilterCount(filters);
 
   return (
     <aside
@@ -71,7 +73,7 @@ export function FilterSidebar({
       <div className="flex h-7 items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-sm font-medium">
           {messages.filters}
-          {activeSections > 0 && (
+          {activeValues > 0 && (
             // Same badge the mobile sheet already shows next to "Filtri". Its
             // own LazyMotion: unlike the sections below, nothing here already
             // opens one for CountRoll to read domAnimation from.
@@ -83,7 +85,7 @@ export function FilterSidebar({
                 // the animate-none guard does not actually take effect here.
                 className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
               >
-                <CountRoll value={activeSections} />
+                <CountRoll value={activeValues} />
               </Badge>
             </LazyMotion>
           )}
@@ -93,14 +95,14 @@ export function FilterSidebar({
           variant="link"
           size="xs"
           onClick={onClearAll}
-          aria-hidden={activeSections === 0}
-          tabIndex={activeSections > 0 ? undefined : -1}
+          aria-hidden={activeValues === 0}
+          tabIndex={activeValues > 0 ? undefined : -1}
           className={cn(
             "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
-            activeSections === 0 && "pointer-events-none opacity-0",
+            activeValues === 0 && "pointer-events-none opacity-0",
           )}
         >
-          {messages.clearFilters}
+          {messages.clearAll}
         </Button>
       </div>
 

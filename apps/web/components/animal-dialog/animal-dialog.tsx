@@ -17,7 +17,7 @@ import {
   useMotionValue,
   useReducedMotion,
 } from "motion/react";
-import type { AdoptionStatus, Animal } from "@posvoji/schema";
+import type { Animal } from "@posvoji/schema";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { PhotoBloom } from "@/components/animal-dialog/photo-bloom";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
@@ -25,7 +25,7 @@ import { StageWash } from "@/components/animal-dialog/photo-wash";
 import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { useI18n } from "@/components/i18n-provider";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,8 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { permittedImageUrls } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { speciesLabel, statusLabel } from "@/lib/labels";
-import { cn } from "@/lib/utils";
+import { speciesLabel } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
@@ -97,15 +96,6 @@ const DRAG_CLOSE_PX = 140;
 
 // The layout the dismiss gesture was designed for.
 const PHONE_LAYOUT = "(max-width: 639px)";
-
-// Available is the default state and needs no badge - the badge is for the
-// exceptions worth calling out. Reserved is a maybe and says so in amber.
-// Adopted and hold are over, and go quiet.
-const STATUS_CLASS: Record<Exclude<AdoptionStatus, "unknown" | "available">, string> = {
-  reserved: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  adopted: "border-transparent bg-muted text-muted-foreground",
-  hold: "border-transparent bg-muted text-muted-foreground",
-};
 
 const REVEAL_SPRING = {
   type: "spring",
@@ -235,13 +225,6 @@ export function AnimalDialog({
   const subtitle = [speciesLabel(lastAnimal.species, locale), breed]
     .filter(Boolean)
     .join(" · ");
-  // Available animals are the norm, so the badge stays for the exceptions.
-  const badgeStatus =
-    lastAnimal.status === "unknown" || lastAnimal.status === "available"
-      ? undefined
-      : lastAnimal.status;
-  const status = badgeStatus && statusLabel(badgeStatus, locale);
-  const statusTone = badgeStatus && STATUS_CLASS[badgeStatus];
   const transition = shouldReduceMotion ? { duration: 0 } : undefined;
 
   // An animal the current filters hide is still reachable by link, and then
@@ -406,11 +389,10 @@ export function AnimalDialog({
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <DialogTitle className="text-lg">{name}</DialogTitle>
-                    {status && (
-                      <Badge variant="outline" className={cn(statusTone)}>
-                        {status}
-                      </Badge>
-                    )}
+                    <StatusBadge
+                      status={lastAnimal.status}
+                      locale={locale}
+                    />
                     <span className="ms-auto flex items-center gap-1">
                       <ShareButton
                         path={animalPath(lastAnimal, locale)}

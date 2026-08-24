@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Animal, Species, TestResult } from "@posvoji/schema";
 import {
   activeFilterCount,
-  activeFilterSectionCount,
   applyFilters,
   bySpecies,
   careCounts,
@@ -384,12 +383,63 @@ describe("URL codec", () => {
     expect(activeFilterCount(filters)).toBe(0);
     expect(serializeFilters(filters)).toBe("");
   });
+
+  it("drops an empty zavetisce value rather than filtering on nothing", () => {
+    // Shelter slugs are ids the codec cannot check against a dataset, so they
+    // pass through. An empty one used to pass through too, and no animal has
+    // it: the page went to nothing matching, behind a chip with no words on it.
+    expect(parseFilters("zavetisce=,").shelter).toEqual([]);
+    expect(parseFilters("zavetisce=ljubljana,,horjul").shelter).toEqual([
+      "ljubljana",
+      "horjul",
+    ]);
+    expect(parseFilters("zavetisce=%20").shelter).toEqual([]);
+  });
+
+  it("caps how many values one param can carry", () => {
+    const many = Array.from({ length: 500 }, (_, i) => `s${i}`).join(",");
+    // Every value that survives costs a chip and a full pass over the dataset
+    // to price it, so the link cannot be allowed to name as many as it likes.
+    expect(parseFilters(`zavetisce=${many}`).shelter).toHaveLength(32);
+  });
+
+  it("drops a value too long to be a slug anyone wrote", () => {
+    const long = "x".repeat(65);
+    expect(parseFilters(`zavetisce=ljubljana,${long}`).shelter).toEqual([
+      "ljubljana",
+    ]);
+  });
+
+  it("reads a param the link repeats as the one list it means", () => {
+    // This codec writes one param carrying a comma list, but a URL is free to
+    // repeat the param instead and hand-built links do. get() returned the
+    // first only, so half the selection went missing without a sign.
+    expect(parseFilters("spol=samec&spol=samica").sex).toEqual([
+      "male",
+      "female",
+    ]);
+    expect(parseFilters("starost=mladicek&starost=senior,odrasel").age).toEqual([
+      "mladicek",
+      "senior",
+      "odrasel",
+    ]);
+    expect(parseFilters("zavetisce=horjul&zavetisce=horjul").shelter).toEqual([
+      "horjul",
+    ]);
+  });
+
+  it("keeps one copy of a value the link repeats", () => {
+    expect(parseFilters("zavetisce=horjul,horjul,horjul").shelter).toEqual([
+      "horjul",
+    ]);
+    expect(parseFilters("lastnosti=cip,cip").toggles).toEqual(["cip"]);
+  });
 });
 
-describe("active filter section count", () => {
-  it("counts each selected axis once, including health as one section", () => {
+describe("active filter count", () => {
+  it("counts every selected value, not the axes they sit on", () => {
     expect(
-      activeFilterSectionCount({
+      activeFilterCount({
         ...EMPTY_FILTERS,
         species: "cat",
         sex: ["male", "female"],
@@ -397,34 +447,22 @@ describe("active filter section count", () => {
         shelter: ["s1", "s2"],
         toggles: ["cepljenje", "sterilizacija"],
       }),
-    ).toBe(4);
+    ).toBe(9);
   });
 
-  it("counts družba as one more section", () => {
+  it("counts družba, dom and skrb values too", () => {
     expect(
-      activeFilterSectionCount({
+      activeFilterCount({
         ...EMPTY_FILTERS,
-        toggles: ["cepljenje"],
         goodWith: ["kids", "dogs"],
-      }),
-    ).toBe(2);
-  });
-
-  it("counts dom and skrb as two more sections", () => {
-    expect(
-      activeFilterSectionCount({
-        ...EMPTY_FILTERS,
-        goodWith: ["kids"],
         home: ["apartment"],
         care: ["patient"],
       }),
-    ).toBe(3);
+    ).toBe(4);
   });
 
-  it("does not count the species tab or empty sections", () => {
-    expect(activeFilterSectionCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(
-      0,
-    );
+  it("does not count the species tab", () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(0);
   });
 });
 

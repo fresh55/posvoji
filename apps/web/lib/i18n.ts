@@ -36,7 +36,19 @@ const sl = {
   factOrigin: "Kraj najdbe",
   longStay: "V zavetišču čaka že {duration}.",
   longStayLink: "Poglej vse, ki čakajo najdlje",
-  longStayMark: "Čaka že {duration}",
+  // A label, not a plea. The dialog's longStay above is the plea, and it has a
+  // sentence, a box and a link to act on: that is where it can do something. On
+  // a card the same words repeat twenty times a screen and decay into
+  // wallpaper.
+  //
+  // The verb is the part that cannot come off. Those same 54 of 101 cards are
+  // an animal that grew up in the shelter, where the age and the wait are one
+  // number, and a mark printing the number alone leaves a 12px hourglass to
+  // say which of the two it is. "Čaka" says it in four characters and lets
+  // the icon go. The trailing "v zavetišču" that used to carry the sense is
+  // what pays for it: it is the one thing on a card about a shelter's animal
+  // that every card already says.
+  longStayMark: "Čaka {duration}",
   healthAllClear: "Vse zdravstveno urejeno ({count}/{count})",
   showHealthDetails: "Pokaži podrobnosti",
   readMore: "Preberi več",
@@ -48,12 +60,22 @@ const sl = {
     "Testirana negativno na mačji virus imunske pomanjkljivosti (FIV).",
   hintBrezFelv: "Testirana negativno na virus mačje levkemije (FeLV).",
   statusAvailable: "na voljo",
-  statusReserved: "rezerviran",
-  statusAdopted: "posvojen",
-  statusHold: "trenutno ni za posvojitev",
+  // Neuter impersonal, not masculine adjectives. filters.ts states the rule for
+  // the toggles ("Slovenian would force a gender on 'cepljen' that 'živali'
+  // doesn't share") and these three were the place it was not applied, on a
+  // grid that is three quarters cats. "Rezervirano" and "posvojeno" describe
+  // the state of a thing and carry no gender.
+  //
+  // statusHold loses "trenutno": at 11px the old string was wider than a phone
+  // card's whole content box, and the shorter one says the same thing.
+  statusReserved: "rezervirano",
+  statusAdopted: "posvojeno",
+  statusHold: "ni za posvojitev",
   lessThanMonth: "manj kot mesec",
   unnamed: "Brez imena",
   animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
+  resultsHeading: "Živali",
+  skipResults: "Preskoči seznam živali",
   noResults: "Ni zadetkov.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
@@ -79,8 +101,23 @@ const sl = {
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
   filters: "Filtri",
-  filtersWithCount: "Filtri, aktivni sklopi: {count}",
+  // Selected values, not sections. The chips row counts the same things, and
+  // two numbers on one screen that both read as "how many filters" have to
+  // agree; the one a visitor can check by counting the chips in front of
+  // them is the one that wins.
+  filtersWithCount: "Filtri, aktivnih: {count}",
   activeFilters: "Aktivni filtri",
+  activeFiltersCount: "Aktivni filtri: {count}",
+  clearAll: "Počisti vse",
+  clearAllFilters: "Počisti vse filtre",
+  // Tooltip on a chip: what pressing it gives back. {count} arrives already
+  // formatted by animalCount, so the noun agrees with the number.
+  removeShowsMore: "Odstrani, +{count}",
+  expandFilterGroup: "Pokaži vse izbrane: {label}",
+  showMoreFilters: "Pokaži še {count}",
+  filtersCleared: "Filtri počiščeni",
+  undoClear: "Razveljavi",
+  undoClearFilters: "Razveljavi čiščenje filtrov",
   sortBy: "Razvrsti živali",
   sortLongestInShelter: "Najdlje v zavetišču",
   sortNewestArrivals: "Najnovejši sprejemi",
@@ -119,8 +156,11 @@ const sl = {
   searchShelters: "Išči zavetišče po imenu…",
   noSheltersFound: "Ni zadetkov za",
   clearSearch: "Počisti iskanje",
-  muniPrompt: "Si našel žival? Poišči pristojno zavetišče.",
-  muniPromptCta: "Poišči občino",
+  // The label on the hero's found-animal button, and the whole of it. A line
+  // of page text beside the control said the same thing twice, and a note
+  // under it explaining who pays read as a subtitle written to sell. What the
+  // dialog does with the answer, the dialog says on arrival.
+  muniPromptTitle: "Si našel žival?",
   muniTab: "Najdena žival",
   muniSearch: "Občina ali poštna številka …",
   muniHint:
@@ -290,7 +330,10 @@ const en: Messages = {
   shelters: "Shelters",
   forShelters: "For shelters",
   chooseLanguage: "Choose language",
-  photoAtShelter: "See photo on the shelter’s website",
+  // A statement, matching the Slovenian. It used to read "See photo on the
+  // shelter's website", which is an instruction the click does not carry out:
+  // on a card this box is a link to the animal's own page, not to the shelter.
+  photoAtShelter: "Photo is on the shelter’s website",
   previousPhoto: "Previous photo",
   nextPhoto: "Next photo",
   photoCount: "Photo {current} of {total}",
@@ -324,10 +367,12 @@ const en: Messages = {
   statusAvailable: "available",
   statusReserved: "reserved",
   statusAdopted: "adopted",
-  statusHold: "on hold",
+  statusHold: "not available",
   lessThanMonth: "less than a month",
   unnamed: "Unnamed",
   animalsComingSoon: "Animals will appear here when the first shelters join.",
+  resultsHeading: "Animals",
+  skipResults: "Skip the list of animals",
   noResults: "No results.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
@@ -349,8 +394,17 @@ const en: Messages = {
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",
   filters: "Filters",
-  filtersWithCount: "Filters, active sections: {count}",
+  filtersWithCount: "Filters, {count} active",
   activeFilters: "Active filters",
+  activeFiltersCount: "Active filters: {count}",
+  clearAll: "Clear all",
+  clearAllFilters: "Clear all filters",
+  removeShowsMore: "Remove, +{count}",
+  expandFilterGroup: "Show all selected: {label}",
+  showMoreFilters: "Show {count} more",
+  filtersCleared: "Filters cleared",
+  undoClear: "Undo",
+  undoClearFilters: "Undo clearing the filters",
   sortBy: "Sort animals",
   sortLongestInShelter: "Longest in shelter",
   sortNewestArrivals: "Newest arrivals",
@@ -380,8 +434,7 @@ const en: Messages = {
   searchShelters: "Search shelters by name…",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
-  muniPrompt: "Found an animal? Find the shelter for your area.",
-  muniPromptCta: "Find your municipality",
+  muniPromptTitle: "Found an animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
   muniHint:

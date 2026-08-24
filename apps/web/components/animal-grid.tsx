@@ -19,6 +19,8 @@ import {
   bySpecies,
   careCounts,
   careOptions,
+  chipGains,
+  chipKey,
   facetCounts,
   goodWithCounts,
   goodWithOptions,
@@ -36,15 +38,26 @@ import {
   visibleHome,
   visibleToggles,
   type FilterOption,
+  type Filters,
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
-import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import {
+  careLabel,
+  goodWithChipLabel,
+  homeLabel,
+  shelterChipLabel,
+} from "@/lib/labels";
 import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+
+// How long a cleared filter state can still be taken back. Long enough to
+// read the row and reach for it, short enough that the offer is gone before
+// it becomes part of the furniture.
+export const UNDO_WINDOW_MS = 7000;
 
 // Which species-absence message key fills the {species} slot of
 // noResultsShelterSingular/Plural. Keyed by the species tab rather than
@@ -80,6 +93,8 @@ export function AnimalGrid({
   const { locale, messages, t } = useI18n();
   const [clearTrailKey, setClearTrailKey] = useState(0);
   const pendingClearCount = useRef<number | null>(null);
+  // The filter state a clear took away, while the row still offers it back.
+  const [cleared, setCleared] = useState<Filters | null>(null);
   const {
     filters,
     sort,
@@ -96,22 +111,28 @@ export function AnimalGrid({
     toggleManyCare,
     setSort,
     clearAll,
+    restore,
     activeCount,
   } = useAnimalFilters();
 
-  const reference = useMemo(
-    () => new Date(referenceDate),
-    [referenceDate],
-  );
-  // One Date per mount keeps age buckets stable across re-renders.
-  const now = useMemo(() => new Date(), []);
+  // The one clock on this page, and deliberately not the visitor's. Everything
+  // below measures the dataset against it: which age bucket an animal falls in,
+  // how the youngest and oldest orders come out, and how long the longest wait
+  // at a shelter has been. The clock was used for the first three and the
+  // dataset's own date for what the card and the dialog then printed, so the
+  // filter and the words under the photo were answering from two different
+  // days. Prerendering makes it worse than a rounding error: the HTML is built
+  // with the build machine's clock and hydrated with the visitor's, so the two
+  // renders could bucket an animal differently. Ages here are a property of
+  // the export, so they are read off the export.
+  const reference = useMemo(() => new Date(referenceDate), [referenceDate]);
   const visible = useMemo(
-    () => applyFilters(animals, filters, now),
-    [animals, filters, now],
+    () => applyFilters(animals, filters, reference),
+    [animals, filters, reference],
   );
   const sorted = useMemo(
-    () => sortAnimals(visible, sort, locale, now),
-    [visible, sort, locale, now],
+    () => sortAnimals(visible, sort, locale, reference),
+    [visible, sort, locale, reference],
   );
 
   // What the dialog steps through is what the visitor is looking at: the list
@@ -136,16 +157,40 @@ export function AnimalGrid({
     () =>
       visible.length === 0 &&
       filters.shelter.length > 0 &&
-      applyFilters(animals, { ...filters, shelter: [] }, now).length > 0,
-    [animals, filters, now, visible.length],
+      applyFilters(animals, { ...filters, shelter: [] }, reference).length > 0,
+    [animals, filters, reference, visible.length],
   );
 
   const handleClearAll = useCallback(() => {
     if (activeCount > 0 || filters.species !== "all") {
       pendingClearCount.current = visible.length;
+      // Held for as long as the row offers the way back, and only that long.
+      // A snapshot with no offer beside it is a trap: nothing on screen would
+      // say it existed.
+      setCleared(filters);
     }
     clearAll();
-  }, [activeCount, clearAll, filters.species, visible.length]);
+  }, [activeCount, clearAll, filters, visible.length]);
+
+  // Every other filter action undoes itself by being repeated. This one
+  // cannot, so the row keeps a way back for a few seconds, and then drops it.
+  //
+  // Time is the only thing that ends the offer. Picking a filter during the
+  // window hides it without cancelling it, because the row shows the offer
+  // only where the chips would be and chips win that space (filter-chips.tsx).
+  // Undoing after that still restores the state that was cleared, which is
+  // what the words promise, so there is nothing to guard against.
+  useEffect(() => {
+    if (!cleared) return;
+    const timer = window.setTimeout(() => setCleared(null), UNDO_WINDOW_MS);
+    return () => window.clearTimeout(timer);
+  }, [cleared]);
+
+  const handleUndo = useCallback(() => {
+    if (!cleared) return;
+    restore(cleared);
+    setCleared(null);
+  }, [cleared, restore]);
 
   useEffect(() => {
     const previousCount = pendingClearCount.current;
@@ -163,8 +208,8 @@ export function AnimalGrid({
   // count: which species live there and who has waited longest. Built from the
   // whole dataset and not from `visible`, so the card answers "who is this
   // shelter" rather than "what matches my filter" — the count pill next to the
-  // shelter's name already carries the filtered number. `now` and not
-  // `reference`, because the wait is measured the same way the age buckets are.
+  // shelter's name already carries the filtered number. Measured from
+  // `reference`, the same way the age buckets above are.
   //
   // summarizeShelters only ever sees animals, so the logo is folded in here:
   // `logos` is keyed by the same shelter id (see shelter-block.tsx for the
@@ -172,16 +217,16 @@ export function AnimalGrid({
   // never found a logo for is simply left for ShelterAvatar's initial-letter
   // fallback to answer.
   const shelterSummaries = useMemo(() => {
-    const summaries = summarizeShelters(animals, locale, now);
+    const summaries = summarizeShelters(animals, locale, reference);
     for (const [id, summary] of summaries) {
       const logo = logos[id];
       if (logo) summary.logo = logo;
     }
     return summaries;
-  }, [animals, locale, logos, now]);
+  }, [animals, locale, logos, reference]);
   const counts = useMemo(
-    () => facetCounts(animals, filters, now),
-    [animals, filters, now],
+    () => facetCounts(animals, filters, reference),
+    [animals, filters, reference],
   );
   // The panel follows the species tab: measured against the whole dataset it
   // would offer groups the animals on screen don't vary on.
@@ -194,8 +239,8 @@ export function AnimalGrid({
   // where you adopt from is a map, and it goes next to the species tabs as the
   // other question people arrive with.
   const shown = useMemo(
-    () => visibleGroups(pool, filters.species, now),
-    [pool, filters.species, now],
+    () => visibleGroups(pool, filters.species, reference),
+    [pool, filters.species, reference],
   );
   const groups = useMemo(
     () =>
@@ -228,6 +273,14 @@ export function AnimalGrid({
     const options = groupOptions("shelter", animals, locale);
     return options.length > 0 ? options : undefined;
   }, [animals, locale]);
+  // Their names, by id. The chips row used to ask optionLabel for each one,
+  // and optionLabel rebuilds the whole roster from every animal to answer,
+  // so a row of shelter chips walked the dataset once per pill on every
+  // render. The roster above is that same walk, already done.
+  const shelterLabels = useMemo(
+    () => new Map((shelters ?? []).map(({ value, label }) => [value, label])),
+    [shelters],
+  );
   const toggles = useMemo(
     () =>
       visibleToggles(pool, filters.species).map((toggle) => ({
@@ -237,8 +290,8 @@ export function AnimalGrid({
     [locale, pool, filters.species],
   );
   const toggleTally = useMemo(
-    () => toggleCounts(animals, filters, now),
-    [animals, filters, now],
+    () => toggleCounts(animals, filters, reference),
+    [animals, filters, reference],
   );
   // The section carries its own options, tally and actions, and is left out
   // entirely while no facet has enough answers to narrow anything.
@@ -247,7 +300,7 @@ export function AnimalGrid({
     if (keys.length === 0) return undefined;
     return {
       options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: goodWithCounts(animals, filters, now),
+      counts: goodWithCounts(animals, filters, reference),
       resultCount: visible.length,
       total: pool.length,
       onToggle: toggleGoodWith,
@@ -257,7 +310,7 @@ export function AnimalGrid({
     animals,
     filters,
     locale,
-    now,
+    reference,
     pool,
     visible.length,
     toggleGoodWith,
@@ -271,7 +324,7 @@ export function AnimalGrid({
     if (keys.length === 0) return undefined;
     return {
       options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: homeCounts(animals, filters, now),
+      counts: homeCounts(animals, filters, reference),
       resultCount: visible.length,
       total: pool.length,
       onToggle: toggleHome,
@@ -281,7 +334,7 @@ export function AnimalGrid({
     animals,
     filters,
     locale,
-    now,
+    reference,
     pool,
     visible.length,
     toggleHome,
@@ -293,7 +346,7 @@ export function AnimalGrid({
     if (keys.length === 0) return undefined;
     return {
       options: careOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: careCounts(animals, filters, now),
+      counts: careCounts(animals, filters, reference),
       resultCount: visible.length,
       total: pool.length,
       onToggle: toggleCare,
@@ -303,45 +356,87 @@ export function AnimalGrid({
     animals,
     filters,
     locale,
-    now,
+    reference,
     pool,
     visible.length,
     toggleCare,
     toggleManyCare,
   ]);
 
+  // What each active value is costing: how many more animals show if it comes
+  // off, everything else left alone. The row spends it two ways: a tooltip on
+  // hover, and, when nothing matches at all, a mark on the single chip that is
+  // the cheapest way out.
+  //
+  // This used to be a full applyFilters pass per chip, on the reasoning that
+  // no one-pass shortcut could answer it: counting the animals that fail
+  // exactly one filter is a different question, and gets every multi-value
+  // facet backwards. True as far as it went. The answer was to stop counting
+  // failures and count the two things that actually move, which chipGains does
+  // in one walk (lib/filters.ts), so a row of chips now costs what one chip
+  // used to.
+  const chipGain = useMemo(
+    () => chipGains(animals, filters, reference),
+    [animals, filters, reference],
+  );
+
   // The pressed species tab already shows itself, so chips cover only the
-  // sidebar/sheet groups.
+  // sidebar/sheet groups and the shelter picker. The rule is not "everything
+  // that is on": it is "everything with no other one-click way off". A
+  // species goes back to Vse in one press of its own tab; a shelter takes a
+  // dialog, which is why it is here and the species is not.
+  //
+  // Each chip carries the facet that set it, because the row groups by facet
+  // and draws one icon per facet: flat, they were nine questions' answers
+  // wearing the same pill.
   const chips: Chip[] = [
     ...GROUPS.flatMap((group) =>
       filters[group].map((value) => ({
-        key: `${group}:${value}`,
-        label: optionLabel(group, value, animals, locale),
+        key: chipKey(group, value),
+        facet: group,
+        value,
+        label:
+          group === "shelter"
+            ? shelterChipLabel(shelterLabels.get(value) ?? value)
+            : optionLabel(group, value, animals, locale),
+        gain: chipGain.get(chipKey(group, value)),
         onRemove: () => toggle(group, value),
       })),
     ),
     ...filters.toggles.map((key) => ({
-      key: `toggle:${key}`,
+      key: chipKey("toggles", key),
+      facet: "toggles" as const,
+      value: key,
       label: toggleLabel(key, locale),
+      gain: chipGain.get(chipKey("toggles", key)),
       onRemove: () => toggleProperty(key),
     })),
     // Not the card label: on a row of chips "Psi" would read as the species
     // tab, so these name the household instead.
     ...filters.goodWith.map((key) => ({
-      key: `goodWith:${key}`,
+      key: chipKey("goodWith", key),
+      facet: "goodWith" as const,
+      value: key,
       label: goodWithChipLabel(key, locale),
+      gain: chipGain.get(chipKey("goodWith", key)),
       onRemove: () => toggleGoodWith(key),
     })),
     // Both of these read as whole phrases on the card already, so a chip says
     // the same words rather than a second wording of them.
     ...filters.home.map((key) => ({
-      key: `home:${key}`,
+      key: chipKey("home", key),
+      facet: "home" as const,
+      value: key,
       label: homeLabel(key, locale),
+      gain: chipGain.get(chipKey("home", key)),
       onRemove: () => toggleHome(key),
     })),
     ...filters.care.map((key) => ({
-      key: `care:${key}`,
+      key: chipKey("care", key),
+      facet: "care" as const,
+      value: key,
       label: careLabel(key, locale),
+      gain: chipGain.get(chipKey("care", key)),
       onRemove: () => toggleCare(key),
     })),
   ];
@@ -355,12 +450,27 @@ export function AnimalGrid({
 
   return (
     <section
+      aria-labelledby="rezultati"
       className={cn(
         "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0",
         hasSidebar &&
           "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
       )}
     >
+      {/* The page went from its h1 straight to one h3 per card, so there was
+          nothing between the top of the document and the results to navigate
+          by and nothing for a skip link to aim at. Every animal on the page
+          sits below this, and the whole grid is one tab stop per card, so
+          without a way past it a keyboard cannot reach the footer at all. */}
+      <h2 id="rezultati" className="sr-only">
+        {messages.resultsHeading}
+      </h2>
+      <a
+        href="#za-rezultati"
+        className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+      >
+        {messages.skipResults}
+      </a>
       {hasSidebar && (
         <FilterSidebar
           className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto"
@@ -398,6 +508,7 @@ export function AnimalGrid({
           offSiteShelters={offSiteShelters}
           shelterSummaries={shelterSummaries}
           chips={chips}
+          undo={cleared ? handleUndo : undefined}
           resultCount={visible.length}
           clearTrailKey={clearTrailKey}
           sort={sort}
@@ -464,11 +575,17 @@ export function AnimalGrid({
           </div>
         ) : (
           <div className={CARD_GRID}>
-            {sorted.map((animal) => (
+            {sorted.map((animal, ordinal) => (
               <AnimalCard
                 key={animal.id}
                 animal={animal}
                 reference={reference}
+                // The tab already named the species, so the card's one fact
+                // line does not have to spend itself saying it again.
+                species={filters.species}
+                // The first row, which is the largest image on the screen and
+                // was queueing behind the bundle like the other 499.
+                priority={ordinal < 4}
                 onOpen={handleOpen}
                 // A shelter's own page renders these same cards and leaves
                 // this off, because there the line would be the page linking
@@ -478,6 +595,10 @@ export function AnimalGrid({
             ))}
           </div>
         )}
+        {/* Where the skip link lands: the end of the grid, whatever the grid
+            currently holds. tabIndex so focus actually moves here rather than
+            only scrolling the page. */}
+        <div id="za-rezultati" tabIndex={-1} />
       </div>
 
       <AnimalDialog

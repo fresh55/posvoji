@@ -1,3 +1,4 @@
+import { MAP_WIDTH } from "./geo";
 import { REGION_SHAPES, type RegionShape } from "./region-shapes";
 
 export type Point = { x: number; y: number };
@@ -131,6 +132,60 @@ const OUTLINE = outlineRings();
 // constant; outlinePath stays for the plate generator, which imports this
 // module fresh per run.
 export const OUTLINE_PATH = ringsPath(OUTLINE);
+
+// The same twelve shapes and the same outline, thinned for the trigger-sized
+// mini map (components/filters/mini-map.tsx). It draws at 24 CSS px across this
+// module's 320-unit viewBox, so one pixel spans over 13 units and the plate's
+// full-resolution geometry is two orders of magnitude finer than anything that
+// can land on screen. Two instances of that icon were 71KB of the home page's
+// HTML, nearly all of it coordinates describing sub-pixel wobble.
+//
+// Kept here beside REGION_PATHS rather than in the component, so a second
+// small-map consumer gets it instead of copying the thinning.
+//
+// Deliberately not the generator's simplifier: scripts/build-regions.mjs runs
+// perpendicular-distance Douglas-Peucker against a segment and snaps the result
+// to a shared grid, so borders simplified from both sides stay identical. This
+// is a cheaper chord test against the last kept vertex, which can thin two
+// sides of one border differently. At 24px, under a stroked outline, that is
+// invisible, and the parity walk that needs identical vertices has already run
+// above on the unthinned shapes.
+const MINI_MAP_PX = 24;
+// A vertex closer than this to the last kept one cannot change the picture:
+// 0.15 of a pixel at the size this renders, which measured 0.35% of drift in
+// total filled area. Derived rather than written down, so it cannot outlive a
+// change to the viewBox (see KM_PER_MAP_UNIT in geo.ts).
+const MINI_SIMPLIFY_UNITS = (MAP_WIDTH / MINI_MAP_PX) * 0.15;
+
+function thinRing(ring: Ring): Ring {
+  const kept: Ring = [];
+  for (const point of ring) {
+    const last = kept[kept.length - 1];
+    // The first vertex always survives: it is where the ring starts, and a
+    // ring that loses it starts somewhere else. Rounding to whole units is
+    // another 0.075px and cannot merge two kept vertices, which the threshold
+    // has already held a full unit apart.
+    if (
+      !last ||
+      Math.abs(point[0] - last[0]) >= MINI_SIMPLIFY_UNITS ||
+      Math.abs(point[1] - last[1]) >= MINI_SIMPLIFY_UNITS
+    ) {
+      kept.push([Math.round(point[0]), Math.round(point[1])]);
+    }
+  }
+  return kept;
+}
+
+// A ring thinned below a triangle encloses nothing, so it goes rather than
+// being drawn as a degenerate sliver.
+const thinRings = (rings: Ring[]): Ring[] =>
+  rings.map(thinRing).filter((ring) => ring.length >= 3);
+
+export const MINI_REGION_PATHS = new Map<number, string>(
+  REGION_SHAPES.map((region) => [region.id, ringsPath(thinRings(region.rings))]),
+);
+
+export const MINI_OUTLINE_PATH = ringsPath(thinRings(OUTLINE));
 
 export function outlinePath(): string {
   return OUTLINE_PATH;

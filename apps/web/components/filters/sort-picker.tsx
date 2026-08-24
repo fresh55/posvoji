@@ -40,22 +40,24 @@ export function SortPicker({
     >
       <SelectTrigger
         size="sm"
-        // The narrowest phones get the icon alone, to leave the species tabs
-        // beside it room to breathe. The label is the only thing carrying
-        // which sort is active, so it moves into the name rather than being
-        // dropped: hiding it visually must not also silence it.
+        // The name carries the active sort as well as the visible label does,
+        // because this control is worth finding by either.
         aria-label={`${messages.sortBy}: ${labels[value]}`}
-        className={cn(
-          "max-w-44 text-xs max-lg:min-h-11 max-lg:justify-center max-lg:px-2.5",
-          className,
-        )}
+        className={cn("max-w-44 text-xs max-lg:min-h-11", className)}
       >
         <ArrowDownNarrowWide
-          className="size-3.5 text-muted-foreground max-lg:size-4"
+          className="size-3.5 shrink-0 text-muted-foreground max-lg:size-4"
           aria-hidden
         />
+        {/* The label used to go at max-sm, so a phone got an arrow and a
+            chevron in a box and nothing saying what either did. That was to
+            leave the species tabs beside it room to breathe; the tabs have
+            had a row of their own since they stopped fitting one, and this
+            control now sits alone in a row with two hundred spare pixels.
+            Truncation, not hiding, is what a long sort name gets: max-w-44
+            above keeps it from crowding the count at the other end. */}
         <SelectValue>
-          <span className="max-sm:hidden">{labels[value]}</span>
+          <span className="truncate">{labels[value]}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent position="popper" align="end">

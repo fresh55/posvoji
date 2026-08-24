@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, project, type LatLon } from "./geo";
 import {
+  MINI_OUTLINE_PATH,
+  MINI_REGION_PATHS,
+  OUTLINE_PATH,
+  REGION_PATHS,
   REGION_SHAPES,
   regionAt,
   regionContains,
@@ -106,5 +110,60 @@ describe("regionPath", () => {
       expect(path.startsWith("M")).toBe(true);
       expect((path.match(/Z/g) ?? []).length).toBe(region.rings.length);
     }
+  });
+});
+
+// Total filled area of every ring in a path string, by the shoelace formula.
+// The mini map draws these as fills, so area is what a dropped vertex costs.
+function filledArea(path: string): number {
+  let total = 0;
+  for (const ring of path.split("M").filter(Boolean)) {
+    const points = ring
+      .replace(/Z$/, "")
+      .split("L")
+      .map((pair) => pair.trim().split(/[\s,]+/).map(Number));
+    let sum = 0;
+    for (let i = 0; i < points.length; i += 1) {
+      const a = points[i];
+      const b = points[(i + 1) % points.length];
+      sum += a[0] * b[1] - b[0] * a[1];
+    }
+    total += Math.abs(sum) / 2;
+  }
+  return total;
+}
+
+describe("the thinned mini-map paths", () => {
+  it("keeps a path for every region, and closes every ring", () => {
+    expect(MINI_REGION_PATHS.size).toBe(REGION_PATHS.size);
+    for (const [id, path] of MINI_REGION_PATHS) {
+      expect(path.startsWith("M")).toBe(true);
+      expect(path.length).toBeLessThan(REGION_PATHS.get(id)!.length);
+    }
+  });
+
+  it("draws the same picture: under 1% of the filled area moves", () => {
+    const full = [...REGION_PATHS.values()].reduce(
+      (sum, path) => sum + filledArea(path),
+      0,
+    );
+    const thinned = [...MINI_REGION_PATHS.values()].reduce(
+      (sum, path) => sum + filledArea(path),
+      0,
+    );
+    // Drawn at 24px, one CSS pixel spans over 13 map units, so a percent of
+    // area is far below anything that can land on screen. The assertion is a
+    // ratchet: it fails if the threshold is ever loosened enough to matter.
+    expect(Math.abs(full - thinned) / full).toBeLessThan(0.01);
+  });
+
+  it("thins the outline too, and keeps it closed", () => {
+    expect(MINI_OUTLINE_PATH.length).toBeLessThan(OUTLINE_PATH.length / 2);
+    expect(MINI_OUTLINE_PATH.startsWith("M")).toBe(true);
+    expect(MINI_OUTLINE_PATH.endsWith("Z")).toBe(true);
+    expect(
+      Math.abs(filledArea(OUTLINE_PATH) - filledArea(MINI_OUTLINE_PATH)) /
+        filledArea(OUTLINE_PATH),
+    ).toBeLessThan(0.01);
   });
 });

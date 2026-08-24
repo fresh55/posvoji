@@ -1,5 +1,5 @@
 import { AnimalGrid } from "@/components/animal-grid";
-import { FoundAnimalStrip } from "@/components/found-animal-strip";
+import { FoundAnimalButton } from "@/components/found-animal-button";
 import { I18nProvider } from "@/components/i18n-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -44,19 +44,23 @@ export function SitePage({ locale }: { locale: Locale }) {
             <h1 className="text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
               {messages.heroTitle}
             </h1>
-            {dataset && shelters > 0 && (
-              <p className="text-sm text-muted-foreground">
-                {shelterCount(shelters, locale)} · {messages.updated}{" "}
-                {new Date(dataset.generatedAt).toLocaleDateString(
-                  locale === "sl" ? "sl-SI" : "en-GB",
-                )}
-              </p>
-            )}
-            {municipalities.length > 0 && (
-              <div className="pt-1.5">
-                <FoundAnimalStrip />
-              </div>
-            )}
+            {/* The hero's second line carries both things the page has to say
+                about itself: what is in it, and the way out for someone who
+                found an animal rather than wants one. They share the row from
+                lg up, where there is width for it, and stack below that. A
+                band of its own under the hero was a whole horizontal rule of
+                page spent on the smaller of the two questions. */}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+              {dataset && shelters > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {shelterCount(shelters, locale)} · {messages.updated}{" "}
+                  {new Date(dataset.generatedAt).toLocaleDateString(
+                    locale === "sl" ? "sl-SI" : "en-GB",
+                  )}
+                </p>
+              )}
+              {municipalities.length > 0 && <FoundAnimalButton />}
+            </div>
           </div>
 
           <AnimalGrid

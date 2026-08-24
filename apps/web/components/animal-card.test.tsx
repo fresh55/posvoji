@@ -32,6 +32,13 @@ function animal(rest: Partial<Animal> = {}): Animal {
   };
 }
 
+function photos(count: number): Animal["images"] {
+  return Array.from({ length: count }, (_, i) => ({
+    sourceUrl: `https://example.test/photo-${i}.jpg`,
+    rights: "display-permitted" as const,
+  }));
+}
+
 // Anchored so `monthsInShelter(intakeDate, NOW)` lands exactly on the given
 // month count, independent of calendar day-of-month quirks.
 function intakeMonthsAgo(months: number): string {
@@ -52,9 +59,7 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    // Two copies exist below/above the sm breakpoint (see the "name row on
-    // narrow phones" tests below for which is which).
-    expect(screen.getAllByText("Čaka že 3 leta").length).toBeGreaterThan(0);
+    expect(screen.getByText("Čaka 3 leta")).toBeTruthy();
   });
 
   it("shows nothing for an animal under the threshold", () => {
@@ -87,8 +92,7 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    // Two copies (the photo overlay and the name-row one), same reason.
-    expect(screen.getAllByText("rezerviran").length).toBeGreaterThan(0);
+    expect(screen.getByText("rezervirano")).toBeTruthy();
     expect(screen.queryByText(/Čaka/)).toBeNull();
   });
 
@@ -103,12 +107,89 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getAllByText("Waiting 3 years").length).toBeGreaterThan(0);
+    expect(screen.getByText("Waiting 3 years")).toBeTruthy();
   });
 });
 
-describe("AnimalCard name row on narrow phones", () => {
-  it("moves the reserved badge onto the photo and off the name's row below sm", () => {
+describe("AnimalCard status", () => {
+  // The whole point of the badge: these two used to be carried by a
+  // desaturated photograph and nothing else, which is no signal at all to a
+  // visitor who cannot see the difference or does not know to look for one.
+  it.each([
+    ["hold", "ni za posvojitev"],
+    ["adopted", "posvojeno"],
+  ] as const)("says in words that a %s animal is not available", (status, word) => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ status })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText(word)).toBeTruthy();
+  });
+
+  it("leaves an available animal unbadged", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard animal={animal()} reference={NOW} onOpen={() => undefined} />
+      </I18nProvider>,
+    );
+
+    expect(screen.queryByText("na voljo")).toBeNull();
+  });
+
+  it("leaves an unknown status reading as available", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ status: "unknown" })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.queryByRole("article")?.textContent).not.toContain("voljo");
+  });
+});
+
+describe("AnimalCard meta line", () => {
+  it("names the species when the grid is showing all of them", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ sex: "male", approximateAgeMonths: 36 })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("Pes · samec · 3 leta")).toBeTruthy();
+  });
+
+  it("drops the species once a tab has already said it", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ sex: "male", approximateAgeMonths: 36 })}
+          reference={NOW}
+          species="dog"
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("samec · 3 leta")).toBeTruthy();
+  });
+});
+
+describe("AnimalCard element placement", () => {
+  it("keeps the status on the photo and out of the name's row", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
@@ -119,19 +200,18 @@ describe("AnimalCard name row on narrow phones", () => {
       </I18nProvider>,
     );
 
-    // Two copies exist so each breakpoint gets its own: the photo overlay is
-    // the one below sm, the row copy is sm and up. Below sm the row copy
-    // used to fight the name and a reserved badge for the same line.
-    const badges = screen.getAllByText("rezerviran");
-    expect(badges).toHaveLength(2);
-    const overlayBadge = badges.find((node) => node.className.includes("sm:hidden"));
-    const rowBadge = badges.find((node) => node.className.includes("sm:inline"));
-    expect(overlayBadge).toBeTruthy();
-    expect(rowBadge).toBeTruthy();
-    expect(rowBadge?.className).toContain("hidden");
+    // One copy, at every width, on the thing it disqualifies. It used to be
+    // two DOM copies swapped by a breakpoint, and the phone one sat between
+    // the two links, inside neither.
+    const badges = screen.getAllByText("rezervirano");
+    expect(badges).toHaveLength(1);
+    expect(badges[0].closest('[data-slot="photo-frame"]')).toBeNull();
+    expect(badges[0].parentElement?.querySelector("[data-slot=\"photo-frame\"]")).toBeTruthy();
+    // And it is not inside the card's link, competing with the name.
+    expect(badges[0].closest("a")).toBeNull();
   });
 
-  it("gives the long-stay wait its own line below sm instead of sharing the name's row", () => {
+  it("puts the wait on the photo, not in the name's row", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
@@ -142,18 +222,14 @@ describe("AnimalCard name row on narrow phones", () => {
       </I18nProvider>,
     );
 
-    // The name's row keeps a copy hidden below sm (sm:inline-flex) and a
-    // second copy below the meta line, visible only below sm, takes over
-    // there instead.
+    // The name has its line to itself, and the wait sits on the photo: a fact
+    // about the animal's circumstance rather than one of its own.
     const name = screen.getByText("Rex");
-    const nameRow = name.parentElement;
-    const rowWait = nameRow?.querySelector(".sm\\:inline-flex");
-    const ownLineWait = name
-      .closest("a")
-      ?.querySelector("p.sm\\:hidden");
-    expect(rowWait?.className).toContain("hidden");
-    expect(ownLineWait).toBeTruthy();
-    expect(ownLineWait?.textContent).toContain("Čaka");
+    const wait = screen.getByText(/Čaka/);
+    expect(name.closest("a")).toBeTruthy();
+    // On the photo, and outside the card's link rather than inside it.
+    expect(wait.closest("a")).toBeNull();
+    expect(name.parentElement?.contains(wait)).toBe(false);
   });
 });
 
@@ -166,8 +242,10 @@ describe("AnimalCard shelter line", () => {
     );
 
     // A shelter's own page renders these cards. There the line would be the
-    // page linking to itself once per animal on it.
+    // page linking to itself once per animal on it. Both spellings, because
+    // the line draws the name with its leading noun taken off.
     expect(screen.queryByText("Zavetišče Test")).toBeNull();
+    expect(screen.queryByText("Test")).toBeNull();
   });
 
   it("links to the shelter's own page without opening the animal", () => {
@@ -185,7 +263,9 @@ describe("AnimalCard shelter line", () => {
 
     // The link's own text is its accessible name, so this is also the check
     // that nothing wrapped it in a label that talks over the visible words.
-    const link = screen.getByRole("link", { name: "Zavetišče Test" });
+    // That text is the shelter's name with the leading noun taken off, which
+    // is what the line draws (see shelterChipLabel).
+    const link = screen.getByRole("link", { name: "Test" });
     expect(link.getAttribute("href")).toBe("/zavetisca/test-shelter");
 
     fireEvent.click(link);
@@ -207,7 +287,69 @@ describe("AnimalCard shelter line", () => {
     );
 
     expect(
-      screen.getByRole("link", { name: "Zavetišče Test" }).getAttribute("href"),
+      screen.getByRole("link", { name: "Test" }).getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
+  });
+});
+
+describe("AnimalCard keyboard", () => {
+  it("steps the gallery with the arrows on the card's own link", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ images: photos(3) })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const link = screen.getByText("Rex").closest("a")!;
+    expect(screen.getByText("1 / 3")).toBeTruthy();
+
+    fireEvent.keyDown(link, { key: "ArrowRight" });
+    expect(screen.getByText("2 / 3")).toBeTruthy();
+
+    // And it wraps backwards past the first photo.
+    fireEvent.keyDown(link, { key: "ArrowLeft" });
+    fireEvent.keyDown(link, { key: "ArrowLeft" });
+    expect(screen.getByText("3 / 3")).toBeTruthy();
+  });
+
+  it("leaves other keys to the browser", () => {
+    const opened: string[] = [];
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ images: photos(3) })}
+          reference={NOW}
+          onOpen={(id) => opened.push(id)}
+        />
+      </I18nProvider>,
+    );
+
+    const link = screen.getByText("Rex").closest("a")!;
+    fireEvent.keyDown(link, { key: "ArrowDown" });
+    expect(screen.getByText("1 / 3")).toBeTruthy();
+    expect(opened).toEqual([]);
+  });
+
+  it("keeps the photo out of the tab order and out of the a11y tree", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ images: photos(2) })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    // One animal, one link. The photo is still an anchor so a held modifier
+    // deep links, but it is not a second name for the same place.
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    const photoLink = document.querySelector('[data-slot="photo-frame"] a')!;
+    expect(photoLink.getAttribute("tabindex")).toBe("-1");
+    expect(photoLink.getAttribute("aria-hidden")).toBe("true");
   });
 });

@@ -37,7 +37,7 @@ export function FilterSheet({
   goodWith,
   home,
   care,
-  activeSectionCount,
+  activeCount,
   resultCount,
   onToggle,
   onToggleMany,
@@ -53,7 +53,7 @@ export function FilterSheet({
   goodWith?: GoodWithSection;
   home?: HomeSection;
   care?: CareSection;
-  activeSectionCount: number;
+  activeCount: number;
   resultCount: number;
   onClearAll: () => void;
 } & FilterActionContract) {
@@ -65,22 +65,22 @@ export function FilterSheet({
         <Button
           size="sm"
           aria-label={
-            activeSectionCount > 0
-              ? t("filtersWithCount", { count: activeSectionCount })
+            activeCount > 0
+              ? t("filtersWithCount", { count: activeCount })
               : messages.filters
           }
           className="h-11 gap-1.5 rounded-ui px-3"
         >
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
-          {activeSectionCount > 0 && (
+          {activeCount > 0 && (
             <>
               <Badge
                 variant="secondary"
                 aria-hidden="true"
                 className="hidden h-5 min-w-5 rounded-full px-1 text-xs tabular-nums min-[360px]:inline-flex"
               >
-                {activeSectionCount}
+                {activeCount}
               </Badge>
               {/* Below 360px the full badge doesn't fit the trigger, but the
                   aria-label still announces the count, so sighted users need
@@ -142,10 +142,10 @@ export function FilterSheet({
           <Button
             variant="ghost"
             className="h-11"
-            disabled={activeSectionCount === 0}
+            disabled={activeCount === 0}
             onClick={onClearAll}
           >
-            {messages.clear}
+            {messages.clearAll}
           </Button>
           <DrawerClose asChild>
             <Button className="h-11 flex-1">

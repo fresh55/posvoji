@@ -89,7 +89,8 @@ describe("localized labels", () => {
 
     expect(timeInShelter("2026-07-15", "sl", now)).toBe("1 mesec");
     expect(timeInShelter("2026-06-15", "sl", now)).toBe("2 meseca");
-    expect(timeInShelter("2026-05-15", "sl", now)).toBe("3 mesece");
+    expect(timeInShelter("2026-05-15", "sl", now)).toBe("3 meseci");
+    expect(timeInShelter("2026-04-15", "sl", now)).toBe("4 meseci");
     expect(timeInShelter("2026-03-15", "sl", now)).toBe("5 mesecev");
     expect(timeInShelter("2024-08-15", "sl", now)).toBe("2 leti");
   });

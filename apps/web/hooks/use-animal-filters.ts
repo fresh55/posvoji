@@ -25,7 +25,6 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import {
-  DEFAULT_ANIMAL_SORT,
   parseSort,
   serializeSort,
   SORT_PARAM,
@@ -181,6 +180,14 @@ export function useAnimalFilters() {
 
   const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
 
+  // Clearing is the one filter action that cannot be undone by repeating the
+  // gesture that caused it, so it is the one that needs a way back. The
+  // snapshot is held by the caller, not here: this hook has no state of its
+  // own to keep it in, and the query is the only place the answer lives.
+  const restore = useCallback((snapshot: Filters) => {
+    writeFilters(snapshot);
+  }, []);
+
   return {
     filters,
     sort,
@@ -197,6 +204,7 @@ export function useAnimalFilters() {
     toggleManyCare,
     setSort,
     clearAll,
+    restore,
     activeCount: activeFilterCount(filters),
   };
 }

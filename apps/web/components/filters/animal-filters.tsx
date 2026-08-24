@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  AnimatePresence,
+  LazyMotion,
+  domAnimation,
+  m,
+  useReducedMotion,
+} from "motion/react";
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
@@ -14,7 +21,7 @@ import type { FilterActionContract } from "@/components/filters/filter-contract"
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
-import { activeFilterSectionCount } from "@/lib/filters";
+import { activeFilterCount } from "@/lib/filters";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
@@ -46,6 +53,7 @@ export function AnimalFilters({
   offSiteShelters,
   shelterSummaries,
   chips,
+  undo,
   resultCount,
   clearTrailKey,
   sort,
@@ -78,6 +86,8 @@ export function AnimalFilters({
    *  own click leaves in the picker's panel. */
   shelterSummaries?: Map<string, ShelterSummary>;
   chips: Chip[];
+  /** Present only during the few seconds a clear can still be taken back. */
+  undo?: () => void;
   resultCount: number;
   clearTrailKey: number;
   sort: AnimalSort;
@@ -86,17 +96,27 @@ export function AnimalFilters({
   onSortChange: (sort: AnimalSort) => void;
 } & FilterActionContract) {
   const { locale } = useI18n();
+  const reduceMotion = useReducedMotion();
   const hasFilterSheet =
     groups.length > 0 ||
     toggles.length > 0 ||
     (goodWith?.options.length ?? 0) > 0 ||
     (home?.options.length ?? 0) > 0 ||
     (care?.options.length ?? 0) > 0;
-  const activeSectionCount = activeFilterSectionCount(filters);
+  // Values, not sections. The chips row counts the same things and sits on the
+  // same screen; a badge reading 1 over a row of two pills was two answers to
+  // one question.
+  const activeCount = activeFilterCount(filters);
 
   return (
     <>
-      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
+      {/* Pinned, except where pinning costs more than it pays. A phone held
+          sideways is 390px tall: this bar is 141 of them and the dock below
+          takes 58 more, so half the screen was chrome and 191px was animals.
+          Under 32rem of height it scrolls away with the page and comes back
+          when the visitor scrolls back up, which is the same bargain the
+          desktop layout already takes at lg. */}
+      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm [@media(max-height:32rem)]:static lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
         <div
           data-slot="desktop-toolbar"
           className="hidden items-center justify-between gap-4 lg:flex"
@@ -140,27 +160,37 @@ export function AnimalFilters({
           </div>
         </div>
 
-        {/* Two rows below lg, and the species row is the whole width.
-            Sharing one row with the count and the sort cost the tabs about
-            sixty percent of a 390px screen, which is narrower than the four
-            tabs need: "Mačke" was cut mid-word and "Zajčki" was off the end
-            of a strip whose scroll nobody had a reason to try. Every species
-            the site has fits one phone row on its own, so a visitor looking
-            for a rabbit can see that rabbits exist.
+        {/* Two rows on a phone, one from sm up, and the split is measured
+            rather than assumed. The four Slovenian species tabs come to 286px
+            and refuse to share: with the count and the sort beside them they
+            had about sixty percent of a 390px screen, which cut "Mačke"
+            mid-word and put "Zajčki" off the end of a strip nobody had a
+            reason to scroll. Every species fits its own phone row, so someone
+            looking for a rabbit can see that rabbits exist.
+
+            All three together need 578px. That is over the line at 600px and
+            under it at 640, which is sm exactly, so from sm they share a row:
+            203px to spare on a phone held sideways, 127px on a tablet. It is
+            worth the branch because stacking them there cost 44px of a
+            landscape phone's 390, on top of a dock that already takes 58.
 
             The strip still scrolls and still fades its edges (species-tabs
-            .tsx). That is there for a narrower phone or a longer species
-            list, not as the everyday way to reach a tab. */}
-        <div data-slot="mobile-toolbar" className="lg:hidden">
-          <SpeciesTabs
-            value={filters.species}
-            onChange={onSpeciesChange}
-            counts={speciesTally}
-            disabled={isEmpty}
-          />
+            .tsx), which is what absorbs the 14px margin at sm itself. */}
+        <div
+          data-slot="mobile-toolbar"
+          className="lg:hidden sm:flex sm:items-center sm:gap-3"
+        >
+          <div className="min-w-0 sm:flex-1">
+            <SpeciesTabs
+              value={filters.species}
+              onChange={onSpeciesChange}
+              counts={speciesTally}
+              disabled={isEmpty}
+            />
+          </div>
 
           {!isEmpty && (
-            <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="mt-2 flex items-center justify-between gap-2 sm:mt-0 sm:shrink-0 sm:justify-end">
               <ResultCount
                 count={resultCount}
                 species={filters.species}
@@ -173,11 +203,36 @@ export function AnimalFilters({
           )}
         </div>
 
-        {!isEmpty && chips.length > 0 && (
-          <div className="mt-2 min-w-0">
-            <FilterChips chips={chips} onClearAll={onClearAll} />
-          </div>
-        )}
+        {/* The row's own arrival used to shift the grid under it by its full
+            height in one frame, because it is inside a header that is sticky
+            on a phone. Growing into place costs the same pixels and does not
+            read as the page jumping. */}
+        <LazyMotion features={domAnimation}>
+          <AnimatePresence initial={false}>
+            {!isEmpty && (chips.length > 0 || undo) && (
+              <m.div
+                key="filter-chips"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                // Height is not a transform, so the global MotionConfig
+                // reducedMotion="user" does not switch it off the way it does
+                // the pills' own motion. A box growing under the toolbar is
+                // exactly the movement that setting is asking for less of.
+                transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
+                className="min-w-0 overflow-hidden"
+              >
+                <FilterChips
+                  chips={chips}
+                  onClearAll={onClearAll}
+                  undo={undo}
+                  stuck={resultCount === 0}
+                  className="mt-2"
+                />
+              </m.div>
+            )}
+          </AnimatePresence>
+        </LazyMotion>
       </div>
 
       {/* The dock is present at any result count, including one. It used to
@@ -205,7 +260,7 @@ export function AnimalFilters({
               goodWith={goodWith}
               home={home}
               care={care}
-              activeSectionCount={activeSectionCount}
+              activeCount={activeCount}
               resultCount={resultCount}
               onToggle={onToggle}
               onToggleMany={onToggleMany}

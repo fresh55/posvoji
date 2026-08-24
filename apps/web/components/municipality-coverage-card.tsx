@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { animalCount } from "@/lib/labels";
 import type { Locale } from "@/lib/i18n";
+import { Card } from "@/components/ui/card";
 
 export type CoverageCardText = {
   dogs: string;
@@ -50,7 +51,7 @@ export function CoverageCard({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-3 rounded-ui border bg-card p-4 shadow-xs">
+    <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <a
           href={coverage.detailHref}
@@ -137,6 +138,6 @@ export function CoverageCard({
         ({coverage.sourceDate}).
         {!coverage.confirmed && <> {text.datedSourceNote}</>}
       </p>
-    </div>
+    </Card>
   );
 }

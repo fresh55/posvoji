@@ -2,12 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { PawPrint, type LucideIcon } from "lucide-react";
-import {
-  AnimatePresence,
-  LazyMotion,
-  domAnimation,
-  m,
-} from "motion/react";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "motion/react";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import type { SpeciesFilter } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
@@ -79,8 +74,10 @@ function subscribeToReducedMotion(onChange: () => void): () => void {
 }
 
 function getReducedMotionPreference(): boolean {
-  return typeof window.matchMedia !== "function" ||
-    window.matchMedia(REDUCED_MOTION_QUERY).matches;
+  return (
+    typeof window.matchMedia !== "function" ||
+    window.matchMedia(REDUCED_MOTION_QUERY).matches
+  );
 }
 
 function getServerReducedMotionPreference(): true {
@@ -168,10 +165,18 @@ export function ResultCount({
         "relative isolate inline-flex shrink-0 overflow-hidden text-xs tabular-nums",
         variant === "standalone"
           ? cn(
-              "min-h-7 min-w-24 justify-center rounded-ui border border-border/80 px-2.5 py-1 shadow-xs",
-              count === 0
-                ? "bg-muted/30 text-muted-foreground"
-                : "bg-background",
+              // No border and no shadow. With them this was a bordered,
+              // shadowed, rounded box the exact height of the shelter picker
+              // and the sort control it sits between, so the toolbar offered
+              // three things that looked pressable and one of them was a
+              // <span> that does nothing. It is a fact about the results, so
+              // it reads as text.
+              //
+              // The rounding, the padding and overflow-hidden stay: they are
+              // the shape the celebration fill is clipped to when the count
+              // lands on something worth marking, not decoration.
+              "min-h-7 min-w-24 justify-center rounded-ui px-2.5 py-1",
+              count === 0 && "bg-muted/30 text-muted-foreground",
             )
           : "justify-end",
         className,
@@ -186,50 +191,49 @@ export function ResultCount({
       </span>
       <LazyMotion features={domAnimation}>
         {variant === "standalone" && clearTrailKey > 0 && (
-            <span
-              key={clearTrailKey}
-              data-clear-trail
-              aria-hidden
-              className="pointer-events-none absolute left-1.5 top-1/2 z-20 -translate-y-1/2 text-[var(--filter-accent-strong)]"
-            >
-              {[0, 1].map((step) => (
-                <m.span
-                  key={step}
-                  className="absolute left-0 top-0 grid place-items-center"
-                  initial={
-                    shouldAnimate
-                      ? {
-                          opacity: 0,
-                          rotate: step === 0 ? -18 : 14,
-                          scale: 0.55,
-                          x: step * 3,
-                          y: 2,
-                        }
-                      : false
-                  }
-                  animate={
-                    shouldAnimate
-                      ? {
-                          opacity: [0, 0.72, 0],
-                          rotate:
-                            step === 0 ? [-18, -8, 2] : [14, 5, -3],
-                          scale: [0.55, 0.9, 0.72],
-                          x: [step * 3, step * 3 + 3, step * 3 + 7],
-                          y: [2, -1, -5],
-                        }
-                      : undefined
-                  }
-                  transition={{
-                    delay: step * 0.07,
-                    duration: 0.46,
-                    times: [0, 0.42, 1],
-                  }}
-                >
-                  <PawPrint className={step === 0 ? "size-2" : "size-1.5"} />
-                </m.span>
-              ))}
-            </span>
-          )}
+          <span
+            key={clearTrailKey}
+            data-clear-trail
+            aria-hidden
+            className="pointer-events-none absolute left-1.5 top-1/2 z-20 -translate-y-1/2 text-[var(--filter-accent-strong)]"
+          >
+            {[0, 1].map((step) => (
+              <m.span
+                key={step}
+                className="absolute left-0 top-0 grid place-items-center"
+                initial={
+                  shouldAnimate
+                    ? {
+                        opacity: 0,
+                        rotate: step === 0 ? -18 : 14,
+                        scale: 0.55,
+                        x: step * 3,
+                        y: 2,
+                      }
+                    : false
+                }
+                animate={
+                  shouldAnimate
+                    ? {
+                        opacity: [0, 0.72, 0],
+                        rotate: step === 0 ? [-18, -8, 2] : [14, 5, -3],
+                        scale: [0.55, 0.9, 0.72],
+                        x: [step * 3, step * 3 + 3, step * 3 + 7],
+                        y: [2, -1, -5],
+                      }
+                    : undefined
+                }
+                transition={{
+                  delay: step * 0.07,
+                  duration: 0.46,
+                  times: [0, 0.42, 1],
+                }}
+              >
+                <PawPrint className={step === 0 ? "size-2" : "size-1.5"} />
+              </m.span>
+            ))}
+          </span>
+        )}
         {variant === "standalone" &&
           shouldAnimate &&
           direction !== 0 &&
@@ -266,9 +270,7 @@ export function ResultCount({
                   : { y: 0, scale: 1, rotate: 0 }
               }
               animate={
-                !shouldAnimate || direction === 0
-                  ? undefined
-                  : iconAnimation
+                !shouldAnimate || direction === 0 ? undefined : iconAnimation
               }
               transition={{
                 duration: ICON_TRANSITION_DURATION,

@@ -211,7 +211,7 @@ describe("AnimalCard element placement", () => {
     expect(badges[0].closest("a")).toBeNull();
   });
 
-  it("puts the wait on the footnote row, not in the name's row", () => {
+  it("puts the wait on the photo, not in the name's row", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
@@ -227,7 +227,7 @@ describe("AnimalCard element placement", () => {
     const name = screen.getByText("Rex");
     const wait = screen.getByText(/Čaka/);
     expect(name.closest("a")).toBeTruthy();
-    // Outside the card's link, on the footnote row.
+    // On the photo, and outside the card's link rather than inside it.
     expect(wait.closest("a")).toBeNull();
     expect(name.parentElement?.contains(wait)).toBe(false);
   });

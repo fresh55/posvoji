@@ -31,6 +31,12 @@ import { animalMeta, longStayLabel, shelterChipLabel } from "@/lib/labels";
 // that an animal they cannot adopt is available.
 const QUIET_PHOTO = "saturate-[60%] opacity-80";
 
+// The footer's own box, named because the skeleton below has to match it and a
+// comment saying "keep these two in sync" is not a mechanism. Geometry only:
+// what the live footer does on hover and focus is its own business, and a
+// skeleton has neither.
+const FOOTER_BOX = "min-h-11 border-t px-3 pb-3 pt-2.5";
+
 export function AnimalCard({
   animal,
   reference,
@@ -285,7 +291,7 @@ export function AnimalCard({
             // row agree about their bottom edge, and with no line drawn under
             // it, it read as a card that had run out of things to say.
             // min-h-11 is the 44px touch target the row never had at text-xs.
-            className="mt-auto flex min-h-11 w-full cursor-pointer items-start gap-1 border-t px-3 pb-3 pt-2.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background"
+            className={`${FOOTER_BOX} mt-auto flex w-full cursor-pointer items-start gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
           >
             <MapPin
               className="mt-0.5 size-3 shrink-0"
@@ -309,7 +315,7 @@ export function AnimalCard({
 
 // Matched to the live card block for block, so whoever wires this to a real
 // loading state does not inherit a 12px jump: pt-3, a 24px heading, a 20px
-// meta line, then the footer's own border, pt-2.5 and pb-3.
+// meta line, then FOOTER_BOX, which is the live footer's own box.
 export function AnimalCardSkeleton() {
   return (
     <Card asChild>
@@ -322,7 +328,7 @@ export function AnimalCardSkeleton() {
           <Skeleton className="h-6 w-20" />
           <Skeleton className="h-5 w-32" />
         </div>
-        <div className="min-h-11 border-t px-3 pb-3 pt-2.5">
+        <div className={FOOTER_BOX}>
           <Skeleton className="h-4 w-24" />
         </div>
       </div>

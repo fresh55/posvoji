@@ -2581,8 +2581,8 @@ describe("LocationPicker attribution", () => {
     }
 
     // Tighter type and tighter gaps below lg, the full register from lg up.
-    expect(legend.className).toContain("text-[10px]");
-    expect(legend.className).toContain("lg:text-[11px]");
+    expect(legend.className).toContain("text-3xs");
+    expect(legend.className).toContain("lg:text-2xs");
     expect(legend.className).toContain("gap-x-3");
     expect(legend.className).toContain("lg:gap-x-4");
   });

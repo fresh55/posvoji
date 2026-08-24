@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { animalCount } from "@/lib/labels";
 import type { Locale } from "@/lib/i18n";
+import { Card } from "@/components/ui/card";
 
 export type CoverageCardText = {
   dogs: string;
@@ -26,7 +27,7 @@ function SpeciesTag({
   if (!species) return null;
   const Icon = species === "dogs" ? Dog : Cat;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs text-muted-foreground">
       <Icon className="size-3" aria-hidden />
       {species === "dogs" ? text.dogs : text.cats}
     </span>
@@ -50,7 +51,7 @@ export function CoverageCard({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-3 rounded-ui border bg-card p-4 shadow-xs">
+    <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <a
           href={coverage.detailHref}
@@ -114,13 +115,13 @@ export function CoverageCard({
         >
           <Search className="size-3.5 shrink-0" aria-hidden />
           {text.lost}
-          <span className="text-muted-foreground/70">
+          <span className="text-muted-foreground">
             ({animalCount(coverage.animals, locale)})
           </span>
         </a>
       )}
 
-      <p className="text-[11px] leading-tight text-muted-foreground/80">
+      <p className="text-2xs leading-tight text-muted-foreground">
         {text.sourcePrefix}{" "}
         {coverage.sourceUrl ? (
           <a
@@ -137,6 +138,6 @@ export function CoverageCard({
         ({coverage.sourceDate}).
         {!coverage.confirmed && <> {text.datedSourceNote}</>}
       </p>
-    </div>
+    </Card>
   );
 }

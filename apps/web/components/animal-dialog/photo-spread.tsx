@@ -79,7 +79,7 @@ const PHOTO_SIZES = "(max-width: 639px) 100vw, 24rem";
 
 // Same corner treatment as the counter on the cards.
 const PHOTO_BADGE_CLASS =
-  "absolute right-1.5 bottom-1.5 h-5 bg-background/80 px-1.5 text-[10px] tabular-nums shadow-xs backdrop-blur-sm";
+  "absolute right-1.5 bottom-1.5 h-5 bg-background/80 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm";
 
 // The window walks around the list, so the active photo is always in the
 // middle and every photo stays reachable however many there are.

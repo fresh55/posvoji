@@ -1,26 +1,18 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import Image from "next/image";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
 
+// No flags. A flag is a country and these are languages, which is a mismatch
+// that only ever runs one way in practice: Slovenian is spoken outside
+// Slovenia and English is the first language of a dozen countries, none of
+// which is picked out by the union jack this used to draw beside it. The name
+// is already here in both sizes, and the name is the thing being chosen.
 const LANGUAGES = [
-  {
-    locale: "sl",
-    href: "/",
-    shortName: "SL",
-    name: "Slovenščina",
-    flag: "/flags/si.svg",
-  },
-  {
-    locale: "en",
-    href: "/en",
-    shortName: "EN",
-    name: "English",
-    flag: "/flags/gb.svg",
-  },
+  { locale: "sl", href: "/", shortName: "SL", name: "Slovenščina" },
+  { locale: "en", href: "/en", shortName: "EN", name: "English" },
 ] as const;
 
 export function LanguageSwitcher({
@@ -55,14 +47,6 @@ export function LanguageSwitcher({
             aria-current={locale === language.locale ? "page" : undefined}
             onClick={keepFilters}
           >
-            <Image
-              src={language.flag}
-              alt=""
-              width={16}
-              height={12}
-              aria-hidden
-              className="h-3 w-4 rounded-[1px] object-cover ring-1 ring-foreground/15"
-            />
             <span className="sm:hidden">{language.shortName}</span>
             <span className="hidden sm:inline">{language.name}</span>
           </a>

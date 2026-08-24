@@ -393,7 +393,7 @@ export function MunicipalityFinder({
                     <p className="text-xs font-medium">
                       {messages.muniNearestTitle}
                     </p>
-                    <p className="text-[11px] leading-tight text-muted-foreground">
+                    <p className="text-2xs leading-tight text-muted-foreground">
                       {messages.muniNearestNote}
                     </p>
                     <ul className="space-y-0.5 pt-0.5">
@@ -409,7 +409,7 @@ export function MunicipalityFinder({
                             >
                               {shelter.shelterName}
                             </a>
-                            <span className="block truncate text-[11px] text-muted-foreground">
+                            <span className="block truncate text-2xs text-muted-foreground">
                               {shelter.city} · {shelter.km} km
                             </span>
                           </span>
@@ -438,7 +438,7 @@ export function MunicipalityFinder({
                 href={LAW_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
               >
                 {messages.muniCostSource}
                 <ExternalLink className="size-2.5" aria-hidden />

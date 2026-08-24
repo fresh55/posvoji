@@ -63,7 +63,7 @@ export function ShelterBlock({
       {/* The attribution stays a footnote under the box. In practice it
           repeats the shelter's name, and inside the box that read as the
           same line printed twice. */}
-      <p className="text-xs text-muted-foreground/80">{animal.attribution}</p>
+      <p className="text-xs text-muted-foreground">{animal.attribution}</p>
     </div>
   );
 }

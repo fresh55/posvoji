@@ -80,7 +80,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 {intro}
               </p>
             </div>
-            <p className="max-w-3xl text-xs text-muted-foreground/80">
+            <p className="max-w-3xl text-xs text-muted-foreground">
               {text.registrySource}
             </p>
           </div>

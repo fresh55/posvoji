@@ -1,29 +1,32 @@
 "use client";
 
 import Image from "next/image";
-import {
-  useRef,
-  useState,
-  type MouseEvent,
-  type PointerEvent,
-} from "react";
+import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  adjacentImageUrls,
-  permittedImageUrls,
-} from "@/lib/animal-images";
+import { adjacentImageUrls, permittedImageUrls } from "@/lib/animal-images";
 import { translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 // Shared with the dialog's photo spread, so both sets of chevrons behave and
 // look the same.
+// Hidden until a pointer or the keyboard asks for them, at every width. The
+// hiding used to start at sm, which left the two of them drawn over every
+// photo on exactly the screens where the photo is smallest and the animal is
+// the whole point of the card: at 390px they are two 32px discs sitting on a
+// 170px-wide picture of a cat.
+//
+// Below sm the way through the gallery is the swipe this component already
+// implements (see SWIPE_DISTANCE_RATIO), and the "1 / 13" counter in the
+// corner is what says there is anything to swipe to. group-focus-within is
+// kept rather than dropped with the hover, so a keyboard reaches them on a
+// touch device too.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-focus-within:opacity-100";
 
 const DEFAULT_WRAPPER_CLASS =
   "relative aspect-[4/3] overflow-hidden rounded-ui-top bg-muted";
@@ -131,10 +134,7 @@ export function PhotoGallery({
     // A vertical drag belongs to the page's own scroll, not to the photo.
     if (Math.abs(distanceX) <= Math.abs(distanceY)) return;
 
-    const clamped = Math.max(
-      -start.width,
-      Math.min(start.width, distanceX),
-    );
+    const clamped = Math.max(-start.width, Math.min(start.width, distanceX));
     setDragOffset(clamped);
   }
 
@@ -258,7 +258,7 @@ export function PhotoGallery({
           <Badge
             variant="secondary"
             aria-hidden
-            className="absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-[10px] tabular-nums shadow-xs backdrop-blur-sm"
+            className="absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm"
           >
             {imageIndex + 1} / {images.length}
           </Badge>

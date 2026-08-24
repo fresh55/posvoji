@@ -2,6 +2,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { Card } from "@/components/ui/card";
 
 type LocalizedText = Record<Locale, string>;
 
@@ -306,32 +307,31 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {section.resources.map((resource) => (
-                  <article
-                    key={`${section.id}-${resource.title}`}
-                    className="flex flex-col rounded-ui border bg-card p-5 shadow-xs"
-                  >
-                    <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full border bg-muted/50 px-2.5 py-1">
-                        {resource.kind[locale]}
-                      </span>
-                      <span>{resource.organization}</span>
-                    </div>
-                    <h3 className="text-base font-medium leading-snug">
-                      {resource.title}
-                    </h3>
-                    <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                      {resource.description[locale]}
-                    </p>
-                    <a
-                      href={resource.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
-                    >
-                      {text.open}
-                      <span aria-hidden>↗</span>
-                    </a>
-                  </article>
+                  <Card asChild key={`${section.id}-${resource.title}`}>
+                    <article className="flex flex-col p-5">
+                      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span className="rounded-full border bg-muted/50 px-2.5 py-1">
+                          {resource.kind[locale]}
+                        </span>
+                        <span>{resource.organization}</span>
+                      </div>
+                      <h3 className="text-base font-medium leading-snug">
+                        {resource.title}
+                      </h3>
+                      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                        {resource.description[locale]}
+                      </p>
+                      <a
+                        href={resource.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+                      >
+                        {text.open}
+                        <span aria-hidden>↗</span>
+                      </a>
+                    </article>
+                  </Card>
                 ))}
               </div>
             </section>

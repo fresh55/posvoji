@@ -220,7 +220,7 @@ export function SexCards({
               </span>
               <CountRoll
                 value={count}
-                className="text-[11px] tabular-nums text-muted-foreground"
+                className="text-2xs tabular-nums text-muted-foreground"
               />
             </ToggleGroupItem>
           );

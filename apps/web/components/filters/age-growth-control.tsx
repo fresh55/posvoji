@@ -452,7 +452,7 @@ export function AgeGrowthControl({
                         className={cn(
                           "min-w-0 truncate text-xs",
                           layout === "sheet" &&
-                            "max-w-full text-[11px] leading-tight",
+                            "max-w-full text-2xs leading-tight",
                           checked && "font-medium",
                         )}
                       >
@@ -463,8 +463,8 @@ export function AgeGrowthControl({
                         className={cn(
                           "tabular-nums text-muted-foreground",
                           layout === "sheet"
-                            ? "text-[10px] leading-tight"
-                            : "w-8 text-right text-[11px]",
+                            ? "text-3xs leading-tight"
+                            : "w-8 text-right text-2xs",
                         )}
                       />
                     </ToggleGroupItem>

@@ -338,7 +338,7 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {renderCount("text-[11px] tabular-nums text-muted-foreground")}
+        {renderCount("text-2xs tabular-nums text-muted-foreground")}
       </>
     );
   }
@@ -349,7 +349,7 @@ export function FilterCardTail({
         {label}
       </span>
       {renderCount(
-        "w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground",
+        "w-8 shrink-0 text-right text-2xs tabular-nums text-muted-foreground",
       )}
     </span>
   );

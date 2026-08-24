@@ -93,7 +93,7 @@ export function SectionHint({
   return (
     <p
       className={cn(
-        "mb-2 text-[11px] leading-snug text-muted-foreground",
+        "mb-2 text-2xs leading-snug text-muted-foreground",
         collapse && "hidden [@media(pointer:coarse)]:block",
       )}
     >
@@ -177,7 +177,7 @@ export function FilterSectionHeader({
       tabIndex={showReset ? undefined : -1}
       aria-label={resetAriaLabel}
       className={cn(
-        "h-auto p-0 text-[11px] font-normal text-muted-foreground transition-opacity hover:text-foreground",
+        "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
         !showReset && "pointer-events-none opacity-0",
         collapse && "absolute right-6 top-1/2 -translate-y-1/2",
       )}
@@ -226,7 +226,7 @@ export function FilterSectionHeader({
         // motion-reduce:duration-0, not motion-reduce:animate-none: see the
         // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
         // guard does not actually take effect here.
-        <span className="max-w-28 truncate rounded-full border border-[var(--filter-accent-border)]/50 bg-[var(--filter-accent)] px-2 py-px text-[10px] font-medium normal-case tracking-normal text-[var(--filter-accent-foreground)] animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
+        <span className="max-w-28 truncate rounded-full border border-[var(--filter-accent-border)]/50 bg-[var(--filter-accent)] px-2 py-px text-3xs font-medium normal-case tracking-normal text-[var(--filter-accent-foreground)] animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
           {collapse.summary}
         </span>
       ) : null}

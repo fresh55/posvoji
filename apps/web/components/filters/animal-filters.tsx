@@ -140,21 +140,27 @@ export function AnimalFilters({
           </div>
         </div>
 
-        <div
-          data-slot="mobile-toolbar"
-          className="flex items-center gap-2 lg:hidden"
-        >
-          <div className="min-w-0 flex-1">
-            <SpeciesTabs
-              value={filters.species}
-              onChange={onSpeciesChange}
-              counts={speciesTally}
-              disabled={isEmpty}
-            />
-          </div>
+        {/* Two rows below lg, and the species row is the whole width.
+            Sharing one row with the count and the sort cost the tabs about
+            sixty percent of a 390px screen, which is narrower than the four
+            tabs need: "Mačke" was cut mid-word and "Zajčki" was off the end
+            of a strip whose scroll nobody had a reason to try. Every species
+            the site has fits one phone row on its own, so a visitor looking
+            for a rabbit can see that rabbits exist.
+
+            The strip still scrolls and still fades its edges (species-tabs
+            .tsx). That is there for a narrower phone or a longer species
+            list, not as the everyday way to reach a tab. */}
+        <div data-slot="mobile-toolbar" className="lg:hidden">
+          <SpeciesTabs
+            value={filters.species}
+            onChange={onSpeciesChange}
+            counts={speciesTally}
+            disabled={isEmpty}
+          />
 
           {!isEmpty && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="mt-2 flex items-center justify-between gap-2">
               <ResultCount
                 count={resultCount}
                 species={filters.species}

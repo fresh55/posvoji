@@ -111,7 +111,7 @@ export function AnimalCard({
           // matters most there, so the badge moves onto the photo instead of
           // competing for the row. At sm and up there is room, and it returns
           // to sitting beside the name (its usual, higher-contrast spot).
-          <span className="absolute left-2 top-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 backdrop-blur-sm dark:text-amber-300 sm:hidden">
+          <span className="absolute left-2 top-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-2xs font-medium text-amber-700 backdrop-blur-sm dark:text-amber-300 sm:hidden">
             {statusLabel("reserved", locale)}
           </span>
         )}
@@ -132,7 +132,7 @@ export function AnimalCard({
             // Same amber-family recipe as the dialog's reserved badge
             // (animal-dialog.tsx STATUS_CLASS), scaled down to the grid card.
             // Hidden below sm, where the photo overlay above carries it instead.
-            <span className="hidden shrink-0 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300 sm:inline">
+            <span className="hidden shrink-0 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-2xs font-medium text-amber-700 dark:text-amber-300 sm:inline">
               {statusLabel("reserved", locale)}
             </span>
           )}
@@ -185,13 +185,13 @@ export function AnimalCard({
           aria-label={shelterLabel}
           // cursor-pointer because a bare <button> keeps the arrow cursor, and
           // nothing else here says the line answers a click.
-          className="flex w-full cursor-pointer items-center gap-1 px-3 pb-3 pt-1 text-left text-xs text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+          className="flex w-full cursor-pointer items-center gap-1 px-3 pb-3 pt-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
         >
           <MapPin className="size-3 shrink-0" strokeWidth={1.75} aria-hidden />
           <span className="min-w-0 truncate">{animal.shelter.name}</span>
         </button>
       ) : (
-        <p className="truncate px-3 pb-3 pt-1 text-xs text-muted-foreground/80">
+        <p className="truncate px-3 pb-3 pt-1 text-xs text-muted-foreground">
           {animal.shelter.name}
         </p>
       )}

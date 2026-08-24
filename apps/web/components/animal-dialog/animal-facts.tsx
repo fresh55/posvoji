@@ -141,7 +141,7 @@ function HealthFact({
 const GOOD_WITH_NO_CLASS =
   "inline-flex items-center gap-1.5 rounded-ui border border-foreground/25 px-2.5 py-1 text-xs text-muted-foreground";
 const GOOD_WITH_UNKNOWN_CLASS =
-  "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground/70";
+  "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground";
 
 // Once one household question has an answer, all three are shown: a row that
 // listed only the yeses would read as an all-clear on the rest.

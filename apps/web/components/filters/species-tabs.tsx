@@ -1,9 +1,9 @@
 "use client";
 
 import { type LucideIcon } from "lucide-react";
-import { Species } from "@posvoji/schema";
 import { useEffect, useRef, useState } from "react";
 import { type SpeciesFilter } from "@/lib/filters";
+import { SPECIES_ORDER } from "@/lib/species";
 import { useI18n } from "@/components/i18n-provider";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,7 @@ export function SpeciesTabs({
   const { locale } = useI18n();
   const tabs: { value: SpeciesFilter; label: string; icon?: LucideIcon }[] = [
     { value: "all", label: LABELS[locale].all },
-    ...Species.options.map((value) => ({
+    ...SPECIES_ORDER.map((value) => ({
       value,
       label: LABELS[locale][value],
       icon: SPECIES_ICONS[value],

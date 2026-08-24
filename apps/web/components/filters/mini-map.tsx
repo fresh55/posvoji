@@ -8,7 +8,7 @@ import {
   regionStatsByRegion,
   type ShelterPin,
 } from "@/lib/map-layout";
-import { OUTLINE_PATH, REGION_PATHS } from "@/lib/map-regions";
+import { MINI_OUTLINE_PATH, MINI_REGION_PATHS } from "@/lib/map-regions";
 import { cn } from "@/lib/utils";
 
 // A live preview of the real map, drawn at trigger-icon size (roughly 20-28px
@@ -18,9 +18,9 @@ import { cn } from "@/lib/utils";
 // those reads as texture on the big plate and as dirt on an icon.
 //
 // Same viewBox as ShelterMap (320 x 210, lib/geo.ts), so a region shape drawn
-// here and drawn there is the same path with no cropping or rescaling to keep
-// in sync.
-const COUNTRY_OUTLINE = OUTLINE_PATH;
+// here and drawn there needs no cropping or rescaling to keep in sync. The
+// paths themselves are the thinned set (MINI_REGION_PATHS): the same shapes at
+// the only resolution that survives 24px.
 
 // The outline's own stroke, heavy enough to survive shrinking to icon size the
 // same way the old trigger glyph's did.
@@ -65,7 +65,7 @@ function MiniMapImpl({
           return (
             <path
               key={region.id}
-              d={REGION_PATHS.get(region.id) ?? ""}
+              d={MINI_REGION_PATHS.get(region.id) ?? ""}
               data-minimap-region-state={stateName}
               data-minimap-region-density={
                 stateName === "idle" ? stats.density : undefined
@@ -93,7 +93,7 @@ function MiniMapImpl({
           );
         })}
       <path
-        d={COUNTRY_OUTLINE}
+        d={MINI_OUTLINE_PATH}
         strokeWidth={OUTLINE_STROKE_WIDTH}
         strokeLinejoin="round"
         strokeLinecap="round"

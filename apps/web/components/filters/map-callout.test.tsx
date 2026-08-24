@@ -180,8 +180,12 @@ describe("MapCallout surface", () => {
     const surface = chip(chipped());
 
     // The site's own popover tokens, so contrast is guaranteed in both themes
-    // rather than argued about per region fill.
-    expect(surface.className).toContain("bg-popover/95");
+    // rather than argued about per region fill. Opaque: this was bg-popover/95
+    // on the reasoning that a chip that translucent never has to be read
+    // against the country under it, which argues for opacity rather than for
+    // 95% of it, and it left the product with one see-through surface.
+    expect(surface.className).toContain("bg-popover");
+    expect(surface.className).not.toContain("bg-popover/");
     expect(surface.className).toContain("text-popover-foreground");
     // The one corner every surface in the app carries, scaled to the plate.
     expect(surface.className).toContain("rounded-ui");

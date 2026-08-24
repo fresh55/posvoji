@@ -23,7 +23,18 @@ import { cn } from "@/lib/utils";
 // on size together, and the muted lines under it are clearly the answer to it
 // rather than more of it. shadcn's own card sets a semibold heading over muted
 // body copy, which is the same relationship at a larger size.
-const TITLE_PX = 13;
+// text-xs, the size the site's own tooltips set. 13 was a step that belongs to
+// nothing: the scale runs 11, 12, 14, and a name half a pixel off text-xs is
+// not a different rank, it is a different answer to the same question.
+//
+// Down and not up to text-sm, because this chip is drawn on the country it is
+// naming. Everything else in this file exists to keep a label from covering
+// the place it labels: BLOCK_PX is the column the words wrap in and
+// MAX_BLOCK_SHARE caps that column at 55% of the map, so a larger title buys
+// its extra legibility in wrapped lines and chip height, which is the one
+// currency here that is not free. MIN_TITLE_PX still floors what it renders
+// at.
+const TITLE_PX = 12;
 const META_PX = 11;
 // Relaxed, the way a card is set and a label is not. At 1.15 three stacked
 // facts read as one compressed block; this is what makes them three lines.
@@ -56,7 +67,9 @@ const HALO_PX = 1.7;
 // of species is a small hover card and wants a hover card's room; at nine by
 // six the three lines sat against the corners and the whole thing read square.
 const PAD_X_PX = 12;
-const PAD_Y_PX = 9;
+// py-2 against the px-3 beside it. 9 sat between the two steps Tailwind's
+// spacing scale offers here and matched no other padded surface on the site.
+const PAD_Y_PX = 8;
 // A callout with nothing under its title is not a card at all, it is a
 // tooltip, and it keeps a tooltip's tighter vertical padding: nine points of
 // air over and under a single word is a plaque. The horizontal padding does
@@ -65,7 +78,10 @@ const PAD_Y_TIGHT_PX = 6;
 // The corner that reads as rounded at that padding. --radius-ui is 0.625rem,
 // which is tuned for a dialog and looks barely turned on a box this small, so
 // the chip takes the popover end of the family instead.
-const RADIUS_PX = 8;
+// --radius, which is 0.625rem and so 10px: the same corner rounded-ui draws on
+// every other surface the site has. 8 was the one radius in the product that
+// belonged to a single component.
+const RADIUS_PX = 10;
 // The hairline around the chip, drawn as the first layer of the box-shadow
 // rather than as a border. A border cannot be a hairline here: this type is
 // laid out in user units and scaled up by the plate, so the width that comes
@@ -412,11 +428,20 @@ export function MapCallout({
             data-callout-chip
             className={cn(
               "flex flex-col justify-center",
-              // The surface. bg-popover at 95% and not a backdrop-filter:
-              // filters inside a foreignObject are unreliable across
-              // browsers, and a chip that is only translucent enough to hint
-              // at the country under it never has to be read against one.
-              "rounded-ui bg-popover/95 text-popover-foreground",
+              // The surface, and the same one every popover on the site
+              // draws. It was bg-popover/95, defended on the grounds that a
+              // chip that translucent "never has to be read against" the
+              // country under it — which is the argument for opacity, not for
+              // 95% of it. It was also the only see-through surface in the
+              // product. Not a backdrop-filter either: filters inside a
+              // foreignObject are unreliable across browsers.
+              //
+              // Light, and deliberately not the inverted chip TooltipContent
+              // draws. The two are different things in shadcn's own grammar
+              // and should stay different here: a tooltip is one line naming a
+              // control, a hover card carries a heading, metadata and marks.
+              // This is the second, so it takes the popover surface.
+              "rounded-ui bg-popover text-popover-foreground",
               // Two layers, and two variables, because they answer to
               // different things: the ring is the chip's edge and belongs in
               // both themes, the lift is a light-mode shadow the way the coins

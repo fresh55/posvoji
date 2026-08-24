@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-import { MapPin } from "lucide-react";
+import { ChevronRight, House } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
@@ -19,8 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { animalPath } from "@/lib/animal-path";
 import { permittedImageUrls } from "@/lib/animal-images";
 import type { SpeciesFilter } from "@/lib/filters";
-import { translate } from "@/lib/i18n";
 import { animalMeta, longStayLabel, shelterChipLabel } from "@/lib/labels";
+import { shelterPath } from "@/lib/shelter-path";
 
 // Adopted and hold are over, and the photo says so quietly: about a fifth of
 // the light and two fifths of the colour come off it.
@@ -43,7 +43,7 @@ export function AnimalCard({
   species = "all",
   priority = false,
   onOpen,
-  onShelterClick,
+  showShelter = false,
 }: {
   animal: Animal;
   /** The dataset's build time, so prerendered ages survive hydration. */
@@ -53,12 +53,11 @@ export function AnimalCard({
   /** Set on the first row, so the largest image on screen is not lazy. */
   priority?: boolean;
   onOpen: (id: string, origin?: DialogOrigin) => void;
-  /** Turns the shelter's town into a control that asks the map to spotlight
-   *  it. Opt-in, and it is what decides whether the line is drawn at all: only
-   *  a page that also mounts the location picker has anything to answer with,
-   *  and a shelter's own page already names itself in its heading, so a line
-   *  repeating it under every card there is noise. */
-  onShelterClick?: (shelterId: string) => void;
+  /** Draws the shelter line, which links to that shelter's own page. Opt-in,
+   *  and it is what decides whether the line is drawn at all: a shelter's own
+   *  page already names itself in its heading, so a line under every card
+   *  there would be the page linking to itself. */
+  showShelter?: boolean;
 }) {
   const { locale, messages, t } = useI18n();
   const cardRef = useRef<HTMLElement>(null);
@@ -74,15 +73,6 @@ export function AnimalCard({
   // plain click keeps them and opens the dialog in place.
   const settled = animal.status === "adopted" || animal.status === "hold";
   const href = animalPath(animal, locale);
-  // The shelter's name is the visible label and the accessible name says more
-  // than it, so the name has to be inside the spoken sentence: WCAG 2.5.3 asks
-  // that what is read starts from what is written. shelterChipLabel only ever
-  // strips a leading or trailing word, so the visible text is always a
-  // substring of the full name this interpolates.
-  const shelterLabel = translate(locale, "showShelterOnMap", {
-    shelter: animal.shelter.name,
-  });
-
   // The href is a real deep link, so a middle click or a held modifier gets
   // the tab it asked for. A plain click stays on the page and opens the
   // dialog, and hands over where it came from for the zoom to grow out of.
@@ -261,47 +251,62 @@ export function AnimalCard({
             no shelter at all. Two lines cost a row of pixels and keep the name.
 
             The shelter's own name, not its town. Two shelters in the registry
-            are in Celje, so a town does not identify one; and this control
-            spotlights a shelter on the map, so a label naming a town would be
-            saying one thing and doing another. The whole index is organised by
-            shelter, which is the thing worth naming here.
+            are in Celje, so a town does not identify one, and this line goes to
+            one shelter's page, so a label naming a town would be saying one
+            thing and doing another. The whole index is organised by shelter,
+            which is the thing worth naming here.
 
             shelterChipLabel takes the word "zavetišče" off the front, which
             five of the eleven live names begin with: without it a wrapped name
             spends its first line on the word every shelter shares.
 
-            Outside the anchor, because a control inside a link is a control
-            nothing can reach: a keyboard would have to walk through the card's
-            own link to get to it and a screen reader would announce one thing
-            sitting in another. */}
-        {onShelterClick ? (
-          <button
-            type="button"
-            onClick={() => onShelterClick(animal.shelter.id)}
-            aria-label={shelterLabel}
-            // items-start, because the pin belongs beside the first line of a
+            Outside the anchor, because a link inside a link is not markup a
+            browser or a screen reader can make sense of. The line keeps the
+            anchor's place in the card, so the split is only in the DOM.
+
+            It goes to the shelter's own page, which is the one destination
+            that answers both questions somebody presses a shelter's name to
+            ask: who they are, and what else they have. Being a real href, it
+            also costs no hydration, opens in a tab on a middle click, and
+            links 500 animal cards into 17 shelter pages for a crawler that
+            would otherwise only reach them from the index. */}
+        {showShelter ? (
+          <a
+            href={shelterPath(animal.shelter.id, locale)}
+            // items-start, because the icon belongs beside the first line of a
             // name that may run to two.
-            // cursor-pointer because a bare <button> keeps the arrow cursor,
-            // and nothing else here says the line answers a click.
             // border-t, min-h-11 and a hover ground: three ways of saying the
-            // same thing, which is that this line answers a click. It reads as
-            // passive metadata and behaves as a control that moves the map, and
-            // the divider also gives the gap above it a reason to exist: that
-            // gap is mt-auto holding the footer down so cards in a stretched
-            // row agree about their bottom edge, and with no line drawn under
-            // it, it read as a card that had run out of things to say.
+            // same thing, which is that this line answers a press. It reads as
+            // passive metadata and behaves as a control, and the divider also
+            // gives the gap above it a reason to exist: that gap is mt-auto
+            // holding the footer down so cards in a stretched row agree about
+            // their bottom edge, and with no line drawn under it, it read as a
+            // card that had run out of things to say.
             // min-h-11 is the 44px touch target the row never had at text-xs.
-            className={`${FOOTER_BOX} mt-auto flex w-full cursor-pointer items-start gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
+            className={`${FOOTER_BOX} mt-auto flex w-full items-start gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
           >
-            <MapPin
+            {/* House and not MapPin. The pin means "place" everywhere else on
+                the site (shelter-card.tsx draws it beside a city), and this
+                line is not where the animal is, it is who is keeping it. */}
+            <House
               className="mt-0.5 size-3 shrink-0"
               strokeWidth={1.75}
               aria-hidden
             />
+            {/* The link's own text is its accessible name, the way the shelter
+                card's is. An aria-label here could only repeat the name with
+                words around it, and WCAG 2.5.3 asks that what is spoken start
+                from what is written. */}
             <span className="min-w-0 [overflow-wrap:anywhere]">
               {shelterChipLabel(animal.shelter.name)}
             </span>
-          </button>
+            {/* The chevron is the affordance and it is drawn at rest. Hover was
+                carrying that alone, which says nothing at all on a phone. */}
+            <ChevronRight
+              aria-hidden
+              className="ml-auto mt-0.5 size-3 shrink-0 opacity-60"
+            />
+          </a>
         ) : (
           // A shelter's own page names itself in its heading, so the line has
           // nothing to add and nowhere to click; the anchor above just carries

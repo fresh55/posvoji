@@ -98,7 +98,7 @@ describe("animal grid empty state", () => {
     // The species tab survives: only zavetisce came off the query, and the
     // one rabbit not at muri is now shown.
     expect(query()).toBe("?vrsta=zajcek");
-    expect(screen.getByRole("button", { name: /Shelter druga/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Shelter druga/ })).toBeTruthy();
   });
 
   it("uses the plural shelter form for more than one selected shelter", () => {
@@ -152,7 +152,7 @@ describe("animal grid empty state", () => {
     window.history.replaceState(null, "", "/?vrsta=zajcek");
     const { container } = renderGrid(ANIMALS);
 
-    expect(screen.getByRole("button", { name: /Shelter druga/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Shelter druga/ })).toBeTruthy();
     expect(
       container.querySelector('[data-slot="mobile-filter-dock"]'),
     ).toBeTruthy();

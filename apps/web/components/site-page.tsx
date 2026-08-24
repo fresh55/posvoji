@@ -50,7 +50,7 @@ export function SitePage({ locale }: { locale: Locale }) {
                 lg up, where there is width for it, and stack below that. A
                 band of its own under the hero was a whole horizontal rule of
                 page spent on the smaller of the two questions. */}
-            <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
               {dataset && shelters > 0 && (
                 <p className="text-sm text-muted-foreground">
                   {shelterCount(shelters, locale)} · {messages.updated}{" "}

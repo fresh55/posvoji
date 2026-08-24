@@ -4,9 +4,17 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
 import { I18nProvider } from "@/components/i18n-provider";
+import { type Locale } from "@/lib/i18n";
 import { FoundAnimalButton } from "./found-animal-button";
 
 afterEach(() => cleanup());
+
+const setup = (locale: Locale = "sl") =>
+  render(
+    <I18nProvider locale={locale}>
+      <FoundAnimalButton />
+    </I18nProvider>,
+  );
 
 // The dialog end of this contract is covered in location-picker.test.tsx,
 // which opens the municipality mode by dispatching the event by hand. That
@@ -19,48 +27,35 @@ describe("FoundAnimalButton", () => {
     const heard = vi.fn();
     window.addEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, heard);
 
-    render(
-      <I18nProvider locale="sl">
-        <FoundAnimalButton />
-      </I18nProvider>,
-    );
+    setup();
     fireEvent.click(screen.getByRole("button"));
 
     expect(heard).toHaveBeenCalledTimes(1);
     window.removeEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, heard);
   });
 
-  it("says a dialog is what opens", () => {
-    render(
-      <I18nProvider locale="en">
-        <FoundAnimalButton />
-      </I18nProvider>,
-    );
+  it("says a dialog is what opens, and keeps its marks unnamed", () => {
+    setup();
+    const button = screen.getByRole("button");
 
     // Not decoration: buttonVariants reads aria-haspopup to drop the
     // press-down translate, so the two ways into this dialog answer a press
     // the same way.
-    expect(screen.getByRole("button").getAttribute("aria-haspopup")).toBe(
-      "dialog",
-    );
+    expect(button.getAttribute("aria-haspopup")).toBe("dialog");
+    // Both the country and the arrow stay out of the name computed below.
+    for (const svg of button.querySelectorAll("svg")) {
+      expect(svg.getAttribute("aria-hidden")).toBe("true");
+    }
   });
 
-  // The name query is the assertion here. getByRole computes the accessible
-  // name, so an exact match is a claim about the whole of it: the country and
-  // the arrow stay out, and the label is all a screen reader reads.
+  // getByRole computes the accessible name, so matching it exactly is a claim
+  // about the whole of it: the label carries the button and nothing else does.
   it.each([
     ["sl", "Si našel žival?"],
     ["en", "Found an animal?"],
   ] as const)("is named by its label alone in %s", (locale, name) => {
-    render(
-      <I18nProvider locale={locale}>
-        <FoundAnimalButton />
-      </I18nProvider>,
-    );
+    setup(locale);
 
-    const button = screen.getByRole("button", { name });
-    for (const svg of button.querySelectorAll("svg")) {
-      expect(svg.getAttribute("aria-hidden")).toBe("true");
-    }
+    expect(screen.getByRole("button", { name })).toBeTruthy();
   });
 });

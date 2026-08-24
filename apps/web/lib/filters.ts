@@ -1,11 +1,12 @@
-import {
+import type {
+  Animal,
+  AnimalSize,
+  EnergyLevel,
+  Sex,
   Species,
-  type Animal,
-  type AnimalSize,
-  type EnergyLevel,
-  type Sex,
 } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
+import { SPECIES_ORDER, SPECIES_SLUGS } from "@/lib/species";
 
 export type SpeciesFilter = "all" | Species;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
@@ -1167,15 +1168,9 @@ export function optionLabel(
 }
 
 // URL codecs. Slovenian, ASCII-only params: ?vrsta=pes&spol=samica&starost=mladicek
-// Keyed by species rather than listed, so one added to the schema fails to
-// compile here instead of quietly becoming unshareable.
-const SPECIES_SLUGS: Record<Species, string> = {
-  dog: "pes",
-  cat: "macka",
-  rabbit: "zajcek",
-  other: "ostalo",
-};
-
+// SPECIES_SLUGS and SPECIES_ORDER live in lib/species.ts, which imports nothing
+// but a type, so the tabs and the portal can read them without pulling this
+// module and its dependencies along.
 const PARAM_NAMES: Record<MultiGroup, string> = {
   sex: "spol",
   age: "starost",
@@ -1302,7 +1297,7 @@ export function parseFilters(search: string): Filters {
   const params = new URLSearchParams(search);
   const slug = params.get("vrsta");
   const species =
-    Species.options.find((value) => SPECIES_SLUGS[value] === slug) ?? "all";
+    SPECIES_ORDER.find((value) => SPECIES_SLUGS[value] === slug) ?? "all";
   // No second dedupe below: paramValues has already made the slugs unique, and
   // every slug-to-value lookup here is one-to-one.
   const values = (group: MultiGroup): string[] =>

@@ -1,9 +1,10 @@
-import { Species, type Animal } from "@posvoji/schema";
+import type { Animal, Species } from "@posvoji/schema";
 import { permittedImageUrls } from "@/lib/animal-images";
 import type { Locale } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import { ageLabel, monthsInShelter } from "@/lib/labels";
 import type { ShelterLogo } from "@/lib/shelter-logos";
+import { SPECIES_ORDER } from "@/lib/species";
 
 /** One waiting animal's face for the pick card's mini fan: the photo it is
  *  already shown with elsewhere, and its name for the alt text. */
@@ -35,10 +36,9 @@ export type ShelterSummary = {
 };
 
 // The order the site says species in everywhere else: the tabs, the result
-// count, the dialog's fact chips. Reads straight off the schema enum, the
-// same way lib/filters.ts does, so a species added there shows up here
-// instead of silently vanishing from the pick card.
-const SPECIES_ORDER: Species[] = Species.options;
+// count, the dialog's fact chips. Read off lib/species.ts, the same way
+// lib/filters.ts does, so a species added to the schema shows up here instead
+// of silently vanishing from the pick card.
 
 // The same three statuses the animal card's long-stay mark skips (see
 // longStayLabel in labels.ts): an adopted animal's stay is history, and a

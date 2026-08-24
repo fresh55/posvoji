@@ -10,10 +10,10 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { Species } from "@posvoji/schema";
 import { filterCardVariants } from "@/components/filters/filter-card";
 import { ENERGY_ICONS, SPECIES_ICONS } from "@/lib/animal-icons";
 import { FILTER_METADATA } from "@/lib/filters";
+import { SPECIES_ORDER } from "@/lib/species";
 import { sexLabel, sizeLabel, speciesLabel } from "@/lib/labels";
 import {
   PORTAL_COMPATIBILITIES,
@@ -45,7 +45,7 @@ export const isPortalCompatibility = oneOf(PORTAL_COMPATIBILITIES);
 
 // The species arrives as a plain string from the API, which reads it out of
 // the dataset. One the schema does not know is not an animal we can name.
-const isSpecies = oneOf(Species.options);
+const isSpecies = oneOf(SPECIES_ORDER);
 
 export function portalSpeciesIcon(species: string | null): LucideIcon {
   return isSpecies(species) ? SPECIES_ICONS[species] : PawPrint;

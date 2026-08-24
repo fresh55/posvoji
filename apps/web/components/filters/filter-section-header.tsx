@@ -250,7 +250,7 @@ export function FilterSectionHeader({
     >
       <h3 className="min-w-0 flex-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {hint ? (
-          <TooltipProvider delayDuration={350} skipDelayDuration={150}>
+          <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>{trigger}</TooltipTrigger>
               <TooltipContent side="right" sideOffset={8} className="max-w-56">

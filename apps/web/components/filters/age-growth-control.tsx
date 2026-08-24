@@ -356,7 +356,7 @@ export function AgeGrowthControl({
           })}
         </div>
 
-        <TooltipProvider delayDuration={350} skipDelayDuration={150}>
+        <TooltipProvider>
           <ToggleGroup
             type="multiple"
             value={selected}

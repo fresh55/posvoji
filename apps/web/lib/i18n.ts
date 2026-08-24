@@ -80,8 +80,23 @@ const sl = {
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
   filters: "Filtri",
-  filtersWithCount: "Filtri, aktivni sklopi: {count}",
+  // Selected values, not sections. The chips row counts the same things, and
+  // two numbers on one screen that both read as "how many filters" have to
+  // agree; the one a visitor can check by counting the chips in front of
+  // them is the one that wins.
+  filtersWithCount: "Filtri, aktivnih: {count}",
   activeFilters: "Aktivni filtri",
+  activeFiltersCount: "Aktivni filtri: {count}",
+  clearAll: "Počisti vse",
+  clearAllFilters: "Počisti vse filtre",
+  // Tooltip on a chip: what pressing it gives back. {count} arrives already
+  // formatted by animalCount, so the noun agrees with the number.
+  removeShowsMore: "Odstrani, +{count}",
+  expandFilterGroup: "Pokaži vse izbrane: {label}",
+  showMoreFilters: "Pokaži še {count}",
+  filtersCleared: "Filtri počiščeni",
+  undoClear: "Razveljavi",
+  undoClearFilters: "Razveljavi čiščenje filtrov",
   sortBy: "Razvrsti živali",
   sortLongestInShelter: "Najdlje v zavetišču",
   sortNewestArrivals: "Najnovejši sprejemi",
@@ -351,8 +366,17 @@ const en: Messages = {
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",
   filters: "Filters",
-  filtersWithCount: "Filters, active sections: {count}",
+  filtersWithCount: "Filters, {count} active",
   activeFilters: "Active filters",
+  activeFiltersCount: "Active filters: {count}",
+  clearAll: "Clear all",
+  clearAllFilters: "Clear all filters",
+  removeShowsMore: "Remove, +{count}",
+  expandFilterGroup: "Show all selected: {label}",
+  showMoreFilters: "Show {count} more",
+  filtersCleared: "Filters cleared",
+  undoClear: "Undo",
+  undoClearFilters: "Undo clearing the filters",
   sortBy: "Sort animals",
   sortLongestInShelter: "Longest in shelter",
   sortNewestArrivals: "Newest arrivals",

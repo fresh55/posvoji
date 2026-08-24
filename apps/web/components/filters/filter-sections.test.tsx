@@ -344,24 +344,30 @@ describe("remembered folds", () => {
 });
 
 describe("the sidebar heading", () => {
-  it("counts the active sections only once there are any", () => {
+  it("counts selected values, not the sections holding them", () => {
     const { unmount } = renderStatic(EMPTY_FILTERS, NOOP);
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri");
     unmount();
 
+    // Two sections, three values. The chips row below this heading draws
+    // three pills, so the badge that outlives it has to say three.
     renderStatic(
-      { ...EMPTY_FILTERS, sex: ["male"], toggles: ["sterilizacija"] },
+      {
+        ...EMPTY_FILTERS,
+        sex: ["male", "female"],
+        toggles: ["sterilizacija"],
+      },
       NOOP,
     );
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri2");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri3");
   });
 
   it("keeps the clear out of reach while nothing is active", () => {
     renderStatic(EMPTY_FILTERS, NOOP);
 
-    expect(screen.queryByRole("button", { name: "Počisti filtre" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Počisti vse" })).toBeNull();
     expect(
-      screen.getByText("Počisti filtre").getAttribute("aria-hidden"),
+      screen.getByText("Počisti vse").getAttribute("aria-hidden"),
     ).toBe("true");
   });
 
@@ -369,7 +375,7 @@ describe("the sidebar heading", () => {
     const onClearAll = vi.fn();
     renderStatic({ ...EMPTY_FILTERS, sex: ["male"] }, onClearAll);
 
-    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti vse" }));
     expect(onClearAll).toHaveBeenCalledTimes(1);
   });
 });

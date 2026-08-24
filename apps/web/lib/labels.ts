@@ -259,6 +259,28 @@ export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
   return translate(locale, GOOD_WITH_CHIP_KEYS[key]);
 }
 
+// "Zavetišče" as a leading or trailing word in a shelter's own name, with
+// whatever separator carries it. Not a word boundary in the middle: "Obalno
+// zavetišče (Marjetica Koper)" opens with the adjective that distinguishes it,
+// and dropping the noun out of the middle of that leaves nonsense.
+const SHELTER_NOUN = /^zavetišče\s+|\s*[—–-]\s*zavetišče$/iu;
+
+/** A shelter's name with the word "zavetišče" taken off it, for a chip.
+ *
+ *  On a 390px phone "Zavetišče Mala hiša" is 180px, half the row, and five of
+ *  the registry's shelters open with that same word: a truncating pill would
+ *  cut away the half that says which shelter and keep the half that says what
+ *  every shelter is. The pin on the chip already carries the noun, the same
+ *  way the household chips drop theirs (goodWithChipLabel above).
+ *
+ *  Left alone when the noun is the whole name, or when taking it off would
+ *  leave a fragment: some names carry it in the middle, and one or two are
+ *  nothing else. */
+export function shelterChipLabel(name: string): string {
+  const stripped = name.replace(SHELTER_NOUN, "").trim();
+  return stripped.length >= 3 ? stripped : name;
+}
+
 // Both of these read as full phrases already ("Primeren za stanovanje"), so a
 // chip needs no second wording the way the household questions do.
 export function homeLabel(key: HomeKey, locale: Locale): string {

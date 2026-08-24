@@ -61,3 +61,51 @@ export function useScrollEdgeFades<T extends HTMLElement>() {
     };
   }, []);
 }
+
+/** The same, measured across scrollLeft: drives the fade-scroll-x utility by
+    setting --scroll-fade-start and --scroll-fade-end. For a strip that scrolls
+    sideways and hides its scrollbar, where nothing else says there is more to
+    find past either edge.
+
+    Children are observed as well as the container, and so is the child list.
+    A row of chips changes its scroll width without ever changing its own size:
+    a filter comes off, the content shrinks inside a box that did not move, and
+    a container-only ResizeObserver never fires. */
+export function useScrollEdgeFadesX<T extends HTMLElement>() {
+  return useCallback((el: T | null) => {
+    if (!el) return;
+
+    const update = () => {
+      const fadeStart = el.scrollLeft > EDGE_SLACK_PX;
+      const fadeEnd =
+        el.scrollLeft + el.clientWidth < el.scrollWidth - EDGE_SLACK_PX;
+      el.style.setProperty("--scroll-fade-start", fadeStart ? "1" : "0");
+      el.style.setProperty("--scroll-fade-end", fadeEnd ? "1" : "0");
+    };
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => el.removeEventListener("scroll", update);
+    }
+    const observer = new ResizeObserver(update);
+    const observeChildren = () => {
+      observer.disconnect();
+      observer.observe(el);
+      for (const child of el.children) observer.observe(child);
+    };
+    observeChildren();
+    const mutations = new MutationObserver(() => {
+      observeChildren();
+      update();
+    });
+    mutations.observe(el, { childList: true, subtree: true });
+
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+      mutations.disconnect();
+    };
+  }, []);
+}

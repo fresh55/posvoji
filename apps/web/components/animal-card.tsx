@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, type MouseEvent } from "react";
-import { ChevronRight, Hourglass, House } from "lucide-react";
+import { ChevronRight, Clock, House } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { animalPath } from "@/lib/animal-path";
@@ -101,14 +102,19 @@ export function AnimalCard({
           onNavigate={openDialog}
         />
         {animal.status === "reserved" && (
-          // Below sm the 2-col phone grid leaves the name's row too narrow to
-          // also hold this badge and the wait label, and the name is what
-          // matters most there, so the badge moves onto the photo instead of
-          // competing for the row. At sm and up there is room, and it returns
-          // to sitting beside the name (its usual, higher-contrast spot).
-          <span className="absolute left-2 top-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-2xs font-medium text-amber-700 backdrop-blur-sm dark:text-amber-300 sm:hidden">
+          // Below sm the 2-col phone grid leaves the name's row about 145px
+          // and "rezerviran" takes half of it, which cuts the name to seven
+          // or eight characters. The name matters more there, so the tag
+          // moves onto the photo. At sm and up there is room and it returns
+          // to sitting beside the name, its usual and higher-contrast spot.
+          // The wait no longer competes for this row, but the arithmetic
+          // above is the tag's own and does not change with it.
+          <Badge
+            variant="outline"
+            className="absolute left-2 top-2 border-amber-500/40 bg-amber-500/15 text-amber-700 backdrop-blur-sm dark:text-amber-300 sm:hidden"
+          >
             {statusLabel("reserved", locale)}
-          </span>
+          </Badge>
         )}
       </div>
       <a
@@ -126,38 +132,52 @@ export function AnimalCard({
           <h3 className="truncate font-medium">{animal.name ?? messages.unnamed}</h3>
           {animal.status === "reserved" && (
             // Same amber-family recipe as the dialog's reserved badge
-            // (animal-dialog.tsx STATUS_CLASS), scaled down to the grid card.
+            // (animal-dialog.tsx STATUS_CLASS), on the shared Badge so the
+            // card is not hand-drawing a pill the design system already draws.
             // Hidden below sm, where the photo overlay above carries it instead.
-            <span className="hidden shrink-0 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-2xs font-medium text-amber-700 dark:text-amber-300 sm:inline">
+            <Badge
+              variant="outline"
+              className="hidden shrink-0 border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300 sm:inline-flex"
+            >
               {statusLabel("reserved", locale)}
-            </span>
-          )}
-          {wait && (
-            <span className="hidden shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:inline-flex">
-              <Hourglass
-                className="size-3.5 text-amber-600 dark:text-amber-400"
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              {t("longStayMark", { duration: wait })}
-            </span>
+            </Badge>
           )}
         </div>
         <p className="text-sm text-muted-foreground tabular-nums">
           {animalMeta(animal, locale, reference)}
         </p>
         {wait && (
-          // Below sm the wait label gets its own line under the meta text,
-          // instead of sharing the name's row where it forced the truncating
-          // name down to a character or two.
-          <p className="flex items-center gap-1 text-xs text-muted-foreground sm:hidden">
-            <Hourglass
-              className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+          // One copy, on its own line under the meta text, at every width.
+          // There used to be two, a right-aligned one on the name's row and
+          // this one below sm, because the wait and a name will not share a
+          // row on the 2-col phone grid without cutting the name to a
+          // character or two. Off the row it is one element instead of two
+          // kept in step, and the name keeps its full width everywhere.
+          //
+          // Badge and not a bare line of text: the pill is the shape this
+          // card already uses for the reserved tag, and the design system
+          // draws it at this size (h-5, text-xs, 12px icons, one radius).
+          // font-normal because the badge's own font-medium would put a
+          // footnote at the weight of the animal's name.
+          //
+          // Clock and not Hourglass. An hourglass reads as "loading" in a
+          // UI, and its waist closes up at the 12px the badge draws icons
+          // at. The amber stays on the icon alone, the way the dialog's
+          // long-stay box holds it, so the card keeps to one accent.
+          //
+          // The badge keeps its own secondary-foreground rather than the
+          // muted-foreground the meta line above it uses. Muted on this
+          // fill measures 4.34:1 in light mode, under the floor for 12px
+          // text, and the pill plus the amber icon already hold the mark
+          // back without dimming the words.
+          <Badge variant="secondary" className="font-normal">
+            <Clock
+              className="text-amber-600 dark:text-amber-400"
               strokeWidth={1.75}
               aria-hidden
             />
             {t("longStayMark", { duration: wait })}
-          </p>
+          </Badge>
         )}
       </a>
 

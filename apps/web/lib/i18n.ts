@@ -135,8 +135,11 @@ const sl = {
   searchShelters: "Išči zavetišče po imenu…",
   noSheltersFound: "Ni zadetkov za",
   clearSearch: "Počisti iskanje",
-  muniPrompt: "Si našel žival? Poišči pristojno zavetišče.",
-  muniPromptCta: "Poišči občino",
+  // The label on the hero's found-animal button, and the whole of it. A line
+  // of page text beside the control said the same thing twice, and a note
+  // under it explaining who pays read as a subtitle written to sell. What the
+  // dialog does with the answer, the dialog says on arrival.
+  muniPromptTitle: "Si našel žival?",
   muniTab: "Najdena žival",
   muniSearch: "Občina ali poštna številka …",
   muniHint:
@@ -406,8 +409,7 @@ const en: Messages = {
   searchShelters: "Search shelters by name…",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
-  muniPrompt: "Found an animal? Find the shelter for your area.",
-  muniPromptCta: "Find your municipality",
+  muniPromptTitle: "Found an animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
   muniHint:

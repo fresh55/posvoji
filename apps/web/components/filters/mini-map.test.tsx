@@ -90,6 +90,26 @@ describe("MiniMap regions", () => {
     expect(html).not.toContain("data-map-furniture");
   });
 
+  // The homepage's found-animal button asks for a place mark, not a reading:
+  // no pins means every region is inert, so twelve paths would paint one flat
+  // tint whose union the outline already encloses.
+  it("collapses onto the outline when there is nothing to tint", () => {
+    const html = renderMini([]);
+
+    expect(html).not.toContain("data-minimap-region-state");
+    expect(html.match(/<path/g)).toHaveLength(1);
+    expect(html).toContain("fill-foreground/5");
+  });
+
+  it("keeps the outline unfilled while regions are drawn", () => {
+    const html = renderMini([pin("koper", "Zavetišče Koper", "Koper", 5)]);
+
+    // The outline is the one path carrying a stroke width.
+    const outline = html.match(/<path[^>]*stroke-width[^>]*>/)?.[0];
+    expect(outline).toContain("fill-none");
+    expect(html.match(/data-minimap-region-state="/g)).toHaveLength(12);
+  });
+
   it("is aria-hidden, since the trigger's label carries the meaning", () => {
     const html = renderMini([pin("koper", "Zavetišče Koper", "Koper", 5)]);
 

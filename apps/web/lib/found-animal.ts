@@ -1,5 +1,5 @@
-// The contract between the homepage "found an animal" strip and the location
-// picker's municipality mode. The strip and the picker are far apart in the
+// The contract between the homepage "found an animal" button and the location
+// picker's municipality mode. The button and the picker are far apart in the
 // tree and the dialog is rendered twice (desktop toolbar, mobile dock), so
 // the ask travels as a window event and each picker instance decides by
 // breakpoint whether it is the visible one that should answer.

@@ -227,7 +227,7 @@ export function PhotoLightbox({
                 Radix to dismiss on, where that gesture exists) while a
                 sideways one is read as a photo change. */}
             <div
-              className="relative h-full w-full touch-pan-y overflow-hidden"
+              className="relative h-full w-full touch-pan-y touch-pinch-zoom overflow-hidden"
               onPointerDown={startTouch}
               onPointerUp={endTouch}
               onPointerCancel={cancelTouch}

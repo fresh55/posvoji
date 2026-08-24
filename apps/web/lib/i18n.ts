@@ -37,7 +37,13 @@ const sl = {
   factOrigin: "Kraj najdbe",
   longStay: "V zavetišču čaka že {duration}.",
   longStayLink: "Poglej vse, ki čakajo najdlje",
-  longStayMark: "Čaka že {duration}",
+  // A label, not a plea. The dialog's longStay above is the plea, and it has a
+  // sentence, a box and a link to act on: that is where it can do something. On
+  // a card the same words repeat twenty times a screen and decay into
+  // wallpaper, and worse, an animal that grew up in the shelter printed its age
+  // and its wait as the same string twice ("3 leta" over "Čaka že 3 leta") on
+  // 54 of the 101 cards that carry the mark.
+  longStayMark: "{duration} v zavetišču",
   healthAllClear: "Vse zdravstveno urejeno ({count}/{count})",
   showHealthDetails: "Pokaži podrobnosti",
   readMore: "Preberi več",
@@ -49,12 +55,22 @@ const sl = {
     "Testirana negativno na mačji virus imunske pomanjkljivosti (FIV).",
   hintBrezFelv: "Testirana negativno na virus mačje levkemije (FeLV).",
   statusAvailable: "na voljo",
-  statusReserved: "rezerviran",
-  statusAdopted: "posvojen",
-  statusHold: "trenutno ni za posvojitev",
+  // Neuter impersonal, not masculine adjectives. filters.ts states the rule for
+  // the toggles ("Slovenian would force a gender on 'cepljen' that 'živali'
+  // doesn't share") and these three were the place it was not applied, on a
+  // grid that is three quarters cats. "Rezervirano" and "posvojeno" describe
+  // the state of a thing and carry no gender.
+  //
+  // statusHold loses "trenutno": at 11px the old string was wider than a phone
+  // card's whole content box, and the shorter one says the same thing.
+  statusReserved: "rezervirano",
+  statusAdopted: "posvojeno",
+  statusHold: "ni za posvojitev",
   lessThanMonth: "manj kot mesec",
   unnamed: "Brez imena",
   animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
+  resultsHeading: "Živali",
+  skipResults: "Preskoči seznam živali",
   noResults: "Ni zadetkov.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
@@ -309,7 +325,10 @@ const en: Messages = {
   shelters: "Shelters",
   forShelters: "For shelters",
   chooseLanguage: "Choose language",
-  photoAtShelter: "See photo on the shelter’s website",
+  // A statement, matching the Slovenian. It used to read "See photo on the
+  // shelter's website", which is an instruction the click does not carry out:
+  // on a card this box is a link to the animal's own page, not to the shelter.
+  photoAtShelter: "Photo is on the shelter’s website",
   previousPhoto: "Previous photo",
   nextPhoto: "Next photo",
   photoCount: "Photo {current} of {total}",
@@ -331,7 +350,7 @@ const en: Messages = {
   factOrigin: "Found in",
   longStay: "At the shelter for {duration} now.",
   longStayLink: "See who has waited longest",
-  longStayMark: "Waiting {duration}",
+  longStayMark: "{duration} in the shelter",
   healthAllClear: "Full health record ({count}/{count})",
   showHealthDetails: "Show details",
   readMore: "Read more",
@@ -344,10 +363,12 @@ const en: Messages = {
   statusAvailable: "available",
   statusReserved: "reserved",
   statusAdopted: "adopted",
-  statusHold: "on hold",
+  statusHold: "not available",
   lessThanMonth: "less than a month",
   unnamed: "Unnamed",
   animalsComingSoon: "Animals will appear here when the first shelters join.",
+  resultsHeading: "Animals",
+  skipResults: "Skip the list of animals",
   noResults: "No results.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",

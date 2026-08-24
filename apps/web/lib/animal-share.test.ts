@@ -77,7 +77,7 @@ describe("animalDescription", () => {
   it("says so when the animal is no longer waiting", () => {
     const adopted = animal({ status: "adopted" });
     expect(animalDescription(adopted, "sl", REFERENCE)).toContain(
-      "Status: posvojen.",
+      "Status: posvojeno.",
     );
     expect(animalDescription(adopted, "en", REFERENCE)).toContain(
       "Status: adopted.",

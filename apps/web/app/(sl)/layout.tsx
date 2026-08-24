@@ -1,10 +1,9 @@
+import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { fontStack } from "@/app/font-stack";
 import { getMessages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import "../globals.css";
-
-const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   // Link previews need absolute URLs, and a static export has no request to
@@ -20,7 +19,8 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function SlovenianLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="sl" className={`${inter.variable} h-full antialiased`}>
+    <html lang="sl" className="h-full antialiased"
+      style={{ "--font-sans": fontStack } as CSSProperties}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

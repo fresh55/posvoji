@@ -8,6 +8,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { I18nProvider } from "@/components/i18n-provider";
+import type { ShelterSummary } from "@/lib/shelter-summary";
 import { ShelterRows } from "./shelter-rows";
 
 const rows = [
@@ -18,6 +20,16 @@ const rows = [
 const counts = new Map([
   ["macja-hisa", 5],
   ["sia-in-lu", 2],
+]);
+
+// The info control is offered only for a shelter there is something to say
+// about, the same hasDetails test the panel's own fill is drawn behind, so
+// every render that expects the control has to hand in summaries for the rows
+// it expects it on. A caller with no dataset behind it gets rows and nothing
+// else, which is what the "nothing to open" cases below assert.
+const detailSummaries: Map<string, ShelterSummary> = new Map([
+  ["macja-hisa", { species: [{ species: "cat", count: 5 }] }],
+  ["sia-in-lu", { species: [{ species: "dog", count: 2 }] }],
 ]);
 
 // A toggle row is a wrapper marked data-shelter-row, holding the toggle
@@ -169,41 +181,100 @@ describe("ShelterRows selection and counts", () => {
 
 // Every row and every marker reports aria-pressed, so activating one has to
 // flip it: a click on a picked row drops that shelter and can never also
-// re-open the card about it. The info control is the second act the row makes
-// room for, and it only exists where a caller has a card to open.
+// re-open the details about it. The info control is the second act the row
+// makes room for, wrapped in a Collapsible that opens ShelterDetails beneath
+// the row; it exists on every toggle row a caller hands onToggleExpanded to,
+// picked or not, because looking a shelter over before committing to it is
+// the ordinary use.
 describe("ShelterRows info control", () => {
   afterEach(() => cleanup());
 
   const infoLabel = (label: string) => `Pokaži podrobnosti za ${label}`;
+  const hideInfoLabel = (label: string) => `Skrij podrobnosti za ${label}`;
+  const infoText = "Pokaži podrobnosti";
+  const hideInfoText = "Skrij podrobnosti";
 
-  it("puts the control on a picked row and reserves its slot on the others", () => {
+  it("puts the control on every row, picked or not", () => {
     const html = renderToStaticMarkup(
       <ShelterRows
         rows={rows}
         counts={counts}
         selected={["sia-in-lu"]}
         onToggle={() => undefined}
-        onInfo={() => undefined}
+        summaries={detailSummaries}
+        onToggleExpanded={() => undefined}
         infoLabel={infoLabel}
       />,
     );
 
+    // A chevron, not a circled i: the panel opens where the row sits, and the
+    // chevron is the glyph that says so without a caption above the list
+    // explaining it.
     const picked = rowTag(html, "Sia in Lu");
-    expect(picked).toContain("lucide-info");
+    expect(picked).toContain("lucide-chevron-down");
     expect(picked).toContain(
       'aria-label="Pokaži podrobnosti za Zavetišče Sia in Lu"',
     );
 
-    // The unpicked row holds an inert span of the same size, so picking a row
-    // does not shove the count pills of the rows around it sideways.
+    // Unlike the old card's rows, an unpicked row is not the one caller with
+    // nothing to open: it gets the same control, not a spacer standing in
+    // for it.
     const unpicked = rowTag(html, "Mačja hiša");
-    expect(unpicked).not.toContain("lucide-info");
+    expect(unpicked).toContain("lucide-chevron-down");
     expect(unpicked).toContain(
-      '<span aria-hidden="true" class="hidden size-6 shrink-0 lg:block">',
+      'aria-label="Pokaži podrobnosti za Zavetišče Mačja hiša"',
     );
   });
 
-  it("reserves no slot at all for a caller with nothing to open", () => {
+  it("offers no control for a shelter it has nothing to say about", () => {
+    // hasDetails is the same test the panel's own fill is drawn behind, so a
+    // control offered past it turns its chevron and reveals a blank strip,
+    // which reads as broken rather than as "we know nothing here". Mačja hiša
+    // has a summary, Sia in Lu has none; only the first gets the chevron.
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={[]}
+        onToggle={() => undefined}
+        summaries={
+          new Map([
+            ["macja-hisa", { species: [{ species: "cat", count: 5 }] }],
+          ]) as Map<string, ShelterSummary>
+        }
+        onToggleExpanded={() => undefined}
+        infoLabel={infoLabel}
+      />,
+    );
+
+    expect(rowTag(html, "Mačja hiša")).toContain(
+      "Pokaži podrobnosti za Zavetišče Mačja hiša",
+    );
+    expect(rowTag(html, "Sia in Lu")).not.toContain("Pokaži podrobnosti");
+    // And no Collapsible wrapped around a row with nothing under it.
+    expect(rowTag(html, "Sia in Lu")).not.toContain('data-slot="collapsible"');
+  });
+
+  it("names what the count pill counts, for a reader who cannot see it", () => {
+    // Two numbers ride every row, "23" in the pill and "23 km" in the
+    // sublabel, and only one of them said what it was counting: the pill sits
+    // inside the toggle, so its digits land in that button's accessible name.
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={[]}
+        onToggle={() => undefined}
+        countLabel={(count) => `${count} živali`}
+      />,
+    );
+
+    const row = rowTag(html, "Mačja hiša");
+    expect(row).toContain('aria-hidden="true"');
+    expect(row).toContain("5 živali");
+  });
+
+  it("builds no collapsible at all for a caller with nothing to open", () => {
     const html = renderToStaticMarkup(
       <ShelterRows
         rows={rows}
@@ -213,22 +284,25 @@ describe("ShelterRows info control", () => {
       />,
     );
 
-    // The rows inside a group card (map-pick-card.tsx) render this way, and
-    // they keep the layout they had before the control existed.
+    // Omitting onToggleExpanded is what a caller with nothing to open does
+    // (the off-site link list, a caller with no dataset behind it): the row
+    // is returned exactly as it was before the control existed, with no
+    // Collapsible built around it at all.
     expect(html).not.toContain("lucide-info");
-    expect(html).not.toContain("size-6");
+    expect(html).not.toContain('data-slot="collapsible"');
   });
 
   it("asks about a shelter without un-picking it", () => {
     const onToggle = vi.fn();
-    const onInfo = vi.fn();
+    const onToggleExpanded = vi.fn();
     render(
       <ShelterRows
         rows={rows}
         counts={counts}
         selected={["sia-in-lu"]}
         onToggle={onToggle}
-        onInfo={onInfo}
+        summaries={detailSummaries}
+        onToggleExpanded={onToggleExpanded}
         infoLabel={infoLabel}
       />,
     );
@@ -239,10 +313,196 @@ describe("ShelterRows info control", () => {
       }),
     );
 
-    expect(onInfo).toHaveBeenCalledWith("sia-in-lu");
+    expect(onToggleExpanded).toHaveBeenCalledWith("sia-in-lu");
     // It sits beside the toggle rather than inside it, so the selection is
     // untouched: that is the whole point of the second control.
     expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("collapses the same way it opens, without un-picking it", () => {
+    const onToggle = vi.fn();
+    const onToggleExpanded = vi.fn();
+    // Inside the provider, because an open row mounts ShelterDetails, which
+    // reads the locale itself. That is the contract at the top of
+    // shelter-rows.tsx: summaries plus onToggleExpanded is a caller asking for
+    // a panel, and a panel is the one part of this list that is not renderable
+    // outside I18nProvider.
+    render(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={rows}
+          counts={counts}
+          selected={["sia-in-lu"]}
+          onToggle={onToggle}
+          expanded="sia-in-lu"
+          summaries={detailSummaries}
+          onToggleExpanded={onToggleExpanded}
+          infoLabel={infoLabel}
+          hideInfoLabel={hideInfoLabel}
+          hideInfoText={hideInfoText}
+        />
+      </I18nProvider>,
+    );
+
+    // Collapsing is the control's own second click, not a different control:
+    // onToggleExpanded is still the one thing it calls, with the same value.
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Skrij podrobnosti za Zavetišče Sia in Lu",
+      }),
+    );
+
+    expect(onToggleExpanded).toHaveBeenCalledWith("sia-in-lu");
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("flips the control's accessible name, aria-expanded and chevron with the row it opens", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={rows}
+          counts={counts}
+          selected={["sia-in-lu"]}
+          onToggle={() => undefined}
+          expanded="sia-in-lu"
+          summaries={detailSummaries}
+          onToggleExpanded={() => undefined}
+          infoLabel={infoLabel}
+          hideInfoLabel={hideInfoLabel}
+          infoText={infoText}
+          hideInfoText={hideInfoText}
+        />
+      </I18nProvider>,
+    );
+
+    // The chevron rotates and the box does not move. The words that go with
+    // each state live in the tooltip and in the accessible name, never on the
+    // button's own surface: a control wide enough to carry them took the width
+    // out of the shelter's name, and the open row is the one row whose name
+    // matters most. Never an X either way.
+    const open = screen.getByRole("button", {
+      name: "Skrij podrobnosti za Zavetišče Sia in Lu",
+    });
+    expect(open.getAttribute("aria-expanded")).toBe("true");
+    expect(open.textContent).toBe("");
+    expect(open.querySelector(".lucide-chevron-up")).not.toBeNull();
+
+    const closed = screen.getByRole("button", {
+      name: "Pokaži podrobnosti za Zavetišče Mačja hiša",
+    });
+    expect(closed.getAttribute("aria-expanded")).toBe("false");
+    expect(closed.textContent).toBe("");
+    expect(closed.querySelector(".lucide-chevron-down")).not.toBeNull();
+  });
+
+  it("still walks the toggle buttons with the arrow keys once each row carries a second control", () => {
+    render(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={[]}
+        onToggle={() => undefined}
+        summaries={detailSummaries}
+        onToggleExpanded={() => undefined}
+        infoLabel={infoLabel}
+      />,
+    );
+
+    // aria-pressed is what tells a row's own toggle apart from the info
+    // control beside it, the same filter moveFocus itself applies.
+    const toggles = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("aria-pressed") !== null);
+    const macja = toggles.find((button) =>
+      button.textContent?.includes("Mačja hiša"),
+    )!;
+    const sia = toggles.find((button) =>
+      button.textContent?.includes("Sia in Lu"),
+    )!;
+    macja.focus();
+
+    fireEvent.keyDown(macja, { key: "ArrowDown" });
+    // Lands on the next shelter's own toggle, never on the info control
+    // sitting beside either one: the walk stays one stop per shelter.
+    expect(document.activeElement).toBe(sia);
+  });
+});
+
+// ShelterDetails reads the locale itself, so any test that exercises the
+// panel's actual content, rather than just the control that opens it, has to
+// render inside I18nProvider (the picker already does).
+describe("ShelterRows expansion", () => {
+  afterEach(() => cleanup());
+
+  const infoLabel = (label: string) => `Pokaži podrobnosti za ${label}`;
+  const hideInfoLabel = (label: string) => `Skrij podrobnosti za ${label}`;
+  const hideInfoText = "Skrij podrobnosti";
+  const summaries: Map<string, ShelterSummary> = new Map([
+    ["macja-hisa", { species: [{ species: "cat", count: 4 }] }],
+    ["sia-in-lu", { species: [{ species: "dog", count: 2 }] }],
+  ]);
+
+  function renderExpanded(expanded: string | null) {
+    return render(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={rows}
+          counts={counts}
+          selected={[]}
+          onToggle={() => undefined}
+          onToggleExpanded={() => undefined}
+          infoLabel={infoLabel}
+          hideInfoLabel={hideInfoLabel}
+          hideInfoText={hideInfoText}
+          summaries={summaries}
+          expanded={expanded}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it("opens only the shelter `expanded` names, and moves the panel when the prop moves", () => {
+    const { container, rerender } = renderExpanded("sia-in-lu");
+
+    // One panel open, and it is the dog shelter's, not the cat shelter's.
+    expect(container.querySelectorAll("[data-shelter-details]")).toHaveLength(
+      1,
+    );
+    expect(screen.getByLabelText("Pes: 2")).toBeTruthy();
+    expect(screen.queryByLabelText("Mačka: 4")).toBeNull();
+
+    rerender(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={rows}
+          counts={counts}
+          selected={[]}
+          onToggle={() => undefined}
+          onToggleExpanded={() => undefined}
+          infoLabel={infoLabel}
+          hideInfoLabel={hideInfoLabel}
+          hideInfoText={hideInfoText}
+          summaries={summaries}
+          expanded="macja-hisa"
+        />
+      </I18nProvider>,
+    );
+
+    // One-at-a-time held across the move: still exactly one panel, now the
+    // other shelter's.
+    expect(container.querySelectorAll("[data-shelter-details]")).toHaveLength(
+      1,
+    );
+    expect(screen.getByLabelText("Mačka: 4")).toBeTruthy();
+    expect(screen.queryByLabelText("Pes: 2")).toBeNull();
+  });
+
+  it("closes every panel when `expanded` names no shelter", () => {
+    const { container } = renderExpanded(null);
+
+    expect(container.querySelectorAll("[data-shelter-details]")).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -384,7 +644,9 @@ describe("ShelterRows link rows", () => {
     // The size-3.5 spacer stands in for the check icon, so the label lines
     // up with a toggle row's own; a link is never checked, so nothing sits
     // in it.
-    expect(html).toContain('<span class="size-3.5 shrink-0" aria-hidden="true">');
+    expect(html).toContain(
+      '<span class="size-3.5 shrink-0" aria-hidden="true">',
+    );
     expect(html).not.toContain("rounded-full");
     expect(html).not.toContain("tabular-nums");
     // The label reads muted, the way an unchecked toggle row's does, and the
@@ -429,9 +691,26 @@ describe("ShelterRows link rows", () => {
     // The three toggle-only props are all optional. A caller rendering a
     // link-only list is not made to fabricate a Map and an array it will
     // never read.
-    expect(() =>
-      render(<ShelterRows rows={linkRows} />),
-    ).not.toThrow();
+    expect(() => render(<ShelterRows rows={linkRows} />)).not.toThrow();
+  });
+
+  it("never gives a link row an info control, even when the caller hands in onToggleExpanded", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={linkRows}
+        onToggleExpanded={() => undefined}
+        infoLabel={(label) => `Pokaži podrobnosti za ${label}`}
+        summaries={
+          new Map([["vzhod", { species: [{ species: "dog", count: 1 }] }]])
+        }
+      />,
+    );
+
+    // The href branch returns before onToggleExpanded is ever consulted: a
+    // link row navigates instead of expanding, so it never grows the control
+    // and never gets wrapped in a Collapsible.
+    expect(html).not.toContain("lucide-info");
+    expect(html).not.toContain('data-slot="collapsible"');
   });
 
   it("leaves a link row out of the arrow-key walk between toggle rows", () => {

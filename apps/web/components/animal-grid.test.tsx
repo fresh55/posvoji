@@ -174,10 +174,22 @@ describe("animal grid empty state", () => {
       expect(dialog.querySelector(`[data-shelter-row='${id}']`)).toBeTruthy();
     }
     // One of the three has the rabbit; the other two say zero rather than
-    // disappearing.
-    expect(
-      dialog.querySelector("[data-picker-panel]")!.textContent,
-    ).toContain("Zavetišč z živalmi: 1 od 3");
+    // disappearing. Read off the rows themselves, because the panel no longer
+    // carries the "Zavetišč z živalmi: 1 od 3" line that used to say it: that
+    // fraction was the roster reporting it had counted itself, and no press in
+    // the dialog acted on it. Each row still wears its own number, which is
+    // the number the row is picked on.
+    const panel = dialog.querySelector("[data-picker-panel]")!;
+    expect(panel.textContent).not.toContain("Zavetišč z živalmi");
+    const countOf = (id: string) =>
+      panel.querySelector(`[data-shelter-row='${id}'] [data-slot='badge']`)!
+        .textContent;
+    // The digits, then the same number again in the words a screen reader
+    // gets: two numbers ride every row and only one of them said what it was
+    // counting before this.
+    expect(countOf("druga")).toBe("11 žival");
+    expect(countOf("muri")).toBe("00 živali");
+    expect(countOf("tretje")).toBe("00 živali");
   });
 
   it("renders the English recovery copy", () => {

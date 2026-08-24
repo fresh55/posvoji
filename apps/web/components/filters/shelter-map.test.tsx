@@ -1483,71 +1483,6 @@ describe("ShelterMap legend hover", () => {
   });
 });
 
-describe("ShelterMap scale bar", () => {
-  const html = renderMap([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)]);
-  const bar = html.match(/<path[^>]*data-map-scale="(\d+)"[^>]*>/);
-  const km = Number(bar?.[1]);
-  // Only the ends of the strokes: the tick verticals carry no x of their own.
-  const xs = [
-    ...(bar?.[0].match(/ d="([^"]+)"/)?.[1] ?? "").matchAll(/[MH](-?[\d.]+)/g),
-  ].map(([, x]) => Number(x));
-
-  it("measures a round number of kilometres, honestly projected", () => {
-    expect(bar).not.toBeNull();
-    expect(km).toBe(25);
-
-    // The same distance put through the projection the map itself uses: two
-    // points that far apart along the map's mid latitude have to span exactly
-    // as many user units as the bar is long.
-    const west: LatLon = { lat: 46.15, lon: 13.35 };
-    const east: LatLon = {
-      lat: 46.15,
-      lon: 13.35 + km / (111.32 * Math.cos((46.15 * Math.PI) / 180)),
-    };
-    expect(distanceKm(west, east)).toBeCloseTo(km, 1);
-
-    const length = Math.max(...xs) - Math.min(...xs);
-    expect(length).toBeCloseTo(project(east).x - project(west).x, 6);
-    // 0.795 km per unit, so 25 km is a little over 31 units.
-    expect(length).toBeCloseTo(31.44, 1);
-  });
-
-  it("stands in the bottom-right corner, with the frame margin the rest keeps", () => {
-    expect(Math.max(...xs)).toBe(314);
-    // The label above the bar, which sits 2.5 units over a bar at y 194. The
-    // bar used to be held twenty units higher to clear an HTML legend drawn
-    // over this corner; the legend is a caption under the plate now, so the
-    // corner is the plate's own again.
-    expect(html).toContain('y="191.5"');
-    // Still inside the four units of margin every other piece of furniture
-    // keeps from the frame (210 is the viewBox's own floor).
-    expect(210 - 195.5).toBeGreaterThanOrEqual(4);
-  });
-
-  it("labels itself without a message key, in type quieter than a callout", () => {
-    const label =
-      html.match(/<text[^>]*font-size="4.2"[^>]*>25 km<\/text>/)?.[0] ?? "";
-    expect(label).not.toBe("");
-    // The callout's title runs at 5.5px. Upright, because italic is the
-    // water's register and this measures land.
-    expect(label).not.toContain("italic");
-  });
-
-  it("keeps the bar out of the tree and out of the way of the pointer", () => {
-    expect(html).toMatch(
-      /<g aria-hidden="true" class="pointer-events-none[^"]*"><path data-map-scale=/,
-    );
-  });
-
-  // 4.2 units is about five pixels on a phone plate, which is a smudge and not
-  // a measure. The bar leaves at the same width the rest of the small type
-  // does.
-  it("leaves the plate once it is drawn too small to read the bar on", () => {
-    expect(html).toMatch(
-      /<g aria-hidden="true" class="[^"]*@max-\[512px\]\/map-stage:hidden[^"]*"><path data-map-scale=/,
-    );
-  });
-});
 
 // The type a printed plate carries and a chart does not: the neighbours, the
 // water, and three towns to anchor the shape. It is always on, so the dev
@@ -1650,15 +1585,14 @@ describe("ShelterMap plate furniture", () => {
     }
   });
 
-  it("sits over the choropleth and under the scale bar", () => {
+  it("sits over the choropleth", () => {
     // A town name read through a region fill is a town name nobody reads, so
-    // the layer paints after the regions; the bar is furniture of the same
-    // rank and comes next.
+    // the layer paints after the regions. There is no upper bound left to
+    // check it against: the scale bar was the furniture that came next, and a
+    // chooser calibrates distance in the rows' own "· 23 km" rather than with
+    // a bar under the country.
     expect(html.indexOf("data-region-state")).toBeLessThan(
       html.indexOf("data-map-furniture"),
-    );
-    expect(html.indexOf("data-map-furniture")).toBeLessThan(
-      html.indexOf("data-map-scale"),
     );
   });
 });
@@ -1762,6 +1696,24 @@ describe("ShelterMap municipality connector", () => {
       </I18nProvider>,
     );
   }
+
+  it("marks the spotlight with a ring that holds still", () => {
+    const html = renderConnector(from);
+    const group =
+      html.match(/<g[^>]*data-map-spotlight[\s\S]*?<\/g>/)?.[0] ?? "";
+
+    expect(group).not.toBe("");
+    // One ring, and it does not move. There was a second circle over this one
+    // carrying animate-ping on a 2.2s loop, which repeats for as long as the
+    // spotlight stands and reads as a vibration on the marker somebody has
+    // just been sent to. The spotlight is painted last, it is the only
+    // accented mark on the map while it is on, and the callout beside it names
+    // the shelter outright; the pulse was saying a fourth time what three
+    // still things already said.
+    expect(group).not.toContain("animate-ping");
+    expect(group).not.toContain("animationDuration");
+    expect(group).not.toContain("animation-duration");
+  });
 
   it("joins the municipality to its shelter in the origin's dashed language", () => {
     const line =
@@ -1945,16 +1897,13 @@ describe("ShelterMap species morph", () => {
   });
 
   it("leaves the plate's furniture out of it", () => {
-    // The hillshade, the neighbours and the scale bar say nothing about the
-    // species being asked for, so nothing about them may move when it changes.
+    // The hillshade and the neighbours say nothing about the species being
+    // asked for, so nothing about them may move when it changes.
     const furniture =
       html.match(/<g[^>]*data-map-furniture[^>]*>/)?.[0] ?? "";
     expect(furniture).not.toBe("");
     expect(furniture).not.toContain("transition");
     expect(html.match(/<image[^>]*data-map-hillshade[^>]*>/)?.[0]).not.toContain(
-      "transition",
-    );
-    expect(html.match(/<path[^>]*data-map-scale[^>]*>/)?.[0]).not.toContain(
       "transition",
     );
   });
@@ -1983,8 +1932,13 @@ describe("ShelterMap species morph", () => {
 // spy on the property at runtime regardless (confirmed by every count
 // below), so `component` is typed `unknown` and cast only to get past the
 // type checker, not to claim a shape TypeScript can actually verify here.
+// `unknown[]` is enough for the stand-in signature: the spy's calls are only
+// ever counted, never read, so nothing needs the props' real type.
 function spyOnRender(component: unknown) {
-  return vi.spyOn(component as { type: (...args: any[]) => unknown }, "type");
+  return vi.spyOn(
+    component as { type: (...args: unknown[]) => unknown },
+    "type",
+  );
 }
 
 describe("ShelterMap render isolation", () => {
@@ -2694,8 +2648,8 @@ describe("ShelterMap species annotation", () => {
   });
 });
 
-// The plate names four neighbouring countries, the Adriatic and a scale bar,
-// and not one of the twelve regions it asks you to choose between. On a mouse
+// The plate names four neighbouring countries and the Adriatic, and not one of
+// the twelve regions it asks you to choose between. On a mouse
 // that is survivable: hover raises a callout that names what is under the
 // cursor, and the click is a second act taken after reading it. A finger has
 // no first act, so a single tap on an unnamed shape selected every shelter in

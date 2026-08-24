@@ -129,7 +129,6 @@ export function AnimalFilters({
                   onToggle={(value) => onToggle("shelter", value)}
                   onToggleMany={(values) => onToggleMany("shelter", values)}
                   resultCount={resultCount}
-                  species={filters.species}
                   municipalities={municipalities}
                   offSite={offSiteShelters}
                   summaries={shelterSummaries}
@@ -218,7 +217,6 @@ export function AnimalFilters({
                 onToggle={(value) => onToggle("shelter", value)}
                 onToggleMany={(values) => onToggleMany("shelter", values)}
                 resultCount={resultCount}
-                species={filters.species}
                 municipalities={municipalities}
                 offSite={offSiteShelters}
                 summaries={shelterSummaries}

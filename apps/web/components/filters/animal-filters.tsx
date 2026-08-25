@@ -114,9 +114,20 @@ export function AnimalFilters({
           sideways is 390px tall: this bar is 141 of them and the dock below
           takes 58 more, so half the screen was chrome and 191px was animals.
           Under 32rem of height it scrolls away with the page and comes back
-          when the visitor scrolls back up, which is the same bargain the
-          desktop layout already takes at lg. */}
-      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm [@media(max-height:32rem)]:static lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:backdrop-blur-none">
+          when the visitor scrolls back up.
+
+          Pinned at lg too, now. A 503-animal grid puts the visitor far from
+          the tabs within two scrolls, and switching species meant riding all
+          the way back up; the sidebar beside this bar already stays, so the
+          bar scrolling away left half the controls behind.
+
+          Opaque at lg rather than blurred. backdrop-filter re-samples and
+          re-blurs whatever is behind it on every scrolled frame, and on
+          desktop what is behind it is the widest part of a 503-card grid.
+          A phone's bar is narrow and short enough to be worth the effect;
+          a full-width desktop rail is not, and an opaque ground pins just
+          as well. */}
+      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm [@media(max-height:32rem)]:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
         <div
           data-slot="desktop-toolbar"
           className="hidden items-center justify-between gap-4 lg:flex"

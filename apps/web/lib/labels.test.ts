@@ -7,11 +7,14 @@ describe("shelterChipLabel", () => {
     // the pill was 180px, half the row, and truncation cuts from the right:
     // it kept "Zavetišče Mala…" and threw away the half that says which one.
     expect(shelterChipLabel("Zavetišče Mala hiša")).toBe("Mala hiša");
-    expect(shelterChipLabel("Zavetišče Maribor (Snaga)")).toBe(
-      "Maribor (Snaga)",
-    );
+  });
+
+  it("drops a trailing operator parenthetical", () => {
+    // The parenthetical names the company behind the shelter, not the
+    // shelter, and it is what pushed these names onto a second line.
+    expect(shelterChipLabel("Zavetišče Maribor (Snaga)")).toBe("Maribor");
     expect(shelterChipLabel("Zavetišče Johanca (Veterina Tolmin)")).toBe(
-      "Johanca (Veterina Tolmin)",
+      "Johanca",
     );
   });
 
@@ -24,11 +27,11 @@ describe("shelterChipLabel", () => {
     );
   });
 
-  it("leaves a name carrying the noun in the middle of it alone", () => {
+  it("keeps a noun the name cannot stand without", () => {
     // The adjective in front is what distinguishes this one, so the noun is
-    // load-bearing where it sits.
+    // load-bearing where it sits; only the operator comes off.
     expect(shelterChipLabel("Obalno zavetišče (Marjetica Koper)")).toBe(
-      "Obalno zavetišče (Marjetica Koper)",
+      "Obalno zavetišče",
     );
   });
 
@@ -40,5 +43,12 @@ describe("shelterChipLabel", () => {
   it("keeps the whole name rather than returning a fragment", () => {
     expect(shelterChipLabel("Zavetišče")).toBe("Zavetišče");
     expect(shelterChipLabel("Zavetišče Ob")).toBe("Zavetišče Ob");
+  });
+
+  it("keeps the operator strip when only the noun strip would leave a fragment", () => {
+    // The two strips are guarded separately. Together, a name whose noun strip
+    // leaves "Ob" fell all the way back to the raw name and got its operator
+    // parenthetical back with it, which neither strip promises.
+    expect(shelterChipLabel("Zavetišče Ob (Snaga)")).toBe("Zavetišče Ob");
   });
 });

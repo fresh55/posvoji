@@ -157,6 +157,13 @@ describe("AnimalCard status", () => {
   });
 });
 
+/** The card's fact line, found through the heading it sits under rather than
+ *  by taking the document's first <p>. */
+function metaLine() {
+  return screen.getByRole("heading").parentElement?.querySelector("p")
+    ?.textContent;
+}
+
 describe("AnimalCard meta line", () => {
   it("names the species when the grid is showing all of them", () => {
     render(
@@ -169,7 +176,10 @@ describe("AnimalCard meta line", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Pes · samec · 3 leta")).toBeTruthy();
+    // The middots are spans of their own now, so the sentence is read off the
+    // element rather than matched as one text node. Found through the card's
+    // heading, so it stays the meta line even if the card grows another <p>.
+    expect(metaLine()).toBe("Pes · samec · 3 leta");
   });
 
   it("drops the species once a tab has already said it", () => {
@@ -184,7 +194,7 @@ describe("AnimalCard meta line", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("samec · 3 leta")).toBeTruthy();
+    expect(metaLine()).toBe("samec · 3 leta");
   });
 });
 
@@ -304,16 +314,19 @@ describe("AnimalCard keyboard", () => {
       </I18nProvider>,
     );
 
+    // The visible marker is a row of dots with no text, so where the gallery
+    // is gets read from the sr-only line the same index drives.
+    const spoken = () => document.querySelector('[data-slot="photo-position"]')?.textContent;
     const link = screen.getByText("Rex").closest("a")!;
-    expect(screen.getByText("1 / 3")).toBeTruthy();
+    expect(spoken()).toContain("1 od 3");
 
     fireEvent.keyDown(link, { key: "ArrowRight" });
-    expect(screen.getByText("2 / 3")).toBeTruthy();
+    expect(spoken()).toContain("2 od 3");
 
     // And it wraps backwards past the first photo.
     fireEvent.keyDown(link, { key: "ArrowLeft" });
     fireEvent.keyDown(link, { key: "ArrowLeft" });
-    expect(screen.getByText("3 / 3")).toBeTruthy();
+    expect(spoken()).toContain("3 od 3");
   });
 
   it("leaves other keys to the browser", () => {
@@ -330,7 +343,7 @@ describe("AnimalCard keyboard", () => {
 
     const link = screen.getByText("Rex").closest("a")!;
     fireEvent.keyDown(link, { key: "ArrowDown" });
-    expect(screen.getByText("1 / 3")).toBeTruthy();
+    expect(document.querySelector('[data-slot="photo-position"]')?.textContent).toContain("1 od 3");
     expect(opened).toEqual([]);
   });
 

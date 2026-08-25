@@ -12,9 +12,12 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { adjacentImageUrls, permittedImageUrls } from "@/lib/animal-images";
+import {
+  adjacentImageUrls,
+  permittedImageUrls,
+  photoDotWindow,
+} from "@/lib/animal-images";
 import { translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +47,10 @@ const OWN_BUTTON_CLASS =
 
 const DEFAULT_WRAPPER_CLASS =
   "relative aspect-[4/3] overflow-hidden rounded-ui-top bg-muted";
+
+// One dot's shape, hoisted so the ~1500 of them the grid draws are not 1500
+// string builds per render.
+const DOT_CLASS = "size-1.5 rounded-full shadow-xs transition-colors";
 
 type SwipeStart = { x: number; y: number; time: number; width: number };
 
@@ -128,6 +135,7 @@ export function PhotoGallery({
   const imageIndex = index ?? ownIndex;
   const image = images[imageIndex];
   const hasGallery = images.length > 1;
+  const dots = photoDotWindow(images.length, imageIndex);
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -294,9 +302,9 @@ export function PhotoGallery({
     onPointerCancel: handleSwipeCancel,
     onLostPointerCapture: handleSwipeCancel,
     // tone lands here and not on the wrapper. On the wrapper every child
-    // inherited it, so a settled animal's chevrons and its "3 / 12" counter
-    // were dimmed and desaturated along with the photograph. Here it reaches
-    // the picture and the "no photo yet" note and stops.
+    // inherited it, so a settled animal's chevrons and its position dots were
+    // dimmed and desaturated along with the photograph. Here it reaches the
+    // picture and the "no photo yet" note and stops.
     className: cn("absolute inset-0 touch-pan-y touch-pinch-zoom", tone),
     style: {
       transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
@@ -322,7 +330,14 @@ export function PhotoGallery({
       // day optimization is turned on, and wrong to silently drop until then.
       sizes={sizes}
       priority={priority}
-      className="object-cover"
+      // The zoom is the card's hover lift reaching the photograph: the frame
+      // clips it, so nothing moves but the picture inside its box. Named to
+      // the card's group rather than an unqualified one, so it answers a
+      // hover on the card and cannot be switched on by any other ancestor
+      // that happens to carry `group`. Surfaces that are not a card (the
+      // animal page, the dialog) have no group/card and get a still photo,
+      // which is right for both.
+      className="object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]"
     />
   ) : (
     <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
@@ -387,17 +402,39 @@ export function PhotoGallery({
           >
             <ChevronRight className="size-4" aria-hidden />
           </Button>
-          <Badge
-            variant="secondary"
+          {/* Dots, not a fraction. "1 / 13" is bookkeeping; a row of dots says
+              "there are more photos" and which one this is in a glance, and it
+              is the shape every photo carousel has trained a thumb to expect.
+              Capped at five with a sliding window, so a 14-photo gallery does
+              not draw a ruler across the picture; the ends of a long gallery
+              show as the window not moving any further.
+
+              aria-hidden and pointer-events-none: decoration on top of the
+              photo's link, the way the fraction badge was. The sr-only line
+              below still speaks the exact count. */}
+          <div
+            data-slot="photo-dots"
             aria-hidden
-            // pointer-events-none because it is decoration sitting on top of
-            // the photo's link: a tap in the corner used to land on the badge
-            // and do nothing at all.
-            className="pointer-events-none absolute bottom-1.5 right-1.5 h-5 bg-background/70 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm"
+            className="pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1"
           >
-            {imageIndex + 1} / {images.length}
-          </Badge>
+            {Array.from({ length: dots.count }, (_, dot) => (
+              <span
+                key={dot}
+                className={cn(
+                  DOT_CLASS,
+                  dots.start + dot === imageIndex
+                    ? "bg-background"
+                    : "bg-background/50",
+                )}
+              />
+            ))}
+          </div>
           <span
+            // Named, because it is what says where the gallery is now that the
+            // visible marker is dots with no text: the tests read this line,
+            // and querying it by ".sr-only" meant reading whichever sr-only
+            // node came first in the document.
+            data-slot="photo-position"
             className="sr-only"
             aria-live={announce ? "polite" : undefined}
             aria-atomic={announce ? "true" : undefined}

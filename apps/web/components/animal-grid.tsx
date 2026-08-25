@@ -59,6 +59,11 @@ import type { ShelterLogos } from "@/lib/shelter-logos";
 // it becomes part of the furniture.
 export const UNDO_WINDOW_MS = 7000;
 
+// How many cards play the entrance animation. Roughly the first three rows at
+// the widest layout, which is everything a visitor can see when the grid
+// changes; the rest are below the fold and arrive settled.
+const STAGGERED_CARDS = 12;
+
 // Which species-absence message key fills the {species} slot of
 // noResultsShelterSingular/Plural. Keyed by the species tab rather than
 // spelled out inline, so a new species fails to compile here instead of
@@ -580,6 +585,29 @@ export function AnimalGrid({
                 key={animal.id}
                 animal={animal}
                 reference={reference}
+                // The entrance: a short fade and rise, staggered across the
+                // first dozen cards so a filter change reads as the grid
+                // answering rather than the page blinking. Keyed by id, so a
+                // card that survives the filter keeps its DOM node and does
+                // not re-run this; only arriving cards do. fill-mode-backwards
+                // holds a delayed card invisible until its turn.
+                //
+                // The first dozen and no further. The grid is not paginated,
+                // so "Vse" renders all 503 matches at once: animating every
+                // one of them started 503 compositor animations inside a 330ms
+                // window, during hydration, while 500 images were decoding.
+                // Past the first rows nobody is looking anyway, and the cards
+                // that arrive below the fold arrive already settled.
+                className={
+                  ordinal < STAGGERED_CARDS
+                    ? "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none"
+                    : undefined
+                }
+                style={
+                  ordinal < STAGGERED_CARDS
+                    ? { animationDelay: `${ordinal * 30}ms` }
+                    : undefined
+                }
                 // The tab already named the species, so the card's one fact
                 // line does not have to spend itself saying it again.
                 species={filters.species}

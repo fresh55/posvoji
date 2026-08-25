@@ -2,6 +2,7 @@
 
 import { ArrowDownNarrowWide } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import {
   Select,
   SelectContent,
@@ -43,7 +44,11 @@ export function SortPicker({
         // The name carries the active sort as well as the visible label does,
         // because this control is worth finding by either.
         aria-label={`${messages.sortBy}: ${labels[value]}`}
-        className={cn("max-w-44 text-xs max-lg:min-h-11", className)}
+        className={cn(
+          QUIET_TRIGGER_CLASS,
+          "max-w-44 text-xs data-[state=open]:border-border max-lg:min-h-11",
+          className,
+        )}
       >
         <ArrowDownNarrowWide
           className="size-3.5 shrink-0 text-muted-foreground max-lg:size-4"

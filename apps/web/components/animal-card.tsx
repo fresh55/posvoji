@@ -4,6 +4,7 @@ import {
   useId,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
@@ -19,8 +20,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { animalPath } from "@/lib/animal-path";
 import { permittedImageUrls } from "@/lib/animal-images";
 import type { SpeciesFilter } from "@/lib/filters";
-import { animalMeta, longStayLabel, shelterChipLabel } from "@/lib/labels";
+import {
+  animalMetaParts,
+  longStayLabel,
+  META_DOT_CLASS,
+  META_SEPARATOR,
+  shelterChipLabel,
+} from "@/lib/labels";
 import { shelterPath } from "@/lib/shelter-path";
+import { cn } from "@/lib/utils";
 
 // Adopted and hold are over, and the photo says so quietly: about a fifth of
 // the light and two fifths of the colour come off it.
@@ -35,7 +43,7 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // comment saying "keep these two in sync" is not a mechanism. Geometry only:
 // what the live footer does on hover and focus is its own business, and a
 // skeleton has neither.
-const FOOTER_BOX = "min-h-11 border-t px-3 pb-3 pt-2.5";
+const FOOTER_BOX = "min-h-11 px-3 pb-3 pt-2.5";
 
 export function AnimalCard({
   animal,
@@ -44,6 +52,8 @@ export function AnimalCard({
   priority = false,
   onOpen,
   showShelter = false,
+  className,
+  style,
 }: {
   animal: Animal;
   /** The dataset's build time, so prerendered ages survive hydration. */
@@ -58,6 +68,9 @@ export function AnimalCard({
    *  page already names itself in its heading, so a line under every card
    *  there would be the page linking to itself. */
   showShelter?: boolean;
+  /** The grid's, for the entrance stagger; the card has no opinion of its own. */
+  className?: string;
+  style?: CSSProperties;
 }) {
   const { locale, messages, t } = useI18n();
   const cardRef = useRef<HTMLElement>(null);
@@ -140,7 +153,18 @@ export function AnimalCard({
         // unnamed ones say nothing at all. The heading is the name it should
         // have been carrying.
         aria-labelledby={headingId}
-        className="group flex flex-col overflow-hidden transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm"
+        // active:scale is the press answering back where hover never fires,
+        // which is every touch screen. 0.99 is felt, not watched.
+        className={cn(
+          // group/card and not a bare group: the photo's zoom lives in
+          // photo-gallery.tsx and reaches back up to this element, and an
+          // unnamed group would tie it to whichever ancestor happened to carry
+          // one. The same reasoning the gallery's own chevrons already follow
+          // with group/photo.
+          "group/card flex flex-col overflow-hidden transition-[border-color,box-shadow,transform] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm motion-safe:active:scale-[0.99]",
+          className,
+        )}
+        style={style}
       >
         <div className="relative shrink-0">
           <PhotoGallery
@@ -180,9 +204,18 @@ export function AnimalCard({
             // that case, because an animal that grew up in the shelter has
             // waited exactly as long as it has been alive. The verb settles it
             // in four characters and pays for them with the icon.
+            // overlay-quiet, not overlay-warn. On the "Vse" tab most visible
+            // cards carry this mark, and a solid amber pill on every photo is
+            // an alarm ringing so often it stops being one. The blurred quiet
+            // pill keeps the fact legible on any photograph and leaves the
+            // filled treatment to the status badge, which really does
+            // disqualify a card.
+            //
+            // Top right, opposite the status. The bottom edge belongs to the
+            // gallery dots now, and on a phone card the two met in the middle.
             <Badge
-              variant="overlay-warn"
-              className="absolute bottom-1.5 left-1.5"
+              variant="overlay-quiet"
+              className="absolute right-1.5 top-1.5"
             >
               {t("longStayMark", { duration: wait })}
             </Badge>
@@ -231,24 +264,35 @@ export function AnimalCard({
           <h3 id={headingId} className="line-clamp-2 font-semibold">
             {animal.name ?? messages.unnamed}
           </h3>
-          {/* Allowed to wrap, for the same reason the shelter line below is:
-              an ellipsis here eats the animal's age, and "10..." is not an
-              age. Wrapping used to leave cards in a row disagreeing about
-              their bottom padding, which is what made clipping look like the
-              lesser evil; mt-auto on the shelter line settles that now, so a
-              second line costs a row of pixels and nothing else.
+          {/* Allowed to wrap: an ellipsis here eats the animal's age, and
+              "10..." is not an age. Wrapping used to leave cards in a row
+              disagreeing about their bottom padding, which is what made
+              clipping look like the lesser evil; mt-auto on the shelter line
+              settles that now, so a second line costs a row of pixels and
+              nothing else. The shelter line itself truncates instead, because
+              a shortened shelter name still names the shelter.
 
               text-pretty so the last word does not end up alone on it. */}
           <p className="text-pretty text-sm text-muted-foreground tabular-nums">
-            {animalMeta(animal, locale, reference, species)}
+            {/* The middots recede to half strength so the facts between them
+                read as three words rather than one string. The parts come from
+                labels.ts already separate, so nothing here has to know how the
+                joined form is glued together. */}
+            {animalMetaParts(animal, locale, reference, species).flatMap(
+              (part, i) =>
+                i === 0
+                  ? [part]
+                  : [
+                      <span key={i} className={META_DOT_CLASS}>
+                        {META_SEPARATOR}
+                      </span>,
+                      part,
+                    ],
+            )}
           </p>
         </a>
 
-        {/* The shelter's own line, at the card's full width, and allowed to
-            wrap rather than clip. Three of the registry's seventeen names are
-            wider than a phone card even with the line to themselves, so a
-            single line was always going to cut one of them; "Obalno za…" names
-            no shelter at all. Two lines cost a row of pixels and keep the name.
+        {/* The shelter's own line, at the card's full width, on one line.
 
             The shelter's own name, not its town. Two shelters in the registry
             are in Celje, so a town does not identify one, and this line goes to
@@ -256,9 +300,11 @@ export function AnimalCard({
             thing and doing another. The whole index is organised by shelter,
             which is the thing worth naming here.
 
-            shelterChipLabel takes the word "zavetišče" off the front, which
-            five of the eleven live names begin with: without it a wrapped name
-            spends its first line on the word every shelter shares.
+            shelterChipLabel takes off the word "zavetišče", which five of the
+            eleven live names begin with, and any trailing operator
+            parenthetical. What is left fits one line on every card, so the
+            line can truncate as a last resort instead of wrapping, and every
+            footer in a row is the same height.
 
             Outside the anchor, because a link inside a link is not markup a
             browser or a screen reader can make sense of. The line keeps the
@@ -273,38 +319,31 @@ export function AnimalCard({
         {showShelter ? (
           <a
             href={shelterPath(animal.shelter.id, locale)}
-            // items-start, because the icon belongs beside the first line of a
-            // name that may run to two.
-            // border-t, min-h-11 and a hover ground: three ways of saying the
-            // same thing, which is that this line answers a press. It reads as
-            // passive metadata and behaves as a control, and the divider also
-            // gives the gap above it a reason to exist: that gap is mt-auto
-            // holding the footer down so cards in a stretched row agree about
-            // their bottom edge, and with no line drawn under it, it read as a
-            // card that had run out of things to say.
-            // min-h-11 is the 44px touch target the row never had at text-xs.
-            className={`${FOOTER_BOX} mt-auto flex w-full items-start gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
+            // No divider. The muted colour, the gap mt-auto keeps above the
+            // line and the card's own border do the separating; a rule drawn
+            // across a 250px card was the heaviest thing on it.
+            // min-h-11 is the 44px touch target the row never had at text-xs,
+            // and the hover ground plus the icon say this answers a press.
+            className={`${FOOTER_BOX} mt-auto flex w-full items-center gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
           >
             {/* House and not MapPin. The pin means "place" everywhere else on
                 the site (shelter-card.tsx draws it beside a city), and this
                 line is not where the animal is, it is who is keeping it. */}
-            <House
-              className="mt-0.5 size-3 shrink-0"
-              strokeWidth={1.75}
-              aria-hidden
-            />
+            <House className="size-3 shrink-0" strokeWidth={1.75} aria-hidden />
             {/* The link's own text is its accessible name, the way the shelter
                 card's is. An aria-label here could only repeat the name with
                 words around it, and WCAG 2.5.3 asks that what is spoken start
                 from what is written. */}
-            <span className="min-w-0 [overflow-wrap:anywhere]">
+            <span className="min-w-0 truncate">
               {shelterChipLabel(animal.shelter.name)}
             </span>
-            {/* The chevron is the affordance and it is drawn at rest. Hover was
-                carrying that alone, which says nothing at all on a phone. */}
+            {/* The chevron appears when a pointer or the keyboard is already
+                on the card. At rest the icon and the muted line are enough,
+                and on touch, where hover never fires, the whole row is the
+                affordance. */}
             <ChevronRight
               aria-hidden
-              className="ml-auto mt-0.5 size-3 shrink-0 opacity-60"
+              className="ml-auto size-3 shrink-0 opacity-0 transition-opacity group-hover/card:opacity-60 group-focus-within/card:opacity-60"
             />
           </a>
         ) : (

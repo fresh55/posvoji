@@ -77,7 +77,9 @@ const SOLO_STAGE_ASPECT = "aspect-[1.85/1]";
 // fan runs off the thumb instead and carries its own.
 const PHOTO_SIZES = "(max-width: 639px) 100vw, 24rem";
 
-// Same corner treatment as the counter on the cards.
+// The dialog counts photos where the grid card shows dots: the card is a
+// thumbnail whose gallery is incidental, and this is the surface someone came
+// to to look through them, where "4 / 12" is the useful answer.
 const PHOTO_BADGE_CLASS =
   "absolute right-1.5 bottom-1.5 h-5 bg-background/80 px-1.5 text-3xs tabular-nums shadow-xs backdrop-blur-sm";
 

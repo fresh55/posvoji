@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { animalCount, META_DOT_CLASS } from "@/lib/labels";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { getShelterBySlug } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,16 @@ export function ShelterDetailPage({
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="size-3.5 shrink-0" aria-hidden />
                   {shelter.city}
+                  {/* The number someone arriving from a card most wants:
+                      whether this shelter has more to show. Absent rather
+                      than zero for a registry shelter, whose notice below
+                      already explains why there is no list. */}
+                  {hasData && (
+                    <>
+                      <span className={META_DOT_CLASS}>·</span>
+                      {animalCount(animals.length, locale)}
+                    </>
+                  )}
                 </p>
               </div>
             </div>

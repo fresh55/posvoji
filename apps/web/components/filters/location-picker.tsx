@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { MiniMap } from "@/components/filters/mini-map";
+import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import { MunicipalityFinder } from "@/components/filters/municipality-finder";
 import {
   FOUND_ANIMAL_PARAM,
@@ -991,7 +992,10 @@ export function LocationPicker({
           // asserting, but as one explicit a11y check that fails loudly on its
           // own, not as the way seven other tests reach the dialog.
           data-picker-trigger
-          className="max-w-[14rem] justify-between gap-2 font-normal"
+          className={cn(
+            QUIET_TRIGGER_CLASS,
+            "max-w-[14rem] justify-between gap-2 font-normal aria-expanded:border-border",
+          )}
         >
           <span className="flex min-w-0 items-center gap-1.5">
             {/* A live preview, not a stand-in icon: the same region shapes and

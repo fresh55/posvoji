@@ -96,9 +96,18 @@ function setup(rest: Partial<Animal> = {}) {
   return surface;
 }
 
-/** The visible "n / total" counter, which is what says where the gallery is. */
+/** Where the gallery is, read from the line that speaks it. The visible marker
+ *  is a row of dots now, which carries no text to assert on; the spoken
+ *  sentence and the dots are driven by the same index.
+ *
+ *  Found by data-slot rather than by ".sr-only", which was whichever such node
+ *  came first in the document, and parsed with a digit-pair pattern that does
+ *  not depend on the Slovene wording around it. */
 function counter() {
-  return screen.getByText(/^\d+ \/ \d+$/).textContent;
+  const text =
+    document.querySelector('[data-slot="photo-position"]')?.textContent ?? "";
+  const match = text.match(/(\d+)\D+(\d+)/);
+  return match ? `${match[1]} / ${match[2]}` : null;
 }
 
 describe("photo gallery swipe", () => {
@@ -264,12 +273,33 @@ describe("photo gallery controls", () => {
     expect(counter()).toBe("1 / 3");
   });
 
-  it("leaves the counter out of the way of the photo's own link", () => {
+  it("leaves the dots out of the way of the photo's own link", () => {
     setup();
 
-    const badge = screen.getByText("1 / 3");
-    expect(badge.className).toContain("pointer-events-none");
-    expect(badge.getAttribute("aria-hidden")).toBe("true");
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("pointer-events-none");
+    expect(dots?.getAttribute("aria-hidden")).toBe("true");
+    // One dot per photo while the gallery is short enough to draw them all.
+    expect(dots?.childElementCount).toBe(3);
+  });
+
+  it("caps a long gallery at five dots and slides the window", () => {
+    setup({
+      images: Array.from({ length: 14 }, (_, i) => ({
+        sourceUrl: `https://example.test/photo-${i}.jpg`,
+        rights: "display-permitted" as const,
+      })),
+    });
+
+    const dots = () => document.querySelector('[data-slot="photo-dots"]')!;
+    expect(dots().childElementCount).toBe(5);
+
+    // Stepping deep into the gallery keeps five dots on screen rather than
+    // drawing fourteen across the photo.
+    const next = screen.getByLabelText("Naslednja fotografija");
+    for (let i = 0; i < 9; i++) fireEvent.click(next);
+    expect(dots().childElementCount).toBe(5);
+    expect(counter()).toBe("10 / 14");
   });
 
   it("keeps pinch-to-zoom on the photo", () => {
@@ -286,12 +316,10 @@ describe("photo gallery controls", () => {
     // The grid mounts one of these per multi-photo card. A live region per
     // card is 425 of them in one document, so it only speaks once this
     // gallery has been used.
-    const live = document.querySelector(".sr-only");
-    expect(live?.getAttribute("aria-live")).toBeNull();
+    const live = () => document.querySelector('[data-slot="photo-position"]');
+    expect(live()?.getAttribute("aria-live")).toBeNull();
 
     fireEvent.click(screen.getByLabelText("Naslednja fotografija"));
-    expect(document.querySelector(".sr-only")?.getAttribute("aria-live")).toBe(
-      "polite",
-    );
+    expect(live()?.getAttribute("aria-live")).toBe("polite");
   });
 });

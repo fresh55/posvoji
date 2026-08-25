@@ -177,12 +177,26 @@ export function speciesLabel(species: Species, locale: Locale): string {
 // at every breakpoint, so the line trades one for one rather than growing.
 // Lowercased, because in a middot list of lowercase attributes "Srednja"
 // reads as the start of a new sentence.
-export function animalMeta(
+/** The separator between the meta line's facts. Exported because the card
+ *  draws the parts itself to dim these, and a private literal split back out
+ *  of the joined string in another file is a contract nothing enforces. */
+export const META_SEPARATOR = " · ";
+
+/** How a separating middot is drawn wherever one appears between facts: half
+ *  strength, so the facts read as words rather than as one string. Shared so
+ *  the card's meta line and the shelter header's do not drift apart. */
+export const META_DOT_CLASS = "text-muted-foreground/50";
+
+/** The facts themselves, in order, with the empty ones dropped. The card maps
+ *  over these so it can style the separators without splitting the joined
+ *  string back apart; animalMeta below is this joined, for the callers that
+ *  want one string. */
+export function animalMetaParts(
   animal: Animal,
   locale: Locale = "sl",
   now: Date = new Date(),
   species: SpeciesFilter = "all",
-): string {
+): string[] {
   const months = ageInMonths(animal, now);
   const named = species !== "all";
   return [
@@ -192,9 +206,16 @@ export function animalMeta(
     named && animal.size
       ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)
       : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
+}
+
+export function animalMeta(
+  animal: Animal,
+  locale: Locale = "sl",
+  now: Date = new Date(),
+  species: SpeciesFilter = "all",
+): string {
+  return animalMetaParts(animal, locale, now, species).join(META_SEPARATOR);
 }
 
 // Whole months since intake, same arithmetic as ageInMonths in filters.ts but
@@ -300,20 +321,37 @@ export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
 // and dropping the noun out of the middle of that leaves nonsense.
 const SHELTER_NOUN = /^zavetišče\s+|\s*[—–-]\s*zavetišče$/iu;
 
-/** A shelter's name with the word "zavetišče" taken off it, for a chip.
+// Any trailing parenthetical. In this registry every one of them names the
+// operator rather than the shelter: "(Marjetica Koper)" is the municipal
+// company behind "Obalno zavetišče". A chip or a card footer identifies, it
+// does not attribute, and the operator is on the shelter's own page one press
+// away. Named for what it matches and not for what it means, because the
+// pattern cannot tell an operator from a future name that disambiguates two
+// shelters in brackets; if one ever appears, this is the line that has to
+// learn the difference.
+const SHELTER_TRAILING_PAREN = /\s*\([^()]*\)\s*$/u;
+
+/** A shelter's name with the word "zavetišče" and any trailing operator
+ *  parenthetical taken off it, for a chip or a card's shelter line.
  *
  *  On a 390px phone "Zavetišče Mala hiša" is 180px, half the row, and five of
  *  the registry's shelters open with that same word: a truncating pill would
  *  cut away the half that says which shelter and keep the half that says what
  *  every shelter is. The pin on the chip already carries the noun, the same
- *  way the household chips drop theirs (goodWithChipLabel above).
+ *  way the household chips drop theirs (goodWithChipLabel above). The
+ *  parenthetical goes for the same reason: it is what pushed three of the
+ *  registry's names onto a second line without saying which shelter.
  *
- *  Left alone when the noun is the whole name, or when taking it off would
- *  leave a fragment: some names carry it in the middle, and one or two are
- *  nothing else. */
+ *  Left alone when stripping would leave a fragment: some names carry the
+ *  noun in the middle, and one or two are nothing else. */
 export function shelterChipLabel(name: string): string {
-  const stripped = name.replace(SHELTER_NOUN, "").trim();
-  return stripped.length >= 3 ? stripped : name;
+  // Each strip is guarded on its own. Guarding them together meant a name
+  // whose noun strip left a fragment got its operator back too, which is not
+  // what either strip promises.
+  const keep = (candidate: string, fallback: string) =>
+    candidate.trim().length >= 3 ? candidate.trim() : fallback;
+  const withoutOperator = keep(name.replace(SHELTER_TRAILING_PAREN, ""), name);
+  return keep(withoutOperator.replace(SHELTER_NOUN, ""), withoutOperator);
 }
 
 // Both of these read as full phrases already ("Primeren za stanovanje"), so a

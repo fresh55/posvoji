@@ -22,6 +22,28 @@ export function thumbnailUrl(url: string): string {
   return url.replace(/\.webp$/, ".thumb.webp");
 }
 
+/** How many position dots a gallery draws at most. A fourteen-photo animal
+ *  would otherwise get a ruler across its picture. */
+export const MAX_PHOTO_DOTS = 5;
+
+/** Which slice of a gallery's dots to draw, as [start, count]. The active dot
+ *  sits in the middle of the window until the window hits either end, where it
+ *  stops moving and the active dot travels the rest of the way itself.
+ *
+ *  Extracted from the JSX it is drawn in because it is off-by-one-prone
+ *  arithmetic with two numbers that have to agree (the cap, and the half of it
+ *  that centres the window), and a dot row that quietly stops tracking is not
+ *  something a rendering test would notice. */
+export function photoDotWindow(
+  total: number,
+  index: number,
+): { start: number; count: number } {
+  const count = Math.min(total, MAX_PHOTO_DOTS);
+  const middle = Math.floor(MAX_PHOTO_DOTS / 2);
+  const start = Math.min(Math.max(index - middle, 0), Math.max(total - count, 0));
+  return { start, count };
+}
+
 export function adjacentImageUrls(
   images: readonly string[],
   index: number,

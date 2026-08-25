@@ -502,3 +502,15 @@
     animation: none;
   }
 }
+
+/* Cross-document view transitions. The site's navigations are real anchors
+   between prerendered pages (a card to its animal page, a card's shelter line
+   to the shelter's page), so this is the API built for exactly that: the
+   browser cross-fades the two documents instead of flashing white between
+   them. Pure progressive enhancement, ignored by browsers without it, and
+   gated the same way every other motion here is. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}

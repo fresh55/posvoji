@@ -2,9 +2,42 @@ import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
   adjacentImageUrls,
+  MAX_PHOTO_DOTS,
   permittedImageUrls,
+  photoDotWindow,
   thumbnailUrl,
 } from "./animal-images";
+
+describe("photoDotWindow", () => {
+  it("draws one dot per photo while they all fit", () => {
+    expect(photoDotWindow(3, 0)).toEqual({ start: 0, count: 3 });
+    expect(photoDotWindow(3, 2)).toEqual({ start: 0, count: 3 });
+    expect(photoDotWindow(MAX_PHOTO_DOTS, 4)).toEqual({
+      start: 0,
+      count: MAX_PHOTO_DOTS,
+    });
+  });
+
+  it("caps a long gallery and centres the window on the active photo", () => {
+    // Middle of a 14-photo gallery: two dots either side of the active one.
+    expect(photoDotWindow(14, 7)).toEqual({ start: 5, count: 5 });
+  });
+
+  it("stops the window at either end instead of running off it", () => {
+    // Near the start the window cannot slide left, so the active dot walks
+    // across a window that stays put.
+    expect(photoDotWindow(14, 0)).toEqual({ start: 0, count: 5 });
+    expect(photoDotWindow(14, 1)).toEqual({ start: 0, count: 5 });
+    // And the same at the far end: start never exceeds total - count, so the
+    // last dot is always the last photo.
+    expect(photoDotWindow(14, 13)).toEqual({ start: 9, count: 5 });
+    expect(photoDotWindow(14, 12)).toEqual({ start: 9, count: 5 });
+  });
+
+  it("never returns a negative start for a gallery with no photos", () => {
+    expect(photoDotWindow(0, 0)).toEqual({ start: 0, count: 0 });
+  });
+});
 
 describe("permittedImageUrls", () => {
   it("returns every permitted image in source order", () => {

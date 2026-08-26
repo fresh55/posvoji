@@ -296,7 +296,7 @@ export function AgeGrowthControl({
                   }
                 >
                   <m.span
-                    className="flex origin-bottom items-end justify-center will-change-transform"
+                    className="flex origin-bottom items-end justify-center"
                     initial={false}
                     animate={
                       shouldReduceMotion

@@ -447,7 +447,7 @@ describe("animal dialog", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByText("V zavetišču čaka že 4 leta."),
+      within(dialog).getByText("Cufi v zavetišču čaka že 4 leta."),
     ).toBeTruthy();
     expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
     // The list already leads with the longest waits by default, so the

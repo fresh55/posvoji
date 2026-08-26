@@ -37,6 +37,33 @@ import {
 // param, survives untouched). Filters live in the query, the open animal
 // lives in the path, so a write leaves the dialog where it is without having
 // to carry anything over.
+/** The results block, which begins with the toolbar and holds every card. */
+const RESULTS_ANCHOR = 'section[aria-labelledby="rezultati"]';
+
+// Past this far, a smooth scroll is a long ride through content nobody asked
+// to see. The jump is the point, so beyond two screens it is instant.
+const SMOOTH_SCROLL_LIMIT = 2;
+
+/**
+ * Answering a filter with the same scroll offset leaves the visitor deep
+ * inside a list they have never seen. Measured on a 390px phone: scrolled to
+ * 30,000px of the 503-animal grid, tapping "Psi" left them at 5,263px of a
+ * 17,071px list of dogs, a third of the way down their new results with no
+ * sense of what was above. Every faceted search answers this the same way, by
+ * returning to the top of the results, and that is where the toolbar and the
+ * count are too. Somebody already at or above the results is left alone.
+ */
+function scrollToResults(): void {
+  if (typeof window === "undefined") return;
+  const results = document.querySelector(RESULTS_ANCHOR);
+  if (!results) return;
+  const top = results.getBoundingClientRect().top + window.scrollY;
+  if (window.scrollY <= top) return;
+  const far = window.scrollY - top > window.innerHeight * SMOOTH_SCROLL_LIMIT;
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top, behavior: far || still ? "auto" : "smooth" });
+}
+
 function writeFilters(filters: Filters): void {
   commitSearch(
     mergeOwnedParams(
@@ -46,6 +73,7 @@ function writeFilters(filters: Filters): void {
     ),
     "replace",
   );
+  scrollToResults();
 }
 
 function writeSort(sort: AnimalSort): void {
@@ -53,6 +81,7 @@ function writeSort(sort: AnimalSort): void {
     mergeOwnedParams(getSearchSnapshot(), [SORT_PARAM], serializeSort(sort)),
     "replace",
   );
+  scrollToResults();
 }
 
 export function useAnimalFilters() {

@@ -8,11 +8,21 @@ export function SiteFooter({
   showResourcesLink = true,
   showSheltersLink = true,
   showPortalLink = true,
+  docked = false,
 }: {
   locale: Locale;
   showResourcesLink?: boolean;
   showSheltersLink?: boolean;
   showPortalLink?: boolean;
+  /**
+   * Set on a page that floats the filter dock over its bottom edge. The grid
+   * carried this clearance, but the grid is not what ends the document: the
+   * footer is, and it is a sibling of `main`. So the dock cleared the last
+   * row of cards and then sat on top of these links, which are the only way
+   * to any other page at phone width. Measured on a 390px phone: all three
+   * were covered, and every one of them failed a hit test.
+   */
+  docked?: boolean;
 }) {
   const messages = getMessages(locale);
   const resourcesHref = locale === "sl" ? "/viri" : "/en/resources";
@@ -30,7 +40,14 @@ export function SiteFooter({
   ].filter((link): link is FooterLink => Boolean(link));
 
   return (
-    <footer className="bleed border-t py-6 text-xs leading-relaxed text-muted-foreground">
+    <footer
+      className={cn(
+        "bleed border-t py-6 text-xs leading-relaxed text-muted-foreground",
+        // Only below lg, which is where the dock is; above it the dock is
+        // gone and the extra air would just be a hole under the page.
+        docked && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6",
+      )}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <p className="max-w-3xl">{messages.footer}</p>
         {links.length > 0 && (

@@ -11,6 +11,8 @@ const sl = {
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
   moreInformation: "Več informacij",
+  backToTop: "Na vrh strani",
+  backToAnimals: "Nazaj na živali",
   resources: "Strokovno preverjeni viri",
   shelters: "Zavetišča",
   forShelters: "Za zavetišča",
@@ -332,6 +334,8 @@ const en: Messages = {
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
   moreInformation: "More information",
+  backToTop: "Back to top",
+  backToAnimals: "Back to the animals",
   resources: "Trusted animal-care resources",
   shelters: "Shelters",
   forShelters: "For shelters",

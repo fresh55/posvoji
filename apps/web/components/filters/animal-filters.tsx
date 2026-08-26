@@ -7,6 +7,7 @@ import {
   m,
   useReducedMotion,
 } from "motion/react";
+import { BackToTop } from "@/components/back-to-top";
 import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
@@ -245,6 +246,11 @@ export function AnimalFilters({
           condition holds. It still stands down when there is genuinely nothing
           to put in the dock, which is an empty dataset: an empty floating box
           is not a control. */}
+      {/* Outside the dock's condition: the way back up is worth having
+          whether or not there is anything left to filter, and it is the only
+          control on this page that answers the grid's own length. */}
+      <BackToTop />
+
       {(hasFilterSheet || shelters) && (
         <div
           data-slot="mobile-filter-dock"

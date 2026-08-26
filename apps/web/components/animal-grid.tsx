@@ -9,7 +9,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { AnimalFilters } from "@/components/filters/animal-filters";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import type { CardGroup } from "@/components/filters/filter-groups";
-import { type Chip } from "@/components/filters/filter-chips";
+import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { Button } from "@/components/ui/button";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
@@ -30,6 +30,7 @@ import {
   homeOptions,
   optionLabel,
   speciesCounts,
+  speciesFacetCounts,
   toggleCounts,
   toggleLabel,
   visibleCare,
@@ -193,7 +194,16 @@ export function AnimalGrid({
     setCleared(null);
   }, [cleared, restore]);
 
-  const speciesTally = useMemo(() => speciesCounts(animals), [animals]);
+  // Two numbers, deliberately. `speciesRoster` decides which tabs exist and
+  // ignores the filters; `speciesTally` is what each tab draws and obeys all
+  // of them except species. See speciesFacetCounts in lib/filters.ts for why
+  // the tab counts stopped being the raw dataset, and species-tabs.tsx for
+  // why the roster could not follow them.
+  const speciesRoster = useMemo(() => speciesCounts(animals), [animals]);
+  const speciesTally = useMemo(
+    () => speciesFacetCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
   // What the location picker's card says about a shelter beyond its filtered
   // count: which species live there and who has waited longest. Built from the
   // whole dataset and not from `visible`, so the card answers "who is this
@@ -491,6 +501,7 @@ export function AnimalGrid({
           isEmpty={isEmpty}
           filters={filters}
           speciesTally={speciesTally}
+          speciesRoster={speciesRoster}
           groups={groups}
           counts={counts}
           toggles={toggles}
@@ -551,6 +562,22 @@ export function AnimalGrid({
                 </p>
               )}
             </div>
+            {/* Below lg only, where the sticky bar no longer carries a chips
+                row. This is the one state that row was genuinely needed for:
+                with nothing matching, "try fewer filters" is advice and not a
+                way out, and a visitor facing five active filters has no means
+                of telling which of them is the one to drop. The row's stuck
+                mode names it (filter-chips.tsx). Here it costs nothing that
+                matters, because there is no grid underneath for it to push
+                down and nothing to scroll it past. */}
+            {chips.length > 0 && (
+              <FilterChips
+                chips={chips}
+                onClearAll={handleClearAll}
+                stuck
+                className="max-w-full justify-center lg:hidden"
+              />
+            )}
             {shelterOnlyEmpty && (
               <Button
                 variant="outline"

@@ -9,10 +9,12 @@ import {
   facetCounts,
   goodWithCounts,
   homeCounts,
+  panelFilterCount,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
   speciesCounts,
+  speciesFacetCounts,
   toggleCounts,
   toggleValues,
   visibleCare,
@@ -81,6 +83,71 @@ describe("the merged Ostale tab", () => {
   });
 });
 
+describe("speciesFacetCounts", () => {
+  // Two males and one female per species, so every tab has something to lose
+  // and none of them loses everything.
+  const zoo = [
+    animal("dog", { sex: "male" }),
+    animal("dog", { sex: "male" }),
+    animal("dog", { sex: "female" }),
+    animal("cat", { sex: "male" }),
+    animal("cat", { sex: "male" }),
+    animal("cat", { sex: "female" }),
+    animal("rabbit", { sex: "male" }),
+    animal("other", { sex: "female" }),
+  ];
+
+  it("counts the whole dataset when nothing is filtered", () => {
+    expect(speciesFacetCounts(zoo, EMPTY_FILTERS, NOW)).toEqual({
+      all: 8,
+      dog: 3,
+      cat: 3,
+      other: 2,
+    });
+  });
+
+  it("applies every other filter, so a tab shows what pressing it gives", () => {
+    const females = { ...EMPTY_FILTERS, sex: ["female" as const] };
+    expect(speciesFacetCounts(zoo, females, NOW)).toEqual({
+      all: 3,
+      dog: 1,
+      cat: 1,
+      other: 1,
+    });
+    // The promise the whole change is for: the tab's number and the count you
+    // land on are one number.
+    expect(
+      applyFilters(zoo, { ...females, species: "dog" }, NOW),
+    ).toHaveLength(1);
+  });
+
+  it("lifts the species axis, so a tab is not counted against itself", () => {
+    // On the Psi tab the other tabs still show their own totals; a species
+    // tab that counted itself would report cat: 0 and offer no way across.
+    const onDogs = { ...EMPTY_FILTERS, species: "dog" as const };
+    expect(speciesFacetCounts(zoo, onDogs, NOW)).toEqual({
+      all: 8,
+      dog: 3,
+      cat: 3,
+      other: 2,
+    });
+  });
+
+  it("reports zero for a species the filters empty, rather than dropping it", () => {
+    // The rabbit is male and the other is female, so Ostale keeps one of them
+    // either way; size is the axis no animal here answers at all.
+    const large = { ...EMPTY_FILTERS, size: ["large" as const] };
+    expect(speciesFacetCounts(zoo, large, NOW)).toEqual({
+      all: 0,
+      dog: 0,
+      cat: 0,
+      other: 0,
+    });
+    // The roster is what keeps the tabs on the strip in that state.
+    expect(speciesCounts(zoo)).toEqual({ all: 8, dog: 3, cat: 3, other: 2 });
+  });
+});
+
 describe("visibleGroups", () => {
   it("hides velikost on the cat tab even when the cats differ in size", () => {
     const cats = [
@@ -133,6 +200,35 @@ describe("visibleGroups", () => {
     ];
     expect(visibleGroups(cats, "cat", NOW).energy).toBe(true);
   });
+
+  it("keeps a group the visitor has already answered", () => {
+    // ?vrsta=ostalo&spol=samec over a dataset whose one rabbit is male. Spol
+    // has a single distinct value, so the section used to go while spol=samec
+    // went on filtering from the URL, and on a phone it took the sheet's last
+    // section and the Filtri trigger with it.
+    const rabbits = [animal("rabbit", { sex: "male" })];
+    expect(visibleGroups(rabbits, "other", NOW).sex).toBe(false);
+    expect(
+      visibleGroups(rabbits, "other", NOW, {
+        ...EMPTY_FILTERS,
+        species: "other",
+        sex: ["male"],
+      }).sex,
+    ).toBe(true);
+  });
+
+  it("leaves the groups the visitor has not answered alone", () => {
+    // The selection only ever adds a section back. Everything else is measured
+    // exactly as it was.
+    const rabbits = [animal("rabbit", { sex: "male", energy: "calm" })];
+    const shown = visibleGroups(rabbits, "other", NOW, {
+      ...EMPTY_FILTERS,
+      species: "other",
+      sex: ["male"],
+    });
+    expect(shown.energy).toBe(false);
+    expect(shown.age).toBe(false);
+  });
 });
 
 describe("visibleToggles", () => {
@@ -160,6 +256,20 @@ describe("visibleToggles", () => {
     expect(matches("unknown")).toBe(false);
     expect(matches(undefined)).toBe(false);
   });
+
+  it("keeps a selected toggle once every animal answers it", () => {
+    // ?lastnosti=cepljenje over a pool where everybody is vaccinated. The
+    // toggle narrows nothing, but it is on, and a control nobody can see is a
+    // filter nobody can switch off.
+    const vaccinated = [
+      animal("dog", { medical: { vaccinated: true } }),
+      animal("dog", { medical: { vaccinated: true } }),
+    ];
+    expect(toggleKeys(vaccinated, "all")).toEqual([]);
+    expect(
+      visibleToggles(vaccinated, "all", ["cepljenje"]).map((t) => t.key),
+    ).toEqual(["cepljenje"]);
+  });
 });
 
 describe("visibleGoodWith", () => {
@@ -182,6 +292,15 @@ describe("visibleGoodWith", () => {
       animal("dog", { goodWith: { cats: "no" } }),
     ];
     expect(visibleGoodWith(animals)).toEqual(["cats"]);
+  });
+
+  it("keeps a selected facet once every animal answers it", () => {
+    const kids = [
+      animal("dog", { goodWith: { kids: "yes" } }),
+      animal("cat", { goodWith: { kids: "yes" } }),
+    ];
+    expect(visibleGoodWith(kids)).toEqual([]);
+    expect(visibleGoodWith(kids, ["kids"])).toEqual(["kids"]);
   });
 });
 
@@ -507,6 +626,23 @@ describe("active filter count", () => {
 
   it("does not count the species tab", () => {
     expect(activeFilterCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(0);
+  });
+
+  it("leaves zavetišče out of the panel's own count", () => {
+    // The panel has no shelter section: the map is the location picker's, and
+    // its own trigger already says how many shelters are on. A Filtri badge
+    // counting them promised sections the sheet does not hold.
+    const filters: Filters = {
+      ...EMPTY_FILTERS,
+      sex: ["male"],
+      shelter: ["s1", "s2"],
+    };
+    expect(activeFilterCount(filters)).toBe(3);
+    expect(panelFilterCount(filters)).toBe(1);
+  });
+
+  it("counts nothing for a shelter selection on its own", () => {
+    expect(panelFilterCount({ ...EMPTY_FILTERS, shelter: ["s1"] })).toBe(0);
   });
 });
 

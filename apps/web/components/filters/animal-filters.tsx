@@ -8,7 +8,11 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { BackToTop } from "@/components/back-to-top";
-import { FilterChips, type Chip } from "@/components/filters/filter-chips";
+import {
+  FilterChips,
+  UndoOffer,
+  type Chip,
+} from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import type {
@@ -22,7 +26,7 @@ import type { FilterActionContract } from "@/components/filters/filter-contract"
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
-import { activeFilterCount } from "@/lib/filters";
+import { panelFilterCount } from "@/lib/filters";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
@@ -41,6 +45,7 @@ export function AnimalFilters({
   isEmpty,
   filters,
   speciesTally,
+  speciesRoster,
   groups,
   counts,
   toggles,
@@ -67,7 +72,11 @@ export function AnimalFilters({
 }: {
   isEmpty: boolean;
   filters: Filters;
+  /** What each species tab draws: every filter applied except species. */
   speciesTally: Record<SpeciesFilter, number>;
+  /** Which species tabs exist, over the whole dataset. A filter empties a
+   *  tab, it does not delete it (species-tabs.tsx). */
+  speciesRoster: Record<SpeciesFilter, number>;
   groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
   toggles: ToggleDef[];
@@ -104,8 +113,9 @@ export function AnimalFilters({
     (care?.options.length ?? 0) > 0;
   // Values, not sections. The chips row counts the same things and sits on the
   // same screen; a badge reading 1 over a row of two pills was two answers to
-  // one question.
-  const activeCount = activeFilterCount(filters);
+  // one question. Shelter is excluded: it lives in the location picker, so a
+  // badge counting it would promise a control this sheet does not hold.
+  const activeCount = panelFilterCount(filters);
 
   return (
     <>
@@ -136,17 +146,21 @@ export function AnimalFilters({
               value={filters.species}
               onChange={onSpeciesChange}
               counts={speciesTally}
+              roster={speciesRoster}
               disabled={isEmpty}
             />
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {/* sr-only here for the same reason as the phone's status line
+                below: the species tabs at the other end of this row carry
+                every count now, including Vse's, so a drawn copy here would
+                be the same total written twice in one bar. The live region
+                stays, because that is the part the tabs cannot do. */}
             {!isEmpty && (
-              <ResultCount
-                count={resultCount}
-                locale={locale}
-                className="text-muted-foreground"
-              />
+              <span className="sr-only">
+                <ResultCount count={resultCount} locale={locale} />
+              </span>
             )}
             {shelters && (
               <div>
@@ -164,50 +178,64 @@ export function AnimalFilters({
                 />
               </div>
             )}
-            {!isEmpty && <SortPicker value={sort} onChange={onSortChange} />}
+            {/* resultCount, not just isEmpty: isEmpty is the whole dataset,
+                and a filter combination that narrows it to zero results
+                still leaves nothing for an order to apply to. */}
+            {!isEmpty && resultCount > 0 && (
+              <SortPicker value={sort} onChange={onSortChange} />
+            )}
           </div>
         </div>
 
-        {/* Two rows on a phone, one from sm up. The species tabs and their
-            counts refuse to share a 390px row with the result count and the
-            sort: squeezed together they cut "Mačke" mid-word and pushed the
-            last tab off the end of a strip nobody had a reason to scroll.
-            The tabs fit their own phone row, so every tab that exists can be
-            seen to exist; from sm the three controls share one row, because
-            stacking them there cost 44px of a landscape phone's 390, on top
-            of a dock that already takes 58.
+        {/* Two rows on a phone, one from sm up. The species tabs refuse to
+            share a 390px row with anything wide: squeezed they cut "Mačke"
+            mid-word and pushed the last tab off the end of a strip nobody had
+            a reason to scroll. The tabs fit their own phone row, so every tab
+            that exists can be seen to exist; from sm the status line joins
+            them, because it is short enough to fit beside them and stacking
+            it cost a landscape phone pixels it does not have.
 
             The strip still scrolls and still fades its edges (species-tabs
             .tsx), which is what absorbs the margin at sm itself. */}
         <div
           data-slot="mobile-toolbar"
-          className="lg:hidden sm:flex sm:items-center sm:gap-3"
+          className="lg:hidden"
         >
-          <div className="min-w-0 sm:flex-1">
+          <div className="min-w-0">
             <SpeciesTabs
               value={filters.species}
               onChange={onSpeciesChange}
               counts={speciesTally}
+              roster={speciesRoster}
               disabled={isEmpty}
             />
           </div>
 
-          {!isEmpty && (
-            <div className="mt-2 flex items-center justify-between gap-2 sm:mt-0 sm:shrink-0 sm:justify-end">
-              <ResultCount
-                count={resultCount}
-                locale={locale}
-                className="text-muted-foreground max-sm:min-w-fit"
-              />
-              <SortPicker value={sort} onChange={onSortChange} />
-            </div>
-          )}
         </div>
 
-        {/* The row's own arrival used to shift the grid under it by its full
-            height in one frame, because it is inside a header that is sticky
-            on a phone. Growing into place costs the same pixels and does not
-            read as the page jumping. */}
+        {/* From lg only. On a phone this row was the fourth surface stating
+            the filter state, after the badge on the Filtri button, the pressed
+            cards in the sheet that badge opens, and the count that moved when
+            the filter landed. It charged 52px of a sticky header for it, and
+            it charged them by growing, which pushed the grid down the moment
+            a filter arrived. Worse than the pixels: it was a horizontal
+            scroller stacked 8px under a second horizontal scroller inside a
+            vertically scrolling page, and every pixel of every pill in it
+            removes a filter with no way to take that back. A flick the
+            browser resolved as a tap dropped a filter silently.
+
+            What it was genuinely good for survives. Removal moves to the
+            sheet, beside the pressed card that set it, where the causal link
+            is visible and nothing is on a scroll path. The stuck mode, which
+            names the one chip costing the most, moves to the empty state
+            (animal-grid.tsx), which is the screen it was for and the one
+            screen with no grid underneath to push down.
+
+            At lg the row wraps instead of scrolling, sits beside a sidebar
+            that shows the same state anyway, and costs a wide screen nothing.
+            It stays. So does the grow-in: this header is sticky at lg too, and
+            an arrival that shifts the grid by its full height in one frame
+            reads as the page jumping. */}
         <LazyMotion features={domAnimation}>
           <AnimatePresence initial={false}>
             {!isEmpty && (chips.length > 0 || undo) && (
@@ -221,7 +249,7 @@ export function AnimalFilters({
                 // the pills' own motion. A box growing under the toolbar is
                 // exactly the movement that setting is asking for less of.
                 transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
-                className="min-w-0 overflow-hidden"
+                className="min-w-0 overflow-hidden max-lg:hidden"
               >
                 <FilterChips
                   chips={chips}
@@ -235,6 +263,45 @@ export function AnimalFilters({
           </AnimatePresence>
         </LazyMotion>
       </div>
+
+      {/* The result count, heard and never seen on a phone. Its number moved
+          onto the species tabs, the one place it can be read against the
+          choice it belongs to; drawn again it was a fourth number stacked
+          under three, saying only what their sum or the pressed one already
+          said. The announcement is the part that could not move: this holds
+          the aria-live region that says "22 zivali" when a filter lands, and
+          a tab quietly changing its digits announces nothing. sr-only on a
+          wrapper rather than on the component, so its own layout classes are
+          left alone and only the painting stops.
+
+          The sort control that used to share this row is in the filter sheet
+          now (filter-sheet.tsx). It spent a pass pinned in the bar and a pass
+          scrolling away above the grid, and the second was the wrong half of
+          a real finding: sorting is a primary way people find things, often
+          reached for before filtering, so it has to stay reachable while the
+          list is scrolled. The dock is the only thing on this page that is
+          always reachable, and the sheet behind it is where the visitor
+          already goes to change what the grid shows. */}
+      {!isEmpty && (
+        <span className="sr-only lg:hidden">
+          <ResultCount count={resultCount} locale={locale} />
+        </span>
+      )}
+
+      {/* The way back from a clear, on a phone. It used to ride the sort row
+          and went with it; at lg the chips row still carries its own copy,
+          but that row is hidden below lg, which left clearing as the one
+          filter action a phone could not take back. Repeating the gesture
+          undoes every other one.
+
+          Only while the offer stands, which is a few seconds, so it costs no
+          room at rest -- the reason it can afford to be a row of its own here
+          rather than sharing one that has to exist all the time. */}
+      {!isEmpty && undo && (
+        <div data-slot="mobile-undo-row" className="lg:hidden">
+          <UndoOffer onUndo={undo} />
+        </div>
+      )}
 
       {/* The dock is present at any result count, including one. It used to
           vanish there, because both of its children were gated on a facet
@@ -254,10 +321,17 @@ export function AnimalFilters({
       {(hasFilterSheet || shelters) && (
         <div
           data-slot="mobile-filter-dock"
-          className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg ring-1 ring-foreground/5 lg:hidden [&>*]:min-w-0 [&>*]:flex-1"
+          // border + shadow-lg, and no ring. This plate carried a border, a
+          // ring and a shadow at once, which is three edge treatments on one
+          // object and the heaviest recipe on a screen whose cards make do
+          // with border + shadow-xs. The ring was the one saying nothing the
+          // border was not already saying.
+          className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg lg:hidden [&>*]:min-w-0 [&>*]:flex-1"
         >
           {hasFilterSheet && (
             <FilterSheet
+              sort={sort}
+              onSortChange={onSortChange}
               filters={filters}
               groups={groups}
               counts={counts}

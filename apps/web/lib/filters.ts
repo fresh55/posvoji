@@ -524,15 +524,24 @@ function goodWithFailedAt(pass: Pass, slot: number): number {
  *  means switching it off, while an AND section has to keep the facets it is
  *  not measuring. goodWithCounts therefore passes null and does its own
  *  lifting. The groups are the caller's business too: facetCounts wants the
- *  mask of which ones failed, everyone else only wants it to be zero. */
+ *  mask of which ones failed, everyone else only wants it to be zero.
+ *
+ *  Vrsta is liftable too, because the species tabs are counters and the rule
+ *  does not stop at the sidebar. It is named apart from LiftedSection rather
+ *  than added to it: that type is also the key an OR counter indexes
+ *  pass.index and pass.query with (orSectionCounts below), and those two hold
+ *  bitmasks per slot while index.species holds a Species. Widened, `answered`
+ *  came out as `number | Species` and the mask arithmetic stopped compiling.
+ *  Only speciesFacetCounts lifts vrsta; every other caller is measuring
+ *  something within a species tab and wants the tab to hold. */
 type LiftedSection = "toggles" | "home" | "care";
 
 function sectionsPass(
   pass: Pass,
   slot: number,
-  lift: LiftedSection | null,
+  lift: LiftedSection | "species" | null,
 ): boolean {
-  if (!speciesAt(pass, slot)) return false;
+  if (lift !== "species" && !speciesAt(pass, slot)) return false;
   if (
     lift !== "toggles" &&
     !answersAny(pass.index.toggles[slot], pass.query.toggles)
@@ -884,42 +893,110 @@ function narrows(matching: number, total: number): boolean {
   return matching > 0 && matching < total;
 }
 
+// Every visible* function below takes the current selection as its last
+// argument, and a value that is selected keeps its control on screen whatever
+// the pool says. The rule these functions otherwise follow is "an option that
+// cannot narrow anything is not worth a row", and that rule is right for an
+// option nobody has picked and wrong for one somebody has: a selection is
+// already narrowing the result, so hiding its control leaves a filter running
+// with no way to switch it off. On a phone it is worse than that, because the
+// Filtri trigger only exists while the sheet has sections (animal-filters.tsx),
+// so the last section going takes the whole way in with it.
+
 // A toggle that every animal passes (or none do) can't narrow anything.
 export function visibleToggles(
   animals: Animal[],
   species: SpeciesFilter,
+  selected: readonly ToggleKey[] = [],
 ): ToggleDef[] {
   const counts = answeredCounts(indexOf(animals).toggles, TOGGLES.length);
   return TOGGLES.filter(
     (toggle, bit) =>
-      toggleFitsSpecies(toggle.species, species) &&
-      narrows(counts[bit], animals.length),
+      selected.includes(toggle.key) ||
+      (toggleFitsSpecies(toggle.species, species) &&
+        narrows(counts[bit], animals.length)),
   );
 }
 
 // Same rule as visibleToggles, and no species pinning: every one of these
 // questions is asked of dogs and cats alike. The section therefore reveals
 // itself facet by facet as shelters start answering.
-export function visibleGoodWith(animals: Animal[]): GoodWithKey[] {
+export function visibleGoodWith(
+  animals: Animal[],
+  selected: readonly GoodWithKey[] = [],
+): GoodWithKey[] {
   const counts = answeredCounts(
     indexOf(animals).goodWith,
     GOOD_WITH_KEYS.length,
   );
-  return GOOD_WITH_KEYS.filter((_, bit) => narrows(counts[bit], animals.length));
+  return GOOD_WITH_KEYS.filter(
+    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
+  );
 }
 
 // Same rule, and no species pinning either: a flat is a flat whether a dog or
 // a cat lives in it.
-export function visibleHome(animals: Animal[]): HomeKey[] {
+export function visibleHome(
+  animals: Animal[],
+  selected: readonly HomeKey[] = [],
+): HomeKey[] {
   const counts = answeredCounts(indexOf(animals).home, HOME_KEYS.length);
-  return HOME_KEYS.filter((_, bit) => narrows(counts[bit], animals.length));
+  return HOME_KEYS.filter(
+    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
+  );
 }
 
-export function visibleCare(animals: Animal[]): CareKey[] {
+export function visibleCare(
+  animals: Animal[],
+  selected: readonly CareKey[] = [],
+): CareKey[] {
   const counts = answeredCounts(indexOf(animals).care, CARE_KEYS.length);
-  return CARE_KEYS.filter((_, bit) => narrows(counts[bit], animals.length));
+  return CARE_KEYS.filter(
+    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
+  );
 }
 
+/** The number each species tab shows: everything the visitor asked for
+ *  applies except the species axis itself, because that is the axis the tab
+ *  would set. The same rule facetCounts follows, and for the same reason a
+ *  number next to an option has to be what you get when you press it.
+ *
+ *  The toolbar used to show speciesCounts here, which walks the raw dataset.
+ *  With four filters on, the tabs read 127 / 375 / 1 directly above a result
+ *  count of 22: three numbers about one population on two different bases,
+ *  and pressing "Psi 127" did not give you 127. This is the one counter on
+ *  the page that was outside the rule.
+ *
+ *  `all` is the same total the result count carries, and the Vse tab still
+ *  does not draw it (species-tabs.tsx). It is summed anyway because the
+ *  record's shape is what every caller types against, and a member that lies
+ *  is worse than one nobody reads. */
+export function speciesFacetCounts(
+  animals: Animal[],
+  filters: Filters,
+  now: Date,
+): Record<SpeciesFilter, number> {
+  const pass = passOf(animals, filters, now);
+  const counts: Record<SpeciesFilter, number> = {
+    all: 0,
+    dog: 0,
+    cat: 0,
+    other: 0,
+  };
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!sectionsPass(pass, slot, "species")) continue;
+    if (groupsFailedAt(pass, slot) !== 0) continue;
+    counts.all += 1;
+    counts[TAB_OF_SPECIES[pass.index.species[slot]]] += 1;
+  }
+  return counts;
+}
+
+/** Every species the dataset holds, filters ignored. This is a roster and not
+ *  a facet: it decides which tabs exist, the way the location picker's roster
+ *  decides which shelters exist (animal-grid.tsx). A filter may move a tab's
+ *  number, but it may not take the tab off the strip, or narrowing to "samica"
+ *  would delete the way back to the other species. */
 export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> {
   const counts: Record<SpeciesFilter, number> = {
     all: animals.length,
@@ -933,11 +1010,18 @@ export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> 
   return counts;
 }
 
-// A group with fewer than two distinct values can't narrow anything.
+// A group with fewer than two distinct values can't narrow anything, unless the
+// visitor has already answered it. ?vrsta=ostalo&spol=samec is the case that
+// made this necessary: the one rabbit in the dataset is male, so Spol has a
+// single distinct value and used to go, taking the sheet's last section and
+// with it the Filtri trigger, while spol=samec went on filtering from the URL.
+// pruneHiddenFilters cannot cover this one, because the selection is not wrong
+// for the species tab, only invisible.
 export function visibleGroups(
   animals: Animal[],
   species: SpeciesFilter,
   now: Date,
+  selected?: Filters,
 ): Record<MultiGroup, boolean> {
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
@@ -959,7 +1043,8 @@ export function visibleGroups(
     add("shelter", index.shelter[slot]);
   }
   const shown = (group: MultiGroup) =>
-    groupFitsSpecies(group, species) && distinct[group].size >= 2;
+    (selected?.[group].length ?? 0) > 0 ||
+    (groupFitsSpecies(group, species) && distinct[group].size >= 2);
   return {
     sex: shown("sex"),
     age: shown("age"),
@@ -1343,6 +1428,17 @@ export function activeFilterCount(filters: Filters): number {
     filters.home.length +
     filters.care.length
   );
+}
+
+/** The same count as far as the filter panel is concerned, which is every
+ *  section it actually holds. Zavetišče is not one of them: the panel is built
+ *  from GROUPS minus shelter (animal-grid.tsx), because where you adopt from is
+ *  a map and it lives in the location picker, whose own trigger already says
+ *  how many shelters are on. Counted here as well, the Filtri badge promised
+ *  sections the sheet does not have, and on a tab with no sheet at all it was a
+ *  number over a control nobody can open. */
+export function panelFilterCount(filters: Filters): number {
+  return activeFilterCount(filters) - filters.shelter.length;
 }
 
 /** Whether toggling these values would take them off rather than add them.

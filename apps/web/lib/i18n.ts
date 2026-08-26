@@ -321,7 +321,7 @@ const sl = {
     "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
 } as const;
 
-type Messages = { [Key in keyof typeof sl]: string };
+export type Messages = { [Key in keyof typeof sl]: string };
 
 const en: Messages = {
   metadataDescription:

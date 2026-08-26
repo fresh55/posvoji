@@ -152,7 +152,6 @@ export function FilterSheet({
               {messages.show}
               <ResultCount
                 count={resultCount}
-                species={filters.species}
                 locale={locale}
                 announce={false}
                 variant="inline"

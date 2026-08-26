@@ -1,26 +1,70 @@
 "use client";
 
-import { ExternalLink, Heart } from "lucide-react";
+import { ExternalLink, Heart, Hourglass } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+import { ageLabel, longStayMonths } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 
 // The logo-or-initial fallback lives in ShelterAvatar so one place decides it.
 export function ShelterBlock({
   animal,
   logos,
+  reference,
+  onSeeLongestWaiting,
 }: {
   animal: Animal;
   logos: ShelterLogos;
+  /** The dataset's own build time, so the wait agrees with the cards. */
+  reference: Date;
+  /**
+   * Re-sorts the list by longest wait and closes the dialog. Absent while
+   * that sort is already on, which it is by default, so the link only shows
+   * when it would actually change something.
+   */
+  onSeeLongestWaiting?: () => void;
 }) {
-  const { messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   const { shelter } = animal;
+
+  // The long wait lives here, in the same box as the one button that can
+  // answer it, so the plea and the action read as one thought instead of two
+  // stacked crates. Who counts as waiting long is labels.ts's decision, the
+  // same one the card's mark reads, so the two surfaces cannot drift apart.
+  const stayMonths = longStayMonths(animal, reference);
+  const stay =
+    stayMonths === undefined ? undefined : ageLabel(stayMonths, locale);
 
   return (
     <div data-slot="shelter-block" className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
+        {stay && (
+          <div className="flex w-full items-start gap-2 text-sm">
+            <Hourglass
+              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <div className="space-y-0.5">
+              <p className="font-medium">
+                {animal.name
+                  ? t("longStay", { name: animal.name, duration: stay })
+                  : t("longStayUnnamed", { duration: stay })}
+              </p>
+              {onSeeLongestWaiting && (
+                <button
+                  type="button"
+                  onClick={onSeeLongestWaiting}
+                  className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                >
+                  {messages.longStayLink}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
 
         <div className="min-w-0 flex-1">

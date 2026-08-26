@@ -421,7 +421,6 @@ export function AnimalDialog({
                     key={lastAnimal.id}
                     animal={lastAnimal}
                     reference={reference}
-                    onSeeLongestWaiting={onSeeLongestWaiting}
                   />
                 </m.div>
 
@@ -432,7 +431,12 @@ export function AnimalDialog({
                   variants={CONTENT_ITEM}
                   transition={transition}
                 >
-                  <ShelterBlock animal={lastAnimal} logos={logos} />
+                  <ShelterBlock
+                    animal={lastAnimal}
+                    logos={logos}
+                    reference={reference}
+                    onSeeLongestWaiting={onSeeLongestWaiting}
+                  />
                 </m.div>
               </div>
 

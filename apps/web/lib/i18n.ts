@@ -34,10 +34,17 @@ const sl = {
   factSize: "Velikost",
   factTimeInShelter: "V zavetišču",
   factOrigin: "Kraj najdbe",
-  longStay: "V zavetišču čaka že {duration}.",
+  // The name in front turns a statistic into one animal's wait. "Čaka" is
+  // third person singular and carries no gender, so it fits any name without
+  // the sentence having to know the animal's sex.
+  longStay: "{name} v zavetišču čaka že {duration}.",
+  // "Brez imena v zavetišču čaka" reads as a phrase, not as a subject, so an
+  // animal the shelter left unnamed keeps the sentence it had.
+  longStayUnnamed: "V zavetišču čaka že {duration}.",
   longStayLink: "Poglej vse, ki čakajo najdlje",
   // A label, not a plea. The dialog's longStay above is the plea, and it has a
-  // sentence, a box and a link to act on: that is where it can do something. On
+  // sentence, the animal's name and a link to act on: that is where it can do
+  // something. On
   // a card the same words repeat twenty times a screen and decay into
   // wallpaper.
   //
@@ -351,7 +358,8 @@ const en: Messages = {
   factSize: "Size",
   factTimeInShelter: "In the shelter",
   factOrigin: "Found in",
-  longStay: "At the shelter for {duration} now.",
+  longStay: "{name} has been waiting in the shelter for {duration}.",
+  longStayUnnamed: "At the shelter for {duration} now.",
   longStayLink: "See who has waited longest",
   longStayMark: "Waiting {duration}",
   healthAllClear: "Full health record ({count}/{count})",

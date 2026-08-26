@@ -101,7 +101,11 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           </div>
 
           <div className="space-y-4">
-            <ShelterBlock animal={animal} logos={getShelterLogos()} />
+            <ShelterBlock
+              animal={animal}
+              logos={getShelterLogos()}
+              reference={reference}
+            />
 
             {/* ?zival= is how a page outside the list asks the list to open
                 an animal. The index swaps it for this page's own address as

@@ -177,7 +177,7 @@ export function SexCards({
 
               <m.span
                 aria-hidden
-                className="flex items-center justify-center will-change-transform"
+                className="flex items-center justify-center"
                 initial={false}
                 animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
                 transition={

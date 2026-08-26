@@ -301,7 +301,12 @@ export function FilterCardHoverLift({
 
   return (
     <m.span
-      className="relative flex items-center justify-center will-change-transform"
+      // No will-change here. A standing will-change keeps the icon on its own
+      // compositor layer even at rest, and a layer whose box lands on a
+      // fractional pixel is rasterized off the grid: the sidebar glyphs
+      // rendered visibly soft at 1x. Motion promotes the layer for the
+      // moments it is actually animating.
+      className="relative flex items-center justify-center"
       initial={false}
       animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
       transition={shouldReduceMotion ? { duration: 0 } : HOVER_SPRING}

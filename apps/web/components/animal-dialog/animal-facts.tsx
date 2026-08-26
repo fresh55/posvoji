@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ClipboardCheck,
   HeartHandshake,
-  Hourglass,
   MapPin,
   Mars,
   PawPrint,
@@ -35,7 +34,7 @@ import {
 import type { TranslationKey } from "@/lib/i18n";
 import {
   ageLabel,
-  LONG_STAY_MONTHS,
+  longStayMonths,
   monthsInShelter,
   sexLabel,
   sizeLabel,
@@ -95,6 +94,11 @@ const GOOD_WITH_HINTS: Record<GoodWithKey, TranslationKey> = {
   cats: "hintGoodWithCats",
 };
 
+// The dark explainer bubble every fact popover wears. One constant, because
+// it was the same class string typed out three times.
+const FACT_POPOVER_CLASS =
+  "w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background";
+
 // The washed-out accent keeps the green badges from outshouting the identity
 // badges above them; the summary badge and the expanded ones dress the same.
 const HEALTH_PILL_CLASS =
@@ -125,7 +129,7 @@ function HealthFact({
         </PopoverTrigger>
         <PopoverContent
           side="top"
-          className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+          className={FACT_POPOVER_CLASS}
         >
           {hint}
         </PopoverContent>
@@ -171,7 +175,7 @@ function GoodWithFact({
           </PopoverTrigger>
           <PopoverContent
             side="top"
-            className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+            className={FACT_POPOVER_CLASS}
           >
             {hint}
           </PopoverContent>
@@ -231,7 +235,7 @@ function ApartmentFact({
         </PopoverTrigger>
         <PopoverContent
           side="top"
-          className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+          className={FACT_POPOVER_CLASS}
         >
           {hint}
         </PopoverContent>
@@ -312,17 +316,10 @@ function Aside({
 export function AnimalFacts({
   animal,
   reference,
-  onSeeLongestWaiting,
 }: {
   animal: Animal;
   /** The dataset's own build time, so every span agrees with the cards. */
   reference: Date;
-  /**
-   * Re-sorts the list by longest wait and closes the dialog. Absent while
-   * that sort is already on, which it is by default, so the link only shows
-   * when it would actually change something.
-   */
-  onSeeLongestWaiting?: () => void;
 }) {
   const { locale, messages, t } = useI18n();
   // A complete record collapses to one line until asked; per-animal state,
@@ -335,14 +332,13 @@ export function AnimalFacts({
     : undefined;
   const stay =
     stayMonths !== undefined ? ageLabel(stayMonths, locale) : undefined;
-  // An adopted animal has left, so its stay is history and stays quiet. The
-  // plea is reserved for animals actually up for adoption: a reserved or held
-  // one is not waiting for the visitor's decision.
+  // An adopted animal has left, so its stay is history and stays quiet.
   const inShelter = animal.status !== "adopted";
-  const waiting =
-    inShelter && animal.status !== "hold" && animal.status !== "reserved";
-  const longStay =
-    waiting && stayMonths !== undefined && stayMonths >= LONG_STAY_MONTHS;
+  // Whether the shelter block below is about to make the long-stay plea, in
+  // which case this quiet aside yields to it rather than saying the same
+  // number twice. Read from labels.ts so the two cannot disagree about who
+  // counts as waiting long; see shelter-block.tsx.
+  const longStay = longStayMonths(animal, reference) !== undefined;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
   const medical = TOGGLES.filter((toggle) => toggle.matches(animal));
   const hasIdentity =
@@ -518,8 +514,12 @@ export function AnimalFacts({
       {animal.shortDescription && (
         <div className="space-y-1">
           <p
+            // max-w-prose: at the dialog's full width these lines run past
+            // ninety characters, which is more than an eye tracks comfortably.
+            // The pills and boxes around it keep the full width; only the
+            // running text narrows.
             className={cn(
-              "text-sm leading-relaxed whitespace-pre-line",
+              "max-w-prose text-sm leading-relaxed whitespace-pre-line",
               clampDescription && !showFullDescription && "line-clamp-5",
             )}
           >
@@ -538,32 +538,11 @@ export function AnimalFacts({
         </div>
       )}
 
-      {/* Last before the shelter box on purpose: facts, then the shelter's
-          own words, then the wait, then the way to act on it. Styled like a
-          quiet alert in the same neutral box as the shelter block, the amber
-          held to the icon alone. The link re-sorts the list by longest wait,
-          and only offers itself while the list is sorted some other way. */}
-      {longStay && stay && (
-        <div className="flex items-start gap-3 rounded-ui border bg-muted/40 px-4 py-3">
-          <Hourglass
-            className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <div className="space-y-0.5 text-sm">
-            <p className="font-medium">{t("longStay", { duration: stay })}</p>
-            {onSeeLongestWaiting && (
-              <button
-                type="button"
-                onClick={onSeeLongestWaiting}
-                className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              >
-                {messages.longStayLink}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {/* The long wait itself renders inside the shelter block now, where the
+          sentence sits beside the one button that can answer it. Standing
+          alone here it either floated unanchored or stacked a second box on
+          the shelter's; see shelter-block.tsx. This component still computes
+          longStay, because the quiet time-in-shelter aside above yields to it. */}
     </div>
   );
 }

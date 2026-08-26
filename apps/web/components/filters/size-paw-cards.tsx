@@ -412,7 +412,7 @@ export function SizePawCards({
                   />
                 ) : null}
                 <m.span
-                  className="flex items-end will-change-transform"
+                  className="flex items-end"
                   initial={false}
                   animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
                   transition={

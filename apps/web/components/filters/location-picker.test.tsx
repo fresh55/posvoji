@@ -452,7 +452,7 @@ describe("LocationPicker search announcement", () => {
     expect(live()).toContain(`Zadetki: ${shelterCount(1, "sl")}`);
     // The selection summary the region already carried is still in it. The
     // search is a clause on the end, not a replacement.
-    expect(live()).toContain("Obe zavetišči");
+    expect(live()).toContain("Vsa zavetišča");
   });
 
   it("counts the off-site rows too, because the query narrowed them as well", async () => {
@@ -1569,7 +1569,7 @@ describe("LocationPicker floating panel", () => {
     // The same sentence the toolbar trigger wears, from the same computation:
     // the strip says what the picking adds up to, and the tab row inside the
     // sheet is what names and switches the tab.
-    expect(peek.textContent).toContain("Obe zavetišči");
+    expect(peek.textContent).toContain("Vsa zavetišča");
     expect(peek.textContent).not.toContain("Zavetišča");
 
     cleanup();
@@ -2446,20 +2446,35 @@ describe("LocationPicker floating footer", () => {
 
   it("counts the roster, not the species facet, on the way in", async () => {
     // One live shelter with nothing left under the active filters, one with
-    // animals, one off-site. The sentence the trigger and the peek bar share
-    // counts all three, so neither can promise fewer shelters than the list
-    // under it renders. Read off the peek bar because radix hides the trigger
-    // from the accessibility tree while its dialog is open.
+    // animals, one off-site. The label itself carries no number any more
+    // (see lib/labels.ts allShelters), so the roster is checked the way the
+    // dialog actually shows it: every one of the three renders as a row,
+    // whatever the active filters left standing.
     await openPicker({
       counts: new Map([["jug", 7]]),
       offSite,
       resultCount: 7,
     });
 
-    const peek = screen
-      .getByRole("dialog")
-      .querySelector<HTMLElement>("[data-picker-peek]")!;
-    expect(peek.textContent).toContain("Vsa 3 zavetišča");
+    const dialog = screen.getByRole("dialog");
+    const peek = dialog.querySelector<HTMLElement>("[data-picker-peek]")!;
+    expect(peek.textContent).toContain("Vsa zavetišča");
+    // The live rows still render both shelters, whatever the species facet
+    // left standing (only "jug" carries a count here).
+    for (const id of ["sever", "jug"]) {
+      expect(dialog.querySelector(`[data-shelter-row='${id}']`)).toBeTruthy();
+    }
+    // The off-site roster is behind its own fold, closed on arrival; opening
+    // it is what proves it is part of the roster too.
+    openOffGroup();
+    // Off-site rows have nothing to filter by, so they render as links out to
+    // the shelter's own page rather than as toggles: see the href branch in
+    // shelter-rows.tsx.
+    for (const row of offSite) {
+      expect(
+        screen.getByRole("link", { name: new RegExp(row.label) }),
+      ).toBeTruthy();
+    }
   });
 
   it("keeps a shelter with nothing left under the filters, saying so in its row", async () => {

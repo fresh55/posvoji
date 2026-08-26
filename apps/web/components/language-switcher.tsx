@@ -29,15 +29,19 @@ export function LanguageSwitcher({
   return (
     <nav
       aria-label={messages.chooseLanguage}
-      className="flex items-center gap-0.5 rounded-ui border p-0.5"
+      className="flex items-center gap-0.5 rounded-ui bg-muted p-0.5"
     >
       {LANGUAGES.map((language) => (
         <Button
           key={language.locale}
           asChild
           size="xs"
-          variant={locale === language.locale ? "default" : "ghost"}
-          className="rounded-ui px-2 font-normal max-lg:tap-target"
+          variant="ghost"
+          className={
+            locale === language.locale
+              ? "rounded-ui bg-background px-2 font-normal text-foreground shadow-sm hover:bg-background max-lg:tap-target"
+              : "rounded-ui px-2 font-normal text-muted-foreground hover:text-foreground max-lg:tap-target"
+          }
         >
           <a
             href={paths?.[language.locale] ?? language.href}

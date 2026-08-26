@@ -95,8 +95,6 @@ export function AnimalGrid({
   offSiteShelters?: FilterOption[];
 }) {
   const { locale, messages, t } = useI18n();
-  const [clearTrailKey, setClearTrailKey] = useState(0);
-  const pendingClearCount = useRef<number | null>(null);
   // The filter state a clear took away, while the row still offers it back.
   const [cleared, setCleared] = useState<Filters | null>(null);
   const {
@@ -167,7 +165,6 @@ export function AnimalGrid({
 
   const handleClearAll = useCallback(() => {
     if (activeCount > 0 || filters.species !== "all") {
-      pendingClearCount.current = visible.length;
       // Held for as long as the row offers the way back, and only that long.
       // A snapshot with no offer beside it is a trap: nothing on screen would
       // say it existed.
@@ -195,17 +192,6 @@ export function AnimalGrid({
     restore(cleared);
     setCleared(null);
   }, [cleared, restore]);
-
-  useEffect(() => {
-    const previousCount = pendingClearCount.current;
-    const hasCleared = activeCount === 0 && filters.species === "all";
-    if (previousCount === null || !hasCleared) return;
-
-    pendingClearCount.current = null;
-    if (visible.length > previousCount) {
-      setClearTrailKey((key) => key + 1);
-    }
-  }, [activeCount, filters.species, visible.length]);
 
   const speciesTally = useMemo(() => speciesCounts(animals), [animals]);
   // What the location picker's card says about a shelter beyond its filtered
@@ -514,7 +500,6 @@ export function AnimalGrid({
           chips={chips}
           undo={cleared ? handleUndo : undefined}
           resultCount={visible.length}
-          clearTrailKey={clearTrailKey}
           sort={sort}
           onSpeciesChange={setSpecies}
           onToggle={toggle}

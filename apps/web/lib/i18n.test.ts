@@ -27,17 +27,15 @@ describe("localized labels", () => {
     expect(animalCount(1, "en")).toBe("1 animal");
     expect(animalCount(2, "en")).toBe("2 animals");
     expect(shelterCount(1, "en")).toBe("1 shelter");
-    expect(allShelters(4, "en")).toBe("All 4 shelters");
+    expect(allShelters("en")).toBe("All shelters");
     expect(sheltersMissingFromMap(2, "sl")).toBe(
       "2 zavetišči nista na zemljevidu.",
     );
   });
 
-  it("uses natural Slovenian wording for all shelters", () => {
-    expect(allShelters(1, "sl")).toBe("Edino zavetišče");
-    expect(allShelters(2, "sl")).toBe("Obe zavetišči");
-    expect(allShelters(3, "sl")).toBe("Vsa 3 zavetišča");
-    expect(allShelters(5, "sl")).toBe("Vseh 5 zavetišč");
+  it("names the shelter picker's roster without a count", () => {
+    expect(allShelters("sl")).toBe("Vsa zavetišča");
+    expect(allShelters("en")).toBe("All shelters");
   });
 
   it("formats animal metadata in the selected language", () => {

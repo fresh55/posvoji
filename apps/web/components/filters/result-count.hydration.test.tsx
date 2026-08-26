@@ -26,12 +26,12 @@ describe("ResultCount hydration", () => {
       .mockImplementation(() => undefined);
     const container = document.createElement("div");
     container.innerHTML = renderToString(
-      <ResultCount count={231} species="all" locale="en" />,
+      <ResultCount count={231} locale="en" />,
     );
 
     const root = hydrateRoot(
       container,
-      <ResultCount count={231} species="all" locale="en" />,
+      <ResultCount count={231} locale="en" />,
     );
     await act(async () => undefined);
 

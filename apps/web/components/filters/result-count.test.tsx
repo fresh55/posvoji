@@ -16,7 +16,7 @@ describe("ResultCount", () => {
 
   it("renders the standalone variant as plain text, with no icon or chrome", () => {
     const markup = renderToStaticMarkup(
-      <ResultCount count={12} species="dog" locale="en" />,
+      <ResultCount count={12} locale="en" />,
     );
 
     expect(markup).not.toContain("lucide-dog");
@@ -32,7 +32,6 @@ describe("ResultCount", () => {
     const markup = renderToStaticMarkup(
       <ResultCount
         count={1}
-        species="cat"
         locale="en"
         announce={false}
         variant="inline"
@@ -45,7 +44,7 @@ describe("ResultCount", () => {
 
   it("renders the zero-result count as plain text too", () => {
     const markup = renderToStaticMarkup(
-      <ResultCount count={0} species="all" locale="sl" />,
+      <ResultCount count={0} locale="sl" />,
     );
 
     expect(markup).not.toContain("bg-muted/30");

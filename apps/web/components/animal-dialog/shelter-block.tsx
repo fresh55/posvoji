@@ -5,7 +5,7 @@ import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-import { ageLabel, LONG_STAY_MONTHS, monthsInShelter } from "@/lib/labels";
+import { ageLabel, longStayMonths } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 
 // The logo-or-initial fallback lives in ShelterAvatar so one place decides it.
@@ -31,18 +31,11 @@ export function ShelterBlock({
 
   // The long wait lives here, in the same box as the one button that can
   // answer it, so the plea and the action read as one thought instead of two
-  // stacked crates. The threshold is the card's own, from labels.ts, and the
-  // plea is reserved for animals actually up for adoption.
-  const stayMonths = animal.intakeDate
-    ? monthsInShelter(animal.intakeDate, reference)
-    : undefined;
-  const longStay =
-    animal.status !== "adopted" &&
-    animal.status !== "hold" &&
-    animal.status !== "reserved" &&
-    stayMonths !== undefined &&
-    stayMonths >= LONG_STAY_MONTHS;
-  const stay = longStay ? ageLabel(stayMonths, locale) : undefined;
+  // stacked crates. Who counts as waiting long is labels.ts's decision, the
+  // same one the card's mark reads, so the two surfaces cannot drift apart.
+  const stayMonths = longStayMonths(animal, reference);
+  const stay =
+    stayMonths === undefined ? undefined : ageLabel(stayMonths, locale);
 
   return (
     <div data-slot="shelter-block" className="space-y-2">

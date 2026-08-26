@@ -420,10 +420,6 @@ export function PhotoGallery({
           <div
             data-slot="photo-dots"
             aria-hidden
-            // Inert today, since pointer-events-none means these never take a
-            // press at all. It is here so the day the dots become tappable
-            // they are already out of the card's squeeze, like the chevrons.
-            data-press-exempt
             className="pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1"
           >
             {Array.from({ length: dots.count }, (_, dot) => (

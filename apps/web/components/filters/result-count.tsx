@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "motion/react";
-import type { SpeciesFilter } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -81,19 +80,15 @@ function useSettledCount(count: number): number {
 
 export function ResultCount({
   count,
-  species,
   locale,
   announce = true,
   variant = "standalone",
-  clearTrailKey = 0,
   className,
 }: {
   count: number;
-  species: SpeciesFilter;
   locale: Locale;
   announce?: boolean;
   variant?: "standalone" | "inline";
-  clearTrailKey?: number;
   className?: string;
 }) {
   const shouldReduceMotion = useSyncExternalStore(

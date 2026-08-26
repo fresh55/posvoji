@@ -55,7 +55,6 @@ export function AnimalFilters({
   chips,
   undo,
   resultCount,
-  clearTrailKey,
   sort,
   onSpeciesChange,
   onToggle,
@@ -89,7 +88,6 @@ export function AnimalFilters({
   /** Present only during the few seconds a clear can still be taken back. */
   undo?: () => void;
   resultCount: number;
-  clearTrailKey: number;
   sort: AnimalSort;
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
@@ -145,9 +143,7 @@ export function AnimalFilters({
             {!isEmpty && (
               <ResultCount
                 count={resultCount}
-                species={filters.species}
                 locale={locale}
-                clearTrailKey={clearTrailKey}
                 className="text-muted-foreground"
               />
             )}
@@ -199,9 +195,7 @@ export function AnimalFilters({
             <div className="mt-2 flex items-center justify-between gap-2 sm:mt-0 sm:shrink-0 sm:justify-end">
               <ResultCount
                 count={resultCount}
-                species={filters.species}
                 locale={locale}
-                clearTrailKey={clearTrailKey}
                 className="text-muted-foreground max-sm:min-w-fit"
               />
               <SortPicker value={sort} onChange={onSortChange} />

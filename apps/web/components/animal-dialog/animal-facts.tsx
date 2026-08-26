@@ -34,7 +34,7 @@ import {
 import type { TranslationKey } from "@/lib/i18n";
 import {
   ageLabel,
-  LONG_STAY_MONTHS,
+  longStayMonths,
   monthsInShelter,
   sexLabel,
   sizeLabel,
@@ -332,14 +332,13 @@ export function AnimalFacts({
     : undefined;
   const stay =
     stayMonths !== undefined ? ageLabel(stayMonths, locale) : undefined;
-  // An adopted animal has left, so its stay is history and stays quiet. The
-  // plea is reserved for animals actually up for adoption: a reserved or held
-  // one is not waiting for the visitor's decision.
+  // An adopted animal has left, so its stay is history and stays quiet.
   const inShelter = animal.status !== "adopted";
-  const waiting =
-    inShelter && animal.status !== "hold" && animal.status !== "reserved";
-  const longStay =
-    waiting && stayMonths !== undefined && stayMonths >= LONG_STAY_MONTHS;
+  // Whether the shelter block below is about to make the long-stay plea, in
+  // which case this quiet aside yields to it rather than saying the same
+  // number twice. Read from labels.ts so the two cannot disagree about who
+  // counts as waiting long; see shelter-block.tsx.
+  const longStay = longStayMonths(animal, reference) !== undefined;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
   const medical = TOGGLES.filter((toggle) => toggle.matches(animal));
   const hasIdentity =

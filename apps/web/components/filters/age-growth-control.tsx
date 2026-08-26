@@ -1,8 +1,14 @@
 "use client";
 
 import { Leaf } from "lucide-react";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useEffect, useId, useState } from "react";
+import {
+  AnimatePresence,
+  LazyMotion,
+  domAnimation,
+  m,
+  useReducedMotion,
+} from "motion/react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import {
   AgeStageIcon,
   ageDrawSeconds,
@@ -78,6 +84,19 @@ const CELEBRATION_GUARD_MS = 80;
 const GROWTH_CHECK_DELAY = 0.3;
 const RESET_STAGGER = 0.045;
 const RESET_CLEAR_MS = 280;
+
+// The section body folds inside an `AnimatePresence initial={false}`, which
+// tells Motion the fold is already present on first paint. Motion applies that
+// to everything under the fold rather than to the fold alone, and it keeps
+// applying it: whatever mounts in there later counts as already present, so
+// its mount animation is skipped and it is written straight to the pose it
+// should have ended on. The sway and the ground line are unharmed because they
+// animate on update. The two below exist only to be mounted and watched, so
+// each needs a presence boundary of its own, carrying the default `initial`,
+// or it never plays.
+function OneShot({ children }: { children: ReactNode }) {
+  return <AnimatePresence>{children}</AnimatePresence>;
+}
 
 function swaySeconds(stage: AgeStage, reduceMotion: boolean) {
   return SWAY_DELAY + ageDrawSeconds(stage, reduceMotion) + SWAY_TAIL;
@@ -231,6 +250,7 @@ export function AgeGrowthControl({
                 />
                 {celebrating && !shouldReduceMotion ? (
                   <span className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
+                    <OneShot>
                     <m.span
                       key={celebration?.id}
                       className="size-[3px] rounded-full bg-[#2f6f4e]"
@@ -238,12 +258,14 @@ export function AgeGrowthControl({
                       animate={{ opacity: 0, scale: 2.5 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                     />
+                    </OneShot>
                   </span>
                 ) : null}
                 {value === "senior" &&
                 fallingLeafId > 0 &&
                 !shouldReduceMotion ? (
                   <span className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
+                    <OneShot>
                     <m.span
                       key={fallingLeafId}
                       initial={{ opacity: 0, x: 0, y: 0, rotate: -8 }}
@@ -273,6 +295,7 @@ export function AgeGrowthControl({
                         strokeWidth={1.6}
                       />
                     </m.span>
+                    </OneShot>
                   </span>
                 ) : null}
                 <m.span

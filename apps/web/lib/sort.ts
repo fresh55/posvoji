@@ -83,6 +83,17 @@ function compareOptionalNumber(
   return direction * (left - right);
 }
 
+// Available first, everything else after: a "hold" or "unknown" animal reads
+// like any other card in a list that never touches status (lib/filters.ts
+// never filters on it, on purpose — it stays in the results rather than
+// being hidden), so the one place left to say "this one is not like the
+// others" is where it lands. 0 for available keeps it stable against every
+// comparator below: two available animals, or two animals both off the
+// market, still resolve by whichever order was actually chosen.
+function statusWeight(animal: Animal): 0 | 1 {
+  return animal.status === "available" ? 0 : 1;
+}
+
 export function sortAnimals(
   animals: Animal[],
   sort: AnimalSort = DEFAULT_ANIMAL_SORT,
@@ -92,6 +103,9 @@ export function sortAnimals(
   const collator = new Intl.Collator(locale, { sensitivity: "base" });
 
   return [...animals].sort((left, right) => {
+    const statusDiff = statusWeight(left) - statusWeight(right);
+    if (statusDiff !== 0) return statusDiff;
+
     let compared: number;
     switch (sort) {
       case "longest-in-shelter":

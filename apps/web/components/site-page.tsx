@@ -10,6 +10,20 @@ import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
 
+/** "20. 8. 2026" in Slovenian, unchanged; "20 Aug 2026" in English. en-GB's
+ *  own numeric default is 20/08/2026, which reads as a fraction on a page
+ *  that otherwise spells no date in digits, so English asks for day + short
+ *  month + year instead — the order en-GB already gets right on its own. */
+export function formatDatasetDate(date: Date, locale: Locale): string {
+  return locale === "sl"
+    ? date.toLocaleDateString("sl-SI")
+    : date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+}
+
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
@@ -74,9 +88,7 @@ export function SitePage({ locale }: { locale: Locale }) {
               {dataset && shelters > 0 && (
                 <p>
                   {shelterCount(shelters, locale)} · {messages.updated}{" "}
-                  {new Date(dataset.generatedAt).toLocaleDateString(
-                    locale === "sl" ? "sl-SI" : "en-GB",
-                  )}
+                  {formatDatasetDate(new Date(dataset.generatedAt), locale)}
                 </p>
               )}
               {hasLookup && <FoundAnimalButton />}

@@ -14,6 +14,7 @@ function animal(
   intakeDate?: string,
   name?: string,
   age?: Pick<Animal, "approximateAgeMonths" | "birthDate">,
+  status: Animal["status"] = "available",
 ): Animal {
   return {
     id,
@@ -27,7 +28,7 @@ function animal(
     shelter: { id: "shelter", name: "Shelter", city: "Celje" },
     name,
     species: "cat",
-    status: "available",
+    status,
     intakeDate,
     ...age,
     images: [],
@@ -91,6 +92,42 @@ describe("sortAnimals", () => {
     ];
 
     expect(sortAnimals(tied).map(({ id }) => id)).toEqual(["a", "b"]);
+  });
+
+  it("puts hold and unknown animals last regardless of how long they waited", () => {
+    const mixed = [
+      // Longest-waiting available animal would normally sort first...
+      animal("hold-oldest", "2019-01-01", undefined, undefined, "hold"),
+      animal("available-newer", "2024-01-01"),
+      animal("unknown-status", undefined, undefined, undefined, "unknown"),
+      animal("available-oldest", "2020-01-01"),
+    ];
+
+    expect(sortAnimals(mixed).map(({ id }) => id)).toEqual([
+      "available-oldest",
+      "available-newer",
+      "hold-oldest",
+      "unknown-status",
+    ]);
+  });
+
+  it("keeps the status partition under every sort order, not only the default", () => {
+    const mixed = [
+      animal("adopted-a", undefined, "A", undefined, "adopted"),
+      animal("available-z", undefined, "Z"),
+      animal("reserved-b", undefined, "B", undefined, "reserved"),
+      animal("available-a", undefined, "A2"),
+    ];
+
+    const byName = sortAnimals(mixed, "name", "sl").map(({ id }) => id);
+    // Available animals still come first, sorted by name between themselves;
+    // the two off-market ones follow, also sorted by name between themselves.
+    expect(byName).toEqual([
+      "available-a",
+      "available-z",
+      "adopted-a",
+      "reserved-b",
+    ]);
   });
 });
 

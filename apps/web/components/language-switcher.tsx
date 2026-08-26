@@ -15,6 +15,36 @@ const LANGUAGES = [
   { locale: "en", href: "/en", shortName: "EN", name: "English" },
 ] as const;
 
+// The path prefix that changes between the two languages, paired up. A page
+// mounted with an explicit `paths` prop (animal-page.tsx, shelter-detail-page.tsx)
+// already knows its own translation and takes priority over this table; this
+// exists for the pages that don't, chiefly the index, whose address can move
+// client-side after the server rendered it — the animal dialog opens over the
+// animal's own path through history.pushState (use-animal-dialog.ts), and
+// SiteHeader is mounted once, before that write ever happens. Reading
+// `paths` at render time can't see a change that hasn't happened yet; reading
+// the address bar itself when the switcher is actually pressed can.
+const ROUTE_PREFIXES: readonly { sl: string; en: string }[] = [
+  { sl: "/zival", en: "/en/animal" },
+  { sl: "/zavetisca", en: "/en/shelters" },
+  { sl: "/najdena-zival", en: "/en/found-animal" },
+  { sl: "/viri", en: "/en/resources" },
+];
+
+/** The same page in the other language, worked out from the path a visitor
+ *  is standing on. Falls back to that language's index for a path with no
+ *  paired prefix (the portal, a dev route, or the index itself), which is
+ *  the same fallback the switcher already used for every page before this. */
+function translatePath(pathname: string, target: Locale): string {
+  for (const { sl, en } of ROUTE_PREFIXES) {
+    const [from, to] = target === "en" ? [sl, en] : [en, sl];
+    if (pathname === from || pathname.startsWith(`${from}/`)) {
+      return to + pathname.slice(from.length);
+    }
+  }
+  return target === "en" ? "/en" : "/";
+}
+
 export function LanguageSwitcher({
   paths,
 }: {
@@ -22,8 +52,12 @@ export function LanguageSwitcher({
 }) {
   const { locale, messages } = useI18n();
 
-  const keepFilters = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.currentTarget.href = `${event.currentTarget.href}${window.location.search}`;
+  const navigate = (
+    event: MouseEvent<HTMLAnchorElement>,
+    target: Locale,
+  ) => {
+    const path = paths?.[target] ?? translatePath(window.location.pathname, target);
+    event.currentTarget.href = `${path}${window.location.search}`;
   };
 
   return (
@@ -56,7 +90,7 @@ export function LanguageSwitcher({
             lang={language.locale}
             aria-label={language.name}
             aria-current={locale === language.locale ? "page" : undefined}
-            onClick={keepFilters}
+            onClick={(event) => navigate(event, language.locale)}
           >
             <span className="sm:hidden">{language.shortName}</span>
             <span className="hidden sm:inline">{language.name}</span>

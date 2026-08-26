@@ -64,23 +64,57 @@ function scrollToResults(): void {
   window.scrollTo({ top, behavior: far || still ? "auto" : "smooth" });
 }
 
+/** The query already on the address bar, without its leading "?", so it can
+ *  be compared against a freshly serialized one. */
+function currentQuery(): string {
+  return getSearchSnapshot().replace(/^\?/, "");
+}
+
+/**
+ * push, so five taps of a facet and one press of Back undo them one at a
+ * time instead of leaving the site — every setter this hook returns answers
+ * a single, discrete press (a tab, a checkbox, a Select), never a stream of
+ * events for one gesture, so there is no keystroke-per-push case to coalesce
+ * here today. A future control that fires more than once per gesture (a
+ * debounced search box, say) is the one responsible for only calling a
+ * setter once it has settled; a time-based guard in here would just as
+ * easily coalesce two genuine, seconds-apart answers as it would a real
+ * burst, and it cannot be tested without a fake clock leaking between tests.
+ *
+ * replace, in the one case a push would break something a marker depends on:
+ * the animal dialog pushes its own entry to open (use-animal-dialog.ts) and
+ * its close button reads that entry's state to know a bare `history.back()`
+ * will close it. A filter or sort change made while that entry is on top
+ * therefore amends it rather than stacking a new one over it, so Back still
+ * closes the dialog in one step and takes the change with it, and the close
+ * button does not have to pop twice to actually leave.
+ */
+function writeMode(): "push" | "replace" {
+  return window.history.state?.animal ? "replace" : "push";
+}
+
 function writeFilters(filters: Filters): void {
-  commitSearch(
-    mergeOwnedParams(
-      getSearchSnapshot(),
-      FILTER_PARAM_NAMES,
-      serializeFilters(pruneHiddenFilters(filters)),
-    ),
-    "replace",
+  const query = mergeOwnedParams(
+    getSearchSnapshot(),
+    FILTER_PARAM_NAMES,
+    serializeFilters(pruneHiddenFilters(filters)),
   );
+  // A press that changes nothing — the active species tab pressed again is
+  // the one the UI does not guard against itself — writes nothing rather
+  // than a history entry with no history in it.
+  if (query === currentQuery()) return;
+  commitSearch(query, writeMode());
   scrollToResults();
 }
 
 function writeSort(sort: AnimalSort): void {
-  commitSearch(
-    mergeOwnedParams(getSearchSnapshot(), [SORT_PARAM], serializeSort(sort)),
-    "replace",
+  const query = mergeOwnedParams(
+    getSearchSnapshot(),
+    [SORT_PARAM],
+    serializeSort(sort),
   );
+  if (query === currentQuery()) return;
+  commitSearch(query, writeMode());
   scrollToResults();
 }
 

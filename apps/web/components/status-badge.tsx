@@ -1,7 +1,7 @@
 import type { VariantProps } from "class-variance-authority";
 import type { AdoptionStatus } from "@posvoji/schema";
 import { Badge, badgeVariants } from "@/components/ui/badge";
-import type { Locale } from "@/lib/i18n";
+import { translate, type Locale } from "@/lib/i18n";
 import { statusLabel } from "@/lib/labels";
 
 // One badge, three surfaces. The grid card, the dialog and the animal page all
@@ -11,10 +11,13 @@ import { statusLabel } from "@/lib/labels";
 // with no amber at all.
 //
 // Available is the default state and needs no badge; the badge is for the
-// exceptions worth calling out. Unknown is an animal the shelter's own listing
-// still carries, so it reads as available and stays silent too. Both of those
-// live here rather than as an inline condition at each call site, which is how
-// the three of them drifted apart in the first place.
+// exceptions worth calling out. Unknown used to stay silent along with it, and
+// read as available for exactly that reason: the shelter's own listing simply
+// never answered the question, which is not the same claim "available" makes.
+// statusLabel (lib/labels.ts) still answers undefined for "unknown" — every
+// other caller of that function means "no badge for this status" by it, and
+// widening it would have turned unknown into a fourth named status everywhere
+// rather than the one quiet exception it is here.
 type NamedStatus = Exclude<AdoptionStatus, "unknown" | "available">;
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
@@ -51,7 +54,17 @@ export function StatusBadge({
   overlay?: boolean;
   className?: string;
 }) {
-  if (status === "available" || status === "unknown") return null;
+  if (status === "available") return null;
+  if (status === "unknown") {
+    return (
+      <Badge
+        variant={overlay ? "overlay-quiet" : "quiet"}
+        className={className}
+      >
+        {translate(locale, "statusUnknown")}
+      </Badge>
+    );
+  }
   const label = statusLabel(status, locale);
   if (!label) return null;
 

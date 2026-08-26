@@ -9,7 +9,6 @@ import {
   facetCounts,
   goodWithCounts,
   homeCounts,
-  panelFilterCount,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
@@ -680,21 +679,21 @@ describe("active filter count", () => {
     expect(activeFilterCount({ ...EMPTY_FILTERS, species: "dog" })).toBe(0);
   });
 
-  it("leaves zavetišče out of the panel's own count", () => {
-    // The panel has no shelter section: the map is the location picker's, and
-    // its own trigger already says how many shelters are on. A Filtri badge
-    // counting them promised sections the sheet does not hold.
+  it("counts zavetišče with the rest", () => {
+    // Both panels open with a Kje row, so the badge over them counts every
+    // picked shelter too. It used to be subtracted, because neither panel held
+    // a control for it and the number promised sections the sheet did not
+    // have.
     const filters: Filters = {
       ...EMPTY_FILTERS,
       sex: ["male"],
       shelter: ["s1", "s2"],
     };
     expect(activeFilterCount(filters)).toBe(3);
-    expect(panelFilterCount(filters)).toBe(1);
   });
 
-  it("counts nothing for a shelter selection on its own", () => {
-    expect(panelFilterCount({ ...EMPTY_FILTERS, shelter: ["s1"] })).toBe(0);
+  it("counts a shelter selection on its own", () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, shelter: ["s1"] })).toBe(1);
   });
 });
 

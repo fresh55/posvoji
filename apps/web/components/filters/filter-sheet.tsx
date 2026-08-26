@@ -4,6 +4,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
+import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
 import {
   FilterGroupList,
   type CardGroup,
@@ -11,6 +12,7 @@ import {
   type GoodWithSection,
   type HomeSection,
 } from "@/components/filters/filter-groups";
+import { LocationScopeRow } from "@/components/filters/location-scope-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +33,29 @@ import type {
 } from "@/lib/filters";
 import type { AnimalSort } from "@/lib/sort";
 
+/** The Kje row at the top of the sheet, and the pills under it. The dialog it
+ *  opens is the dock's picker, not one of the sheet's own: a full-viewport map
+ *  nested inside a vaul drawer fights it for the scroll lock and the focus
+ *  trap, so the press closes the drawer and animal-filters.tsx opens the map
+ *  after it. Absent when the dataset has no shelters to choose between. */
+export type ShelterScope = {
+  options: FilterOption[];
+  counts: Map<string, number>;
+  offSite?: FilterOption[];
+  selected: string[];
+  /** The picked shelters as removable pills. Without them a phone could pick
+   *  a shelter on the map and had no way at all of taking it off again short
+   *  of reopening the map and finding the row. */
+  chips: Chip[];
+  onOpen: () => void;
+  onReset: () => void;
+};
+
+// How long the drawer takes to leave. Vaul animates its content out over half
+// a second and holds the body's scroll lock for the whole of it, so the map is
+// asked for once the drawer is gone rather than over the top of it.
+const DRAWER_CLOSE_MS = 500;
+
 export function FilterSheet({
   filters,
   groups,
@@ -40,7 +65,8 @@ export function FilterSheet({
   goodWith,
   home,
   care,
-  panelCount,
+  scope,
+  activeCount,
   resultCount,
   sort,
   onSortChange,
@@ -58,12 +84,11 @@ export function FilterSheet({
   goodWith?: GoodWithSection;
   home?: HomeSection;
   care?: CareSection;
-  /** How many values the sections in this sheet have set, which is
-   *  panelFilterCount and not the whole filter state: shelter lives in the
-   *  location picker and is left out on purpose (animal-filters.tsx). Named
-   *  apart from the `activeCount` other filter code carries so the two
-   *  quantities cannot be wired into each other by their name alone. */
-  panelCount: number;
+  scope?: ShelterScope;
+  /** How many values the whole filter state holds. Shelter counts: the Kje
+   *  row at the top of this sheet is a control for it, so the badge on the
+   *  trigger no longer promises a section the sheet does not have. */
+  activeCount: number;
   resultCount: number;
   /** Sorting is offered here on a phone, and only here. It is not a filter
    *  and does not join `Filters` (lib/sort.ts keeps the two apart on purpose,
@@ -88,6 +113,14 @@ export function FilterSheet({
     setScrolled(false);
   };
 
+  // The way from the Kje row to the map: down first, then out. Opening a
+  // dialog while the drawer is still leaving leaves two scroll locks and two
+  // focus traps on the page, and the one that unmounts second wins.
+  const openScope = () => {
+    close();
+    window.setTimeout(() => scope?.onOpen(), DRAWER_CLOSE_MS);
+  };
+
   // Vaul portals to <body>, so this sheet would otherwise stay open and
   // floating if a resize (or a phone rotated to landscape) crosses into the
   // lg layout while it is up, even though the trigger for it just vanished.
@@ -103,22 +136,22 @@ export function FilterSheet({
         <Button
           size="sm"
           aria-label={
-            panelCount > 0
-              ? t("filtersWithCount", { count: panelCount })
+            activeCount > 0
+              ? t("filtersWithCount", { count: activeCount })
               : messages.filters
           }
           className="h-11 gap-1.5 rounded-ui px-3"
         >
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
-          {panelCount > 0 && (
+          {activeCount > 0 && (
             <>
               <Badge
                 variant="secondary"
                 aria-hidden="true"
                 className="hidden h-5 min-w-5 rounded-full px-1 text-xs tabular-nums min-[360px]:inline-flex"
               >
-                {panelCount}
+                {activeCount}
               </Badge>
               {/* Below 360px the full badge doesn't fit the trigger, but the
                   aria-label still announces the count, so sighted users need
@@ -191,6 +224,23 @@ export function FilterSheet({
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
           className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
         >
+          {/* Kje above every section, the same order the panel keeps at lg.
+              The pills under it are the mobile half of the fix: the dock's
+              picker states the scope and the map picks it, and until this row
+              existed neither of them could take a shelter back off. */}
+          {scope && (
+            <LocationScopeRow
+              options={scope.options}
+              counts={scope.counts}
+              offSite={scope.offSite}
+              selected={scope.selected}
+              onOpen={openScope}
+              onReset={scope.onReset}
+            >
+              <RemovableChips chips={scope.chips} className="mt-2" />
+            </LocationScopeRow>
+          )}
+
           <FilterGroupList
             filters={filters}
             groups={groups}
@@ -212,7 +262,7 @@ export function FilterSheet({
           <Button
             variant="ghost"
             className="h-11"
-            disabled={panelCount === 0}
+            disabled={activeCount === 0}
             onClick={onClearAll}
           >
             {messages.clearAll}

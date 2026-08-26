@@ -174,10 +174,13 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     const trigger = screen.getAllByRole("button", { name: /Zavetišče:/ })[0];
-    expect(trigger.getAttribute("aria-label")).toContain("Vsa 3 zavetišča");
+    expect(trigger.getAttribute("aria-label")).toContain("Vsa zavetišča");
 
     fireEvent.click(trigger);
 
+    // The roster is the registry (three shelters), not the species-filtered
+    // pool /?vrsta=zajcek leaves standing (druga alone): every shelter still
+    // renders as a row, whatever the tab.
     const dialog = screen.getByRole("dialog");
     for (const id of ["muri", "tretje", "druga"]) {
       expect(dialog.querySelector(`[data-shelter-row='${id}']`)).toBeTruthy();

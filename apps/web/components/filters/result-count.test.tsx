@@ -14,18 +14,21 @@ describe("ResultCount", () => {
     expect(countDirection(previous, next)).toBe(direction);
   });
 
-  it("renders a species icon without an empty internal number slot", () => {
+  it("renders the standalone variant as plain text, with no icon or chrome", () => {
     const markup = renderToStaticMarkup(
       <ResultCount count={12} species="dog" locale="en" />,
     );
 
-    expect(markup).toContain("lucide-dog");
-    expect(markup).toContain("min-w-24");
-    expect(markup).not.toContain("min-w-[4ch]");
+    expect(markup).not.toContain("lucide-dog");
+    expect(markup).not.toContain("rounded-ui");
+    expect(markup).not.toContain("bg-muted");
+    expect(markup).toContain("text-sm");
+    expect(markup).toContain("text-muted-foreground");
+    expect(markup).toContain("tabular-nums");
     expect(markup).toContain("12 animals");
   });
 
-  it("keeps the button variant compact and decorative-icon free", () => {
+  it("keeps the inline variant compact and decorative-icon free", () => {
     const markup = renderToStaticMarkup(
       <ResultCount
         count={1}
@@ -37,35 +40,15 @@ describe("ResultCount", () => {
     );
 
     expect(markup).not.toContain("lucide-cat");
-    expect(markup).not.toContain("min-w-[4ch]");
     expect(markup).toContain("1 animal");
   });
 
-  it("renders a calm zero-result state", () => {
+  it("renders the zero-result count as plain text too", () => {
     const markup = renderToStaticMarkup(
       <ResultCount count={0} species="all" locale="sl" />,
     );
 
-    expect(markup).toContain("bg-muted/30");
-    expect(markup).toContain("text-muted-foreground/50");
-    expect(markup).toContain('data-empty-pose="all"');
+    expect(markup).not.toContain("bg-muted/30");
     expect(markup).toContain("0 živali");
-  });
-
-  it("renders the two-paw clear trail only when explicitly triggered", () => {
-    const resting = renderToStaticMarkup(
-      <ResultCount count={12} species="all" locale="en" />,
-    );
-    const cleared = renderToStaticMarkup(
-      <ResultCount
-        count={12}
-        species="all"
-        locale="en"
-        clearTrailKey={1}
-      />,
-    );
-
-    expect(resting).not.toContain("data-clear-trail");
-    expect(cleared).toContain("data-clear-trail");
   });
 });

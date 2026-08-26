@@ -100,12 +100,17 @@ export function shelterCount(n: number, locale: Locale): string {
     : `${n} ${n === 1 ? "shelter" : "shelters"}`;
 }
 
-export function allShelters(n: number, locale: Locale): string {
-  if (locale === "en") return `All ${shelterCount(n, locale)}`;
-  if (n === 1) return "Edino zavetišče";
-  if (n === 2) return "Obe zavetišči";
-  if (n === 3 || n === 4) return `Vsa ${n} zavetišča`;
-  return `Vseh ${n} zavetišč`;
+// Deliberately count-free. The picker's roster is the whole UVHVVR registry,
+// live shelters and the ones with nothing listed alike, which is a different
+// number from the live-shelter count the hero states in the same breath
+// ("11 zavetišč · osveženo ..."). A number here ("Vseh 17 zavetišč") read as
+// a second, disagreeing answer to the same question the hero had just
+// answered; naming no count sidesteps the contradiction instead of picking a
+// side. The "X od Y zavetišč" wording below keeps its total, because that
+// sentence is explicitly about the registry ("X of Y"), not a bare headline
+// count.
+export function allShelters(locale: Locale): string {
+  return locale === "en" ? "All shelters" : "Vsa zavetišča";
 }
 
 // "X od Y zavetišč", the trigger's answer once something is picked. The noun

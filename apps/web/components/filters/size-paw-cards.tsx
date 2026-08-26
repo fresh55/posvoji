@@ -6,7 +6,6 @@ import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import {
   CountRoll,
-  FilterSelectionMark,
   filterCardVariants,
   isDeadOption,
 } from "@/components/filters/filter-card";
@@ -372,12 +371,6 @@ export function SizePawCards({
                   fill="none"
                 />
               </m.span>
-              <FilterSelectionMark
-                checked={checked}
-                // The check confirms once the paw is down, not while it falls.
-                appearDelay={landing.checkDelay}
-                className="absolute right-1.5 top-1.5"
-              />
               <span aria-hidden className="relative flex h-5 items-end">
                 {celebrating && !shouldReduceMotion ? (
                   <m.span

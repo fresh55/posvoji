@@ -914,12 +914,15 @@ export function LocationPicker({
       className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
     />
   );
-  // The trigger has to answer "what is behind this" before it is clicked, and
-  // the count is what answers it: seventeen shelters exist and this is where
-  // they are. "Vsa zavetišča" alone read as a filter state, not as a way in.
+  // "Vsa zavetišča" alone, with no count: the roster this dialog lists is the
+  // whole UVHVVR registry, live shelters and the ones with nothing listed
+  // alike, which is not the number the hero states in the same breath (the
+  // live-shelter count). A number here used to read as a second, disagreeing
+  // answer to a question the hero had just answered ("11 zavetišč" next to
+  // "Vseh 17 zavetišč"); see allShelters in lib/labels.ts.
   const label =
     selected.length === 0
-      ? allShelters(total, locale)
+      ? allShelters(locale)
       : sheltersOf(selected.length, total, locale);
 
   // The way out of the dialog, carrying the number the picking adds up to.

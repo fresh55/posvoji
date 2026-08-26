@@ -1,5 +1,6 @@
 import { Globe, Info, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
+import { BackLink } from "@/components/back-link";
 import { I18nProvider } from "@/components/i18n-provider";
 import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
 import { ShelterAvatar } from "@/components/shelter-avatar";
@@ -76,12 +77,11 @@ export function ShelterDetailPage({
 
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10">
           <div className="space-y-5">
-            <a
+            <BackLink
               href={indexHref}
-              className="inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              ← {text.back}
-            </a>
+              label={text.back}
+              className="inline-flex max-lg:tap-target text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            />
 
             <div className="flex flex-wrap items-center gap-4">
               <ShelterAvatar

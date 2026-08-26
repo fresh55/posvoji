@@ -19,7 +19,12 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function SlovenianLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="sl" className="h-full antialiased"
+    // No `antialiased` here on purpose. The class is
+    // -webkit-font-smoothing: antialiased, which the create-next-app
+    // template ships by default. It is a no-op on Windows and on macOS
+    // it forces greyscale text, giving up subpixel antialiasing for the
+    // whole site.
+    <html lang="sl" className="h-full"
       style={{ "--font-sans": fontStack } as CSSProperties}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

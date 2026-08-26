@@ -463,7 +463,13 @@ export function AnimalGrid({
       </a>
       {hasSidebar && (
         <FilterSidebar
-          className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto"
+          // lg:bg-background is load-bearing, not decoration. lg:sticky
+          // puts the sidebar on its own compositing layer, and Chrome
+          // keeps subpixel text antialiasing on such a layer only while
+          // it has a fully opaque background colour. Transparent, every
+          // label in here renders greyscale while the rest of the page
+          // does not, which reads as blur at the same size.
+          className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background"
           filters={filters}
           groups={groups}
           counts={counts}

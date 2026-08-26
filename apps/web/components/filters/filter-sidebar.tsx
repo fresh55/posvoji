@@ -10,18 +10,34 @@ import {
   type HomeSection,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
+import { LocationPicker } from "@/components/filters/location-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
-import { panelFilterCount } from "@/lib/filters";
+import { activeFilterCount } from "@/lib/filters";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
   ToggleDef,
 } from "@/lib/filters";
+import type { LookupEntry } from "@/lib/municipality-coverage";
+import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
+
+/** Everything the panel's Kje row needs, absent when the dataset has no
+ *  shelters to choose between. The dialog behind the row is the picker's own,
+ *  so this is what the picker asks for less the two toggles the panel already
+ *  carries. */
+export type SidebarScope = {
+  options: FilterOption[];
+  counts: Map<string, number>;
+  municipalities?: LookupEntry[];
+  offSite?: FilterOption[];
+  summaries?: Map<string, ShelterSummary>;
+  resultCount: number;
+};
 
 export function FilterSidebar({
   filters,
@@ -32,6 +48,7 @@ export function FilterSidebar({
   goodWith,
   home,
   care,
+  scope,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -47,6 +64,7 @@ export function FilterSidebar({
   goodWith?: GoodWithSection;
   home?: HomeSection;
   care?: CareSection;
+  scope?: SidebarScope;
   onClearAll: () => void;
   className?: string;
 } & FilterActionContract) {
@@ -55,9 +73,8 @@ export function FilterSidebar({
   // The chips row scrolls away with the page while the sidebar stays; this
   // count and its clear keep the state and the way out in view. Selected
   // values and not sections, so it agrees with the row it outlives: a badge
-  // reading 1 above two chips was two answers to one question. Shelter is
-  // excluded: it has no section here, so it would be a count with no control.
-  const activeValues = panelFilterCount(filters);
+  // reading 1 above two chips was two answers to one question.
+  const activeValues = activeFilterCount(filters);
 
   return (
     <aside
@@ -106,6 +123,31 @@ export function FilterSidebar({
           {messages.clearAll}
         </Button>
       </div>
+
+      {/* Kje first, above every folding section. It is the question a visitor
+          answers before any of the others -- how far they are willing to go --
+          and at lg it is the only place shelter is asked at all now: the
+          toolbar's own picker trigger stands down wherever this panel is
+          drawn (animal-filters.tsx).
+
+          No chips under it. The sticky chips row above the grid already draws
+          a removable pill per picked shelter at this width, and a second copy
+          eighteen pixels to the left would be the same removal twice. */}
+      {scope && (
+        <LocationPicker
+          dress="sidebar"
+          options={scope.options}
+          counts={scope.counts}
+          selected={filters.shelter}
+          onToggle={(value) => onToggle("shelter", value)}
+          onToggleMany={(values) => onToggleMany("shelter", values)}
+          resultCount={scope.resultCount}
+          municipalities={scope.municipalities}
+          offSite={scope.offSite}
+          summaries={scope.summaries}
+          deepLink="desktop"
+        />
+      )}
 
       <FilterGroupList
         filters={filters}

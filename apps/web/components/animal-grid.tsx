@@ -19,6 +19,7 @@ import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { Button } from "@/components/ui/button";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
+import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -178,9 +179,16 @@ export function AnimalGrid({
     () => applyFilters(animals, filters, reference),
     [animals, filters, reference],
   );
+  // Where Najbližje measures from, granted by the location picker's nearby
+  // control and by nothing else. Null on the server and on the first client
+  // render, which is what makes the option's absence in the sort picker and the
+  // fallback here agree without either having to ask the other: with no origin
+  // sortAnimals puts the list in the default order (effectiveSort), including
+  // for a shared link that arrived carrying ?razvrsti=najblizje.
+  const nearby = useNearbyOrigin();
   const sorted = useMemo(
-    () => sortAnimals(visible, sort, locale, reference),
-    [visible, sort, locale, reference],
+    () => sortAnimals(visible, sort, locale, reference, nearby?.at),
+    [visible, sort, locale, reference, nearby],
   );
 
   // How much of that list is on the page. The count is held together with the
@@ -605,6 +613,16 @@ export function AnimalGrid({
           goodWith={goodWith}
           home={home}
           care={care}
+          scope={
+            shelters && {
+              options: shelters,
+              counts: counts.shelter,
+              municipalities,
+              offSite: offSiteShelters,
+              summaries: shelterSummaries,
+              resultCount: visible.length,
+            }
+          }
           onToggle={toggle}
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
@@ -616,6 +634,7 @@ export function AnimalGrid({
       <div className="flex flex-col gap-4">
         <AnimalFilters
           isEmpty={isEmpty}
+          hasSidebar={hasSidebar}
           filters={filters}
           speciesTally={speciesTally}
           speciesRoster={speciesRoster}

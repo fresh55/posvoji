@@ -52,7 +52,7 @@ function renderSheet(overrides: SheetProps = {}) {
         counts={emptyCounts}
         toggles={[]}
         toggleTally={new Map()}
-        panelCount={0}
+        activeCount={0}
         resultCount={0}
         onClearAll={vi.fn()}
         {...filterActions}
@@ -182,7 +182,7 @@ describe("mobile filter hardening", () => {
   });
 
   it("announces the active filter count and keeps a mobile-sized close target", async () => {
-    renderSheet({ panelCount: 2 });
+    renderSheet({ activeCount: 2 });
 
     const trigger = screen.getByRole("button", {
       name: "Filters, 2 active",
@@ -222,7 +222,7 @@ describe("mobile filter hardening", () => {
       screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
     ).toBe(true);
 
-    rerender({ panelCount: 1 });
+    rerender({ activeCount: 1 });
 
     expect(
       screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),

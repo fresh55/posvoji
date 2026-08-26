@@ -5,6 +5,7 @@ import {
   ArrowDownNarrowWide,
   DoorOpen,
   Hourglass,
+  Navigation,
   Sprout,
   TreeDeciduous,
   type LucideIcon,
@@ -18,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ANIMAL_SORTS, type AnimalSort } from "@/lib/sort";
+import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
+import { ANIMAL_SORTS, effectiveSort, type AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 
 // One mark per order, borrowed rather than invented wherever the site already
@@ -26,13 +28,16 @@ import { cn } from "@/lib/utils";
 // shelter card already draw it for. Sprout and TreeDeciduous are the two ends
 // of the age filter's own grove: age-stage-icon.tsx adapts its mladicek and
 // senior paths from these exact two icons, so "youngest first" and "oldest
-// first" are marked with the plants the sidebar already grows.
+// first" are marked with the plants the sidebar already grows. Navigation is
+// the crosshair the location picker's own "Najbližje prvo" control wears, so
+// the order and the control that grants it carry the same mark.
 const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
   "longest-in-shelter": Hourglass,
   "newest-arrivals": DoorOpen,
   youngest: Sprout,
   oldest: TreeDeciduous,
   name: ArrowDownAZ,
+  nearest: Navigation,
 };
 
 /** The one sort control, in both places sorting is offered.
@@ -72,11 +77,33 @@ export function SortPicker({
     youngest: messages.sortYoungest,
     oldest: messages.sortOldest,
     name: messages.sortName,
+    nearest: messages.sortNearest,
   };
+
+  // Najbližje is on offer only once something has granted a point to measure
+  // from, which on this site is the location picker's nearby control and
+  // nothing else. Both placements read the same store, so the option appears in
+  // the toolbar and in the sheet on the same commit.
+  //
+  // No mounted flag is needed for the hydration guard: useNearbyOrigin is a
+  // useSyncExternalStore whose server snapshot is null, and React reads that
+  // snapshot for the hydrating render too, so the server's list of orders and
+  // the first client render's list are the same list. The option arrives in the
+  // commit after, when there is nothing left to mismatch against.
+  const origin = useNearbyOrigin();
+  const sorts = origin
+    ? ANIMAL_SORTS
+    : ANIMAL_SORTS.filter((sort) => sort !== "nearest");
+  // A shared link can carry ?razvrsti=najblizje to somebody who has granted
+  // nothing, and the option it names is then not in the list below. The grid
+  // falls back to the default for that link (effectiveSort in lib/sort.ts), so
+  // the trigger names the order the grid actually used rather than one the
+  // visitor cannot pick.
+  const shown = effectiveSort(value, origin?.at);
 
   return (
     <Select
-      value={value}
+      value={shown}
       disabled={disabled}
       onValueChange={(sort) => onChange(sort as AnimalSort)}
     >
@@ -84,7 +111,7 @@ export function SortPicker({
         size="sm"
         // The name carries the active sort as well as the visible label does,
         // because this control is worth finding by either.
-        aria-label={`${messages.sortBy}: ${labels[value]}`}
+        aria-label={`${messages.sortBy}: ${labels[shown]}`}
         className={cn(
           "text-xs max-lg:min-h-11",
           quiet && cn(QUIET_TRIGGER_CLASS, "data-[state=open]:border-border"),
@@ -103,11 +130,11 @@ export function SortPicker({
             hiding, is what a long sort name gets: the trigger keeps whatever
             width its placement gives it and the name gives way inside. */}
         <SelectValue>
-          <span className="truncate">{labels[value]}</span>
+          <span className="truncate">{labels[shown]}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent position="popper" align="end">
-        {ANIMAL_SORTS.map((sort) => {
+        {sorts.map((sort) => {
           const Icon = SORT_ICONS[sort];
           return (
             <SelectItem key={sort} value={sort}>

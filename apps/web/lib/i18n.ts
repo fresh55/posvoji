@@ -11,9 +11,14 @@ const sl = {
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
   moreInformation: "Več informacij",
+  mainNavigation: "Glavna navigacija",
   backToTop: "Na vrh strani",
   backToAnimals: "Nazaj na živali",
   resources: "Strokovno preverjeni viri",
+  // The header's version of the line above. The footer has room for the full
+  // phrase; a row of three quiet links at the top of the page does not, and
+  // beside "Zavetišča" and "Najdena žival" the noun on its own is what fits.
+  navResources: "Viri",
   shelters: "Zavetišča",
   forShelters: "Za zavetišča",
   chooseLanguage: "Izberi jezik",
@@ -187,6 +192,10 @@ const sl = {
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
   muniNoMatch: "Ni občine z imenom",
+  // The screen-reader-only status announcing what the search resolved to,
+  // read after every keystroke: municipality-finder.tsx has no visible
+  // aria-live of its own, unlike the shelter tab beside it.
+  muniMatchesStatus: "{count} zadetkov, izberi občino s seznama.",
   muniResponsible: "pristojno zavetišče",
   muniResponsiblePlural: "pristojni zavetišči",
   muniOnSite: "Živali tega zavetišča so na posvoji.si ({count})",
@@ -344,9 +353,11 @@ const en: Messages = {
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
   moreInformation: "More information",
+  mainNavigation: "Main navigation",
   backToTop: "Back to top",
   backToAnimals: "Back to the animals",
   resources: "Trusted animal-care resources",
+  navResources: "Resources",
   shelters: "Shelters",
   forShelters: "For shelters",
   chooseLanguage: "Choose language",
@@ -469,6 +480,7 @@ const en: Messages = {
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
   muniNoMatch: "No municipality named",
+  muniMatchesStatus: "{count} matches, choose a municipality from the list.",
   muniResponsible: "responsible shelter",
   muniResponsiblePlural: "responsible shelters",
   muniOnSite: "This shelter's animals are on posvoji.si ({count})",

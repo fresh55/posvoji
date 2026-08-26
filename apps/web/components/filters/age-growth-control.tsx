@@ -491,6 +491,11 @@ export function AgeGrowthControl({
                             layout === "sheet"
                               ? "text-3xs leading-tight"
                               : "w-8 text-right text-2xs",
+                            // Same fix as filter-card.tsx's own count: over
+                            // the selected --filter-accent wash,
+                            // text-muted-foreground measures 4.417:1, under
+                            // AA for text this small.
+                            checked && "text-[var(--filter-accent-count-foreground)]",
                           )}
                         />
                         {/* Last, and at the trailing edge, the way every

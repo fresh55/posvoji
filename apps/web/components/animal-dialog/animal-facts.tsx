@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   Building2,
   CalendarClock,
@@ -342,6 +342,7 @@ export function AnimalFacts({
   // so the component is keyed by animal where it is used.
   const [showHealthDetails, setShowHealthDetails] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const descriptionId = useId();
   const months = ageInMonths(animal, reference);
   const stayMonths = animal.intakeDate
     ? monthsInShelter(animal.intakeDate, reference)
@@ -530,6 +531,7 @@ export function AnimalFacts({
       {animal.shortDescription && (
         <div className="space-y-1">
           <p
+            id={descriptionId}
             // max-w-prose: at the dialog's full width these lines run past
             // ninety characters, which is more than an eye tracks comfortably.
             // The pills and boxes around it keep the full width; only the
@@ -545,6 +547,7 @@ export function AnimalFacts({
             <button
               type="button"
               aria-expanded={showFullDescription}
+              aria-controls={descriptionId}
               onClick={() => setShowFullDescription((open) => !open)}
               className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >

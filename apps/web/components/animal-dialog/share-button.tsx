@@ -211,7 +211,10 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
             value={url}
             aria-label={text.link}
             onFocus={(event) => event.currentTarget.select()}
-            className="h-8 flex-1 text-xs text-muted-foreground"
+            // text-base and not text-xs below lg: iOS Safari zooms the whole
+            // page when a focused input sets type under 16px, same fix as
+            // the found-animal search box (municipality-finder.tsx).
+            className="h-8 flex-1 text-base text-muted-foreground lg:text-xs"
           />
           <Button
             type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Check,
   ExternalLink,
@@ -92,6 +92,7 @@ export function MunicipalityFinder({
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const statusId = useId();
   const { state, toggle: locate, turnOff: stopLocating } = useNearby();
 
   const byName = useMemo(
@@ -180,6 +181,25 @@ export function MunicipalityFinder({
     stopLocating();
   };
 
+  // The visible states below (resolved card, disambiguation list, "no
+  // match") have no live region of their own: unlike the shelter tab beside
+  // it, nothing here narrates itself to a screen reader as the query
+  // changes. One sr-only status covers the three outcomes typing can reach,
+  // in the same order the visible UI checks them.
+  const status = active
+    ? `${active.name} · ${
+        active.coverage.length === 1
+          ? messages.muniResponsible
+          : active.coverage.length > 1
+            ? messages.muniResponsiblePlural
+            : messages.muniUnverified
+      }`
+    : matches.length > 1
+      ? t("muniMatchesStatus", { count: matches.length })
+      : query.trim() && !guess && nameMatches.length === 0
+        ? `${messages.muniNoMatch} »${query.trim()}«`
+        : "";
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0">
@@ -206,12 +226,16 @@ export function MunicipalityFinder({
             }}
             placeholder={messages.muniSearch}
             aria-label={messages.muniSearch}
+            aria-describedby={statusId}
             // 44px tall below lg, the touch target the shelter tab's own
             // fields keep. text-base and not text-sm at that size: iOS Safari
             // zooms the whole page when a focused input sets type under 16px,
             // and this dialog is the map, so a zoom is a map nobody can aim at.
             className="h-11 pl-8 text-base lg:h-8 lg:text-sm"
           />
+          <p id={statusId} aria-live="polite" className="sr-only">
+            {status}
+          </p>
           {query !== "" && (
             <button
               type="button"

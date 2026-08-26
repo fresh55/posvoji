@@ -296,10 +296,12 @@ export function FilterChips({
   // lg and not md, matching the species tabs and the sort beside it; at md the
   // same bar mixed 44px targets with 28px ones for reasons nobody could see.
   //
-  // border-ring with the ring, because this shape has a border to move. The
-  // hand-rolled ring-2 was the odd one out against every primitive's ring-3.
+  // outline-2/outline-offset-[-2px]/outline-foreground, the codebase's
+  // proven 19.8:1 focus indicator (animal-card.tsx, filter-section-header.tsx):
+  // the border-ring/ring-3 pair it replaces measured 1.54:1 and 2.59:1 in
+  // light mode, both under the 3:1 WCAG 1.4.11 floor.
   const pill =
-    "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
+    "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
 
   const row = (
     <>
@@ -449,7 +451,7 @@ export function FilterChips({
               onClearAll();
             }}
             aria-label={messages.clearAllFilters}
-            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:tap-target"
+            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground max-lg:tap-target"
           >
             {messages.clearAll}
           </button>
@@ -519,7 +521,7 @@ export function UndoOffer({
         type="button"
         onClick={onUndo}
         aria-label={messages.undoClearFilters}
-        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:tap-target"
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground max-lg:tap-target"
       >
         <Undo2 className="size-3.5" aria-hidden />
         {messages.undoClear}

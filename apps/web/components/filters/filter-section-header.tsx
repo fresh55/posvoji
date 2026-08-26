@@ -80,9 +80,13 @@ export function CollapsibleBody({
 }
 
 /** The hint sentence a section keeps under its header. A folding section moves
-    the hint into the header tooltip, which a touch screen cannot open, so
-    coarse pointers keep the sentence in the body; a section that never folds
-    keeps it visible outright. */
+    the hint into the header tooltip, which a tap can never open (Radix only
+    wires a tooltip to hover and focus), so below lg the sentence stays in the
+    body instead; a section that never folds keeps it visible outright.
+    max-lg and not pointer:coarse, matching every other touch adaptation in
+    this codebase (max-lg:tap-target and its siblings): a coarse pointer is
+    what the touchscreen laptops and hybrid tablets this rule also needs to
+    catch do not reliably report. */
 export function SectionHint({
   collapse,
   children,
@@ -94,7 +98,7 @@ export function SectionHint({
     <p
       className={cn(
         "mb-2 text-2xs leading-snug text-muted-foreground",
-        collapse && "hidden [@media(pointer:coarse)]:block",
+        collapse && "hidden max-lg:block",
       )}
     >
       {children}
@@ -216,9 +220,12 @@ export function FilterSectionHeader({
     >
       <span className="truncate">{label}</span>
       {hint ? (
+        // Below lg the hint already sits in the body as plain text
+        // (SectionHint); the mark that promises "more on hover" would be a
+        // promise a tap can't collect on, so it stays lg+ only.
         <Info
           aria-hidden
-          className="size-3.5 shrink-0 text-muted-foreground/60"
+          className="size-3.5 shrink-0 text-muted-foreground/60 max-lg:hidden"
           strokeWidth={1.8}
         />
       ) : null}

@@ -132,6 +132,15 @@
   --filter-accent-foreground: oklch(0.32 0.075 151);
   --filter-accent-border: oklch(0.68 0.075 151);
   --filter-accent-strong: oklch(0.44 0.1 151);
+  /* The selected filter card's count, at 11px, is quieter than the label
+     beside it and so does not carry -foreground's own ink: it kept
+     text-muted-foreground instead, which was tuned against --background and
+     --muted, not this card's own wash. Over --filter-accent that measured
+     4.417:1, under the 4.5:1 AA floor for small text. This token holds the
+     accent's hue rather than falling back to grey, so the count still reads
+     as part of the green family, just quieter than the label: 5.511:1 over
+     --filter-accent. */
+  --filter-accent-count-foreground: oklch(0.46 0.075 151);
   /* The one warm family on the site: a reserved animal, a long wait, a portal
      warning. Held apart from --filter-accent because it says "not settled yet"
      rather than "chosen". It was raw amber-500/700/600 at ten call sites,
@@ -289,6 +298,10 @@
   --filter-accent-foreground: oklch(0.88 0.055 151);
   --filter-accent-border: oklch(0.48 0.06 151);
   --filter-accent-strong: oklch(0.72 0.09 151);
+  /* text-muted-foreground already clears AA here (6.1:1 on --filter-accent),
+     but the count keeps its own token in dark too so selected and unselected
+     never trade places between themes. 5.21:1 over --filter-accent. */
+  --filter-accent-count-foreground: oklch(0.66 0.055 151);
   /* Only the ink flips; the wash and its border hold over either page. */
   --status-warn-foreground: oklch(0.879 0.169 91.605);
   --status-warn-mark: oklch(0.828 0.189 84.429);
@@ -370,6 +383,7 @@
     --filter-accent-foreground: oklch(0.88 0.055 151);
     --filter-accent-border: oklch(0.48 0.06 151);
     --filter-accent-strong: oklch(0.72 0.09 151);
+    --filter-accent-count-foreground: oklch(0.66 0.055 151);
     /* Kept in step with the .dark block above. */
     --status-warn-foreground: oklch(0.879 0.169 91.605);
     --status-warn-mark: oklch(0.828 0.189 84.429);

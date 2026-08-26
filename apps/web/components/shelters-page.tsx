@@ -68,7 +68,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           <div className="space-y-5">
             <a
               href={homeHref}
-              className="inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex max-lg:tap-target text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
               ← {text.back}
             </a>

@@ -37,10 +37,17 @@ export function LanguageSwitcher({
           asChild
           size="xs"
           variant="ghost"
+          // max-lg:min-h-11 and not max-lg:tap-target. These two sit 2px
+          // apart, so the overlay each one laid out to 44px reached across
+          // the gap and over its neighbour: measured on a 390px phone, the
+          // right edge of SL hit-tested as EN, because EN comes later in the
+          // DOM and won. filter-chips.tsx met the same thing and wrote down
+          // the same answer: past a certain closeness the control has to
+          // grow, not merely claim.
           className={
             locale === language.locale
-              ? "rounded-ui bg-background px-2 font-normal text-foreground shadow-sm hover:bg-background max-lg:tap-target"
-              : "rounded-ui px-2 font-normal text-muted-foreground hover:text-foreground max-lg:tap-target"
+              ? "rounded-ui bg-background px-2 font-normal text-foreground shadow-sm hover:bg-background max-lg:min-h-11 max-lg:px-3"
+              : "rounded-ui px-2 font-normal text-muted-foreground hover:text-foreground max-lg:min-h-11 max-lg:px-3"
           }
         >
           <a

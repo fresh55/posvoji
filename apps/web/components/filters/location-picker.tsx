@@ -9,13 +9,13 @@ import {
   useState,
 } from "react";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   List,
   LoaderCircle,
   MapPin,
+  Maximize2,
   Navigation,
   PawPrint,
   Search,
@@ -995,9 +995,23 @@ export function LocationPicker({
           // asserting, but as one explicit a11y check that fails loudly on its
           // own, not as the way seven other tests reach the dialog.
           data-picker-trigger
+          // The quiet dress belongs to the toolbar, where the species tabs
+          // anchor the row and this control can afford to be only text at
+          // rest. The dock has no such anchor: floating on its own plate next
+          // to the filled Filtri button, a borderless "Vsa zavetišča" read as
+          // a caption, not as something to press. There the button keeps the
+          // outline variant's own frame, shadow and dark ground.
           className={cn(
-            QUIET_TRIGGER_CLASS,
-            "max-w-[14rem] justify-between gap-2 font-normal aria-expanded:border-border",
+            "justify-between gap-2 font-normal",
+            deepLink === "mobile"
+              ? // A touch tighter than the size-sm defaults: the frame's two
+                // border pixels were exactly what pushed "Vsa zavetišča" into
+                // an ellipsis on a 390px dock.
+                "gap-1.5 px-2"
+              : cn(
+                  QUIET_TRIGGER_CLASS,
+                  "max-w-[14rem] aria-expanded:border-border",
+                ),
           )}
         >
           <span className="flex min-w-0 items-center gap-1.5">
@@ -1014,7 +1028,14 @@ export function LocationPicker({
             />
             <span className="truncate">{label}</span>
           </span>
-          <ChevronDown className="size-3.5 opacity-50" aria-hidden />
+          {/* Not a chevron. Everywhere else in this app a chevron down is a
+              fold opening in place: the health row, a filter section, the
+              off-roster list, a real select. This control opens a full-screen
+              map, which is why the ARIA above had to stop saying combobox,
+              and the glyph was the other half of the same promise. Maximize
+              says what the tap does, and paired with the MiniMap on the left
+              the whole button reads as "the small map, made big". */}
+          <Maximize2 className="size-3.5 opacity-50" aria-hidden />
         </Button>
       </DialogTrigger>
 

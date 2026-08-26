@@ -13,7 +13,8 @@ import {
 } from "./portal-overrides";
 import { providers } from "./registry";
 import { writeShareCards } from "./share-cards";
-import { datasetDir, overrideReportPath } from "./paths";
+import { datasetDir, historyLedgerPath, overrideReportPath } from "./paths";
+import { appendHistoryEntry, toRemovedAnimal } from "./history-ledger";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
 
@@ -246,6 +247,10 @@ console.log(
   `share cards: ${cards.written} drawn, ${cards.reused} reused, ${cards.deleted} deleted`,
 );
 
+const removedAnimals = (previous?.animals ?? []).filter(
+  (a) => !currentIds.has(a.id),
+);
+
 const changes: ChangeSet = {
   generatedAt,
   added: animals.filter((a) => !previousById.has(a.id)).map(toChangeEntry),
@@ -255,9 +260,7 @@ const changes: ChangeSet = {
       return before !== undefined && stableView(before) !== stableView(a);
     })
     .map(toChangeEntry),
-  removed: (previous?.animals ?? [])
-    .filter((a) => !currentIds.has(a.id))
-    .map(toChangeEntry),
+  removed: removedAnimals.map(toChangeEntry),
 };
 
 const dataset: Dataset = { generatedAt, animals };
@@ -270,6 +273,16 @@ writeFileSync(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),
 );
+// changes.json above is overwritten every run, so a removed animal is only
+// ever visible for the one run that dropped it. This appends the same run's
+// outcome to a durable ledger outside data/dist so history accumulates
+// instead of being lost on the next export.
+appendHistoryEntry(historyLedgerPath, {
+  generatedAt,
+  added: changes.added.map((a) => a.id),
+  updatedCount: changes.updated.length,
+  removed: removedAnimals.map(toRemovedAnimal),
+});
 // Written on every run, including runs with no portal configured, so the
 // file never goes stale and an empty report cannot be mistaken for "the
 // shelters have corrected nothing".

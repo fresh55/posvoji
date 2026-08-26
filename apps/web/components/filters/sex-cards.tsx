@@ -3,6 +3,7 @@
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
+  FilterSelectionMark,
   filterCardVariants,
 } from "@/components/filters/filter-card";
 import {
@@ -27,6 +28,9 @@ const DRAW_STAGGER = 0.12;
 const FADE_DURATION = 0.15;
 const POP_DURATION = 0.42;
 const POP_MS = 500;
+// The glyph draws over DRAW_DURATION plus one stagger step, so the check waits
+// for the drawing hand instead of racing it.
+const DRAW_CHECK_DELAY = 0.3;
 
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
@@ -165,6 +169,12 @@ export function SexCards({
                   "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
               })}
             >
+              <FilterSelectionMark
+                checked={checked}
+                appearDelay={DRAW_CHECK_DELAY}
+                className="absolute right-2 top-2"
+              />
+
               <m.span
                 aria-hidden
                 className="flex items-center justify-center will-change-transform"

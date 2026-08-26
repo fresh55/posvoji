@@ -18,7 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNearby } from "@/hooks/use-nearby";
+import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import {
+  ANIMAL_PROTECTION_ACT_URL,
+  SHELTER_REGISTER_URL,
+} from "@/lib/found-animal-sources";
 import type { LookupEntry } from "@/lib/municipality-coverage";
+import { municipalityPath } from "@/lib/municipality-path";
 import {
   municipalitiesForInput,
   municipalitiesNear,
@@ -34,9 +40,6 @@ function fold(text: string): string {
     .toLowerCase();
 }
 
-const REGISTER_URL = "https://www.gov.si/teme/zascita-zivali/#e69068";
-const LAW_URL =
-  "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2021-01-2993";
 // Enough to disambiguate any prefix without becoming a directory. The page
 // this replaced listed all 212 občine; the dialog answers one question.
 const MAX_MATCHES = 8;
@@ -60,6 +63,7 @@ export function MunicipalityFinder({
   onToggle,
   onActiveShelters,
   onActiveMunicipality,
+  reflectUrl = false,
 }: {
   entries: LookupEntry[];
   /** Shelter ids that exist as filter options, i.e. can be selected. */
@@ -72,6 +76,17 @@ export function MunicipalityFinder({
   /** Name of the picked municipality, which is the only thing that knows
    *  where the question was asked from. Null when none is picked. */
   onActiveMunicipality?: (name: string | null) => void;
+  /**
+   * Write the resolved municipality into the address bar, as the path of the
+   * static page that holds the same answer.
+   *
+   * Only the standalone found-animal page sets it, and only that page can:
+   * this component is also the picker dialog's municipality tab, where the
+   * address belongs to the homepage underneath and carries the filter state
+   * that lib/location-search.ts owns. Overwriting it there would drop the
+   * filters and leave the dialog's own /?najdena behind.
+   */
+  reflectUrl?: boolean;
 }) {
   const { locale, messages, t } = useI18n();
   const [query, setQuery] = useState("");
@@ -123,6 +138,31 @@ export function MunicipalityFinder({
     );
     onActiveMunicipality?.(active ? active.name : null);
   }, [active, onActiveMunicipality, onActiveShelters]);
+
+  // The answer, once it exists, has an address of its own: the static page for
+  // that občina, which server-renders this same shelter, the same cost
+  // paragraph and the same steps. Reflecting it costs nothing at the time and
+  // buys everything afterwards: a reload keeps the answer, a share sends the
+  // answer rather than the empty box, and the back button leaves the page
+  // instead of undoing a search nobody navigated through.
+  //
+  // replaceState and not a navigation. Typing must keep working exactly as it
+  // does, and a router push here would tear down the input on every keystroke
+  // that happens to resolve to one municipality. Next supports the native
+  // history methods and keeps its own router state in step with them.
+  //
+  // Slovenian only, because the pages are. On the English page the address
+  // stays what it was.
+  useEffect(() => {
+    if (!reflectUrl || locale !== "sl") return;
+    const path = active
+      ? municipalityPath(active.name)
+      : FOUND_ANIMAL_PATHS.sl;
+    // Static export serves /najdena-zival/ajdovscina and, on some hosts,
+    // /najdena-zival/ajdovscina/. Both are this path; neither is a change.
+    if (window.location.pathname.replace(/\/$/, "") === path) return;
+    window.history.replaceState(null, "", `${path}${window.location.search}`);
+  }, [active, locale, reflectUrl]);
 
   const cardText: CoverageCardText = {
     dogs: messages.speciesDogs,
@@ -377,7 +417,7 @@ export function MunicipalityFinder({
                 <div className="space-y-1.5 rounded-ui border border-dashed p-4 text-sm text-muted-foreground">
                   <p>{messages.muniUnverifiedAdvice}</p>
                   <a
-                    href={REGISTER_URL}
+                    href={SHELTER_REGISTER_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs underline underline-offset-2 hover:text-foreground"
@@ -435,7 +475,7 @@ export function MunicipalityFinder({
             <div className="space-y-1 rounded-ui border bg-muted/40 p-3">
               <p className="text-xs leading-relaxed">{messages.muniCost}</p>
               <a
-                href={LAW_URL}
+                href={ANIMAL_PROTECTION_ACT_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"

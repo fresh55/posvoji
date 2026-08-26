@@ -130,6 +130,21 @@ export function sheltersOf(
   return `${selected} od ${total} ${total === 1 ? "zavetišča" : "zavetišč"}`;
 }
 
+// What the picker's trigger and the Kje row both say they are showing: the
+// whole country until something is picked, and "X od Y zavetišč" after that.
+// One helper because three surfaces state it now (the toolbar trigger, the
+// sidebar row, the sheet row) and a second copy of the branch would be free to
+// answer differently from the dialog it opens.
+export function shelterScopeLabel(
+  selected: number,
+  total: number,
+  locale: Locale,
+): string {
+  return selected === 0
+    ? allShelters(locale)
+    : sheltersOf(selected, total, locale);
+}
+
 export function sheltersMissingFromMap(n: number, locale: Locale): string {
   if (locale === "en") {
     return `${shelterCount(n, locale)} ${n === 1 ? "is" : "are"} not on the map.`;

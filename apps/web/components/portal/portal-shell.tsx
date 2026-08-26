@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { LazyMotion, domAnimation } from "motion/react";
 import { I18nProvider } from "@/components/i18n-provider";
 import { Logo } from "@/components/logo";
+import { PageShell } from "@/components/page-shell";
 import { portalText } from "@/components/portal/portal-text";
 import { SiteFooter } from "@/components/site-footer";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,10 @@ import { cn } from "@/lib/utils";
 /**
  * The portal's own frame. It borrows the site's shell and footer but drops
  * the language switcher: the portal is Slovenian only.
+ *
+ * The frame itself is PageShell, so the portal cannot drift off the width and
+ * footer behaviour the public pages settled on. It takes the wide tier because
+ * the workspace tables want the extra column.
  */
 export function PortalShell({
   actions,
@@ -27,7 +32,7 @@ export function PortalShell({
       {/* One motion feature bundle for the whole portal, so no page or card
           has to carry its own. */}
       <LazyMotion features={domAnimation}>
-        <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+        <PageShell width="wide">
           <header className="bleed flex items-center justify-between gap-3 border-b py-4">
             {/* The site is a static export and navigates with plain anchors
                 everywhere; next/link is not used in this repo. */}
@@ -60,7 +65,7 @@ export function PortalShell({
           </main>
 
           <SiteFooter locale="sl" showPortalLink={false} />
-        </div>
+        </PageShell>
       </LazyMotion>
     </I18nProvider>
   );

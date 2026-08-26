@@ -37,12 +37,15 @@ describe("AgeGrowthControl", () => {
     expect(html.match(/data-stage-active="false"/g)).toHaveLength(2);
   });
 
-  it("keeps the decorative lifecycle out of the accessibility tree", () => {
+  it("keeps the decorative growth icons out of the accessibility tree", () => {
     const html = renderAgeControl();
 
-    expect(html).toContain('aria-hidden="true" data-age-view="grove"');
     expect(html).toContain('aria-label="Starost"');
     expect(html).toContain("Izberi eno ali več starosti.");
+    expect(html.match(/data-age-icon="/g)).toHaveLength(
+      // Every stage's icon lives on its tile now; nothing renders it twice.
+      options.length,
+    );
   });
 
   it("keeps the reset action stable but unreachable until a filter is selected", () => {

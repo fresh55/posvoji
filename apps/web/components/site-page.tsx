@@ -41,7 +41,7 @@ export function SitePage({ locale }: { locale: Locale }) {
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">
           <div className="space-y-1.5">
-            <h1 className="text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
               {messages.heroTitle}
             </h1>
             {/* The hero's second line carries both things the page has to say

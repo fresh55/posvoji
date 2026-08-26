@@ -385,6 +385,10 @@ export function PhotoGallery({
             // the arrow keys on the card's own link, which is one stop instead
             // of two and faster than pressing Enter on a disc.
             tabIndex={-1}
+            // Read by the grid card, whose press feedback squeezes the whole
+            // card. These turn the picture and open nothing, so they are held
+            // out of it. Surfaces that do not squeeze ignore the attribute.
+            data-press-exempt
             onClick={() => changeImage(-1)}
             aria-label={messages.previousPhoto}
             className={`${OWN_BUTTON_CLASS} left-1.5`}
@@ -396,6 +400,7 @@ export function PhotoGallery({
             variant="outline"
             size="icon-sm"
             tabIndex={-1}
+            data-press-exempt
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
             className={`${OWN_BUTTON_CLASS} right-1.5`}
@@ -415,6 +420,10 @@ export function PhotoGallery({
           <div
             data-slot="photo-dots"
             aria-hidden
+            // Inert today, since pointer-events-none means these never take a
+            // press at all. It is here so the day the dots become tappable
+            // they are already out of the card's squeeze, like the chevrons.
+            data-press-exempt
             className="pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1"
           >
             {Array.from({ length: dots.count }, (_, dot) => (

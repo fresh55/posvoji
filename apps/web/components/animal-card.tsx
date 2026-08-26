@@ -159,13 +159,19 @@ export function AnimalCard({
         aria-labelledby={headingId}
         // active:scale is the press answering back where hover never fires,
         // which is every touch screen. 0.99 is felt, not watched.
+        //
+        // It answers only for the presses that open this animal: the photo and
+        // the name block. Anything carrying data-press-exempt is held out with
+        // :has(), because the whole card squeezing is a promise that this card
+        // is about to open, and the gallery chevrons only turn the picture
+        // while the shelter line leaves for another page entirely.
         className={cn(
           // group/card and not a bare group: the photo's zoom lives in
           // photo-gallery.tsx and reaches back up to this element, and an
           // unnamed group would tie it to whichever ancestor happened to carry
           // one. The same reasoning the gallery's own chevrons already follow
           // with group/photo.
-          "group/card flex flex-col overflow-hidden transition-[border-color,box-shadow,transform] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm motion-safe:active:scale-[0.99]",
+          "group/card flex flex-col overflow-hidden transition-[border-color,box-shadow,transform] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99]",
           className,
         )}
         style={style}
@@ -329,6 +335,9 @@ export function AnimalCard({
         {showShelter ? (
           <a
             href={shelterPath(animal.shelter.id, locale)}
+            // This line leaves for the shelter's page, so the card must not
+            // squeeze under it. See the article's own comment.
+            data-press-exempt
             // No divider. The muted colour, the gap mt-auto keeps above the
             // line and the card's own border do the separating; a rule drawn
             // across a 250px card was the heaviest thing on it.

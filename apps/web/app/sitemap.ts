@@ -3,7 +3,7 @@ import { animalPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { loadMunicipalities } from "@/lib/municipalities";
 import { municipalityPath } from "@/lib/municipality-path";
-import { indexPagePath, type IndexPage } from "@/lib/page-share";
+import { INDEX_ROUTES, ROUTES } from "@/lib/routes";
 import { shelterPath } from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
@@ -24,8 +24,6 @@ import { SITE_URL } from "@/lib/site";
 // that has not said it is static. Everything below is read off the disk at
 // build time, so saying so costs nothing; app/robots.ts says the same.
 export const dynamic = "force-static";
-
-const INDEX_PAGES: IndexPage[] = ["home", "shelters", "resources", "foundAnimal"];
 
 function absolute(path: string): string {
   return `${SITE_URL}${path === "/" ? "" : path}`;
@@ -53,8 +51,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // and an entry with no lastmod is a valid entry.
   const generatedAt = dataset ? new Date(dataset.generatedAt) : undefined;
 
-  const indexes = INDEX_PAGES.flatMap((page) =>
-    pair(indexPagePath(page, "sl"), indexPagePath(page, "en"), generatedAt),
+  const indexes = INDEX_ROUTES.flatMap((page) =>
+    pair(ROUTES[page].sl, ROUTES[page].en, generatedAt),
   );
 
   const shelters = loadShelters().flatMap((shelter) =>

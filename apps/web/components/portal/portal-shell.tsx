@@ -14,8 +14,10 @@ import { cn } from "@/lib/utils";
  * the language switcher: the portal is Slovenian only.
  *
  * The frame itself is PageShell, so the portal cannot drift off the width and
- * footer behaviour the public pages settled on. It takes the wide tier because
- * the workspace tables want the extra column.
+ * footer behaviour the public pages settled on. It takes the default tier:
+ * the workspace has always drawn itself at max-w-5xl, and the frame matching
+ * it is what keeps the logo above the first column rather than 96px left of
+ * it. The login page centres a single card inside that frame on purpose.
  */
 export function PortalShell({
   actions,
@@ -32,7 +34,7 @@ export function PortalShell({
       {/* One motion feature bundle for the whole portal, so no page or card
           has to carry its own. */}
       <LazyMotion features={domAnimation}>
-        <PageShell width="wide">
+        <PageShell>
           <header className="bleed flex items-center justify-between gap-3 border-b py-4">
             {/* The site is a static export and navigates with plain anchors
                 everywhere; next/link is not used in this repo. */}
@@ -55,10 +57,13 @@ export function PortalShell({
 
           <main
             className={cn(
-              "mx-auto flex w-full flex-1 flex-col py-page-y",
+              "flex w-full flex-1 flex-col py-page-y",
+              // No mx-auto on the workspace: it holds itself to the frame's
+              // own width, so the header and the content start on one left
+              // edge. The login card is the exception and says so below.
               narrow
-                ? "max-w-md justify-center gap-6"
-                : "max-w-5xl gap-8 sm:gap-10",
+                ? "mx-auto max-w-md justify-center gap-6"
+                : "gap-8 sm:gap-10",
             )}
           >
             {children}

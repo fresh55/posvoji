@@ -1,5 +1,5 @@
-import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type FooterLink = { href: string; label: string; quiet?: boolean };
@@ -41,9 +41,9 @@ export function SiteFooter({
   docked?: boolean;
 }) {
   const messages = getMessages(locale);
-  const resourcesHref = locale === "sl" ? "/viri" : "/en/resources";
-  const sheltersHref = locale === "sl" ? "/zavetisca" : "/en/shelters";
-  const foundAnimalHref = FOUND_ANIMAL_PATHS[locale];
+  const resourcesHref = ROUTES.resources[locale];
+  const sheltersHref = ROUTES.shelters[locale];
+  const foundAnimalHref = ROUTES.foundAnimal[locale];
   // The portal is Slovenian only, so both locales point at the same login
   // page. It stays quiet: almost nobody in this footer is shelter staff.
   const links = [

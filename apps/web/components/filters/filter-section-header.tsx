@@ -216,7 +216,7 @@ export function FilterSectionHeader({
       onKeyDown={moveSectionFocus}
       aria-expanded={collapse.open}
       aria-controls={collapse.contentId}
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left outline-none transition-colors duration-150 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground max-lg:tap-target"
+      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left outline-none transition-colors duration-150 hover:bg-muted focus-ring max-lg:tap-target"
     >
       <span className="truncate">{label}</span>
       {hint ? (

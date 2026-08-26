@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
 import type { Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS } from "@/lib/labels";
+import { ROUTES } from "@/lib/routes";
 import { getShelterLogos } from "@/lib/shelter-logos";
+import { shelterPath } from "@/lib/shelter-path";
 import { getShelterBySlug } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
 
@@ -59,17 +61,18 @@ export function ShelterDetailPage({
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
   const text = pageText[locale];
-  const indexHref = locale === "sl" ? "/zavetisca" : "/en/shelters";
+  const indexHref = ROUTES.shelters[locale];
+  const detailHref = shelterPath(shelter.id, locale);
 
   return (
     <I18nProvider locale={locale}>
       <PageShell>
         <SiteHeader
           locale={locale}
-          homeHref={locale === "sl" ? "/" : "/en"}
+          homeHref={ROUTES.home[locale]}
           languagePaths={{
-            sl: `/zavetisca/${shelter.id}`,
-            en: `/en/shelters/${shelter.id}`,
+            sl: shelterPath(shelter.id, "sl"),
+            en: shelterPath(shelter.id, "en"),
           }}
         />
 
@@ -183,7 +186,7 @@ export function ShelterDetailPage({
               logos={logos}
               emptyLabel={text.emptyAnimals}
               referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
-              basePath={`${indexHref}/${shelter.id}`}
+              basePath={detailHref}
             />
           </section>
         </main>

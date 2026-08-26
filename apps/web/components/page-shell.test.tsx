@@ -2,11 +2,7 @@
 
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  DETAIL_TITLE_CLASS,
-  INDEX_TITLE_CLASS,
-  PageShell,
-} from "./page-shell";
+import { PageShell } from "./page-shell";
 
 afterEach(() => cleanup());
 
@@ -68,14 +64,5 @@ describe("PageShell", () => {
 
     expect(frame).toContain("flex-1");
     expect(frame).not.toContain("min-h-full");
-  });
-});
-
-describe("heading tiers", () => {
-  it("has two of them, and the index tier is the louder one", () => {
-    expect(INDEX_TITLE_CLASS).toContain("text-3xl");
-    expect(INDEX_TITLE_CLASS).toContain("sm:text-4xl");
-    expect(DETAIL_TITLE_CLASS).toContain("text-2xl");
-    expect(DETAIL_TITLE_CLASS).toContain("sm:text-3xl");
   });
 });

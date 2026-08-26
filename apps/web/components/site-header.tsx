@@ -1,7 +1,7 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
-import { isUnder, NAV_ROUTES } from "@/components/site-routes";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { isUnder, NAV_ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type SiteHeaderProps = {
@@ -53,7 +53,7 @@ export function SiteHeader({
         >
           {NAV_ROUTES.map(({ paths, label }) => {
             const href = paths[locale];
-            const current = here ? isUnder(here, paths[locale]) : false;
+            const current = !!here && isUnder(here, href);
             return (
               <a
                 key={href}

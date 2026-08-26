@@ -85,7 +85,7 @@ function compareOptionalNumber(
 
 // Available first, everything else after: a "hold" or "unknown" animal reads
 // like any other card in a list that never touches status (lib/filters.ts
-// never filters on it, on purpose — it stays in the results rather than
+// never filters on it, on purpose: it stays in the results rather than
 // being hidden), so the one place left to say "this one is not like the
 // others" is where it lands. 0 for available keeps it stable against every
 // comparator below: two available animals, or two animals both off the

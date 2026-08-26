@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import { ROUTES } from "@/lib/routes";
 import {
   buildMunicipalityEntries,
   type LookupEntry,
@@ -36,7 +36,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const entries = buildMunicipalityEntries(locale, dataset?.animals ?? []);
   const messages = getMessages(locale);
-  const homeHref = locale === "sl" ? "/" : "/en";
+  const homeHref = ROUTES.home[locale];
 
   return (
     <I18nProvider locale={locale}>
@@ -44,10 +44,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
         <SiteHeader
           locale={locale}
           homeHref={homeHref}
-          languagePaths={{
-            sl: FOUND_ANIMAL_PATHS.sl,
-            en: FOUND_ANIMAL_PATHS.en,
-          }}
+          languagePaths={ROUTES.foundAnimal}
         />
 
         {/* max-w-xl without mx-auto. The lookup keeps the measure it was

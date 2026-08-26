@@ -128,6 +128,12 @@
   /* One application radius for interactive controls and content surfaces.
      Pills, badges, and truly circular controls remain intentionally round. */
   --radius-ui: var(--radius);
+  /* What the focus-ring utility draws with. The page's own ink, which is the
+     highest contrast the surface has: 19.8:1 over --background, and it swaps
+     with --foreground in dark mode without a second declaration. A control
+     that inverts its fill sets this token on itself instead of declaring a
+     second outline (species-tabs.tsx, animal-card.tsx). */
+  --focus-ring-color: var(--foreground);
   --filter-accent: oklch(0.92 0.045 151);
   --filter-accent-foreground: oklch(0.32 0.075 151);
   --filter-accent-border: oklch(0.68 0.075 151);
@@ -551,6 +557,25 @@
   border-top-right-radius: var(--radius-ui);
 }
 
+/* The site's one focus indicator. It was spelled out as three utilities at
+   seventeen call sites, which is how three components came to be left behind
+   on the border-ring/ring-3 pair it replaced: that measured 1.54:1 and 2.59:1
+   in light mode, both under the 3:1 WCAG 1.4.11 floor, while this is 19.8:1.
+   One utility means the next change to it reaches every control.
+
+   Drawn inset, at -2px. Most of these controls sit inside a scroller or up
+   against a neighbour, and an outline drawn outside the box is the first
+   thing such a container clips. The colour comes from --focus-ring-color, so
+   a control that inverts its fill (a pressed species tab, a card in dark
+   mode) overrides the token on itself rather than declaring a second outline
+   that would have to win a specificity argument with this one. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: -2px;
+  }
+}
+
 /* A finger needs 44px, and several controls here are drawn smaller than that
    on purpose: chips and tabs read as small, and growing them would push the
    rows they sit in taller. This lays an invisible layer over such a control
@@ -574,6 +599,11 @@
 }
 
 @layer base {
+  /* outline-ring/50 is still load-bearing after focus-ring took over the
+     site's own indicator: it is the colour the browser's default focus ring
+     is drawn in, and shelter-card.tsx's link still asks for an outline
+     without naming one. Not to be removed until nothing depends on the
+     default. */
   * {
     @apply border-border outline-ring/50;
   }

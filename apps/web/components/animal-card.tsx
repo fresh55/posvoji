@@ -263,7 +263,12 @@ export function AnimalCard({
           // carrying a wait label sat its shelter line 4px lower than its
           // neighbours'. gap is not a margin, never collapses, and is not
           // emitted for a hidden item.
-          className="flex flex-col gap-1 px-3 pt-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background"
+          // focus-ring is the site's one focus indicator (globals.css). This
+          // block used to hand it --background in dark mode, which drew the
+          // ring at 1.1:1 against the card it sits on, under the 3:1 that
+          // WCAG 1.4.11 asks of a focus indicator. The default reads 17:1
+          // there, so the override is gone rather than retuned.
+          className="flex flex-col gap-1 px-3 pt-3 focus-ring"
         >
           {/* The name owns its line. It used to share one with the status
               badge and the wait mark, where an amber icon was the loudest
@@ -346,7 +351,7 @@ export function AnimalCard({
             // across a 250px card was the heaviest thing on it.
             // min-h-11 is the 44px touch target the row never had at text-xs,
             // and the hover ground plus the icon say this answers a press.
-            className={`${FOOTER_BOX} mt-auto flex w-full items-center gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
+            className={`${FOOTER_BOX} mt-auto flex w-full items-center gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-ring`}
           >
             {/* House and not MapPin. The pin means "place" everywhere else on
                 the site (shelter-card.tsx draws it beside a city), and this

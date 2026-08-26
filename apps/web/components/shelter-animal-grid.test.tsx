@@ -104,7 +104,7 @@ describe("ShelterAnimalGrid windowing", () => {
     // 186 animals takes more than one step of 60 to fully draw. The sentinel
     // node itself never unmounts between steps (hasMore stays true until the
     // very last one), so watchSentinel's ref callback never re-fires and no
-    // second observer is ever constructed — firing the one captured callback
+    // second observer is ever constructed. Firing the one captured callback
     // again is exactly what the real, still-visible sentinel would do.
     let guard = 0;
     while (

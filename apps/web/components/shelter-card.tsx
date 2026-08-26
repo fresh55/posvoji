@@ -36,7 +36,7 @@ export function ShelterCard({
           out from the inside. */}
       <a
         href={href}
-        className="group flex min-w-0 flex-col gap-4 p-5 transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="group flex min-w-0 flex-col gap-4 p-5 transition-colors hover:border-foreground/25 focus-ring"
       >
         <div className="flex items-center gap-3">
           <ShelterAvatar name={shelter.name} logo={logo} />

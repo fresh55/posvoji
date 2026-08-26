@@ -3,6 +3,7 @@ import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import type { Locale } from "@/lib/i18n";
+import { ROUTES } from "@/lib/routes";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
@@ -267,7 +268,7 @@ const pageText = {
 
 export function ResourcesPage({ locale }: { locale: Locale }) {
   const text = pageText[locale];
-  const homeHref = locale === "sl" ? "/" : "/en";
+  const homeHref = ROUTES.home[locale];
 
   return (
     <I18nProvider locale={locale}>
@@ -275,7 +276,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
         <SiteHeader
           locale={locale}
           homeHref={homeHref}
-          languagePaths={{ sl: "/viri", en: "/en/resources" }}
+          languagePaths={ROUTES.resources}
         />
 
         <main className="flex flex-1 flex-col gap-10 py-page-y sm:gap-14">

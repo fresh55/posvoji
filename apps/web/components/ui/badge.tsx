@@ -4,10 +4,9 @@ import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
-// Two tiers, and no more. The size axis once carried a smaller one for the
-// grid card, and the card stopped using it: the same fact was 11px there and
-// 12px in the dialog that card opens, and the card is the copy furthest from
-// the reader.
+// One tier. The size axis once carried a smaller one for the grid card, and
+// the card stopped using it: the same fact was 11px there and 12px in the
+// dialog that card opens, and the card is the copy furthest from the reader.
 //
 // The height belongs with the font size and with the icon, so a tier carries
 // all three or it is not a tier. --text-2xs ships without a paired
@@ -15,30 +14,30 @@ import { cn } from "@/lib/utils"
 // size inherits its leading from whatever it happens to sit in and changes
 // height when the webfont swaps.
 //
-// "default" is the mark on someone else's surface: a status over a photo, a
-// count beside a heading, the provenance pill on a shelter card. "lg" is the
-// badge that is the content, which is the row of facts on an animal: the same
-// pill at 20px put a 12px glyph beside 12px type and read as a footnote about
-// the animal rather than as the animal's own description.
+// This is the mark on someone else's surface: a status over a photo, a count
+// beside a heading, the provenance pill on a shelter card. A badge that is
+// itself the content wants a larger pill, and the one place with such a row
+// (animal-dialog/animal-facts.tsx) builds it there, over this base, rather
+// than putting a tier here that nothing else asks for.
+//
+// The variants below are the same rule: a colour earns a place here once more
+// than one surface wears it.
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center overflow-hidden rounded-4xl border border-transparent py-0.5 font-medium whitespace-nowrap transition-all focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none",
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center overflow-hidden rounded-4xl border border-transparent py-0.5 font-medium whitespace-nowrap transition-all focus-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none",
   {
     variants: {
       size: {
         default: "h-5 gap-1 px-2 text-xs [&>svg]:size-3!",
-        // :not([class*='size-']) and not the bang the small tier uses. This
-        // tier carries the animal's facts, and one of them draws its meaning
-        // with the icon's own size: the size badge is a paw print that grows
-        // from small to large, the same paw the size filter draws. An
-        // important rule here would flatten all three to one paw.
-        lg: "h-7 gap-1.5 px-2.5 text-xs [&>svg:not([class*='size-'])]:size-3.5",
       },
       variant: {
         default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
         secondary:
           "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
         destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+          // No focus-visible ring colour here. The badge draws its indicator
+          // with focus-ring, which is an outline, so a ring colour with no
+          // ring width behind it painted nothing.
+          "bg-destructive/10 text-destructive dark:bg-destructive/20 [a]:hover:bg-destructive/20",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:
@@ -57,15 +56,6 @@ const badgeVariants = cva(
         trust:
           "border-[var(--trust-border)] bg-[var(--trust)] text-[var(--trust-foreground)]",
         quiet: "border-transparent bg-muted text-muted-foreground",
-        // The neutral tier of the badge grammar: who the animal is, said in
-        // grey, so the green health row beside it is the only colour in the
-        // block.
-        fact: "border-border bg-muted/40 text-foreground",
-        // A "no" is not a fault, so it never gets the warm family: a plain
-        // bordered pill, and words that say what the animal would rather have.
-        "outline-muted": "border-foreground/25 text-muted-foreground",
-        // A question nobody has answered yet, drawn as an empty seat.
-        dashed: "border-dashed border-border text-muted-foreground",
         // On a photograph a wash has nothing to sit on. A 15% fill tints an
         // arbitrary backdrop rather than covering it, and backdrop-blur takes
         // detail out without moving luminance, so amber ink over a mid-tone

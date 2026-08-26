@@ -2,9 +2,9 @@
 
 import type { MouseEvent } from "react";
 import { useI18n } from "@/components/i18n-provider";
-import { translatePath } from "@/components/site-routes";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
+import { ROUTES, translatePath } from "@/lib/routes";
 
 // No flags. A flag is a country and these are languages, which is a mismatch
 // that only ever runs one way in practice: Slovenian is spoken outside
@@ -12,16 +12,16 @@ import type { Locale } from "@/lib/i18n";
 // which is picked out by the union jack this used to draw beside it. The name
 // is already here in both sizes, and the name is the thing being chosen.
 const LANGUAGES = [
-  { locale: "sl", href: "/", shortName: "SL", name: "Slovenščina" },
-  { locale: "en", href: "/en", shortName: "EN", name: "English" },
+  { locale: "sl", href: ROUTES.home.sl, shortName: "SL", name: "Slovenščina" },
+  { locale: "en", href: ROUTES.home.en, shortName: "EN", name: "English" },
 ] as const;
 
-// translatePath and the paired prefix table it reads live in
-// components/site-routes.ts, because the header's navigation needs the same
-// pairs. A page mounted with an explicit `paths` prop (animal-page.tsx,
+// translatePath and the paired route table it reads live in lib/routes.ts,
+// because the header's navigation and half of lib need the same pairs. A page
+// mounted with an explicit `paths` prop (animal-page.tsx,
 // shelter-detail-page.tsx) already knows its own translation and takes
 // priority over that table; it exists for the pages that don't, chiefly the
-// index, whose address can move client-side after the server rendered it — the
+// index, whose address can move client-side after the server rendered it. The
 // animal dialog opens over the animal's own path through history.pushState
 // (use-animal-dialog.ts), and SiteHeader is mounted once, before that write
 // ever happens. Reading `paths` at render time can't see a change that hasn't

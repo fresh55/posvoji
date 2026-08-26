@@ -21,8 +21,14 @@ export function municipalitySlug(name: string): string {
 }
 
 export function municipalityPath(name: string): string {
-  return `${FOUND_ANIMAL_MUNICIPALITY_PREFIX}/${slugify(name)}`;
+  return `${FOUND_ANIMAL_MUNICIPALITY_PREFIX}/${municipalitySlug(name)}`;
 }
+
+// One index per entries array, built on first lookup. The 212 pages each ask
+// twice, once for the metadata and once for the page, and a scan that
+// slugified every name on every ask spent about ninety thousand slugify calls
+// answering four hundred questions about a set that never changes.
+const indexes = new WeakMap<object, Map<string, unknown>>();
 
 /** The entry a path segment written by municipalityPath names. All 212
  *  registry names slugify apart from each other, so the first match is the
@@ -31,5 +37,15 @@ export function findMunicipalityBySlug<Entry extends { name: string }>(
   entries: readonly Entry[],
   slug: string,
 ): Entry | undefined {
-  return entries.find((entry) => slugify(entry.name) === slug);
+  let index = indexes.get(entries);
+  if (!index) {
+    index = new Map<string, unknown>();
+    // First wins, so the index answers what a scan answered.
+    for (const entry of entries) {
+      const key = municipalitySlug(entry.name);
+      if (!index.has(key)) index.set(key, entry);
+    }
+    indexes.set(entries, index);
+  }
+  return index.get(slug) as Entry | undefined;
 }

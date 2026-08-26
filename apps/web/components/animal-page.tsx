@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { ROUTES } from "@/lib/routes";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { speciesLabel } from "@/lib/labels";
 
@@ -42,7 +43,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
   const reference = new Date(dataset.generatedAt);
-  const indexHref = locale === "sl" ? "/" : "/en";
+  const indexHref = ROUTES.home[locale];
   const hasPhoto = animal.images.length > 0;
 
   return (

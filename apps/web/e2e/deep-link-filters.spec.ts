@@ -18,7 +18,7 @@ import { cards } from "./grid";
 // velikost=majhna ("small", lib/filters.ts's FILTER_METADATA.size), not
 // spol=samec: the dataset carries only a handful of small animals against
 // several hundred overall, which keeps the filtered count well under
-// INITIAL_CARDS (animal-grid.tsx) so the comparison is a plain card count and
+// INITIAL_CARDS (hooks/use-card-window.ts) so the comparison is a plain card count and
 // not a race against which chunk happened to be drawn.
 
 test("a filtered deep link settles on the filtered grid with the pre-hydration mark cleared", async ({

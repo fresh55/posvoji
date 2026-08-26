@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { type IndexRoute, ROUTES } from "@/lib/routes";
+import { shareMetadata } from "@/lib/share-metadata";
 
 /**
  * Metadata for the four pages that are not built from a record: the two
@@ -10,20 +11,16 @@ import { getMessages, type Locale } from "@/lib/i18n";
  * and lib/municipality-share.ts template those from the data.
  *
  * These four have no record to template from, so the copy is written out
- * below. It is the same shape those three modules produce: a title, a
- * description, a canonical path, the other language's copy of the same page,
- * and an Open Graph block. No images: an animal has its share card and a
+ * below and handed to the same builder those three use,
+ * lib/share-metadata.ts. No images: an animal has its share card and a
  * shelter has its map plate, and there is no picture of "the shelter index"
  * that would be worth more to a reader than the description.
+ *
+ * The addresses are not restated here. They are in lib/routes.ts with every
+ * other paired route, which is where the header, the footer, the language
+ * switcher and the sitemap read them from.
  */
-export type IndexPage = "home" | "shelters" | "resources" | "foundAnimal";
-
-const PATHS: Record<IndexPage, Record<Locale, string>> = {
-  home: { sl: "/", en: "/en" },
-  shelters: { sl: "/zavetisca", en: "/en/shelters" },
-  resources: { sl: "/viri", en: "/en/resources" },
-  foundAnimal: FOUND_ANIMAL_PATHS,
-};
+export type IndexPage = IndexRoute;
 
 type Copy = { title: string; description: string };
 
@@ -77,29 +74,15 @@ const copy: Record<Locale, Record<IndexPage, Copy>> = {
   },
 };
 
-export function indexPagePath(page: IndexPage, locale: Locale): string {
-  return PATHS[page][locale];
-}
-
 export function indexMetadata(page: IndexPage, locale: Locale): Metadata {
   const { title, description } = copy[locale][page];
-  const path = PATHS[page][locale];
+  const paths = ROUTES[page];
 
-  return {
-    title: `${title} | Posvoji.si`,
+  return shareMetadata({
+    title,
     description,
-    alternates: {
-      canonical: path,
-      languages: { sl: PATHS[page].sl, en: PATHS[page].en },
-    },
-    openGraph: {
-      type: "website",
-      siteName: "Posvoji.si",
-      locale: locale === "sl" ? "sl_SI" : "en_GB",
-      title,
-      description,
-      url: path,
-    },
-    twitter: { card: "summary", title, description },
-  };
+    path: paths[locale],
+    locale,
+    languages: { sl: paths.sl, en: paths.en },
+  });
 }

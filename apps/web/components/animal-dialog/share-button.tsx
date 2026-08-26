@@ -65,7 +65,7 @@ function WhatsAppMark() {
 // use rather than each brand's own colour, which would turn the popover into
 // a logo wall.
 const TARGET_CLASS =
-  "flex size-11 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
+  "flex size-11 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)] focus-ring";
 
 function Target({
   label,

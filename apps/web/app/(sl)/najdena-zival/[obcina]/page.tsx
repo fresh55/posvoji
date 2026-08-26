@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ExternalLink, Phone } from "lucide-react";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
-  CoverageCard,
-  type CoverageCardText,
-} from "@/components/municipality-coverage-card";
+  AnswerSteps,
+  CostNote,
+  CoverageLine,
+  coverageCardText,
+  NoCoverageAnswer,
+} from "@/components/municipality-answer";
+import { CoverageCard } from "@/components/municipality-coverage-card";
 import { DETAIL_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
-import {
-  ANIMAL_PROTECTION_ACT_URL,
-  SHELTER_REGISTER_URL,
-} from "@/lib/found-animal-sources";
 import { getMessages, translate } from "@/lib/i18n";
 import {
   buildMunicipalityEntries,
@@ -39,11 +38,9 @@ import { municipalityMetadata } from "@/lib/municipality-share";
 // municipality-path.ts says why.
 //
 // Nothing here is new design. The heading is the finder's own muniPromptTitle
-// with the name in it, the shelter is the same CoverageCard the finder
-// renders, and the cost block, the register fallback, the nearest list and
-// the numbered steps are the same markup and the same strings, copied out of
-// components/filters/municipality-finder.tsx because that file is a client
-// component whose state none of this needs.
+// with the name in it, and the shelter card, the cost block, the register
+// fallback, the nearest list and the numbered steps are the same components
+// the finder renders, out of components/municipality-answer.tsx.
 
 export function generateStaticParams() {
   return loadMunicipalities().municipalities.map((municipality) => ({
@@ -83,15 +80,7 @@ export default async function NajdenaZivalObcina({
   if (!entry) notFound();
 
   const messages = getMessages("sl");
-  const cardText: CoverageCardText = {
-    dogs: messages.speciesDogs,
-    cats: messages.speciesCats,
-    call: messages.muniCall,
-    onSite: messages.muniOnSite,
-    lost: messages.muniLost,
-    sourcePrefix: messages.muniSource,
-    datedSourceNote: messages.muniDatedSource,
-  };
+  const cardText = coverageCardText(messages);
 
   return (
     <I18nProvider locale="sl">
@@ -126,14 +115,7 @@ export default async function NajdenaZivalObcina({
           </div>
 
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {entry.name} ·{" "}
-              {entry.coverage.length === 1
-                ? messages.muniResponsible
-                : entry.coverage.length > 1
-                  ? messages.muniResponsiblePlural
-                  : messages.muniUnverified}
-            </p>
+            <CoverageLine entry={entry} messages={messages} />
 
             {entry.coverage.length > 0 ? (
               entry.coverage.map((coverage) => (
@@ -145,98 +127,12 @@ export default async function NajdenaZivalObcina({
                 />
               ))
             ) : (
-              <div className="space-y-3">
-                <div className="space-y-1.5 rounded-ui border border-dashed p-4 text-sm text-muted-foreground">
-                  <p>{messages.muniUnverifiedAdvice}</p>
-                  <a
-                    href={SHELTER_REGISTER_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs underline underline-offset-2 hover:text-foreground"
-                  >
-                    {messages.muniRegister}
-                    <ExternalLink className="size-3" aria-hidden />
-                  </a>
-                </div>
-
-                {/* Not an answer, but better than none: somewhere to call. */}
-                {entry.nearest.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium">
-                      {messages.muniNearestTitle}
-                    </p>
-                    <p className="text-2xs leading-tight text-muted-foreground">
-                      {messages.muniNearestNote}
-                    </p>
-                    <ul className="space-y-0.5 pt-0.5">
-                      {entry.nearest.map((shelter) => (
-                        <li
-                          key={shelter.shelterId}
-                          className="flex items-center justify-between gap-2 rounded-ui px-2 py-1.5 text-sm"
-                        >
-                          <span className="min-w-0">
-                            <a
-                              href={shelter.detailHref}
-                              className="block truncate underline-offset-4 hover:underline"
-                            >
-                              {shelter.shelterName}
-                            </a>
-                            <span className="block truncate text-2xs text-muted-foreground">
-                              {shelter.city} · {shelter.km} km
-                            </span>
-                          </span>
-                          {shelter.phone && (
-                            <a
-                              href={`tel:${shelter.phone.replace(/\s/g, "")}`}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2 py-1 text-xs transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
-                            >
-                              <Phone className="size-3" aria-hidden />
-                              {shelter.phone}
-                            </a>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <NoCoverageAnswer entry={entry} messages={messages} />
             )}
 
-            {/* The fact that stops people reporting a found animal: they
-                assume the vet bill is theirs. It is not. */}
-            <div className="space-y-1 rounded-ui border bg-muted/40 p-3">
-              <p className="text-xs leading-relaxed">{messages.muniCost}</p>
-              <a
-                href={ANIMAL_PROTECTION_ACT_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                {messages.muniCostSource}
-                <ExternalLink className="size-2.5" aria-hidden />
-              </a>
-            </div>
+            <CostNote messages={messages} />
 
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium">{messages.muniStepsTitle}</p>
-              <ol className="space-y-1.5">
-                {[
-                  messages.muniStep1,
-                  messages.muniStep2,
-                  messages.muniStep3,
-                ].map((step, index) => (
-                  <li
-                    key={step}
-                    className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
-                  >
-                    <span className="shrink-0 font-medium text-foreground">
-                      {index + 1}.
-                    </span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
+            <AnswerSteps messages={messages} />
           </div>
         </main>
 

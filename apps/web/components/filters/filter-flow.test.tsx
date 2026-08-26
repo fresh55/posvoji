@@ -552,7 +552,7 @@ describe("filter flow interactions", () => {
     // "hydrates and reacts to shared URL state" test above does: write that
     // URL in place and raise the popstate a real Back would raise, rather
     // than calling history.back() itself, which jsdom resolves through a
-    // real, unawaited navigation task and which nothing here needs — the
+    // real, unawaited navigation task and which nothing here needs. The
     // push counts already prove Back has two real steps to take.
     act(() => {
       window.history.replaceState(null, "", "/?spol=samica");

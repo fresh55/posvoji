@@ -18,7 +18,7 @@ export type FilterCardLayout = "sidebar" | "sheet";
 // One shadcn-style surface contract for every compact filter choice. Layout
 // stays with the caller; interaction, state, and accessibility chrome do not.
 export const filterCardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:scale-[0.98] active:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground disabled:pointer-events-none disabled:opacity-50",
+  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:scale-[0.98] active:bg-muted/40 focus-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       selected: {

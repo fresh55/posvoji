@@ -72,7 +72,7 @@ function currentQuery(): string {
 
 /**
  * push, so five taps of a facet and one press of Back undo them one at a
- * time instead of leaving the site — every setter this hook returns answers
+ * time instead of leaving the site. Every setter this hook returns answers
  * a single, discrete press (a tab, a checkbox, a Select), never a stream of
  * events for one gesture, so there is no keystroke-per-push case to coalesce
  * here today. A future control that fires more than once per gesture (a
@@ -93,29 +93,34 @@ function writeMode(): "push" | "replace" {
   return window.history.state?.animal ? "replace" : "push";
 }
 
-function writeFilters(filters: Filters): void {
-  const query = mergeOwnedParams(
-    getSearchSnapshot(),
-    FILTER_PARAM_NAMES,
-    serializeFilters(pruneHiddenFilters(filters)),
-  );
-  // A press that changes nothing — the active species tab pressed again is
-  // the one the UI does not guard against itself — writes nothing rather
-  // than a history entry with no history in it.
+/**
+ * What every writer below ends on, once its own codec has produced a query.
+ *
+ * A press that changes nothing writes nothing, rather than a history entry
+ * with no history in it. The active species tab pressed again is the one the
+ * UI does not guard against itself. Past that guard the write and the scroll
+ * travel together, because a query that changed is a result set that changed.
+ */
+function write(query: string): void {
   if (query === currentQuery()) return;
   commitSearch(query, writeMode());
   scrollToResults();
 }
 
-function writeSort(sort: AnimalSort): void {
-  const query = mergeOwnedParams(
-    getSearchSnapshot(),
-    [SORT_PARAM],
-    serializeSort(sort),
+function writeFilters(filters: Filters): void {
+  write(
+    mergeOwnedParams(
+      getSearchSnapshot(),
+      FILTER_PARAM_NAMES,
+      serializeFilters(pruneHiddenFilters(filters)),
+    ),
   );
-  if (query === currentQuery()) return;
-  commitSearch(query, writeMode());
-  scrollToResults();
+}
+
+function writeSort(sort: AnimalSort): void {
+  write(
+    mergeOwnedParams(getSearchSnapshot(), [SORT_PARAM], serializeSort(sort)),
+  );
 }
 
 export function useAnimalFilters() {

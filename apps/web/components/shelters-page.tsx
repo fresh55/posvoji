@@ -6,7 +6,9 @@ import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import type { Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
+import { ROUTES } from "@/lib/routes";
 import { getShelterLogos } from "@/lib/shelter-logos";
+import { shelterPath } from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 
 const pageText = {
@@ -34,8 +36,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const animals = dataset?.animals ?? [];
   const logos = getShelterLogos();
   const text = pageText[locale];
-  const homeHref = locale === "sl" ? "/" : "/en";
-  const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
+  const homeHref = ROUTES.home[locale];
 
   const counts = new Map<string, number>();
   for (const animal of animals) {
@@ -59,7 +60,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         <SiteHeader
           locale={locale}
           homeHref={homeHref}
-          languagePaths={{ sl: "/zavetisca", en: "/en/shelters" }}
+          languagePaths={ROUTES.shelters}
         />
 
         <main className="flex flex-1 flex-col gap-10 py-page-y sm:gap-14">
@@ -90,7 +91,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               <ShelterCard
                 key={shelter.id}
                 shelter={shelter}
-                href={`${detailBase}/${shelter.id}`}
+                href={shelterPath(shelter.id, locale)}
                 logo={logos[shelter.id]}
                 count={counts.get(shelter.id) ?? 0}
                 locale={locale}

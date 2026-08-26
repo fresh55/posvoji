@@ -123,7 +123,7 @@ const PHONE_SOLO_STAGE_ASPECT =
 // it, so the border is drawn from the foreground: dark on light, light on
 // dark.
 const PHOTO_FRAME_CLASS =
-  "origin-bottom overflow-hidden rounded-ui border border-foreground/10 bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "origin-bottom overflow-hidden rounded-ui border border-foreground/10 bg-muted outline-none focus-ring";
 
 // Images are served unoptimized today, so this picks nothing; it is here so
 // the fan asks for the right file if that ever changes. The wash behind the
@@ -192,6 +192,30 @@ function fanSlots(count: number, active: number): { index: number; offset: numbe
     slots.push({ index: (active + offset + count) % count, offset });
   }
   return slots;
+}
+
+/**
+ * Whether the fan should already be standing at its final pose. Both fans ask
+ * it and both answered it the same way, so it is one thing here rather than
+ * the same four lines twice.
+ *
+ * The cascade belongs to the mount, which is once per animal: the first render
+ * reads false, and every render after it is a photo being picked. A surface
+ * that opts out of the entrance starts the marker already set, so it renders
+ * settled from the first frame, server HTML included. Reduced motion settles
+ * everything at once.
+ *
+ * A function and not a value, because the marker is a ref: it is read during
+ * render at the point the pose is built, and a value captured at the top of
+ * the component would be the ref's state one render too early.
+ */
+function useSettled(entrance: boolean): () => boolean {
+  const shouldReduceMotion = useReducedMotion();
+  const entered = useRef(!entrance);
+  useEffect(() => {
+    entered.current = true;
+  }, []);
+  return () => shouldReduceMotion || entered.current;
 }
 
 /**
@@ -304,14 +328,7 @@ function PhoneFan({
   const shouldReduceMotion = useReducedMotion();
   const solo = images.length === 1;
   const slots = fanSlots(images.length, activeIndex);
-
-  // The cascade belongs to the mount, which is once per animal: the first
-  // render reads false, and every render after it is a photo being picked.
-  // A surface that opts out of the entrance starts the marker already set.
-  const entered = useRef(!entrance);
-  useEffect(() => {
-    entered.current = true;
-  }, []);
+  const settled = useSettled(entrance);
 
   const progress = useMotionValue(0);
   const snap = useRef<ReturnType<typeof animate> | null>(null);
@@ -498,9 +515,7 @@ function PhoneFan({
               progress={progress}
               nudge={shouldReduceMotion ? 0 : TILT_NUDGE[index % TILT_NUDGE.length]}
               entrance={
-                shouldReduceMotion || entered.current
-                  ? false
-                  : Math.abs(offset) * ENTRANCE_STAGGER
+                settled() ? false : Math.abs(offset) * ENTRANCE_STAGGER
               }
               label={
                 active
@@ -559,13 +574,7 @@ export function PhotoSpread({
   const [lightboxOrigin, setLightboxOrigin] = useState<DOMRect | undefined>(
     undefined,
   );
-  // The cascade belongs to the mount, which is once per animal: the first
-  // render reads false, and every render after it is a photo being picked.
-  // A surface that opts out of the entrance starts the marker already set.
-  const entered = useRef(!entrance);
-  useEffect(() => {
-    entered.current = true;
-  }, []);
+  const settled = useSettled(entrance);
 
   // Reported rather than read from above, because which photo is showing is
   // this component's business. An animal with nothing to show reports nothing
@@ -673,7 +682,7 @@ export function PhotoSpread({
                     : "shadow-xs brightness-95 transition-[filter] duration-150 hover:brightness-100",
                 )}
                 initial={
-                  shouldReduceMotion || entered.current
+                  settled()
                     ? false
                     : { ...pose, rotate, opacity: 0, y: pose.y + 8 }
                 }
@@ -694,7 +703,7 @@ export function PhotoSpread({
                     ? { duration: 0 }
                     : {
                         ...FAN_SPRING,
-                        delay: entered.current
+                        delay: settled()
                           ? 0
                           : Math.abs(offset) * ENTRANCE_STAGGER,
                       }

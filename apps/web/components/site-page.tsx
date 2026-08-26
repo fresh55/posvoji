@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
+import { ROUTES } from "@/lib/routes";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
@@ -14,7 +15,7 @@ import { loadShelters } from "@/lib/shelters";
 /** "20. 8. 2026" in Slovenian, unchanged; "20 Aug 2026" in English. en-GB's
  *  own numeric default is 20/08/2026, which reads as a fraction on a page
  *  that otherwise spells no date in digits, so English asks for day + short
- *  month + year instead — the order en-GB already gets right on its own. */
+ *  month + year instead, the order en-GB already gets right on its own. */
 export function formatDatasetDate(date: Date, locale: Locale): string {
   return locale === "sl"
     ? date.toLocaleDateString("sl-SI")
@@ -54,7 +55,7 @@ export function SitePage({ locale }: { locale: Locale }) {
       <PageShell width="wide">
         <SiteHeader
           locale={locale}
-          homeHref={locale === "sl" ? "/" : "/en"}
+          homeHref={ROUTES.home[locale]}
         />
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">

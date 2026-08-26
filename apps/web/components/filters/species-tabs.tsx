@@ -151,18 +151,19 @@ export function SpeciesTabs({
               // is about 30 more. Tightening every tab buys back roughly what
               // the new one costs, so the strip overflows no further than it
               // did and "Ostale" is no worse off.
-              "inline-flex min-w-0 items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground disabled:opacity-50 max-lg:tap-target",
+              "inline-flex min-w-0 items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none transition-colors focus-ring disabled:opacity-50 max-lg:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a
               // different species.
               fullWidth ? "flex-1 py-1.5" : "shrink-0",
               value === tab
-                ? // The pressed tab inverts to a solid foreground fill, so an
-                  // outline-foreground focus ring would land on its own
-                  // colour and vanish. The pressed pill flips the outline to
-                  // outline-background, the colour of its own text, instead.
-                  "bg-foreground text-background focus-visible:outline-background"
+                ? // The pressed tab inverts to a solid foreground fill, so
+                  // focus-ring's default colour would land on its own fill and
+                  // vanish. The pressed pill hands the utility --background,
+                  // the colour of its own text, rather than declaring a second
+                  // outline beside it.
+                  "bg-foreground text-background [--focus-ring-color:var(--background)]"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

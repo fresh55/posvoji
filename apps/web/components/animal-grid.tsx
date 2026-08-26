@@ -19,6 +19,7 @@ import { FilterChips, type Chip } from "@/components/filters/filter-chips";
 import { Button } from "@/components/ui/button";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
+import { useCardWindow } from "@/hooks/use-card-window";
 import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -49,6 +50,7 @@ import {
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
+import { ROUTES } from "@/lib/routes";
 import {
   careLabel,
   goodWithChipLabel,
@@ -75,21 +77,10 @@ export const UNDO_WINDOW_MS = 7000;
 // changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
 
-// How many cards the first render draws, and how many each step after it adds.
-// The grid is not paginated, so Vse used to mount all 503 matches at once:
-// about fourteen thousand nodes, a thousand tab stops and a 66,000px page, all
-// of it in the prerendered HTML as well. Sixty is several screens on the
-// tallest phone and more than a desktop first paint can show, and the steps
-// after it are asked for well before anyone reaches the bottom.
-//
-// Rendering only. Every count on the page, the facet numbers and the dialog's
-// sibling list all still read the whole filtered set.
-export const INITIAL_CARDS = 60;
-const CARDS_PER_STEP = 60;
-
-// How far below the last drawn card the next step is asked for, so the grid is
-// already longer by the time the visitor gets there.
-const STEP_MARGIN = "1200px 0px";
+// The windowing itself lives in hooks/use-card-window.ts, shared with the
+// shelter page's grid. The count is re-exported because animal-grid.test.tsx
+// counts the first chunk against it.
+export { INITIAL_CARDS } from "@/hooks/use-card-window";
 
 // Which species-absence message key fills the {species} slot of
 // noResultsShelterSingular/Plural. Keyed by the species tab rather than
@@ -183,57 +174,8 @@ export function AnimalGrid({
     [visible, sort, locale, reference],
   );
 
-  // How much of that list is on the page. The count is held together with the
-  // list it was counted against, so it answers for that list and no other: any
-  // filter, sort or species move hands down a different array, the count stops
-  // applying, and the grid is read from its top again. No effect has to notice
-  // and no render of the new list is ever made against the old one's count.
-  const [chunk, setChunk] = useState<{ of: Animal[]; drawn: number }>({
-    of: sorted,
-    drawn: INITIAL_CARDS,
-  });
-  const drawn = chunk.of === sorted ? chunk.drawn : INITIAL_CARDS;
-  // slice clamps, so the whole list and a prefix of it are the same call.
-  const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
-  const hasMore = drawn < sorted.length;
-
-  // The sentinel's own ref is the observer's lifetime, and that lifetime is now
-  // one sorted list rather than one step: the callback closes over the list
-  // alone, so a step no longer takes the observer down and puts a new one up.
-  // What delivers the next entry is the sentinel leaving the watched band and
-  // coming back, which a step of sixty cards guarantees, being far more than
-  // the 1200px margin below. The step is a functional update for the same
-  // reason: it reads the count off the state it is updating rather than off a
-  // closure that would have to be rebuilt to stay current.
-  const watchSentinel = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      // jsdom, and anything else with no observer, gets the whole list rather
-      // than a grid with no way to grow.
-      if (typeof IntersectionObserver === "undefined") {
-        setChunk({ of: sorted, drawn: sorted.length });
-        return;
-      }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
-            // The same guard the render reads the count through: a count
-            // counted against another list starts again from the top.
-            setChunk((previous) => ({
-              of: sorted,
-              drawn:
-                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                CARDS_PER_STEP,
-            }));
-          }
-        },
-        { rootMargin: STEP_MARGIN },
-      );
-      observer.observe(node);
-      return () => observer.disconnect();
-    },
-    [sorted],
-  );
+  // How much of that list is on the page, and the sentinel that grows it.
+  const { page, hasMore, watchSentinel } = useCardWindow(sorted);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
@@ -251,7 +193,7 @@ export function AnimalGrid({
     useAnimalDialogHost({
       animals,
       shown: sorted,
-      basePath: locale === "sl" ? "/" : "/en",
+      basePath: ROUTES.home[locale],
     });
 
   const isEmpty = animals.length === 0;

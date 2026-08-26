@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
+import { translate } from "@/lib/i18n";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { municipalityPath } from "@/lib/municipality-path";
-import { shelterPlateUrl } from "@/lib/shelter-share";
-
-const CARD_WIDTH = 1200;
-const CARD_HEIGHT = 630;
+import { shareMetadata } from "@/lib/share-metadata";
+import { shelterPlateAlt, shelterPlateUrl } from "@/lib/shelter-share";
 
 /** Names of the shelters responsible for a municipality, as one phrase.
  *  Two is the most any municipality has, and it is a split by species. */
@@ -18,9 +17,14 @@ function shelterNames(entry: LookupEntry): string {
  * own občina at the end of it, which is the whole reason these pages exist:
  * the interactive lookup answers "which shelter" perfectly and ranks for
  * nothing, because there is one address for all 212 answers.
+ *
+ * The same key the page sets its h1 from, not a second copy of the sentence.
+ * Two sources for one sentence across 212 pages is a mismatch nothing on
+ * screen would show: the tab and the search result would say one thing and
+ * the heading another.
  */
 export function municipalityTitle(entry: LookupEntry): string {
-  return `Si našel žival v občini ${entry.name}?`;
+  return translate("sl", "muniPageHeading", { name: entry.name });
 }
 
 /**
@@ -49,41 +53,20 @@ export function municipalityDescription(entry: LookupEntry): string {
  * worth more in a Facebook group than no card at all.
  */
 export function municipalityMetadata(entry: LookupEntry): Metadata {
-  const title = municipalityTitle(entry);
-  const description = municipalityDescription(entry);
-  const path = municipalityPath(entry.name);
-  const plate = entry.coverage[0]
-    ? shelterPlateUrl(entry.coverage[0].shelterId)
-    : undefined;
-  const images = plate
-    ? [
-        {
-          url: plate,
-          width: CARD_WIDTH,
-          height: CARD_HEIGHT,
-          alt: `Zemljevid Slovenije z označeno lokacijo: ${entry.coverage[0].shelterName}, ${entry.coverage[0].city}.`,
-        },
-      ]
-    : undefined;
+  const responsible = entry.coverage[0];
+  const plate = responsible ? shelterPlateUrl(responsible.shelterId) : undefined;
 
-  return {
-    title: `${title} | Posvoji.si`,
-    description,
-    alternates: { canonical: path },
-    openGraph: {
-      type: "website",
-      siteName: "Posvoji.si",
-      locale: "sl_SI",
-      title,
-      description,
-      url: path,
-      images,
-    },
-    twitter: {
-      card: images ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: plate ? [plate] : undefined,
-    },
-  };
+  return shareMetadata({
+    title: municipalityTitle(entry),
+    description: municipalityDescription(entry),
+    path: municipalityPath(entry.name),
+    locale: "sl",
+    image:
+      plate && responsible
+        ? {
+            url: plate,
+            alt: shelterPlateAlt(responsible.shelterName, responsible.city, "sl"),
+          }
+        : undefined,
+  });
 }

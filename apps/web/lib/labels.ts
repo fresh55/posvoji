@@ -295,21 +295,20 @@ export function longStayMonths(animal: Animal, now: Date): number | undefined {
   return months;
 }
 
-const STATUS_KEYS: Record<
-  Exclude<AdoptionStatus, "unknown">,
-  TranslationKey
-> = {
+// Every status the schema has, including unknown. The table used to leave
+// unknown out and statusLabel answered undefined for it, while the badge that
+// draws the unknown state reached past the table for the same string
+// (status-badge.tsx): one status modelled twice, in two files that could
+// disagree. A status has a name here or it is not a status.
+const STATUS_KEYS: Record<AdoptionStatus, TranslationKey> = {
   available: "statusAvailable",
   reserved: "statusReserved",
   adopted: "statusAdopted",
   hold: "statusHold",
+  unknown: "statusUnknown",
 };
 
-export function statusLabel(
-  status: AdoptionStatus,
-  locale: Locale,
-): string | undefined {
-  if (status === "unknown") return undefined;
+export function statusLabel(status: AdoptionStatus, locale: Locale): string {
   return translate(locale, STATUS_KEYS[status]);
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalCard } from "@/components/animal-card";
@@ -8,20 +8,11 @@ import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
+import { useCardWindow } from "@/hooks/use-card-window";
 import { CARD_GRID } from "@/lib/card-grid";
 import { bySpecies, speciesCounts, type SpeciesFilter } from "@/lib/filters";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-
-// Same numbers, same reasoning as the home grid's own (animal-grid.tsx): a
-// shelter page is not paginated, so its busiest page (Mačja hiša, 186
-// animals) used to mount every one of them at once. Kept as local constants
-// rather than imported from animal-grid.tsx: only INITIAL_CARDS is exported
-// there, and duplicating three small numbers here is cheaper than widening
-// that module's exports for a page it does not otherwise share code with.
-const INITIAL_CARDS = 60;
-const CARDS_PER_STEP = 60;
-const STEP_MARGIN = "1200px 0px";
 
 // The cards, the grid and the dialog wiring are the home page's; the filter
 // sidebar and clear-filters trail that come with AnimalGrid are not what a
@@ -72,44 +63,10 @@ export function ShelterAnimalGrid({
     [filtered, locale, reference],
   );
 
-  // How much of that list is on the page. The count is held together with the
-  // list it was counted against, so a species change hands down a different
-  // array, the count stops applying, and the grid is read from its top again.
-  const [chunk, setChunk] = useState<{ of: Animal[]; drawn: number }>({
-    of: sorted,
-    drawn: INITIAL_CARDS,
-  });
-  const drawn = chunk.of === sorted ? chunk.drawn : INITIAL_CARDS;
-  const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
-  const hasMore = drawn < sorted.length;
-
-  const watchSentinel = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      // jsdom, and anything else with no observer, gets the whole list rather
-      // than a grid with no way to grow.
-      if (typeof IntersectionObserver === "undefined") {
-        setChunk({ of: sorted, drawn: sorted.length });
-        return;
-      }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
-            setChunk((previous) => ({
-              of: sorted,
-              drawn:
-                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                CARDS_PER_STEP,
-            }));
-          }
-        },
-        { rootMargin: STEP_MARGIN },
-      );
-      observer.observe(node);
-      return () => observer.disconnect();
-    },
-    [sorted],
-  );
+  // How much of that list is on the page, the same window the home grid draws
+  // through: a species change hands down a different array, so the grid is
+  // read from its top again (hooks/use-card-window.ts).
+  const { page, hasMore, watchSentinel } = useCardWindow(sorted);
 
   // The dialog steps through this shelter's animals in the order shown.
   const { selected, origin, shownIds, handleOpen, handleNavigate, close } =

@@ -292,11 +292,13 @@ function PhoneFan({
   activeIndex,
   onSelect,
   onOpenLightbox,
+  entrance = true,
 }: {
   images: string[];
   activeIndex: number;
   onSelect: (index: number) => void;
   onOpenLightbox: (from: DOMRect) => void;
+  entrance?: boolean;
 }) {
   const { t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -305,7 +307,8 @@ function PhoneFan({
 
   // The cascade belongs to the mount, which is once per animal: the first
   // render reads false, and every render after it is a photo being picked.
-  const entered = useRef(false);
+  // A surface that opts out of the entrance starts the marker already set.
+  const entered = useRef(!entrance);
   useEffect(() => {
     entered.current = true;
   }, []);
@@ -532,6 +535,7 @@ function PhoneFan({
 export function PhotoSpread({
   animal,
   onWashSource,
+  entrance = true,
 }: {
   animal: Animal;
   /**
@@ -540,6 +544,12 @@ export function PhotoSpread({
    * animal's colour can fade into the next one's.
    */
   onWashSource?: (source: string | undefined) => void;
+  /**
+   * False renders the fan at its final pose from the first frame, including
+   * in server HTML. The cascade answers the dialog opening; a page that
+   * arrives with the document has nothing to answer.
+   */
+  entrance?: boolean;
 }) {
   const { messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -551,7 +561,8 @@ export function PhotoSpread({
   );
   // The cascade belongs to the mount, which is once per animal: the first
   // render reads false, and every render after it is a photo being picked.
-  const entered = useRef(false);
+  // A surface that opts out of the entrance starts the marker already set.
+  const entered = useRef(!entrance);
   useEffect(() => {
     entered.current = true;
   }, []);
@@ -597,6 +608,7 @@ export function PhotoSpread({
           setLightboxOrigin(from);
           setLightboxOpen(true);
         }}
+        entrance={entrance}
       />
 
       {/* Wider screens get the whole set at once: the chosen one large in the
@@ -661,7 +673,7 @@ export function PhotoSpread({
                     : "shadow-xs brightness-95 transition-[filter] duration-150 hover:brightness-100",
                 )}
                 initial={
-                  shouldReduceMotion
+                  shouldReduceMotion || entered.current
                     ? false
                     : { ...pose, rotate, opacity: 0, y: pose.y + 8 }
                 }

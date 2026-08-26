@@ -73,7 +73,11 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
               could not do: a 4/3 photo beside a short fact list left the
               right half of the page empty under it on every animal whose
               shelter had recorded little. */}
-          {hasPhoto && <PhotoSpread animal={animal} />}
+          {/* entrance={false} renders the fan at its final pose on load. The
+              entrance animation belongs to the dialog, where opening is the
+              interaction it answers; a server-rendered page shows its photos
+              immediately, including before hydration. */}
+          {hasPhoto && <PhotoSpread animal={animal} entrance={false} />}
 
           <div className="space-y-5">
             <div className="space-y-2">

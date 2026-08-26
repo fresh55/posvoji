@@ -21,12 +21,14 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
+import { SortPicker } from "@/components/filters/sort-picker";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
   ToggleDef,
 } from "@/lib/filters";
+import type { AnimalSort } from "@/lib/sort";
 
 export function FilterSheet({
   filters,
@@ -39,6 +41,8 @@ export function FilterSheet({
   care,
   activeCount,
   resultCount,
+  sort,
+  onSortChange,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -55,6 +59,17 @@ export function FilterSheet({
   care?: CareSection;
   activeCount: number;
   resultCount: number;
+  /** Sorting is offered here on a phone, and only here. It is not a filter
+   *  and does not join `Filters` (lib/sort.ts keeps the two apart on purpose,
+   *  since one orders the list the other has already matched); what it shares
+   *  with them is the sheet, because the sheet is the one surface a visitor
+   *  can always reach to change what the grid shows. Baymard's product-list
+   *  testing is what moved it here: sorting is a primary way people find
+   *  things, often reached for before filtering, so the control has to stay
+   *  reachable while the list is scrolled rather than scrolling away with the
+   *  top of the page. */
+  sort: AnimalSort;
+  onSortChange: (sort: AnimalSort) => void;
   onClearAll: () => void;
 } & FilterActionContract) {
   const { locale, messages, t } = useI18n();
@@ -112,9 +127,33 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
+          {/* Sort on its own full-width row under the title, and inside the
+              header block rather than the scrolling body, so it stays put
+              while the filter list moves under it.
+
+              It shared the title's row for one pass and could not: the close
+              button is absolutely positioned in that corner at 44px, and the
+              two targets overlapped by 32x14px with the X on top, so the top
+              right of the sort control closed the sheet instead of opening
+              it. Measured, not guessed. Padding the row clear of the X would
+              have fixed the collision and left three things crowded into one
+              band anyway.
+
+              A row costs about 52px of the sheet, which is affordable because
+              the control is one Select and not the five orders spelled out:
+              the filters still begin about a quarter of the way down. Full
+              width also stops the longest order from truncating, and reads as
+              a setting for the whole sheet rather than an ornament on the
+              heading. */}
           <DrawerTitle className="mt-3 text-base">
             {messages.filters}
           </DrawerTitle>
+          <SortPicker
+            value={sort}
+            onChange={onSortChange}
+            quiet={false}
+            className="mt-3 h-11 w-full text-sm"
+          />
         </div>
 
         <div

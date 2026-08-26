@@ -230,13 +230,23 @@ describe("the chips row inside the grid", () => {
       expect(query()).toBe("");
 
       // The offer stands, and it puts the query back exactly as it was.
-      fireEvent.click(
-        screen.getByRole("button", { name: "Razveljavi čiščenje filtrov" }),
-      );
+      //
+      // Two of them, from one component. The chips row carries it at lg and
+      // the phone carries it in a transient row of its own below that
+      // (UndoOffer, filter-chips.tsx), and only CSS separates the two
+      // surfaces, so jsdom renders both. Either one has to do the whole job,
+      // and taking the offer has to end it everywhere.
+      const offers = screen.getAllByRole("button", {
+        name: "Razveljavi čiščenje filtrov",
+      });
+      expect(offers).toHaveLength(2);
+      fireEvent.click(offers[0]);
       expect(query()).toBe("?zavetisce=muri,druga");
       expect(
-        screen.queryByRole("button", { name: "Razveljavi čiščenje filtrov" }),
-      ).toBeNull();
+        screen.queryAllByRole("button", {
+          name: "Razveljavi čiščenje filtrov",
+        }),
+      ).toHaveLength(0);
     } finally {
       vi.useRealTimers();
     }
@@ -252,8 +262,10 @@ describe("the chips row inside the grid", () => {
         screen.getByRole("button", { name: "Počisti vse filtre" }),
       );
       expect(
-        screen.getByRole("button", { name: "Razveljavi čiščenje filtrov" }),
-      ).toBeTruthy();
+        screen.getAllByRole("button", {
+          name: "Razveljavi čiščenje filtrov",
+        }).length,
+      ).toBeGreaterThan(0);
 
       act(() => {
         vi.advanceTimersByTime(UNDO_WINDOW_MS + 1000);
@@ -266,8 +278,10 @@ describe("the chips row inside the grid", () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByRole("button", { name: "Razveljavi čiščenje filtrov" }),
-      ).toBeNull(),
+        screen.queryAllByRole("button", {
+          name: "Razveljavi čiščenje filtrov",
+        }),
+      ).toHaveLength(0),
     );
   });
 
@@ -291,9 +305,15 @@ describe("the chips row inside the grid", () => {
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 
-    const chip = screen.getByRole("button", {
+    // Two rows again, and this is the state both of them exist for. At lg the
+    // sticky bar's row is on screen; below it that row is gone and the empty
+    // state carries its own copy, which is the only place a phone is told
+    // which of its filters is the one to drop. Whichever surface the visitor
+    // is on, the way out has to be marked, so both are checked.
+    const chips = screen.getAllByRole("button", {
       name: "Odstrani filter Shelter muri",
     });
-    expect(chip.textContent).toContain("+1");
+    expect(chips).toHaveLength(2);
+    for (const chip of chips) expect(chip.textContent).toContain("+1");
   });
 });

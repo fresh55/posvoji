@@ -45,6 +45,9 @@ describe("mobile filter hardening", () => {
           isEmpty={false}
           filters={{ ...EMPTY_FILTERS, sex: ["male"] }}
           speciesTally={{ all: 1, dog: 1, cat: 0, other: 0 }}
+          // No filters on in this harness, so the roster and the
+          // tally are the same numbers.
+          speciesRoster={{ all: 1, dog: 1, cat: 0, other: 0 }}
           groups={[
             { group: "sex", options: [{ value: "male", label: "Male" }] },
           ]}
@@ -85,6 +88,9 @@ describe("mobile filter hardening", () => {
           isEmpty={false}
           filters={EMPTY_FILTERS}
           speciesTally={{ all: 2, dog: 1, cat: 1, other: 0 }}
+          // No filters on in this harness, so the roster and the
+          // tally are the same numbers.
+          speciesRoster={{ all: 2, dog: 1, cat: 1, other: 0 }}
           groups={[
             { group: "sex", options: [{ value: "male", label: "Male" }] },
           ]}
@@ -119,19 +125,37 @@ describe("mobile filter hardening", () => {
     // utility that grows the tap target around the drawing.
     expect(mobileTab.className).toContain("max-lg:tap-target");
 
-    // Hiding the sort label on the narrowest phones must not take the current
-    // sort with it: it moves into the control's name.
-    const sort = within(mobileToolbar).getByRole("combobox");
-    expect(sort.getAttribute("aria-label")).toBe(
-      "Sort animals: Longest in shelter",
-    );
-    expect(sort.className).toContain("max-lg:min-h-11");
+    // The pinned bar is the species tabs and nothing else, and so is the page
+    // outside it: sorting is in the filter sheet now, behind the dock, which
+    // is the one control on a phone that never scrolls away. It spent a pass
+    // pinned in this bar and a pass scrolling off above the grid; the second
+    // lost the property that mattered, which is being reachable mid-scroll.
+    expect(
+      document.querySelector('[data-slot="mobile-status-line"]'),
+    ).toBeNull();
+    expect(document.querySelector('[data-slot="mobile-sort-row"]')).toBeNull();
+    // Scoped to the mobile branch: only CSS separates the two toolbars, so
+    // jsdom renders the desktop one too and its Select is a real combobox.
+    expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
+    // A chips row would be the fourth surface stating the filter state on one
+    // screen, so it is not in the bar either.
+    expect(
+      within(mobileToolbar).queryByRole("toolbar", { name: /filter/i }),
+    ).toBeNull();
+
+    // The count is heard and not seen: its digits moved onto the tabs, but a
+    // tab changing quietly announces nothing, so the live region stays.
+    const live = document.querySelector("[aria-live]");
+    expect(live?.textContent).toContain("2 animals");
+    expect(live?.closest(".sr-only")).toBeTruthy();
   });
 
   it("announces the active filter count and keeps a mobile-sized close target", async () => {
     render(
       <I18nProvider locale="en">
         <FilterSheet
+          sort="longest-in-shelter"
+          onSortChange={vi.fn()}
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
@@ -159,6 +183,8 @@ describe("mobile filter hardening", () => {
     render(
       <I18nProvider locale="en">
         <FilterSheet
+          sort="longest-in-shelter"
+          onSortChange={vi.fn()}
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
@@ -192,6 +218,8 @@ describe("mobile filter hardening", () => {
     const { rerender } = render(
       <I18nProvider locale="en">
         <FilterSheet
+          sort="longest-in-shelter"
+          onSortChange={vi.fn()}
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
@@ -214,6 +242,8 @@ describe("mobile filter hardening", () => {
     rerender(
       <I18nProvider locale="en">
         <FilterSheet
+          sort="longest-in-shelter"
+          onSortChange={vi.fn()}
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
@@ -236,6 +266,8 @@ describe("mobile filter hardening", () => {
     render(
       <I18nProvider locale="en">
         <FilterSheet
+          sort="longest-in-shelter"
+          onSortChange={vi.fn()}
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
@@ -265,6 +297,8 @@ describe("mobile filter hardening", () => {
     render(
       <I18nProvider locale="en">
         <FilterSheet
+          sort="longest-in-shelter"
+          onSortChange={vi.fn()}
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={emptyCounts}
@@ -346,13 +380,19 @@ describe("mobile filter hardening", () => {
     const removeDogs = screen.getByRole("button", {
       name: "Remove filter Dogs",
     });
-    expect(removeDogs.className).toContain("max-md:min-h-11");
+    // lg and not md: the chips share a bar with the species tabs and the sort,
+    // and those two grow their reach at lg. At md this one bar mixed 44px
+    // targets with 28px ones across the tablet band.
+    expect(removeDogs.className).toContain("max-lg:min-h-11");
+    // One pill shape in the bar. rounded-full is reserved for counts now.
+    expect(removeDogs.className).toContain("rounded-ui");
+    expect(removeDogs.className).not.toContain("rounded-full");
     expect(removeDogs.className).not.toContain("tap-target");
     expect(removeDogs.querySelector("button")).toBeNull();
 
     // And the row still keeps adjacent pills apart.
     expect(removeDogs.closest("span")?.parentElement?.className).toContain(
-      "max-md:gap-2",
+      "max-lg:gap-2",
     );
   });
 

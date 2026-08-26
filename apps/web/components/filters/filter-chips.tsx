@@ -281,12 +281,25 @@ export function FilterChips({
     }
   };
 
-  // Shared by all three shapes in the row. Below md the pill grows to hold a
-  // 44px target on its own rather than laying an invisible overlay over a
-  // 28px one: an overlay would reach past the pill's edge into the gap and
-  // steal the neighbour's first few pixels.
+  // Shared by all three shapes in the row.
+  //
+  // rounded-ui and not rounded-full. These sit in the same bar as the species
+  // tabs and do a closely related job -- pick a species, drop a filter -- and
+  // they were two different pill shapes eight pixels apart. The rule the rest
+  // of the app already half-followed is now the whole rule: rounded-ui is a
+  // thing you press, rounded-full is a count (the Filtri badge, the shelter
+  // row's tally, shelter-rows.test.tsx asserts it).
+  //
+  // Below lg the pill grows to hold a 44px target on its own rather than
+  // laying an invisible overlay over a 28px one: an overlay would reach past
+  // the pill's edge into the gap and steal the neighbour's first few pixels.
+  // lg and not md, matching the species tabs and the sort beside it; at md the
+  // same bar mixed 44px targets with 28px ones for reasons nobody could see.
+  //
+  // border-ring with the ring, because this shape has a border to move. The
+  // hand-rolled ring-2 was the odd one out against every primitive's ring-3.
   const pill =
-    "inline-flex shrink-0 items-center gap-1.5 rounded-full border text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 md:h-7 md:px-2.5 max-md:min-h-11 max-md:px-3";
+    "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
 
   const row = (
     <>
@@ -324,9 +337,9 @@ export function FilterChips({
         // faded. The -mx-1/px-1 pair is the horizontal twin of the vertical
         // one below: a scroll box clips at its padding edge, and a focus ring
         // sits two pixels outside the pill it belongs to.
-        className="fade-scroll-x min-w-0 overflow-x-auto scroll-px-10 -mx-1 px-1 max-md:-my-2.5 max-md:py-2.5"
+        className="fade-scroll-x min-w-0 overflow-x-auto scroll-px-10 -mx-1 px-1 max-lg:-my-2.5 max-lg:py-2.5"
       >
-        <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap max-md:gap-2">
+        <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap max-lg:gap-2">
           <AnimatePresence initial={false} mode="popLayout">
             {items.map((item) => (
               <m.span
@@ -436,7 +449,7 @@ export function FilterChips({
               onClearAll();
             }}
             aria-label={messages.clearAllFilters}
-            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 max-md:tap-target"
+            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:tap-target"
           >
             {messages.clearAll}
           </button>
@@ -475,25 +488,43 @@ export function FilterChips({
             // row holds its place for the few seconds this is offered, rather
             // than collapsing and then jumping the page a second time when
             // the offer expires.
-            <>
-              <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                <ListFilter className="size-3.5" aria-hidden />
-                {messages.filtersCleared}
-              </span>
-              <button
-                type="button"
-                onClick={undo}
-                aria-label={messages.undoClearFilters}
-                className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 max-md:tap-target"
-              >
-                <Undo2 className="size-3.5" aria-hidden />
-                {messages.undoClear}
-              </button>
-            </>
+            <UndoOffer onUndo={undo} />
           )}
         </section>
       </TooltipProvider>
     </LazyMotion>
+  );
+}
+
+/** The way back from a clear, drawn once and shown in two places: here at the
+ *  end of the chips row on a desktop, and on a phone in the status line under
+ *  the species tabs, where the chips row no longer is (animal-filters.tsx).
+ *  Both surfaces offer it for the same few seconds and cancel it the same way,
+ *  so they had better not drift into two different offers. */
+export function UndoOffer({
+  onUndo,
+  className,
+}: {
+  onUndo?: () => void;
+  className?: string;
+}) {
+  const { messages } = useI18n();
+  return (
+    <span className={cn("flex min-w-0 items-center gap-2", className)}>
+      <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+        <ListFilter className="size-3.5" aria-hidden />
+        {messages.filtersCleared}
+      </span>
+      <button
+        type="button"
+        onClick={onUndo}
+        aria-label={messages.undoClearFilters}
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:tap-target"
+      >
+        <Undo2 className="size-3.5" aria-hidden />
+        {messages.undoClear}
+      </button>
+    </span>
   );
 }
 
@@ -510,7 +541,10 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
       : filterValueGlyph(facet, value);
   return (
     <span className="grid size-[1.125rem] shrink-0 place-items-center text-[var(--filter-accent-strong)]">
-      <Icon aria-hidden strokeWidth={1.8} className={className ?? "size-3.5"} />
+      {/* 1.75, the same weight the species tabs draw at. This was 1.8, which
+          is invisible on its own and exactly the kind of near-miss that makes
+          a row of marks read as unresolved. */}
+      <Icon aria-hidden strokeWidth={1.75} className={className ?? "size-3.5"} />
     </span>
   );
 }

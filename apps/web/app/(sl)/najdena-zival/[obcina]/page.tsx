@@ -6,6 +6,7 @@ import {
   CoverageCard,
   type CoverageCardText,
 } from "@/components/municipality-coverage-card";
+import { DETAIL_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
@@ -94,11 +95,9 @@ export default async function NajdenaZivalObcina({
 
   return (
     <I18nProvider locale="sl">
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale="sl"
           homeHref="/"
           // The English side of the switcher is the interactive lookup, which
           // is the nearest thing to this page that exists in English.
@@ -108,7 +107,10 @@ export default async function NajdenaZivalObcina({
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
+        {/* The same measure the found-animal page holds itself to, and the
+            same reason it is not centred: the column starts on the frame's
+            left edge, so the h1 lines up with the logo. */}
+        <main className="flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
           <div className="space-y-5">
             {/* Back to the finder, not to the animals: somebody who landed
                 here from a search for the wrong občina wants the box. */}
@@ -118,7 +120,7 @@ export default async function NajdenaZivalObcina({
             >
               ← {messages.muniOtherMunicipalities}
             </a>
-            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+            <h1 className={DETAIL_TITLE_CLASS}>
               {translate("sl", "muniPageHeading", { name: entry.name })}
             </h1>
           </div>
@@ -241,7 +243,7 @@ export default async function NajdenaZivalObcina({
         {/* Same as the found-animal page: this is the found-animal flow, so
             the footer does not offer a link back into it. */}
         <SiteFooter locale="sl" showFoundAnimalLink={false} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

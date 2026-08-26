@@ -1,6 +1,7 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
@@ -48,17 +49,17 @@ export function SitePage({ locale }: { locale: Locale }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      {/* The one page on the wide frame: the filter sidebar needs the column
+          beside the grid. */}
+      <PageShell width="wide">
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={locale === "sl" ? "/" : "/en"}
         />
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">
           <div className="space-y-1.5">
-            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+            <h1 className={INDEX_TITLE_CLASS}>
               {messages.heroTitle}
             </h1>
             {/* One wrapping line at every width, where this used to be a text
@@ -109,7 +110,7 @@ export function SitePage({ locale }: { locale: Locale }) {
             whether the coverage table has anything in it, so it answers for
             the found-animal link rather than taking the default. */}
         <SiteFooter locale={locale} showFoundAnimalLink={hasLookup} docked />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

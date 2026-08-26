@@ -5,6 +5,7 @@ import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
 import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
+import { DETAIL_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -46,11 +47,9 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={indexHref}
           languagePaths={{
             sl: animalPath(animal, "sl"),
@@ -58,7 +57,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y">
+        <main className="flex flex-1 flex-col gap-8 py-page-y">
           <a
             href={indexHref}
             className="inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
@@ -79,7 +78,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           <div className="space-y-5">
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3">
-                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+                <h1 className={DETAIL_TITLE_CLASS}>
                   {animal.name ?? messages.unnamed}
                 </h1>
                 {/* A visitor who arrived by a shared link is the one most
@@ -122,7 +121,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         </main>
 
         <SiteFooter locale={locale} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

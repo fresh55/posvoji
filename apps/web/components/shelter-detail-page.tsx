@@ -2,13 +2,14 @@ import { Globe, Info, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 import { I18nProvider } from "@/components/i18n-provider";
+import { DETAIL_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS } from "@/lib/labels";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { getShelterBySlug } from "@/lib/shelters";
@@ -57,17 +58,14 @@ export function ShelterDetailPage({
   );
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
-  const messages = getMessages(locale);
   const text = pageText[locale];
   const indexHref = locale === "sl" ? "/zavetisca" : "/en/shelters";
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={locale === "sl" ? "/" : "/en"}
           languagePaths={{
             sl: `/zavetisca/${shelter.id}`,
@@ -75,7 +73,7 @@ export function ShelterDetailPage({
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10">
+        <main className="flex flex-1 flex-col gap-8 py-page-y sm:gap-10">
           <div className="space-y-5">
             <BackLink
               href={indexHref}
@@ -90,9 +88,7 @@ export function ShelterDetailPage({
                 size="lg"
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-                  {shelter.name}
-                </h1>
+                <h1 className={DETAIL_TITLE_CLASS}>{shelter.name}</h1>
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="size-3.5 shrink-0" aria-hidden />
                   {shelter.city}
@@ -112,7 +108,12 @@ export function ShelterDetailPage({
 
             <div className="flex flex-wrap gap-2">
               {shelter.website && (
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:tap-target"
+                >
                   <a href={shelter.website} target="_blank" rel="noreferrer">
                     <Globe aria-hidden />
                     {text.website}
@@ -120,7 +121,12 @@ export function ShelterDetailPage({
                 </Button>
               )}
               {shelter.email && (
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:tap-target"
+                >
                   <a href={`mailto:${shelter.email}`}>
                     <Mail aria-hidden />
                     {shelter.email}
@@ -128,7 +134,12 @@ export function ShelterDetailPage({
                 </Button>
               )}
               {shelter.phone && (
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:tap-target"
+                >
                   <a href={telHref(shelter.phone)}>
                     <Phone aria-hidden />
                     {shelter.phone}
@@ -178,7 +189,7 @@ export function ShelterDetailPage({
         </main>
 
         <SiteFooter locale={locale} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

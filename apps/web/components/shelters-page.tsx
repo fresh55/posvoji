@@ -1,9 +1,10 @@
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { ShelterCard } from "@/components/shelter-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
@@ -32,7 +33,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
   const logos = getShelterLogos();
-  const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = locale === "sl" ? "/" : "/en";
   const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
@@ -55,16 +55,14 @@ export function SheltersPage({ locale }: { locale: Locale }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={homeHref}
           languagePaths={{ sl: "/zavetisca", en: "/en/shelters" }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
+        <main className="flex flex-1 flex-col gap-10 py-page-y sm:gap-14">
           <div className="space-y-5">
             <a
               href={homeHref}
@@ -73,9 +71,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               ← {text.back}
             </a>
             <div className="max-w-3xl space-y-3">
-              <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-                {text.title}
-              </h1>
+              <h1 className={INDEX_TITLE_CLASS}>{text.title}</h1>
               <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
                 {intro}
               </p>
@@ -107,7 +103,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         </main>
 
         <SiteFooter locale={locale} showSheltersLink={false} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

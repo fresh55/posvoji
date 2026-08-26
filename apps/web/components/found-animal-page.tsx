@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { FoundAnimalLookup } from "@/components/found-animal-lookup";
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
@@ -39,11 +40,9 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={homeHref}
           languagePaths={{
             sl: FOUND_ANIMAL_PATHS.sl,
@@ -51,7 +50,11 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
+        {/* max-w-xl without mx-auto. The lookup keeps the measure it was
+            designed to, and the column still starts on the frame's left edge,
+            so the h1 lines up with the logo above it instead of sitting 96px
+            inside it. */}
+        <main className="flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
           <div className="space-y-5">
             <a
               href={homeHref}
@@ -59,9 +62,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
             >
               ← {messages.backToAnimals}
             </a>
-            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
-              {messages.muniPromptTitle}
-            </h1>
+            <h1 className={INDEX_TITLE_CLASS}>{messages.muniPromptTitle}</h1>
           </div>
 
           <FoundAnimalLookup entries={entries} />
@@ -78,7 +79,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
         {/* The one footer that does not link to the found-animal page,
             because it is on it. */}
         <SiteFooter locale={locale} showFoundAnimalLink={false} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }
@@ -94,9 +95,9 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
  * middot the cards use, at the size the source notes are set in.
  *
  * shrink-0 so it cannot take height from the finder. The column it sits in is
- * min-h-full rather than h-full, so once the two together outgrow the
- * viewport the page grows instead of the finder shrinking into its own
- * scroller.
+ * floored at the viewport rather than fixed to it, so once the two together
+ * outgrow the viewport the page grows instead of the finder shrinking into
+ * its own scroller.
  */
 function MunicipalityIndex({
   entries,

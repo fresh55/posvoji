@@ -1,7 +1,8 @@
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
@@ -265,22 +266,19 @@ const pageText = {
 } satisfies Record<Locale, Record<string, string>>;
 
 export function ResourcesPage({ locale }: { locale: Locale }) {
-  const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = locale === "sl" ? "/" : "/en";
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={homeHref}
           languagePaths={{ sl: "/viri", en: "/en/resources" }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
+        <main className="flex flex-1 flex-col gap-10 py-page-y sm:gap-14">
           <div className="space-y-5">
             <a
               href={homeHref}
@@ -289,9 +287,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
               ← {text.back}
             </a>
             <div className="max-w-3xl space-y-3">
-              <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-                {text.title}
-              </h1>
+              <h1 className={INDEX_TITLE_CLASS}>{text.title}</h1>
               <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
                 {text.intro}
               </p>
@@ -312,7 +308,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
               <h2 className="border-b pb-3 text-xl font-medium tracking-tight sm:text-2xl">
                 {section.title[locale]}
               </h2>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {section.resources.map((resource) => (
                   <Card asChild key={`${section.id}-${resource.title}`}>
                     <article className="flex flex-col p-5">
@@ -332,7 +328,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                         href={resource.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+                        className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline max-lg:tap-target"
                       >
                         {text.open}
                         <span aria-hidden>↗</span>
@@ -346,7 +342,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
         </main>
 
         <SiteFooter locale={locale} showResourcesLink={false} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

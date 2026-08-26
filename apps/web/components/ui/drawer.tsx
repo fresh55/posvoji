@@ -7,8 +7,19 @@ import { XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+function Drawer({
+  autoFocus = true,
+  ...props
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+  // Vaul defaults autoFocus to false, which makes its Content cancel Radix's
+  // own open-focus (onOpenAutoFocus calls preventDefault whenever !autoFocus,
+  // vaul dist/index.js ~1498). Radix's FocusScope only starts trapping Tab
+  // once focus has actually moved inside once, so with the cancel in place
+  // focus is left on the trigger behind an aria-hidden region and Tab walks
+  // straight into the rest of the page. Defaulting true here restores Radix's
+  // normal mount focus (the first focusable control in the content, our
+  // close button in practice); a caller can still pass autoFocus={false}.
+  return <DrawerPrimitive.Root data-slot="drawer" autoFocus={autoFocus} {...props} />
 }
 
 function DrawerTrigger({

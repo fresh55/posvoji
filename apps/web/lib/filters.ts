@@ -893,21 +893,23 @@ function narrows(matching: number, total: number): boolean {
   return matching > 0 && matching < total;
 }
 
-// Every visible* function below takes the current selection as its last
-// argument, and a value that is selected keeps its control on screen whatever
+// Every visible* function below takes the current selection, and takes it
+// required, and a value that is selected keeps its control on screen whatever
 // the pool says. The rule these functions otherwise follow is "an option that
 // cannot narrow anything is not worth a row", and that rule is right for an
 // option nobody has picked and wrong for one somebody has: a selection is
 // already narrowing the result, so hiding its control leaves a filter running
 // with no way to switch it off. On a phone it is worse than that, because the
 // Filtri trigger only exists while the sheet has sections (animal-filters.tsx),
-// so the last section going takes the whole way in with it.
+// so the last section going takes the whole way in with it. Required and not
+// defaulted, because a caller that forgets the argument gets exactly the
+// stranding this guards against, and silently.
 
 // A toggle that every animal passes (or none do) can't narrow anything.
 export function visibleToggles(
   animals: Animal[],
   species: SpeciesFilter,
-  selected: readonly ToggleKey[] = [],
+  selected: readonly ToggleKey[],
 ): ToggleDef[] {
   const counts = answeredCounts(indexOf(animals).toggles, TOGGLES.length);
   return TOGGLES.filter(
@@ -918,42 +920,43 @@ export function visibleToggles(
   );
 }
 
-// Same rule as visibleToggles, and no species pinning: every one of these
-// questions is asked of dogs and cats alike. The section therefore reveals
-// itself facet by facet as shelters start answering.
-export function visibleGoodWith(
+/** Družba, Dom and Skrb ask one question of three different columns: which of
+ *  this section's keys can still narrow the pool, plus whatever the visitor
+ *  has already picked. One walk written once, the way narrows() above is the
+ *  one place the narrowing rule itself is written. No species pinning in any
+ *  of the three: every one of these questions is asked of dogs and cats alike,
+ *  and a flat is a flat whether a dog or a cat lives in it. */
+function visibleFacet<Key extends string>(
+  keys: readonly Key[],
+  column: "goodWith" | "home" | "care",
   animals: Animal[],
-  selected: readonly GoodWithKey[] = [],
-): GoodWithKey[] {
-  const counts = answeredCounts(
-    indexOf(animals).goodWith,
-    GOOD_WITH_KEYS.length,
-  );
-  return GOOD_WITH_KEYS.filter(
+  selected: readonly Key[],
+): Key[] {
+  const counts = answeredCounts(indexOf(animals)[column], keys.length);
+  return keys.filter(
     (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
   );
 }
 
-// Same rule, and no species pinning either: a flat is a flat whether a dog or
-// a cat lives in it.
+export function visibleGoodWith(
+  animals: Animal[],
+  selected: readonly GoodWithKey[],
+): GoodWithKey[] {
+  return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected);
+}
+
 export function visibleHome(
   animals: Animal[],
-  selected: readonly HomeKey[] = [],
+  selected: readonly HomeKey[],
 ): HomeKey[] {
-  const counts = answeredCounts(indexOf(animals).home, HOME_KEYS.length);
-  return HOME_KEYS.filter(
-    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
-  );
+  return visibleFacet(HOME_KEYS, "home", animals, selected);
 }
 
 export function visibleCare(
   animals: Animal[],
-  selected: readonly CareKey[] = [],
+  selected: readonly CareKey[],
 ): CareKey[] {
-  const counts = answeredCounts(indexOf(animals).care, CARE_KEYS.length);
-  return CARE_KEYS.filter(
-    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
-  );
+  return visibleFacet(CARE_KEYS, "care", animals, selected);
 }
 
 /** The number each species tab shows: everything the visitor asked for
@@ -1017,11 +1020,14 @@ export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> 
 // with it the Filtri trigger, while spol=samec went on filtering from the URL.
 // pruneHiddenFilters cannot cover this one, because the selection is not wrong
 // for the species tab, only invisible.
+//
+// The whole filter object and not a species beside it: the species tab and the
+// selection are two questions of the same state, and taking them separately
+// left every caller passing filters.species and filters to the same call.
 export function visibleGroups(
   animals: Animal[],
-  species: SpeciesFilter,
+  filters: Filters,
   now: Date,
-  selected?: Filters,
 ): Record<MultiGroup, boolean> {
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
@@ -1043,8 +1049,8 @@ export function visibleGroups(
     add("shelter", index.shelter[slot]);
   }
   const shown = (group: MultiGroup) =>
-    (selected?.[group].length ?? 0) > 0 ||
-    (groupFitsSpecies(group, species) && distinct[group].size >= 2);
+    filters[group].length > 0 ||
+    (groupFitsSpecies(group, filters.species) && distinct[group].size >= 2);
   return {
     sex: shown("sex"),
     age: shown("age"),

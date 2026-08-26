@@ -51,7 +51,13 @@ function animal(species: Species, extra: Partial<Animal> = {}): Animal {
 }
 
 function toggleKeys(animals: Animal[], species: SpeciesFilter): string[] {
-  return visibleToggles(animals, species).map((toggle) => toggle.key);
+  return visibleToggles(animals, species, []).map((toggle) => toggle.key);
+}
+
+// visibleGroups reads the whole filter object, so a case that only cares which
+// species tab is on says so and nothing else.
+function tab(species: SpeciesFilter): Filters {
+  return { ...EMPTY_FILTERS, species };
 }
 
 describe("the merged Ostale tab", () => {
@@ -154,7 +160,7 @@ describe("visibleGroups", () => {
       animal("cat", { size: "small" }),
       animal("cat", { size: "large" }),
     ];
-    expect(visibleGroups(cats, "cat", NOW).size).toBe(false);
+    expect(visibleGroups(cats, tab("cat"), NOW).size).toBe(false);
   });
 
   it("keeps velikost on the dog tab", () => {
@@ -162,7 +168,7 @@ describe("visibleGroups", () => {
       animal("dog", { size: "small" }),
       animal("dog", { size: "large" }),
     ];
-    expect(visibleGroups(dogs, "dog", NOW).size).toBe(true);
+    expect(visibleGroups(dogs, tab("dog"), NOW).size).toBe(true);
   });
 
   it("measures against the species tab, not the whole dataset", () => {
@@ -171,18 +177,22 @@ describe("visibleGroups", () => {
       animal("dog", { sex: "female" }),
       animal("cat", { sex: "female" }),
     ];
-    expect(visibleGroups(bySpecies(animals, "all"), "all", NOW).sex).toBe(true);
-    expect(visibleGroups(bySpecies(animals, "cat"), "cat", NOW).sex).toBe(false);
+    expect(visibleGroups(bySpecies(animals, "all"), tab("all"), NOW).sex).toBe(
+      true,
+    );
+    expect(visibleGroups(bySpecies(animals, "cat"), tab("cat"), NOW).sex).toBe(
+      false,
+    );
   });
 
   it("hides energija with fewer than two distinct values in the pool", () => {
-    expect(visibleGroups([animal("dog")], "all", NOW).energy).toBe(false);
+    expect(visibleGroups([animal("dog")], tab("all"), NOW).energy).toBe(false);
 
     const oneValue = [
       animal("dog", { energy: "calm" }),
       animal("dog", { energy: "calm" }),
     ];
-    expect(visibleGroups(oneValue, "all", NOW).energy).toBe(false);
+    expect(visibleGroups(oneValue, tab("all"), NOW).energy).toBe(false);
   });
 
   it("shows energija once the pool has two distinct values", () => {
@@ -190,7 +200,7 @@ describe("visibleGroups", () => {
       animal("dog", { energy: "calm" }),
       animal("dog", { energy: "lively" }),
     ];
-    expect(visibleGroups(animals, "all", NOW).energy).toBe(true);
+    expect(visibleGroups(animals, tab("all"), NOW).energy).toBe(true);
   });
 
   it("keeps energija on the cat tab, unlike velikost", () => {
@@ -198,7 +208,7 @@ describe("visibleGroups", () => {
       animal("cat", { energy: "calm" }),
       animal("cat", { energy: "lively" }),
     ];
-    expect(visibleGroups(cats, "cat", NOW).energy).toBe(true);
+    expect(visibleGroups(cats, tab("cat"), NOW).energy).toBe(true);
   });
 
   it("keeps a group the visitor has already answered", () => {
@@ -207,13 +217,13 @@ describe("visibleGroups", () => {
     // went on filtering from the URL, and on a phone it took the sheet's last
     // section and the Filtri trigger with it.
     const rabbits = [animal("rabbit", { sex: "male" })];
-    expect(visibleGroups(rabbits, "other", NOW).sex).toBe(false);
+    expect(visibleGroups(rabbits, tab("other"), NOW).sex).toBe(false);
     expect(
-      visibleGroups(rabbits, "other", NOW, {
-        ...EMPTY_FILTERS,
-        species: "other",
-        sex: ["male"],
-      }).sex,
+      visibleGroups(
+        rabbits,
+        { ...EMPTY_FILTERS, species: "other", sex: ["male"] },
+        NOW,
+      ).sex,
     ).toBe(true);
   });
 
@@ -221,11 +231,42 @@ describe("visibleGroups", () => {
     // The selection only ever adds a section back. Everything else is measured
     // exactly as it was.
     const rabbits = [animal("rabbit", { sex: "male", energy: "calm" })];
-    const shown = visibleGroups(rabbits, "other", NOW, {
-      ...EMPTY_FILTERS,
-      species: "other",
-      sex: ["male"],
-    });
+    const shown = visibleGroups(
+      rabbits,
+      { ...EMPTY_FILTERS, species: "other", sex: ["male"] },
+      NOW,
+    );
+    expect(shown.energy).toBe(false);
+    expect(shown.age).toBe(false);
+  });
+
+  it("keeps a group the visitor has already answered", () => {
+    // ?vrsta=ostalo&spol=samec over a dataset whose one rabbit is male. Spol
+    // has a single distinct value, so the section used to go while spol=samec
+    // went on filtering from the URL, and on a phone it took the sheet's last
+    // section and the Filtri trigger with it.
+    const rabbits = [animal("rabbit", { sex: "male" })];
+    expect(
+      visibleGroups(rabbits, { ...EMPTY_FILTERS, species: "other" }, NOW).sex,
+    ).toBe(false);
+    expect(
+      visibleGroups(
+        rabbits,
+        { ...EMPTY_FILTERS, species: "other", sex: ["male"] },
+        NOW,
+      ).sex,
+    ).toBe(true);
+  });
+
+  it("leaves the groups the visitor has not answered alone", () => {
+    // The selection only ever adds a section back. Everything else is measured
+    // exactly as it was.
+    const rabbits = [animal("rabbit", { sex: "male", energy: "calm" })];
+    const shown = visibleGroups(
+      rabbits,
+      { ...EMPTY_FILTERS, species: "other", sex: ["male"] },
+      NOW,
+    );
     expect(shown.energy).toBe(false);
     expect(shown.age).toBe(false);
   });
@@ -248,7 +289,9 @@ describe("visibleToggles", () => {
   });
 
   it("takes only a recorded negative, never an untested cat", () => {
-    const toggle = visibleToggles(cats, "cat").find((t) => t.key === "brez-fiv");
+    const toggle = visibleToggles(cats, "cat", []).find(
+      (t) => t.key === "brez-fiv",
+    );
     const matches = (fiv?: TestResult) =>
       toggle?.matches(animal("cat", { medical: { fiv } }));
     expect(matches("negative")).toBe(true);
@@ -279,11 +322,11 @@ describe("visibleGoodWith", () => {
       animal("dog", { goodWith: { kids: "no", dogs: "yes" } }),
     ];
     // Every animal is good with dogs, so that facet would change nothing.
-    expect(visibleGoodWith(animals)).toEqual(["kids"]);
+    expect(visibleGoodWith(animals, [])).toEqual(["kids"]);
   });
 
   it("stays away while nothing has been answered", () => {
-    expect(visibleGoodWith([animal("dog"), animal("cat")])).toEqual([]);
+    expect(visibleGoodWith([animal("dog"), animal("cat")], [])).toEqual([]);
   });
 
   it("asks the same three questions of dogs and cats alike", () => {
@@ -291,7 +334,7 @@ describe("visibleGoodWith", () => {
       animal("cat", { goodWith: { cats: "yes" } }),
       animal("dog", { goodWith: { cats: "no" } }),
     ];
-    expect(visibleGoodWith(animals)).toEqual(["cats"]);
+    expect(visibleGoodWith(animals, [])).toEqual(["cats"]);
   });
 
   it("keeps a selected facet once every animal answers it", () => {
@@ -299,7 +342,16 @@ describe("visibleGoodWith", () => {
       animal("dog", { goodWith: { kids: "yes" } }),
       animal("cat", { goodWith: { kids: "yes" } }),
     ];
-    expect(visibleGoodWith(kids)).toEqual([]);
+    expect(visibleGoodWith(kids, [])).toEqual([]);
+    expect(visibleGoodWith(kids, ["kids"])).toEqual(["kids"]);
+  });
+
+  it("keeps a selected facet once every animal answers it", () => {
+    const kids = [
+      animal("dog", { goodWith: { kids: "yes" } }),
+      animal("cat", { goodWith: { kids: "yes" } }),
+    ];
+    expect(visibleGoodWith(kids, [])).toEqual([]);
     expect(visibleGoodWith(kids, ["kids"])).toEqual(["kids"]);
   });
 });
@@ -310,11 +362,11 @@ describe("visibleHome", () => {
       animal("cat", { apartmentOk: "yes" }),
       animal("cat", { apartmentOk: "no" }),
     ];
-    expect(visibleHome(animals)).toEqual(["apartment"]);
+    expect(visibleHome(animals, [])).toEqual(["apartment"]);
   });
 
   it("stays away while nothing has been answered", () => {
-    expect(visibleHome([animal("dog"), animal("cat")])).toEqual([]);
+    expect(visibleHome([animal("dog"), animal("cat")], [])).toEqual([]);
   });
 
   it("stays away when every animal would pass it", () => {
@@ -322,7 +374,7 @@ describe("visibleHome", () => {
       animal("cat", { apartmentOk: "yes" }),
       animal("cat", { apartmentOk: "yes" }),
     ];
-    expect(visibleHome(animals)).toEqual([]);
+    expect(visibleHome(animals, [])).toEqual([]);
   });
 
   it("asks the same question of dogs and cats alike", () => {
@@ -330,7 +382,7 @@ describe("visibleHome", () => {
       animal("dog", { apartmentOk: "yes" }),
       animal("cat", { apartmentOk: "unknown" }),
     ];
-    expect(visibleHome(animals)).toEqual(["apartment"]);
+    expect(visibleHome(animals, [])).toEqual(["apartment"]);
   });
 });
 
@@ -340,11 +392,11 @@ describe("visibleCare", () => {
       animal("dog", { specialNeeds: true }),
       animal("dog", { specialNeeds: false }),
     ];
-    expect(visibleCare(animals)).toEqual(["patient"]);
+    expect(visibleCare(animals, [])).toEqual(["patient"]);
   });
 
   it("stays away while no shelter has marked anyone", () => {
-    expect(visibleCare([animal("dog"), animal("cat")])).toEqual([]);
+    expect(visibleCare([animal("dog"), animal("cat")], [])).toEqual([]);
   });
 
   it("stays away when every animal would pass it", () => {
@@ -352,7 +404,7 @@ describe("visibleCare", () => {
       animal("dog", { specialNeeds: true }),
       animal("cat", { specialNeeds: true }),
     ];
-    expect(visibleCare(animals)).toEqual([]);
+    expect(visibleCare(animals, [])).toEqual([]);
   });
 });
 

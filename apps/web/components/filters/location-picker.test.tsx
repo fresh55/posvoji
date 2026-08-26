@@ -498,13 +498,13 @@ describe("LocationPicker search announcement", () => {
 describe("LocationPicker sheet height", () => {
   const dialog = () => screen.getByRole("dialog");
 
-  /** The arbitrary value inside the first `prefix-[…]` class on an element,
-   *  which is how both sides of the sheet/stage agreement are written. */
-  function arbitrary(element: Element, prefix: string): string | undefined {
+  /** The value of a `[--name:…]` declaration on an element, which is how the
+   *  height both sides of the sheet/stage agreement read is written. */
+  function declared(element: Element, name: string): string | undefined {
     return element.className
       .split(/\s+/)
-      .find((name) => name.startsWith(`${prefix}-[`))
-      ?.slice(prefix.length + 2, -1);
+      .find((token) => token.startsWith(`[${name}:`))
+      ?.slice(name.length + 2, -1);
   }
 
   it("gives the stage back exactly what the sheet takes", async () => {
@@ -513,20 +513,22 @@ describe("LocationPicker sheet height", () => {
     const stage = dialog().querySelector("[data-map-stage]")!;
     const panel = dialog().querySelector("[data-picker-panel]")!;
 
-    // Two elements, one number, written twice because Tailwind reads class
-    // names out of the source text and cannot be handed a constant. If they
-    // ever disagree the map is drawn under the sheet or leaves a band of bare
-    // paper above it, and neither shows up in a test that only looks at one
-    // of them.
-    expect(arbitrary(panel, "h")).toBe(arbitrary(stage, "bottom"));
-    expect(arbitrary(panel, "h")).toBeTruthy();
+    // Two elements, one number. Tailwind reads class names out of the source
+    // text and cannot be handed a JS constant, so this used to be written
+    // twice; if the two ever disagreed the map was drawn under the sheet or
+    // left a band of bare paper above it, and neither showed up in a test
+    // that only looked at one of them. It is one custom property on the box
+    // both of them are positioned against now, and what is left to assert is
+    // that both still read it rather than restating it.
+    expect(stage.className).toContain("bottom-(--sheet-h)");
+    expect(panel.className).toContain("h-(--sheet-h)");
   });
 
   it("floors the sheet rather than taking a flat fraction of the screen", async () => {
     await openPicker();
 
-    const panel = dialog().querySelector("[data-picker-panel]")!;
-    const height = arbitrary(panel, "h")!;
+    const ground = dialog().querySelector("[data-picker-stage]")!;
+    const height = declared(ground, "--sheet-h")!;
 
     // The fraction is still what a tall phone gets. The floor under it is the
     // fix: the sheet's chrome does not shrink with the viewport, so on a short
@@ -536,7 +538,8 @@ describe("LocationPicker sheet height", () => {
     // the sheet: the compact rows, the gap and the CC BY credit together.
     expect(height).toContain("55dvh");
     expect(height).toContain("max(55dvh,27.5rem)");
-    expect(height).toContain("calc(100%_-_9rem)");
+    expect(height).toContain("calc(100%_-_var(--sheet-reserve))");
+    expect(declared(ground, "--sheet-reserve")).toBe("9rem");
   });
 
   it("keeps the list a height of its own below lg", async () => {
@@ -1548,12 +1551,8 @@ describe("LocationPicker floating panel", () => {
     // Same recentering as the panel, on the other axis: the container gives up
     // exactly the height the sheet takes. What that height is, and why it is
     // no longer a flat fraction, is asserted in "LocationPicker sheet height".
-    expect(panel().className).toContain(
-      "h-[min(max(55dvh,27.5rem),calc(100%_-_9rem))]",
-    );
-    expect(stage().className).toContain(
-      "bottom-[min(max(55dvh,27.5rem),calc(100%_-_9rem))]",
-    );
+    expect(panel().className).toContain("h-(--sheet-h)");
+    expect(stage().className).toContain("bottom-(--sheet-h)");
 
     fireEvent.click(peek);
 

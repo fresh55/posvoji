@@ -42,14 +42,16 @@ describe("SiteFooter", () => {
     // The grid reserved its own run-off for the dock, but the grid is not what
     // ends the document. Without this the dock sat on top of the only links
     // off the page at phone width.
+    // The clearance is measured off back-to-top's own inset variable, so that
+    // is what the docked footer has to be carrying.
     const { container, rerender } = render(<SiteFooter locale="sl" />);
     expect(container.querySelector("footer")?.className).not.toContain(
-      "safe-area-inset-bottom",
+      "--back-to-top-bottom",
     );
 
     rerender(<SiteFooter locale="sl" docked />);
     expect(container.querySelector("footer")?.className).toContain(
-      "safe-area-inset-bottom",
+      "--back-to-top-bottom",
     );
   });
 });

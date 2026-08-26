@@ -3,23 +3,14 @@
 import {
   ArrowDownAZ,
   ArrowDownNarrowWide,
-  Check,
-  ChevronDown,
   DoorOpen,
   Hourglass,
   Sprout,
   TreeDeciduous,
   type LucideIcon,
 } from "lucide-react";
-import { useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
 import {
   Select,
   SelectContent,
@@ -27,20 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { ANIMAL_SORTS, type AnimalSort } from "@/lib/sort";
-import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-function sortLabels(messages: Messages): Record<AnimalSort, string> {
-  return {
-    "longest-in-shelter": messages.sortLongestInShelter,
-    "newest-arrivals": messages.sortNewestArrivals,
-    youngest: messages.sortYoungest,
-    oldest: messages.sortOldest,
-    name: messages.sortName,
-  };
-}
 
 // One mark per order, borrowed rather than invented wherever the site already
 // has one. Hourglass is the wait, which is what the long-stay callout and the
@@ -87,7 +66,13 @@ export function SortPicker({
   className?: string;
 }) {
   const { messages } = useI18n();
-  const labels = sortLabels(messages);
+  const labels: Record<AnimalSort, string> = {
+    "longest-in-shelter": messages.sortLongestInShelter,
+    "newest-arrivals": messages.sortNewestArrivals,
+    youngest: messages.sortYoungest,
+    oldest: messages.sortOldest,
+    name: messages.sortName,
+  };
 
   return (
     <Select
@@ -114,9 +99,9 @@ export function SortPicker({
             chevron in a box and nothing saying what either did. That was to
             leave the species tabs beside it room to breathe; the tabs have
             had a row of their own since they stopped fitting one, and this
-            control now sits alone in a row with two hundred spare pixels.
-            Truncation, not hiding, is what a long sort name gets: max-w-44
-            above keeps it from crowding the count at the other end. */}
+            control no longer shares a row with them at all. Truncation, not
+            hiding, is what a long sort name gets: the trigger keeps whatever
+            width its placement gives it and the name gives way inside. */}
         <SelectValue>
           <span className="truncate">{labels[value]}</span>
         </SelectValue>

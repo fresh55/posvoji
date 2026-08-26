@@ -1028,7 +1028,10 @@ describe("animal dialog", () => {
     renderGrid();
     expect(screen.getByText("Fotografija 1 od 2")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Naslednja fotografija" }));
+    // getByLabelText, not getByRole: the card chevrons are aria-hidden (they
+    // are a pointer affordance; keyboard and screen readers get the arrow-key
+    // route), so the role query no longer sees them.
+    fireEvent.click(screen.getByLabelText("Naslednja fotografija"));
 
     expect(screen.getByText("Fotografija 2 od 2")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();

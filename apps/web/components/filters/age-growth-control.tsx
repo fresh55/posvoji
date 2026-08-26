@@ -26,10 +26,7 @@ import {
 } from "@/components/filters/filter-section-header";
 import { useFilterCardHover } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-provider";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
@@ -94,7 +91,12 @@ const RESET_CLEAR_MS = 280;
 // animate on update. The two below exist only to be mounted and watched, so
 // each needs a presence boundary of its own, carrying the default `initial`,
 // or it never plays.
-function OneShot({ children }: { children: ReactNode }) {
+//
+// Named for what it does to its child rather than for the shape of the
+// animation: "one shot" is already taken in this codebase by
+// useOneShotCelebration, which is a different thing (a celebration that fires
+// once per selection), and a wrapper sharing that word read as its JSX form.
+function PlaysOnMount({ children }: { children: ReactNode }) {
   return <AnimatePresence>{children}</AnimatePresence>;
 }
 
@@ -193,316 +195,319 @@ export function AgeGrowthControl({
         />
 
         <CollapsibleBody collapse={collapse}>
-        <p id={hintId} className="sr-only">
-          {messages.ageFilterHint}
-        </p>
+          <p id={hintId} className="sr-only">
+            {messages.ageFilterHint}
+          </p>
 
-        <div
-          aria-hidden="true"
-          data-age-view="grove"
-          className={cn(
-            "relative mb-2 grid grid-cols-3 items-end px-1",
-            layout === "sheet" ? "h-12" : "h-14",
-          )}
-        >
-          <span className="absolute inset-x-3 bottom-1 h-px bg-border" />
-          {options.map(({ value }, index) => {
-            if (!isAgeStage(value)) return null;
+          <div
+            aria-hidden="true"
+            data-age-view="grove"
+            className={cn(
+              "relative mb-2 grid grid-cols-3 items-end px-1",
+              layout === "sheet" ? "h-12" : "h-14",
+            )}
+          >
+            <span className="absolute inset-x-3 bottom-1 h-px bg-border" />
+            {options.map(({ value }, index) => {
+              if (!isAgeStage(value)) return null;
 
-            const stage = STAGES[value];
-            const active = isAgeStageActive(selected, value);
-            const celebrating = celebratingAge === value && active;
-            const reacting = celebrationIndex >= 0 && !celebrating;
-            // Neighbours lean away from the plant that just grew; the plant
-            // itself leans right unless it is the last in the row.
-            const windDirection = celebrating
-              ? index === options.length - 1
-                ? -1
-                : 1
-              : Math.sign(index - celebrationIndex) || 1;
-            const hovered = hoveredAge === value;
-            // A reset wakes the columns in order rather than all at once.
-            const settleDelay = isResetting ? index * RESET_STAGGER : 0;
+              const stage = STAGES[value];
+              const active = isAgeStageActive(selected, value);
+              const celebrating = celebratingAge === value && active;
+              const reacting = celebrationIndex >= 0 && !celebrating;
+              // Neighbours lean away from the plant that just grew; the plant
+              // itself leans right unless it is the last in the row.
+              const windDirection = celebrating
+                ? index === options.length - 1
+                  ? -1
+                  : 1
+                : Math.sign(index - celebrationIndex) || 1;
+              const hovered = hoveredAge === value;
+              // A reset wakes the columns in order rather than all at once.
+              const settleDelay = isResetting ? index * RESET_STAGGER : 0;
 
-            return (
-              <span
-                key={value}
-                data-age-stage={value}
-                data-stage-active={active ? "true" : "false"}
-                className="relative flex h-full items-end justify-center pb-1"
-              >
-                <m.span
-                  className="absolute inset-x-2 bottom-1 h-px origin-center bg-[#2f6f4e]/55"
-                  initial={false}
-                  animate={{
-                    opacity: active ? 1 : 0.12,
-                    scaleX: active ? 1 : 0.25,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : {
-                          duration: 0.18,
-                          delay: settleDelay,
-                          ease: STANDARD_EASE,
-                        }
-                  }
-                />
-                {celebrating && !shouldReduceMotion ? (
-                  <span className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
-                    <OneShot>
-                    <m.span
-                      key={celebration?.id}
-                      className="size-[3px] rounded-full bg-[#2f6f4e]"
-                      initial={{ opacity: 0.65, scale: 0.5 }}
-                      animate={{ opacity: 0, scale: 2.5 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                    />
-                    </OneShot>
-                  </span>
-                ) : null}
-                {value === "senior" &&
-                fallingLeafId > 0 &&
-                !shouldReduceMotion ? (
-                  <span className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
-                    <OneShot>
-                    <m.span
-                      key={fallingLeafId}
-                      initial={{ opacity: 0, x: 0, y: 0, rotate: -8 }}
-                      animate={{
-                        opacity: [0, 0.9, 0.85, 0.85, 0],
-                        x: [0, 5, -4, 2, 2],
-                        y: [
-                          0,
-                          leafFall * 0.3,
-                          leafFall * 0.62,
-                          leafFall,
-                          leafFall,
-                        ],
-                        rotate: [-8, 24, -14, 34, 34],
-                      }}
-                      transition={{
-                        duration: 1.25,
-                        ease: "easeInOut",
-                        // The last pair repeats the landed pose so the leaf
-                        // rests on the ground line while it fades.
-                        times: [0, 0.22, 0.52, 0.86, 1],
-                      }}
-                      onAnimationComplete={() => setFallingLeafId(0)}
-                    >
-                      <Leaf
-                        className={cn("size-2.5", stage.colorClassName)}
-                        strokeWidth={1.6}
-                      />
-                    </m.span>
-                    </OneShot>
-                  </span>
-                ) : null}
-                <m.span
-                  className="flex origin-bottom items-end justify-center"
-                  initial={false}
-                  animate={
-                    active
-                      ? { opacity: 1, scale: hovered ? 1.04 : 1, y: 0 }
-                      : hovered
-                        ? { opacity: 0.75, scale: 0.9, y: 1 }
-                        : { opacity: 0.5, scale: 0.84, y: 2 }
-                  }
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : {
-                          duration: 0.24,
-                          delay: settleDelay,
-                          ease: STANDARD_EASE,
-                        }
-                  }
+              return (
+                <span
+                  key={value}
+                  data-age-stage={value}
+                  data-stage-active={active ? "true" : "false"}
+                  className="relative flex h-full items-end justify-center pb-1"
                 >
+                  <m.span
+                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-[#2f6f4e]/55"
+                    initial={false}
+                    animate={{
+                      opacity: active ? 1 : 0.12,
+                      scaleX: active ? 1 : 0.25,
+                    }}
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : {
+                            duration: 0.18,
+                            delay: settleDelay,
+                            ease: STANDARD_EASE,
+                          }
+                    }
+                  />
+                  {celebrating && !shouldReduceMotion ? (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
+                      <PlaysOnMount>
+                        <m.span
+                          key={celebration?.id}
+                          className="size-[3px] rounded-full bg-[#2f6f4e]"
+                          initial={{ opacity: 0.65, scale: 0.5 }}
+                          animate={{ opacity: 0, scale: 2.5 }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
+                        />
+                      </PlaysOnMount>
+                    </span>
+                  ) : null}
+                  {value === "senior" &&
+                  fallingLeafId > 0 &&
+                  !shouldReduceMotion ? (
+                    <span className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
+                      <PlaysOnMount>
+                        <m.span
+                          key={fallingLeafId}
+                          initial={{ opacity: 0, x: 0, y: 0, rotate: -8 }}
+                          animate={{
+                            opacity: [0, 0.9, 0.85, 0.85, 0],
+                            x: [0, 5, -4, 2, 2],
+                            y: [
+                              0,
+                              leafFall * 0.3,
+                              leafFall * 0.62,
+                              leafFall,
+                              leafFall,
+                            ],
+                            rotate: [-8, 24, -14, 34, 34],
+                          }}
+                          transition={{
+                            duration: 1.25,
+                            ease: "easeInOut",
+                            // The last pair repeats the landed pose so the leaf
+                            // rests on the ground line while it fades.
+                            times: [0, 0.22, 0.52, 0.86, 1],
+                          }}
+                          onAnimationComplete={() => setFallingLeafId(0)}
+                        >
+                          <Leaf
+                            className={cn("size-2.5", stage.colorClassName)}
+                            strokeWidth={1.6}
+                          />
+                        </m.span>
+                      </PlaysOnMount>
+                    </span>
+                  ) : null}
                   <m.span
                     className="flex origin-bottom items-end justify-center"
                     initial={false}
                     animate={
+                      active
+                        ? { opacity: 1, scale: hovered ? 1.04 : 1, y: 0 }
+                        : hovered
+                          ? { opacity: 0.75, scale: 0.9, y: 1 }
+                          : { opacity: 0.5, scale: 0.84, y: 2 }
+                    }
+                    transition={
                       shouldReduceMotion
-                        ? { rotate: 0, x: 0, scaleX: 1, scaleY: 1 }
-                        : celebrating
+                        ? { duration: 0 }
+                        : {
+                            duration: 0.24,
+                            delay: settleDelay,
+                            ease: STANDARD_EASE,
+                          }
+                    }
+                  >
+                    <m.span
+                      className="flex origin-bottom items-end justify-center"
+                      initial={false}
+                      animate={
+                        shouldReduceMotion
+                          ? { rotate: 0, x: 0, scaleX: 1, scaleY: 1 }
+                          : celebrating
+                            ? {
+                                rotate: [
+                                  0,
+                                  windDirection * stage.swayDegrees,
+                                  windDirection * -stage.swayDegrees * 0.42,
+                                  0,
+                                ],
+                                x: [0, windDirection * 0.65, 0],
+                                // Squash on the way up, stretch as it settles.
+                                scaleX: [1, 1.04, 0.98, 1],
+                                scaleY: [1, 0.95, 1.03, 1],
+                              }
+                            : reacting
+                              ? {
+                                  rotate: [0, windDirection * 1.2, 0],
+                                  x: [0, windDirection * 0.4, 0],
+                                  scaleX: 1,
+                                  scaleY: 1,
+                                }
+                              : { rotate: 0, x: 0, scaleX: 1, scaleY: 1 }
+                      }
+                      transition={
+                        celebrating
                           ? {
-                              rotate: [
-                                0,
-                                windDirection * stage.swayDegrees,
-                                windDirection * -stage.swayDegrees * 0.42,
-                                0,
-                              ],
-                              x: [0, windDirection * 0.65, 0],
-                              // Squash on the way up, stretch as it settles.
-                              scaleX: [1, 1.04, 0.98, 1],
-                              scaleY: [1, 0.95, 1.03, 1],
+                              duration:
+                                ageDrawSeconds(value, shouldReduceMotion) +
+                                SWAY_TAIL,
+                              delay: SWAY_DELAY,
+                              ease: "easeOut",
                             }
                           : reacting
                             ? {
-                                rotate: [0, windDirection * 1.2, 0],
-                                x: [0, windDirection * 0.4, 0],
-                                scaleX: 1,
-                                scaleY: 1,
+                                duration: 0.34,
+                                delay:
+                                  0.1 +
+                                  Math.abs(index - celebrationIndex) * 0.045,
+                                ease: "easeOut",
                               }
-                            : { rotate: 0, x: 0, scaleX: 1, scaleY: 1 }
-                    }
-                    transition={
-                      celebrating
-                        ? {
-                            duration:
-                              ageDrawSeconds(value, shouldReduceMotion) +
-                              SWAY_TAIL,
-                            delay: SWAY_DELAY,
-                            ease: "easeOut",
-                          }
-                        : reacting
-                          ? {
-                              duration: 0.34,
-                              delay:
-                                0.1 +
-                                Math.abs(index - celebrationIndex) * 0.045,
-                              ease: "easeOut",
-                            }
-                          : { duration: 0.16 }
-                    }
-                  >
-                    <AgeStageIcon
-                      stage={value}
-                      draw={celebrating}
-                      reduceMotion={shouldReduceMotion}
-                      className={cn(stage.colorClassName, stage.groveClassName)}
-                    />
-                  </m.span>
-                </m.span>
-              </span>
-            );
-          })}
-        </div>
-
-        <TooltipProvider>
-          <ToggleGroup
-            type="multiple"
-            value={selected}
-            onValueChange={(nextSelected) => {
-              const changed = changedValue(selected, nextSelected);
-              if (!changed) return;
-
-              if (
-                nextSelected.length === options.length ||
-                !nextSelected.includes(changed) ||
-                !isAgeStage(changed)
-              ) {
-                setCelebration(null);
-                if (
-                  changed === "senior" &&
-                  !nextSelected.includes(changed) &&
-                  !shouldReduceMotion
-                ) {
-                  setFallingLeafId((current) => current + 1);
-                }
-              } else {
-                setCelebration((current) => ({
-                  value: changed,
-                  id: (current?.id ?? 0) + 1,
-                }));
-              }
-              onToggle(changed);
-            }}
-            aria-label={groupLabel("age", locale)}
-            aria-describedby={hintId}
-            orientation={layout === "sheet" ? "horizontal" : "vertical"}
-            spacing={layout === "sheet" ? 1.5 : 1}
-            className="w-full items-stretch"
-          >
-            {options.map(({ value, label }) => {
-              if (!isAgeStage(value)) return null;
-
-              const stage = STAGES[value];
-              const count = counts.get(value) ?? 0;
-              const checked = selected.includes(value);
-              const celebrating = celebratingAge === value && checked;
-
-              return (
-                <Tooltip key={value}>
-                  <TooltipTrigger asChild>
-                    <ToggleGroupItem
-                      value={value}
-                      disabled={count === 0 && !checked}
-                      {...hoverHandlers(value)}
-                      aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
-                      className={filterCardVariants({
-                        selected: checked,
-                        className:
-                          layout === "sheet"
-                            ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                            : "grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left",
-                      })}
+                            : { duration: 0.16 }
+                      }
                     >
-                      <FilterSelectionMark
-                        checked={checked}
-                        appearDelay={GROWTH_CHECK_DELAY}
+                      <AgeStageIcon
+                        stage={value}
+                        draw={celebrating}
+                        reduceMotion={shouldReduceMotion}
                         className={cn(
-                          layout === "sheet" && "absolute right-1.5 top-1.5",
+                          stage.colorClassName,
+                          stage.groveClassName,
                         )}
                       />
-                      <m.span
-                        className="origin-bottom"
-                        initial={false}
-                        animate={
-                          celebrating && !shouldReduceMotion
-                            ? {
-                                scale: [0.96, 1.05, 1],
-                                y: [0, -0.5, 0],
-                              }
-                            : { scale: 1, y: 0 }
-                        }
-                        transition={
-                          shouldReduceMotion
-                            ? { duration: 0 }
-                            : { duration: 0.19, ease: STANDARD_EASE }
-                        }
-                      >
-                        <AgeStageIcon
-                          stage={value}
-                          reduceMotion={shouldReduceMotion}
-                          className={cn(
-                            stage.colorClassName,
-                            stage.rowClassName,
-                          )}
-                        />
-                      </m.span>
-                      <span
-                        className={cn(
-                          "min-w-0 truncate text-xs",
-                          layout === "sheet" &&
-                            "max-w-full text-2xs leading-tight",
-                          checked && "font-medium",
-                        )}
-                      >
-                        {label}
-                      </span>
-                      <CountRoll
-                        value={count}
-                        className={cn(
-                          "tabular-nums text-muted-foreground",
-                          layout === "sheet"
-                            ? "text-3xs leading-tight"
-                            : "w-8 text-right text-2xs",
-                        )}
-                      />
-                    </ToggleGroupItem>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side={layout === "sheet" ? "top" : "right"}
-                    sideOffset={6}
-                  >
-                    {label} · {messages[stage.rangeKey]}
-                  </TooltipContent>
-                </Tooltip>
+                    </m.span>
+                  </m.span>
+                </span>
               );
             })}
-          </ToggleGroup>
-        </TooltipProvider>
+          </div>
+
+          <TooltipProvider>
+            <ToggleGroup
+              type="multiple"
+              value={selected}
+              onValueChange={(nextSelected) => {
+                const changed = changedValue(selected, nextSelected);
+                if (!changed) return;
+
+                if (
+                  nextSelected.length === options.length ||
+                  !nextSelected.includes(changed) ||
+                  !isAgeStage(changed)
+                ) {
+                  setCelebration(null);
+                  if (
+                    changed === "senior" &&
+                    !nextSelected.includes(changed) &&
+                    !shouldReduceMotion
+                  ) {
+                    setFallingLeafId((current) => current + 1);
+                  }
+                } else {
+                  setCelebration((current) => ({
+                    value: changed,
+                    id: (current?.id ?? 0) + 1,
+                  }));
+                }
+                onToggle(changed);
+              }}
+              aria-label={groupLabel("age", locale)}
+              aria-describedby={hintId}
+              orientation={layout === "sheet" ? "horizontal" : "vertical"}
+              spacing={layout === "sheet" ? 1.5 : 1}
+              className="w-full items-stretch"
+            >
+              {options.map(({ value, label }) => {
+                if (!isAgeStage(value)) return null;
+
+                const stage = STAGES[value];
+                const count = counts.get(value) ?? 0;
+                const checked = selected.includes(value);
+                const celebrating = celebratingAge === value && checked;
+
+                return (
+                  <Tooltip key={value}>
+                    <TooltipTrigger asChild>
+                      <ToggleGroupItem
+                        value={value}
+                        disabled={count === 0 && !checked}
+                        {...hoverHandlers(value)}
+                        aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
+                        className={filterCardVariants({
+                          selected: checked,
+                          className:
+                            layout === "sheet"
+                              ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
+                              : "grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left",
+                        })}
+                      >
+                        <FilterSelectionMark
+                          checked={checked}
+                          appearDelay={GROWTH_CHECK_DELAY}
+                          className={cn(
+                            layout === "sheet" && "absolute right-1.5 top-1.5",
+                          )}
+                        />
+                        <m.span
+                          className="origin-bottom"
+                          initial={false}
+                          animate={
+                            celebrating && !shouldReduceMotion
+                              ? {
+                                  scale: [0.96, 1.05, 1],
+                                  y: [0, -0.5, 0],
+                                }
+                              : { scale: 1, y: 0 }
+                          }
+                          transition={
+                            shouldReduceMotion
+                              ? { duration: 0 }
+                              : { duration: 0.19, ease: STANDARD_EASE }
+                          }
+                        >
+                          <AgeStageIcon
+                            stage={value}
+                            reduceMotion={shouldReduceMotion}
+                            className={cn(
+                              stage.colorClassName,
+                              stage.rowClassName,
+                            )}
+                          />
+                        </m.span>
+                        <span
+                          className={cn(
+                            "min-w-0 truncate text-xs",
+                            layout === "sheet" &&
+                              "max-w-full text-2xs leading-tight",
+                            checked && "font-medium",
+                          )}
+                        >
+                          {label}
+                        </span>
+                        <CountRoll
+                          value={count}
+                          className={cn(
+                            "tabular-nums text-muted-foreground",
+                            layout === "sheet"
+                              ? "text-3xs leading-tight"
+                              : "w-8 text-right text-2xs",
+                          )}
+                        />
+                      </ToggleGroupItem>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side={layout === "sheet" ? "top" : "right"}
+                      sideOffset={6}
+                    >
+                      {label} · {messages[stage.rangeKey]}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </ToggleGroup>
+          </TooltipProvider>
         </CollapsibleBody>
       </section>
     </LazyMotion>

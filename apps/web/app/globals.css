@@ -18,6 +18,9 @@
   }
 }
 
+/* A phone held sideways. */
+@custom-variant short (@media (max-height: 32rem));
+
 /* Keep the page frame, vertical bands, and desktop columns independent. They
    grow with the viewport, but changing one relationship must not loosen every
    other part of the page. */
@@ -27,6 +30,11 @@
   --section-gap: 1.5rem;
   --column-gap: 1.5rem;
   --sticky-top: 0px;
+  /* Where the back-to-top control sits, and the one place that distance is
+     written. The dock is 1rem in and about 3.5rem tall, so this clears it with
+     a gap above, and the footer's docked run-off is derived from it rather
+     than restating the same arithmetic (site-footer.tsx). */
+  --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom));
 }
 
 @media (width >= 40rem) {
@@ -433,6 +441,44 @@
     black calc(100% - var(--scroll-fade-end, 0) * 2.5rem),
     rgb(0 0 0 / calc(1 - var(--scroll-fade-end, 0))) 100%
   );
+}
+
+/* Paint containment for a results-grid card. The grid draws in chunks now
+   (animal-grid.tsx), so what is in the document is bounded; this bounds what
+   the browser has to lay out and paint inside it, and a card scrolled well past
+   costs nothing until it comes back.
+
+   contain-intrinsic-size is what the card claims while it is skipped, and
+   without it the scrollbar would lie and the page would jump. `auto` in front
+   of the length is the part that keeps this quiet: the browser remembers each
+   card's last real height and falls back to the length only until it has one,
+   so the estimate has to hold for the first pass and no longer. A card is a 4/3
+   photo over a name, a meta line and a shelter row, which measures about 232px
+   in the two-column phone grid and about 290px at a desktop column width. 18rem
+   sits between them, and every card corrects itself the first time it is
+   drawn.
+
+   Safe on this element in particular: the card is already overflow-hidden and
+   both its focus outlines are drawn inset (animal-card.tsx), so paint
+   containment clips nothing that was reaching outside the box anyway. */
+@utility card-paint {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 18rem;
+}
+
+/* A filtered link opens on a page that cannot know it was filtered. next.config
+   sets output: "export", so there is no server to read the query and the
+   prerendered HTML is the unfiltered grid, standing there until hydration
+   answers the address. The inline script in the layout marks such a link on
+   <html> before any of the page paints, and AnimalGrid takes the mark off in an
+   effect after its first client render.
+
+   Hidden rather than dimmed. Dimmed is still five hundred animals nobody asked
+   for, and it invites a press on a card that is about to be replaced. An
+   unfiltered address never carries the mark, so nothing below is ever involved
+   in the ordinary landing. */
+:root[data-filtering] [data-slot="results"] {
+  display: none;
 }
 
 @utility rounded-ui {

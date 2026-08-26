@@ -115,7 +115,7 @@ export function AnimalFilters({
   // same screen; a badge reading 1 over a row of two pills was two answers to
   // one question. Shelter is excluded: it lives in the location picker, so a
   // badge counting it would promise a control this sheet does not hold.
-  const activeCount = panelFilterCount(filters);
+  const panelCount = panelFilterCount(filters);
 
   return (
     <>
@@ -136,7 +136,7 @@ export function AnimalFilters({
           A phone's bar is narrow and short enough to be worth the effect;
           a full-width desktop rail is not, and an opaque ground pins just
           as well. */}
-      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm [@media(max-height:32rem)]:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
+      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm short:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
         <div
           data-slot="desktop-toolbar"
           className="hidden items-center justify-between gap-4 lg:flex"
@@ -187,30 +187,21 @@ export function AnimalFilters({
           </div>
         </div>
 
-        {/* Two rows on a phone, one from sm up. The species tabs refuse to
-            share a 390px row with anything wide: squeezed they cut "Mačke"
+        {/* One row below lg, and the species tabs are all of it. They refuse
+            to share a 390px row with anything wide: squeezed they cut "Mačke"
             mid-word and pushed the last tab off the end of a strip nobody had
-            a reason to scroll. The tabs fit their own phone row, so every tab
-            that exists can be seen to exist; from sm the status line joins
-            them, because it is short enough to fit beside them and stacking
-            it cost a landscape phone pixels it does not have.
-
-            The strip still scrolls and still fades its edges (species-tabs
-            .tsx), which is what absorbs the margin at sm itself. */}
-        <div
-          data-slot="mobile-toolbar"
-          className="lg:hidden"
-        >
-          <div className="min-w-0">
-            <SpeciesTabs
-              value={filters.species}
-              onChange={onSpeciesChange}
-              counts={speciesTally}
-              roster={speciesRoster}
-              disabled={isEmpty}
-            />
-          </div>
-
+            a reason to scroll. The count and the sort that used to sit beside
+            them are gone from this bar entirely, so the tabs get the width
+            without having to be given it. The strip still scrolls and still
+            fades its own edges (species-tabs.tsx). */}
+        <div data-slot="mobile-toolbar" className="lg:hidden">
+          <SpeciesTabs
+            value={filters.species}
+            onChange={onSpeciesChange}
+            counts={speciesTally}
+            roster={speciesRoster}
+            disabled={isEmpty}
+          />
         </div>
 
         {/* From lg only. On a phone this row was the fourth surface stating
@@ -340,7 +331,7 @@ export function AnimalFilters({
               goodWith={goodWith}
               home={home}
               care={care}
-              activeCount={activeCount}
+              panelCount={panelCount}
               resultCount={resultCount}
               onToggle={onToggle}
               onToggleMany={onToggleMany}

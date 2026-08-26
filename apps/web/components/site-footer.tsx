@@ -69,11 +69,12 @@ export function SiteFooter({
         "bleed border-t py-6 text-xs leading-relaxed text-muted-foreground",
         // Only below lg, which is where the dock is; above it the dock is
         // gone and the extra air would just be a hole under the page.
-        // 8.5rem, not 5.5rem: back-to-top docks at the same 5.5rem and is
-        // size-11 (2.75rem), so its band reaches to 8.25rem. At 5.5rem this
-        // padding cleared the filter dock but not that button, which could
-        // then sit over these links at the bottom of the document.
-        docked && "pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-6",
+        // Measured off back-to-top's own inset rather than restated: that
+        // button docks at --back-to-top-bottom and is size-11 (2.75rem), so
+        // its band reaches 2.75rem higher, and the remaining 0.25rem is the
+        // gap above it. Cleared to the dock alone, this padding left the
+        // button sitting over these links at the bottom of the document.
+        docked && "pb-[calc(var(--back-to-top-bottom)+3rem)] lg:pb-6",
       )}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

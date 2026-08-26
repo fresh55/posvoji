@@ -122,17 +122,19 @@ function FilterFlowHarness() {
     clearAll,
   } = useAnimalFilters();
   const matching = applyFilters(ANIMALS, filters, NOW);
-  const shown = visibleGroups(ANIMALS, filters.species, NOW);
+  const shown = visibleGroups(ANIMALS, filters, NOW);
   const groups = GROUPS.filter(
     (group): group is CardGroup => group !== "shelter" && shown[group],
   ).map((group) => ({
     group,
     options: groupOptions(group, ANIMALS, "sl"),
   }));
-  const toggles = visibleToggles(ANIMALS, filters.species).map((definition) => ({
-    ...definition,
-    label: toggleLabel(definition.key, "sl"),
-  }));
+  const toggles = visibleToggles(ANIMALS, filters.species, filters.toggles).map(
+    (definition) => ({
+      ...definition,
+      label: toggleLabel(definition.key, "sl"),
+    }),
+  );
   const chips: Chip[] = [
     ...GROUPS.flatMap((group) =>
       filters[group].map((value) => ({
@@ -172,7 +174,7 @@ function FilterFlowHarness() {
       onRemove: () => toggleCare(key),
     })),
   ];
-  const goodWithKeys = visibleGoodWith(ANIMALS);
+  const goodWithKeys = visibleGoodWith(ANIMALS, filters.goodWith);
   const goodWith = {
     options: goodWithOptions("sl").filter(({ key }) =>
       goodWithKeys.includes(key),
@@ -183,7 +185,7 @@ function FilterFlowHarness() {
     onToggle: toggleGoodWith,
     onToggleMany: toggleManyGoodWith,
   };
-  const homeKeys = visibleHome(ANIMALS);
+  const homeKeys = visibleHome(ANIMALS, filters.home);
   const home = {
     options: homeOptions("sl").filter(({ key }) => homeKeys.includes(key)),
     counts: homeCounts(ANIMALS, filters, NOW),
@@ -192,7 +194,7 @@ function FilterFlowHarness() {
     onToggle: toggleHome,
     onToggleMany: toggleManyHome,
   };
-  const careKeys = visibleCare(ANIMALS);
+  const careKeys = visibleCare(ANIMALS, filters.care);
   const care = {
     options: careOptions("sl").filter(({ key }) => careKeys.includes(key)),
     counts: careCounts(ANIMALS, filters, NOW),

@@ -34,9 +34,10 @@ export function SpeciesTabs({
   counts: Record<SpeciesFilter, number>;
   /** Which tabs exist at all, counted over the whole dataset. Separate from
    *  `counts` because a filter may empty a tab without deleting it; see the
-   *  strip's own note below. Defaults to `counts`, which is the right answer
-   *  wherever the two are the same thing. */
-  roster?: Record<SpeciesFilter, number>;
+   *  strip's own note below. Required rather than falling back to `counts`:
+   *  the fallback silently turns a faceted count into a roster, which is the
+   *  bug the two fields exist to prevent. */
+  roster: Record<SpeciesFilter, number>;
   disabled?: boolean;
   fullWidth?: boolean;
 }) {
@@ -124,7 +125,7 @@ export function SpeciesTabs({
         // with it. A tab reading 0 is not a dead end, it is the honest price
         // of the current filters and it stays pressable; the empty state on
         // the other side carries the way out.
-        if (!disabled && tab !== "all" && (roster ?? counts)[tab] === 0) {
+        if (!disabled && tab !== "all" && roster[tab] === 0) {
           return null;
         }
         return (

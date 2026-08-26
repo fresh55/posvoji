@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
+import { PrehydrationFilterScript } from "@/components/prehydration-filter-script";
 import { getMessages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import "../globals.css";
@@ -24,9 +25,15 @@ export default function SlovenianLayout({ children }: LayoutProps<"/">) {
     // template ships by default. It is a no-op on Windows and on macOS
     // it forces greyscale text, giving up subpixel antialiasing for the
     // whole site.
-    <html lang="sl" className="h-full"
+    //
+    // suppressHydrationWarning for the script below, which writes an attribute
+    // on this element before React ever sees it.
+    <html lang="sl" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <PrehydrationFilterScript />
+        {children}
+      </body>
     </html>
   );
 }

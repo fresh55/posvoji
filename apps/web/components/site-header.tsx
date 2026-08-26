@@ -36,6 +36,12 @@ export function SiteHeader({
           target="_blank"
           rel="noreferrer"
           title={githubTitle}
+          // The visible label is hidden below sm and the svg is aria-hidden,
+          // so without this the accessible name fell through to the title -
+          // the joke line, not a name. This wins the accname computation at
+          // every breakpoint, which is fine: "GitHub" is the right name
+          // regardless of width, and the joke still shows as the tooltip.
+          aria-label="GitHub"
           className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground max-lg:tap-target"
         >
           <svg viewBox="0 0 16 16" aria-hidden className="size-4 fill-current">

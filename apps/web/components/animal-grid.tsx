@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { PawPrint } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
-import { AnimalCard, AnimalCardSkeleton } from "@/components/animal-card";
+import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { AnimalFilters } from "@/components/filters/animal-filters";
@@ -49,6 +55,10 @@ import {
   homeLabel,
   shelterChipLabel,
 } from "@/lib/labels";
+import {
+  PREHYDRATION_DATASET_KEY,
+  RESULTS_SLOT,
+} from "@/lib/prehydration-script";
 import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
@@ -65,6 +75,22 @@ export const UNDO_WINDOW_MS = 7000;
 // changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
 
+// How many cards the first render draws, and how many each step after it adds.
+// The grid is not paginated, so Vse used to mount all 503 matches at once:
+// about fourteen thousand nodes, a thousand tab stops and a 66,000px page, all
+// of it in the prerendered HTML as well. Sixty is several screens on the
+// tallest phone and more than a desktop first paint can show, and the steps
+// after it are asked for well before anyone reaches the bottom.
+//
+// Rendering only. Every count on the page, the facet numbers and the dialog's
+// sibling list all still read the whole filtered set.
+export const INITIAL_CARDS = 60;
+const CARDS_PER_STEP = 60;
+
+// How far below the last drawn card the next step is asked for, so the grid is
+// already longer by the time the visitor gets there.
+const STEP_MARGIN = "1200px 0px";
+
 // Which species-absence message key fills the {species} slot of
 // noResultsShelterSingular/Plural. Keyed by the species tab rather than
 // spelled out inline, so a new species fails to compile here instead of
@@ -75,6 +101,25 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
   cat: "speciesAbsenceCats",
   other: "speciesAbsenceOther",
 };
+
+// The two states that say there is nothing here: no dataset at all, and no
+// match for the current filter. They are one shape deliberately, because they
+// are one message. Four pulsing skeletons used to stand under the first of
+// them, and a skeleton is a promise that something is on its way, so on the one
+// page where nothing is loading they pulsed forever under copy that already
+// said as much.
+function EmptyState({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <PawPrint
+        className="size-8 text-muted-foreground/50"
+        strokeWidth={1.5}
+        aria-hidden
+      />
+      {children}
+    </div>
+  );
+}
 
 export function AnimalGrid({
   animals,
@@ -137,6 +182,68 @@ export function AnimalGrid({
     () => sortAnimals(visible, sort, locale, reference),
     [visible, sort, locale, reference],
   );
+
+  // How much of that list is on the page. The count is held together with the
+  // list it was counted against, so it answers for that list and no other: any
+  // filter, sort or species move hands down a different array, the count stops
+  // applying, and the grid is read from its top again. No effect has to notice
+  // and no render of the new list is ever made against the old one's count.
+  const [chunk, setChunk] = useState<{ of: Animal[]; drawn: number }>({
+    of: sorted,
+    drawn: INITIAL_CARDS,
+  });
+  const drawn = chunk.of === sorted ? chunk.drawn : INITIAL_CARDS;
+  // slice clamps, so the whole list and a prefix of it are the same call.
+  const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
+  const hasMore = drawn < sorted.length;
+
+  // The sentinel's own ref is the observer's lifetime, and that lifetime is now
+  // one sorted list rather than one step: the callback closes over the list
+  // alone, so a step no longer takes the observer down and puts a new one up.
+  // What delivers the next entry is the sentinel leaving the watched band and
+  // coming back, which a step of sixty cards guarantees, being far more than
+  // the 1200px margin below. The step is a functional update for the same
+  // reason: it reads the count off the state it is updating rather than off a
+  // closure that would have to be rebuilt to stay current.
+  const watchSentinel = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node) return;
+      // jsdom, and anything else with no observer, gets the whole list rather
+      // than a grid with no way to grow.
+      if (typeof IntersectionObserver === "undefined") {
+        setChunk({ of: sorted, drawn: sorted.length });
+        return;
+      }
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            // The same guard the render reads the count through: a count
+            // counted against another list starts again from the top.
+            setChunk((previous) => ({
+              of: sorted,
+              drawn:
+                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
+                CARDS_PER_STEP,
+            }));
+          }
+        },
+        { rootMargin: STEP_MARGIN },
+      );
+      observer.observe(node);
+      return () => observer.disconnect();
+    },
+    [sorted],
+  );
+
+  // A static export has no server to read the query with, so the prerendered
+  // HTML every filtered link lands on is the unfiltered grid, and it stands
+  // there until hydration replaces it. The layout's inline script marks such a
+  // link on <html> before any of it paints; this is the other half, and it runs
+  // after the first client render, which is the first one that answers the
+  // address it was opened at.
+  useEffect(() => {
+    delete document.documentElement.dataset[PREHYDRATION_DATASET_KEY];
+  }, []);
 
   // What the dialog steps through is what the visitor is looking at: the list
   // as filtered and sorted on screen, in that order.
@@ -238,9 +345,14 @@ export function AnimalGrid({
   // you weigh against each other and belong in a column of small controls;
   // where you adopt from is a map, and it goes next to the species tabs as the
   // other question people arrive with.
+  // filters and not just filters.species: a group the visitor has answered stays
+  // on the panel even where the pool has nothing left to narrow, or the
+  // selection goes on working from the URL with no control to switch it off
+  // (visibleGroups in lib/filters.ts). Every visible* call below is passed its
+  // own selection for the same reason.
   const shown = useMemo(
-    () => visibleGroups(pool, filters.species, reference),
-    [pool, filters.species, reference],
+    () => visibleGroups(pool, filters, reference),
+    [pool, filters, reference],
   );
   const groups = useMemo(
     () =>
@@ -283,11 +395,11 @@ export function AnimalGrid({
   );
   const toggles = useMemo(
     () =>
-      visibleToggles(pool, filters.species).map((toggle) => ({
+      visibleToggles(pool, filters.species, filters.toggles).map((toggle) => ({
         ...toggle,
         label: toggleLabel(toggle.key, locale),
       })),
-    [locale, pool, filters.species],
+    [locale, pool, filters.species, filters.toggles],
   );
   const toggleTally = useMemo(
     () => toggleCounts(animals, filters, reference),
@@ -296,7 +408,7 @@ export function AnimalGrid({
   // The section carries its own options, tally and actions, and is left out
   // entirely while no facet has enough answers to narrow anything.
   const goodWith = useMemo(() => {
-    const keys = visibleGoodWith(pool);
+    const keys = visibleGoodWith(pool, filters.goodWith);
     if (keys.length === 0) return undefined;
     return {
       options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
@@ -320,7 +432,7 @@ export function AnimalGrid({
   // Same rule as the household section: absent until the shelters have
   // answered for some animals and not for all of them.
   const home = useMemo(() => {
-    const keys = visibleHome(pool);
+    const keys = visibleHome(pool, filters.home);
     if (keys.length === 0) return undefined;
     return {
       options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
@@ -342,7 +454,7 @@ export function AnimalGrid({
   ]);
 
   const care = useMemo(() => {
-    const keys = visibleCare(pool);
+    const keys = visibleCare(pool, filters.care);
     if (keys.length === 0) return undefined;
     return {
       options: careOptions(locale).filter(({ key }) => keys.includes(key)),
@@ -451,6 +563,11 @@ export function AnimalGrid({
   return (
     <section
       aria-labelledby="rezultati"
+      // What the pre-hydration rule in globals.css hides while a filtered link
+      // is still showing the prerendered, unfiltered page. The whole block and
+      // not the grid alone: the toolbar above the cards carries the result
+      // count and the tab tallies, and those are as unfiltered as the cards are.
+      data-slot={RESULTS_SLOT}
       className={cn(
         "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0",
         hasSidebar &&
@@ -528,23 +645,13 @@ export function AnimalGrid({
         />
 
         {isEmpty ? (
-          <div className="space-y-6">
+          <EmptyState>
             <p className="text-sm text-muted-foreground">
               {messages.animalsComingSoon}
             </p>
-            <div aria-hidden className={cn(CARD_GRID, "opacity-60")}>
-              {Array.from({ length: 4 }, (_, i) => (
-                <AnimalCardSkeleton key={i} />
-              ))}
-            </div>
-          </div>
+          </EmptyState>
         ) : visible.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <PawPrint
-              className="size-8 text-muted-foreground/50"
-              strokeWidth={1.5}
-              aria-hidden
-            />
+          <EmptyState>
             <div className="space-y-1">
               <p className="text-sm font-medium">
                 {shelterOnlyEmpty
@@ -594,10 +701,10 @@ export function AnimalGrid({
             >
               {messages.clearFilters}
             </Button>
-          </div>
+          </EmptyState>
         ) : (
           <div className={CARD_GRID}>
-            {sorted.map((animal, ordinal) => (
+            {page.map((animal, ordinal) => (
               <AnimalCard
                 key={animal.id}
                 animal={animal}
@@ -609,17 +716,23 @@ export function AnimalGrid({
                 // not re-run this; only arriving cards do. fill-mode-backwards
                 // holds a delayed card invisible until its turn.
                 //
-                // The first dozen and no further. The grid is not paginated,
-                // so "Vse" renders all 503 matches at once: animating every
-                // one of them started 503 compositor animations inside a 330ms
-                // window, during hydration, while 500 images were decoding.
-                // Past the first rows nobody is looking anyway, and the cards
-                // that arrive below the fold arrive already settled.
-                className={
-                  ordinal < STAGGERED_CARDS
-                    ? "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none"
-                    : undefined
-                }
+                // The first dozen and no further. Vse used to render all 503
+                // matches at once, so animating every one of them started 503
+                // compositor animations inside a 330ms window, during
+                // hydration, while 500 images were decoding. The cap outlives
+                // the chunking above: ordinal counts within the whole sorted
+                // list, so a card arriving with a later step is past it by
+                // definition and arrives settled, which is what a card nobody
+                // asked to see should do.
+                //
+                // card-paint is the other half of the same problem: what is
+                // drawn is now bounded, and this bounds what is painted, so a
+                // card scrolled past costs nothing until it comes back.
+                className={cn(
+                  "card-paint",
+                  ordinal < STAGGERED_CARDS &&
+                    "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none",
+                )}
                 style={
                   ordinal < STAGGERED_CARDS
                     ? { animationDelay: `${ordinal * 30}ms` }
@@ -638,6 +751,21 @@ export function AnimalGrid({
                 showShelter
               />
             ))}
+            {/* Nothing to read and nothing to press: it exists so the observer
+                has something to watch, and it says so rather than adding a
+                nameless row to the grid a screen reader has to walk past. */}
+            {hasMore && (
+              <div
+                ref={watchSentinel}
+                aria-hidden
+                // The e2e suite's own hook, alongside every other data-*
+                // selector in this app: nothing here to find by role or
+                // text, so a class name would otherwise be the only handle,
+                // and this element's classes are layout and not contract.
+                data-grid-sentinel
+                className="col-span-full h-px"
+              />
+            )}
           </div>
         )}
         {/* Where the skip link lands: the end of the grid, whatever the grid

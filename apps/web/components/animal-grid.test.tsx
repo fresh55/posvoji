@@ -10,7 +10,7 @@ import {
 } from "@testing-library/react";
 import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnimalGrid, UNDO_WINDOW_MS } from "./animal-grid";
+import { AnimalGrid, INITIAL_CARDS, UNDO_WINDOW_MS } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 
 // AnimalGrid renders its own I18nProvider-consuming children, but the
@@ -77,6 +77,29 @@ const ANIMALS = [
 
 function query() {
   return window.location.search;
+}
+
+// jsdom has no IntersectionObserver, which is the branch the grid falls back on
+// by rendering everything. The chunking itself only exists where there is one,
+// so the test that measures it brings its own and keeps the callbacks to fire
+// by hand.
+type ObserverEntries = { isIntersecting: boolean }[];
+
+function stubIntersectionObserver(): ((entries: ObserverEntries) => void)[] {
+  const callbacks: ((entries: ObserverEntries) => void)[] = [];
+  Object.defineProperty(window, "IntersectionObserver", {
+    configurable: true,
+    writable: true,
+    value: class {
+      constructor(callback: (entries: ObserverEntries) => void) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  });
+  return callbacks;
 }
 
 describe("animal grid empty state", () => {
@@ -217,6 +240,103 @@ describe("animal grid empty state", () => {
   });
 });
 
+describe("the empty dataset", () => {
+  it("says the animals are still coming without pretending to load them", () => {
+    // Four pulsing skeletons used to stand under this line for good, which is
+    // a promise that something is on its way on the one page where nothing is.
+    const { container } = renderGrid([]);
+
+    expect(
+      screen.getByText("Tu bodo živali, ko se dogovorimo s prvimi zavetišči."),
+    ).toBeTruthy();
+    expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(
+      0,
+    );
+  });
+});
+
+describe("a filter with nothing left to narrow", () => {
+  it("keeps the section that would otherwise strand it", () => {
+    // The one rabbit is male, so Spol has a single distinct value on the Ostale
+    // tab. The section used to go, and with it the sheet's last section and the
+    // Filtri trigger, while spol=samec went on filtering from the URL: an
+    // active filter with no control anywhere on the phone that could drop it.
+    window.history.replaceState(null, "", "/?vrsta=ostalo&spol=samec");
+    renderGrid(ANIMALS);
+
+    expect(screen.getByRole("link", { name: /Shelter druga/ })).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: "Filtri, aktivnih: 1" }).length,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe("the pre-hydration mark", () => {
+  it("comes off once the grid has rendered the address it was opened at", () => {
+    // The layout's inline script puts it on before anything paints, because a
+    // static export serves the same unfiltered HTML to every filtered link.
+    // Left on, the rule in globals.css would keep the results hidden for good.
+    document.documentElement.dataset.filtering = "";
+    window.history.replaceState(null, "", "/?spol=samec");
+    renderGrid(ANIMALS);
+
+    expect(document.documentElement.hasAttribute("data-filtering")).toBe(false);
+  });
+});
+
+describe("how much of the grid is drawn", () => {
+  const many = Array.from({ length: INITIAL_CARDS + 10 }, (_, i) =>
+    animal(`dog-${i}`, "dog", "muri"),
+  );
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, "IntersectionObserver");
+  });
+
+  it("draws the first chunk, then grows when the sentinel comes into view", () => {
+    const callbacks = stubIntersectionObserver();
+    renderGrid(many);
+
+    expect(screen.getAllByRole("article")).toHaveLength(INITIAL_CARDS);
+    // The result count is over the whole filtered list all the same: only
+    // rendering is chunked, so nothing that counts is measured off the page.
+    expect(screen.getAllByText(`${many.length} živali`).length).toBeGreaterThan(
+      0,
+    );
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    expect(screen.getAllByRole("article")).toHaveLength(many.length);
+  });
+
+  it("renders the whole list where there is no observer to grow it", () => {
+    renderGrid(many);
+    expect(screen.getAllByRole("article")).toHaveLength(many.length);
+  });
+
+  it("goes back to the first chunk when the filters change", () => {
+    const callbacks = stubIntersectionObserver();
+    renderGrid(many);
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+    expect(screen.getAllByRole("article")).toHaveLength(many.length);
+
+    // A filter write, taken the way the store hears one. Every animal here is
+    // male, so the list holds the same seventy: what matters is that it is a
+    // new list, and a new list is read from its top.
+    act(() => {
+      window.history.replaceState(null, "", "/?spol=samec");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(screen.getAllByRole("article")).toHaveLength(INITIAL_CARDS);
+  });
+});
+
 describe("the chips row inside the grid", () => {
   it("takes a cleared filter state back, and drops the offer once something else is picked", () => {
     vi.useFakeTimers();
@@ -232,10 +352,10 @@ describe("the chips row inside the grid", () => {
       // The offer stands, and it puts the query back exactly as it was.
       //
       // Two of them, from one component. The chips row carries it at lg and
-      // the phone carries it in a transient row of its own below that
-      // (UndoOffer, filter-chips.tsx), and only CSS separates the two
-      // surfaces, so jsdom renders both. Either one has to do the whole job,
-      // and taking the offer has to end it everywhere.
+      // the phone's status line carries it below that (UndoOffer,
+      // filter-chips.tsx), and only CSS separates the two surfaces, so jsdom
+      // renders both. Either one has to do the whole job, and taking the
+      // offer has to end it everywhere.
       const offers = screen.getAllByRole("button", {
         name: "Razveljavi čiščenje filtrov",
       });

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
-import { activeFilterCount } from "@/lib/filters";
+import { panelFilterCount } from "@/lib/filters";
 import type {
   FilterOption,
   Filters,
@@ -55,8 +55,9 @@ export function FilterSidebar({
   // The chips row scrolls away with the page while the sidebar stays; this
   // count and its clear keep the state and the way out in view. Selected
   // values and not sections, so it agrees with the row it outlives: a badge
-  // reading 1 above two chips was two answers to one question.
-  const activeValues = activeFilterCount(filters);
+  // reading 1 above two chips was two answers to one question. Shelter is
+  // excluded: it has no section here, so it would be a count with no control.
+  const activeValues = panelFilterCount(filters);
 
   return (
     <aside

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { type ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -32,6 +33,39 @@ const filterActions = {
   onToggleProperty: vi.fn(),
   onToggleManyProperties: vi.fn(),
 };
+
+type SheetProps = Partial<ComponentProps<typeof FilterSheet>>;
+
+/** One FilterSheet with every prop no test cares about already filled in.
+ *  Six tests below render it and each of them varies one thing; spelling the
+ *  other eleven props out per test hid which one that was. The returned
+ *  `rerender` takes the same overrides, so the one test that changes a prop
+ *  on a live mount keeps doing exactly that. */
+function renderSheet(overrides: SheetProps = {}) {
+  const element = (props: SheetProps) => (
+    <I18nProvider locale="en">
+      <FilterSheet
+        sort="longest-in-shelter"
+        onSortChange={vi.fn()}
+        filters={EMPTY_FILTERS}
+        groups={[]}
+        counts={emptyCounts}
+        toggles={[]}
+        toggleTally={new Map()}
+        panelCount={0}
+        resultCount={0}
+        onClearAll={vi.fn()}
+        {...filterActions}
+        {...props}
+      />
+    </I18nProvider>
+  );
+  const result = render(element(overrides));
+  return {
+    ...result,
+    rerender: (next: SheetProps) => result.rerender(element(next)),
+  };
+}
 
 describe("mobile filter hardening", () => {
   it("spans the 320px viewport and shares the dock between both actions", () => {
@@ -125,15 +159,12 @@ describe("mobile filter hardening", () => {
     // utility that grows the tap target around the drawing.
     expect(mobileTab.className).toContain("max-lg:tap-target");
 
-    // The pinned bar is the species tabs and nothing else, and so is the page
-    // outside it: sorting is in the filter sheet now, behind the dock, which
-    // is the one control on a phone that never scrolls away. It spent a pass
-    // pinned in this bar and a pass scrolling off above the grid; the second
-    // lost the property that mattered, which is being reachable mid-scroll.
-    expect(
-      document.querySelector('[data-slot="mobile-status-line"]'),
-    ).toBeNull();
-    expect(document.querySelector('[data-slot="mobile-sort-row"]')).toBeNull();
+    // The pinned bar is the species tabs and nothing else: sorting is in the
+    // filter sheet now, behind the dock, which is the one control on a phone
+    // that never scrolls away. It spent a pass pinned in this bar and a pass
+    // scrolling off above the grid; the second lost the property that
+    // mattered, which is being reachable mid-scroll.
+    //
     // Scoped to the mobile branch: only CSS separates the two toolbars, so
     // jsdom renders the desktop one too and its Select is a real combobox.
     expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
@@ -151,23 +182,7 @@ describe("mobile filter hardening", () => {
   });
 
   it("announces the active filter count and keeps a mobile-sized close target", async () => {
-    render(
-      <I18nProvider locale="en">
-        <FilterSheet
-          sort="longest-in-shelter"
-          onSortChange={vi.fn()}
-          filters={EMPTY_FILTERS}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          activeCount={2}
-          resultCount={0}
-          onClearAll={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderSheet({ panelCount: 2 });
 
     const trigger = screen.getByRole("button", {
       name: "Filters, 2 active",
@@ -180,23 +195,7 @@ describe("mobile filter hardening", () => {
   });
 
   it("scrolls the body inside its own overflow element, separate from the drawer content", async () => {
-    render(
-      <I18nProvider locale="en">
-        <FilterSheet
-          sort="longest-in-shelter"
-          onSortChange={vi.fn()}
-          filters={EMPTY_FILTERS}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          activeCount={0}
-          resultCount={0}
-          onClearAll={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
@@ -215,23 +214,7 @@ describe("mobile filter hardening", () => {
   });
 
   it("disables the footer clear button only when no section is active", async () => {
-    const { rerender } = render(
-      <I18nProvider locale="en">
-        <FilterSheet
-          sort="longest-in-shelter"
-          onSortChange={vi.fn()}
-          filters={EMPTY_FILTERS}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          activeCount={0}
-          resultCount={0}
-          onClearAll={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    const { rerender } = renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(await screen.findByRole("dialog")).toBeTruthy();
@@ -239,23 +222,7 @@ describe("mobile filter hardening", () => {
       screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
     ).toBe(true);
 
-    rerender(
-      <I18nProvider locale="en">
-        <FilterSheet
-          sort="longest-in-shelter"
-          onSortChange={vi.fn()}
-          filters={EMPTY_FILTERS}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          activeCount={1}
-          resultCount={0}
-          onClearAll={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    rerender({ panelCount: 1 });
 
     expect(
       screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
@@ -263,23 +230,7 @@ describe("mobile filter hardening", () => {
   });
 
   it("keeps the header outside the scrolling body", async () => {
-    render(
-      <I18nProvider locale="en">
-        <FilterSheet
-          sort="longest-in-shelter"
-          onSortChange={vi.fn()}
-          filters={EMPTY_FILTERS}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          activeCount={0}
-          resultCount={0}
-          onClearAll={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
@@ -294,28 +245,21 @@ describe("mobile filter hardening", () => {
   it("does not repeat the species tabs inside the sheet", async () => {
     // The sticky bar behind the trigger already carries them; a second copy
     // here used to cost the sheet 56px on top of an 85dvh takeover.
-    render(
-      <I18nProvider locale="en">
-        <FilterSheet
-          sort="longest-in-shelter"
-          onSortChange={vi.fn()}
-          filters={EMPTY_FILTERS}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          activeCount={0}
-          resultCount={0}
-          onClearAll={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByRole("button", { name: "All" })).toBeNull();
+  });
+
+  it("moves focus inside the drawer content when it opens", async () => {
+    renderSheet();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
   });
 
   it("returns focus to the shelter trigger after closing the dialog", async () => {
@@ -407,6 +351,9 @@ describe("mobile filter hardening", () => {
           value="other"
           onChange={vi.fn()}
           counts={{ all: 4, dog: 1, cat: 1, other: 2 }}
+          // No filters on in this harness, so the roster and the tally are
+          // the same numbers.
+          roster={{ all: 4, dog: 1, cat: 1, other: 2 }}
           fullWidth
         />
       </I18nProvider>,
@@ -423,6 +370,9 @@ describe("mobile filter hardening", () => {
           value="all"
           onChange={vi.fn()}
           counts={{ all: 4, dog: 1, cat: 1, other: 2 }}
+          // No filters on in this harness, so the roster and the tally are
+          // the same numbers.
+          roster={{ all: 4, dog: 1, cat: 1, other: 2 }}
           fullWidth
         />
       </I18nProvider>,

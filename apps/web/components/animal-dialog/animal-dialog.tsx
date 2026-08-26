@@ -320,7 +320,14 @@ export function AnimalDialog({
               data-slot="dialog-close-photo"
               variant="ghost"
               size="icon-sm"
-              className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:hidden"
+              // fixed, not absolute: the phone scrolls the whole dialog, and
+              // an absolute button is laid out in that scrollable content, so
+              // it left the screen with the photo about 80px in and the only
+              // visible way out went with it. The entrance keeps a transform
+              // on the content, which makes this fixed to the content box
+              // rather than to the viewport, and that box is inset-0 either
+              // way. What changes is that it no longer rides the scroll.
+              className="fixed top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:hidden"
             >
               <XIcon aria-hidden />
               <span className="sr-only">{messages.close}</span>
@@ -435,6 +442,9 @@ export function AnimalDialog({
                     animal={lastAnimal}
                     logos={logos}
                     reference={reference}
+                    // The sticky bar below repeats this box's button on the
+                    // phone, so the box keeps its own for sm and up only.
+                    ctaMirrored
                     onSeeLongestWaiting={onSeeLongestWaiting}
                   />
                 </m.div>

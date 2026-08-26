@@ -12,6 +12,7 @@ import {
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
+import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalPath } from "@/lib/animal-path";
@@ -879,6 +880,45 @@ describe("animal dialog", () => {
       bar.getByRole("link", { name: /Odpri objavo pri zavetišču/ })
         .getAttribute("href"),
     ).toBe("https://example.test/animals/rex");
+  });
+
+  // Two identical buttons used to stand 90px apart on the phone, and the
+  // upper one had its middle covered by the lower.
+  it("leaves the phone's call to action to the sticky bar alone", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(
+      region(dialog, "shelter-block")
+        .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
+        .className,
+    ).toContain("max-sm:hidden");
+    expect(
+      region(dialog, "sticky-cta").getByRole("link", {
+        name: /Odpri objavo pri zavetišču/,
+      }),
+    ).toBeTruthy();
+  });
+
+  // The animal's own page renders the same box with no bar under it, so there
+  // the button has to stay, and at a size a thumb can land on.
+  it("keeps the shelter box's button where nothing mirrors it", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    const cta = screen.getByRole("link", {
+      name: /Odpri objavo pri zavetišču/,
+    });
+    expect(cta.className).not.toContain("max-sm:hidden");
+    expect(cta.className).toContain("max-sm:h-11");
   });
 
   it("hides the sticky bar when there is no listing to send anyone to", async () => {

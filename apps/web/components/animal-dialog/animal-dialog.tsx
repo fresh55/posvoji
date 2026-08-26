@@ -254,8 +254,6 @@ export function AnimalDialog({
     if ((contentRef.current?.scrollTop ?? 0) > 0) return;
     dragStart.current = { x: event.clientX, y: event.clientY };
     dragging.current = false;
-    // Capture, so a finger that leaves the element still reports its release.
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function moveDrag(event: PointerEvent<HTMLDivElement>) {
@@ -267,6 +265,14 @@ export function AnimalDialog({
     if (!dragging.current) {
       if (dy < 8 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
       dragging.current = true;
+      // Capture only once the gesture is committed, so a finger that leaves
+      // the element still reports its release. Capturing on pointerdown, the
+      // way this used to, retargeted every later pointer event at this
+      // element before anyone knew the gesture's axis, which starved the
+      // fan's own swipe of its move and release events. Until the commit the
+      // touch pointer is implicitly captured to whatever was pressed, and
+      // those events bubble here anyway.
+      event.currentTarget.setPointerCapture?.(event.pointerId);
     }
     dragY.set(Math.max(0, dy * 0.6));
   }
@@ -320,7 +326,14 @@ export function AnimalDialog({
               data-slot="dialog-close-photo"
               variant="ghost"
               size="icon-sm"
-              className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:hidden"
+              // fixed, not absolute: the phone scrolls the whole dialog, and
+              // an absolute button is laid out in that scrollable content, so
+              // it left the screen with the photo about 80px in and the only
+              // visible way out went with it. The entrance keeps a transform
+              // on the content, which makes this fixed to the content box
+              // rather than to the viewport, and that box is inset-0 either
+              // way. What changes is that it no longer rides the scroll.
+              className="fixed top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:hidden"
             >
               <XIcon aria-hidden />
               <span className="sr-only">{messages.close}</span>
@@ -435,6 +448,9 @@ export function AnimalDialog({
                     animal={lastAnimal}
                     logos={logos}
                     reference={reference}
+                    // The sticky bar below repeats this box's button on the
+                    // phone, so the box keeps its own for sm and up only.
+                    ctaMirrored
                     onSeeLongestWaiting={onSeeLongestWaiting}
                   />
                 </m.div>

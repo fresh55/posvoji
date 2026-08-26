@@ -158,7 +158,16 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={messages.share}>
+        {/* size-11 under sm: icon-sm is 32px, which is under the 44px floor
+            every other control on the phone layout was already held to. The
+            close button beside this one carries the same override. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={messages.share}
+          className="size-11 sm:size-8"
+        >
           <Share2 aria-hidden />
         </Button>
       </PopoverTrigger>

@@ -19,11 +19,17 @@ const BLOOM_FADE = { delay: 0.18, duration: 0.2 } as const;
 // the real one, which happens while it is already fading out.
 const SETTLE_MS = 220;
 
-const SLOT = '[data-slot="photo-spread"] button[aria-pressed="true"]';
+// Both stages are in the tree and CSS shows one per breakpoint, so the slot
+// is whichever active photo actually has a box.
+const SLOT =
+  '[data-slot="photo-fan"] button[aria-pressed="true"], [data-slot="photo-spread"] button[aria-pressed="true"]';
 
 function slotRect() {
-  const rect = document.querySelector(SLOT)?.getBoundingClientRect();
-  return rect?.width ? rect : undefined;
+  for (const slot of document.querySelectorAll(SLOT)) {
+    const rect = slot.getBoundingClientRect();
+    if (rect.width) return rect;
+  }
+  return undefined;
 }
 
 /**
@@ -89,7 +95,9 @@ export function PhotoBloom({
       <m.div
         aria-hidden
         data-slot="photo-bloom"
-        className="pointer-events-none fixed z-[55] hidden overflow-hidden rounded-ui sm:block"
+        // No breakpoint gate any more: the phone has a fan slot of its own to
+        // land in now, so the card's photo makes the trip on every layout.
+        className="pointer-events-none fixed z-[55] overflow-hidden rounded-ui"
         style={{
           left: to.left,
           top: to.top,

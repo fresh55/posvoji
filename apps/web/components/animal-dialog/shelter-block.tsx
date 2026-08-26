@@ -6,6 +6,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { ageLabel, longStayMonths } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 // The logo-or-initial fallback lives in ShelterAvatar so one place decides it.
@@ -13,6 +14,7 @@ export function ShelterBlock({
   animal,
   logos,
   reference,
+  ctaMirrored = false,
   onSeeLongestWaiting,
 }: {
   animal: Animal;
@@ -25,6 +27,14 @@ export function ShelterBlock({
    * when it would actually change something.
    */
   onSeeLongestWaiting?: () => void;
+  /**
+   * Set when the phone layout repeats this box's call to action somewhere it
+   * can always be reached. The dialog's sticky bar does, which left two
+   * identical buttons on screen 90px apart, the upper one 32px tall with its
+   * middle covered by the lower one. The animal's own page has no such bar
+   * and leaves this alone.
+   */
+  ctaMirrored?: boolean;
 }) {
   const { locale, messages, t } = useI18n();
   const { shelter } = animal;
@@ -95,7 +105,21 @@ export function ShelterBlock({
             </a>
           </div>
         ) : (
-          <Button asChild size="sm" className="w-full sm:w-auto">
+          // The mirror only exists where there is a listing to open, so this
+          // reads the same condition the sticky bar is gated on. Without it an
+          // animal with no source URL would lose its button on the phone
+          // rather than have it repeated.
+          <Button
+            asChild
+            size="sm"
+            className={cn(
+              // max-sm:h-11, because size="sm" is 32px and on the animal's own
+              // page, which has no sticky bar to mirror this, it is the button
+              // a thumb actually goes for.
+              "w-full max-sm:h-11 sm:w-auto",
+              ctaMirrored && animal.source.sourceUrl && "max-sm:hidden",
+            )}
+          >
             <a href={animal.source.sourceUrl} target="_blank" rel="noreferrer">
               {messages.viewOriginalListing}
               <ExternalLink aria-hidden />

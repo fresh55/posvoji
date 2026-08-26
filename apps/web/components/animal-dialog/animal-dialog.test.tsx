@@ -12,6 +12,7 @@ import {
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
+import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalPath } from "@/lib/animal-path";
@@ -529,18 +530,65 @@ describe("animal dialog", () => {
     expect(within(second).getByText("2 / 2")).toBeTruthy();
   });
 
-  it("moves the phone hero to the thumbnail that was tapped", async () => {
+  it("brings a tapped side photo to the front of the phone fan", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
-    const hero = () => region(dialog, "photo-hero").getByRole("img");
 
-    expect(hero().getAttribute("src")).toContain("rex-1");
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
+      .toBe("true");
 
-    fireEvent.click(photoButton(dialog, "photo-thumbs", 2));
+    fireEvent.click(photoButton(dialog, "photo-fan", 2));
 
-    expect(hero().getAttribute("src")).toContain("rex-2");
-    expect(photoButton(dialog, "photo-thumbs", 2).getAttribute("aria-pressed"))
+    // The fan walks there first and commits when the spring lands.
+    await waitFor(() =>
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+        .toBe("true"),
+    );
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
+      .toBe("false");
+  });
+
+  it("swipes the phone fan to the next photo and swallows the tap", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-fan");
+
+    await act(async () => {
+      pointer(fan, "pointerdown", { x: 300, y: 200, pointerType: "touch" });
+      pointer(fan, "pointermove", { x: 160, y: 204, pointerType: "touch" });
+      pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "touch" });
+    });
+
+    // The release hands the fan to a spring, and the step commits when it
+    // lands.
+    await waitFor(() =>
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+        .toBe("true"),
+    );
+    // The click the browser fires at whatever the finger ended on lands in
+    // the capture handler and goes no further, so the gesture stepped one
+    // photo and did not also select or open one.
+    fireEvent.click(photoButton(dialog, "photo-fan", 2));
+    expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      .toBe("true");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("leaves a mouse drag on the phone fan to the photos themselves", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-fan");
+
+    await act(async () => {
+      pointer(fan, "pointerdown", { x: 300, y: 200, pointerType: "mouse" });
+      pointer(fan, "pointermove", { x: 160, y: 204, pointerType: "mouse" });
+      pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "mouse" });
+    });
+
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
       .toBe("true");
   });
 
@@ -555,8 +603,10 @@ describe("animal dialog", () => {
       }),
     ).toHaveLength(5);
     expect(
-      region(dialog, "photo-thumbs").getAllByRole("button"),
-    ).toHaveLength(7);
+      region(dialog, "photo-fan").getAllByRole("button", {
+        name: /fotografijo \d/,
+      }),
+    ).toHaveLength(5);
     // The counter carries the total, so no second badge has to.
     expect(region(dialog, "photo-spread").getByText("1 / 7")).toBeTruthy();
   });
@@ -879,6 +929,64 @@ describe("animal dialog", () => {
       bar.getByRole("link", { name: /Odpri objavo pri zavetišču/ })
         .getAttribute("href"),
     ).toBe("https://example.test/animals/rex");
+  });
+
+  // The lightbox used to hang off the desktop fan alone, which left the one
+  // layout with the smallest photo as the only one that could not open it
+  // large. The phone fan's active photo is the same way in now.
+  it("opens the photo full screen from the phone fan", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    fireEvent.click(
+      region(dialog, "photo-fan").getByRole("button", {
+        name: /čez cel zaslon/,
+      }),
+    );
+
+    await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(2));
+  });
+
+  // Two identical buttons used to stand 90px apart on the phone, and the
+  // upper one had its middle covered by the lower.
+  it("leaves the phone's call to action to the sticky bar alone", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(
+      region(dialog, "shelter-block")
+        .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
+        .className,
+    ).toContain("max-sm:hidden");
+    expect(
+      region(dialog, "sticky-cta").getByRole("link", {
+        name: /Odpri objavo pri zavetišču/,
+      }),
+    ).toBeTruthy();
+  });
+
+  // The animal's own page renders the same box with no bar under it, so there
+  // the button has to stay, and at a size a thumb can land on.
+  it("keeps the shelter box's button where nothing mirrors it", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    const cta = screen.getByRole("link", {
+      name: /Odpri objavo pri zavetišču/,
+    });
+    expect(cta.className).not.toContain("max-sm:hidden");
+    expect(cta.className).toContain("max-sm:h-11");
   });
 
   it("hides the sticky bar when there is no listing to send anyone to", async () => {

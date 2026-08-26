@@ -10,20 +10,17 @@ import { cn } from "@/lib/utils";
 // sits on carries the colour of whatever is on show. It is meant to be felt
 // rather than seen, which is why every value here is small.
 
-// The share of the dialog the fan stands in. The stage wash has to be laid out
-// against the same box, and it no longer lives in the same file as the fan, so
-// the width is stated once here and read from both.
-export const STAGE_WIDTH = "w-[80%]";
+// The share of the dialog the fan stands in: full bleed on a phone, a
+// centered band from sm. The stage wash has to be laid out against the same
+// box, and it no longer lives in the same file as the fan, so the width is
+// stated once here and read from both.
+export const STAGE_WIDTH = "w-full sm:w-[80%]";
 
 // The radius is half the box, so the gradient runs out exactly where the clip
 // does. A radius wider than the box ends the fade early and leaves the wash
 // standing as a rectangle that only softens at its corners.
 export const WASH_MASK =
   "radial-gradient(50% 50% at 50% 50%, black 65%, transparent 100%)";
-
-// Under the phone's thumb strip the wash only has to carry the hero's colour a
-// little way down, so it fades out rather than ringing.
-const STRIP_MASK = "linear-gradient(to bottom, black 10%, transparent 100%)";
 
 // Opacity carries no momentum worth preserving, so the wash crossfades on a
 // fixed length rather than the fan's spring. That also bounds the pile-up:
@@ -54,12 +51,6 @@ const QUIET_TONE =
 
 // The lightbox ground is the scrim, which is near black whichever theme is on.
 const LIGHTBOX_TONE = "opacity-[0.10] contrast-50 saturate-[440%]";
-
-// The phone has no room around the photo, so the wash only bridges the seam
-// between the hero and the strip below it. Quieter again, because the thumbs
-// have to stay readable on top of it.
-const STRIP_TONE =
-  "opacity-[0.11] contrast-50 saturate-[440%] dark:opacity-[0.08]";
 
 export function washTone(status: AdoptionStatus): string {
   return status === "adopted" || status === "hold" ? QUIET_TONE : STAGE_TONE;
@@ -132,8 +123,8 @@ export function StageWash({
   status: AdoptionStatus;
 }) {
   return (
-    // The phone gets its own, smaller echo under the thumb strip instead.
-    <div className="pointer-events-none absolute inset-0 hidden sm:block">
+    // Both layouts run a fan now, so both get the same wash behind it.
+    <div className="pointer-events-none absolute inset-0">
       {/* The stage's own box, so the wash keeps the geometry it had when it
           lived inside the fan. */}
       <div className={cn("relative mx-auto h-full", STAGE_WIDTH)}>
@@ -150,22 +141,6 @@ export function StageWash({
         />
       </div>
     </div>
-  );
-}
-
-/** The same echo on a phone, bridging the hero and the thumb strip. */
-export function StripWash({ source }: { source: string | undefined }) {
-  return (
-    <Wash
-      slot="photo-strip-wash"
-      source={source}
-      tone={STRIP_TONE}
-      // A phone pays for every blurred pixel, and the band is short, so the
-      // radius is smaller than the stage's.
-      blur="blur-xl"
-      mask={STRIP_MASK}
-      className="absolute inset-x-0 top-0 bottom-0 z-0"
-    />
   );
 }
 

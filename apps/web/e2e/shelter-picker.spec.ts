@@ -1,5 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { openPicker, pickerTrigger, rows } from "./picker";
+import { expect, test, type Locator } from "@playwright/test";
+import { donePill, openPicker, pickerTrigger, rows } from "./picker";
 
 // The panel's own flows, as opposed to shelter-map.spec.ts, which pins the map
 // beside it. The unit tests render this panel into jsdom, which reports every
@@ -36,13 +36,6 @@ function offGroupTrigger(dialog: Locator): Locator {
   return dialog.getByRole("button", {
     name: /Trenutno brez objavljenih živali/,
   });
-}
-
-// The way out of the dialog. Its label carries the count when there is one to
-// carry and falls back to the bare word when there is not, so both spellings
-// have to be reachable by one locator.
-function donePill(page: Page): Locator {
-  return page.getByRole("button", { name: /^(Pokaži .* živali?|Končano)$/ });
 }
 
 test.describe("desktop", () => {

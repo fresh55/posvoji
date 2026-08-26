@@ -28,6 +28,9 @@ export function SitePage({ locale }: { locale: Locale }) {
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "sl"));
   const messages = getMessages(locale);
+  // Read once: the hero row and the footer both ask it, and they must not
+  // drift into two different answers about whether the lookup exists.
+  const hasLookup = municipalities.length > 0;
 
   return (
     <I18nProvider locale={locale}>
@@ -44,22 +47,39 @@ export function SitePage({ locale }: { locale: Locale }) {
             <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
               {messages.heroTitle}
             </h1>
-            {/* The hero's second line carries both things the page has to say
-                about itself: what is in it, and the way out for someone who
-                found an animal rather than wants one. They share the row from
-                lg up, where there is width for it, and stack below that. A
-                band of its own under the hero was a whole horizontal rule of
-                page spent on the smaller of the two questions. */}
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+            {/* One wrapping line at every width, where this used to be a text
+                line with a full-width button stacked under it. It carries both
+                things the page has to say about itself: what is in it, and the
+                way out for someone who found an animal rather than wants one.
+                The second of those spent a whole horizontal rule of page on
+                the smaller of the two questions for as long as it was a block;
+                now that it is a line too (found-animal-button.tsx), the two
+                fit together and the hero is a heading and one line.
+
+                Siblings with their own gates, and not one sentence. The meta
+                line needs a dataset, the way out needs a coverage table, and
+                folded into a single paragraph the found-animal link would have
+                disappeared every time the freshness line did. Only the
+                separator needs both, so it is the only part that asks for
+                both.
+
+                flex-wrap, and the link renders in foreground ink with a
+                standing underline while the meta line stays muted. Sharing one
+                grey row, the link read as a second line of metadata on the
+                375px wrap -- and the person it exists for is scanning the top
+                of the page for something to act on, not reading captions. The
+                voice difference separates them better than the middot that
+                used to sit here and dangled at the wrap. */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
               {dataset && shelters > 0 && (
-                <p className="text-sm text-muted-foreground">
+                <p>
                   {shelterCount(shelters, locale)} · {messages.updated}{" "}
                   {new Date(dataset.generatedAt).toLocaleDateString(
                     locale === "sl" ? "sl-SI" : "en-GB",
                   )}
                 </p>
               )}
-              {municipalities.length > 0 && <FoundAnimalButton />}
+              {hasLookup && <FoundAnimalButton />}
             </div>
           </div>
 
@@ -73,8 +93,10 @@ export function SitePage({ locale }: { locale: Locale }) {
         </main>
 
         {/* The one page that floats the filter dock, so the one footer that
-            has to duck under it. */}
-        <SiteFooter locale={locale} docked />
+            has to duck under it. It is also the one page that already knows
+            whether the coverage table has anything in it, so it answers for
+            the found-animal link rather than taking the default. */}
+        <SiteFooter locale={locale} showFoundAnimalLink={hasLookup} docked />
       </div>
     </I18nProvider>
   );

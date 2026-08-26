@@ -108,8 +108,8 @@ const ANIMALS = [
 const NOOP = () => undefined;
 
 function sidebarProps(filters: Filters) {
-  const shown = visibleGroups(ANIMALS, filters.species, NOW);
-  const goodWithKeys = visibleGoodWith(ANIMALS);
+  const shown = visibleGroups(ANIMALS, filters, NOW);
+  const goodWithKeys = visibleGoodWith(ANIMALS, filters.goodWith);
 
   return {
     filters,
@@ -120,10 +120,12 @@ function sidebarProps(filters: Filters) {
       options: groupOptions(group, ANIMALS, "sl"),
     })),
     counts: facetCounts(ANIMALS, filters, NOW),
-    toggles: visibleToggles(ANIMALS, filters.species).map((definition) => ({
-      ...definition,
-      label: toggleLabel(definition.key, "sl"),
-    })),
+    toggles: visibleToggles(ANIMALS, filters.species, filters.toggles).map(
+      (definition) => ({
+        ...definition,
+        label: toggleLabel(definition.key, "sl"),
+      }),
+    ),
     toggleTally: toggleCounts(ANIMALS, filters, NOW),
     goodWith: {
       options: goodWithOptions("sl").filter(({ key }) =>

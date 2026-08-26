@@ -15,11 +15,13 @@ import { cn } from "@/lib/utils";
 // has stopped being plausible. Below that the button would be noise.
 const SHOW_AFTER_SCREENS = 2;
 
-// Clear of the dock (1rem inset, ~3.5rem tall) with a gap above it, so the two
-// read as a stack rather than a collision. From lg the dock is gone and the
-// button drops to the corner it would have had all along.
+// Clear of the dock, with a gap above it, so the two read as a stack rather
+// than a collision. The distance itself is --back-to-top-bottom in globals.css,
+// because the footer has to clear this button in turn and derives its own
+// run-off from the same number. From lg the dock is gone and the button drops
+// to the corner it would have had all along.
 const PLACEMENT =
-  "fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 lg:right-6 lg:bottom-6";
+  "fixed right-4 bottom-(--back-to-top-bottom) z-40 lg:right-6 lg:bottom-6";
 
 export function BackToTop() {
   const { messages } = useI18n();

@@ -177,7 +177,7 @@ export function FilterSectionHeader({
       tabIndex={showReset ? undefined : -1}
       aria-label={resetAriaLabel}
       className={cn(
-        "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
+        "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground max-lg:tap-target",
         !showReset && "pointer-events-none opacity-0",
         collapse && "absolute right-6 top-1/2 -translate-y-1/2",
       )}

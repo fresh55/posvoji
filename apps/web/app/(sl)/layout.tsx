@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
+import { PrehydrationFilterScript } from "@/components/prehydration-filter-script";
 import { getMessages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import "../globals.css";
@@ -19,9 +20,14 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function SlovenianLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="sl" className="h-full antialiased"
+    // suppressHydrationWarning for the script below, which writes an attribute
+    // on this element before React ever sees it.
+    <html lang="sl" className="h-full antialiased" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <PrehydrationFilterScript />
+        {children}
+      </body>
     </html>
   );
 }

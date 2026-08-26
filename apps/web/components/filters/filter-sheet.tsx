@@ -21,12 +21,15 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
+import { SortPicker } from "@/components/filters/sort-picker";
+import { useDesktopBreakpointClose } from "@/hooks/use-desktop-breakpoint-close";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
   ToggleDef,
 } from "@/lib/filters";
+import type { AnimalSort } from "@/lib/sort";
 
 export function FilterSheet({
   filters,
@@ -37,8 +40,10 @@ export function FilterSheet({
   goodWith,
   home,
   care,
-  activeCount,
+  panelCount,
   resultCount,
+  sort,
+  onSortChange,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -53,34 +58,67 @@ export function FilterSheet({
   goodWith?: GoodWithSection;
   home?: HomeSection;
   care?: CareSection;
-  activeCount: number;
+  /** How many values the sections in this sheet have set, which is
+   *  panelFilterCount and not the whole filter state: shelter lives in the
+   *  location picker and is left out on purpose (animal-filters.tsx). Named
+   *  apart from the `activeCount` other filter code carries so the two
+   *  quantities cannot be wired into each other by their name alone. */
+  panelCount: number;
   resultCount: number;
+  /** Sorting is offered here on a phone, and only here. It is not a filter
+   *  and does not join `Filters` (lib/sort.ts keeps the two apart on purpose,
+   *  since one orders the list the other has already matched); what it shares
+   *  with them is the sheet, because the sheet is the one surface a visitor
+   *  can always reach to change what the grid shows. */
+  sort: AnimalSort;
+  onSortChange: (sort: AnimalSort) => void;
   onClearAll: () => void;
 } & FilterActionContract) {
   const { locale, messages, t } = useI18n();
+  const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // FilterSheet never unmounts, so a divider left "scrolled" from a previous
+  // visit would otherwise still be there the next time the sheet opens at
+  // scrollTop 0. Every way out goes through here rather than through an
+  // effect watching `open`, so there is one close path and no render that
+  // paints the stale divider before the effect clears it.
+  const close = () => {
+    setOpen(false);
+    setScrolled(false);
+  };
+
+  // Vaul portals to <body>, so this sheet would otherwise stay open and
+  // floating if a resize (or a phone rotated to landscape) crosses into the
+  // lg layout while it is up, even though the trigger for it just vanished.
+  // It closes through the same path as everything else.
+  useDesktopBreakpointClose(open, close);
+
   return (
-    <Drawer>
+    <Drawer
+      open={open}
+      onOpenChange={(next) => (next ? setOpen(true) : close())}
+    >
       <DrawerTrigger asChild>
         <Button
           size="sm"
           aria-label={
-            activeCount > 0
-              ? t("filtersWithCount", { count: activeCount })
+            panelCount > 0
+              ? t("filtersWithCount", { count: panelCount })
               : messages.filters
           }
           className="h-11 gap-1.5 rounded-ui px-3"
         >
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
-          {activeCount > 0 && (
+          {panelCount > 0 && (
             <>
               <Badge
                 variant="secondary"
                 aria-hidden="true"
                 className="hidden h-5 min-w-5 rounded-full px-1 text-xs tabular-nums min-[360px]:inline-flex"
               >
-                {activeCount}
+                {panelCount}
               </Badge>
               {/* Below 360px the full badge doesn't fit the trigger, but the
                   aria-label still announces the count, so sighted users need
@@ -102,7 +140,15 @@ export function FilterSheet({
         // it changed. Vaul snap points were tried instead and dropped: they
         // translate the full-height content down, and the pinned footer with
         // the primary action goes below the fold at the lower snap.
-        className="flex max-h-[72dvh] flex-col gap-0 pt-1"
+        //
+        // A short landscape phone (844x390) has no card row to keep visible
+        // behind the sheet in the first place -- 72dvh of a 390px-tall
+        // viewport is 281px, and the header and footer alone eat most of
+        // that -- so under a 32rem-tall viewport (the shared `short` variant,
+        // globals.css) the cap lifts to almost the full height instead,
+        // leaving a small strip of the page as the only sign a sheet opened
+        // over it. Portrait phones stay on the 72dvh cap.
+        className="flex max-h-[72dvh] flex-col gap-0 pt-1 short:max-h-[calc(100dvh-2rem)]"
       >
         {/* The species tabs used to repeat here, but the visitor just used
             that same row in the sticky bar behind the trigger to get here, so
@@ -112,9 +158,33 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
+          {/* Sort on its own full-width row under the title, and inside the
+              header block rather than the scrolling body, so it stays put
+              while the filter list moves under it.
+
+              It shared the title's row for one pass and could not: the close
+              button is absolutely positioned in that corner at 44px, and the
+              two targets overlapped by 32x14px with the X on top, so the top
+              right of the sort control closed the sheet instead of opening
+              it. Measured, not guessed. Padding the row clear of the X would
+              have fixed the collision and left three things crowded into one
+              band anyway.
+
+              A row costs about 52px of the sheet, which is affordable because
+              the control is one Select and not the five orders spelled out:
+              the filters still begin about a quarter of the way down. Full
+              width also stops the longest order from truncating, and reads as
+              a setting for the whole sheet rather than an ornament on the
+              heading. */}
           <DrawerTitle className="mt-3 text-base">
             {messages.filters}
           </DrawerTitle>
+          <SortPicker
+            value={sort}
+            onChange={onSortChange}
+            quiet={false}
+            className="mt-3 h-11 w-full text-sm"
+          />
         </div>
 
         <div
@@ -142,7 +212,7 @@ export function FilterSheet({
           <Button
             variant="ghost"
             className="h-11"
-            disabled={activeCount === 0}
+            disabled={panelCount === 0}
             onClick={onClearAll}
           >
             {messages.clearAll}

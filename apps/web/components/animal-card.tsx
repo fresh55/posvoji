@@ -16,7 +16,6 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { animalPath } from "@/lib/animal-path";
 import { permittedImageUrls } from "@/lib/animal-images";
 import type { SpeciesFilter } from "@/lib/filters";
@@ -372,29 +371,6 @@ export function AnimalCard({
           <div className="mt-auto pb-3" />
         )}
       </article>
-    </Card>
-  );
-}
-
-// Matched to the live card block for block, so whoever wires this to a real
-// loading state does not inherit a 12px jump: pt-3, a 24px heading, a 20px
-// meta line, then FOOTER_BOX, which is the live footer's own box.
-export function AnimalCardSkeleton() {
-  return (
-    <Card asChild>
-      {/* overflow-hidden because the photo's own 10px corners sit inside the
-          border's 9px inner curve, and with nothing clipping them the muted
-          fill showed past the border at both top corners. */}
-      <div className="overflow-hidden">
-        <Skeleton className="aspect-[4/3] rounded-none" />
-        <div className="flex flex-col gap-1 px-3 pt-3">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-5 w-32" />
-        </div>
-        <div className={FOOTER_BOX}>
-          <Skeleton className="h-4 w-24" />
-        </div>
-      </div>
     </Card>
   );
 }

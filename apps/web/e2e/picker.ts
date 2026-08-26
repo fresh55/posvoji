@@ -47,3 +47,10 @@ export async function openPicker(page: Page): Promise<Locator> {
   await expect(dialog.locator('svg[role="group"]')).toBeVisible();
   return dialog;
 }
+
+// The way out of the dialog. Its label carries the count when there is one to
+// carry and falls back to the bare word when there is not, so both spellings
+// have to be reachable by one locator.
+export function donePill(page: Page): Locator {
+  return page.getByRole("button", { name: /^(Pokaži .* živali?|Končano)$/ });
+}

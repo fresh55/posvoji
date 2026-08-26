@@ -62,6 +62,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { useNearby } from "@/hooks/use-nearby";
 import type { FilterOption } from "@/lib/filters";
 import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
@@ -493,7 +494,7 @@ export function LocationPicker({
   useEffect(() => {
     if (!canDeepLink) return;
     const isMine = () => {
-      const isDesktop = window.matchMedia("(min-width: 64rem)").matches;
+      const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
       return deepLink === "desktop" ? isDesktop : !isDesktop;
     };
     const openLookup = () => {
@@ -525,7 +526,7 @@ export function LocationPicker({
   useEffect(() => {
     if (!canSpotlight) return;
     const isMine = () => {
-      const isDesktop = window.matchMedia("(min-width: 64rem)").matches;
+      const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
       return deepLink === "desktop" ? isDesktop : !isDesktop;
     };
     const spotlight = (event: Event) => {
@@ -1145,8 +1146,33 @@ export function LocationPicker({
         {/* The stage. Everything below is absolutely placed against one of its
             edges; the map's paper ground is the dialog's own background, so
             the letterbox a fixed-aspect SVG leaves has something to land on
-            whatever the viewport's shape. */}
-        <div className="relative h-full w-full overflow-hidden bg-muted/40">
+            whatever the viewport's shape.
+
+            It is also where the sheet's height is declared, once. Two
+            elements need that number: the sheet below wears it as its own
+            height, and the map stage wears it as a bottom inset so nothing is
+            ever drawn under the sheet. They have to agree exactly, or the map
+            is drawn behind the sheet or leaves a band of bare paper above it,
+            and Tailwind reads class names out of the source text, so it
+            cannot be a shared JS constant. A custom property is the shared
+            constant CSS has, and this element is the one both consumers
+            inherit from.
+
+            The percentage inside it stays honest under that move. var()
+            substitutes tokens rather than values, so the 100% is resolved by
+            the property it lands in, on the element it lands on; both
+            consumers are absolutely positioned children of this box, so both
+            resolve it against this box, which is what they resolved against
+            when each wrote the expression out for itself.
+
+            --sheet-reserve is the only term that changes with the viewport:
+            it is what the map stage keeps for its caption. See the panel
+            below for what the three terms are for, and for why a short wide
+            viewport reserves 6rem instead of 9. */}
+        <div
+          data-picker-stage
+          className="relative h-full w-full overflow-hidden bg-muted/40 [--sheet-reserve:9rem] [--sheet-h:min(max(55dvh,27.5rem),calc(100%_-_var(--sheet-reserve)))] max-lg:sm:short:[--sheet-reserve:6rem]"
+        >
           {/* The recenter container, and the whole of the recentering. The map
               is given only the space the panel leaves, and the SVG letterboxes
               inside it (preserveAspectRatio, the browser's default), so no
@@ -1202,16 +1228,12 @@ export function LocationPicker({
               // exactly what the sheet takes and the plate recentres in what
               // is left. Nothing is ever drawn under the sheet either.
               //
-              // This expression is the sheet's own height and has to stay
-              // character-for-character what the panel below writes on itself,
-              // or the map is drawn under the sheet or leaves a band of paper
-              // above it. Tailwind reads class names out of the source text,
-              // so it cannot be a shared constant; it can only be written
-              // twice and kept honest by this note. See the panel for what the
-              // three terms are for.
-              sheetOpen
-                ? "bottom-[min(max(55dvh,27.5rem),calc(100%_-_9rem))]"
-                : "bottom-13",
+              // The inset is the sheet's own height, read from --sheet-h
+              // rather than written out a second time. The two used to be twin
+              // arbitrary expressions, base and short-viewport, kept in step
+              // by a note; they are one declaration on the stage now (see it
+              // above), so there is nothing left to drift.
+              sheetOpen ? "bottom-(--sheet-h)" : "bottom-13",
               panelOpen
                 ? "lg:w-[calc(100%-25.5rem)]"
                 : "lg:w-[calc(100%-4.5rem)]",
@@ -1477,28 +1499,44 @@ export function LocationPicker({
               //                  gets instead of a fraction, and it is why the
               //                  sheet is sized by what it holds rather than
               //                  by how tall the screen happens to be.
-              //   min(…,100%-9rem) the ceiling, against the stage rather than
-              //                  the viewport, so the floor can never push the
-              //                  sheet past the dialog it lives in. The 9rem
-              //                  is the map stage's own floor, and it is what
-              //                  the whole caption costs: the legend no longer
-              //                  folds away under an open sheet, so the
-              //                  reserve has to cover its compact rows, the
-              //                  gap and the CC BY attribution together, which
-              //                  is about 128px at the narrowest width we draw
-              //                  at. It was 6rem while the credit was the only
-              //                  thing left standing there; at 6rem with the
-              //                  legend back the caption overruns the stage
-              //                  and the credit ends up behind the sheet,
-              //                  which the licence does not allow.
+              //   min(…,100%-…) the ceiling, against the stage rather than the
+              //                  viewport, so the floor can never push the
+              //                  sheet past the dialog it lives in. What it
+              //                  subtracts is --sheet-reserve, the map stage's
+              //                  own floor, which is what the whole caption
+              //                  costs: the legend no longer folds away under
+              //                  an open sheet, so the reserve has to cover its
+              //                  compact rows, the gap and the CC BY
+              //                  attribution together, which is about 128px at
+              //                  the narrowest width we draw at. That is the
+              //                  9rem the stage declares. It was 6rem while the
+              //                  credit was the only thing left standing there;
+              //                  at 6rem with the legend back the caption
+              //                  overruns the stage and the credit ends up
+              //                  behind the sheet, which the licence does not
+              //                  allow.
+              //
+              // The reserve drops to 6rem on a viewport that is short and at
+              // least sm wide, which is every phone held sideways. What the
+              // reserve pays for is the caption, and the caption is counted in
+              // lines: from 640px up the credit wraps to two of them and the
+              // legend holds every row it has on one, which measures 70px with
+              // the stage's own padding and gap in it, so 9rem there is
+              // reserving room for lines nobody draws. Below sm the same rows
+              // wrap further and the full reserve stands, because the CC BY
+              // paragraph disappearing behind the sheet is not a trade this
+              // layout may make. The 48px it hands back is not the fix for a
+              // landscape phone, it is what keeps the sheet from spending all
+              // of it on chrome: the scroll below is the fix.
               //
               // Below that ceiling the plate is a sliver, which is the honest
               // answer on a 568px screen: the sheet is what was opened, and
               // the peek bar folds it away when the map is what is wanted.
-              // Keep this identical to the stage's bottom inset above.
-              sheetOpen
-                ? "h-[min(max(55dvh,27.5rem),calc(100%_-_9rem))] rounded-t-ui"
-                : "h-13",
+              //
+              // Both terms live on the stage as --sheet-h and --sheet-reserve,
+              // so the height here and the stage's own bottom inset are one
+              // expression read twice rather than two written twice.
+              sheetOpen ? "h-(--sheet-h) rounded-t-ui" : "h-13",
               "lg:inset-x-auto lg:right-3 lg:top-16 lg:bottom-16 lg:h-auto lg:rounded-ui lg:border",
               panelOpen ? "lg:w-96" : "lg:w-12 lg:justify-center",
             )}
@@ -1666,7 +1704,25 @@ export function LocationPicker({
                   // gap under the tabs two different gaps. Nothing reserved at
                   // the bottom either: every child of this column, the footer
                   // included, takes its own height in flow.
-                  "flex min-h-0 flex-1 flex-col px-4 pb-4",
+                  //
+                  // overflow-y-auto is the floor under all of that. Everything
+                  // above sizes the sheet to what it holds, and on a screen
+                  // short enough no size is enough: a 390px viewport held
+                  // sideways leaves this column about 160px to seat 300px of
+                  // chrome, and while the panel clipped what did not fit, the
+                  // list and the confirm button were not on screen at all and
+                  // nothing scrolled to reach them. The list is still the one
+                  // child that gives way, so this scroller only takes over once
+                  // the list has given everything it has; when it does, the
+                  // footer is scrolled to rather than cut off, which is what in
+                  // flow has to mean on a screen that short. The peek bar and
+                  // the tab row sit outside it, so the fold and the tabs never
+                  // scroll away from under the thumb.
+                  //
+                  // Plain, not fade-scroll: that utility takes the scrollbar
+                  // away and puts a mask in its place, and this is a last
+                  // resort that should say so in the platform's own hand.
+                  "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4",
                   !panelOpen && "lg:hidden",
                   !sheetOpen && "max-lg:hidden",
                 )}
@@ -1888,11 +1944,11 @@ export function LocationPicker({
                 list is what disappears first. 5rem is the last resort, not the
                 normal case, and it only bites if something above grows past
                 what the sheet's own floor budgeted for it, a two-line status
-                line under the place field being the likely one. When it does,
-                the overflow lands in the pill's reserve below rather than in
-                the list, which is the right thing to spend: a row under the
-                pill can still be scrolled up to, a row that was never given a
-                height cannot. */}
+                line under the place field being the likely one, and a landscape
+                phone being the certain one. When it does, the overflow lands in
+                the column's own scroll rather than in the list, which is the
+                right thing to spend: a row that has to be scrolled to can still
+                be read, a row that was never given a height cannot. */}
                     <div
                       ref={listRef}
                       // fade-scroll rather than a scrollbar. The group of

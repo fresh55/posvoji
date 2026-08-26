@@ -391,6 +391,14 @@ export function PhotoGallery({
             data-press-exempt
             onClick={() => changeImage(-1)}
             aria-label={messages.previousPhoto}
+            // Out of the accessibility tree too, same reason as the photo
+            // anchor and the dots below: tabIndex=-1 keeps these off the tab
+            // order, but a screen reader's virtual cursor walks the tree by
+            // DOM position, not by tab order, so it still landed on both
+            // chevrons on every multi-photo card - about 850 of them across
+            // the grid. The keyboard route is the arrow keys on the card
+            // link, and the sr-only line below announces the position.
+            aria-hidden="true"
             className={`${OWN_BUTTON_CLASS} left-1.5`}
           >
             <ChevronLeft className="size-4" aria-hidden />
@@ -403,6 +411,7 @@ export function PhotoGallery({
             data-press-exempt
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
+            aria-hidden="true"
             className={`${OWN_BUTTON_CLASS} right-1.5`}
           >
             <ChevronRight className="size-4" aria-hidden />

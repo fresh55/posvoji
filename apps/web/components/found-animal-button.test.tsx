@@ -42,7 +42,9 @@ describe("FoundAnimalButton", () => {
     // press-down translate, so the two ways into this dialog answer a press
     // the same way.
     expect(button.getAttribute("aria-haspopup")).toBe("dialog");
-    // Both the country and the arrow stay out of the name computed below.
+    // The country silhouette that used to lead this control is gone (see the
+    // component). The arrow that is left stays out of the name computed
+    // below, and so would anything that replaced it.
     for (const svg of button.querySelectorAll("svg")) {
       expect(svg.getAttribute("aria-hidden")).toBe("true");
     }

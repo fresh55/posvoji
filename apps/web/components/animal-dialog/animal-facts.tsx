@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
   Building2,
   CalendarClock,
   ChevronDown,
   ClipboardCheck,
   HeartHandshake,
-  Hourglass,
   MapPin,
   Mars,
   PawPrint,
@@ -250,45 +248,6 @@ function ApartmentFact({
 // line instead of a pill. The threshold lives in labels.ts, shared with the
 // card's quiet mark.
 
-// One half turn, once, after the dialog has landed: the gesture everyone reads
-// as time running. Slow enough to be a statement rather than a tick, and it
-// settles and stays settled, because a loop would turn the line into a spinner.
-const HOURGLASS_FLIP = {
-  duration: 0.9,
-  delay: 0.3,
-  ease: [0.4, 0, 0.2, 1],
-} as const;
-
-// The icon turns, the sentence does not. Its own LazyMotion, the way the bloom
-// carries its own, so the flip does not depend on a provider further up.
-function FlippingHourglass() {
-  const shouldReduceMotion = useReducedMotion();
-  const className =
-    "mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400";
-
-  if (shouldReduceMotion) {
-    return <Hourglass className={className} strokeWidth={1.75} aria-hidden />;
-  }
-
-  return (
-    <LazyMotion features={domAnimation}>
-      <m.span
-        className="mt-0.5 inline-flex shrink-0"
-        initial={{ rotate: 0 }}
-        animate={{ rotate: 180 }}
-        transition={HOURGLASS_FLIP}
-        aria-hidden
-      >
-        <Hourglass
-          className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
-          strokeWidth={1.75}
-          aria-hidden
-        />
-      </m.span>
-    </LazyMotion>
-  );
-}
-
 // Past this length a description starts to bury the shelter box, so it opens
 // clamped. The threshold is characters rather than measured lines to keep the
 // server and the client rendering the same thing.
@@ -357,17 +316,10 @@ function Aside({
 export function AnimalFacts({
   animal,
   reference,
-  onSeeLongestWaiting,
 }: {
   animal: Animal;
   /** The dataset's own build time, so every span agrees with the cards. */
   reference: Date;
-  /**
-   * Re-sorts the list by longest wait and closes the dialog. Absent while
-   * that sort is already on, which it is by default, so the link only shows
-   * when it would actually change something.
-   */
-  onSeeLongestWaiting?: () => void;
 }) {
   const { locale, messages, t } = useI18n();
   // A complete record collapses to one line until asked; per-animal state,
@@ -587,34 +539,11 @@ export function AnimalFacts({
         </div>
       )}
 
-      {/* Last before the shelter box on purpose: facts, then the shelter's
-          own words, then the wait, then the way to act on it. A line rather
-          than a box: boxed, it sat on the shelter block as two equal crates
-          and the dialog's one action had to share its weight. The amber icon
-          and the medium sentence still hold the tier above the quiet asides.
-          The link re-sorts the list by longest wait, and only offers itself
-          while the list is sorted some other way. */}
-      {longStay && stay && (
-        <div className="flex items-start gap-2">
-          <FlippingHourglass />
-          <div className="space-y-0.5 text-sm">
-            <p className="font-medium">
-              {animal.name
-                ? t("longStay", { name: animal.name, duration: stay })
-                : t("longStayUnnamed", { duration: stay })}
-            </p>
-            {onSeeLongestWaiting && (
-              <button
-                type="button"
-                onClick={onSeeLongestWaiting}
-                className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              >
-                {messages.longStayLink}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {/* The long wait itself renders inside the shelter block now, where the
+          sentence sits beside the one button that can answer it. Standing
+          alone here it either floated unanchored or stacked a second box on
+          the shelter's; see shelter-block.tsx. This component still computes
+          longStay, because the quiet time-in-shelter aside above yields to it. */}
     </div>
   );
 }

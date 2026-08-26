@@ -53,7 +53,12 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
       viewBox="0 0 24 24"
       className="size-6"
       fill="none"
-      strokeWidth={1.65}
+      // Alone among the filter glyphs this one draws at 24px, lucide's
+      // own grid, where the paths sit on whole coordinates. A stroke of
+      // 2 is the width that grid is cut for: its edges land on pixel
+      // boundaries instead of straddling them. The size-5 glyphs
+      // elsewhere scale off the grid regardless, so they keep 1.65.
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
     >

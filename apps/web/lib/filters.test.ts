@@ -239,6 +239,35 @@ describe("visibleGroups", () => {
     expect(shown.energy).toBe(false);
     expect(shown.age).toBe(false);
   });
+
+  it("keeps a group the visitor has already answered", () => {
+    // ?vrsta=ostalo&spol=samec over a dataset whose one rabbit is male. Spol
+    // has a single distinct value, so the section used to go while spol=samec
+    // went on filtering from the URL, and on a phone it took the sheet's last
+    // section and the Filtri trigger with it.
+    const rabbits = [animal("rabbit", { sex: "male" })];
+    expect(visibleGroups(rabbits, "other", NOW).sex).toBe(false);
+    expect(
+      visibleGroups(rabbits, "other", NOW, {
+        ...EMPTY_FILTERS,
+        species: "other",
+        sex: ["male"],
+      }).sex,
+    ).toBe(true);
+  });
+
+  it("leaves the groups the visitor has not answered alone", () => {
+    // The selection only ever adds a section back. Everything else is measured
+    // exactly as it was.
+    const rabbits = [animal("rabbit", { sex: "male", energy: "calm" })];
+    const shown = visibleGroups(rabbits, "other", NOW, {
+      ...EMPTY_FILTERS,
+      species: "other",
+      sex: ["male"],
+    });
+    expect(shown.energy).toBe(false);
+    expect(shown.age).toBe(false);
+  });
 });
 
 describe("visibleToggles", () => {
@@ -312,6 +341,15 @@ describe("visibleGoodWith", () => {
       animal("cat", { goodWith: { kids: "yes" } }),
     ];
     expect(visibleGoodWith(kids, [])).toEqual([]);
+    expect(visibleGoodWith(kids, ["kids"])).toEqual(["kids"]);
+  });
+
+  it("keeps a selected facet once every animal answers it", () => {
+    const kids = [
+      animal("dog", { goodWith: { kids: "yes" } }),
+      animal("cat", { goodWith: { kids: "yes" } }),
+    ];
+    expect(visibleGoodWith(kids)).toEqual([]);
     expect(visibleGoodWith(kids, ["kids"])).toEqual(["kids"]);
   });
 });

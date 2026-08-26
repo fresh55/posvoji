@@ -20,9 +20,15 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function SlovenianLayout({ children }: LayoutProps<"/">) {
   return (
+    // No `antialiased` here on purpose. The class is
+    // -webkit-font-smoothing: antialiased, which the create-next-app
+    // template ships by default. It is a no-op on Windows and on macOS
+    // it forces greyscale text, giving up subpixel antialiasing for the
+    // whole site.
+    //
     // suppressHydrationWarning for the script below, which writes an attribute
     // on this element before React ever sees it.
-    <html lang="sl" className="h-full antialiased" suppressHydrationWarning
+    <html lang="sl" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
       <body className="flex min-h-full flex-col">
         <PrehydrationFilterScript />

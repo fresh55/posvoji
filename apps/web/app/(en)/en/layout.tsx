@@ -18,9 +18,13 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function EnglishLayout({ children }: LayoutProps<"/en">) {
   return (
+    // No `antialiased` here, mirroring the Slovenian layout: the class is
+    // -webkit-font-smoothing: antialiased, a no-op on Windows and greyscale
+    // text on macOS.
+    //
     // suppressHydrationWarning for the script below, which writes an attribute
     // on this element before React ever sees it.
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning
+    <html lang="en" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
       <body className="flex min-h-full flex-col">
         <PrehydrationFilterScript />

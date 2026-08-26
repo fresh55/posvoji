@@ -1,10 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
 import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
-import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -66,38 +66,38 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             ← {text.back}
           </a>
 
-          <div className="grid gap-8 sm:grid-cols-2 sm:items-start">
-            {hasPhoto && (
-              <PhotoGallery
-                animal={animal}
-                sizes="(min-width: 640px) 30rem, 100vw"
-                className="relative aspect-[4/3] overflow-hidden rounded-ui border bg-muted"
-              />
-            )}
+          {/* The same fan the dialog draws, not the dot carousel this page
+              used to. A carousel shows one photo and hides the rest behind a
+              gesture nobody performs on a page they arrived at from a link,
+              and this is the page shared links land on. The fan also takes
+              the full column width, which is what the old two-column split
+              could not do: a 4/3 photo beside a short fact list left the
+              right half of the page empty under it on every animal whose
+              shelter had recorded little. */}
+          {hasPhoto && <PhotoSpread animal={animal} />}
 
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-                    {animal.name ?? messages.unnamed}
-                  </h1>
-                  {/* A visitor who arrived by a shared link is the one most
-                      likely to pass it on again. */}
-                  <ShareButton
-                    path={animalPath(animal, locale)}
-                    name={animal.name ?? messages.unnamed}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">
-                    {speciesLabel(animal.species, locale)}
-                  </Badge>
-                  <StatusBadge status={animal.status} locale={locale} />
-                </div>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+                  {animal.name ?? messages.unnamed}
+                </h1>
+                {/* A visitor who arrived by a shared link is the one most
+                    likely to pass it on again. */}
+                <ShareButton
+                  path={animalPath(animal, locale)}
+                  name={animal.name ?? messages.unnamed}
+                />
               </div>
-
-              <AnimalFacts animal={animal} reference={reference} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">
+                  {speciesLabel(animal.species, locale)}
+                </Badge>
+                <StatusBadge status={animal.status} locale={locale} />
+              </div>
             </div>
+
+            <AnimalFacts animal={animal} reference={reference} />
           </div>
 
           <div className="space-y-4">

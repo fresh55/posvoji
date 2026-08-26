@@ -211,16 +211,20 @@ export function AnimalCard({
             // "Mačka · samec · 3 leta", which is the same number twice, told
             // apart by a 12px icon; 54 of the 101 cards carrying the mark are
             // that case, because an animal that grew up in the shelter has
-            // waited exactly as long as it has been alive. The verb settles it
-            // in four characters and pays for them with the icon.
+            // waited exactly as long as it has been alive. Naming the shelter
+            // settles it and pays for the words with the icon; see
+            // longStayMark in i18n.ts.
             // Two tiers of the same mark, and neither of them amber. On the
             // "Vse" tab most visible cards carry it, and a solid warm pill on
             // every photo is an alarm ringing so often it stops being one.
             // The blurred quiet pill is the base tier; past
             // EMPHATIC_STAY_MONTHS it inverts instead, because in a crowd of
-            // quiet marks the waits that run to five years and past
-            // disappeared. The filled warm treatment stays with the status
-            // badge, which really does disqualify a card.
+            // quiet marks the longest waits of all disappeared. Where that
+            // threshold sits is labels.ts's decision, and it is set against
+            // the default longest-first order rather than against the dataset:
+            // the strong tier is by construction the first cards on the page.
+            // The filled warm treatment stays with the status badge, which
+            // really does disqualify a card.
             //
             // Top right, opposite the status. The bottom edge belongs to the
             // gallery dots now, and on a phone card the two met in the middle.

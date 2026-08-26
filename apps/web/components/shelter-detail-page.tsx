@@ -137,11 +137,18 @@ export function ShelterDetailPage({
               )}
             </div>
 
+            {/* The box runs the width of the column it sits in. Capped at
+                max-w-3xl inside a max-w-5xl main it was a bordered panel
+                stopping 200px short of everything above and below it, which
+                reads as a layout fault rather than as a measure. The cap
+                belongs on the sentence, not on the frame around it.
+                Trust green and not the selection green: this states a fact
+                about the shelter, and nobody chose it. */}
             <div
               className={cn(
-                "flex max-w-3xl items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
+                "flex items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
                 hasData
-                  ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
+                  ? "border-[var(--trust-border)] bg-[var(--trust)] text-[var(--trust-foreground)]"
                   : "bg-muted/40 text-muted-foreground",
               )}
             >
@@ -150,7 +157,9 @@ export function ShelterDetailPage({
               ) : (
                 <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               )}
-              <p>{hasData ? text.providerNotice : text.registryNotice}</p>
+              <p className="max-w-3xl">
+                {hasData ? text.providerNotice : text.registryNotice}
+              </p>
             </div>
           </div>
 

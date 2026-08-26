@@ -156,6 +156,40 @@
   --status-warn-mark: oklch(0.666 0.179 58.318);
   --status-warn-solid: oklch(0.962 0.059 95.617);
   --status-warn-solid-foreground: oklch(0.414 0.112 45.904);
+  /* The green that means "checked out", split off --filter-accent the same way
+     the warm family above was split off its call sites. --filter-accent had
+     grown four jobs: a chosen filter, a shelter that shares data by
+     permission, a health record, and an animal that found a home. The first is
+     a thing the visitor did and can undo; the other three are facts about the
+     world. One colour saying both meant a green pill on a card could not be
+     told from a green pill in the sidebar, and neither could be moved without
+     moving the other.
+     Same family on purpose, because all four still mean "good". They are told
+     apart by weight rather than by hue: the wash sits at 0.955 against
+     selection's 0.92 and carries less chroma, so a trust mark reads as the
+     quieter of the two wherever they meet, and selection stays the only green
+     that shouts. Hue moves 151 -> 158, far enough that the two are not read as
+     a rendering difference and near enough that they are one family.
+     Measured on the surfaces they land on: the ink is 7.82:1 over the wash and
+     8.81:1 over the page in light, 9.96:1 over the wash and 13.24:1 over the
+     page in dark. Unlike the warm family the wash flips too, because a 0.955
+     fill on a near-black page is a lamp rather than a tint. */
+  --trust: oklch(0.955 0.035 158);
+  --trust-border: oklch(0.78 0.07 158);
+  --trust-foreground: oklch(0.4 0.09 158);
+  /* The age grove's own ink: the sprout, the grown tree and the ground line
+     the three stand on. They were three hex literals in
+     age-growth-control.tsx with no dark answer, so the only part of the
+     sidebar that carries its own colour rendered at light-mode weight over a
+     near-black panel. The light values are the literals unchanged, to the
+     byte; the dark ones lift them to the same read against the dark page
+     (6.23:1, 6.82:1 and 5.26:1, against 5.04, 4.31 and 5.99 on white).
+     Not on the --trust or --filter-accent families. The grove is an
+     illustration of a growing thing, not a status and not a selection, and it
+     carries a warm olive for the grown stages that neither family has. */
+  --age-young: #2f7d50;
+  --age-grown: #92763b;
+  --age-ground: #2f6f4e;
   /* The choropleth's ink. The density ramp is this one colour at the alphas in
      DENSITY_STEPS, so a busy region and a picked one share a hue family and a
      selected region reads as the same green, committed. Muted on purpose: it
@@ -260,6 +294,13 @@
   --status-warn-mark: oklch(0.828 0.189 84.429);
   --status-warn-solid: oklch(0.279 0.077 45.635);
   --status-warn-solid-foreground: oklch(0.924 0.12 95.746);
+  /* The whole family flips here; see the light block for why. */
+  --trust: oklch(0.27 0.03 158);
+  --trust-border: oklch(0.45 0.055 158);
+  --trust-foreground: oklch(0.86 0.06 158);
+  --age-young: #4aa16d;
+  --age-grown: #b49350;
+  --age-ground: #4d916b;
   /* Lighter than the light theme's ink, because here the ramp lays a colour
      over a near-black page rather than under-painting a white one. Same hue,
      lower chroma again, so the top step composites to oklch(0.425 0.041)
@@ -334,6 +375,12 @@
     --status-warn-mark: oklch(0.828 0.189 84.429);
     --status-warn-solid: oklch(0.279 0.077 45.635);
     --status-warn-solid-foreground: oklch(0.924 0.12 95.746);
+    --trust: oklch(0.27 0.03 158);
+    --trust-border: oklch(0.45 0.055 158);
+    --trust-foreground: oklch(0.86 0.06 158);
+    --age-young: #4aa16d;
+    --age-grown: #b49350;
+    --age-ground: #4d916b;
     --map-density-fill: oklch(0.6 0.065 151);
     --map-selected-fill: oklch(0.56 0.06 151);
     --map-sea: oklch(0.245 0.032 230);

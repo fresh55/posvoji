@@ -52,8 +52,12 @@ export function ShelterBlock({
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
         {stay && (
           <div className="flex w-full items-start gap-2 text-sm">
+            {/* The warm family's own token, not raw amber utilities: a long
+                wait is the same "not settled yet" the reserved badge and the
+                portal warning say, and one of them cannot be retuned without
+                the others. */}
             <Hourglass
-              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+              className="mt-0.5 size-4 shrink-0 text-[var(--status-warn-mark)]"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -75,7 +79,17 @@ export function ShelterBlock({
             </div>
           </div>
         )}
-        <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
+        {/* The smallest tier here on purpose. Half the shelters draw their
+            wordmark in white, so the chip behind it is near black, and at the
+            44px tier that tile matched the primary button beside it in size
+            and in weight: two heavy dark blocks in one box, one of them the
+            thing to press and one of them a picture. Dropping the chip a tier
+            leaves the button the single heaviest object in the block. */}
+        <ShelterAvatar
+          name={shelter.name}
+          logo={logos[shelter.id]}
+          size="xs"
+        />
 
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{shelter.name}</p>
@@ -90,7 +104,10 @@ export function ShelterBlock({
           // The listing still has to be reachable: every animal here names
           // its source and links back to it, adopted or not.
           <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto">
-            <p className="flex w-full items-center gap-2 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-3 py-2 text-xs text-[var(--filter-accent-foreground)]">
+            {/* Trust green. An animal that found a home is a fact about the
+                world, the same tier as a health record; the selection green
+                belongs to the filters and nothing else. */}
+            <p className="flex w-full items-center gap-2 rounded-ui border border-[var(--trust-border)] bg-[var(--trust)] px-3 py-2 text-xs text-[var(--trust-foreground)]">
               <Heart className="size-4 shrink-0" aria-hidden />
               {messages.foundHome}
             </p>

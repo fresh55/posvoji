@@ -16,6 +16,7 @@ import {
 import type { Animal, AnimalSize, Sex } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
 import { useI18n } from "@/components/i18n-provider";
+import { badgeVariants } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -99,10 +100,21 @@ const GOOD_WITH_HINTS: Record<GoodWithKey, TranslationKey> = {
 const FACT_POPOVER_CLASS =
   "w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background";
 
-// The washed-out accent keeps the green badges from outshouting the identity
-// badges above them; the summary badge and the expanded ones dress the same.
-const HEALTH_PILL_CLASS =
-  "inline-flex cursor-help items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)]/70 bg-[var(--filter-accent)]/60 px-2.5 py-1 text-xs text-[var(--filter-accent-foreground)] transition-colors hover:bg-[var(--filter-accent)]/80 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none";
+// Every pill in this block is a Badge now, at the one larger tier: these are
+// the animal's own facts rather than a mark on someone else's surface, and
+// they are round because that is what the site's radius rule says a pill is
+// (globals.css). The three tones are the badge grammar's three: grey for who
+// the animal is, green for what has been checked, and a plain border for an
+// answer that is a no.
+//
+// The green is --trust and not --filter-accent. A health record is a fact
+// about the animal; a filter card is something the visitor switched on. They
+// used to be the same token at different opacities, which is not a
+// distinction anyone can see.
+const HEALTH_PILL_CLASS = cn(
+  badgeVariants({ variant: "trust", size: "lg" }),
+  "cursor-help hover:bg-[var(--trust-border)]/30 focus-visible:outline-none",
+);
 
 // A health badge explains itself when asked. A popover rather than a hover
 // tooltip, because a thumb cannot hover.
@@ -142,10 +154,14 @@ function HealthFact({
 // pill, and words that say what the animal would rather have. An unanswered
 // question is drawn dashed and stays inert, because there is nothing to
 // explain yet.
-const GOOD_WITH_NO_CLASS =
-  "inline-flex items-center gap-1.5 rounded-ui border border-foreground/25 px-2.5 py-1 text-xs text-muted-foreground";
-const GOOD_WITH_UNKNOWN_CLASS =
-  "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground";
+const GOOD_WITH_NO_CLASS = badgeVariants({
+  variant: "outline-muted",
+  size: "lg",
+});
+const GOOD_WITH_UNKNOWN_CLASS = badgeVariants({
+  variant: "dashed",
+  size: "lg",
+});
 
 // Once one household question has an answer, all three are shown: a row that
 // listed only the yeses would read as an all-clear on the rest.
@@ -273,7 +289,7 @@ function Fact({
   return (
     <li
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-ui border bg-muted/40 px-2.5 py-1 text-xs",
+        badgeVariants({ variant: "fact", size: "lg" }),
         className,
       )}
     >

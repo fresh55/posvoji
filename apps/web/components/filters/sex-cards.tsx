@@ -174,10 +174,14 @@ export function SexCards({
                   "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
               })}
             >
+              {/* right-1.5 top-1.5, the one inset every tile-shaped filter
+                  card uses (filter-card.tsx's sheet layout, size-paw-cards).
+                  It sat at right-2 top-2 here, which is the same mark drawn
+                  two pixels off in a section next to the ones that are not. */}
               <FilterSelectionMark
                 checked={checked}
                 appearDelay={DRAW_CHECK_DELAY}
-                className="absolute right-2 top-2"
+                className="absolute right-1.5 top-1.5"
               />
 
               <m.span

@@ -596,7 +596,13 @@ export function AnimalGrid({
           // it has a fully opaque background colour. Transparent, every
           // label in here renders greyscale while the rest of the page
           // does not, which reads as blur at the same size.
-          className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background"
+          // lg:top-0, the same offset the toolbar in the next column pins at
+          // (animal-filters.tsx). At var(--sticky-top) the two columns pinned
+          // 24px apart, so a heading and the tabs it is meant to sit beside
+          // agreed only while the page was at rest. The breathing room that
+          // offset used to buy lives on the heading's own margin instead
+          // (filter-sidebar.tsx), where it does not move the pin.
+          className="hidden lg:sticky lg:top-0 lg:block lg:max-h-dvh lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background"
           filters={filters}
           groups={groups}
           counts={counts}

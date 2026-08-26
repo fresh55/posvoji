@@ -85,7 +85,11 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* grid-cols-1 spelled out, not left implicit. An implicit single
+              column is auto-sized, so at 390px it took its width from the
+              widest shelter name in the registry and ran the whole grid 39px
+              past the screen. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sorted.map((shelter) => (
               <ShelterCard
                 key={shelter.id}

@@ -69,9 +69,15 @@ export function FilterSidebar({
         className,
       )}
     >
-      {/* h-7 matches the species tabs across the gutter, so both columns
-          start their content on the same line. */}
-      <div className="flex h-7 items-center justify-between gap-3">
+      {/* h-7 is the species tab's own height, and mt-3 is the toolbar's own
+          top padding (animal-filters.tsx wraps the tabs in py-3). Both were
+          needed: matching the height alone left this heading sitting 12px
+          above the tabs it claimed to line up with, because the two columns
+          start at the same y and only one of them was padded. The sidebar
+          pins at the same offset as that toolbar too (animal-grid.tsx), so
+          the pair holds its line while the page scrolls rather than only at
+          rest. */}
+      <div className="mt-3 flex h-7 items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-sm font-medium">
           {messages.filters}
           {activeValues > 0 && (

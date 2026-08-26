@@ -2,6 +2,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 type LocalizedText = Record<Locale, string>;
@@ -295,9 +296,15 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                 {text.intro}
               </p>
             </div>
-            <p className="max-w-3xl rounded-ui border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-              {text.notice}
-            </p>
+            {/* The frame runs the width of the column; only the sentence
+                inside it is held to a measure. A bordered box that stops
+                200px short of the heading above it reads as a bug, not as a
+                line length. */}
+            <div className="rounded-ui border bg-muted/40 px-4 py-3">
+              <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {text.notice}
+              </p>
+            </div>
           </div>
 
           {sections.map((section) => (
@@ -310,9 +317,9 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                   <Card asChild key={`${section.id}-${resource.title}`}>
                     <article className="flex flex-col p-5">
                       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span className="rounded-full border bg-muted/50 px-2.5 py-1">
-                          {resource.kind[locale]}
-                        </span>
+                        {/* What kind of thing this is, in the same pill the
+                            rest of the site uses for a neutral label. */}
+                        <Badge variant="quiet">{resource.kind[locale]}</Badge>
                         <span>{resource.organization}</span>
                       </div>
                       <h3 className="text-base font-medium leading-snug">

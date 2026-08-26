@@ -23,12 +23,20 @@ export function SpeciesTabs({
   value,
   onChange,
   counts,
+  roster,
   disabled = false,
   fullWidth = false,
 }: {
   value: SpeciesFilter;
   onChange: (species: SpeciesFilter) => void;
+  /** What each tab shows: the dataset counted with every filter applied
+   *  except species, so the number is what pressing the tab gives you. */
   counts: Record<SpeciesFilter, number>;
+  /** Which tabs exist at all, counted over the whole dataset. Separate from
+   *  `counts` because a filter may empty a tab without deleting it; see the
+   *  strip's own note below. Defaults to `counts`, which is the right answer
+   *  wherever the two are the same thing. */
+  roster?: Record<SpeciesFilter, number>;
   disabled?: boolean;
   fullWidth?: boolean;
 }) {
@@ -46,13 +54,15 @@ export function SpeciesTabs({
   useEffect(() => {
     // A deep link (?vrsta=ostale) can mount straight into the active tab, and
     // if that tab sits past the fold of a scrolled 320px row the visitor never
-    // sees what is selected. Nudge it into view once, without stealing the
-    // page's own scroll position.
+    // sees what is selected. Nudge it into view whenever the selected tab
+    // changes -- on mount for the deep-link case, and again for a later or
+    // programmatic selection -- without stealing the page's own scroll
+    // position: "nearest" on both axes only moves the horizontal strip, it
+    // never scrolls the page to bring the row itself into view.
     // jsdom (unit tests) has no scrollIntoView; guarded rather than polyfilled
     // everywhere just for this one effect.
     activeRef.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [value]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
@@ -103,9 +113,20 @@ export function SpeciesTabs({
       )}
     >
       {tabs.map(({ value: tab, label, icon: Icon }) => {
-        // An empty dataset keeps all tabs (disabled); otherwise empty
-        // categories disappear rather than leading to zero results.
-        if (!disabled && tab !== "all" && counts[tab] === 0) return null;
+        // An empty dataset keeps all tabs (disabled); otherwise a species
+        // the dataset does not hold disappears rather than leading to zero
+        // results.
+        //
+        // The roster and not the count. These used to be one number, and the
+        // moment the count became faceted they had to part: narrowing to
+        // "samica" empties Ostale on a dataset whose only rabbit is male, and
+        // an empty tab that vanishes takes the way back to the other species
+        // with it. A tab reading 0 is not a dead end, it is the honest price
+        // of the current filters and it stays pressable; the empty state on
+        // the other side carries the way out.
+        if (!disabled && tab !== "all" && (roster ?? counts)[tab] === 0) {
+          return null;
+        }
         return (
           <button
             key={tab}
@@ -120,7 +141,16 @@ export function SpeciesTabs({
             // truncating label is what stops a long name from forcing the
             // flex-1 tab wider than the row has room for.
             className={cn(
-              "inline-flex min-w-0 items-center justify-center gap-1.5 rounded-ui px-2.5 py-1 text-sm transition-colors disabled:opacity-40 max-lg:tap-target",
+              // opacity-50 and ring-3, which is what buttonVariants and
+              // badgeVariants both use. This was the only disabled step in the
+              // codebase at 40, and the only pressable thing in the bar with
+              // no ring of its own at all.
+              // px-2/gap-1 and not px-2.5/gap-1.5. The strip already ran 18px
+              // past a 375px phone before Vse carried a number, and a number
+              // is about 30 more. Tightening every tab buys back roughly what
+              // the new one costs, so the strip overflows no further than it
+              // did and "Ostale" is no worse off.
+              "inline-flex min-w-0 items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 max-lg:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a
@@ -134,12 +164,25 @@ export function SpeciesTabs({
             {Icon && <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />}
             <span className="min-w-0 truncate">{label}</span>
             {/* The species tabs answer "what is there" before they are
-                pressed. Vse carries no number: the result count beside the
-                tabs already says it, and two copies of one total disagree the
-                moment a filter is on. opacity rather than a colour, so the
-                count stays quieter than its label on the pressed pill too. */}
-            {tab !== "all" && !disabled && (
-              <span className="shrink-0 text-xs tabular-nums opacity-60">
+                pressed, and Vse now answers it too.
+                
+                It went without a number for as long as there was a separate
+                result count beside the strip, because the two were one total
+                written twice. Faceting settled which of them to keep: the
+                count could only ever be this strip's sum, or the pressed
+                tab's own number, so it was never saying anything the tabs did
+                not. The tabs kept the numbers and the count gave up its row
+                (animal-filters.tsx). On the Mačke tab, "Vse 22" is the one
+                that earns its place: it says what going back gives, which is
+                the same promise every other tab here makes.
+                
+                No opacity step on top of it: globals.css documents this exact
+                trap next to --muted-foreground -- opacity-60 over an already
+                muted tone measures 2.46:1, under AA for 12px text, so the
+                token is used whole and stays quieter by contrast with the
+                label alone, not by fading further past it. */}
+            {!disabled && (
+              <span className="shrink-0 text-xs tabular-nums">
                 {counts[tab]}
               </span>
             )}

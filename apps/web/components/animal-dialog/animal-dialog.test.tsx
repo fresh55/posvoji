@@ -530,18 +530,65 @@ describe("animal dialog", () => {
     expect(within(second).getByText("2 / 2")).toBeTruthy();
   });
 
-  it("moves the phone hero to the thumbnail that was tapped", async () => {
+  it("brings a tapped side photo to the front of the phone fan", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
-    const hero = () => region(dialog, "photo-hero").getByRole("img");
 
-    expect(hero().getAttribute("src")).toContain("rex-1");
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
+      .toBe("true");
 
-    fireEvent.click(photoButton(dialog, "photo-thumbs", 2));
+    fireEvent.click(photoButton(dialog, "photo-fan", 2));
 
-    expect(hero().getAttribute("src")).toContain("rex-2");
-    expect(photoButton(dialog, "photo-thumbs", 2).getAttribute("aria-pressed"))
+    // The fan walks there first and commits when the spring lands.
+    await waitFor(() =>
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+        .toBe("true"),
+    );
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
+      .toBe("false");
+  });
+
+  it("swipes the phone fan to the next photo and swallows the tap", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-fan");
+
+    await act(async () => {
+      pointer(fan, "pointerdown", { x: 300, y: 200, pointerType: "touch" });
+      pointer(fan, "pointermove", { x: 160, y: 204, pointerType: "touch" });
+      pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "touch" });
+    });
+
+    // The release hands the fan to a spring, and the step commits when it
+    // lands.
+    await waitFor(() =>
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+        .toBe("true"),
+    );
+    // The click the browser fires at whatever the finger ended on lands in
+    // the capture handler and goes no further, so the gesture stepped one
+    // photo and did not also select or open one.
+    fireEvent.click(photoButton(dialog, "photo-fan", 2));
+    expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      .toBe("true");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("leaves a mouse drag on the phone fan to the photos themselves", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-fan");
+
+    await act(async () => {
+      pointer(fan, "pointerdown", { x: 300, y: 200, pointerType: "mouse" });
+      pointer(fan, "pointermove", { x: 160, y: 204, pointerType: "mouse" });
+      pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "mouse" });
+    });
+
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
       .toBe("true");
   });
 
@@ -556,8 +603,10 @@ describe("animal dialog", () => {
       }),
     ).toHaveLength(5);
     expect(
-      region(dialog, "photo-thumbs").getAllByRole("button"),
-    ).toHaveLength(7);
+      region(dialog, "photo-fan").getAllByRole("button", {
+        name: /fotografijo \d/,
+      }),
+    ).toHaveLength(5);
     // The counter carries the total, so no second badge has to.
     expect(region(dialog, "photo-spread").getByText("1 / 7")).toBeTruthy();
   });
@@ -880,6 +929,25 @@ describe("animal dialog", () => {
       bar.getByRole("link", { name: /Odpri objavo pri zavetišču/ })
         .getAttribute("href"),
     ).toBe("https://example.test/animals/rex");
+  });
+
+  // The lightbox used to hang off the desktop fan alone, which left the one
+  // layout with the smallest photo as the only one that could not open it
+  // large. The phone fan's active photo is the same way in now.
+  it("opens the photo full screen from the phone fan", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    fireEvent.click(
+      region(dialog, "photo-fan").getByRole("button", {
+        name: /čez cel zaslon/,
+      }),
+    );
+
+    await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(2));
   });
 
   // Two identical buttons used to stand 90px apart on the phone, and the

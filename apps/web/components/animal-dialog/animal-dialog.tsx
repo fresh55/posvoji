@@ -254,8 +254,6 @@ export function AnimalDialog({
     if ((contentRef.current?.scrollTop ?? 0) > 0) return;
     dragStart.current = { x: event.clientX, y: event.clientY };
     dragging.current = false;
-    // Capture, so a finger that leaves the element still reports its release.
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function moveDrag(event: PointerEvent<HTMLDivElement>) {
@@ -267,6 +265,14 @@ export function AnimalDialog({
     if (!dragging.current) {
       if (dy < 8 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
       dragging.current = true;
+      // Capture only once the gesture is committed, so a finger that leaves
+      // the element still reports its release. Capturing on pointerdown, the
+      // way this used to, retargeted every later pointer event at this
+      // element before anyone knew the gesture's axis, which starved the
+      // fan's own swipe of its move and release events. Until the commit the
+      // touch pointer is implicitly captured to whatever was pressed, and
+      // those events bubble here anyway.
+      event.currentTarget.setPointerCapture?.(event.pointerId);
     }
     dragY.set(Math.max(0, dy * 0.6));
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { PawPrint, type LucideIcon } from "lucide-react";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "motion/react";
-import { SPECIES_ICONS } from "@/lib/animal-icons";
+import { SPECIES_TAB_ICONS } from "@/lib/animal-icons";
 import type { SpeciesFilter } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 // The shared map plus the one entry only this control needs.
 const FILTER_ICONS: Record<SpeciesFilter, LucideIcon> = {
   all: PawPrint,
-  ...SPECIES_ICONS,
+  ...SPECIES_TAB_ICONS,
 };
 
 const ANNOUNCEMENT_DELAY_MS = 250;
@@ -40,8 +40,7 @@ const EMPTY_ICON_POSES: Record<
   all: { rotate: -10, scale: 0.9, x: 0, y: 1 },
   dog: { rotate: 8, scale: 0.92, x: 0, y: 1 },
   cat: { rotate: -8, scale: 0.92, x: 0, y: 1 },
-  rabbit: { rotate: 6, scale: 0.9, x: 0, y: 1 },
-  other: { rotate: -10, scale: 0.9, x: 0, y: 1 },
+  other: { rotate: 6, scale: 0.9, x: 0, y: 1 },
 };
 
 const countVariants = {

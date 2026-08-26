@@ -41,7 +41,7 @@ export type ShelterSummary = {
 // of silently vanishing from the pick card.
 
 // The same three statuses the animal card's long-stay mark skips (see
-// longStayLabel in labels.ts): an adopted animal's stay is history, and a
+// longStayMonths in labels.ts): an adopted animal's stay is history, and a
 // reserved or held one is not waiting for the visitor's decision.
 function isWaiting(animal: Animal): boolean {
   return (

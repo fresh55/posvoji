@@ -44,7 +44,7 @@ describe("mobile filter hardening", () => {
         <AnimalFilters
           isEmpty={false}
           filters={{ ...EMPTY_FILTERS, sex: ["male"] }}
-          speciesTally={{ all: 1, dog: 1, cat: 0, rabbit: 0, other: 0 }}
+          speciesTally={{ all: 1, dog: 1, cat: 0, other: 0 }}
           groups={[
             { group: "sex", options: [{ value: "male", label: "Male" }] },
           ]}
@@ -85,7 +85,7 @@ describe("mobile filter hardening", () => {
         <AnimalFilters
           isEmpty={false}
           filters={EMPTY_FILTERS}
-          speciesTally={{ all: 2, dog: 1, cat: 1, rabbit: 0, other: 0 }}
+          speciesTally={{ all: 2, dog: 1, cat: 1, other: 0 }}
           groups={[
             { group: "sex", options: [{ value: "male", label: "Male" }] },
           ]}
@@ -111,8 +111,9 @@ describe("mobile filter hardening", () => {
       '[data-slot="mobile-toolbar"]',
     ) as HTMLElement;
     expect(mobileToolbar).toBeTruthy();
+    // The name carries the tab's count too, so the match is a prefix.
     const mobileTab = within(mobileToolbar).getByRole("button", {
-      name: "Dogs",
+      name: /^Dogs/,
     });
     expect(mobileTab.closest('[data-slot="drawer-content"]')).toBe(null);
 
@@ -367,7 +368,7 @@ describe("mobile filter hardening", () => {
         <SpeciesTabs
           value="other"
           onChange={vi.fn()}
-          counts={{ all: 4, dog: 1, cat: 1, rabbit: 1, other: 1 }}
+          counts={{ all: 4, dog: 1, cat: 1, other: 2 }}
           fullWidth
         />
       </I18nProvider>,
@@ -383,13 +384,13 @@ describe("mobile filter hardening", () => {
         <SpeciesTabs
           value="all"
           onChange={vi.fn()}
-          counts={{ all: 4, dog: 1, cat: 1, rabbit: 1, other: 1 }}
+          counts={{ all: 4, dog: 1, cat: 1, other: 2 }}
           fullWidth
         />
       </I18nProvider>,
     );
 
-    const otherTab = screen.getByRole("button", { name: "Other" });
+    const otherTab = screen.getByRole("button", { name: /^Other/ });
     expect(otherTab.className).toContain("flex-1");
     expect(otherTab.className).not.toContain("shrink-0");
     expect(otherTab.querySelector("span")?.className).toContain("truncate");

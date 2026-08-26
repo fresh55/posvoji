@@ -42,6 +42,11 @@ const badgeVariants = cva(
           "border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)] shadow-xs backdrop-blur-sm",
         "overlay-quiet":
           "border-transparent bg-background text-muted-foreground shadow-xs backdrop-blur-sm",
+        // The loudest mark a photo carries, monochrome on purpose: the same
+        // inversion the pressed species tab uses, for the handful of cards
+        // whose one fact outranks the amber tier above.
+        "overlay-strong":
+          "border-transparent bg-foreground text-background shadow-xs backdrop-blur-sm",
       },
     },
     defaultVariants: {

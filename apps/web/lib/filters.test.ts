@@ -12,6 +12,7 @@ import {
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  speciesCounts,
   toggleCounts,
   toggleValues,
   visibleCare,
@@ -50,6 +51,35 @@ function animal(species: Species, extra: Partial<Animal> = {}): Animal {
 function toggleKeys(animals: Animal[], species: SpeciesFilter): string[] {
   return visibleToggles(animals, species).map((toggle) => toggle.key);
 }
+
+describe("the merged Ostale tab", () => {
+  const mixed = [
+    animal("dog"),
+    animal("cat"),
+    animal("rabbit"),
+    animal("other"),
+  ];
+
+  it("matches rabbits and other species alike", () => {
+    const shown = applyFilters(
+      mixed,
+      { ...EMPTY_FILTERS, species: "other" },
+      NOW,
+    );
+    expect(shown.map((a) => a.species).sort()).toEqual(["other", "rabbit"]);
+  });
+
+  it("tallies rabbits under other", () => {
+    expect(speciesCounts(mixed)).toEqual({ all: 4, dog: 1, cat: 1, other: 2 });
+  });
+
+  it("pools both species for the sidebar", () => {
+    expect(bySpecies(mixed, "other").map((a) => a.species).sort()).toEqual([
+      "other",
+      "rabbit",
+    ]);
+  });
+});
 
 describe("visibleGroups", () => {
   it("hides velikost on the cat tab even when the cats differ in size", () => {
@@ -118,7 +148,7 @@ describe("visibleToggles", () => {
   it("withholds them from every other tab, Vse included", () => {
     expect(toggleKeys(cats, "all")).toEqual([]);
     expect(toggleKeys(cats, "dog")).toEqual([]);
-    expect(toggleKeys(cats, "rabbit")).toEqual([]);
+    expect(toggleKeys(cats, "other")).toEqual([]);
   });
 
   it("takes only a recorded negative, never an untested cat", () => {
@@ -358,6 +388,20 @@ describe("URL codec", () => {
     expect(serializeFilters(filters)).toBe(
       "vrsta=pes&velikost=majhna&lastnosti=cip",
     );
+  });
+
+  it("parses the legacy zajcek slug into the merged Ostale tab", () => {
+    const filters = parseFilters("vrsta=zajcek");
+    expect(filters.species).toBe("other");
+    // Written back under the tab's own slug, so the legacy one dies out of
+    // shared links on its own.
+    expect(serializeFilters(filters)).toBe("vrsta=ostalo");
+  });
+
+  it("round-trips the Ostale tab under its own slug", () => {
+    const filters = parseFilters("vrsta=ostalo");
+    expect(filters.species).toBe("other");
+    expect(serializeFilters(filters)).toBe("vrsta=ostalo");
   });
 
   it("degrades a stale velikost carried onto the cat tab", () => {

@@ -72,7 +72,6 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
   all: "speciesAbsenceAll",
   dog: "speciesAbsenceDogs",
   cat: "speciesAbsenceCats",
-  rabbit: "speciesAbsenceRabbits",
   other: "speciesAbsenceOther",
 };
 

@@ -72,7 +72,9 @@ export function SitePage({ locale }: { locale: Locale }) {
           />
         </main>
 
-        <SiteFooter locale={locale} />
+        {/* The one page that floats the filter dock, so the one footer that
+            has to duck under it. */}
+        <SiteFooter locale={locale} docked />
       </div>
     </I18nProvider>
   );

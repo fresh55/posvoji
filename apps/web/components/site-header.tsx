@@ -21,7 +21,9 @@ export function SiteHeader({
     <header className="bleed flex items-center justify-between border-b py-4">
       <a
         href={homeHref}
-        className="flex items-center gap-2 font-medium tracking-tight"
+        // The primary way home, and the logo drew it 40px tall. The utility
+        // grows the tappable box without moving the drawing.
+        className="flex max-lg:tap-target items-center gap-2 font-medium tracking-tight"
         aria-label="posvoji.si"
       >
         <Logo className="h-10 w-auto" />

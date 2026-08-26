@@ -246,13 +246,15 @@ describe("visibleGroups", () => {
     // went on filtering from the URL, and on a phone it took the sheet's last
     // section and the Filtri trigger with it.
     const rabbits = [animal("rabbit", { sex: "male" })];
-    expect(visibleGroups(rabbits, "other", NOW).sex).toBe(false);
     expect(
-      visibleGroups(rabbits, "other", NOW, {
-        ...EMPTY_FILTERS,
-        species: "other",
-        sex: ["male"],
-      }).sex,
+      visibleGroups(rabbits, { ...EMPTY_FILTERS, species: "other" }, NOW).sex,
+    ).toBe(false);
+    expect(
+      visibleGroups(
+        rabbits,
+        { ...EMPTY_FILTERS, species: "other", sex: ["male"] },
+        NOW,
+      ).sex,
     ).toBe(true);
   });
 
@@ -260,11 +262,11 @@ describe("visibleGroups", () => {
     // The selection only ever adds a section back. Everything else is measured
     // exactly as it was.
     const rabbits = [animal("rabbit", { sex: "male", energy: "calm" })];
-    const shown = visibleGroups(rabbits, "other", NOW, {
-      ...EMPTY_FILTERS,
-      species: "other",
-      sex: ["male"],
-    });
+    const shown = visibleGroups(
+      rabbits,
+      { ...EMPTY_FILTERS, species: "other", sex: ["male"] },
+      NOW,
+    );
     expect(shown.energy).toBe(false);
     expect(shown.age).toBe(false);
   });
@@ -349,7 +351,7 @@ describe("visibleGoodWith", () => {
       animal("dog", { goodWith: { kids: "yes" } }),
       animal("cat", { goodWith: { kids: "yes" } }),
     ];
-    expect(visibleGoodWith(kids)).toEqual([]);
+    expect(visibleGoodWith(kids, [])).toEqual([]);
     expect(visibleGoodWith(kids, ["kids"])).toEqual(["kids"]);
   });
 });

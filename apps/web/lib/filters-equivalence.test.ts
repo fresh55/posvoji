@@ -179,7 +179,13 @@ function slowCareOk(animal: Animal, selected: readonly CareKey[]): boolean {
 }
 
 function slowSpeciesOk(animal: Animal, species: SpeciesFilter): boolean {
-  return species === "all" || animal.species === species;
+  if (species === "all") return true;
+  // The tabs merge rabbit into "other"; spelled out here rather than read off
+  // TAB_OF_SPECIES so this mirror cannot inherit a bug from the map it checks.
+  if (species === "other") {
+    return animal.species === "rabbit" || animal.species === "other";
+  }
+  return animal.species === species;
 }
 
 function slowApply(animals: Animal[], filters: Filters): Animal[] {
@@ -425,7 +431,7 @@ function states(): Filters[] {
   // And then several hundred mixed ones.
   for (let at = 0; at < 240; at += 1) {
     out.push({
-      species: (["all", "all", "dog", "cat", "rabbit"] as SpeciesFilter[])[
+      species: (["all", "all", "dog", "cat", "other"] as SpeciesFilter[])[
         Math.floor(next() * 5)
       ],
       sex: some(SEXES, 0.35),

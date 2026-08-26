@@ -1,5 +1,80 @@
 import { describe, expect, it } from "vitest";
-import { shelterChipLabel } from "./labels";
+import type { Animal } from "@posvoji/schema";
+import {
+  animalMeta,
+  EMPHATIC_STAY_MONTHS,
+  LONG_STAY_MONTHS,
+  longStayMonths,
+  shelterChipLabel,
+} from "./labels";
+
+const NOW = new Date("2026-08-15T00:00:00Z");
+
+function animal(extra: Partial<Animal> = {}): Animal {
+  return {
+    id: "a1",
+    source: {
+      providerId: "zavetisce",
+      sourceUrl: "https://example.org/zival",
+      fetchedAt: "2026-08-01T00:00:00Z",
+      firstSeenAt: "2026-08-01T00:00:00Z",
+      lastSeenAt: "2026-08-01T00:00:00Z",
+    },
+    shelter: { id: "s1", name: "Zavetišče", city: "Ljubljana" },
+    species: "rabbit",
+    status: "available",
+    images: [],
+    attribution: "Vir: Zavetišče",
+    ...extra,
+  };
+}
+
+describe("animalMeta on the species tabs", () => {
+  const rabbit = animal({ sex: "female", approximateAgeMonths: 24 });
+
+  it("drops the species word only on a tab that names one species", () => {
+    expect(animalMeta(rabbit, "sl", NOW, "all")).toBe(
+      "Zajček · samica · 2 leti",
+    );
+    // The merged Ostale tab holds rabbits and whatever else, so the line
+    // still has to say which animal this is.
+    expect(animalMeta(rabbit, "sl", NOW, "other")).toBe(
+      "Zajček · samica · 2 leti",
+    );
+    const cat = animal({ species: "cat", sex: "female", approximateAgeMonths: 24 });
+    expect(animalMeta(cat, "sl", NOW, "cat")).toBe("samica · 2 leti");
+  });
+});
+
+describe("longStayMonths", () => {
+  // Months, as an intake date this many whole months before NOW.
+  function intake(months: number): string {
+    const date = new Date(NOW);
+    date.setUTCMonth(date.getUTCMonth() - months);
+    return date.toISOString().slice(0, 10);
+  }
+
+  it("starts at the long-stay threshold and reaches the emphatic one", () => {
+    expect(
+      longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS - 1) }), NOW),
+    ).toBeUndefined();
+    expect(
+      longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS) }), NOW),
+    ).toBe(LONG_STAY_MONTHS);
+    expect(
+      longStayMonths(animal({ intakeDate: intake(EMPHATIC_STAY_MONTHS) }), NOW),
+    ).toBe(EMPHATIC_STAY_MONTHS);
+  });
+
+  it("says nothing about an animal the visitor cannot act on", () => {
+    expect(
+      longStayMonths(
+        animal({ intakeDate: intake(72), status: "adopted" }),
+        NOW,
+      ),
+    ).toBeUndefined();
+  });
+});
 
 describe("shelterChipLabel", () => {
   it("drops the noun every shelter shares when it opens the name", () => {

@@ -34,6 +34,7 @@ import type {
   GoodWithKey,
   ToggleKey,
 } from "@/lib/filters";
+import type { SpeciesTab } from "@/lib/species";
 
 // One icon per health trait, shared by the filter panel and the animal
 // dialog so the same fact never arrives wearing two different symbols.
@@ -72,6 +73,16 @@ export const SPECIES_ICONS: Record<Species, LucideIcon> = {
   cat: Cat,
   rabbit: Rabbit,
   other: PawPrint,
+};
+
+// The filter tabs, which merge rabbit and other (see lib/species.ts). The
+// rabbit stands for the whole small-animal bucket: PawPrint would repeat the
+// mark the result count already spends on "Vse", and today the bucket is
+// rabbits. Keyed by SpeciesTab, so a new tab fails to compile.
+export const SPECIES_TAB_ICONS: Record<SpeciesTab, LucideIcon> = {
+  dog: Dog,
+  cat: Cat,
+  other: Rabbit,
 };
 
 // One icon per filter facet, for a chips-row pill that stands for a whole

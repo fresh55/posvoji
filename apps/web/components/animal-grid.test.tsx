@@ -85,7 +85,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     expect(
-      screen.getByText("Izbrano zavetišče trenutno nima zajčkov."),
+      screen.getByText("Izbrano zavetišče trenutno nima drugih živali."),
     ).toBeTruthy();
     // The blunt "poskusi z manj filtri" line is only for the generic case.
     expect(screen.queryByText("Poskusi z manj filtri.")).toBeNull();
@@ -96,8 +96,9 @@ describe("animal grid empty state", () => {
     fireEvent.click(recover);
 
     // The species tab survives: only zavetisce came off the query, and the
-    // one rabbit not at muri is now shown.
-    expect(query()).toBe("?vrsta=zajcek");
+    // one rabbit not at muri is now shown. The tab is written back under its
+    // own slug, so the legacy zajcek one has normalized to ostalo.
+    expect(query()).toBe("?vrsta=ostalo");
     expect(screen.getByRole("link", { name: /Shelter druga/ })).toBeTruthy();
   });
 
@@ -110,15 +111,16 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     expect(
-      screen.getByText("Izbrana zavetišča trenutno nimajo zajčkov."),
+      screen.getByText("Izbrana zavetišča trenutno nimajo drugih živali."),
     ).toBeTruthy();
   });
 
   it("keeps the generic empty state when no shelter is selected", () => {
-    // Nobody in the fixture is species "other", and no shelter filter is
-    // active, so dropping the shelter group could not possibly help.
+    // The rabbit is filtered out, so the Ostale tab matches nobody, and no
+    // shelter filter is active, so dropping the shelter group could not
+    // possibly help.
     window.history.replaceState(null, "", "/?vrsta=ostalo");
-    renderGrid(ANIMALS);
+    renderGrid(ANIMALS.filter((a) => a.species !== "rabbit"));
 
     expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
     expect(screen.getByText("Poskusi z manj filtri.")).toBeTruthy();
@@ -204,7 +206,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS, "en");
 
     expect(
-      screen.getByText("The selected shelter currently has no rabbits."),
+      screen.getByText("The selected shelter currently has no other animals."),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Show from all shelters" }),
@@ -281,8 +283,8 @@ describe("the chips row inside the grid", () => {
   });
 
   it("marks the filter that is costing the most when nothing matches", () => {
-    // A shelter with only dogs plus the rabbit tab: nothing matches, and
-    // dropping the shelter is the cheaper of the two ways out.
+    // A shelter with only dogs plus the small-animal tab: nothing matches,
+    // and dropping the shelter is the cheaper of the two ways out.
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 

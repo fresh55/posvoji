@@ -21,8 +21,10 @@ import { animalPath } from "@/lib/animal-path";
 import { permittedImageUrls } from "@/lib/animal-images";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
+  ageLabel,
   animalMetaParts,
-  longStayLabel,
+  EMPHATIC_STAY_MONTHS,
+  longStayMonths,
   META_DOT_CLASS,
   META_SEPARATOR,
   shelterChipLabel,
@@ -77,7 +79,9 @@ export function AnimalCard({
   const headingId = useId();
   const [photoIndex, setPhotoIndex] = useState(0);
   const photoCount = permittedImageUrls(animal.images).length;
-  const wait = longStayLabel(animal, locale, reference);
+  const waitMonths = longStayMonths(animal, reference);
+  const wait =
+    waitMonths === undefined ? undefined : ageLabel(waitMonths, locale);
   // The animal's own page, which is also what the dialog writes to the
   // address bar when this card is clicked. Filters are deliberately left out:
   // the href is written at build time, where the visitor's filters do not
@@ -204,17 +208,23 @@ export function AnimalCard({
             // that case, because an animal that grew up in the shelter has
             // waited exactly as long as it has been alive. The verb settles it
             // in four characters and pays for them with the icon.
-            // overlay-quiet, not overlay-warn. On the "Vse" tab most visible
-            // cards carry this mark, and a solid amber pill on every photo is
-            // an alarm ringing so often it stops being one. The blurred quiet
-            // pill keeps the fact legible on any photograph and leaves the
-            // filled treatment to the status badge, which really does
-            // disqualify a card.
+            // Two tiers of the same mark, and neither of them amber. On the
+            // "Vse" tab most visible cards carry it, and a solid warm pill on
+            // every photo is an alarm ringing so often it stops being one.
+            // The blurred quiet pill is the base tier; past
+            // EMPHATIC_STAY_MONTHS it inverts instead, because in a crowd of
+            // quiet marks the waits that run to five years and past
+            // disappeared. The filled warm treatment stays with the status
+            // badge, which really does disqualify a card.
             //
             // Top right, opposite the status. The bottom edge belongs to the
             // gallery dots now, and on a phone card the two met in the middle.
             <Badge
-              variant="overlay-quiet"
+              variant={
+                waitMonths !== undefined && waitMonths >= EMPHATIC_STAY_MONTHS
+                  ? "overlay-strong"
+                  : "overlay-quiet"
+              }
               className="absolute right-1.5 top-1.5"
             >
               {t("longStayMark", { duration: wait })}

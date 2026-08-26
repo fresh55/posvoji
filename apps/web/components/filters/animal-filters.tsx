@@ -171,22 +171,17 @@ export function AnimalFilters({
           </div>
         </div>
 
-        {/* Two rows on a phone, one from sm up, and the split is measured
-            rather than assumed. The four Slovenian species tabs come to 286px
-            and refuse to share: with the count and the sort beside them they
-            had about sixty percent of a 390px screen, which cut "Mačke"
-            mid-word and put "Zajčki" off the end of a strip nobody had a
-            reason to scroll. Every species fits its own phone row, so someone
-            looking for a rabbit can see that rabbits exist.
-
-            All three together need 578px. That is over the line at 600px and
-            under it at 640, which is sm exactly, so from sm they share a row:
-            203px to spare on a phone held sideways, 127px on a tablet. It is
-            worth the branch because stacking them there cost 44px of a
-            landscape phone's 390, on top of a dock that already takes 58.
+        {/* Two rows on a phone, one from sm up. The species tabs and their
+            counts refuse to share a 390px row with the result count and the
+            sort: squeezed together they cut "Mačke" mid-word and pushed the
+            last tab off the end of a strip nobody had a reason to scroll.
+            The tabs fit their own phone row, so every tab that exists can be
+            seen to exist; from sm the three controls share one row, because
+            stacking them there cost 44px of a landscape phone's 390, on top
+            of a dock that already takes 58.
 
             The strip still scrolls and still fades its edges (species-tabs
-            .tsx), which is what absorbs the 14px margin at sm itself. */}
+            .tsx), which is what absorbs the margin at sm itself. */}
         <div
           data-slot="mobile-toolbar"
           className="lg:hidden sm:flex sm:items-center sm:gap-3"

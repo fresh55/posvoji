@@ -6,9 +6,15 @@ import type {
   Species,
 } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
-import { SPECIES_ORDER, SPECIES_SLUGS } from "@/lib/species";
+import {
+  LEGACY_TAB_SLUGS,
+  SPECIES_TAB_ORDER,
+  SPECIES_TAB_SLUGS,
+  TAB_OF_SPECIES,
+  type SpeciesTab,
+} from "@/lib/species";
 
-export type SpeciesFilter = "all" | Species;
+export type SpeciesFilter = "all" | SpeciesTab;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
 export type MultiGroup = "sex" | "age" | "size" | "energy" | "shelter";
 
@@ -238,7 +244,7 @@ export function ageGroup(months: number): AgeGroup {
 }
 
 function matchesSpecies(animal: Animal, species: SpeciesFilter): boolean {
-  return species === "all" || animal.species === species;
+  return species === "all" || TAB_OF_SPECIES[animal.species] === species;
 }
 
 // ---------------------------------------------------------------------------
@@ -471,7 +477,7 @@ function valueAt(
 function speciesAt(pass: Pass, slot: number): boolean {
   return (
     pass.query.species === "all" ||
-    pass.index.species[slot] === pass.query.species
+    TAB_OF_SPECIES[pass.index.species[slot]] === pass.query.species
   );
 }
 
@@ -858,7 +864,7 @@ function toggleFitsSpecies(
   only: Species | undefined,
   species: SpeciesFilter,
 ): boolean {
-  return only === undefined || only === species;
+  return only === undefined || TAB_OF_SPECIES[only] === species;
 }
 
 /** How many animals answer each key of one section, in a single walk. All four
@@ -919,11 +925,10 @@ export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> 
     all: animals.length,
     dog: 0,
     cat: 0,
-    rabbit: 0,
     other: 0,
   };
   for (const animal of animals) {
-    counts[animal.species] += 1;
+    counts[TAB_OF_SPECIES[animal.species]] += 1;
   }
   return counts;
 }
@@ -1168,9 +1173,9 @@ export function optionLabel(
 }
 
 // URL codecs. Slovenian, ASCII-only params: ?vrsta=pes&spol=samica&starost=mladicek
-// SPECIES_SLUGS and SPECIES_ORDER live in lib/species.ts, which imports nothing
-// but a type, so the tabs and the portal can read them without pulling this
-// module and its dependencies along.
+// The tab slugs live in lib/species.ts, which imports nothing but a type, so
+// the tabs and the portal can read them without pulling this module and its
+// dependencies along.
 const PARAM_NAMES: Record<MultiGroup, string> = {
   sex: "spol",
   age: "starost",
@@ -1224,7 +1229,7 @@ export const FILTER_PARAM_NAMES: readonly string[] = [
 export function serializeFilters(filters: Filters): string {
   const params = new URLSearchParams();
   if (filters.species !== "all") {
-    params.set("vrsta", SPECIES_SLUGS[filters.species]);
+    params.set("vrsta", SPECIES_TAB_SLUGS[filters.species]);
   }
   for (const group of GROUPS) {
     if (filters[group].length > 0) {
@@ -1296,8 +1301,13 @@ function paramValues(params: URLSearchParams, name: string): string[] {
 export function parseFilters(search: string): Filters {
   const params = new URLSearchParams(search);
   const slug = params.get("vrsta");
-  const species =
-    SPECIES_ORDER.find((value) => SPECIES_SLUGS[value] === slug) ?? "all";
+  // The legacy lookup keeps links shared before a species tab was folded into
+  // "other" filtering the way they used to, near enough: ?vrsta=zajcek now
+  // opens the whole small-animal tab.
+  const species: SpeciesFilter =
+    SPECIES_TAB_ORDER.find((tab) => SPECIES_TAB_SLUGS[tab] === slug) ??
+    (slug === null ? undefined : LEGACY_TAB_SLUGS[slug]) ??
+    "all";
   // No second dedupe below: paramValues has already made the slugs unique, and
   // every slug-to-value lookup here is one-to-one.
   const values = (group: MultiGroup): string[] =>

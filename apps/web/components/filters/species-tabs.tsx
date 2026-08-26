@@ -3,9 +3,9 @@
 import { type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { type SpeciesFilter } from "@/lib/filters";
-import { SPECIES_ORDER } from "@/lib/species";
+import { SPECIES_TAB_ORDER } from "@/lib/species";
 import { useI18n } from "@/components/i18n-provider";
-import { SPECIES_ICONS } from "@/lib/animal-icons";
+import { SPECIES_TAB_ICONS } from "@/lib/animal-icons";
 import { cn } from "@/lib/utils";
 
 // The row scrolls sideways, so the fade needs a left/right mask; the shared
@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 const EDGE_SLACK_PX = 8;
 
 const LABELS: Record<"sl" | "en", Record<SpeciesFilter, string>> = {
-  sl: { all: "Vse", dog: "Psi", cat: "Mačke", rabbit: "Zajčki", other: "Ostale" },
-  en: { all: "All", dog: "Dogs", cat: "Cats", rabbit: "Rabbits", other: "Other" },
+  sl: { all: "Vse", dog: "Psi", cat: "Mačke", other: "Ostale" },
+  en: { all: "All", dog: "Dogs", cat: "Cats", other: "Other" },
 };
 
 export function SpeciesTabs({
@@ -35,10 +35,10 @@ export function SpeciesTabs({
   const { locale } = useI18n();
   const tabs: { value: SpeciesFilter; label: string; icon?: LucideIcon }[] = [
     { value: "all", label: LABELS[locale].all },
-    ...SPECIES_ORDER.map((value) => ({
+    ...SPECIES_TAB_ORDER.map((value) => ({
       value,
       label: LABELS[locale][value],
-      icon: SPECIES_ICONS[value],
+      icon: SPECIES_TAB_ICONS[value],
     })),
   ];
 
@@ -133,6 +133,16 @@ export function SpeciesTabs({
           >
             {Icon && <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />}
             <span className="min-w-0 truncate">{label}</span>
+            {/* The species tabs answer "what is there" before they are
+                pressed. Vse carries no number: the result count beside the
+                tabs already says it, and two copies of one total disagree the
+                moment a filter is on. opacity rather than a colour, so the
+                count stays quieter than its label on the pressed pill too. */}
+            {tab !== "all" && !disabled && (
+              <span className="shrink-0 text-xs tabular-nums opacity-60">
+                {counts[tab]}
+              </span>
+            )}
           </button>
         );
       })}

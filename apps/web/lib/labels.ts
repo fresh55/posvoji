@@ -198,7 +198,10 @@ export function animalMetaParts(
   species: SpeciesFilter = "all",
 ): string[] {
   const months = ageInMonths(animal, now);
-  const named = species !== "all";
+  // Only a tab that names one species has already said the word. The merged
+  // Ostale tab holds rabbits and whatever else, so there the line still has
+  // to say which animal this is.
+  const named = species === "dog" || species === "cat";
   return [
     named ? "" : speciesLabel(animal.species, locale),
     animal.sex ? SEX[locale][animal.sex] : "",
@@ -252,14 +255,16 @@ export function timeInShelter(
 // so they cannot disagree about who counts as waiting long.
 export const LONG_STAY_MONTHS = 36;
 
-// The formatted wait of an animal that has waited long and is actually up
+// Past this the card stops saying it quietly. Five years is the top few
+// percent of the dataset (24 of 503 at the time of writing, against 101
+// wearing the three-year mark), which is what keeps a louder mark meaning
+// anything.
+export const EMPHATIC_STAY_MONTHS = 60;
+
+// The wait in months of an animal that has waited long and is actually up
 // for adoption, or undefined. Reserved and held animals are not waiting for
 // the visitor's decision, and an adopted one's stay is history.
-export function longStayLabel(
-  animal: Animal,
-  locale: Locale,
-  now: Date,
-): string | undefined {
+export function longStayMonths(animal: Animal, now: Date): number | undefined {
   if (!animal.intakeDate) return undefined;
   // An allowlist and not a denylist of the other three. A fifth status added
   // to the schema would silently inherit the mark under a denylist, and this
@@ -270,7 +275,7 @@ export function longStayLabel(
   }
   const months = monthsInShelter(animal.intakeDate, now);
   if (months === undefined || months < LONG_STAY_MONTHS) return undefined;
-  return ageLabel(months, locale);
+  return months;
 }
 
 const STATUS_KEYS: Record<

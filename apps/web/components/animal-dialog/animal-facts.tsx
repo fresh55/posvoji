@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, type ReactNode } from "react";
 import {
@@ -95,6 +95,11 @@ const GOOD_WITH_HINTS: Record<GoodWithKey, TranslationKey> = {
   cats: "hintGoodWithCats",
 };
 
+// The dark explainer bubble every fact popover wears. One constant, because
+// it was the same class string typed out three times.
+const FACT_POPOVER_CLASS =
+  "w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background";
+
 // The washed-out accent keeps the green badges from outshouting the identity
 // badges above them; the summary badge and the expanded ones dress the same.
 const HEALTH_PILL_CLASS =
@@ -125,7 +130,7 @@ function HealthFact({
         </PopoverTrigger>
         <PopoverContent
           side="top"
-          className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+          className={FACT_POPOVER_CLASS}
         >
           {hint}
         </PopoverContent>
@@ -171,7 +176,7 @@ function GoodWithFact({
           </PopoverTrigger>
           <PopoverContent
             side="top"
-            className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+            className={FACT_POPOVER_CLASS}
           >
             {hint}
           </PopoverContent>
@@ -231,7 +236,7 @@ function ApartmentFact({
         </PopoverTrigger>
         <PopoverContent
           side="top"
-          className="w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background"
+          className={FACT_POPOVER_CLASS}
         >
           {hint}
         </PopoverContent>
@@ -518,8 +523,12 @@ export function AnimalFacts({
       {animal.shortDescription && (
         <div className="space-y-1">
           <p
+            // max-w-prose: at the dialog's full width these lines run past
+            // ninety characters, which is more than an eye tracks comfortably.
+            // The pills and boxes around it keep the full width; only the
+            // running text narrows.
             className={cn(
-              "text-sm leading-relaxed whitespace-pre-line",
+              "max-w-prose text-sm leading-relaxed whitespace-pre-line",
               clampDescription && !showFullDescription && "line-clamp-5",
             )}
           >
@@ -539,12 +548,14 @@ export function AnimalFacts({
       )}
 
       {/* Last before the shelter box on purpose: facts, then the shelter's
-          own words, then the wait, then the way to act on it. Styled like a
-          quiet alert in the same neutral box as the shelter block, the amber
-          held to the icon alone. The link re-sorts the list by longest wait,
-          and only offers itself while the list is sorted some other way. */}
+          own words, then the wait, then the way to act on it. A line rather
+          than a box: boxed, it sat on the shelter block as two equal crates
+          and the dialog's one action had to share its weight. The amber icon
+          and the medium sentence still hold the tier above the quiet asides.
+          The link re-sorts the list by longest wait, and only offers itself
+          while the list is sorted some other way. */}
       {longStay && stay && (
-        <div className="flex items-start gap-3 rounded-ui border bg-muted/40 px-4 py-3">
+        <div className="flex items-start gap-2">
           <Hourglass
             className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
             strokeWidth={1.75}

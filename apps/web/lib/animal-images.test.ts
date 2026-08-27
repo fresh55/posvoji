@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  adjacentImageUrls,
+  adjacentImages,
   MAX_PHOTO_DOTS,
   permittedImageUrls,
+  permittedPhotos,
+  photoAvifUrl,
   photoDotWindow,
+  photoSrcSet,
   thumbnailUrl,
 } from "./animal-images";
 
@@ -95,16 +98,131 @@ describe("thumbnailUrl", () => {
   });
 });
 
-describe("adjacentImageUrls", () => {
+describe("adjacentImages", () => {
   it("returns the previous and next images with wraparound", () => {
-    expect(adjacentImageUrls(["one", "two", "three"], 0)).toEqual([
+    expect(adjacentImages(["one", "two", "three"], 0)).toEqual([
       "three",
       "two",
     ]);
   });
 
   it("does not return the same adjacent image twice", () => {
-    expect(adjacentImageUrls(["one", "two"], 0)).toEqual(["two"]);
-    expect(adjacentImageUrls(["one"], 0)).toEqual([]);
+    expect(adjacentImages(["one", "two"], 0)).toEqual(["two"]);
+    expect(adjacentImages(["one"], 0)).toEqual([]);
+  });
+
+  it("folds a two-photo gallery's neighbours by identity, not by url", () => {
+    // The gallery hands this whole photos now. In a pair both neighbours are
+    // the same entry, and only object identity says so.
+    const photos = [{ src: "/media/animals/one.webp" }, { src: "/media/animals/two.webp" }];
+    expect(adjacentImages(photos, 0)).toEqual([photos[1]]);
+  });
+});
+
+describe("permittedPhotos", () => {
+  it("carries the derived fields of a cached copy", () => {
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          cachedUrl: "/media/animals/luna.webp",
+          width: 800,
+          height: 600,
+          widths: [320, 480, 640, 800],
+          avif: true,
+          blurDataURL: "data:image/webp;base64,UklGRg==",
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"]),
+    ).toEqual([
+      {
+        src: "/media/animals/luna.webp",
+        width: 800,
+        height: 600,
+        widths: [320, 480, 640, 800],
+        avif: true,
+        blurDataURL: "data:image/webp;base64,UklGRg==",
+      },
+    ]);
+  });
+
+  it("leaves a hotlinked photo with nothing but its source", () => {
+    // A cache-permitted image whose cache attempt failed is served from the
+    // shelter, where none of our siblings exist. Carrying the derived fields
+    // across would promise a ladder that was never written.
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          rights: "cache-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/bine.jpg",
+          rights: "display-permitted",
+        },
+      ] satisfies Animal["images"]),
+    ).toEqual([
+      { src: "https://shelter.example/luna.jpg" },
+      { src: "https://shelter.example/bine.jpg" },
+    ]);
+  });
+});
+
+describe("photoSrcSet", () => {
+  it("names every rung but the last, which is the cached copy itself", () => {
+    expect(
+      photoSrcSet({
+        src: "/media/animals/0123456789abcdef.webp",
+        widths: [320, 480, 640, 800],
+      }),
+    ).toBe(
+      "/media/animals/0123456789abcdef-320.webp 320w, " +
+        "/media/animals/0123456789abcdef-480.webp 480w, " +
+        "/media/animals/0123456789abcdef-640.webp 640w, " +
+        "/media/animals/0123456789abcdef.webp 800w",
+    );
+  });
+
+  it("follows the ladder rather than assuming the standard rungs", () => {
+    // A photo the shelter published at 400px has one rung under it, and 480
+    // and 640 were never written. Nothing may name them.
+    expect(
+      photoSrcSet({
+        src: "/media/animals/small.webp",
+        widths: [320, 400],
+      }),
+    ).toBe("/media/animals/small-320.webp 320w, /media/animals/small.webp 400w");
+  });
+
+  it("has nothing to offer without a ladder", () => {
+    expect(photoSrcSet({ src: "/media/animals/luna.webp" })).toBeUndefined();
+    // One rung is the cached copy on its own, which the src already says.
+    expect(
+      photoSrcSet({ src: "/media/animals/luna.webp", widths: [300] }),
+    ).toBeUndefined();
+  });
+
+  it("leaves a photo served from the shelter alone", () => {
+    expect(
+      photoSrcSet({
+        src: "https://shelter.example/luna.jpg",
+        widths: [320, 800],
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("photoAvifUrl", () => {
+  it("names the avif sibling of a cached copy", () => {
+    expect(
+      photoAvifUrl({ src: "/media/animals/luna.webp", avif: true }),
+    ).toBe("/media/animals/luna.avif");
+  });
+
+  it("stays quiet where ingest derived none", () => {
+    expect(photoAvifUrl({ src: "/media/animals/luna.webp" })).toBeUndefined();
+    expect(
+      photoAvifUrl({ src: "https://shelter.example/luna.jpg", avif: true }),
+    ).toBeUndefined();
   });
 });

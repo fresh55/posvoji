@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { animalPath } from "@/lib/animal-path";
 import { permittedImageUrls } from "@/lib/animal-images";
+import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
   ageLabel,
@@ -50,7 +51,7 @@ export function AnimalCard({
   animal,
   reference,
   species = "all",
-  priority = false,
+  eager = false,
   onOpen,
   showShelter = false,
   className,
@@ -62,7 +63,7 @@ export function AnimalCard({
   /** The grid's active tab, so the meta line can drop what the tab already said. */
   species?: SpeciesFilter;
   /** Set on the first row, so the largest image on screen is not lazy. */
-  priority?: boolean;
+  eager?: boolean;
   onOpen: (id: string, origin?: DialogOrigin) => void;
   /** Draws the shelter line, which links to that shelter's own page. Opt-in,
    *  and it is what decides whether the line is drawn at all: a shelter's own
@@ -178,13 +179,13 @@ export function AnimalCard({
         <div className="relative shrink-0">
           <PhotoGallery
             animal={animal}
-            sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
+            sizes={CARD_PHOTO_SIZES}
             tone={settled ? QUIET_PHOTO : undefined}
             href={href}
             onNavigate={openDialog}
             index={photoIndex}
             onIndexChange={setPhotoIndex}
-            priority={priority}
+            eager={eager}
           />
           {/* One copy, on the photo, at every width. A status disqualifies the
               whole card, so it belongs on the thing it disqualifies rather

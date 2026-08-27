@@ -762,7 +762,7 @@ export function AnimalGrid({
                 species={filters.species}
                 // The first row, which is the largest image on the screen and
                 // was queueing behind the bundle like the other 499.
-                priority={ordinal < 4}
+                eager={ordinal < 4}
                 onOpen={handleOpen}
                 // A shelter's own page renders these same cards and leaves
                 // this off, because there the line would be the page linking

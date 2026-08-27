@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
-import { cacheImages } from "./cache-images";
+import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
@@ -214,6 +214,19 @@ const { animals, fetched, reused, deleted } = await cacheImages(
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
 );
+
+// cachedUrl is set by cacheImages above, so this catches whatever it could
+// not cache: a source that 404s, exceeds the size cap or fails to decode.
+const hotlinked = hotlinkedCachePermittedImages(animals);
+if (hotlinked.length > 0) {
+  const detail =
+    hotlinked.length <= 5
+      ? hotlinked.map((h) => h.sourceUrl).join(", ")
+      : [...new Set(hotlinked.map((h) => h.providerId))].join(", ");
+  console.warn(
+    `images: ${hotlinked.length} cache-permitted image(s) left hotlinked (${detail})`,
+  );
+}
 
 // Shelter logos are keyed by provider, not by animal, so the sync runs over
 // every permitted shelter even on a targeted run: revalidation keeps that

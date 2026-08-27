@@ -102,6 +102,35 @@ export function withCachedUrls(
   }));
 }
 
+export interface HotlinkedImage {
+  providerId: string;
+  animalId: string;
+  sourceUrl: string;
+}
+
+// A cache-permitted image with no cachedUrl means the cache attempt failed
+// (source gone, too large, unreadable) and animal-images.ts's fallback is
+// quietly hotlinking the shelter instead. That should never outlive one run,
+// so it is worth naming instead of hiding inside the fetched/reused/deleted
+// counts.
+export function hotlinkedCachePermittedImages(
+  animals: Animal[],
+): HotlinkedImage[] {
+  const found: HotlinkedImage[] = [];
+  for (const animal of animals) {
+    for (const image of animal.images) {
+      if (image.rights === "cache-permitted" && !image.cachedUrl) {
+        found.push({
+          providerId: animal.source.providerId,
+          animalId: animal.id,
+          sourceUrl: image.sourceUrl,
+        });
+      }
+    }
+  }
+  return found;
+}
+
 export async function processImage(source: Buffer): Promise<{
   file: string;
   data: Buffer;

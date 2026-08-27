@@ -48,21 +48,21 @@ type Stage = {
 
 const STAGES: Record<AgeStage, Stage> = {
   mladicek: {
-    colorClassName: "text-[#2f7d50]",
+    colorClassName: "text-[var(--age-young)]",
     groveClassName: "size-7",
     rowClassName: "size-5",
     rangeKey: "ageRangeYoung",
     swayDegrees: 4.5,
   },
   odrasel: {
-    colorClassName: "text-[#92763b]",
+    colorClassName: "text-[var(--age-grown)]",
     groveClassName: "size-9",
     rowClassName: "size-5.5",
     rangeKey: "ageRangeAdult",
     swayDegrees: 3,
   },
   senior: {
-    colorClassName: "text-[#92763b]",
+    colorClassName: "text-[var(--age-grown)]",
     groveClassName: "size-11",
     rowClassName: "size-6",
     rangeKey: "ageRangeSenior",
@@ -234,7 +234,7 @@ export function AgeGrowthControl({
                   className="relative flex h-full items-end justify-center pb-1"
                 >
                   <m.span
-                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-[#2f6f4e]/55"
+                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-[var(--age-ground)]/55"
                     initial={false}
                     animate={{
                       opacity: active ? 1 : 0.12,
@@ -255,7 +255,7 @@ export function AgeGrowthControl({
                       <PlaysOnMount>
                         <m.span
                           key={celebration?.id}
-                          className="size-[3px] rounded-full bg-[#2f6f4e]"
+                          className="size-[3px] rounded-full bg-[var(--age-ground)]"
                           initial={{ opacity: 0.65, scale: 0.5 }}
                           animate={{ opacity: 0, scale: 2.5 }}
                           transition={{ duration: 0.3, ease: "easeOut" }}
@@ -440,16 +440,14 @@ export function AgeGrowthControl({
                           className:
                             layout === "sheet"
                               ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                              : "grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left",
+                              // Three columns and pr-9, not four with a leading
+                              // 1.25rem for the check. The check moved to the
+                              // trailing edge, so the row opens with the
+                              // sprout the way every other sidebar card opens
+                              // with its icon; see the mark below.
+                              : "grid h-11 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left",
                         })}
                       >
-                        <FilterSelectionMark
-                          checked={checked}
-                          appearDelay={GROWTH_CHECK_DELAY}
-                          className={cn(
-                            layout === "sheet" && "absolute right-1.5 top-1.5",
-                          )}
-                        />
                         <m.span
                           className="origin-bottom"
                           initial={false}
@@ -493,7 +491,28 @@ export function AgeGrowthControl({
                             layout === "sheet"
                               ? "text-3xs leading-tight"
                               : "w-8 text-right text-2xs",
+                            // Same fix as filter-card.tsx's own count: over
+                            // the selected --filter-accent wash,
+                            // text-muted-foreground measures 4.417:1, under
+                            // AA for text this small.
+                            checked && "text-[var(--filter-accent-count-foreground)]",
                           )}
+                        />
+                        {/* Last, and at the trailing edge, the way every
+                            other card in this sidebar places it
+                            (filter-card.tsx). Leading, it made a square, an
+                            icon, a label and a count: a checkbox list, which
+                            is the shape this whole sidebar exists not to be.
+                            One inset per shape: right-2.5 centred on the
+                            row, right-1.5 top-1.5 on the tile. */}
+                        <FilterSelectionMark
+                          checked={checked}
+                          appearDelay={GROWTH_CHECK_DELAY}
+                          className={
+                            layout === "sheet"
+                              ? "absolute right-1.5 top-1.5"
+                              : "absolute right-2.5 top-1/2 -translate-y-1/2"
+                          }
                         />
                       </ToggleGroupItem>
                     </TooltipTrigger>

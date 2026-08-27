@@ -1,11 +1,17 @@
+import { Fragment } from "react";
 import { FoundAnimalLookup } from "@/components/found-animal-lookup";
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
-import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
+import { ROUTES } from "@/lib/routes";
+import {
+  buildMunicipalityEntries,
+  type LookupEntry,
+} from "@/lib/municipality-coverage";
+import { municipalityPath } from "@/lib/municipality-path";
 
 // The found-animal flow as a page with a URL, which it never had. It lived
 // only inside the homepage map dialog behind /?najdena -- a query parameter
@@ -30,23 +36,22 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const entries = buildMunicipalityEntries(locale, dataset?.animals ?? []);
   const messages = getMessages(locale);
-  const homeHref = locale === "sl" ? "/" : "/en";
+  const homeHref = ROUTES.home[locale];
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={homeHref}
-          languagePaths={{
-            sl: FOUND_ANIMAL_PATHS.sl,
-            en: FOUND_ANIMAL_PATHS.en,
-          }}
+          languagePaths={ROUTES.foundAnimal}
         />
 
-        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
+        {/* max-w-xl without mx-auto. The lookup keeps the measure it was
+            designed to, and the column still starts on the frame's left edge,
+            so the h1 lines up with the logo above it instead of sitting 96px
+            inside it. */}
+        <main className="flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
           <div className="space-y-5">
             <a
               href={homeHref}
@@ -54,18 +59,92 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
             >
               ← {messages.backToAnimals}
             </a>
-            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
-              {messages.muniPromptTitle}
-            </h1>
+            <h1 className={INDEX_TITLE_CLASS}>{messages.muniPromptTitle}</h1>
           </div>
 
           <FoundAnimalLookup entries={entries} />
+
+          {/* Slovenian only, because the per-municipality pages are. */}
+          {locale === "sl" && (
+            <MunicipalityIndex
+              entries={entries}
+              heading={messages.muniAllHeading}
+            />
+          )}
         </main>
 
         {/* The one footer that does not link to the found-animal page,
             because it is on it. */}
         <SiteFooter locale={locale} showFoundAnimalLink={false} />
-      </div>
+      </PageShell>
     </I18nProvider>
+  );
+}
+
+/**
+ * Every municipality's own page, as plain links a crawler can walk.
+ *
+ * The finder above reaches all 212 and reveals none of them: matches come out
+ * of client state, so the shipped HTML names no municipality at all and the
+ * static pages would sit in the sitemap with nothing on the site linking to
+ * them. This is that link, and it is written to be read by whatever needs it
+ * rather than looked at: one line per initial, names separated by the same
+ * middot the cards use, at the size the source notes are set in.
+ *
+ * shrink-0 so it cannot take height from the finder. The column it sits in is
+ * floored at the viewport rather than fixed to it, so once the two together
+ * outgrow the viewport the page grows instead of the finder shrinking into
+ * its own scroller.
+ */
+function MunicipalityIndex({
+  entries,
+  heading,
+}: {
+  entries: LookupEntry[];
+  heading: string;
+}) {
+  if (entries.length === 0) return null;
+
+  const names = entries
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b, "sl"));
+
+  // Grouped by initial, in the order the sort put them: Č, Š and Ž fall where
+  // Slovenian puts them rather than after Z.
+  const groups: { letter: string; names: string[] }[] = [];
+  for (const name of names) {
+    const letter = name.slice(0, 1).toLocaleUpperCase("sl");
+    const last = groups.at(-1);
+    if (last?.letter === letter) last.names.push(name);
+    else groups.push({ letter, names: [name] });
+  }
+
+  return (
+    <section className="shrink-0 space-y-2 border-t pt-6">
+      <h2 className="text-xs font-medium text-muted-foreground">{heading}</h2>
+      <div className="space-y-1">
+        {groups.map((group) => (
+          <p
+            key={group.letter}
+            className="flex gap-2 text-2xs leading-relaxed text-muted-foreground"
+          >
+            <span className="w-3 shrink-0 font-medium">{group.letter}</span>
+            <span>
+              {group.names.map((name, index) => (
+                <Fragment key={name}>
+                  {index > 0 && " · "}
+                  <a
+                    href={municipalityPath(name)}
+                    className="underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    {name}
+                  </a>
+                </Fragment>
+              ))}
+            </span>
+          </p>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -21,6 +21,7 @@ import {
   usePortalSession,
 } from "@/hooks/use-portal-session";
 import { animalCount } from "@/lib/labels";
+import { shelterPath } from "@/lib/shelter-path";
 
 function CardSkeleton() {
   return (
@@ -103,7 +104,7 @@ export function PortalWorkspace() {
         </span>
         {active && (
           <Button asChild variant="outline" size="sm">
-            <a href={`/zavetisca/${active}`} title={portalText.publicPage}>
+            <a href={shelterPath(active, "sl")} title={portalText.publicPage}>
               <ExternalLink aria-hidden />
               {/* The label collapses on a phone but stays readable to a
                   screen reader, so the icon is never the only name. */}

@@ -80,6 +80,7 @@ import {
 import { DENSITY_STEPS, type ShelterPin } from "@/lib/map-layout";
 import { regionAt } from "@/lib/map-regions";
 import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
+import { shelterPath } from "@/lib/shelter-path";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { looksLikePostcode } from "@/lib/postal-lookup";
@@ -934,7 +935,6 @@ export function LocationPicker({
   // "2 od 1 zavetišč". The roster is the registry now, so the sentence on the
   // trigger and the rows under it are the same set of shelters.
   const total = rows.length + offRows.length;
-  const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
 
   // The registry's shelters with nothing listed, as a heading and a list. Held
   // here rather than inside the JSX because the two are drawn by whichever of
@@ -951,7 +951,7 @@ export function LocationPicker({
         label: row.label,
         city: row.city,
         km: row.km,
-        href: `${detailBase}/${row.value}`,
+        href: shelterPath(row.value, locale),
       }))}
       highlighted={hoveredMarkerValues ?? undefined}
       scrollTo={hoverScrollTo}
@@ -2147,7 +2147,7 @@ export function LocationPicker({
                             home rather than a copy handed down as a prop. */}
                                 <CollapsibleTrigger
                                   id={offGroupId}
-                                  className="group flex w-full items-center gap-1 rounded-ui px-2 py-1 text-left text-2xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] max-lg:min-h-9"
+                                  className="group flex w-full items-center gap-1 rounded-ui px-2 py-1 text-left text-2xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-ring max-lg:min-h-9"
                                 >
                                   <ChevronRight
                                     className="size-3 shrink-0 transition-transform group-data-open:rotate-90 motion-reduce:transition-none"

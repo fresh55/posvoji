@@ -26,6 +26,9 @@ export default function EnglishLayout({ children }: LayoutProps<"/en">) {
     // on this element before React ever sees it.
     <html lang="en" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
+      {/* Same as the Slovenian layout: html's h-full and this min-h-full make
+          the body at least a viewport tall, and the column is what PageShell's
+          flex-1 grows inside. */}
       <body className="flex min-h-full flex-col">
         <PrehydrationFilterScript />
         {children}

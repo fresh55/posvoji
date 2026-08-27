@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { cva } from "class-variance-authority";
 import {
   Building2,
   CalendarClock,
@@ -16,6 +17,7 @@ import {
 import type { Animal, AnimalSize, Sex } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
 import { useI18n } from "@/components/i18n-provider";
+import { badgeVariants } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -99,10 +101,59 @@ const GOOD_WITH_HINTS: Record<GoodWithKey, TranslationKey> = {
 const FACT_POPOVER_CLASS =
   "w-auto max-w-xs border-transparent bg-foreground px-2.5 py-1.5 text-xs text-background";
 
-// The washed-out accent keeps the green badges from outshouting the identity
-// badges above them; the summary badge and the expanded ones dress the same.
-const HEALTH_PILL_CLASS =
-  "inline-flex cursor-help items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)]/70 bg-[var(--filter-accent)]/60 px-2.5 py-1 text-xs text-[var(--filter-accent-foreground)] transition-colors hover:bg-[var(--filter-accent)]/80 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none";
+// Every pill in this block wears the badge's shape, at a tier of its own:
+// these are the animal's own facts rather than a mark on someone else's
+// surface, and they are round because that is what the site's radius rule says
+// a pill is (globals.css). The badge's own tier is 20px, which put a 12px
+// glyph beside 12px type and read as a footnote about the animal rather than
+// as the animal's description. The height belongs with the font size and with
+// the icon, so the tier carries all three.
+//
+// :not([class*='size-']) and not the bang the badge's own tier uses. One of
+// these facts draws its meaning with the icon's own size: the size badge is a
+// paw print that grows from small to large, the same paw the size filter draws
+// (SIZE_ICON_CLASS above). An important rule here would flatten all three to
+// one paw.
+const FACT_PILL_SIZE =
+  "h-7 gap-1.5 px-2.5 text-xs [&>svg:not([class*='size-'])]:size-3.5";
+
+// The three tones this row speaks in, and the one place they are spoken. Grey
+// for who the animal is, a plain border for an answer that is a no, and a
+// dashed one for a question nobody has answered yet. They serve this block
+// alone, so ui/badge.tsx does not carry them; what it does carry is the shape
+// underneath, which both axes skipped hands back on its own.
+const factPill = cva(
+  `${badgeVariants({ variant: null, size: null })} ${FACT_PILL_SIZE}`,
+  {
+    variants: {
+      tone: {
+        // Who the animal is, said in grey, so the green health row beside it
+        // is the only colour in the block.
+        fact: "border-border bg-muted/40 text-foreground",
+        // A "no" is not a fault, so it never gets the warm family: a plain
+        // bordered pill, and words that say what the animal would rather have.
+        no: "border-foreground/25 text-muted-foreground",
+        // A question nobody has answered yet, drawn as an empty seat.
+        unknown: "border-dashed border-border text-muted-foreground",
+      },
+    },
+    defaultVariants: { tone: "fact" },
+  },
+);
+
+// The fourth tone, and the one that is not local: green for what has been
+// checked. --trust is a token family a shelter card wears too, so the colour
+// stays in ui/badge.tsx and only the tier is added here.
+//
+// The green is --trust and not --filter-accent. A health record is a fact
+// about the animal; a filter card is something the visitor switched on. They
+// used to be the same token at different opacities, which is not a
+// distinction anyone can see.
+const HEALTH_PILL_CLASS = cn(
+  badgeVariants({ variant: "trust", size: null }),
+  FACT_PILL_SIZE,
+  "cursor-help hover:bg-[var(--trust-border)]/30 focus-visible:outline-none",
+);
 
 // A health badge explains itself when asked. A popover rather than a hover
 // tooltip, because a thumb cannot hover.
@@ -138,14 +189,10 @@ function HealthFact({
   );
 }
 
-// A "no" is not a fault, so it never gets a warning colour: a plain bordered
-// pill, and words that say what the animal would rather have. An unanswered
-// question is drawn dashed and stays inert, because there is nothing to
-// explain yet.
-const GOOD_WITH_NO_CLASS =
-  "inline-flex items-center gap-1.5 rounded-ui border border-foreground/25 px-2.5 py-1 text-xs text-muted-foreground";
-const GOOD_WITH_UNKNOWN_CLASS =
-  "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground";
+// An unanswered question stays inert as well as dashed, because there is
+// nothing to explain yet.
+const GOOD_WITH_NO_CLASS = factPill({ tone: "no" });
+const GOOD_WITH_UNKNOWN_CLASS = factPill({ tone: "unknown" });
 
 // Once one household question has an answer, all three are shown: a row that
 // listed only the yeses would read as an all-clear on the rest.
@@ -271,12 +318,7 @@ function Fact({
   children: ReactNode;
 }) {
   return (
-    <li
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-ui border bg-muted/40 px-2.5 py-1 text-xs",
-        className,
-      )}
-    >
+    <li className={cn(factPill({ tone: "fact" }), className)}>
       {Icon ? (
         <Icon
           className="size-3.5 shrink-0 opacity-70"
@@ -326,6 +368,7 @@ export function AnimalFacts({
   // so the component is keyed by animal where it is used.
   const [showHealthDetails, setShowHealthDetails] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const descriptionId = useId();
   const months = ageInMonths(animal, reference);
   const stayMonths = animal.intakeDate
     ? monthsInShelter(animal.intakeDate, reference)
@@ -514,6 +557,7 @@ export function AnimalFacts({
       {animal.shortDescription && (
         <div className="space-y-1">
           <p
+            id={descriptionId}
             // max-w-prose: at the dialog's full width these lines run past
             // ninety characters, which is more than an eye tracks comfortably.
             // The pills and boxes around it keep the full width; only the
@@ -529,6 +573,7 @@ export function AnimalFacts({
             <button
               type="button"
               aria-expanded={showFullDescription}
+              aria-controls={descriptionId}
               onClick={() => setShowFullDescription((open) => !open)}
               className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >

@@ -305,7 +305,7 @@ export function ShelterRows({
                   // already take, for the same reason: this row sits inside a
                   // scroller, and a ring drawn outside the box is what the
                   // container clips first.
-                  "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors max-lg:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
+                  "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors focus-ring max-lg:min-h-11",
                   isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
                 )}
               >
@@ -409,7 +409,7 @@ export function ShelterRows({
                   // ring is drawn inside the button's own box, because the row
                   // leaves no room outside it; animal-card.tsx already uses an
                   // inset outline for the same reason.
-                  "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-1.5 pl-2 text-left max-lg:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-[-2px] disabled:cursor-not-allowed",
+                  "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-1.5 pl-2 text-left focus-ring disabled:cursor-not-allowed max-lg:min-h-11",
                   // The dimming the wrapper used to do for the whole row.
                   disabled && "opacity-40",
                 )}
@@ -541,7 +541,7 @@ export function ShelterRows({
                           // same breakpoint. The focus ring is inset for the same
                           // reason the toggle's is: the wrapper's padding leaves
                           // no room to draw it outside.
-                          "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-ui transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] max-lg:size-11",
+                          "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-ui transition-colors hover:bg-muted hover:text-foreground focus-ring max-lg:size-11",
                           isExpanded
                             ? "text-foreground"
                             : "text-muted-foreground",

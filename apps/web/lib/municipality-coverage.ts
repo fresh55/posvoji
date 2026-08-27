@@ -2,6 +2,7 @@ import { cityAt, distanceKm } from "@/lib/geo";
 import type { Locale } from "@/lib/i18n";
 import { loadMunicipalities } from "@/lib/municipalities";
 import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
+import { shelterPath } from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 
 /** How many nearby shelters to offer a municipality we cannot answer for.
@@ -44,17 +45,35 @@ export type LookupEntry = {
   nearest: NearbyShelter[];
 };
 
+/** The join without the one field a locale decides. Every shelter reference
+ *  already carries its id, so a detailHref is a prefix away. */
+type CoreEntry = {
+  name: string;
+  coverage: Omit<LookupCoverage, "detailHref">[];
+  nearest: Omit<NearbyShelter, "detailHref">[];
+};
+
+// Cached for the life of the process, the way loadDataset and loadShelters
+// are. The registries cannot change while pages are being rendered, and the
+// join is asked for three times per build with the same dataset: once by the
+// municipality pages and once per locale by the found-animal page. The animal
+// list is the only input that could differ between callers, so it is the key.
+let cached: { animals: unknown; entries: CoreEntry[] } | undefined;
+
+function municipalityCore(animals: { shelter: { id: string } }[]): CoreEntry[] {
+  if (cached && cached.animals === animals) return cached.entries;
+  const entries = buildCore(animals);
+  cached = { animals, entries };
+  return entries;
+}
+
 // Build-time join of the three registries a municipality answer needs: the
 // municipality → shelter mapping, the shelter contacts, and how many animals
 // each shelter currently shares on the site. Runs on the server only; the
 // result is plain data a client component can take as a prop.
-export function buildMunicipalityEntries(
-  locale: Locale,
-  animals: { shelter: { id: string } }[],
-): LookupEntry[] {
+function buildCore(animals: { shelter: { id: string } }[]): CoreEntry[] {
   const { municipalities, sources } = loadMunicipalities();
   const shelters = new Map(loadShelters().map((s) => [s.id, s]));
-  const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
 
   const counts = new Map<string, number>();
   for (const animal of animals) {
@@ -71,7 +90,7 @@ export function buildMunicipalityEntries(
     return at ? [{ shelter, at }] : [];
   });
 
-  function nearestTo(name: string): NearbyShelter[] {
+  function nearestTo(name: string): CoreEntry["nearest"] {
     const centroid = centroids.get(name);
     if (!centroid) return [];
     return placed
@@ -80,7 +99,6 @@ export function buildMunicipalityEntries(
         shelterName: shelter.name,
         city: shelter.city,
         phone: shelter.phone,
-        detailHref: `${detailBase}/${shelter.id}`,
         km: Math.round(distanceKm(centroid, at)),
       }))
       .sort((a, b) => a.km - b.km)
@@ -105,7 +123,6 @@ export function buildMunicipalityEntries(
           phone: shelter.phone,
           email: shelter.email,
           website: shelter.website,
-          detailHref: `${detailBase}/${shelter.id}`,
           animals: counts.get(shelter.id) ?? 0,
           species: coverage.species,
           sourceLabel: source.label,
@@ -115,5 +132,26 @@ export function buildMunicipalityEntries(
         },
       ];
     }),
+  }));
+}
+
+/** The join as one locale needs it. Everything but the shelter links is shared
+ *  with the other locale and computed once; see municipalityCore above. */
+export function buildMunicipalityEntries(
+  locale: Locale,
+  animals: { shelter: { id: string } }[],
+): LookupEntry[] {
+  const href = (shelterId: string) => shelterPath(shelterId, locale);
+
+  return municipalityCore(animals).map((entry) => ({
+    name: entry.name,
+    coverage: entry.coverage.map((coverage) => ({
+      ...coverage,
+      detailHref: href(coverage.shelterId),
+    })),
+    nearest: entry.nearest.map((shelter) => ({
+      ...shelter,
+      detailHref: href(shelter.shelterId),
+    })),
   }));
 }

@@ -107,6 +107,17 @@ function compareOptionalNumber(
   return direction * (left - right);
 }
 
+// Available first, everything else after: a "hold" or "unknown" animal reads
+// like any other card in a list that never touches status (lib/filters.ts
+// never filters on it, on purpose: it stays in the results rather than
+// being hidden), so the one place left to say "this one is not like the
+// others" is where it lands. 0 for available keeps it stable against every
+// comparator below: two available animals, or two animals both off the
+// market, still resolve by whichever order was actually chosen.
+function statusWeight(animal: Animal): 0 | 1 {
+  return animal.status === "available" ? 0 : 1;
+}
+
 // One distance per town, not one per comparison. Sorting five hundred animals
 // asks the comparator a few thousand questions and the towns behind them number
 // a few dozen, so the haversine runs once for each town and the comparator does
@@ -144,6 +155,9 @@ export function sortAnimals(
     order === "nearest" && origin ? kmByCity(animals, origin) : undefined;
 
   return [...animals].sort((left, right) => {
+    const statusDiff = statusWeight(left) - statusWeight(right);
+    if (statusDiff !== 0) return statusDiff;
+
     let compared: number;
     switch (order) {
       case "longest-in-shelter":

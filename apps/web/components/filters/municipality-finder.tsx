@@ -1,24 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  ExternalLink,
-  LoaderCircle,
-  Navigation,
-  Phone,
-  Search,
-  X,
-} from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, LoaderCircle, Navigation, Search, X } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import {
-  CoverageCard,
-  type CoverageCardText,
-} from "@/components/municipality-coverage-card";
+  AnswerSteps,
+  CostNote,
+  CoverageLine,
+  coverageCardText,
+  coverageLabel,
+  NoCoverageAnswer,
+} from "@/components/municipality-answer";
+import { CoverageCard } from "@/components/municipality-coverage-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNearby } from "@/hooks/use-nearby";
+import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import type { LookupEntry } from "@/lib/municipality-coverage";
+import { municipalityPath } from "@/lib/municipality-path";
 import {
   municipalitiesForInput,
   municipalitiesNear,
@@ -34,9 +33,6 @@ function fold(text: string): string {
     .toLowerCase();
 }
 
-const REGISTER_URL = "https://www.gov.si/teme/zascita-zivali/#e69068";
-const LAW_URL =
-  "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2021-01-2993";
 // Enough to disambiguate any prefix without becoming a directory. The page
 // this replaced listed all 212 občine; the dialog answers one question.
 const MAX_MATCHES = 8;
@@ -60,6 +56,7 @@ export function MunicipalityFinder({
   onToggle,
   onActiveShelters,
   onActiveMunicipality,
+  reflectUrl = false,
 }: {
   entries: LookupEntry[];
   /** Shelter ids that exist as filter options, i.e. can be selected. */
@@ -72,11 +69,23 @@ export function MunicipalityFinder({
   /** Name of the picked municipality, which is the only thing that knows
    *  where the question was asked from. Null when none is picked. */
   onActiveMunicipality?: (name: string | null) => void;
+  /**
+   * Write the resolved municipality into the address bar, as the path of the
+   * static page that holds the same answer.
+   *
+   * Only the standalone found-animal page sets it, and only that page can:
+   * this component is also the picker dialog's municipality tab, where the
+   * address belongs to the homepage underneath and carries the filter state
+   * that lib/location-search.ts owns. Overwriting it there would drop the
+   * filters and leave the dialog's own /?najdena behind.
+   */
+  reflectUrl?: boolean;
 }) {
   const { locale, messages, t } = useI18n();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const statusId = useId();
   const { state, toggle: locate, turnOff: stopLocating } = useNearby();
 
   const byName = useMemo(
@@ -124,21 +133,51 @@ export function MunicipalityFinder({
     onActiveMunicipality?.(active ? active.name : null);
   }, [active, onActiveMunicipality, onActiveShelters]);
 
-  const cardText: CoverageCardText = {
-    dogs: messages.speciesDogs,
-    cats: messages.speciesCats,
-    call: messages.muniCall,
-    onSite: messages.muniOnSite,
-    lost: messages.muniLost,
-    sourcePrefix: messages.muniSource,
-    datedSourceNote: messages.muniDatedSource,
-  };
+  // The answer, once it exists, has an address of its own: the static page for
+  // that občina, which server-renders this same shelter, the same cost
+  // paragraph and the same steps. Reflecting it costs nothing at the time and
+  // buys everything afterwards: a reload keeps the answer, a share sends the
+  // answer rather than the empty box, and the back button leaves the page
+  // instead of undoing a search nobody navigated through.
+  //
+  // replaceState and not a navigation. Typing must keep working exactly as it
+  // does, and a router push here would tear down the input on every keystroke
+  // that happens to resolve to one municipality. Next supports the native
+  // history methods and keeps its own router state in step with them.
+  //
+  // Slovenian only, because the pages are. On the English page the address
+  // stays what it was.
+  useEffect(() => {
+    if (!reflectUrl || locale !== "sl") return;
+    const path = active
+      ? municipalityPath(active.name)
+      : FOUND_ANIMAL_PATHS.sl;
+    // Static export serves /najdena-zival/ajdovscina and, on some hosts,
+    // /najdena-zival/ajdovscina/. Both are this path; neither is a change.
+    if (window.location.pathname.replace(/\/$/, "") === path) return;
+    window.history.replaceState(null, "", `${path}${window.location.search}`);
+  }, [active, locale, reflectUrl]);
+
+  const cardText = coverageCardText(messages);
 
   const reset = () => {
     setQuery("");
     setPicked(null);
     stopLocating();
   };
+
+  // The visible states below (resolved card, disambiguation list, "no
+  // match") have no live region of their own: unlike the shelter tab beside
+  // it, nothing here narrates itself to a screen reader as the query
+  // changes. One sr-only status covers the three outcomes typing can reach,
+  // in the same order the visible UI checks them.
+  const status = active
+    ? `${active.name} · ${coverageLabel(active, messages)}`
+    : matches.length > 1
+      ? t("muniMatchesStatus", { count: matches.length })
+      : query.trim() && !guess && nameMatches.length === 0
+        ? `${messages.muniNoMatch} »${query.trim()}«`
+        : "";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -166,12 +205,16 @@ export function MunicipalityFinder({
             }}
             placeholder={messages.muniSearch}
             aria-label={messages.muniSearch}
+            aria-describedby={statusId}
             // 44px tall below lg, the touch target the shelter tab's own
             // fields keep. text-base and not text-sm at that size: iOS Safari
             // zooms the whole page when a focused input sets type under 16px,
             // and this dialog is the map, so a zoom is a map nobody can aim at.
             className="h-11 pl-8 text-base lg:h-8 lg:text-sm"
           />
+          <p id={statusId} aria-live="polite" className="sr-only">
+            {status}
+          </p>
           {query !== "" && (
             <button
               type="button"
@@ -327,14 +370,7 @@ export function MunicipalityFinder({
         {active && (
           <div className="space-y-3">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                {active.name} ·{" "}
-                {active.coverage.length === 1
-                  ? messages.muniResponsible
-                  : active.coverage.length > 1
-                    ? messages.muniResponsiblePlural
-                    : messages.muniUnverified}
-              </p>
+              <CoverageLine entry={active} messages={messages} />
               <button
                 type="button"
                 onClick={reset}
@@ -373,96 +409,12 @@ export function MunicipalityFinder({
                 />
               ))
             ) : (
-              <div className="space-y-3">
-                <div className="space-y-1.5 rounded-ui border border-dashed p-4 text-sm text-muted-foreground">
-                  <p>{messages.muniUnverifiedAdvice}</p>
-                  <a
-                    href={REGISTER_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs underline underline-offset-2 hover:text-foreground"
-                  >
-                    {messages.muniRegister}
-                    <ExternalLink className="size-3" aria-hidden />
-                  </a>
-                </div>
-
-                {/* Not an answer, but better than none: somewhere to call. */}
-                {active.nearest.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium">
-                      {messages.muniNearestTitle}
-                    </p>
-                    <p className="text-2xs leading-tight text-muted-foreground">
-                      {messages.muniNearestNote}
-                    </p>
-                    <ul className="space-y-0.5 pt-0.5">
-                      {active.nearest.map((shelter) => (
-                        <li
-                          key={shelter.shelterId}
-                          className="flex items-center justify-between gap-2 rounded-ui px-2 py-1.5 text-sm"
-                        >
-                          <span className="min-w-0">
-                            <a
-                              href={shelter.detailHref}
-                              className="block truncate underline-offset-4 hover:underline"
-                            >
-                              {shelter.shelterName}
-                            </a>
-                            <span className="block truncate text-2xs text-muted-foreground">
-                              {shelter.city} · {shelter.km} km
-                            </span>
-                          </span>
-                          {shelter.phone && (
-                            <a
-                              href={`tel:${shelter.phone.replace(/\s/g, "")}`}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2 py-1 text-xs transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
-                            >
-                              <Phone className="size-3" aria-hidden />
-                              {shelter.phone}
-                            </a>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <NoCoverageAnswer entry={active} messages={messages} />
             )}
 
-            {/* The fact that stops people reporting a found animal: they
-                assume the vet bill is theirs. It is not. */}
-            <div className="space-y-1 rounded-ui border bg-muted/40 p-3">
-              <p className="text-xs leading-relaxed">{messages.muniCost}</p>
-              <a
-                href={LAW_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                {messages.muniCostSource}
-                <ExternalLink className="size-2.5" aria-hidden />
-              </a>
-            </div>
+            <CostNote messages={messages} />
 
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium">{messages.muniStepsTitle}</p>
-              <ol className="space-y-1.5">
-                {[messages.muniStep1, messages.muniStep2, messages.muniStep3].map(
-                  (step, index) => (
-                    <li
-                      key={step}
-                      className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
-                    >
-                      <span className="shrink-0 font-medium text-foreground">
-                        {index + 1}.
-                      </span>
-                      {step}
-                    </li>
-                  ),
-                )}
-              </ol>
-            </div>
+            <AnswerSteps messages={messages} />
           </div>
         )}
       </div>

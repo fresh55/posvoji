@@ -128,10 +128,25 @@
   /* One application radius for interactive controls and content surfaces.
      Pills, badges, and truly circular controls remain intentionally round. */
   --radius-ui: var(--radius);
+  /* What the focus-ring utility draws with. The page's own ink, which is the
+     highest contrast the surface has: 19.8:1 over --background, and it swaps
+     with --foreground in dark mode without a second declaration. A control
+     that inverts its fill sets this token on itself instead of declaring a
+     second outline (species-tabs.tsx, animal-card.tsx). */
+  --focus-ring-color: var(--foreground);
   --filter-accent: oklch(0.92 0.045 151);
   --filter-accent-foreground: oklch(0.32 0.075 151);
   --filter-accent-border: oklch(0.68 0.075 151);
   --filter-accent-strong: oklch(0.44 0.1 151);
+  /* The selected filter card's count, at 11px, is quieter than the label
+     beside it and so does not carry -foreground's own ink: it kept
+     text-muted-foreground instead, which was tuned against --background and
+     --muted, not this card's own wash. Over --filter-accent that measured
+     4.417:1, under the 4.5:1 AA floor for small text. This token holds the
+     accent's hue rather than falling back to grey, so the count still reads
+     as part of the green family, just quieter than the label: 5.511:1 over
+     --filter-accent. */
+  --filter-accent-count-foreground: oklch(0.46 0.075 151);
   /* The one warm family on the site: a reserved animal, a long wait, a portal
      warning. Held apart from --filter-accent because it says "not settled yet"
      rather than "chosen". It was raw amber-500/700/600 at ten call sites,
@@ -156,6 +171,40 @@
   --status-warn-mark: oklch(0.666 0.179 58.318);
   --status-warn-solid: oklch(0.962 0.059 95.617);
   --status-warn-solid-foreground: oklch(0.414 0.112 45.904);
+  /* The green that means "checked out", split off --filter-accent the same way
+     the warm family above was split off its call sites. --filter-accent had
+     grown four jobs: a chosen filter, a shelter that shares data by
+     permission, a health record, and an animal that found a home. The first is
+     a thing the visitor did and can undo; the other three are facts about the
+     world. One colour saying both meant a green pill on a card could not be
+     told from a green pill in the sidebar, and neither could be moved without
+     moving the other.
+     Same family on purpose, because all four still mean "good". They are told
+     apart by weight rather than by hue: the wash sits at 0.955 against
+     selection's 0.92 and carries less chroma, so a trust mark reads as the
+     quieter of the two wherever they meet, and selection stays the only green
+     that shouts. Hue moves 151 -> 158, far enough that the two are not read as
+     a rendering difference and near enough that they are one family.
+     Measured on the surfaces they land on: the ink is 7.82:1 over the wash and
+     8.81:1 over the page in light, 9.96:1 over the wash and 13.24:1 over the
+     page in dark. Unlike the warm family the wash flips too, because a 0.955
+     fill on a near-black page is a lamp rather than a tint. */
+  --trust: oklch(0.955 0.035 158);
+  --trust-border: oklch(0.78 0.07 158);
+  --trust-foreground: oklch(0.4 0.09 158);
+  /* The age grove's own ink: the sprout, the grown tree and the ground line
+     the three stand on. They were three hex literals in
+     age-growth-control.tsx with no dark answer, so the only part of the
+     sidebar that carries its own colour rendered at light-mode weight over a
+     near-black panel. The light values are the literals unchanged, to the
+     byte; the dark ones lift them to the same read against the dark page
+     (6.23:1, 6.82:1 and 5.26:1, against 5.04, 4.31 and 5.99 on white).
+     Not on the --trust or --filter-accent families. The grove is an
+     illustration of a growing thing, not a status and not a selection, and it
+     carries a warm olive for the grown stages that neither family has. */
+  --age-young: #2f7d50;
+  --age-grown: #92763b;
+  --age-ground: #2f6f4e;
   /* The choropleth's ink. The density ramp is this one colour at the alphas in
      DENSITY_STEPS, so a busy region and a picked one share a hue family and a
      selected region reads as the same green, committed. Muted on purpose: it
@@ -255,11 +304,22 @@
   --filter-accent-foreground: oklch(0.88 0.055 151);
   --filter-accent-border: oklch(0.48 0.06 151);
   --filter-accent-strong: oklch(0.72 0.09 151);
+  /* text-muted-foreground already clears AA here (6.1:1 on --filter-accent),
+     but the count keeps its own token in dark too so selected and unselected
+     never trade places between themes. 5.21:1 over --filter-accent. */
+  --filter-accent-count-foreground: oklch(0.66 0.055 151);
   /* Only the ink flips; the wash and its border hold over either page. */
   --status-warn-foreground: oklch(0.879 0.169 91.605);
   --status-warn-mark: oklch(0.828 0.189 84.429);
   --status-warn-solid: oklch(0.279 0.077 45.635);
   --status-warn-solid-foreground: oklch(0.924 0.12 95.746);
+  /* The whole family flips here; see the light block for why. */
+  --trust: oklch(0.27 0.03 158);
+  --trust-border: oklch(0.45 0.055 158);
+  --trust-foreground: oklch(0.86 0.06 158);
+  --age-young: #4aa16d;
+  --age-grown: #b49350;
+  --age-ground: #4d916b;
   /* Lighter than the light theme's ink, because here the ramp lays a colour
      over a near-black page rather than under-painting a white one. Same hue,
      lower chroma again, so the top step composites to oklch(0.425 0.041)
@@ -329,11 +389,18 @@
     --filter-accent-foreground: oklch(0.88 0.055 151);
     --filter-accent-border: oklch(0.48 0.06 151);
     --filter-accent-strong: oklch(0.72 0.09 151);
+    --filter-accent-count-foreground: oklch(0.66 0.055 151);
     /* Kept in step with the .dark block above. */
     --status-warn-foreground: oklch(0.879 0.169 91.605);
     --status-warn-mark: oklch(0.828 0.189 84.429);
     --status-warn-solid: oklch(0.279 0.077 45.635);
     --status-warn-solid-foreground: oklch(0.924 0.12 95.746);
+    --trust: oklch(0.27 0.03 158);
+    --trust-border: oklch(0.45 0.055 158);
+    --trust-foreground: oklch(0.86 0.06 158);
+    --age-young: #4aa16d;
+    --age-grown: #b49350;
+    --age-ground: #4d916b;
     --map-density-fill: oklch(0.6 0.065 151);
     --map-selected-fill: oklch(0.56 0.06 151);
     --map-sea: oklch(0.245 0.032 230);
@@ -490,6 +557,25 @@
   border-top-right-radius: var(--radius-ui);
 }
 
+/* The site's one focus indicator. It was spelled out as three utilities at
+   seventeen call sites, which is how three components came to be left behind
+   on the border-ring/ring-3 pair it replaced: that measured 1.54:1 and 2.59:1
+   in light mode, both under the 3:1 WCAG 1.4.11 floor, while this is 19.8:1.
+   One utility means the next change to it reaches every control.
+
+   Drawn inset, at -2px. Most of these controls sit inside a scroller or up
+   against a neighbour, and an outline drawn outside the box is the first
+   thing such a container clips. The colour comes from --focus-ring-color, so
+   a control that inverts its fill (a pressed species tab, a card in dark
+   mode) overrides the token on itself rather than declaring a second outline
+   that would have to win a specificity argument with this one. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: -2px;
+  }
+}
+
 /* A finger needs 44px, and several controls here are drawn smaller than that
    on purpose: chips and tabs read as small, and growing them would push the
    rows they sit in taller. This lays an invisible layer over such a control
@@ -513,6 +599,11 @@
 }
 
 @layer base {
+  /* outline-ring/50 is still load-bearing after focus-ring took over the
+     site's own indicator: it is the colour the browser's default focus ring
+     is drawn in, and shelter-card.tsx's link still asks for an outline
+     without naming one. Not to be removed until nothing depends on the
+     default. */
   * {
     @apply border-border outline-ring/50;
   }

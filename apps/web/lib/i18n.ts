@@ -11,9 +11,14 @@ const sl = {
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
   moreInformation: "Več informacij",
+  mainNavigation: "Glavna navigacija",
   backToTop: "Na vrh strani",
   backToAnimals: "Nazaj na živali",
   resources: "Strokovno preverjeni viri",
+  // The header's version of the line above. The footer has room for the full
+  // phrase; a row of three quiet links at the top of the page does not, and
+  // beside "Zavetišča" and "Najdena žival" the noun on its own is what fits.
+  navResources: "Viri",
   shelters: "Zavetišča",
   forShelters: "Za zavetišča",
   chooseLanguage: "Izberi jezik",
@@ -46,18 +51,17 @@ const sl = {
   longStayLink: "Poglej vse, ki čakajo najdlje",
   // A label, not a plea. The dialog's longStay above is the plea, and it has a
   // sentence, the animal's name and a link to act on: that is where it can do
-  // something. On
-  // a card the same words repeat twenty times a screen and decay into
-  // wallpaper.
+  // something. On a card the same words repeat twenty times a screen and decay
+  // into wallpaper.
   //
-  // The verb is the part that cannot come off. Those same 54 of 101 cards are
-  // an animal that grew up in the shelter, where the age and the wait are one
-  // number, and a mark printing the number alone leaves a 12px hourglass to
-  // say which of the two it is. "Čaka" says it in four characters and lets
-  // the icon go. The trailing "v zavetišču" that used to carry the sense is
-  // what pays for it: it is the one thing on a card about a shelter's animal
-  // that every card already says.
-  longStayMark: "Čaka {duration}",
+  // The place is the part that cannot come off. "Čaka 8 let" stands a few
+  // pixels from a meta line reading "Pes · samec · 8 let", and 54 of the 101
+  // marked cards are an animal that grew up in the shelter, where the age and
+  // the stay are the same number: two identical durations, one of them
+  // labelled with a verb that could as easily be describing the age. Naming
+  // the shelter is what tells the two apart, and it is worth the two words it
+  // costs.
+  longStayMark: "V zavetišču {duration}",
   healthAllClear: "Vse zdravstveno urejeno ({count}/{count})",
   showHealthDetails: "Pokaži podrobnosti",
   readMore: "Preberi več",
@@ -80,6 +84,12 @@ const sl = {
   statusReserved: "rezervirano",
   statusAdopted: "posvojeno",
   statusHold: "ni za posvojitev",
+  // The one status the shelter's own listing left blank. Not silent like
+  // "available", because a visitor reading the card as a plain listing has
+  // no other way to tell the two apart; not alarming like "ni za
+  // posvojitev" either, since nothing here says the animal cannot be
+  // adopted, only that this site does not know.
+  statusUnknown: "status ni znan",
   lessThanMonth: "manj kot mesec",
   unnamed: "Brez imena",
   animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
@@ -201,6 +211,10 @@ const sl = {
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
   muniNoMatch: "Ni občine z imenom",
+  // The screen-reader-only status announcing what the search resolved to,
+  // read after every keystroke: municipality-finder.tsx has no visible
+  // aria-live of its own, unlike the shelter tab beside it.
+  muniMatchesStatus: "{count} zadetkov, izberi občino s seznama.",
   muniResponsible: "pristojno zavetišče",
   muniResponsiblePlural: "pristojni zavetišči",
   muniOnSite: "Živali tega zavetišča so na posvoji.si ({count})",
@@ -227,6 +241,11 @@ const sl = {
     "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
   muniSelectShelter: "Izberi to zavetišče",
   muniShelterSelected: "Izbrano",
+  // The heading of one občina's own page. The name stays in the nominative
+  // after "občini", so any of the 212 fits the sentence unchanged.
+  muniPageHeading: "Si našel žival v občini {name}?",
+  muniOtherMunicipalities: "Druga občina",
+  muniAllHeading: "Vse občine",
   speciesDogs: "Psi",
   speciesCats: "Mačke",
   // Genitive plural of each species tab, for sentences built around "nima"
@@ -353,9 +372,11 @@ const en: Messages = {
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
   moreInformation: "More information",
+  mainNavigation: "Main navigation",
   backToTop: "Back to top",
   backToAnimals: "Back to the animals",
   resources: "Trusted animal-care resources",
+  navResources: "Resources",
   shelters: "Shelters",
   forShelters: "For shelters",
   chooseLanguage: "Choose language",
@@ -384,7 +405,7 @@ const en: Messages = {
   longStay: "{name} has been waiting in the shelter for {duration}.",
   longStayUnnamed: "At the shelter for {duration} now.",
   longStayLink: "See who has waited longest",
-  longStayMark: "Waiting {duration}",
+  longStayMark: "{duration} in shelter",
   healthAllClear: "Full health record ({count}/{count})",
   showHealthDetails: "Show details",
   readMore: "Read more",
@@ -398,6 +419,7 @@ const en: Messages = {
   statusReserved: "reserved",
   statusAdopted: "adopted",
   statusHold: "not available",
+  statusUnknown: "status unknown",
   lessThanMonth: "less than a month",
   unnamed: "Unnamed",
   animalsComingSoon: "Animals will appear here when the first shelters join.",
@@ -483,6 +505,7 @@ const en: Messages = {
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
   muniNoMatch: "No municipality named",
+  muniMatchesStatus: "{count} matches, choose a municipality from the list.",
   muniResponsible: "responsible shelter",
   muniResponsiblePlural: "responsible shelters",
   muniOnSite: "This shelter's animals are on posvoji.si ({count})",
@@ -509,6 +532,12 @@ const en: Messages = {
     "This comes from an older source; confirm with the shelter or municipality before visiting.",
   muniSelectShelter: "Select this shelter",
   muniShelterSelected: "Selected",
+  // Translated because Messages is one shape for both locales, not because
+  // there is an English page to put them on: the per-municipality pages are
+  // Slovenian only. See lib/municipality-path.ts.
+  muniPageHeading: "Did you find an animal in the municipality of {name}?",
+  muniOtherMunicipalities: "Another municipality",
+  muniAllHeading: "All municipalities",
   speciesDogs: "Dogs",
   speciesCats: "Cats",
   speciesAbsenceAll: "animals",

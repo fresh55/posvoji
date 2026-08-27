@@ -2,18 +2,25 @@ import Image from "next/image";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import { cn } from "@/lib/utils";
 
-// A logo is fitted by height and allowed to run wide, because shelter logos
-// are mostly wordmarks: forcing one into the square the fallback uses would
-// shrink it to an unreadable strip. The fallback letter stays square.
+// A logo is fitted by height and centred in a chip of a fixed width, because
+// shelter logos are mostly wordmarks: forcing one into a square would shrink
+// it to an unreadable strip, and letting the chip take its width from the
+// logo made the chip a different width on every card. In the shelters grid
+// that put the seventeen names at as many starting positions, and the ones
+// beside the widest wordmarks lost enough room to be cut mid-word.
+//
+// The fallback letter is drawn on the same box rather than on a square, for
+// the same reason: a square tile beside a 112px chip is the alignment problem
+// again, six cards' worth of it. The letter is centred, so it reads as a
+// nameplate rather than as a stretched avatar.
 const SIZE_CLASS = {
-  // For chip-scale placements where sm's 44px chip crowds a compact card, the
-  // map pick card's header being the first of these.
-  xs: { chip: "h-9 max-w-24 px-1.5", logo: "h-6", fallback: "size-9 text-sm" },
-  sm: { chip: "h-11 max-w-28 px-2", logo: "h-7", fallback: "size-11 text-base" },
+  // For chip-scale placements where sm's 44px chip crowds a compact card.
+  xs: { chip: "h-9 w-24 px-1.5", logo: "h-6", fallback: "h-9 w-24 text-sm" },
+  sm: { chip: "h-11 w-28 px-2", logo: "h-7", fallback: "h-11 w-28 text-base" },
   lg: {
-    chip: "h-14 max-w-36 px-2.5",
+    chip: "h-14 w-36 px-2.5",
     logo: "h-9",
-    fallback: "size-14 text-lg",
+    fallback: "h-14 w-36 text-lg",
   },
 } as const;
 
@@ -60,11 +67,15 @@ export function ShelterAvatar({
     );
   }
 
+  // Neutral, not the selection green it used to borrow. An initial letter says
+  // which shelter this is and nothing else, and identity is the grey tier of
+  // the badge grammar; the green tiers are for a filter the visitor switched
+  // on and for a fact that has been checked.
   return (
     <span
       aria-hidden
       className={cn(
-        "grid shrink-0 place-items-center rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] font-medium text-[var(--filter-accent-foreground)]",
+        "grid shrink-0 place-items-center rounded-ui border bg-muted font-medium text-muted-foreground",
         SIZE_CLASS[size].fallback,
       )}
     >

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { LazyMotion, domAnimation } from "motion/react";
 import { I18nProvider } from "@/components/i18n-provider";
 import { Logo } from "@/components/logo";
+import { PageShell } from "@/components/page-shell";
 import { portalText } from "@/components/portal/portal-text";
 import { SiteFooter } from "@/components/site-footer";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,12 @@ import { cn } from "@/lib/utils";
 /**
  * The portal's own frame. It borrows the site's shell and footer but drops
  * the language switcher: the portal is Slovenian only.
+ *
+ * The frame itself is PageShell, so the portal cannot drift off the width and
+ * footer behaviour the public pages settled on. It takes the default tier:
+ * the workspace has always drawn itself at max-w-5xl, and the frame matching
+ * it is what keeps the logo above the first column rather than 96px left of
+ * it. The login page centres a single card inside that frame on purpose.
  */
 export function PortalShell({
   actions,
@@ -27,7 +34,7 @@ export function PortalShell({
       {/* One motion feature bundle for the whole portal, so no page or card
           has to carry its own. */}
       <LazyMotion features={domAnimation}>
-        <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+        <PageShell>
           <header className="bleed flex items-center justify-between gap-3 border-b py-4">
             {/* The site is a static export and navigates with plain anchors
                 everywhere; next/link is not used in this repo. */}
@@ -50,17 +57,20 @@ export function PortalShell({
 
           <main
             className={cn(
-              "mx-auto flex w-full flex-1 flex-col py-page-y",
+              "flex w-full flex-1 flex-col py-page-y",
+              // No mx-auto on the workspace: it holds itself to the frame's
+              // own width, so the header and the content start on one left
+              // edge. The login card is the exception and says so below.
               narrow
-                ? "max-w-md justify-center gap-6"
-                : "max-w-5xl gap-8 sm:gap-10",
+                ? "mx-auto max-w-md justify-center gap-6"
+                : "gap-8 sm:gap-10",
             )}
           >
             {children}
           </main>
 
           <SiteFooter locale="sl" showPortalLink={false} />
-        </div>
+        </PageShell>
       </LazyMotion>
     </I18nProvider>
   );

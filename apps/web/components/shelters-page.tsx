@@ -1,11 +1,14 @@
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { ShelterCard } from "@/components/shelter-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
+import { ROUTES } from "@/lib/routes";
 import { getShelterLogos } from "@/lib/shelter-logos";
+import { shelterPath } from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 
 const pageText = {
@@ -32,10 +35,8 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
   const logos = getShelterLogos();
-  const messages = getMessages(locale);
   const text = pageText[locale];
-  const homeHref = locale === "sl" ? "/" : "/en";
-  const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
+  const homeHref = ROUTES.home[locale];
 
   const counts = new Map<string, number>();
   for (const animal of animals) {
@@ -55,16 +56,14 @@ export function SheltersPage({ locale }: { locale: Locale }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
+          locale={locale}
           homeHref={homeHref}
-          languagePaths={{ sl: "/zavetisca", en: "/en/shelters" }}
+          languagePaths={ROUTES.shelters}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
+        <main className="flex flex-1 flex-col gap-10 py-page-y sm:gap-14">
           <div className="space-y-5">
             <a
               href={homeHref}
@@ -73,9 +72,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               ← {text.back}
             </a>
             <div className="max-w-3xl space-y-3">
-              <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-                {text.title}
-              </h1>
+              <h1 className={INDEX_TITLE_CLASS}>{text.title}</h1>
               <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
                 {intro}
               </p>
@@ -85,12 +82,16 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* grid-cols-1 spelled out, not left implicit. An implicit single
+              column is auto-sized, so at 390px it took its width from the
+              widest shelter name in the registry and ran the whole grid 39px
+              past the screen. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sorted.map((shelter) => (
               <ShelterCard
                 key={shelter.id}
                 shelter={shelter}
-                href={`${detailBase}/${shelter.id}`}
+                href={shelterPath(shelter.id, locale)}
                 logo={logos[shelter.id]}
                 count={counts.get(shelter.id) ?? 0}
                 locale={locale}
@@ -103,7 +104,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         </main>
 
         <SiteFooter locale={locale} showSheltersLink={false} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

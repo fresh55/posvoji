@@ -211,16 +211,20 @@ export function AnimalCard({
             // "Mačka · samec · 3 leta", which is the same number twice, told
             // apart by a 12px icon; 54 of the 101 cards carrying the mark are
             // that case, because an animal that grew up in the shelter has
-            // waited exactly as long as it has been alive. The verb settles it
-            // in four characters and pays for them with the icon.
+            // waited exactly as long as it has been alive. Naming the shelter
+            // settles it and pays for the words with the icon; see
+            // longStayMark in i18n.ts.
             // Two tiers of the same mark, and neither of them amber. On the
             // "Vse" tab most visible cards carry it, and a solid warm pill on
             // every photo is an alarm ringing so often it stops being one.
             // The blurred quiet pill is the base tier; past
             // EMPHATIC_STAY_MONTHS it inverts instead, because in a crowd of
-            // quiet marks the waits that run to five years and past
-            // disappeared. The filled warm treatment stays with the status
-            // badge, which really does disqualify a card.
+            // quiet marks the longest waits of all disappeared. Where that
+            // threshold sits is labels.ts's decision, and it is set against
+            // the default longest-first order rather than against the dataset:
+            // the strong tier is by construction the first cards on the page.
+            // The filled warm treatment stays with the status badge, which
+            // really does disqualify a card.
             //
             // Top right, opposite the status. The bottom edge belongs to the
             // gallery dots now, and on a phone card the two met in the middle.
@@ -259,7 +263,12 @@ export function AnimalCard({
           // carrying a wait label sat its shelter line 4px lower than its
           // neighbours'. gap is not a margin, never collapses, and is not
           // emitted for a hidden item.
-          className="flex flex-col gap-1 px-3 pt-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background"
+          // focus-ring is the site's one focus indicator (globals.css). This
+          // block used to hand it --background in dark mode, which drew the
+          // ring at 1.1:1 against the card it sits on, under the 3:1 that
+          // WCAG 1.4.11 asks of a focus indicator. The default reads 17:1
+          // there, so the override is gone rather than retuned.
+          className="flex flex-col gap-1 px-3 pt-3 focus-ring"
         >
           {/* The name owns its line. It used to share one with the status
               badge and the wait mark, where an amber icon was the loudest
@@ -342,7 +351,7 @@ export function AnimalCard({
             // across a 250px card was the heaviest thing on it.
             // min-h-11 is the 44px touch target the row never had at text-xs,
             // and the hover ground plus the icon say this answers a press.
-            className={`${FOOTER_BOX} mt-auto flex w-full items-center gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background`}
+            className={`${FOOTER_BOX} mt-auto flex w-full items-center gap-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-ring`}
           >
             {/* House and not MapPin. The pin means "place" everywhere else on
                 the site (shelter-card.tsx draws it beside a city), and this

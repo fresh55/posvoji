@@ -1,14 +1,30 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { I18nProvider } from "@/components/i18n-provider";
+import { INDEX_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
+import { ROUTES } from "@/lib/routes";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
+
+/** "20. 8. 2026" in Slovenian, unchanged; "20 Aug 2026" in English. en-GB's
+ *  own numeric default is 20/08/2026, which reads as a fraction on a page
+ *  that otherwise spells no date in digits, so English asks for day + short
+ *  month + year instead, the order en-GB already gets right on its own. */
+export function formatDatasetDate(date: Date, locale: Locale): string {
+  return locale === "sl"
+    ? date.toLocaleDateString("sl-SI")
+    : date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+}
 
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -34,17 +50,17 @@ export function SitePage({ locale }: { locale: Locale }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      {/* The one page on the wide frame: the filter sidebar needs the column
+          beside the grid. */}
+      <PageShell width="wide">
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
-          homeHref={locale === "sl" ? "/" : "/en"}
+          locale={locale}
+          homeHref={ROUTES.home[locale]}
         />
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">
           <div className="space-y-1.5">
-            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+            <h1 className={INDEX_TITLE_CLASS}>
               {messages.heroTitle}
             </h1>
             {/* One wrapping line at every width, where this used to be a text
@@ -74,9 +90,7 @@ export function SitePage({ locale }: { locale: Locale }) {
               {dataset && shelters > 0 && (
                 <p>
                   {shelterCount(shelters, locale)} · {messages.updated}{" "}
-                  {new Date(dataset.generatedAt).toLocaleDateString(
-                    locale === "sl" ? "sl-SI" : "en-GB",
-                  )}
+                  {formatDatasetDate(new Date(dataset.generatedAt), locale)}
                 </p>
               )}
               {hasLookup && <FoundAnimalButton />}
@@ -97,7 +111,7 @@ export function SitePage({ locale }: { locale: Locale }) {
             whether the coverage table has anything in it, so it answers for
             the found-animal link rather than taking the default. */}
         <SiteFooter locale={locale} showFoundAnimalLink={hasLookup} docked />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

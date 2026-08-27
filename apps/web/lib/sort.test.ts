@@ -11,12 +11,11 @@ import {
   type AnimalSort,
 } from "./sort";
 
-function animal(
-  id: string,
-  intakeDate?: string,
-  name?: string,
-  age?: Pick<Animal, "approximateAgeMonths" | "birthDate">,
-): Animal {
+// An id and whatever the case under test is about. Named fields rather than a
+// row of positional optionals: the sorts read five different properties
+// between them, and a call site spelling three of them as `undefined` to reach
+// the fourth says nothing about what it is testing.
+function animal(id: string, overrides: Partial<Animal> = {}): Animal {
   return {
     id,
     source: {
@@ -27,20 +26,18 @@ function animal(
       lastSeenAt: "2026-08-16T00:00:00Z",
     },
     shelter: { id: "shelter", name: "Shelter", city: "Celje" },
-    name,
     species: "cat",
     status: "available",
-    intakeDate,
-    ...age,
     images: [],
     attribution: "Source: Shelter",
+    ...overrides,
   };
 }
 
 const animals = [
-  animal("unknown", undefined, "Živa"),
-  animal("new", "2026-08-01", "Bina"),
-  animal("old", "2021-03-12", "Čarli"),
+  animal("unknown", { name: "Živa" }),
+  animal("new", { intakeDate: "2026-08-01", name: "Bina" }),
+  animal("old", { intakeDate: "2021-03-12", name: "Čarli" }),
 ];
 
 describe("sortAnimals", () => {
@@ -69,9 +66,9 @@ describe("sortAnimals", () => {
   it("sorts ages in either direction and keeps unknown ages last", () => {
     const byAge = [
       animal("unknown"),
-      animal("adult", undefined, undefined, { approximateAgeMonths: 48 }),
-      animal("young", undefined, undefined, { birthDate: "2026-04-16" }),
-      animal("senior", undefined, undefined, { approximateAgeMonths: 120 }),
+      animal("adult", { approximateAgeMonths: 48 }),
+      animal("young", { birthDate: "2026-04-16" }),
+      animal("senior", { approximateAgeMonths: 120 }),
     ];
     const now = new Date("2026-08-16T00:00:00Z");
 
@@ -88,11 +85,47 @@ describe("sortAnimals", () => {
 
   it("uses the id as a stable tie-breaker", () => {
     const tied = [
-      animal("b", "2025-01-01", "Same"),
-      animal("a", "2025-01-01", "Same"),
+      animal("b", { intakeDate: "2025-01-01", name: "Same" }),
+      animal("a", { intakeDate: "2025-01-01", name: "Same" }),
     ];
 
     expect(sortAnimals(tied).map(({ id }) => id)).toEqual(["a", "b"]);
+  });
+
+  it("puts hold and unknown animals last regardless of how long they waited", () => {
+    const mixed = [
+      // Longest-waiting available animal would normally sort first...
+      animal("hold-oldest", { intakeDate: "2019-01-01", status: "hold" }),
+      animal("available-newer", { intakeDate: "2024-01-01" }),
+      animal("unknown-status", { status: "unknown" }),
+      animal("available-oldest", { intakeDate: "2020-01-01" }),
+    ];
+
+    expect(sortAnimals(mixed).map(({ id }) => id)).toEqual([
+      "available-oldest",
+      "available-newer",
+      "hold-oldest",
+      "unknown-status",
+    ]);
+  });
+
+  it("keeps the status partition under every sort order, not only the default", () => {
+    const mixed = [
+      animal("adopted-a", { name: "A", status: "adopted" }),
+      animal("available-z", { name: "Z" }),
+      animal("reserved-b", { name: "B", status: "reserved" }),
+      animal("available-a", { name: "A2" }),
+    ];
+
+    const byName = sortAnimals(mixed, "name", "sl").map(({ id }) => id);
+    // Available animals still come first, sorted by name between themselves;
+    // the two off-market ones follow, also sorted by name between themselves.
+    expect(byName).toEqual([
+      "available-a",
+      "available-z",
+      "adopted-a",
+      "reserved-b",
+    ]);
   });
 });
 

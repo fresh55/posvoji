@@ -275,11 +275,23 @@ export function timeInShelter(
 // so they cannot disagree about who counts as waiting long.
 export const LONG_STAY_MONTHS = 36;
 
-// Past this the card stops saying it quietly. Five years is the top few
-// percent of the dataset (24 of 503 at the time of writing, against 101
-// wearing the three-year mark), which is what keeps a louder mark meaning
-// anything.
-export const EMPHATIC_STAY_MONTHS = 60;
+// Past this the card stops saying it quietly. The tier has to be read against
+// the default order and not against the whole dataset, because the default
+// order is longest-in-shelter: whatever the threshold, the animals above it
+// are exactly the first cards on the page, so the count is the number of loud
+// cards a visitor meets before anything else.
+//
+// Measured on the 2026-08-20 dataset: 503 animals, 414 with an intake date and
+// still open to a visitor. 227 have waited a year, 144 two years, 101 three
+// (the LONG_STAY tier, one in five of the list), 41 four, 24 five, 11 six, 4
+// eight. At five years the strong tier was those 24, which is six full rows of
+// four before the first quiet mark, and the whole of the first screen. Eight
+// years is 4 animals: one desktop row, about a fifth of the first five rows,
+// and the mark is rare again where it is actually seen.
+//
+// LONG_STAY_MONTHS is not the knob for this and stays at 36. Twelve months
+// would fire on 227 of 503.
+export const EMPHATIC_STAY_MONTHS = 96;
 
 // The wait in months of an animal that has waited long and is actually up
 // for adoption, or undefined. Reserved and held animals are not waiting for
@@ -298,21 +310,20 @@ export function longStayMonths(animal: Animal, now: Date): number | undefined {
   return months;
 }
 
-const STATUS_KEYS: Record<
-  Exclude<AdoptionStatus, "unknown">,
-  TranslationKey
-> = {
+// Every status the schema has, including unknown. The table used to leave
+// unknown out and statusLabel answered undefined for it, while the badge that
+// draws the unknown state reached past the table for the same string
+// (status-badge.tsx): one status modelled twice, in two files that could
+// disagree. A status has a name here or it is not a status.
+const STATUS_KEYS: Record<AdoptionStatus, TranslationKey> = {
   available: "statusAvailable",
   reserved: "statusReserved",
   adopted: "statusAdopted",
   hold: "statusHold",
+  unknown: "statusUnknown",
 };
 
-export function statusLabel(
-  status: AdoptionStatus,
-  locale: Locale,
-): string | undefined {
-  if (status === "unknown") return undefined;
+export function statusLabel(status: AdoptionStatus, locale: Locale): string {
   return translate(locale, STATUS_KEYS[status]);
 }
 

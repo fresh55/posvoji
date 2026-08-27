@@ -65,7 +65,7 @@ function WhatsAppMark() {
 // use rather than each brand's own colour, which would turn the popover into
 // a logo wall.
 const TARGET_CLASS =
-  "flex size-11 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
+  "flex size-11 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)] focus-ring";
 
 function Target({
   label,
@@ -211,7 +211,10 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
             value={url}
             aria-label={text.link}
             onFocus={(event) => event.currentTarget.select()}
-            className="h-8 flex-1 text-xs text-muted-foreground"
+            // text-base and not text-xs below lg: iOS Safari zooms the whole
+            // page when a focused input sets type under 16px, same fix as
+            // the found-animal search box (municipality-finder.tsx).
+            className="h-8 flex-1 text-base text-muted-foreground lg:text-xs"
           />
           <Button
             type="button"

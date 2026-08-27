@@ -30,6 +30,10 @@ export default function SlovenianLayout({ children }: LayoutProps<"/">) {
     // on this element before React ever sees it.
     <html lang="sl" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
+      {/* html's h-full and this min-h-full together make the body at least a
+          viewport tall, and the column is what PageShell's flex-1 grows
+          inside. Both halves are load-bearing: drop either and a short page's
+          footer floats in the middle of the viewport again. */}
       <body className="flex min-h-full flex-col">
         <PrehydrationFilterScript />
         {children}

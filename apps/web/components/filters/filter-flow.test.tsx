@@ -531,4 +531,76 @@ describe("filter flow interactions", () => {
 
     expect(window.history.state).toEqual({ animal: true });
   });
+
+  it("pushes a history entry per facet change, so Back undoes one at a time", () => {
+    renderFilters();
+    const entries = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: /^Samica/ }));
+    expect(window.history.length).toBe(entries + 1);
+    expect(query()).toBe("?spol=samica");
+
+    // Cepljenje, not Sterilizacija: female-adult is the one female fixture
+    // and it is vaccinated but not neutered, so Sterilizacija would already
+    // read "0 živali" and sit disabled once Samica narrows the pool to her.
+    fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
+    expect(window.history.length).toBe(entries + 2);
+    expect(query()).toBe("?spol=samica&lastnosti=cepljenje");
+
+    // A real Back reads whatever the browser already parked in the entry
+    // underneath, so this stands in for it the same way the codec's own
+    // "hydrates and reacts to shared URL state" test above does: write that
+    // URL in place and raise the popstate a real Back would raise, rather
+    // than calling history.back() itself, which jsdom resolves through a
+    // real, unawaited navigation task and which nothing here needs. The
+    // push counts already prove Back has two real steps to take.
+    act(() => {
+      window.history.replaceState(null, "", "/?spol=samica");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(query()).toBe("?spol=samica");
+
+    act(() => {
+      window.history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(query()).toBe("");
+  });
+
+  it("pushes a history entry for a sort change too", () => {
+    renderFilters();
+    const entries = window.history.length;
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Razvrsti: newest-arrivals" }),
+    );
+
+    expect(window.history.length).toBe(entries + 1);
+
+    act(() => {
+      window.history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(sortValue()).toBe("longest-in-shelter");
+  });
+
+  it("writes nothing for a press that changes no filter", () => {
+    // A real control this can happen on: the species strip calls onChange
+    // with the tab that is already pressed (species-tabs.tsx has no guard of
+    // its own against that). No species tab in this fixture's own harness
+    // (every ANIMALS entry is a dog), so this reaches setSpecies directly.
+    function NoopHarness() {
+      const { setSpecies } = useAnimalFilters();
+      return (
+        <button onClick={() => setSpecies("all")}>Vse (že izbrano)</button>
+      );
+    }
+    render(<NoopHarness />);
+    const entries = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Vse (že izbrano)" }));
+
+    expect(window.history.length).toBe(entries);
+    expect(window.location.search).toBe("");
+  });
 });

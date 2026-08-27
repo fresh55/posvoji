@@ -59,7 +59,7 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Čaka 3 leta")).toBeTruthy();
+    expect(screen.getByText("V zavetišču 3 leta")).toBeTruthy();
   });
 
   it("shows nothing for an animal under the threshold", () => {
@@ -75,7 +75,7 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.queryByText(/Čaka/)).toBeNull();
+    expect(screen.queryByText(/V zavetišču/)).toBeNull();
   });
 
   it("shows the reserved tag and no mark for a reserved animal", () => {
@@ -93,7 +93,7 @@ describe("AnimalCard long-stay mark", () => {
     );
 
     expect(screen.getByText("rezervirano")).toBeTruthy();
-    expect(screen.queryByText(/Čaka/)).toBeNull();
+    expect(screen.queryByText(/V zavetišču/)).toBeNull();
   });
 
   it("renders the English wording", () => {
@@ -107,7 +107,7 @@ describe("AnimalCard long-stay mark", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Waiting 3 years")).toBeTruthy();
+    expect(screen.getByText("3 years in shelter")).toBeTruthy();
   });
 });
 
@@ -235,7 +235,7 @@ describe("AnimalCard element placement", () => {
     // The name has its line to itself, and the wait sits on the photo: a fact
     // about the animal's circumstance rather than one of its own.
     const name = screen.getByText("Rex");
-    const wait = screen.getByText(/Čaka/);
+    const wait = screen.getByText(/V zavetišču/);
     expect(name.closest("a")).toBeTruthy();
     // On the photo, and outside the card's link rather than inside it.
     expect(wait.closest("a")).toBeNull();

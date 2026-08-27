@@ -19,6 +19,10 @@ const IGNORE = () => undefined;
 // The onActive* callbacks fed the dialog's map highlight, and there is no map
 // here to light up.
 //
+// reflectUrl is the one thing this surface asks for that the dialog cannot
+// have: here the address bar is the lookup's own, so a resolved municipality
+// can be written into it as the path of that municipality's static page.
+//
 // The finder itself needed no changes to live here. Its results list is
 // overflow-y-auto behind min-h-0 flex-1, which inside the dialog's fixed
 // panel scrolls, and inside a normal document just grows with its content.
@@ -30,6 +34,7 @@ export function FoundAnimalLookup({ entries }: { entries: LookupEntry[] }) {
       selected={NO_SELECTION}
       onToggle={IGNORE}
       onActiveShelters={IGNORE}
+      reflectUrl
     />
   );
 }

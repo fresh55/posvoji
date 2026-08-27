@@ -7,12 +7,10 @@ import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { ageLabel, animalMeta, speciesLabel, statusLabel } from "@/lib/labels";
+import { shareMetadata } from "@/lib/share-metadata";
 
 
 export { SITE_URL } from "@/lib/site";
-
-const CARD_WIDTH = 1200;
-const CARD_HEIGHT = 630;
 
 const manifestPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -91,10 +89,12 @@ export function animalDescription(
   const facts = animalMeta(animal, locale, reference);
   const head = animal.name ? `${animal.name} · ${facts}.` : `${facts}.`;
   const status = statusLabel(animal.status, locale);
-  // Available is the norm and says nothing worth a sentence; an unknown
-  // status has no wording at all. Both leave the shelter line standing.
+  // Available is the norm and says nothing worth a sentence. Unknown has
+  // wording now (statusLabel is total), but a share card is the wrong place
+  // to spend a line saying the shelter did not answer the question. Both
+  // leave the shelter line standing.
   const middle =
-    animal.status === "available" || status === undefined
+    animal.status === "available" || animal.status === "unknown"
       ? t.waiting(animal.shelter.name, animal.shelter.city)
       : t.settled(status);
   return `${head} ${middle} ${t.close}`;
@@ -127,36 +127,20 @@ export function animalMetadata(
 ): Metadata {
   const title = animalTitle(animal, locale, reference);
   const description = animalDescription(animal, locale, reference);
-  const path = animalPath(animal, locale);
   const card = shareCardUrl(animal.id, locale);
-  const images = card
-    ? [{ url: card, width: CARD_WIDTH, height: CARD_HEIGHT, alt: title }]
-    : undefined;
 
-  return {
-    title: `${title} | Posvoji.si`,
+  return shareMetadata({
+    title,
     description,
-    alternates: {
-      canonical: path,
-      languages: {
-        sl: animalPath(animal, "sl"),
-        en: animalPath(animal, "en"),
-      },
+    path: animalPath(animal, locale),
+    locale,
+    type: "article",
+    languages: {
+      sl: animalPath(animal, "sl"),
+      en: animalPath(animal, "en"),
     },
-    openGraph: {
-      type: "article",
-      siteName: "Posvoji.si",
-      locale: locale === "sl" ? "sl_SI" : "en_GB",
-      title,
-      description,
-      url: path,
-      images,
-    },
-    twitter: {
-      card: images ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: card ? [card] : undefined,
-    },
-  };
+    // The card carries the animal's own photo or its name set in type, so the
+    // title is what it shows.
+    image: card ? { url: card, alt: title } : undefined,
+  });
 }

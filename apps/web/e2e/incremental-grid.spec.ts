@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { cards } from "./grid";
 
-// INITIAL_CARDS/CARDS_PER_STEP in animal-grid.tsx cap what mounts on first
+// INITIAL_CARDS/CARDS_PER_STEP in hooks/use-card-window.ts cap what mounts on first
 // paint, so an unfiltered "Vse" tab draws 60 of the dataset's several hundred
 // animals rather than all of them at once. The unit tests render the grid
 // into jsdom, which has no IntersectionObserver worth calling one, so the

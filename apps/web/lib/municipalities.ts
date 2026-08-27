@@ -78,11 +78,21 @@ function isCoverageSource(value: unknown): value is CoverageSource {
   );
 }
 
+// Cached for the life of the process, the same reason loadDataset and
+// loadShelters are: the file cannot change while pages are being rendered,
+// and the 212 municipality pages plus the sitemap ask for it five times over
+// a full build.
+let cached: MunicipalityRegistry | undefined;
+
 // Read at build time, same as loadShelters. data/municipalities.yaml is
 // reference data checked into the repo, so a shape check stands in for a
 // full schema: malformed entries are dropped rather than guessed at.
 export function loadMunicipalities(): MunicipalityRegistry {
-  if (!existsSync(registryPath)) return { municipalities: [], sources: {} };
+  if (cached !== undefined) return cached;
+  if (!existsSync(registryPath)) {
+    cached = { municipalities: [], sources: {} };
+    return cached;
+  }
   const parsed = parse(readFileSync(registryPath, "utf8")) as
     | MunicipalityRegistryFile
     | undefined;
@@ -98,5 +108,6 @@ export function loadMunicipalities(): MunicipalityRegistry {
     }
   }
 
-  return { municipalities, sources };
+  cached = { municipalities, sources };
+  return cached;
 }

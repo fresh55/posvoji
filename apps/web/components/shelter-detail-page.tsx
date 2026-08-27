@@ -2,15 +2,18 @@ import { Globe, Info, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 import { I18nProvider } from "@/components/i18n-provider";
+import { DETAIL_TITLE_CLASS, PageShell } from "@/components/page-shell";
 import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS } from "@/lib/labels";
+import { ROUTES } from "@/lib/routes";
 import { getShelterLogos } from "@/lib/shelter-logos";
+import { shelterPath } from "@/lib/shelter-path";
 import { getShelterBySlug } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
 
@@ -57,25 +60,23 @@ export function ShelterDetailPage({
   );
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
-  const messages = getMessages(locale);
   const text = pageText[locale];
-  const indexHref = locale === "sl" ? "/zavetisca" : "/en/shelters";
+  const indexHref = ROUTES.shelters[locale];
+  const detailHref = shelterPath(shelter.id, locale);
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <PageShell>
         <SiteHeader
-          githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
-          homeHref={locale === "sl" ? "/" : "/en"}
+          locale={locale}
+          homeHref={ROUTES.home[locale]}
           languagePaths={{
-            sl: `/zavetisca/${shelter.id}`,
-            en: `/en/shelters/${shelter.id}`,
+            sl: shelterPath(shelter.id, "sl"),
+            en: shelterPath(shelter.id, "en"),
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10">
+        <main className="flex flex-1 flex-col gap-8 py-page-y sm:gap-10">
           <div className="space-y-5">
             <BackLink
               href={indexHref}
@@ -90,9 +91,7 @@ export function ShelterDetailPage({
                 size="lg"
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-                  {shelter.name}
-                </h1>
+                <h1 className={DETAIL_TITLE_CLASS}>{shelter.name}</h1>
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="size-3.5 shrink-0" aria-hidden />
                   {shelter.city}
@@ -112,7 +111,12 @@ export function ShelterDetailPage({
 
             <div className="flex flex-wrap gap-2">
               {shelter.website && (
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:tap-target"
+                >
                   <a href={shelter.website} target="_blank" rel="noreferrer">
                     <Globe aria-hidden />
                     {text.website}
@@ -120,7 +124,12 @@ export function ShelterDetailPage({
                 </Button>
               )}
               {shelter.email && (
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:tap-target"
+                >
                   <a href={`mailto:${shelter.email}`}>
                     <Mail aria-hidden />
                     {shelter.email}
@@ -128,7 +137,12 @@ export function ShelterDetailPage({
                 </Button>
               )}
               {shelter.phone && (
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:tap-target"
+                >
                   <a href={telHref(shelter.phone)}>
                     <Phone aria-hidden />
                     {shelter.phone}
@@ -137,11 +151,18 @@ export function ShelterDetailPage({
               )}
             </div>
 
+            {/* The box runs the width of the column it sits in. Capped at
+                max-w-3xl inside a max-w-5xl main it was a bordered panel
+                stopping 200px short of everything above and below it, which
+                reads as a layout fault rather than as a measure. The cap
+                belongs on the sentence, not on the frame around it.
+                Trust green and not the selection green: this states a fact
+                about the shelter, and nobody chose it. */}
             <div
               className={cn(
-                "flex max-w-3xl items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
+                "flex items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
                 hasData
-                  ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
+                  ? "border-[var(--trust-border)] bg-[var(--trust)] text-[var(--trust-foreground)]"
                   : "bg-muted/40 text-muted-foreground",
               )}
             >
@@ -150,7 +171,9 @@ export function ShelterDetailPage({
               ) : (
                 <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               )}
-              <p>{hasData ? text.providerNotice : text.registryNotice}</p>
+              <p className="max-w-3xl">
+                {hasData ? text.providerNotice : text.registryNotice}
+              </p>
             </div>
           </div>
 
@@ -163,13 +186,13 @@ export function ShelterDetailPage({
               logos={logos}
               emptyLabel={text.emptyAnimals}
               referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
-              basePath={`${indexHref}/${shelter.id}`}
+              basePath={detailHref}
             />
           </section>
         </main>
 
         <SiteFooter locale={locale} />
-      </div>
+      </PageShell>
     </I18nProvider>
   );
 }

@@ -7,6 +7,11 @@ export const repoRoot = join(here, "..", "..", "..");
 export const providersDir = join(repoRoot, "providers");
 export const datasetDir = join(repoRoot, "data", "dist");
 
+// Durable across runs, unlike everything in datasetDir: that directory is
+// regenerated wholesale on every export and is gitignored for it, so a file
+// meant to accumulate history can never live there. This one is committed.
+export const historyLedgerPath = join(repoRoot, "data", "history.jsonl");
+
 // Cached shelter photos land inside the web app's public dir (gitignored:
 // shelter content is not repository content) so both `next dev` and the
 // static export serve them without a copy step.

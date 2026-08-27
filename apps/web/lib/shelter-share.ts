@@ -3,11 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
+import { shareMetadata } from "@/lib/share-metadata";
 import { shelterPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
-
-const CARD_WIDTH = 1200;
-const CARD_HEIGHT = 630;
 
 // Where the static export serves the plates from, and where they sit in the
 // repo. Unlike the animal cards these are committed assets, not build output of
@@ -62,6 +60,18 @@ const text = {
   },
 } satisfies Record<Locale, Record<string, unknown>>;
 
+/** What a map plate shows, as a sentence. Exported because the plate is used
+ *  on more than the shelter's own page: lib/municipality-share.ts hands an
+ *  občina the plate of the shelter responsible for it, and the picture is the
+ *  same picture, so the description of it should not be written twice. */
+export function shelterPlateAlt(
+  name: string,
+  city: string,
+  locale: Locale,
+): string {
+  return text[locale].alt(name, city);
+}
+
 /**
  * Everything a shared shelter link needs, built the same way animalMetadata
  * builds an animal's: a title, a description templated from the registry's own
@@ -72,45 +82,19 @@ export function shelterMetadata(
   shelter: ShelterRegistryEntry,
   locale: Locale,
 ): Metadata {
-  const t = text[locale];
-  const description = t.description(shelter.name, shelter.city);
-  const path = shelterPath(shelter.id, locale);
   const plate = shelterPlateUrl(shelter.id);
-  const images = plate
-    ? [
-        {
-          url: plate,
-          width: CARD_WIDTH,
-          height: CARD_HEIGHT,
-          alt: t.alt(shelter.name, shelter.city),
-        },
-      ]
-    : undefined;
 
-  return {
-    title: `${shelter.name} | Posvoji.si`,
-    description,
-    alternates: {
-      canonical: path,
-      languages: {
-        sl: shelterPath(shelter.id, "sl"),
-        en: shelterPath(shelter.id, "en"),
-      },
+  return shareMetadata({
+    title: shelter.name,
+    description: text[locale].description(shelter.name, shelter.city),
+    path: shelterPath(shelter.id, locale),
+    locale,
+    languages: {
+      sl: shelterPath(shelter.id, "sl"),
+      en: shelterPath(shelter.id, "en"),
     },
-    openGraph: {
-      type: "website",
-      siteName: "Posvoji.si",
-      locale: locale === "sl" ? "sl_SI" : "en_GB",
-      title: shelter.name,
-      description,
-      url: path,
-      images,
-    },
-    twitter: {
-      card: images ? "summary_large_image" : "summary",
-      title: shelter.name,
-      description,
-      images: plate ? [plate] : undefined,
-    },
-  };
+    image: plate
+      ? { url: plate, alt: shelterPlateAlt(shelter.name, shelter.city, locale) }
+      : undefined,
+  });
 }

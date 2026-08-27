@@ -157,7 +157,8 @@ export function LocationScopeRow({
         className={cn(
           "flex w-full flex-col gap-1.5 rounded-ui border bg-background p-2 text-sm outline-none transition-colors",
           "hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted",
-          "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+          // The site's one focus indicator (globals.css).
+          "focus-ring",
           // The strip alone already clears 44px below lg; kept explicit
           // anyway so the reach never depends on how tall the strip ends up.
           "max-lg:min-h-11",

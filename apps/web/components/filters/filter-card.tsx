@@ -18,7 +18,7 @@ export type FilterCardLayout = "sidebar" | "sheet";
 // One shadcn-style surface contract for every compact filter choice. Layout
 // stays with the caller; interaction, state, and accessibility chrome do not.
 export const filterCardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:scale-[0.98] active:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:scale-[0.98] active:bg-muted/40 focus-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       selected: {
@@ -343,7 +343,17 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {renderCount("text-2xs tabular-nums text-muted-foreground")}
+        {renderCount(
+          cn(
+            "text-2xs tabular-nums text-muted-foreground",
+            // The selected card's wash is --filter-accent, and
+            // text-muted-foreground was tuned against --background/--muted,
+            // not this card's own bg: 4.417:1 there, under the 4.5:1 AA
+            // floor for 11px text. --filter-accent-count-foreground is the
+            // same hue at a darker tone built for this background instead.
+            checked && "text-[var(--filter-accent-count-foreground)]",
+          ),
+        )}
       </>
     );
   }
@@ -354,7 +364,10 @@ export function FilterCardTail({
         {label}
       </span>
       {renderCount(
-        "w-8 shrink-0 text-right text-2xs tabular-nums text-muted-foreground",
+        cn(
+          "w-8 shrink-0 text-right text-2xs tabular-nums text-muted-foreground",
+          checked && "text-[var(--filter-accent-count-foreground)]",
+        ),
       )}
     </span>
   );

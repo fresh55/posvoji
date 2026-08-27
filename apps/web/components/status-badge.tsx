@@ -11,28 +11,32 @@ import { statusLabel } from "@/lib/labels";
 // with no amber at all.
 //
 // Available is the default state and needs no badge; the badge is for the
-// exceptions worth calling out. Unknown is an animal the shelter's own listing
-// still carries, so it reads as available and stays silent too. Both of those
-// live here rather than as an inline condition at each call site, which is how
-// the three of them drifted apart in the first place.
-type NamedStatus = Exclude<AdoptionStatus, "unknown" | "available">;
+// exceptions worth calling out. Unknown used to stay silent along with it, and
+// read as available for exactly that reason: the shelter's own listing simply
+// never answered the question, which is not the same claim "available" makes.
+// It is a status like the rest here, and its words come out of the same table
+// as the rest (statusLabel in lib/labels.ts).
+type NamedStatus = Exclude<AdoptionStatus, "available">;
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 
-// Reserved is a maybe and says so in the site's one warm family. Adopted and
-// hold are over, and go quiet. Which of the two, and whether it is the flat
-// page tone or the one that carries its own ground onto a photograph, is all
-// these maps decide; the colours themselves are variants in ui/badge.tsx.
+// Reserved is a maybe and says so in the site's one warm family. Adopted, hold
+// and unknown are not an offer, and go quiet. Which of the two, and whether it
+// is the flat page tone or the one that carries its own ground onto a
+// photograph, is all these maps decide; the colours themselves are variants in
+// ui/badge.tsx.
 const TONE: Record<NamedStatus, BadgeVariant> = {
   reserved: "warn",
   adopted: "quiet",
   hold: "quiet",
+  unknown: "quiet",
 };
 
 const OVERLAY_TONE: Record<NamedStatus, BadgeVariant> = {
   reserved: "overlay-warn",
   adopted: "overlay-quiet",
   hold: "overlay-quiet",
+  unknown: "overlay-quiet",
 };
 
 // One tier, everywhere. The grid card used to take a size="sm" of its own, so
@@ -51,16 +55,14 @@ export function StatusBadge({
   overlay?: boolean;
   className?: string;
 }) {
-  if (status === "available" || status === "unknown") return null;
-  const label = statusLabel(status, locale);
-  if (!label) return null;
+  if (status === "available") return null;
 
   return (
     <Badge
       variant={overlay ? OVERLAY_TONE[status] : TONE[status]}
       className={className}
     >
-      {label}
+      {statusLabel(status, locale)}
     </Badge>
   );
 }

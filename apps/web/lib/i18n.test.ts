@@ -124,9 +124,13 @@ describe("localized labels", () => {
     expect(speciesLabel("dog", "en")).toBe("Dog");
   });
 
-  it("translates adoption status", () => {
+  it("translates every adoption status, unknown included", () => {
     expect(statusLabel("available", "sl")).toBe("na voljo");
     expect(statusLabel("adopted", "en")).toBe("adopted");
-    expect(statusLabel("unknown", "sl")).toBeUndefined();
+    // Unknown is a status with words of its own, which is what the badge on
+    // an unlabelled listing says (status-badge.tsx). It used to be missing
+    // from the table and the badge fetched the string itself.
+    expect(statusLabel("unknown", "sl")).toBe("status ni znan");
+    expect(statusLabel("unknown", "en")).toBe("status unknown");
   });
 });

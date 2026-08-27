@@ -326,7 +326,7 @@ function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function readManifest(path: string): ImageCacheManifest {
+export function readImageCacheManifest(path: string): ImageCacheManifest {
   if (!existsSync(path)) return { entries: {} };
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
@@ -373,7 +373,7 @@ export async function cacheImages(
   const revalidateAfterMs =
     (options.revalidateAfterDays ?? REVALIDATE_AFTER_DAYS) * 24 * 60 * 60_000;
 
-  const previous = readManifest(manifestPath);
+  const previous = readImageCacheManifest(manifestPath);
   const next: ImageCacheManifest = { entries: {} };
   mkdirSync(mediaDir, { recursive: true });
 

@@ -10,6 +10,7 @@
     "validate": "tsx src/validate-policies.ts",
     "export": "tsx src/export.ts",
     "fetch:logos": "tsx src/fetch-logos.ts",
+    "derive:images": "tsx src/derive-images.ts",
     "test": "vitest run"
   },
   "dependencies": {

@@ -43,6 +43,10 @@ example.com {
 
 ## Media cache headers
 
+See [DEPLOY-MEDIA.md](DEPLOY-MEDIA.md) for where these files live in
+production, how they get there, and the build-order requirement that keeps a
+release from shipping without them.
+
 `apps/ingest` writes three kinds of file under `apps/web/public/media/`, and
 each needs a different `Cache-Control`. The naming scheme is what tells you
 which is which; getting this wrong either serves stale files forever or

@@ -39,6 +39,9 @@ export const ImageRights = z.enum([
 ]);
 export type ImageRights = z.infer<typeof ImageRights>;
 
+// A tiny inline preview, not a link: "data:image/<type>;base64,<payload>".
+const DATA_IMAGE_URL = /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/;
+
 export const AnimalImage = z.strictObject({
   sourceUrl: z.url(),
   // Filled by the ingest image cache. Root-relative ("/media/animals/…")
@@ -47,6 +50,20 @@ export const AnimalImage = z.strictObject({
   cachedUrl: z
     .union([z.url(), z.string().regex(/^\/\S+$/)])
     .optional(),
+  // Pixel size of the cached copy, so a layout can reserve the right box
+  // before the file loads. Optional: an image cached before ingest recorded
+  // dimensions, or one that was never cached, carries neither.
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  // Widths of the smaller copies that exist next to the cached one, ascending
+  // and ending with the cached copy's own width. Carried here so a consumer
+  // knows the ladder from the dataset alone, without the ingest manifest.
+  widths: z.array(z.number().int().positive()).optional(),
+  // An AVIF sibling of the cached copy exists. Ingest derives one only for an
+  // animal's first image, where the encode pays for itself.
+  avif: z.boolean().optional(),
+  // Inline placeholder shown while the photo loads.
+  blurDataURL: z.string().regex(DATA_IMAGE_URL).optional(),
   rights: ImageRights,
 });
 export type AnimalImage = z.infer<typeof AnimalImage>;

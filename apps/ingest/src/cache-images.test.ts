@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -7,12 +14,16 @@ import type {
   GetBytesOptions,
   PoliteBytesResponse,
 } from "@posvoji/provider-sdk";
+import { Animal as AnimalSchema } from "@posvoji/schema";
 import type { Animal, ImagePolicy } from "@posvoji/schema";
 import {
+  avifFileFor,
   cacheImages,
   cacheableUrls,
+  heroSourceUrls,
   processImage,
   publicUrlFor,
+  rungFileFor,
   thumbFileFor,
 } from "./cache-images";
 
@@ -71,15 +82,15 @@ class StubClient {
   }
 }
 
-async function pngFixture(width = 1200, height = 900): Promise<Buffer> {
-  return sharp({
-    create: {
-      width,
-      height,
-      channels: 3,
-      background: { r: 210, g: 120, b: 60 },
-    },
-  })
+async function pngFixture(
+  width = 1200,
+  height = 900,
+  // A flat fixture of the same colour encodes to the same bytes at the same
+  // size, which is the point in most tests; a different colour is how a test
+  // asks for a second, distinct cached file.
+  background = { r: 210, g: 120, b: 60 },
+): Promise<Buffer> {
+  return sharp({ create: { width, height, channels: 3, background } })
     .png()
     .toBuffer();
 }
@@ -138,6 +149,35 @@ describe("processImage", () => {
   });
 });
 
+describe("heroSourceUrls", () => {
+  it("takes the first image of every animal", () => {
+    const animals = [
+      animal({
+        id: "a",
+        images: [
+          { sourceUrl: "https://img.si/a1.jpg", rights: "cache-permitted" },
+          { sourceUrl: "https://img.si/a2.jpg", rights: "cache-permitted" },
+        ],
+      }),
+      animal({ id: "b", images: [] }),
+      animal({
+        id: "c",
+        images: [
+          { sourceUrl: "https://img.si/a2.jpg", rights: "cache-permitted" },
+        ],
+      }),
+    ];
+    expect([...heroSourceUrls(animals)]).toEqual([
+      "https://img.si/a1.jpg",
+      "https://img.si/a2.jpg",
+    ]);
+  });
+});
+
+// A cached 800px hero lands as six files: the copy, its thumb, the 320, 480
+// and 640 rungs, and one avif.
+const HERO_FILES = 6;
+
 describe("cacheImages", () => {
   let dir: string;
   let mediaDir: string;
@@ -171,8 +211,8 @@ describe("cacheImages", () => {
 
     expect(result.fetched).toBe(1);
     const files = readdirSync(mediaDir);
-    expect(files).toHaveLength(2);
-    const main = files.find((file) => !file.endsWith(".thumb.webp"))!;
+    expect(files).toHaveLength(HERO_FILES);
+    const main = files.find((file) => /^[0-9a-f]{16}\.webp$/.test(file))!;
     expect(files).toContain(thumbFileFor(main));
     const cachedUrl = result.animals[0]!.images[0]!.cachedUrl;
     expect(cachedUrl).toBe(publicUrlFor(main));
@@ -234,7 +274,7 @@ describe("cacheImages", () => {
     expect(second.calls[0]?.options?.validators?.etag).toBe('"v1"');
     expect(result.reused).toBe(1);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeDefined();
-    expect(readdirSync(mediaDir)).toHaveLength(2);
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
   });
 
   it("reuses a fresh copy without touching the network", async () => {
@@ -259,14 +299,14 @@ describe("cacheImages", () => {
       new Map([[url, { status: 200, body: await pngFixture() }]]),
     );
     await cacheImages(animals(), client, CACHE_ONLY, { mediaDir, manifestPath });
-    expect(readdirSync(mediaDir)).toHaveLength(2);
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
 
     const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
       mediaDir,
       manifestPath,
     });
 
-    expect(result.deleted).toBe(2);
+    expect(result.deleted).toBe(HERO_FILES);
     expect(readdirSync(mediaDir)).toHaveLength(0);
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     expect(manifest.entries).toEqual({});
@@ -287,7 +327,7 @@ describe("cacheImages", () => {
       revalidateAfterDays: 0,
     });
 
-    expect(result.deleted).toBe(2);
+    expect(result.deleted).toBe(HERO_FILES);
     expect(readdirSync(mediaDir)).toHaveLength(0);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeUndefined();
   });
@@ -307,7 +347,7 @@ describe("cacheImages", () => {
       revalidateAfterDays: 0,
     });
 
-    expect(readdirSync(mediaDir)).toHaveLength(2);
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeDefined();
   });
 
@@ -330,8 +370,9 @@ describe("cacheImages", () => {
       ]),
     );
     await cacheImages(both, client, CACHE_ONLY, { mediaDir, manifestPath });
-    // Identical bytes → one content-addressed file for two URLs.
-    expect(readdirSync(mediaDir)).toHaveLength(2);
+    // Identical bytes → one content-addressed file, and one set of
+    // derivatives, for two URLs.
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
 
     const oneLeft = [
       animal({ id: "luna", images: [{ sourceUrl: url, rights: "cache-permitted" }] }),
@@ -346,7 +387,7 @@ describe("cacheImages", () => {
     });
 
     expect(result.deleted).toBe(0);
-    expect(readdirSync(mediaDir)).toHaveLength(2);
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
   });
 
   it("caches only the scoped provider and leaves the rest untouched", async () => {
@@ -394,6 +435,213 @@ describe("cacheImages", () => {
     expect(
       existsSync(join(mediaDir, result.animals[1]!.images[0]!.cachedUrl!.split("/").pop()!)),
     ).toBe(true);
+  });
+
+  it("derives a smaller rung per ladder width and records them", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    const image = result.animals[0]!.images[0]!;
+    const main = image.cachedUrl!.split("/").pop()!;
+    expect(image.widths).toEqual([320, 480, 640, 800]);
+    for (const rung of [320, 480, 640]) {
+      const path = join(mediaDir, rungFileFor(main, rung));
+      expect(rungFileFor(main, rung)).toBe(main.replace(".webp", `-${rung}.webp`));
+      const meta = await sharp(readFileSync(path)).metadata();
+      expect(meta.format).toBe("webp");
+      expect(meta.width).toBe(rung);
+    }
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url].widths).toEqual([320, 480, 640, 800]);
+  });
+
+  it("never enlarges: a small photo gets no rungs", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture(300, 200) }]]),
+    );
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.animals[0]!.images[0]!.widths).toEqual([300]);
+    expect(readdirSync(mediaDir).filter((f) => /-\d+\.webp$/.test(f))).toEqual(
+      [],
+    );
+  });
+
+  it("keeps the placeholder in the manifest rather than on disk", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    const blur = result.animals[0]!.images[0]!.blurDataURL!;
+    expect(blur).toMatch(/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/);
+    // A placeholder that is not clearly cheaper than a request is pointless.
+    expect(blur.length).toBeLessThan(1500);
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url].blurDataURL).toBe(blur);
+    expect(readdirSync(mediaDir).some((f) => f.includes("blur"))).toBe(false);
+  });
+
+  it("derives avif for the hero photo only", async () => {
+    const second = "https://img.si/luna-second.jpg";
+    const twoPhotos = [
+      animal({
+        id: "luna",
+        images: [
+          { sourceUrl: url, rights: "cache-permitted" },
+          { sourceUrl: second, rights: "cache-permitted" },
+        ],
+      }),
+    ];
+    const client = new StubClient(
+      new Map([
+        [url, { status: 200, body: await pngFixture() }],
+        [
+          second,
+          {
+            status: 200,
+            body: await pngFixture(1000, 750, { r: 40, g: 90, b: 160 }),
+          },
+        ],
+      ]),
+    );
+
+    const result = await cacheImages(twoPhotos, client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    const [hero, rest] = result.animals[0]!.images;
+    expect(hero!.avif).toBe(true);
+    expect(rest!.avif).toBeUndefined();
+
+    const heroFile = hero!.cachedUrl!.split("/").pop()!;
+    const restFile = rest!.cachedUrl!.split("/").pop()!;
+    expect(avifFileFor(heroFile)).toBe(heroFile.replace(".webp", ".avif"));
+    const meta = await sharp(
+      readFileSync(join(mediaDir, avifFileFor(heroFile))),
+    ).metadata();
+    expect(meta.format).toBe("heif");
+    expect(existsSync(join(mediaDir, avifFileFor(restFile)))).toBe(false);
+  });
+
+  it("carries the derived fields onto a schema-valid animal", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.animals[0]!.images[0]).toMatchObject({
+      width: 800,
+      height: 600,
+      widths: [320, 480, 640, 800],
+      avif: true,
+    });
+    expect(AnimalSchema.safeParse(result.animals[0]).success).toBe(true);
+    expect(result.derived).toMatchObject({ rungs: 3, blurs: 1, avifs: 1 });
+  });
+
+  it("backfills missing rungs, placeholder and avif without the network", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const before = await cacheImages(animals(), first, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    const main = before.animals[0]!.images[0]!.cachedUrl!.split("/").pop()!;
+
+    // A media dir and a manifest written before the derivatives existed.
+    rmSync(join(mediaDir, rungFileFor(main, 480)));
+    rmSync(join(mediaDir, avifFileFor(main)));
+    const stale = JSON.parse(readFileSync(manifestPath, "utf8"));
+    delete stale.entries[url].blurDataURL;
+    delete stale.entries[url].widths;
+    delete stale.entries[url].avif;
+    writeFileSync(manifestPath, JSON.stringify(stale));
+
+    const second = new StubClient(new Map());
+    const result = await cacheImages(animals(), second, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(second.calls).toHaveLength(0);
+    expect(result.derived).toMatchObject({ rungs: 1, blurs: 1, avifs: 1 });
+    expect(existsSync(join(mediaDir, rungFileFor(main, 480)))).toBe(true);
+    expect(existsSync(join(mediaDir, avifFileFor(main)))).toBe(true);
+    expect(result.animals[0]!.images[0]!.blurDataURL).toMatch(/^data:image\//);
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
+  });
+
+  it("sweeps the derivatives of a dropped photo and keeps the rest", async () => {
+    const otherUrl = "https://img.si/muri.jpg";
+    const both = [
+      animal({ id: "luna", images: [{ sourceUrl: url, rights: "cache-permitted" }] }),
+      animal({
+        id: "muri",
+        images: [{ sourceUrl: otherUrl, rights: "cache-permitted" }],
+      }),
+    ];
+    const client = new StubClient(
+      new Map([
+        [url, { status: 200, body: await pngFixture() }],
+        [
+          otherUrl,
+          {
+            status: 200,
+            body: await pngFixture(1000, 750, { r: 40, g: 90, b: 160 }),
+          },
+        ],
+      ]),
+    );
+    const before = await cacheImages(both, client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    const gone = before.animals[0]!.images[0]!.cachedUrl!.split("/").pop()!;
+    const kept = before.animals[1]!.images[0]!.cachedUrl!.split("/").pop()!;
+    expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES * 2);
+
+    const result = await cacheImages([both[1]!], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.deleted).toBe(HERO_FILES);
+    const left = readdirSync(mediaDir);
+    for (const file of [
+      gone,
+      thumbFileFor(gone),
+      avifFileFor(gone),
+      ...[320, 480, 640].map((w) => rungFileFor(gone, w)),
+    ]) {
+      expect(left).not.toContain(file);
+    }
+    for (const file of [
+      kept,
+      thumbFileFor(kept),
+      avifFileFor(kept),
+      ...[320, 480, 640].map((w) => rungFileFor(kept, w)),
+    ]) {
+      expect(left).toContain(file);
+    }
   });
 
   it("caches nothing for a provider without cache permission", async () => {

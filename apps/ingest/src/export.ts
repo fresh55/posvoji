@@ -205,7 +205,7 @@ mkdirSync(datasetDir, { recursive: true });
 // a full export. Preserved providers stay in scope for the deletion sweep but
 // out of scope for requests, so their cached files and URLs are neither
 // deleted nor needlessly rechecked.
-const { animals, fetched, reused, deleted } = await cacheImages(
+const { animals, fetched, reused, deleted, derived } = await cacheImages(
   overridden,
   client,
   imagePolicies,
@@ -213,6 +213,10 @@ const { animals, fetched, reused, deleted } = await cacheImages(
 );
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
+);
+console.log(
+  `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
+    `${derived.blurs} placeholders, ${derived.avifs} avif derived`,
 );
 
 // cachedUrl is set by cacheImages above, so this catches whatever it could

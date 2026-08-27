@@ -13,7 +13,7 @@ import type {
   GetBytesOptions,
   PoliteBytesResponse,
 } from "@posvoji/provider-sdk";
-import type { Animal, ImagePolicy } from "@posvoji/schema";
+import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
 
 // Where the static site serves the files written to cachedImagesDir.
@@ -25,6 +25,18 @@ const MAX_WIDTH = 800;
 // The dialog's thumb strip renders at 56 CSS pixels; 112 covers 2x displays.
 const THUMB_WIDTH = 112;
 const WEBP_QUALITY = 80;
+// Smaller copies of the cached photo, for viewports that would otherwise pay
+// for the full 800px file. The cached copy stays the largest rung; a rung at
+// or above its width is skipped rather than enlarged.
+const LADDER_WIDTHS = [320, 480, 640];
+// The placeholder is decoded from a data URL inside animals.json, so it has
+// to stay small enough to be cheaper than the request it replaces. 10px wide
+// at this quality lands in the low hundreds of bytes.
+const BLUR_WIDTH = 10;
+const BLUR_QUALITY = 20;
+// sharp's AVIF quality scale sits lower than its WebP one for the same
+// perceived result. 55 matches WebP q80 closely while staying smaller.
+const AVIF_QUALITY = 55;
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 
 const ACCEPT_IMAGES = "image/avif,image/webp,image/*,*/*;q=0.8";
@@ -40,6 +52,16 @@ export interface CachedImageEntry {
   file: string;
   width: number;
   height: number;
+  // Widths that exist on disk for this file, ascending, ending with the
+  // cached copy's own width. Absent on entries written before the ladder
+  // existed; the derivation pass fills them in without a request.
+  widths?: number[];
+  // The inline placeholder lives in the manifest rather than on disk: it
+  // ships inside animals.json, so it is never a file anybody requests.
+  blurDataURL?: string;
+  // An <hash>.avif sibling of the cached copy exists. Only an animal's first
+  // image gets one.
+  avif?: boolean;
   etag?: string;
   lastModified?: string;
   fetchedAt: string;
@@ -63,6 +85,28 @@ export function publicUrlFor(file: string): string {
 // not need a field for it.
 export function thumbFileFor(file: string): string {
   return file.replace(/\.webp$/, ".thumb.webp");
+}
+
+// Same idea as the thumb: a rung is a plain sibling of the cached copy, so
+// the web app can build its srcset from cachedUrl and the widths list.
+export function rungFileFor(file: string, width: number): string {
+  return file.replace(/\.webp$/, `-${width}.webp`);
+}
+
+export function avifFileFor(file: string): string {
+  return file.replace(/\.webp$/, ".avif");
+}
+
+// The first image is what a card and the top of a detail page show, so it is
+// the one worth the extra AVIF encode. A photo shared by several animals is
+// a hero as soon as it leads one of them.
+export function heroSourceUrls(animals: Animal[]): Set<string> {
+  const urls = new Set<string>();
+  for (const animal of animals) {
+    const first = animal.images[0];
+    if (first) urls.add(first.sourceUrl);
+  }
+  return urls;
 }
 
 // Only providers whose policy grants caching, and within them only images
@@ -97,7 +141,19 @@ export function withCachedUrls(
           ? manifest.entries[image.sourceUrl]
           : undefined;
       if (!entry) return image;
-      return { ...image, cachedUrl: publicUrlFor(entry.file) };
+      const cached: AnimalImage = {
+        ...image,
+        cachedUrl: publicUrlFor(entry.file),
+        width: entry.width,
+        height: entry.height,
+      };
+      // The derived fields are only set when the derivation actually
+      // produced them, so a failed encode leaves the field off rather than
+      // promising a file that is not there.
+      if (entry.widths && entry.widths.length > 0) cached.widths = entry.widths;
+      if (entry.blurDataURL) cached.blurDataURL = entry.blurDataURL;
+      if (entry.avif) cached.avif = true;
+      return cached;
     }),
   }));
 }
@@ -146,6 +202,126 @@ export async function processImage(source: Buffer): Promise<{
   return { file: `${hash}.webp`, data, width: info.width, height: info.height };
 }
 
+export interface DerivedCounts {
+  thumbs: number;
+  rungs: number;
+  blurs: number;
+  avifs: number;
+}
+
+// Every derivative is cut from our own cached copy, so an entry reused from
+// an older manifest gains one without another request to the shelter. Only
+// cache-permitted images ever reach the manifest, so the rights check is
+// already behind us. The pass is a backfill: a file already on disk, or a
+// placeholder already in the manifest, is left as it is.
+export async function deriveVariants(
+  manifest: ImageCacheManifest,
+  heroes: ReadonlySet<string>,
+  mediaDir: string,
+): Promise<DerivedCounts> {
+  const counts: DerivedCounts = { thumbs: 0, rungs: 0, blurs: 0, avifs: 0 };
+
+  // Content addressing lets several URLs share one file, so the work is
+  // grouped by file: one encode, and every entry pointing at it records the
+  // same result.
+  const groups = new Map<
+    string,
+    { entries: CachedImageEntry[]; hero: boolean }
+  >();
+  for (const [url, entry] of Object.entries(manifest.entries)) {
+    const group = groups.get(entry.file) ?? { entries: [], hero: false };
+    group.entries.push(entry);
+    if (heroes.has(url)) group.hero = true;
+    groups.set(entry.file, group);
+  }
+
+  for (const [file, group] of groups) {
+    const sourcePath = join(mediaDir, file);
+    if (!existsSync(sourcePath)) continue;
+    const width = group.entries[0]!.width;
+    // Read once, and only if this file is actually missing something.
+    let source: Buffer | undefined;
+    const read = (): Buffer => (source ??= readFileSync(sourcePath));
+
+    const thumbPath = join(mediaDir, thumbFileFor(file));
+    if (!existsSync(thumbPath)) {
+      try {
+        const thumb = await sharp(read())
+          .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+          .webp({ quality: WEBP_QUALITY })
+          .toBuffer();
+        writeFileSync(thumbPath, thumb);
+        counts.thumbs++;
+      } catch (error) {
+        console.warn(`image ${file}: thumbnail failed (${error})`);
+      }
+    }
+
+    const widths: number[] = [];
+    for (const rung of LADDER_WIDTHS) {
+      // Never enlarge: a photo the shelter published small has fewer rungs,
+      // and the cached copy remains the largest one.
+      if (rung >= width) continue;
+      const rungPath = join(mediaDir, rungFileFor(file, rung));
+      if (existsSync(rungPath)) {
+        widths.push(rung);
+        continue;
+      }
+      try {
+        const resized = await sharp(read())
+          .resize({ width: rung })
+          .webp({ quality: WEBP_QUALITY })
+          .toBuffer();
+        writeFileSync(rungPath, resized);
+        widths.push(rung);
+        counts.rungs++;
+      } catch (error) {
+        console.warn(`image ${file}: ${rung}px rung failed (${error})`);
+      }
+    }
+    widths.push(width);
+
+    let blurDataURL = group.entries.find((e) => e.blurDataURL)?.blurDataURL;
+    if (!blurDataURL) {
+      try {
+        const blur = await sharp(read())
+          .resize({ width: BLUR_WIDTH })
+          .webp({ quality: BLUR_QUALITY })
+          .toBuffer();
+        blurDataURL = `data:image/webp;base64,${blur.toString("base64")}`;
+        counts.blurs++;
+      } catch (error) {
+        console.warn(`image ${file}: blur placeholder failed (${error})`);
+      }
+    }
+
+    let avif = group.hero;
+    if (avif && !existsSync(join(mediaDir, avifFileFor(file)))) {
+      try {
+        const encoded = await sharp(read())
+          .avif({ quality: AVIF_QUALITY })
+          .toBuffer();
+        writeFileSync(join(mediaDir, avifFileFor(file)), encoded);
+        counts.avifs++;
+      } catch (error) {
+        console.warn(`image ${file}: avif failed (${error})`);
+        avif = false;
+      }
+    }
+
+    for (const entry of group.entries) {
+      entry.widths = widths;
+      if (blurDataURL) entry.blurDataURL = blurDataURL;
+      // A photo that no longer leads any animal drops the flag here and the
+      // file in the deletion sweep.
+      if (avif) entry.avif = true;
+      else delete entry.avif;
+    }
+  }
+
+  return counts;
+}
+
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -168,6 +344,7 @@ export interface CacheImagesResult {
   fetched: number;
   reused: number;
   deleted: number;
+  derived: DerivedCounts;
 }
 
 export interface CacheImagesOptions {
@@ -297,23 +474,13 @@ export async function cacheImages(
     fetched++;
   }
 
-  // Thumbs are cut from our own processed copy, so entries reused from an
-  // older manifest gain one without another request to the shelter. Only
-  // cache-permitted images ever reach next.entries, so the rights check is
-  // already behind us.
-  for (const entry of Object.values(next.entries)) {
-    const thumbPath = join(mediaDir, thumbFileFor(entry.file));
-    if (existsSync(thumbPath)) continue;
-    try {
-      const thumb = await sharp(readFileSync(join(mediaDir, entry.file)))
-        .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
-        .webp({ quality: WEBP_QUALITY })
-        .toBuffer();
-      writeFileSync(thumbPath, thumb);
-    } catch (error) {
-      console.warn(`image ${entry.file}: thumbnail failed (${error})`);
-    }
-  }
+  // Thumbs, rungs, placeholders and the hero AVIF are all cut from our own
+  // processed copies, without a single request.
+  const derived = await deriveVariants(
+    next,
+    heroSourceUrls(animals),
+    mediaDir,
+  );
 
   // Content addressing can share one file between URLs, so deletion goes by
   // "no longer referenced", not by "my URL was dropped". Sweeping the whole
@@ -322,6 +489,11 @@ export async function cacheImages(
     Object.values(next.entries).flatMap((entry) => [
       entry.file,
       thumbFileFor(entry.file),
+      // The largest rung is the cached copy itself, already listed above.
+      ...(entry.widths ?? [])
+        .filter((width) => width !== entry.width)
+        .map((width) => rungFileFor(entry.file, width)),
+      ...(entry.avif ? [avifFileFor(entry.file)] : []),
     ]),
   );
   let deleted = 0;
@@ -333,5 +505,11 @@ export async function cacheImages(
 
   writeFileSync(manifestPath, JSON.stringify(next, null, 2));
 
-  return { animals: withCachedUrls(animals, next), fetched, reused, deleted };
+  return {
+    animals: withCachedUrls(animals, next),
+    fetched,
+    reused,
+    deleted,
+    derived,
+  };
 }

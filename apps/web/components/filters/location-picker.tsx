@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { MiniMap } from "@/components/filters/mini-map";
+import { LocationScopeRow } from "@/components/filters/location-scope-row";
 import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import { MunicipalityFinder } from "@/components/filters/municipality-finder";
 import {
@@ -64,13 +65,13 @@ import {
 } from "@/components/ui/dialog";
 import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { useNearby } from "@/hooks/use-nearby";
+import { usePublishNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { FilterOption } from "@/lib/filters";
 import { cityAt, distanceKm, onMap, project, type LatLon } from "@/lib/geo";
 import { isDrop } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
-  allShelters,
-  sheltersOf,
+  shelterScopeLabel,
   animalCount,
   shelterCount,
   sheltersDropped,
@@ -392,6 +393,9 @@ export function LocationPicker({
   offSite,
   summaries,
   deepLink,
+  dress = "toolbar",
+  open: controlledOpen,
+  onOpenChange,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -418,9 +422,42 @@ export function LocationPicker({
    *  only the one visible at the current breakpoint may open, or two dialogs
    *  would fight. Omit to opt out of deep-linking entirely. */
   deepLink?: "desktop" | "mobile";
+  /** How the thing that opens this dialog is drawn. "toolbar" is the button
+   *  the desktop bar and the mobile dock carry. "sidebar" is the Kje row at
+   *  the top of the filter panel, which asks the same question with a header,
+   *  a reset and a full-width press target; the dialog behind it is the same
+   *  dialog. */
+  dress?: "toolbar" | "sidebar";
+  /** Hands the open state to the parent. The sheet's Kje row has to close the
+   *  drawer before this dialog may open, and only animal-filters.tsx can see
+   *  both, so it holds the boolean and drives the dock's instance with it.
+   *  Left out everywhere else, and then the dialog keeps its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { locale, messages, t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [selfOpen, setSelfOpen] = useState(false);
+  const open = controlledOpen ?? selfOpen;
+  // Where an open goes, kept in a ref so the setter below can be stable. The
+  // deep-link and spotlight effects call it and hold no dependency on it: a
+  // setter whose identity moved with the open state would re-subscribe those
+  // effects on every close, and the ?najdena branch would reopen the dialog
+  // the visitor had just dismissed. Synced in an effect declared ahead of
+  // them, so it is fresh before anything else in here runs.
+  const openTarget = useRef({
+    controlled: controlledOpen !== undefined,
+    onOpenChange,
+  });
+  useEffect(() => {
+    openTarget.current = {
+      controlled: controlledOpen !== undefined,
+      onOpenChange,
+    };
+  });
+  const setOpen = useCallback((next: boolean) => {
+    if (!openTarget.current.controlled) setSelfOpen(next);
+    openTarget.current.onOpenChange?.(next);
+  }, []);
   const [query, setQuery] = useState("");
   // The municipality mode: same dialog, same map, different question. Off by
   // default and behind its own button, so the shelter picker stays what it
@@ -515,7 +552,7 @@ export function LocationPicker({
     window.addEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
     return () =>
       window.removeEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
-  }, [canDeepLink, deepLink]);
+  }, [canDeepLink, deepLink, setOpen]);
 
   // An animal card asking for its shelter on the map. Its own effect and not a
   // branch of the one above, because canDeepLink also demands the municipality
@@ -554,7 +591,7 @@ export function LocationPicker({
     };
     window.addEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
     return () => window.removeEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
-  }, [canSpotlight, deepLink]);
+  }, [canSpotlight, deepLink, setOpen]);
   const searchRef = useRef<HTMLInputElement>(null);
   const [place, setPlace] = useState("");
   const placeRef = useRef<HTMLInputElement>(null);
@@ -581,6 +618,15 @@ export function LocationPicker({
     return { typed: read, resolved: resolveOrigin(geolocated, read) };
   }, [geolocated, place]);
   const origin = resolved.at;
+  // The same point, offered to the rest of the page. This control is the only
+  // place on the site that asks where the visitor is, and it stays the only
+  // place; what changes is that the answer no longer stops at this dialog's own
+  // list. The grid's Najbližje sort reads it, and the Kje row's "from here"
+  // hint is meant to. Published to a store rather than lifted into a parent
+  // because the picker is mounted more than once and none of the readers are
+  // anywhere near any of them in the tree; see hooks/use-nearby-origin.ts for
+  // how the instances that were never touched are kept from clearing it.
+  usePublishNearbyOrigin(resolved);
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   // Two independent hover states for the two directions: a row lights up its
   // marker and region, a marker lights up its row(s). Keeping them as separate
@@ -921,10 +967,7 @@ export function LocationPicker({
   // live-shelter count). A number here used to read as a second, disagreeing
   // answer to a question the hero had just answered ("11 zavetišč" next to
   // "Vseh 17 zavetišč"); see allShelters in lib/labels.ts.
-  const label =
-    selected.length === 0
-      ? allShelters(locale)
-      : sheltersOf(selected.length, total, locale);
+  const label = shelterScopeLabel(selected.length, total, locale);
 
   // The way out of the dialog, carrying the number the picking adds up to.
   // Filtering is live, so this is not a promise about what the press will do.
@@ -973,72 +1016,90 @@ export function LocationPicker({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          // A plain button, which is what it is. It used to report
-          // role="combobox", and a combobox promises a value and a listbox to
-          // pick it from; this one opens a dialog with a map in it and owns
-          // neither, so the promise was one no screen reader could collect on.
-          // aria-haspopup says what actually happens and aria-expanded says
-          // whether it has happened yet, which is the whole of the contract.
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          aria-label={t("shelterPickerLabel", { label })}
-          // The browser tests' way in. Every other element in this dialog is
-          // found by a data-* attribute the component promises to keep, and
-          // this one was the exception: the specs located it by implicit role,
-          // which is derived from aria-haspopup above and moved when that
-          // attribute did. One line changed here turned the whole e2e suite
-          // red at once, which reads as a product failure rather than as a
-          // selector that needs updating. The role and the label stay worth
-          // asserting, but as one explicit a11y check that fails loudly on its
-          // own, not as the way seven other tests reach the dialog.
-          data-picker-trigger
-          // The quiet dress belongs to the toolbar, where the species tabs
-          // anchor the row and this control can afford to be only text at
-          // rest. The dock has no such anchor: floating on its own plate next
-          // to the filled Filtri button, a borderless "Vsa zavetišča" read as
-          // a caption, not as something to press. There the button keeps the
-          // outline variant's own frame, shadow and dark ground.
-          className={cn(
-            "justify-between gap-2 font-normal",
-            deepLink === "mobile"
-              ? // A touch tighter than the size-sm defaults: the frame's two
-                // border pixels were exactly what pushed "Vsa zavetišča" into
-                // an ellipsis on a 390px dock.
-                "gap-1.5 px-2"
-              : cn(
-                  QUIET_TRIGGER_CLASS,
-                  "max-w-[14rem] aria-expanded:border-border",
-                ),
-          )}
-        >
-          <span className="flex min-w-0 items-center gap-1.5">
-            {/* A live preview, not a stand-in icon: the same region shapes and
-                the same density computation the dialog's map draws from
-                (lib/map-layout.ts), so the trigger already shows what is
-                behind it before it is ever clicked. aria-hidden because the
-                label carries the meaning; a screen reader has nothing to gain
-                from a tiny country shape. */}
-            <MiniMap
-              pins={pins}
-              selected={selected}
-              className="h-4 w-auto shrink-0 text-foreground opacity-60"
-            />
-            <span className="truncate">{label}</span>
-          </span>
-          {/* Not a chevron. Everywhere else in this app a chevron down is a
-              fold opening in place: the health row, a filter section, the
-              off-roster list, a real select. This control opens a full-screen
-              map, which is why the ARIA above had to stop saying combobox,
-              and the glyph was the other half of the same promise. Maximize
-              says what the tap does, and paired with the MiniMap on the left
-              the whole button reads as "the small map, made big". */}
-          <Maximize2 className="size-3.5 opacity-50" aria-hidden />
-        </Button>
-      </DialogTrigger>
+      {dress === "sidebar" ? (
+        // The panel's own way in, and no DialogTrigger: the row is a header, a
+        // reset and a press target, and only the last of the three opens
+        // anything. Radix returns focus to whatever was focused when the
+        // dialog opened, which is that press target, so the trigger buys
+        // nothing the plain button below does not already carry.
+        <LocationScopeRow
+          options={options}
+          counts={counts}
+          offSite={offSite}
+          selected={selected}
+          expanded={open}
+          onOpen={() => setOpen(true)}
+          onReset={() => onToggleMany(selected)}
+          isPickerTrigger
+        />
+      ) : (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            // A plain button, which is what it is. It used to report
+            // role="combobox", and a combobox promises a value and a listbox to
+            // pick it from; this one opens a dialog with a map in it and owns
+            // neither, so the promise was one no screen reader could collect on.
+            // aria-haspopup says what actually happens and aria-expanded says
+            // whether it has happened yet, which is the whole of the contract.
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            aria-label={t("shelterPickerLabel", { label })}
+            // The browser tests' way in. Every other element in this dialog is
+            // found by a data-* attribute the component promises to keep, and
+            // this one was the exception: the specs located it by implicit role,
+            // which is derived from aria-haspopup above and moved when that
+            // attribute did. One line changed here turned the whole e2e suite
+            // red at once, which reads as a product failure rather than as a
+            // selector that needs updating. The role and the label stay worth
+            // asserting, but as one explicit a11y check that fails loudly on its
+            // own, not as the way seven other tests reach the dialog.
+            data-picker-trigger
+            // The quiet dress belongs to the toolbar, where the species tabs
+            // anchor the row and this control can afford to be only text at
+            // rest. The dock has no such anchor: floating on its own plate next
+            // to the filled Filtri button, a borderless "Vsa zavetišča" read as
+            // a caption, not as something to press. There the button keeps the
+            // outline variant's own frame, shadow and dark ground.
+            className={cn(
+              "justify-between gap-2 font-normal",
+              deepLink === "mobile"
+                ? // A touch tighter than the size-sm defaults: the frame's two
+                  // border pixels were exactly what pushed "Vsa zavetišča" into
+                  // an ellipsis on a 390px dock.
+                  "gap-1.5 px-2"
+                : cn(
+                    QUIET_TRIGGER_CLASS,
+                    "max-w-[14rem] aria-expanded:border-border",
+                  ),
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              {/* A live preview, not a stand-in icon: the same region shapes and
+                  the same density computation the dialog's map draws from
+                  (lib/map-layout.ts), so the trigger already shows what is
+                  behind it before it is ever clicked. aria-hidden because the
+                  label carries the meaning; a screen reader has nothing to gain
+                  from a tiny country shape. */}
+              <MiniMap
+                pins={pins}
+                selected={selected}
+                className="h-4 w-auto shrink-0 text-foreground opacity-60"
+              />
+              <span className="truncate">{label}</span>
+            </span>
+            {/* Not a chevron. Everywhere else in this app a chevron down is a
+                fold opening in place: the health row, a filter section, the
+                off-roster list, a real select. This control opens a full-screen
+                map, which is why the ARIA above had to stop saying combobox,
+                and the glyph was the other half of the same promise. Maximize
+                says what the tap does, and paired with the MiniMap on the left
+                the whole button reads as "the small map, made big". */}
+            <Maximize2 className="size-3.5 opacity-50" aria-hidden />
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent
         // Near the whole viewport, and the map is what fills it. The plate is

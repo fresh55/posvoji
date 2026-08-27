@@ -13,6 +13,7 @@ import {
   markerRadius,
   markerVisualReach,
   MARKER_STROKE_WIDTH,
+  mergeTownDots,
   satelliteDiscs,
   satelliteHitCircles,
   townLabel,
@@ -130,7 +131,10 @@ describe("layoutTowns", () => {
   });
 
   it("gives a town with nothing available the smallest marker", () => {
-    const towns = layoutTowns([pin("a", "Ljubljana", 0), pin("b", "Koper", 60)]);
+    const towns = layoutTowns([
+      pin("a", "Ljubljana", 0),
+      pin("b", "Koper", 60),
+    ]);
     expect(towns.find((town) => town.city === "Ljubljana")!.r).toBe(4.7);
     expect(towns.find((town) => town.city === "Koper")!.r).toBe(7.2);
   });
@@ -326,12 +330,10 @@ describe("layoutTowns", () => {
   });
 
   it("merges one town spelled two ways into a single marker", () => {
-    const towns = layoutTowns(
-      [
-        pin("a", "Škofja Loka", 10),
-        pin("b", "skofja loka", 10, cityAt("Škofja Loka")!),
-      ],
-    );
+    const towns = layoutTowns([
+      pin("a", "Škofja Loka", 10),
+      pin("b", "skofja loka", 10, cityAt("Škofja Loka")!),
+    ]);
     expect(towns).toHaveLength(1);
     expect(towns[0].shelters).toHaveLength(2);
   });
@@ -710,8 +712,12 @@ function parseWedge(d: string) {
 }
 
 // Degrees clockwise from east, same convention CLUSTER_ANGLES uses.
-function angleOf(point: { x: number; y: number }, center: { x: number; y: number }) {
-  const degrees = (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI;
+function angleOf(
+  point: { x: number; y: number },
+  center: { x: number; y: number },
+) {
+  const degrees =
+    (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI;
   return (degrees + 360) % 360;
 }
 
@@ -727,7 +733,9 @@ describe("clusterHitWedges", () => {
     const [solo] = layoutTowns([pin("a", "Ljubljana", 20)]);
     expect(clusterHitWedges(solo)).toEqual([]);
     const [crowded] = layoutTowns(
-      Array.from({ length: 4 }, (_, index) => pin(`s${index}`, "Ljubljana", 20)),
+      Array.from({ length: 4 }, (_, index) =>
+        pin(`s${index}`, "Ljubljana", 20),
+      ),
     );
     expect(clusterHitWedges(crowded)).toEqual([]);
   });
@@ -789,6 +797,85 @@ describe("clusterHitWedges", () => {
         );
       });
     });
+  });
+});
+
+describe("mergeTownDots", () => {
+  const dot = (key: string, x: number, y: number, selected = false) => ({
+    key,
+    x,
+    y,
+    selected,
+  });
+
+  it("leaves towns that already read as two alone", () => {
+    const dots = [dot("a", 100, 100), dot("b", 120, 100)];
+
+    expect(mergeTownDots(dots, 8.4)).toEqual(dots);
+  });
+
+  it("folds a pair the layout could not pull apart into one dot", () => {
+    const merged = mergeTownDots([dot("a", 100, 100), dot("b", 104, 100)], 8.4);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].x).toBe(102);
+    expect(merged[0].y).toBe(100);
+  });
+
+  it("keeps the pick when only one of the merged towns holds it", () => {
+    const merged = mergeTownDots(
+      [dot("a", 100, 100), dot("b", 103, 101, true)],
+      8.4,
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].selected).toBe(true);
+  });
+
+  it("names a merged dot after every town in it, so the key stays stable", () => {
+    const merged = mergeTownDots([dot("a", 100, 100), dot("b", 102, 100)], 8.4);
+
+    expect(merged[0].key).toBe("a+b");
+  });
+
+  it("takes a third town into the same dot when it lands on the pair", () => {
+    const merged = mergeTownDots(
+      [dot("a", 100, 100), dot("b", 104, 100), dot("c", 102, 103)],
+      8.4,
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].key).toBe("a+b+c");
+  });
+
+  it("separates a distant third town from a merged pair", () => {
+    const merged = mergeTownDots(
+      [dot("a", 100, 100), dot("b", 104, 100), dot("c", 200, 50, true)],
+      8.4,
+    );
+
+    expect(merged.map((one) => one.key)).toEqual(["a+b", "c"]);
+    expect(merged[1].selected).toBe(true);
+  });
+
+  it("merges nothing on the live roster, where collision layout has already separated the towns", () => {
+    // The plate's dots are far smaller than the markers layoutTowns holds
+    // apart, so the guard must never fire on a roster the layout handled. The
+    // tightest pair in the country, Celje and Dramlje, lays out 14.5 units
+    // apart against a threshold of 8.4.
+    const towns = layoutTowns(REAL_PINS);
+    const dots = towns.map((town) => ({
+      key: town.key,
+      x: town.x,
+      y: town.y,
+      selected: false,
+    }));
+
+    expect(mergeTownDots(dots, 8.4)).toHaveLength(towns.length);
+  });
+
+  it("has nothing to say about an empty roster", () => {
+    expect(mergeTownDots([], 8.4)).toEqual([]);
   });
 });
 

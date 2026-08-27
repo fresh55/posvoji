@@ -7,6 +7,7 @@ import {
   m,
   useReducedMotion,
 } from "motion/react";
+import { useState } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import {
   FilterChips,
@@ -26,7 +27,7 @@ import type { FilterActionContract } from "@/components/filters/filter-contract"
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
-import { panelFilterCount } from "@/lib/filters";
+import { activeFilterCount } from "@/lib/filters";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
@@ -43,6 +44,7 @@ import type { AnimalSort } from "@/lib/sort";
 // discovery actions share a bottom dock that spans the viewport.
 export function AnimalFilters({
   isEmpty,
+  hasSidebar = false,
   filters,
   speciesTally,
   speciesRoster,
@@ -71,6 +73,10 @@ export function AnimalFilters({
   onSortChange,
 }: {
   isEmpty: boolean;
+  /** Whether the page draws the filter panel beside the grid at lg. When it
+   *  does, the panel's own Kje row is where shelter is asked and this bar
+   *  keeps no picker trigger of its own (animal-grid.tsx decides). */
+  hasSidebar?: boolean;
   filters: Filters;
   /** What each species tab draws: every filter applied except species. */
   speciesTally: Record<SpeciesFilter, number>;
@@ -113,9 +119,18 @@ export function AnimalFilters({
     (care?.options.length ?? 0) > 0;
   // Values, not sections. The chips row counts the same things and sits on the
   // same screen; a badge reading 1 over a row of two pills was two answers to
-  // one question. Shelter is excluded: it lives in the location picker, so a
-  // badge counting it would promise a control this sheet does not hold.
-  const panelCount = panelFilterCount(filters);
+  // one question.
+  const activeCount = activeFilterCount(filters);
+  // The picker's open state, held here because the sheet cannot hold it. Its
+  // Kje row has to close the drawer before the dialog may open, and the two
+  // are siblings under this component: the sheet asks, and the dock's picker
+  // below is the instance that answers.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // The picked shelters, as the pills the sheet draws under its own scope row.
+  // Read off the chips the grid already built rather than assembled a second
+  // time: the labels there are already stripped by shelterChipLabel and the
+  // removals already go through the same toggle.
+  const shelterChips = chips.filter((chip) => chip.facet === "shelter");
 
   return (
     <>
@@ -162,7 +177,13 @@ export function AnimalFilters({
                 <ResultCount count={resultCount} locale={locale} />
               </span>
             )}
-            {shelters && (
+            {/* Only where no panel is drawn beside the grid. With one, the
+                Kje row at the top of it asks the same question with more
+                room and a reset of its own, and two triggers for one dialog
+                on one screen is one too many. Both branches keep exactly one
+                desktop instance mounted, which is what the deep-link
+                arbitration in location-picker.tsx counts on. */}
+            {shelters && !hasSidebar && (
               <div>
                 <LocationPicker
                   options={shelters}
@@ -331,7 +352,18 @@ export function AnimalFilters({
               goodWith={goodWith}
               home={home}
               care={care}
-              panelCount={panelCount}
+              activeCount={activeCount}
+              scope={
+                shelters && {
+                  options: shelters,
+                  counts: shelterTally,
+                  offSite: offSiteShelters,
+                  selected: filters.shelter,
+                  chips: shelterChips,
+                  onOpen: () => setPickerOpen(true),
+                  onReset: () => onToggleMany("shelter", filters.shelter),
+                }
+              }
               resultCount={resultCount}
               onToggle={onToggle}
               onToggleMany={onToggleMany}
@@ -353,6 +385,8 @@ export function AnimalFilters({
                 offSite={offSiteShelters}
                 summaries={shelterSummaries}
                 deepLink="mobile"
+                open={pickerOpen}
+                onOpenChange={setPickerOpen}
               />
             </div>
           )}

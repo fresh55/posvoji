@@ -409,6 +409,67 @@ export function townLabel(town: Town): string {
   return town.shelters.length > 1 ? town.city : town.shelters[0].label;
 }
 
+/** A town reduced to what a preview plate draws of it: a point, and whether
+ *  anything in it is picked. */
+export type TownDot = {
+  key: string;
+  x: number;
+  y: number;
+  selected: boolean;
+};
+
+/** Dots too close to read as two, folded into one.
+ *
+ *  Collision layout holds markers apart by their whole reach, which is a
+ *  radius five times anything a preview dot draws, so on the live roster
+ *  nothing arrives here overlapping. What does arrive overlapping is the pair
+ *  the layout could not separate: two towns whose drift budget ran out, or one
+ *  pinned against the frame by the edge clamp. Left alone they paint one
+ *  smudge that reads as a single darker dot, so this makes that one dot on
+ *  purpose rather than by accident.
+ *
+ *  Greedy, in the order the towns arrive, which layoutTowns sorts by town key,
+ *  so one roster always merges the same way. A merged dot sits at the mean of
+ *  its members and is picked when any member is: a cluster holding a chosen
+ *  shelter has to keep saying so.
+ */
+export function mergeTownDots(dots: TownDot[], minDistance: number): TownDot[] {
+  const clusters: {
+    keys: string[];
+    sumX: number;
+    sumY: number;
+    selected: boolean;
+  }[] = [];
+  for (const dot of dots) {
+    const near = clusters.find((cluster) => {
+      const count = cluster.keys.length;
+      return (
+        Math.hypot(cluster.sumX / count - dot.x, cluster.sumY / count - dot.y) <
+        minDistance
+      );
+    });
+    if (near) {
+      near.keys.push(dot.key);
+      near.sumX += dot.x;
+      near.sumY += dot.y;
+      near.selected = near.selected || dot.selected;
+      continue;
+    }
+    clusters.push({
+      keys: [dot.key],
+      sumX: dot.x,
+      sumY: dot.y,
+      selected: dot.selected,
+    });
+  }
+  return clusters.map((cluster) => ({
+    key: cluster.keys.join("+"),
+    x: cluster.sumX / cluster.keys.length,
+    y: cluster.sumY / cluster.keys.length,
+    selected: cluster.selected,
+  }));
+}
+
 // Above this a cluster stops drawing one disc per shelter and draws the number
 // instead, because four overlapping coins is a smudge and a lie about which
 // shelter is which.
@@ -787,7 +848,11 @@ export function dominantShelterIndex(shelters: ShelterPin[]): number {
 function satelliteRadius(count: number, dominant: number): number {
   const share =
     dominant > 0
-      ? clamp(Math.sqrt((Math.max(count, 0) * SATELLITE_DOMINANCE) / dominant), 0, 1)
+      ? clamp(
+          Math.sqrt((Math.max(count, 0) * SATELLITE_DOMINANCE) / dominant),
+          0,
+          1,
+        )
       : 0;
   return (
     SATELLITE_RADIUS_MIN + (SATELLITE_RADIUS_MAX - SATELLITE_RADIUS_MIN) * share

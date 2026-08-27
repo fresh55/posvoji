@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
+import { cityAt } from "./geo";
 import {
   ANIMAL_SORTS,
   DEFAULT_ANIMAL_SORT,
+  effectiveSort,
   parseSort,
   serializeSort,
   sortAnimals,
@@ -127,6 +129,100 @@ describe("sortAnimals", () => {
   });
 });
 
+describe("sortAnimals by distance", () => {
+  // A shelter's town is the whole of its position, so an animal is placed by
+  // overwriting the helper's default Celje.
+  function inTown(id: string, city: string): Animal {
+    const base = animal(id);
+    return { ...base, shelter: { ...base.shelter, city } };
+  }
+
+  const ljubljana = cityAt("Ljubljana")!;
+
+  it("orders animals by how far their shelter's town is from the origin", () => {
+    const spread = [
+      inTown("maribor", "Maribor"),
+      inTown("vrhnika", "Vrhnika"),
+      inTown("celje", "Celje"),
+    ];
+
+    expect(
+      sortAnimals(spread, "nearest", "sl", undefined, ljubljana).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(["vrhnika", "celje", "maribor"]);
+  });
+
+  it("puts animals whose town cannot be placed after every one that can", () => {
+    const spread = [
+      inTown("nowhere", "Nekje na Gorenjskem"),
+      inTown("maribor", "Maribor"),
+      inTown("vrhnika", "Vrhnika"),
+    ];
+
+    expect(
+      sortAnimals(spread, "nearest", "sl", undefined, ljubljana).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(["vrhnika", "maribor", "nowhere"]);
+  });
+
+  it("breaks a tie in one town by id, like every other order here", () => {
+    const tied = [
+      inTown("b", "Celje"),
+      inTown("a", "Celje"),
+      inTown("z", "Vrhnika"),
+    ];
+
+    expect(
+      sortAnimals(tied, "nearest", "sl", undefined, ljubljana).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(["z", "a", "b"]);
+  });
+
+  it("leaves unplaceable animals in id order too", () => {
+    const nowhere = [
+      inTown("b", "Nekje"),
+      inTown("a", "Drugje"),
+    ];
+
+    expect(
+      sortAnimals(nowhere, "nearest", "sl", undefined, ljubljana).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(["a", "b"]);
+  });
+
+  it("falls back to the default order when nobody granted an origin", () => {
+    const spread = [
+      inTown("maribor", "Maribor"),
+      inTown("vrhnika", "Vrhnika"),
+    ];
+    const dated = [
+      { ...spread[0]!, intakeDate: "2026-08-01" },
+      { ...spread[1]!, intakeDate: "2021-03-12" },
+    ];
+
+    expect(sortAnimals(dated, "nearest").map(({ id }) => id)).toEqual(
+      sortAnimals(dated, DEFAULT_ANIMAL_SORT).map(({ id }) => id),
+    );
+    expect(effectiveSort("nearest", undefined)).toBe(DEFAULT_ANIMAL_SORT);
+    expect(effectiveSort("nearest", ljubljana)).toBe("nearest");
+    // Only nearest is conditional; nothing else loses its order for want of a
+    // point to measure from.
+    expect(effectiveSort("name", undefined)).toBe("name");
+  });
+
+  it("leaves the input untouched, like every other order here", () => {
+    const spread = [inTown("maribor", "Maribor"), inTown("vrhnika", "Vrhnika")];
+
+    sortAnimals(spread, "nearest", "sl", undefined, ljubljana);
+
+    expect(spread.map(({ id }) => id)).toEqual(["maribor", "vrhnika"]);
+  });
+});
+
 describe("sort URL codec", () => {
   it("serializes the default sort to nothing, like empty filters", () => {
     expect(serializeSort(DEFAULT_ANIMAL_SORT)).toBe("");
@@ -154,6 +250,7 @@ describe("sort URL codec", () => {
       youngest: "najmlajsi",
       oldest: "najstarejsi",
       name: "ime",
+      nearest: "najblizje",
     };
     for (const [sort, slug] of Object.entries(slugs) as [
       AnimalSort,

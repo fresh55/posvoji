@@ -112,6 +112,7 @@ const sl = {
   resetSizeFilters: "Ponastavi filter velikosti",
   resetEnergyFilters: "Ponastavi filter energije",
   resetHealthFilters: "Ponastavi zdravstvene filtre",
+  resetShelterFilters: "Ponastavi izbor zavetišč",
   ageFilterHint: "Izberi eno ali več starosti.",
   energyFilterHint:
     "Po presoji zavetišča. Živali brez podatka ta filter skrije.",
@@ -143,9 +144,27 @@ const sl = {
   sortYoungest: "Najmlajši najprej",
   sortOldest: "Najstarejši najprej",
   sortName: "Ime A–Ž",
+  sortNearest: "Najbližje",
+  // The Kje row's hint once an origin exists. The colon shape rather than
+  // "Iz {place}": the slot takes a place name straight out of the postal
+  // gazetteer, which carries nominatives only, and "Iz Ljubljana" is not a
+  // sentence. Same sidestep sortedByDistanceFrom makes below.
+  originFrom: "Izhodišče: {place}",
   show: "Prikaži",
   removeFilter: "Odstrani filter {label}",
   health: "Zdravje",
+  // The scope row's heading, in the panels and in the sheet. One word, because
+  // the row under it already names the answer ("Vsa Slovenija", "3 od 17
+  // zavetišč") and the map behind it is what the answer is chosen on.
+  where: "Kje",
+  // Under the scope sentence while nothing is picked, where "Vsa zavetišča" on
+  // its own says what is in scope but not that the row answers to a press.
+  // Gone the moment a shelter is picked: by then the row has been used once and
+  // the sentence above carries the state.
+  whereMapInvite: "Izberi zavetišča na zemljevidu",
+  // The word beside the pin at the end of the scope row, naming what the press
+  // opens.
+  mapCaption: "Zemljevid",
   close: "Zapri",
   locationOutsideMap:
     "Tvoja lokacija je zunaj zemljevida. Seznam je vseeno razvrščen po bližini.",
@@ -419,6 +438,7 @@ const en: Messages = {
   resetSizeFilters: "Reset size filters",
   resetEnergyFilters: "Reset energy filters",
   resetHealthFilters: "Reset health filters",
+  resetShelterFilters: "Reset the shelter selection",
   ageFilterHint: "Choose one or more ages.",
   energyFilterHint:
     "As judged by the shelter. Animals with no answer are hidden by this filter.",
@@ -444,9 +464,14 @@ const en: Messages = {
   sortYoungest: "Youngest first",
   sortOldest: "Oldest first",
   sortName: "Name A–Z",
+  sortNearest: "Nearest",
+  originFrom: "From {place}",
   show: "Show",
   removeFilter: "Remove filter {label}",
   health: "Health",
+  where: "Where",
+  whereMapInvite: "Pick shelters on the map",
+  mapCaption: "Map",
   close: "Close",
   locationOutsideMap:
     "Your location is outside the map. The list is still sorted by distance.",

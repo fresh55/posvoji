@@ -1,5 +1,6 @@
 import type { Animal } from "@posvoji/schema";
 import { ageInMonths } from "./filters";
+import { cityAt, distanceKm, type LatLon } from "./geo";
 import type { Locale } from "./i18n";
 
 export const ANIMAL_SORTS = [
@@ -8,6 +9,10 @@ export const ANIMAL_SORTS = [
   "youngest",
   "oldest",
   "name",
+  // Last, because it is the one order that is not always on offer: it needs a
+  // point to measure from, and only the location picker's nearby control can
+  // grant one. At the end of the list its arrival moves nothing above it.
+  "nearest",
 ] as const;
 
 export type AnimalSort = (typeof ANIMAL_SORTS)[number];
@@ -37,6 +42,7 @@ const SORT_SLUGS: Record<AnimalSort, string> = {
   youngest: "najmlajsi",
   oldest: "najstarejsi",
   name: "ime",
+  nearest: "najblizje",
 };
 
 /** "" for the default, so a plain reset keeps the URL clean like empty filters do. */
@@ -54,6 +60,24 @@ export function parseSort(search: string): AnimalSort {
     ([, candidateSlug]) => candidateSlug === slug,
   );
   return entry?.[0] ?? DEFAULT_ANIMAL_SORT;
+}
+
+/** The order a list can actually be put in. Nearest needs a point to measure
+ *  from, so a shared link carrying ?razvrsti=najblizje to somebody who has
+ *  granted nothing falls back to the default rather than to an order nothing
+ *  can compute.
+ *
+ *  The URL is left exactly as it arrived, which is the same tolerance parseSort
+ *  gives an unknown slug and the same thing serializeSort does with a sort
+ *  nobody re-picked: the visitor can still grant an origin on this page, and
+ *  when they do the link they followed starts working. Rewriting it would throw
+ *  the shared address away on their behalf. */
+export function effectiveSort(
+  sort: AnimalSort,
+  origin: LatLon | undefined,
+): AnimalSort {
+  if (sort === "nearest" && !origin) return DEFAULT_ANIMAL_SORT;
+  return sort;
 }
 
 // Unknown values always follow known ones. In particular, firstSeenAt is not a
@@ -94,20 +118,48 @@ function statusWeight(animal: Animal): 0 | 1 {
   return animal.status === "available" ? 0 : 1;
 }
 
+// One distance per town, not one per comparison. Sorting five hundred animals
+// asks the comparator a few thousand questions and the towns behind them number
+// a few dozen, so the haversine runs once for each town and the comparator does
+// two map reads. A town the gazetteer does not carry is remembered as undefined
+// rather than looked up again, and compareOptionalNumber then puts it after
+// everything that could be placed.
+function kmByCity(
+  animals: Animal[],
+  origin: LatLon,
+): Map<string, number | undefined> {
+  const km = new Map<string, number | undefined>();
+  for (const { shelter } of animals) {
+    if (km.has(shelter.city)) continue;
+    const at = cityAt(shelter.city);
+    km.set(shelter.city, at ? distanceKm(origin, at) : undefined);
+  }
+  return km;
+}
+
 export function sortAnimals(
   animals: Animal[],
   sort: AnimalSort = DEFAULT_ANIMAL_SORT,
   locale: Locale = "sl",
   now: Date = new Date(),
+  /** Where "nearest" measures from. Client-only, because only the visitor's
+   *  browser or their own typing can supply it, so every server render simply
+   *  leaves it out and effectiveSort below falls back for them. */
+  origin?: LatLon,
 ): Animal[] {
   const collator = new Intl.Collator(locale, { sensitivity: "base" });
+  // Read once, so the order the comparator switches on and the order the
+  // distances were prepared for cannot disagree.
+  const order = effectiveSort(sort, origin);
+  const km =
+    order === "nearest" && origin ? kmByCity(animals, origin) : undefined;
 
   return [...animals].sort((left, right) => {
     const statusDiff = statusWeight(left) - statusWeight(right);
     if (statusDiff !== 0) return statusDiff;
 
     let compared: number;
-    switch (sort) {
+    switch (order) {
       case "longest-in-shelter":
         // ISO dates sort chronologically as strings; oldest means longest.
         compared = compareOptional(left.intakeDate, right.intakeDate, 1);
@@ -131,6 +183,18 @@ export function sortAnimals(
         break;
       case "name":
         compared = compareOptional(left.name, right.name, 1, collator);
+        break;
+      case "nearest":
+        // Distance to the shelter's town, which is as close as this data gets;
+        // see formatKm in lib/geo.ts on why it is never directions. Two animals
+        // at the same shelter, or at two shelters in one town, tie here and
+        // fall through to the id below, the same tie-break every other order in
+        // this file ends on.
+        compared = compareOptionalNumber(
+          km?.get(left.shelter.city),
+          km?.get(right.shelter.city),
+          1,
+        );
         break;
     }
 

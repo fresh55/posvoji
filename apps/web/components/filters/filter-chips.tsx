@@ -47,6 +47,41 @@ const COLLAPSE_AT = 3;
  *  Nine facets at two values each would otherwise be eighteen pills. */
 const MAX_VISIBLE = 8;
 
+/** Chips past which the sheet's Kje section shows a "+N" instead of the rest.
+ *  The same bound the row above keeps, at the size a section can afford: three
+ *  shelter names wrap to two lines on a phone and a fourth would push the
+ *  first filter section under the fold. */
+const SCOPE_VISIBLE = 3;
+
+// Shared by all three shapes in the row, and by the removable chip the filter
+// sheet's Kje section draws under its scope row.
+//
+// rounded-ui and not rounded-full. These sit in the same bar as the species
+// tabs and do a closely related job -- pick a species, drop a filter -- and
+// they were two different pill shapes eight pixels apart. The rule the rest
+// of the app already half-followed is now the whole rule: rounded-ui is a
+// thing you press, rounded-full is a count (the Filtri badge, the shelter
+// row's tally, shelter-rows.test.tsx asserts it).
+//
+// Below lg the pill grows to hold a 44px target on its own rather than
+// laying an invisible overlay over a 28px one: an overlay would reach past
+// the pill's edge into the gap and steal the neighbour's first few pixels.
+// lg and not md, matching the species tabs and the sort beside it; at md the
+// same bar mixed 44px targets with 28px ones for reasons nobody could see.
+//
+// border-ring with the ring, because this shape has a border to move. The
+// hand-rolled ring-2 was the odd one out against every primitive's ring-3.
+// focus-ring is the site's one focus indicator (globals.css). The
+// border-ring/ring-3 pair it replaces measured 1.54:1 and 2.59:1 in light
+// mode, both under the 3:1 WCAG 1.4.11 asks of a focus indicator.
+const CHIP_PILL =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-ring lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
+
+// The look a pill wears when pressing it takes its filter off, which is every
+// pill but the "+N".
+const CHIP_REMOVABLE =
+  "group border-border bg-background text-foreground hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted";
+
 type Run = { facet: FilterFacet; chips: Chip[] };
 
 type Item =
@@ -281,26 +316,7 @@ export function FilterChips({
     }
   };
 
-  // Shared by all three shapes in the row.
-  //
-  // rounded-ui and not rounded-full. These sit in the same bar as the species
-  // tabs and do a closely related job -- pick a species, drop a filter -- and
-  // they were two different pill shapes eight pixels apart. The rule the rest
-  // of the app already half-followed is now the whole rule: rounded-ui is a
-  // thing you press, rounded-full is a count (the Filtri badge, the shelter
-  // row's tally, shelter-rows.test.tsx asserts it).
-  //
-  // Below lg the pill grows to hold a 44px target on its own rather than
-  // laying an invisible overlay over a 28px one: an overlay would reach past
-  // the pill's edge into the gap and steal the neighbour's first few pixels.
-  // lg and not md, matching the species tabs and the sort beside it; at md the
-  // same bar mixed 44px targets with 28px ones for reasons nobody could see.
-  //
-  // focus-ring is the site's one focus indicator, at 19.8:1 (globals.css):
-  // the border-ring/ring-3 pair it replaces measured 1.54:1 and 2.59:1 in
-  // light mode, both under the 3:1 WCAG 1.4.11 floor.
-  const pill =
-    "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-ring lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
+  const pill = CHIP_PILL;
 
   const row = (
     <>
@@ -529,6 +545,84 @@ export function UndoOffer({
   );
 }
 
+/** One removable pill, outside the toolbar row. The filter sheet's Kje section
+ *  draws the picked shelters with it, which is the only way a phone has of
+ *  taking one off without reopening the map.
+ *
+ *  It carries the shape and the glyph and nothing else. The row's own pills
+ *  are stops on a roving tabindex, they can be marked as the one blocking the
+ *  results and they answer a pointer with what dropping them would give back;
+ *  none of that applies to three chips sitting under a section header. */
+export function RemovableChip({
+  chip,
+  className,
+}: {
+  chip: Chip;
+  className?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={chip.onRemove}
+      aria-label={t("removeFilter", { label: chip.label })}
+      className={cn(CHIP_PILL, CHIP_REMOVABLE, className)}
+    >
+      <ChipGlyph facet={chip.facet} value={chip.value} />
+      {/* A shelter's full name is forty characters, so the pill truncates and
+          the title and the aria-label keep the whole of it reachable. */}
+      <span className="max-w-[11rem] truncate" title={chip.label}>
+        {chip.label}
+      </span>
+      <X
+        className="size-3 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+        strokeWidth={2}
+        aria-hidden
+      />
+    </button>
+  );
+}
+
+/** The pills under the sheet's scope row: what is picked, wrapping, with the
+ *  tail behind a "+N" the way the toolbar row caps itself. */
+export function RemovableChips({
+  chips,
+  className,
+}: {
+  chips: Chip[];
+  className?: string;
+}) {
+  const { t } = useI18n();
+  const [showAll, setShowAll] = useState(false);
+  if (chips.length === 0) return null;
+
+  const hidden = showAll ? 0 : Math.max(0, chips.length - SCOPE_VISIBLE);
+  const shown = hidden > 0 ? chips.slice(0, SCOPE_VISIBLE) : chips;
+
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {shown.map((chip) => (
+        <RemovableChip key={chip.key} chip={chip} />
+      ))}
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          aria-label={t("showMoreFilters", { count: hidden })}
+          // Dashed, because nothing comes off when it is pressed. Same mark
+          // the toolbar row's own "+N" wears.
+          className={cn(
+            CHIP_PILL,
+            "border-dashed border-border text-muted-foreground tabular-nums hover:bg-muted hover:text-foreground",
+          )}
+        >
+          +{hidden}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** The pill's one mark. A fixed box whatever it holds, so every label in the
  *  row starts on the same line even where the glyph inside changes size to
  *  say something (the three paws of Velikost).
@@ -593,7 +687,7 @@ function ChipButton({
       aria-keyshortcuts="Delete"
       className={cn(
         className,
-        "group border-border bg-background text-foreground hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted",
+        CHIP_REMOVABLE,
         blocked &&
           "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
       )}

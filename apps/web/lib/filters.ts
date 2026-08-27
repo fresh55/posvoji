@@ -1426,6 +1426,10 @@ export function parseFilters(search: string): Filters {
   });
 }
 
+/** Every value the filter state holds, zavetišče included. The panels used to
+ *  count a narrower set: shelter had no section in either of them, so a badge
+ *  counting it promised a control the sheet did not hold. Both panels open
+ *  with a Kje row now, so there is one count again and it is this one. */
 export function activeFilterCount(filters: Filters): number {
   return (
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
@@ -1434,17 +1438,6 @@ export function activeFilterCount(filters: Filters): number {
     filters.home.length +
     filters.care.length
   );
-}
-
-/** The same count as far as the filter panel is concerned, which is every
- *  section it actually holds. Zavetišče is not one of them: the panel is built
- *  from GROUPS minus shelter (animal-grid.tsx), because where you adopt from is
- *  a map and it lives in the location picker, whose own trigger already says
- *  how many shelters are on. Counted here as well, the Filtri badge promised
- *  sections the sheet does not have, and on a tab with no sheet at all it was a
- *  number over a control nobody can open. */
-export function panelFilterCount(filters: Filters): number {
-  return activeFilterCount(filters) - filters.shelter.length;
 }
 
 /** Whether toggling these values would take them off rather than add them.

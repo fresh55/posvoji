@@ -34,7 +34,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { permittedImageUrls } from "@/lib/animal-images";
+import { permittedPhotos } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { speciesLabel } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
@@ -209,7 +209,7 @@ export function AnimalDialog({
   const [washSource, setWashSource] = useState<string | undefined>(undefined);
   // The card shows an animal's first photo, and so does the fan on the way in,
   // so that is the one the bloom carries across.
-  const firstPhoto = lastAnimal && permittedImageUrls(lastAnimal.images)[0];
+  const firstPhoto = lastAnimal && permittedPhotos(lastAnimal.images)[0];
 
   if (!lastAnimal) return null;
 
@@ -303,7 +303,7 @@ export function AnimalDialog({
         <DialogOverlay />
         {/* Outside the content on purpose: the content carries the zoom, and a
             copy aimed at viewport coordinates cannot sit inside a transform. */}
-        <PhotoBloom from={origin?.photo} source={firstPhoto} />
+        <PhotoBloom from={origin?.photo} photo={firstPhoto} />
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"

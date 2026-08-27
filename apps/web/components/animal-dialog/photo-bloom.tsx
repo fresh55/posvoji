@@ -1,9 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import type { DialogPhotoRect } from "@/components/animal-dialog/animal-dialog";
+import { AnimalPhoto } from "@/components/animal-photo";
+import type { PermittedPhoto } from "@/lib/animal-images";
+import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 
 // The travel is a tween rather than a spring: it has to hand over to the fan's
 // own entrance, and a fixed length is what lets the two be lined up.
@@ -40,11 +42,11 @@ function slotRect() {
  */
 export function PhotoBloom({
   from,
-  source,
+  photo,
 }: {
   /** Where the card's photo was standing, or nothing for a deep link. */
   from: DialogPhotoRect | undefined;
-  source: string | undefined;
+  photo: PermittedPhoto | undefined;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const [to, setTo] = useState<DialogPhotoRect | undefined>(undefined);
@@ -83,7 +85,7 @@ export function PhotoBloom({
     };
   }, [from, shouldReduceMotion]);
 
-  if (!from || !to || !source || shouldReduceMotion || landed) return null;
+  if (!from || !to || !photo || shouldReduceMotion || landed) return null;
 
   return (
     // Its own features, because this sits beside the dialog's content rather
@@ -114,11 +116,17 @@ export function PhotoBloom({
         transition={{ ...BLOOM_TRAVEL, opacity: BLOOM_FADE }}
         onAnimationComplete={() => setLanded(true)}
       >
-        <Image
-          src={source}
+        {/* The card's sizes, not this copy's own box. This is the card's
+            photograph being carried, and asking for the rung the card already
+            has is what keeps the trip a cache hit instead of a second
+            download starting under a 360ms animation. */}
+        <AnimalPhoto
+          photo={photo}
           alt=""
-          fill
-          sizes="24rem"
+          sizes={CARD_PHOTO_SIZES}
+          // Already on screen and already decoded, since the card it left is
+          // still behind the dialog.
+          eager
           className="object-cover"
         />
       </m.div>

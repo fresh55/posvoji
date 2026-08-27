@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useRef, useState, type PointerEvent } from "react";
 import { ChevronLeft, ChevronRight, XIcon } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { LightboxWash } from "@/components/animal-dialog/photo-wash";
+import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 
 const LIGHTBOX_BUTTON_CLASS =
@@ -81,7 +82,7 @@ export function PhotoLightbox({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  images: string[];
+  images: PermittedPhoto[];
   index: number;
   onIndexChange: (index: number) => void;
   title: string;
@@ -211,7 +212,7 @@ export function PhotoLightbox({
           {/* The same echo the stage has, on the scrim rather than the page.
               It stays under the photo and under the controls, so the only
               thing it changes is the empty ground the photo is matted on. */}
-          <LightboxWash source={image} />
+          <LightboxWash source={image.src} />
 
           {/* Only the way in travels. On the way out Radix takes the content
               away with its own fade, which is what it already did, and is the
@@ -244,11 +245,17 @@ export function PhotoLightbox({
                     : undefined,
                 }}
               >
-                <Image
-                  src={image}
+                <AnimalPhoto
+                  photo={image}
                   alt=""
-                  fill
+                  // The full screen, which is what puts the top of the ladder
+                  // on every phone and most desktops. That is the right answer
+                  // here: this is the view somebody opened to look closely.
                   sizes="100vw"
+                  // object-contain leaves ground either side of the photo, and
+                  // a cover-scaled placeholder would paint into it. The wash
+                  // behind is what fills that ground.
+                  blur={false}
                   className="object-contain"
                 />
               </div>

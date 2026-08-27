@@ -58,10 +58,19 @@ function animal(id: string, name: string, rest: Partial<Animal> = {}): Animal {
   };
 }
 
+// The shape ingest actually delivers: a cached WebP copy with a width ladder
+// under it, an inline placeholder, and an AVIF sibling for the first photo
+// only. Anything less would leave these tests exercising the fallback path
+// while the site runs the other one.
 function photos(id: string, count: number): Animal["images"] {
   return Array.from({ length: count }, (_, index) => ({
     sourceUrl: `https://example.test/${id}-${index + 1}.jpg`,
-    cachedUrl: `/media/${id}-${index + 1}.jpg`,
+    cachedUrl: `/media/animals/${id}-${index + 1}.webp`,
+    width: 640,
+    height: 480,
+    widths: [320, 480, 640],
+    ...(index === 0 ? { avif: true } : {}),
+    blurDataURL: "data:image/webp;base64,UklGRg==",
     rights: "cache-permitted" as const,
   }));
 }
@@ -863,6 +872,47 @@ describe("animal dialog", () => {
       configurable: true,
       value: phone,
     });
+  });
+
+  it("offers the fan's photos as a ladder, and never the hero avif", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    const photo = slot(dialog, "photo-spread").querySelector("img");
+    expect(photo?.getAttribute("srcset")).toBe(
+      "/media/animals/rex-1-320.webp 320w, " +
+        "/media/animals/rex-1-480.webp 480w, " +
+        "/media/animals/rex-1.webp 640w",
+    );
+    expect(photo?.getAttribute("sizes")).toBe("(max-width: 639px) 80vw, 24rem");
+    // The fan draws five photos, four of them scaled well under half size, and
+    // the AVIF sibling only exists at the cached copy's full width. A <source>
+    // here would hand every one of them the largest file there is.
+    expect(slot(dialog, "photo-spread").querySelector("picture")).toBeNull();
+  });
+
+  it("gives the lightbox the whole ladder and the top of it as src", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.click(photoButton(dialog, "photo-spread", 1));
+    await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(2));
+
+    const frame = slot(document.body, "photo-lightbox-frame");
+    const photo = frame.querySelector("img");
+    // 100vw, so this is the one surface that reaches the top rung on almost
+    // every screen. That is the point of it.
+    expect(photo?.getAttribute("sizes")).toBe("100vw");
+    expect(photo?.getAttribute("src")).toBe("/media/animals/rex-1.webp");
+    expect(photo?.getAttribute("srcset")).toContain(
+      "/media/animals/rex-1.webp 640w",
+    );
+    // object-contain leaves ground either side, which a cover-scaled
+    // placeholder would paint into. The wash fills it instead.
+    expect(frame.querySelector("div[aria-hidden][style*='background-image']"))
+      .toBeNull();
   });
 
   it("opens the photo full screen and gives Escape back to the lightbox", async () => {

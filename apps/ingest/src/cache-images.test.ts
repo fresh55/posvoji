@@ -131,6 +131,36 @@ describe("cacheableUrls", () => {
   });
 });
 
+// A shelter photo can be a malformed-but-renderable JPEG: browsers decode it
+// fine, but libvips' default failOn sensitivity refuses it. This reproduces
+// that exact failure ("VipsJpeg: Invalid SOS parameters for sequential
+// JPEG") by corrupting one byte of a tiny generated JPEG's SOS header, so no
+// binary fixture needs to be committed. Ss (the spectral selection start)
+// must be 0 for a baseline sequential scan; setting it to 1 is what libvips'
+// strict decode rejects and its relaxed one lets through.
+async function damagedSosJpegFixture(): Promise<Buffer> {
+  const good = await sharp({
+    create: { width: 64, height: 64, channels: 3, background: { r: 200, g: 100, b: 50 } },
+  })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  let sosIndex = -1;
+  for (let i = 0; i < good.length - 1; i++) {
+    if (good[i] === 0xff && good[i + 1] === 0xda) {
+      sosIndex = i;
+      break;
+    }
+  }
+  if (sosIndex === -1) throw new Error("fixture jpeg has no SOS marker");
+
+  const componentCount = good[sosIndex + 4]!;
+  const ssOffset = sosIndex + 5 + componentCount * 2;
+  const corrupted = Buffer.from(good);
+  corrupted[ssOffset] = 0x01;
+  return corrupted;
+}
+
 describe("processImage", () => {
   it("resizes to web size, converts to webp and names by content", async () => {
     const processed = await processImage(await pngFixture());
@@ -147,6 +177,28 @@ describe("processImage", () => {
   it("does not enlarge small photos", async () => {
     const processed = await processImage(await pngFixture(300, 200));
     expect(processed.width).toBe(300);
+  });
+
+  it("retries tolerantly when the strict decode rejects a malformed but renderable jpeg", async () => {
+    const damaged = await damagedSosJpegFixture();
+    const tolerantErrors: unknown[] = [];
+
+    const processed = await processImage(damaged, (error) => {
+      tolerantErrors.push(error);
+    });
+
+    expect(tolerantErrors).toHaveLength(1);
+    expect(String(tolerantErrors[0])).toMatch(/Invalid SOS parameters/);
+    const meta = await sharp(processed.data).metadata();
+    expect(meta.format).toBe("webp");
+  });
+
+  it("still rejects a source neither decode can read", async () => {
+    const tolerantErrors: unknown[] = [];
+    await expect(
+      processImage(Buffer.from("not an image"), (error) => tolerantErrors.push(error)),
+    ).rejects.toThrow();
+    expect(tolerantErrors).toHaveLength(0);
   });
 });
 

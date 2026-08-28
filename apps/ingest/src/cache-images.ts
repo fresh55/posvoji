@@ -205,17 +205,46 @@ export function hotlinkedCachePermittedImages(
   return found;
 }
 
-export async function processImage(source: Buffer): Promise<{
+type SharpPipeline = ReturnType<typeof sharp>;
+
+function encodeMaster(pipeline: SharpPipeline) {
+  return pipeline
+    .rotate() // apply EXIF orientation before it is stripped
+    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
+    .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
+    .toBuffer({ resolveWithObject: true });
+}
+
+// A handful of shelter photos are malformed but still browser-renderable
+// JPEGs (e.g. bad SOS parameters from whatever exported them). libvips'
+// default failOn sensitivity rejects those outright, so the strict pass
+// stays the default and this is a one-shot retry with it relaxed, on the
+// same rotate/resize/webp pipeline. onTolerantDecode is only invoked when
+// the retry is what saved the image, so a caller can log or count it
+// without processImage knowing about logging.
+export async function processImage(
+  source: Buffer,
+  onTolerantDecode?: (error: unknown) => void,
+): Promise<{
   file: string;
   data: Buffer;
   width: number;
   height: number;
 }> {
-  const { data, info } = await sharp(source)
-    .rotate() // apply EXIF orientation before it is stripped
-    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-    .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
-    .toBuffer({ resolveWithObject: true });
+  let result: { data: Buffer; info: sharp.OutputInfo };
+  try {
+    result = await encodeMaster(sharp(source));
+  } catch (strictError) {
+    try {
+      result = await encodeMaster(sharp(source, { failOn: "none" }));
+    } catch {
+      // The tolerant retry did not help either: surface the original error,
+      // which is what today's "not a processable image" warning expects.
+      throw strictError;
+    }
+    onTolerantDecode?.(strictError);
+  }
+  const { data, info } = result;
   const hash = createHash("sha256").update(data).digest("hex").slice(0, 16);
   return { file: `${hash}.webp`, data, width: info.width, height: info.height };
 }
@@ -491,7 +520,9 @@ export async function cacheImages(
 
     let processed;
     try {
-      processed = await processImage(res.body);
+      processed = await processImage(res.body, (error) => {
+        console.warn(`image ${url}: needed a tolerant decode (${error})`);
+      });
     } catch (error) {
       if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: not a processable image (${error})`);

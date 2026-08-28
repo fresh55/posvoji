@@ -121,20 +121,17 @@ describe("animalsForClient", () => {
     expect(projected!.id).toBe(source.id);
     // What crosses the boundary is the answer, not the question: no rights, no
     // sourceUrl behind a cached copy, and no cachedUrl beside the src it is.
-    expect(projected!.images[0]).toEqual({
+    expect(projected!.images[0]).toStrictEqual({
       src: "/media/animals/luna-1.webp",
-      width: 600,
-      height: 400,
       widths: [320, 480, 600],
       avif: true,
       blurDataURL: BLUR,
     });
     // Strict, because a key standing for an absent field is not free: React
-    // ships an undefined value as "$undefined".
+    // ships an undefined value as "$undefined". The intrinsic width and height
+    // stay off the wire for the same reason: no surface draws with them.
     expect(projected!.images[1]).toStrictEqual({
       src: "/media/animals/luna-2.webp",
-      width: 600,
-      height: 400,
       widths: [320, 480, 600],
     });
     expect(source.images[1]!.blurDataURL).toBe(BLUR);

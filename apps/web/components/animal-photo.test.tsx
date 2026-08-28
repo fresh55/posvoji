@@ -13,8 +13,6 @@ const SIZES = "(max-width: 639px) 50vw, 15rem";
 // field it is about away rather than build a shape up from nothing.
 const CACHED: PermittedPhoto = {
   src: "/media/animals/0123456789abcdef.webp",
-  width: 800,
-  height: 600,
   widths: [320, 480, 640, 800],
   avif: true,
   blurDataURL: "data:image/webp;base64,UklGRg==",

@@ -162,7 +162,7 @@ export function PhotoGallery({
   }
 
   function preloadAdjacent(index: number) {
-    for (const photo of adjacentImages<PermittedPhoto>(images, index)) {
+    for (const photo of adjacentImages(images, index)) {
       if (preloadedImages.current.has(photo.src)) continue;
       preloadedImages.current.add(photo.src);
       const preload = new window.Image();

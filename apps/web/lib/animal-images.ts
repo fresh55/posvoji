@@ -8,12 +8,15 @@ const CACHE_PREFIX = "/media/animals/";
 /** One image a surface may actually draw, with whatever ingest derived from
  *  it. Every optional field is absent for a photo we only link to, and for a
  *  cached photo that predates the derivation pass, so a caller that reads them
- *  has to have a single-file fallback. */
+ *  has to have a single-file fallback.
+ *
+ *  The intrinsic width and height ingest records are not among them. Nothing
+ *  here draws with a size attribute: every photo fills a box its caller sizes,
+ *  and the ladder photoSrcSet builds comes from `widths` alone. They stay in
+ *  the ingest manifest, which is the one place that uses them. */
 export type PermittedPhoto = {
   /** What an <img src> points at: our cached copy where there is one. */
   src: string;
-  width?: number;
-  height?: number;
   /** Ascending, ending with `src`'s own width. */
   widths?: number[];
   /** An `.avif` sibling of `src` exists, at `src`'s own width and no other. */
@@ -51,8 +54,6 @@ export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
       // "$undefined": a key standing for an absent field costs more on the
       // wire than the field would have.
       const photo: PermittedPhoto = { src: image.cachedUrl };
-      if (image.width !== undefined) photo.width = image.width;
-      if (image.height !== undefined) photo.height = image.height;
       if (image.widths !== undefined) photo.widths = image.widths;
       if (image.avif !== undefined) photo.avif = image.avif;
       if (image.blurDataURL !== undefined) photo.blurDataURL = image.blurDataURL;
@@ -99,7 +100,7 @@ export function photoAvifUrl(photo: PermittedPhoto): string | undefined {
 // ("<hash>.webp" gets "<hash>.thumb.webp"), sized for the 56px thumb strip.
 // Only our own cached copies have one; any other URL passes through unchanged.
 export function thumbnailUrl(url: string): string {
-  if (!url.startsWith("/media/animals/") || url.endsWith(".thumb.webp")) {
+  if (!url.startsWith(CACHE_PREFIX) || url.endsWith(".thumb.webp")) {
     return url;
   }
   return url.replace(/\.webp$/, ".thumb.webp");

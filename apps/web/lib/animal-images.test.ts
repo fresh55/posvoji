@@ -117,7 +117,7 @@ describe("permittedPhotos", () => {
     ).toEqual(["https://shelter.example/luna.jpg"]);
   });
 
-  it("carries the derived fields of a cached copy", () => {
+  it("carries the derived fields a surface draws with", () => {
     expect(
       permittedPhotos([
         {
@@ -131,16 +131,33 @@ describe("permittedPhotos", () => {
           rights: "cache-permitted",
         },
       ] satisfies Animal["images"]),
-    ).toEqual([
+    ).toStrictEqual([
       {
         src: "/media/animals/luna.webp",
-        width: 800,
-        height: 600,
         widths: [320, 480, 640, 800],
         avif: true,
         blurDataURL: "data:image/webp;base64,UklGRg==",
       },
     ]);
+  });
+
+  it("leaves the intrinsic size behind", () => {
+    // Nothing on a page reads it: every photo is drawn into a box the caller
+    // sizes, and the ladder photoSrcSet needs is `widths` alone. Ingest keeps
+    // width and height in its manifest, and they stop there.
+    const [photo] = permittedPhotos([
+      {
+        sourceUrl: "https://shelter.example/luna.jpg",
+        cachedUrl: "/media/animals/luna.webp",
+        width: 800,
+        height: 600,
+        widths: [320, 480, 640, 800],
+        rights: "cache-permitted",
+      },
+    ] satisfies Animal["images"]);
+
+    expect(photo).not.toHaveProperty("width");
+    expect(photo).not.toHaveProperty("height");
   });
 
   it("carries no key for a field ingest never derived", () => {
@@ -157,9 +174,7 @@ describe("permittedPhotos", () => {
           rights: "cache-permitted",
         },
       ] satisfies Animal["images"]),
-    ).toStrictEqual([
-      { src: "/media/animals/luna.webp", width: 800, height: 600 },
-    ]);
+    ).toStrictEqual([{ src: "/media/animals/luna.webp" }]);
   });
 
   it("leaves a hotlinked photo with nothing but its source", () => {

@@ -77,50 +77,77 @@ export const UNDO_WINDOW_MS = 7000;
 // changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
 
-// How many cards the first render draws, and how many each step after it adds.
-// The grid is not paginated, so Vse used to mount all 503 matches at once:
-// about fourteen thousand nodes, a thousand tab stops and a 66,000px page, all
-// of it in the prerendered HTML as well. Sixty is several screens on the
-// tallest phone and more than a desktop first paint can show, and the steps
-// after it are asked for well before anyone reaches the bottom.
+// How many cards the first render draws. The grid is not paginated, so Vse
+// used to mount all 503 matches at once: about fourteen thousand nodes, a
+// thousand tab stops and a 66,000px page, all of it in the prerendered HTML as
+// well. Sixty is several screens on the tallest phone and more than a desktop
+// first paint can show, and the steps after it are asked for well before
+// anyone reaches the bottom.
 //
 // Rendering only. Every count on the page, the facet numbers and the dialog's
 // sibling list all still read the whole filtered set.
 export const INITIAL_CARDS = 60;
-export const CARDS_PER_STEP = 60;
 
 // How far below the last drawn card the next step is asked for, so the grid is
 // already longer by the time the visitor gets there.
 const STEP_MARGIN = "1200px 0px";
 
-// How many of those steps happen on their own before the grid starts asking.
-// Unbounded, the sentinel re-armed 1200px ahead of the reader every time, so
-// the document grew faster than anyone could descend it and the footer -
-// which is the only way to any other page - could not be scrolled to at all.
-// Once the budget is spent the sentinel gives way to a button, and the footer
-// stands one press below whatever is drawn.
+// What each automatic step adds, and how far the grid goes on its own before
+// it starts asking. Unbounded, the sentinel re-armed 1200px ahead of the
+// reader every time, so the document grew faster than anyone could descend it
+// and the footer, which is the only way to any other page, could not be
+// scrolled to at all. Once the budget is spent the sentinel gives way to a
+// button, and the footer stands one press below whatever is drawn.
 //
-// Two budgets, because the page is not the same length twice. A phone draws
-// two columns, so 120 cards is sixty rows; a desktop draws three or four, so
-// 180 is forty-five to sixty. Measured as scroll distance the two come out
-// within a screen of each other, which is the number that actually matters:
-// how far the footer can run from someone who wants it.
-export const AUTO_STEPS_PHONE = 1;
-export const AUTO_STEPS_DESKTOP = 2;
+// Both figures are rows and not cards, because a row is what scroll distance
+// is made of: one measures 300 to 330px here, and a card count says nothing
+// about how many rows it becomes. The budget used to be a card count with a
+// phone figure and a desktop figure, on the reasoning that 120 cards over two
+// columns and 180 over four come out about the same length. Measured across
+// thirteen viewports on 28 August 2026 they did not: the footer sat anywhere
+// from 9,200px to 19,700px down the page at settle, entirely according to how
+// many columns the viewport happened to draw. Counting rows makes the one
+// number that matters the same everywhere.
+//
+// The column count is measured off the rendered grid rather than read from a
+// breakpoint of its own, so there is no second copy of CARD_GRID's layout
+// (lib/card-grid.ts) here to drift away from it.
+//
+// Fifteen rows is also more than the watched band, being some 4,500px even at
+// two columns against the 1200px STEP_MARGIN above. That is what stops a step
+// from asking for the next one the moment it lands, so the grid grows a step
+// at a time as the reader descends. It is not what keeps the observer alive
+// across a step: the sentinel's ref re-arms it (watchSentinel below), because
+// the browser does not reliably report the leave that used to do the job.
+export const ROWS_PER_STEP = 15;
+export const TARGET_ROWS = 40;
 
 // A press is a stronger signal than a scroll, so it buys more. At 120 a full
 // unfiltered dataset is three or four presses end to end, without the grid
 // ever mounting hundreds of cards nobody asked to see.
 export const CARDS_PER_CLICK = 120;
 
-// Read at step time rather than held in state: the cap only matters inside
-// the observer callback, and matchMedia there is always current, where a
-// value captured at mount would go stale across a rotation or a resize.
-function autoDrawLimit(): number {
-  const steps = window.matchMedia("(min-width: 1024px)").matches
-    ? AUTO_STEPS_DESKTOP
-    : AUTO_STEPS_PHONE;
-  return INITIAL_CARDS + steps * CARDS_PER_STEP;
+// Two columns is the narrowest the grid ever draws (CARD_GRID), so it is what
+// an unmeasurable grid is charged for: a miss makes the step short rather than
+// drawing rows nobody asked for.
+const FALLBACK_COLUMNS = 2;
+
+// How many columns the grid is drawing, read off the element that is drawing
+// them. A laid-out grid computes gridTemplateColumns to its resolved track
+// list, so "245px 245px 245px" is three columns and counting the tracks is the
+// whole measurement. Measured at step time rather than held in state, for the
+// same reason the media query used to be: a value captured at mount goes stale
+// across a rotation or a resize.
+//
+// Nothing to measure has two answers. jsdom lays out nothing and returns an
+// empty string; a grid that is not laid out can also hand back the authored
+// repeat() rather than a track list, and the parentheses are how that shows.
+function gridColumns(grid: HTMLElement | null): number {
+  const tracks = grid ? getComputedStyle(grid).gridTemplateColumns : "";
+  if (!tracks || tracks === "none" || tracks.includes("(")) {
+    return FALLBACK_COLUMNS;
+  }
+  return tracks.trim().split(/\s+/).length;
 }
 
 // Which species-absence message key fills the {species} slot of
@@ -244,14 +271,40 @@ export function AnimalGrid({
   const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
   const hasMore = drawn < sorted.length;
 
-  // The sentinel's own ref is the observer's lifetime, and that lifetime is now
-  // one sorted list rather than one step: the callback closes over the list
-  // alone, so a step no longer takes the observer down and puts a new one up.
-  // What delivers the next entry is the sentinel leaving the watched band and
-  // coming back, which a step of sixty cards guarantees, being far more than
-  // the 1200px margin below. The step is a functional update for the same
-  // reason: it reads the count off the state it is updating rather than off a
-  // closure that would have to be rebuilt to stay current.
+  // The grid itself, which two things read: the button's focus move below, and
+  // the step above it, which measures the drawn columns off this element.
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // The sentinel's own ref is the observer's lifetime, and that lifetime is one
+  // sorted list rather than one step: the callback closes over the list alone,
+  // so a step does not take the observer down and put a new one up. The step is
+  // a functional update for the same reason: it reads the count off the state
+  // it is updating rather than off a closure that would have to be rebuilt to
+  // stay current.
+  //
+  // What a step does have to do is re-arm the observation, which is the
+  // unobserve and observe pair at the end of the callback. This used to be left
+  // to the geometry, on the reasoning that a step already delivers the next
+  // entry by moving the sentinel: fifteen rows is some 4,500px even at two
+  // columns, far past the 1200px margin below, so the sentinel leaves the
+  // watched band and comes back. It does leave. Whether the browser says so is
+  // a different question, and an observer reports a change of state and nothing
+  // else, so across a step it is still holding "intersecting" and only a
+  // delivered leave can move it off that.
+  //
+  // A reader who is at the end of the document when a step lands grows the page
+  // entirely below the viewport, where nothing that is painted changes.
+  // Measured on 28 August 2026, Chrome delivered that leave on some loads of
+  // that shape and not others: two of three loads at 1440x900 in a headed
+  // browser missed it, and 1280x800 and 1920x1080 the same. A missed leave was
+  // permanent, because no further entry could ever arrive. The grid stopped at
+  // one step, the sentinel never gave way to the button, and four hundred of
+  // the five hundred animals had no way onto the page at all.
+  //
+  // Re-arming does not depend on a transition. A fresh observation is always
+  // delivered an initial entry, measured against wherever the sentinel stands
+  // by then, so the grid either takes the next step or waits for a real scroll,
+  // and neither of those is something the browser has to volunteer.
   const watchSentinel = useCallback(
     (node: HTMLDivElement | null) => {
       if (!node) return;
@@ -264,14 +317,35 @@ export function AnimalGrid({
       const observer = new IntersectionObserver(
         (entries) => {
           if (entries.some((entry) => entry.isIntersecting)) {
+            // Cards per row, so both the step and the budget below are the
+            // row counts they are written as.
+            const columns = gridColumns(gridRef.current);
             // The same guard the render reads the count through: a count
             // counted against another list starts again from the top.
+            //
+            // Clamped at the budget, so the last step is what is left of it
+            // rather than a full stride past it. Unclamped, three columns once
+            // went 60, 105, 150: fifty rows drawn where TARGET_ROWS then
+            // promised forty-five, and some 1,500px of page nobody asked for.
+            // A short last step is nothing for the re-arm below to worry
+            // about either, because a step that reaches the budget settles,
+            // and settling unmounts the sentinel. Only the full-size steps
+            // before it have a sentinel left to deliver anything.
             setChunk((previous) => {
-              const drawn =
+              const drawn = Math.min(
                 (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                CARDS_PER_STEP;
-              return { of: sorted, drawn, settled: drawn >= autoDrawLimit() };
+                  ROWS_PER_STEP * columns,
+                TARGET_ROWS * columns,
+              );
+              return {
+                of: sorted,
+                drawn,
+                settled: drawn >= TARGET_ROWS * columns,
+              };
             });
+            // The re-arm. Nothing else asks this observer for another entry.
+            observer.unobserve(node);
+            observer.observe(node);
           }
         },
         { rootMargin: STEP_MARGIN },
@@ -286,7 +360,7 @@ export function AnimalGrid({
   // to the first card the press added: the reading position a screen reader
   // or a keyboard should resume from, and the button itself can unmount when
   // the list runs out, which would otherwise drop focus on <body>.
-  const gridRef = useRef<HTMLDivElement>(null);
+  //
   // A ref rather than state: nothing renders from this, it only says which
   // card the next paint should hand focus to. The effect below runs off the
   // count the press changed, so it lands after those cards exist.

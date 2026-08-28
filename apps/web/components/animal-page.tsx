@@ -50,8 +50,6 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
           githubTitle={messages.githubTitle}
-          openSource={messages.openSource}
-          canHelp={messages.canHelp}
           homeHref={indexHref}
           languagePaths={{
             sl: animalPath(animal, "sl"),

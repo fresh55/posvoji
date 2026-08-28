@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SiteMenu, SiteNav } from "./site-menu";
+import { ShelterLogin, SiteMenu, SiteNav } from "./site-menu";
 import { I18nProvider } from "@/components/i18n-provider";
 
 afterEach(cleanup);
@@ -40,7 +40,7 @@ describe("the header menu", () => {
       "Zavetišča",
       "Najdena žival",
       "Strokovno preverjeni viri",
-      "Za zavetišča",
+      "Prijava za zavetišča",
     ]);
     expect(items.map((item) => item.getAttribute("href"))).toEqual([
       "/zavetisca",
@@ -64,7 +64,10 @@ describe("the header menu", () => {
 });
 
 describe("the header's inline nav", () => {
-  it("shows the public links, worded short, and keeps the portal out", () => {
+  // The row is not the roster. Najdena žival is already on the hero line and
+  // in every footer, and Viri is a page you open once, so both were spending
+  // a header slot the login needed more.
+  it("says only what the header is the shortest way to", () => {
     render(
       <I18nProvider locale="sl">
         <SiteNav />
@@ -72,13 +75,52 @@ describe("the header's inline nav", () => {
     );
 
     const links = screen.getAllByRole("link");
-    expect(links.map((link) => link.textContent)).toEqual([
-      "Zavetišča",
-      "Najdena žival",
-      "Viri",
+    expect(links.map((link) => link.textContent)).toEqual(["Zavetišča"]);
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/zavetisca",
     ]);
+  });
+
+  it("keeps the login out of the row of destinations", () => {
+    render(
+      <I18nProvider locale="sl">
+        <SiteNav />
+      </I18nProvider>,
+    );
+
     expect(
-      links.some((link) => link.getAttribute("href") === "/portal/prijava"),
+      screen
+        .getAllByRole("link")
+        .some((link) => link.getAttribute("href") === "/portal/prijava"),
     ).toBe(false);
+  });
+});
+
+describe("the shelter login", () => {
+  // The full phrase, not "Prijava" on its own: this site has no visitor
+  // accounts, so a bare login in the corner is a question put to the wrong
+  // person.
+  it("names itself in full", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterLogin />
+      </I18nProvider>,
+    );
+
+    const link = screen.getByRole("link", { name: "Prijava za zavetišča" });
+    expect(link.getAttribute("href")).toBe("/portal/prijava");
+    expect(link.textContent).toBe("Prijava za zavetišča");
+  });
+
+  it("sends the English visitor to the same Slovenian portal", () => {
+    render(
+      <I18nProvider locale="en">
+        <ShelterLogin />
+      </I18nProvider>,
+    );
+
+    const link = screen.getByRole("link", { name: "Login for shelters" });
+    expect(link.getAttribute("href")).toBe("/portal/prijava");
+    expect(link.textContent).toBe("Login for shelters");
   });
 });

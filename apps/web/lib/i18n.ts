@@ -14,11 +14,13 @@ const sl = {
   backToTop: "Na vrh strani",
   backToAnimals: "Nazaj na živali",
   resources: "Strokovno preverjeni viri",
-  // The header's inline nav says it in one word; the full phrase stays in the
-  // footer and the dropdown, where a line of links can afford a trust claim.
-  resourcesShort: "Viri",
   shelters: "Zavetišča",
-  forShelters: "Za zavetišča",
+  // Not "Za zavetišča", which names an audience and leaves the shelter to
+  // guess whether there is a way in behind it. The word they scan a header
+  // for is "Prijava"; "za zavetišča" is what keeps a visitor from reading it
+  // as an account this site asks them for. Both halves earn their place, so
+  // neither is dropped at a narrow width.
+  shelterLogin: "Prijava za zavetišča",
   chooseLanguage: "Izberi jezik",
   photoAtShelter: "Fotografija na strani zavetišča",
   previousPhoto: "Prejšnja fotografija",
@@ -367,9 +369,8 @@ const en: Messages = {
   backToTop: "Back to top",
   backToAnimals: "Back to the animals",
   resources: "Trusted animal-care resources",
-  resourcesShort: "Resources",
   shelters: "Shelters",
-  forShelters: "For shelters",
+  shelterLogin: "Login for shelters",
   chooseLanguage: "Choose language",
   // A statement, matching the Slovenian. It used to read "See photo on the
   // shelter's website", which is an instruction the click does not carry out:

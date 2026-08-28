@@ -58,8 +58,15 @@ export function LanguageSwitcher({
             aria-current={locale === language.locale ? "page" : undefined}
             onClick={keepFilters}
           >
-            <span className="sm:hidden">{language.shortName}</span>
-            <span className="hidden sm:inline">{language.name}</span>
+            {/* The short name at every width, where the full names used to
+                appear from sm. Spelled out this was 151px of bordered
+                control, the widest thing in the header after the brand, and
+                it was reading as the header's main event next to the login
+                it stood beside. SL and EN are the two abbreviations nobody
+                has to be taught, and the full name is still the accessible
+                name: both are a prefix of the word they stand for, so
+                "click Slovenščina" still lands here. */}
+            {language.shortName}
           </a>
         </Button>
       ))}

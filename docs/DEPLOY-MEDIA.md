@@ -172,3 +172,41 @@ handled states the site falls back on quietly. Nothing in `pnpm typecheck`,
 `pnpm test` or `pnpm validate:policies` catches this, because none of them
 touch `public/media/` or `data/dist/`. A photo-less build only becomes visible
 once the site is live and it must never be the one that lands in production.
+
+## Verify before flipping the symlink
+
+```bash
+pnpm media:verify                      # against apps/web/public/media
+pnpm media:verify /srv/posvoji/media   # on the host, against the shared root
+```
+
+`scripts/verify-media.mjs` reads `data/dist/animals.json`, `share-cards.json`
+and `shelter-logos.json`, derives every media path the site can request, and
+checks each one exists under the media root given as its argument
+(`apps/web/public/media` by default). It exits nonzero and lists every file it
+could not find. Node builtins only, so it runs on the deploy host with nothing
+installed: copy the script and `data/dist/*.json` across and run it there, or
+check the sync itself with `rsync -an --delete` and read what it still wants to
+transfer.
+
+Run it after the media sync and before the release symlink moves. Three
+failure modes make it worth a step of its own.
+
+A missing `.avif` renders a **blank hero**, not the WebP beside it. `<picture>`
+commits to a `<source>` by its MIME type before it requests anything, so once
+the browser has taken the AVIF there is no fallback left to take: the animal
+page and the dialog draw an empty box where the photo should be.
+
+A missing ladder rung is the same thing quietly. The browser picks the
+candidate the `sizes` string points it at, gets a 404, and draws nothing. Which
+rung it picks depends on the viewport and the device pixel ratio, so the gap
+can be invisible on the machine that deployed it and total on a phone.
+
+A missing cached copy or thumbnail is the ordinary broken image, which is at
+least visible, but it is the same root cause and costs nothing to check at the
+same time.
+
+None of the three shows up in a build, a log or the test suite, because
+`public/media/` is written by ingest, is gitignored, and in production lives
+outside the release tree entirely. This is the last point anything can catch
+them.

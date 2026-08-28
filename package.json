@@ -13,6 +13,7 @@
     "validate:policies": "pnpm --filter @posvoji/ingest validate",
     "dataset:export": "pnpm --filter @posvoji/ingest export",
     "logos:fetch": "pnpm --filter @posvoji/ingest fetch:logos",
-    "images:derive": "pnpm --filter @posvoji/ingest derive:images"
+    "images:derive": "pnpm --filter @posvoji/ingest derive:images",
+    "media:verify": "node scripts/verify-media.mjs"
   }
 }

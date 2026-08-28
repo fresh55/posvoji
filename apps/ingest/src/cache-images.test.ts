@@ -225,6 +225,46 @@ describe("heroSourceUrls", () => {
       "https://img.si/a2.jpg",
     ]);
   });
+
+  it("skips a lead the web would not draw", () => {
+    // permittedPhotos drops unknown rights, so the page leads with the second
+    // photo and that is the one worth an avif.
+    const animals = [
+      animal({
+        id: "a",
+        images: [
+          { sourceUrl: "https://img.si/unknown.jpg", rights: "unknown" },
+          { sourceUrl: "https://img.si/lead.jpg", rights: "cache-permitted" },
+        ],
+      }),
+    ];
+    expect([...heroSourceUrls(animals)]).toEqual(["https://img.si/lead.jpg"]);
+  });
+
+  it("stops at a display-permitted lead rather than promoting the next photo", () => {
+    // The page leads with the hotlinked photo. It has no cached copy to cut an
+    // avif from, and the photo behind it is not the hero either.
+    const animals = [
+      animal({
+        id: "a",
+        images: [
+          { sourceUrl: "https://img.si/remote.jpg", rights: "display-permitted" },
+          { sourceUrl: "https://img.si/second.jpg", rights: "cache-permitted" },
+        ],
+      }),
+    ];
+    expect([...heroSourceUrls(animals)]).toEqual(["https://img.si/remote.jpg"]);
+  });
+
+  it("takes no hero from an animal with nothing drawable", () => {
+    const animals = [
+      animal({
+        id: "a",
+        images: [{ sourceUrl: "https://img.si/unknown.jpg", rights: "unknown" }],
+      }),
+    ];
+    expect([...heroSourceUrls(animals)]).toEqual([]);
+  });
 });
 
 // A cached 800px hero lands as six files: the copy, its thumb, the 320, 480
@@ -589,6 +629,35 @@ describe("cacheImages", () => {
     ).metadata();
     expect(meta.format).toBe("heif");
     expect(existsSync(join(mediaDir, avifFileFor(restFile)))).toBe(false);
+  });
+
+  it("derives avif for the photo the page leads with, not for images[0]", async () => {
+    const lead = "https://img.si/luna-lead.jpg";
+    const unknownFirst = [
+      animal({
+        id: "luna",
+        images: [
+          { sourceUrl: url, rights: "unknown" },
+          { sourceUrl: lead, rights: "cache-permitted" },
+        ],
+      }),
+    ];
+    const client = new StubClient(
+      new Map([[lead, { status: 200, body: await pngFixture() }]]),
+    );
+
+    const result = await cacheImages(unknownFirst, client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    // The unknown-rights photo is never cached, so the cache-permitted one
+    // behind it is the hero the page shows.
+    const drawn = result.animals[0]!.images[1]!;
+    expect(drawn.avif).toBe(true);
+    expect(result.derived.avifs).toBe(1);
+    const drawnFile = drawn.cachedUrl!.split("/").pop()!;
+    expect(existsSync(join(mediaDir, avifFileFor(drawnFile)))).toBe(true);
   });
 
   it("carries the derived fields onto a schema-valid animal", async () => {

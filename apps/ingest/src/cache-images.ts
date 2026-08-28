@@ -46,10 +46,20 @@ const AVIF_QUALITY = 55;
 // a quality difference in the third decimal.
 const WEBP_EFFORT = 6;
 const AVIF_EFFORT = 6;
-// Part of every manifest entry, so a change to how derivatives are encoded
-// re-cuts them from the cached masters instead of leaving the previous
-// release's files in place. Same idea as share-cards' renderer version. The
-// re-derivation is local: it never refetches, and it never touches a master.
+// Part of every manifest entry, and it covers the derivatives only: a bump
+// re-cuts the thumb, the rungs, the placeholder and the avif from the cached
+// masters, without a request and without touching a master. Same idea as
+// share-cards' renderer version.
+//
+// The asymmetry is deliberate. A master is encoded once, when it is fetched,
+// and nothing invalidates it: an entry inside the revalidation window, or one
+// whose source answers 304, is reused whole and keeps the settings it was
+// encoded under. WEBP_QUALITY and WEBP_EFFORT reach the master too, so masters
+// stay mixed-generation until their own source photo changes. Re-encoding them
+// under new settings would mean refetching every source, which is hours of
+// polite crawling, or wiping the manifest to force it. Neither is worth a few
+// percent of bytes, so this version says nothing about masters.
+//
 // v1 = thumb, rungs, placeholder and avif at sharp's default effort.
 export const DERIVATIVE_VERSION = 2;
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
@@ -115,14 +125,32 @@ export function avifFileFor(file: string): string {
   return file.replace(/\.webp$/, ".avif");
 }
 
-// The first image is what a card and the top of a detail page show, so it is
+// The per-image half of the caching rights. The policy map is the other half.
+function isCacheableImage(image: AnimalImage): boolean {
+  return image.rights === "cache-permitted";
+}
+
+// Whether a surface may draw this image at all, cached or hotlinked. Same rule
+// as permittedPhotos in apps/web/lib/animal-images.ts, which is what decides
+// which photo a card and a detail page actually lead with.
+function isDrawableImage(image: AnimalImage): boolean {
+  return isCacheableImage(image) || image.rights === "display-permitted";
+}
+
+// The lead photo is what a card and the top of a detail page show, so it is
 // the one worth the extra AVIF encode. A photo shared by several animals is
 // a hero as soon as it leads one of them.
+//
+// The lead is the first image the web will draw, not images[0]: an
+// unknown-rights photo never reaches a page, so taking it would mark a URL
+// that is not in the manifest and leave the real hero without an AVIF. A
+// display-permitted lead does stop the search: it is the photo the page shows,
+// it has no cached copy to cut from, and the photo behind it is not a hero.
 export function heroSourceUrls(animals: Animal[]): Set<string> {
   const urls = new Set<string>();
   for (const animal of animals) {
-    const first = animal.images[0];
-    if (first) urls.add(first.sourceUrl);
+    const lead = animal.images.find(isDrawableImage);
+    if (lead) urls.add(lead.sourceUrl);
   }
   return urls;
 }
@@ -141,7 +169,7 @@ export function cacheableUrls(
       continue;
     }
     for (const image of animal.images) {
-      if (image.rights === "cache-permitted") urls.add(image.sourceUrl);
+      if (isCacheableImage(image)) urls.add(image.sourceUrl);
     }
   }
   return [...urls];
@@ -288,9 +316,16 @@ export async function deriveVariants(
     const sourcePath = join(mediaDir, file);
     if (!existsSync(sourcePath)) continue;
     const width = group.entries[0]!.width;
-    // Read once, and only if this file is actually missing something.
-    let source: Buffer | undefined;
-    const read = (): Buffer => (source ??= readFileSync(sourcePath));
+    // Read once, and only if this file is actually missing something. Every
+    // derivative below is a clone of this one pipeline, sharp's documented
+    // one-input-many-outputs shape: the base carries no operations, so a
+    // clone starts from the master and applies only its own resize and
+    // encode. It writes the same bytes as one sharp() per branch and takes
+    // the same time, since a decode is ~14ms against ~570ms for the avif
+    // encode. What it buys is one input and one place to change it.
+    let base: SharpPipeline | undefined;
+    const pipeline = (): SharpPipeline =>
+      (base ??= sharp(readFileSync(sourcePath)));
 
     // An entry cut by an older version has every derivative redone under the
     // same name: the names come from the master's hash, and the master is not
@@ -299,22 +334,39 @@ export async function deriveVariants(
       (entry) => (entry.derivativeVersion ?? 1) !== DERIVATIVE_VERSION,
     );
     // A derivative that failed to encode leaves the entry on its old version
-    // so the next run tries again, exactly as a missing file does.
+    // so the next run tries again, exactly as a missing file does. Every
+    // derivative below is cut through this, so one bad master costs a warning
+    // per derivative and never the whole pass.
     let complete = true;
+    const derived = async (
+      label: string,
+      cut: () => Promise<void>,
+    ): Promise<boolean> => {
+      try {
+        await cut();
+        return true;
+      } catch (error) {
+        console.warn(`image ${file}: ${label} failed (${error})`);
+        complete = false;
+        return false;
+      }
+    };
+    const webp = (resize: sharp.ResizeOptions, quality = WEBP_QUALITY) =>
+      pipeline()
+        .clone()
+        .resize(resize)
+        .webp({ quality, effort: WEBP_EFFORT })
+        .toBuffer();
 
     const thumbPath = join(mediaDir, thumbFileFor(file));
     if (stale || !existsSync(thumbPath)) {
-      try {
-        const thumb = await sharp(read())
-          .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
-          .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
-          .toBuffer();
-        writeFileSync(thumbPath, thumb);
-        counts.thumbs++;
-      } catch (error) {
-        console.warn(`image ${file}: thumbnail failed (${error})`);
-        complete = false;
-      }
+      const cut = await derived("thumbnail", async () =>
+        writeFileSync(
+          thumbPath,
+          await webp({ width: THUMB_WIDTH, withoutEnlargement: true }),
+        ),
+      );
+      if (cut) counts.thumbs++;
     }
 
     const widths: number[] = [];
@@ -327,17 +379,12 @@ export async function deriveVariants(
         widths.push(rung);
         continue;
       }
-      try {
-        const resized = await sharp(read())
-          .resize({ width: rung })
-          .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
-          .toBuffer();
-        writeFileSync(rungPath, resized);
+      const cut = await derived(`${rung}px rung`, async () =>
+        writeFileSync(rungPath, await webp({ width: rung })),
+      );
+      if (cut) {
         widths.push(rung);
         counts.rungs++;
-      } catch (error) {
-        console.warn(`image ${file}: ${rung}px rung failed (${error})`);
-        complete = false;
       }
     }
     widths.push(width);
@@ -346,32 +393,26 @@ export async function deriveVariants(
       ? undefined
       : group.entries.find((e) => e.blurDataURL)?.blurDataURL;
     if (!blurDataURL) {
-      try {
-        const blur = await sharp(read())
-          .resize({ width: BLUR_WIDTH })
-          .webp({ quality: BLUR_QUALITY, effort: WEBP_EFFORT })
-          .toBuffer();
+      const cut = await derived("blur placeholder", async () => {
+        const blur = await webp({ width: BLUR_WIDTH }, BLUR_QUALITY);
         blurDataURL = `data:image/webp;base64,${blur.toString("base64")}`;
-        counts.blurs++;
-      } catch (error) {
-        console.warn(`image ${file}: blur placeholder failed (${error})`);
-        complete = false;
-      }
+      });
+      if (cut) counts.blurs++;
     }
 
     let avif = group.hero;
     if (avif && (stale || !existsSync(join(mediaDir, avifFileFor(file))))) {
-      try {
-        const encoded = await sharp(read())
-          .avif({ quality: AVIF_QUALITY, effort: AVIF_EFFORT })
-          .toBuffer();
-        writeFileSync(join(mediaDir, avifFileFor(file)), encoded);
-        counts.avifs++;
-      } catch (error) {
-        console.warn(`image ${file}: avif failed (${error})`);
-        avif = false;
-        complete = false;
-      }
+      const cut = await derived("avif", async () =>
+        writeFileSync(
+          join(mediaDir, avifFileFor(file)),
+          await pipeline()
+            .clone()
+            .avif({ quality: AVIF_QUALITY, effort: AVIF_EFFORT })
+            .toBuffer(),
+        ),
+      );
+      if (cut) counts.avifs++;
+      else avif = false;
     }
 
     for (const entry of group.entries) {

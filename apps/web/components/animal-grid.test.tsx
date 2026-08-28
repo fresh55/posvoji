@@ -13,11 +13,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AnimalGrid,
   CARDS_PER_CLICK,
-  CARDS_PER_STEP,
   INITIAL_CARDS,
+  ROWS_PER_STEP,
+  TARGET_ROWS,
   UNDO_WINDOW_MS,
 } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { CARD_GRID } from "@/lib/card-grid";
 import { animalsForClient } from "@/lib/dataset";
 
 // AnimalGrid renders its own I18nProvider-consuming children, but the
@@ -113,6 +115,29 @@ function stubIntersectionObserver(): ((entries: ObserverEntries) => void)[] {
     },
   });
   return callbacks;
+}
+
+// The step is measured off the rendered grid's own column count, and jsdom
+// lays nothing out, so the columns are stubbed instead of laid out. Only the
+// card grid's element answers differently: the rest of the tree reads computed
+// style too, and gets jsdom's real answer.
+const realComputedStyle = window.getComputedStyle.bind(window);
+
+function stubGridColumns(tracks: string) {
+  window.getComputedStyle = (element: Element, pseudo?: string | null) => {
+    const style = realComputedStyle(element, pseudo ?? undefined);
+    if (element instanceof HTMLElement && element.className === CARD_GRID) {
+      Object.defineProperty(style, "gridTemplateColumns", {
+        configurable: true,
+        value: tracks,
+      });
+    }
+    return style;
+  };
+}
+
+function columnTracks(columns: number) {
+  return Array.from({ length: columns }, () => "245px").join(" ");
 }
 
 describe("animal grid empty state", () => {
@@ -302,11 +327,21 @@ describe("how much of the grid is drawn", () => {
     animal(`dog-${i}`, "dog", "muri"),
   );
 
+  // A list that outlasts the automatic budget at a given column count, with
+  // `spare` animals left over for the button to offer.
+  function pastTheBudget(columns: number, spare: number) {
+    return Array.from({ length: TARGET_ROWS * columns + spare }, (_, i) =>
+      animal(`dog-${i}`, "dog", "muri"),
+    );
+  }
+
   afterEach(() => {
+    window.getComputedStyle = realComputedStyle;
     Reflect.deleteProperty(window, "IntersectionObserver");
   });
 
   it("draws the first chunk, then grows when the sentinel comes into view", () => {
+    stubGridColumns(columnTracks(2));
     const callbacks = stubIntersectionObserver();
     renderGrid(many);
 
@@ -330,13 +365,11 @@ describe("how much of the grid is drawn", () => {
   });
 
   it("swaps the sentinel for a button once the automatic budget is spent", () => {
-    // matchMedia is mocked to matches: false above, so this runs on the phone
-    // budget: one automatic step, then the button. Ten more than the budget
-    // covers, so the button has something left to offer.
-    const beyond = Array.from(
-      { length: INITIAL_CARDS + CARDS_PER_STEP + 10 },
-      (_, i) => animal(`dog-${i}`, "dog", "muri"),
-    );
+    // Two columns, so a step is 30 cards and the budget is 90: the first step
+    // spends all of it. Ten more than that, so the button has something left
+    // to offer.
+    stubGridColumns(columnTracks(2));
+    const beyond = pastTheBudget(2, 10);
     const callbacks = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
 
@@ -346,7 +379,8 @@ describe("how much of the grid is drawn", () => {
 
     // The budget is spent: the sentinel is gone, the grid stops growing on
     // its own, and the way on is a real control with the remainder on it.
-    const drawn = INITIAL_CARDS + CARDS_PER_STEP;
+    const drawn = TARGET_ROWS * 2;
+    expect(drawn).toBe(INITIAL_CARDS + ROWS_PER_STEP * 2);
     expect(screen.getAllByRole("article")).toHaveLength(drawn);
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
     const more = screen.getByRole("button", { name: "Prikaži še 10" });
@@ -365,57 +399,58 @@ describe("how much of the grid is drawn", () => {
     expect(document.activeElement).toBe(firstAdded.querySelector("a"));
   });
 
-  it("keeps scrolling on its own for another step on a desktop viewport", () => {
-    // Five steps' worth, so after the two free desktop steps the remainder is
-    // still larger than a press delivers and the button offers its full 120.
-    const beyond = Array.from(
-      { length: INITIAL_CARDS + 5 * CARDS_PER_STEP },
-      (_, i) => animal(`dog-${i}`, "dog", "muri"),
+  it("takes wider steps and settles later where the grid draws four columns", () => {
+    // The budget is rows, so four columns buy twice the cards of two for the
+    // same scroll distance: steps of 60 rather than 30, and 180 drawn rather
+    // than 90. Two steps to spend it, so the sentinel has to survive the
+    // first. The remainder is larger than one press delivers, so the button
+    // offers its full stride.
+    stubGridColumns(columnTracks(4));
+    const beyond = pastTheBudget(4, CARDS_PER_CLICK + 10);
+    const callbacks = stubIntersectionObserver();
+    const { container } = renderGrid(beyond);
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    expect(screen.getAllByRole("article")).toHaveLength(
+      INITIAL_CARDS + ROWS_PER_STEP * 4,
     );
-    const matchMedia = window.matchMedia as ReturnType<typeof vi.fn>;
-    matchMedia.mockImplementation((media: string) => ({
-      matches: true,
-      media,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
-    try {
-      const callbacks = stubIntersectionObserver();
-      const { container } = renderGrid(beyond);
+    expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
 
-      act(() => {
-        for (const callback of callbacks) callback([{ isIntersecting: true }]);
-      });
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
 
-      // One step in, a desktop still has budget: the sentinel stays armed and
-      // no button interrupts the scroll yet.
-      expect(screen.getAllByRole("article")).toHaveLength(
-        INITIAL_CARDS + CARDS_PER_STEP,
-      );
-      expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
-      expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    expect(screen.getAllByRole("article")).toHaveLength(TARGET_ROWS * 4);
+    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: `Prikaži še ${CARDS_PER_CLICK}` }),
+    ).toBeTruthy();
+  });
 
-      act(() => {
-        for (const callback of callbacks) callback([{ isIntersecting: true }]);
-      });
+  it("charges an unmeasurable grid for two columns", () => {
+    // Deliberately unstubbed: jsdom lays out nothing, so this is the real
+    // computed value the fallback exists for. The step is the two-column one,
+    // and a list long enough that a four-column step would show as 120.
+    const beyond = pastTheBudget(4, 0);
+    const callbacks = stubIntersectionObserver();
+    const { container } = renderGrid(beyond);
 
-      // The second step is the last free one, and the remainder is larger
-      // than a press delivers, so the button offers its full stride.
-      expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
-      expect(
-        screen.getByRole("button", { name: `Prikaži še ${CARDS_PER_CLICK}` }),
-      ).toBeTruthy();
-    } finally {
-      matchMedia.mockImplementation((media: string) => ({
-        matches: false,
-        media,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }));
-    }
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    expect(screen.getAllByRole("article")).toHaveLength(
+      INITIAL_CARDS + ROWS_PER_STEP * 2,
+    );
+    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
   });
 
   it("goes back to the first chunk when the filters change", () => {
+    stubGridColumns(columnTracks(2));
     const callbacks = stubIntersectionObserver();
     renderGrid(many);
 

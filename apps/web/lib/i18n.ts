@@ -14,6 +14,9 @@ const sl = {
   backToTop: "Na vrh strani",
   backToAnimals: "Nazaj na živali",
   resources: "Strokovno preverjeni viri",
+  // The header's inline nav says it in one word; the full phrase stays in the
+  // footer and the dropdown, where a line of links can afford a trust claim.
+  resourcesShort: "Viri",
   shelters: "Zavetišča",
   forShelters: "Za zavetišča",
   chooseLanguage: "Izberi jezik",
@@ -86,6 +89,14 @@ const sl = {
   resultsHeading: "Živali",
   skipResults: "Preskoči seznam živali",
   noResults: "Ni zadetkov.",
+  // The grid's own load-more control, once the automatic steps are spent.
+  // Numerals only, no noun: "še 120" needs no agreement, where "120 živali"
+  // would have to re-decide its form for every count the slot can carry.
+  showMoreAnimals: "Prikaži še {n}",
+  // Under the button. "od {total} živali" stands after "od" in the genitive,
+  // and every genitive of žival is "živali", so the noun can be spelled out
+  // here without asking plural() to agree with the number.
+  shownOfTotal: "{shown} od {total} živali",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
   // The zero state gets specific when a shelter selection is the whole
@@ -356,6 +367,7 @@ const en: Messages = {
   backToTop: "Back to top",
   backToAnimals: "Back to the animals",
   resources: "Trusted animal-care resources",
+  resourcesShort: "Resources",
   shelters: "Shelters",
   forShelters: "For shelters",
   chooseLanguage: "Choose language",
@@ -404,6 +416,8 @@ const en: Messages = {
   resultsHeading: "Animals",
   skipResults: "Skip the list of animals",
   noResults: "No results.",
+  showMoreAnimals: "Show {n} more",
+  shownOfTotal: "{shown} of {total} animals",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
   noResultsShelterSingular: "The selected shelter currently has no {species}.",

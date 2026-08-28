@@ -1,8 +1,6 @@
-import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
-
-type FooterLink = { href: string; label: string; quiet?: boolean };
 
 export function SiteFooter({
   locale,
@@ -41,27 +39,16 @@ export function SiteFooter({
   docked?: boolean;
 }) {
   const messages = getMessages(locale);
-  const resourcesHref = locale === "sl" ? "/viri" : "/en/resources";
-  const sheltersHref = locale === "sl" ? "/zavetisca" : "/en/shelters";
-  const foundAnimalHref = FOUND_ANIMAL_PATHS[locale];
-  // The portal is Slovenian only, so both locales point at the same login
-  // page. It stays quiet: almost nobody in this footer is shelter staff.
-  const links = [
-    showSheltersLink && { href: sheltersHref, label: messages.shelters },
-    // muniTab and not muniPromptTitle: the words here are the words on the
-    // tab this lands you on, so the link and its destination say the same
-    // thing. A question mark would also be the only one in a row of nouns.
-    showFoundAnimalLink && {
-      href: foundAnimalHref,
-      label: messages.muniTab,
-    },
-    showResourcesLink && { href: resourcesHref, label: messages.resources },
-    showPortalLink && {
-      href: "/portal/prijava",
-      label: messages.forShelters,
-      quiet: true,
-    },
-  ].filter((link): link is FooterLink => Boolean(link));
+  // The roster lives in lib/site-links.ts, shared with the header menu. What
+  // is decided here is only which of them this page shows: a page passes its
+  // own link off rather than linking to itself.
+  const shown: Record<SiteLinkKey, boolean> = {
+    shelters: showSheltersLink,
+    foundAnimal: showFoundAnimalLink,
+    resources: showResourcesLink,
+    portal: showPortalLink,
+  };
+  const links = siteLinks(locale, messages).filter((link) => shown[link.key]);
 
   return (
     <footer
@@ -77,19 +64,25 @@ export function SiteFooter({
         docked && "pb-[calc(var(--back-to-top-bottom)+3rem)] lg:pb-6",
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <p className="max-w-3xl">{messages.footer}</p>
+      {/* Links first in the DOM, prose second. On a phone the column shows
+          them in that order, because the links are the footer's working part
+          - the only way to any other page - and the provenance note is the
+          small print that follows. From sm the row reverses so the reading
+          order of the wide layout stays prose left, links right, the shape
+          every colophon has taught. */}
+      <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-start sm:justify-between">
         {links.length > 0 && (
           <nav
             aria-label={messages.moreInformation}
-            className="flex shrink-0 flex-wrap gap-x-4 gap-y-1"
+            // A step larger below lg: these are destinations under a thumb,
+            // not fine print, and text-xs let them read as the latter.
+            className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 max-lg:text-sm"
           >
             {links.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                // text-xs leading-relaxed gives these a ~19.5px line box with
-                // no padding of their own - short of the 24px a finger needs.
+                // The line boxes here run short of the 24px a finger needs.
                 // Same treatment the rest of the small-link grammar uses
                 // rather than padding, which would visibly inflate the row.
                 className={cn(
@@ -104,6 +97,7 @@ export function SiteFooter({
             ))}
           </nav>
         )}
+        <p className="max-w-3xl">{messages.footer}</p>
       </div>
     </footer>
   );

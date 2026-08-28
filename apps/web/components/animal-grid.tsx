@@ -331,17 +331,14 @@ export function AnimalGrid({
             // about either, because a step that reaches the budget settles,
             // and settling unmounts the sentinel. Only the full-size steps
             // before it have a sentinel left to deliver anything.
+            const budget = TARGET_ROWS * columns;
             setChunk((previous) => {
               const drawn = Math.min(
                 (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
                   ROWS_PER_STEP * columns,
-                TARGET_ROWS * columns,
+                budget,
               );
-              return {
-                of: sorted,
-                drawn,
-                settled: drawn >= TARGET_ROWS * columns,
-              };
+              return { of: sorted, drawn, settled: drawn >= budget };
             });
             // The re-arm. Nothing else asks this observer for another entry.
             observer.unobserve(node);
@@ -869,7 +866,16 @@ export function AnimalGrid({
             </Button>
           </EmptyState>
         ) : (
-          <div ref={gridRef} className={CARD_GRID}>
+          <div
+            ref={gridRef}
+            // The same rule the sentinel below is marked by: what the step
+            // measures its columns off is this element, and a test that found
+            // it by its classes would be reading layout as contract. Appending
+            // one class to CARD_GRID would have quietly cost the tests their
+            // column count and left them charging the two-column fallback.
+            data-card-grid
+            className={CARD_GRID}
+          >
             {page.map((animal, ordinal) => (
               <AnimalCard
                 key={animal.id}

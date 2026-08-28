@@ -1,5 +1,8 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { PoliteClientOptions } from "./polite-client";
 import {
   PoliteClient,
   computeBackoffMs,
@@ -49,8 +52,20 @@ describe("computeBackoffMs", () => {
   });
 });
 
-describe("PoliteClient.getBytes", () => {
-  const ORIGIN = "https://img.example";
+const ORIGIN = "https://img.example";
+
+// A charset that needs full ICU. Node ships it, but skip rather than fail on a
+// small-icu build.
+function hasWindows1250(): boolean {
+  try {
+    new TextDecoder("windows-1250");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+describe("PoliteClient", () => {
   let agent: MockAgent;
   let previousDispatcher: ReturnType<typeof getGlobalDispatcher>;
 
@@ -66,53 +81,384 @@ describe("PoliteClient.getBytes", () => {
     await agent.close();
   });
 
-  function client(): PoliteClient {
+  function client(options: Partial<PoliteClientOptions> = {}): PoliteClient {
     return new PoliteClient({
       userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
       minDelayMs: 0,
+      ...options,
     });
   }
 
-  it("returns binary bodies untouched", async () => {
-    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0x00, 0x01]);
-    const pool = agent.get(ORIGIN);
-    pool.intercept({ path: "/robots.txt" }).reply(200, "");
-    pool.intercept({ path: "/cat.jpg" }).reply(200, bytes, {
-      headers: { etag: '"v1"' },
+  describe("getBytes", () => {
+    it("returns binary bodies untouched", async () => {
+      const bytes = Buffer.from([0xff, 0xd8, 0xff, 0x00, 0x01]);
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, bytes, {
+        headers: { etag: '"v1"' },
+      });
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual(bytes);
     });
 
-    const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+    it("sends caller-provided validators and reports 304 as notModified", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({
+          path: "/cat.jpg",
+          headers: { "if-none-match": '"v1"' },
+        })
+        .reply(304, "");
 
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual(bytes);
-  });
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`, {
+        validators: { etag: '"v1"' },
+      });
 
-  it("sends caller-provided validators and reports 304 as notModified", async () => {
-    const pool = agent.get(ORIGIN);
-    pool.intercept({ path: "/robots.txt" }).reply(200, "");
-    pool
-      .intercept({
-        path: "/cat.jpg",
-        headers: { "if-none-match": '"v1"' },
-      })
-      .reply(304, "");
-
-    const res = await client().getBytes(`${ORIGIN}/cat.jpg`, {
-      validators: { etag: '"v1"' },
+      expect(res.notModified).toBe(true);
+      expect(res.body).toBeNull();
     });
 
-    expect(res.notModified).toBe(true);
-    expect(res.body).toBeNull();
+    it("never revalidates on its own after seeing an ETag", async () => {
+      const seen: Array<Record<string, string>> = [];
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(
+          200,
+          (opts) => {
+            seen.push(opts.headers as Record<string, string>);
+            return "one";
+          },
+          { headers: { etag: '"v1"' } },
+        )
+        .times(2);
+
+      const c = client();
+      await c.getBytes(`${ORIGIN}/cat.jpg`);
+      const second = await c.getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(second.status).toBe(200);
+      expect(seen).toHaveLength(2);
+      expect(seen[1]?.["if-none-match"]).toBeUndefined();
+      expect(seen[1]?.["if-modified-since"]).toBeUndefined();
+    });
+
+    it("still refuses paths robots.txt disallows", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(200, "User-agent: *\nDisallow: /private/");
+
+      await expect(
+        client().getBytes(`${ORIGIN}/private/cat.jpg`),
+      ).rejects.toThrow(/robots\.txt/);
+    });
+
+    it("retries a 429 and returns the response that follows", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(429, "slow down", { headers: { "retry-after": "0" } });
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+      expect(res.body?.toString("utf8")).toBe("cat");
+    });
+
+    it("throws instead of returning a 429 once the retries are spent", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(429, "slow down", { headers: { "retry-after": "0" } })
+        .times(2);
+
+      await expect(
+        client({ maxRetries: 1 }).getBytes(`${ORIGIN}/cat.jpg`),
+      ).rejects.toThrow(/rate limited after 1 retries: .*\/cat\.jpg/);
+    });
+
+    it("throws when a 503 outlives the retries", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool.intercept({ path: "/cat.jpg" }).reply(503, "down");
+
+      await expect(
+        client({ maxRetries: 0 }).getBytes(`${ORIGIN}/cat.jpg`),
+      ).rejects.toThrow(/rate limited after 0 retries/);
+    });
+
+    it("follows a same-origin redirect", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(200, "User-agent: *\nDisallow: /private/");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(301, "", { headers: { location: "/photos/cat.jpg" } });
+      pool.intercept({ path: "/photos/cat.jpg" }).reply(200, "cat");
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+      expect(res.body?.toString("utf8")).toBe("cat");
+    });
+
+    it("re-checks robots.txt on every redirect hop", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(200, "User-agent: *\nDisallow: /private/");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(302, "", { headers: { location: "/private/cat.jpg" } });
+
+      await expect(client().getBytes(`${ORIGIN}/cat.jpg`)).rejects.toThrow(
+        /robots\.txt disallows fetching .*\/private\/cat\.jpg/,
+      );
+    });
+
+    it("hands a cross-origin redirect back to the caller", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool.intercept({ path: "/cat.jpg" }).reply(302, "", {
+        headers: { location: "https://other.example/cat.jpg" },
+      });
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(302);
+      expect(res.headers["location"]).toBe("https://other.example/cat.jpg");
+    });
+
+    it("serializes requests to one host", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool.intercept({ path: "/a.jpg" }).reply(200, "a").delay(60);
+      pool.intercept({ path: "/b.jpg" }).reply(200, "b");
+
+      const c = client();
+      const order: string[] = [];
+      await Promise.all([
+        c.getBytes(`${ORIGIN}/a.jpg`).then(() => order.push("a")),
+        c.getBytes(`${ORIGIN}/b.jpg`).then(() => order.push("b")),
+      ]);
+
+      expect(order).toEqual(["a", "b"]);
+    });
   });
 
-  it("still refuses paths robots.txt disallows", async () => {
-    const pool = agent.get(ORIGIN);
-    pool
-      .intercept({ path: "/robots.txt" })
-      .reply(200, "User-agent: *\nDisallow: /private/");
+  describe("robots.txt handling", () => {
+    it("follows a redirected robots.txt", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(301, "", { headers: { location: "/robots-real.txt" } });
+      pool
+        .intercept({ path: "/robots-real.txt" })
+        .reply(200, "User-agent: *\nDisallow: /private/");
 
-    await expect(
-      client().getBytes(`${ORIGIN}/private/cat.jpg`),
-    ).rejects.toThrow(/robots\.txt/);
+      await expect(
+        client().getBytes(`${ORIGIN}/private/cat.jpg`),
+      ).rejects.toThrow(/robots\.txt disallows/);
+    });
+
+    it("treats 403 as a refusal to crawl", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(403, "nope");
+
+      await expect(client().getBytes(`${ORIGIN}/cat.jpg`)).rejects.toThrow(
+        /robots\.txt disallows/,
+      );
+    });
+
+    it("still allows everything on a 404", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(404, "");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("retries a 5xx robots.txt and crawls on the answer that follows", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(500, "bad gateway");
+      pool.intercept({ path: "/robots.txt" }).reply(200, "User-agent: *");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const res = await client({ maxRetries: 1 }).getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+      expect(res.body?.toString("utf8")).toBe("cat");
+    });
+
+    it("disallows and caches a robots.txt that keeps answering 5xx", async () => {
+      let robotsRequests = 0;
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(500, () => {
+          robotsRequests++;
+          return "bad gateway";
+        })
+        .times(2);
+
+      const c = client({ maxRetries: 1 });
+      await expect(c.getBytes(`${ORIGIN}/cat.jpg`)).rejects.toThrow(
+        /robots\.txt disallows/,
+      );
+      // The second call reads the cached refusal: a site that 5xx'd through
+      // every retry is genuinely unavailable, so it is not asked again.
+      await expect(c.getBytes(`${ORIGIN}/dog.jpg`)).rejects.toThrow(
+        /robots\.txt disallows/,
+      );
+      expect(robotsRequests).toBe(2);
+    });
+
+    it("throws on an unreachable robots.txt and retries it next time", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .replyWithError(new Error("socket hang up"));
+
+      const c = client({ maxRetries: 0 });
+      await expect(c.getBytes(`${ORIGIN}/cat.jpg`)).rejects.toThrow(
+        `robots.txt for ${ORIGIN} unreachable`,
+      );
+
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const res = await c.getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("waits out a Crawl-delay before the first fetch", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(200, "User-agent: *\nCrawl-delay: 0.25");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const started = Date.now();
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(res.status).toBe(200);
+      expect(Date.now() - started).toBeGreaterThanOrEqual(200);
+    });
+
+    it("does not wait when robots.txt sets no Crawl-delay", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "User-agent: *");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const started = Date.now();
+      await client().getBytes(`${ORIGIN}/cat.jpg`);
+
+      expect(Date.now() - started).toBeLessThan(200);
+    });
   });
+
+  describe("get", () => {
+    it("decodes utf8 by default", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/pes.html" })
+        .reply(200, Buffer.from("ščž", "utf8"), {
+          headers: { "content-type": "text/html" },
+        });
+
+      const res = await client().get(`${ORIGIN}/pes.html`);
+
+      expect(res.body).toBe("ščž");
+    });
+
+    it.skipIf(!hasWindows1250())(
+      "decodes a windows-1250 body by its declared charset",
+      async () => {
+        const pool = agent.get(ORIGIN);
+        pool.intercept({ path: "/robots.txt" }).reply(200, "");
+        pool
+          .intercept({ path: "/pes.html" })
+          .reply(200, Buffer.from([0x9a, 0xe8, 0x9e]), {
+            headers: { "content-type": "text/html; charset=windows-1250" },
+          });
+
+        const res = await client().get(`${ORIGIN}/pes.html`);
+
+        expect(res.body).toBe("ščž");
+      },
+    );
+
+    it("falls back to utf8 for a charset nobody knows", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/pes.html" })
+        .reply(200, Buffer.from("ščž", "utf8"), {
+          headers: { "content-type": "text/html; charset=nonsense-9" },
+        });
+
+      const res = await client().get(`${ORIGIN}/pes.html`);
+
+      expect(res.body).toBe("ščž");
+    });
+  });
+});
+
+// The mock agent cannot cut a connection halfway through a body, so this one
+// talks to a real socket. It costs one backoff (2s) on purpose.
+describe("PoliteClient body reads", () => {
+  it("retries a download that dies mid-body", async () => {
+    let hits = 0;
+    const server = createServer((req, res) => {
+      if (req.url === "/robots.txt") {
+        res.writeHead(200, { "content-type": "text/plain" });
+        res.end("");
+        return;
+      }
+      hits += 1;
+      if (hits === 1) {
+        // Headers and a first chunk have to reach the client before the socket
+        // dies, otherwise this never reaches the body read.
+        res.writeHead(200, { "content-length": "64" });
+        res.write("half a body", () => {
+          setTimeout(() => res.socket?.destroy(), 50);
+        });
+        return;
+      }
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("a whole body");
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const { port } = server.address() as AddressInfo;
+
+    try {
+      const res = await new PoliteClient({
+        userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
+        minDelayMs: 0,
+        maxRetries: 1,
+      }).get(`http://127.0.0.1:${port}/pes.html`);
+
+      expect(res.body).toBe("a whole body");
+      expect(hits).toBe(2);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  }, 15_000);
 });

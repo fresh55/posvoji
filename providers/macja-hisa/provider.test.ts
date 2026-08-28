@@ -127,6 +127,28 @@ describe("parseDetail", () => {
       approximateAgeMonths: 161,
     });
   });
+
+  it.each([
+    ["Pes: Medo"],
+    ["PES - Medo"],
+    ["pes Medo"],
+  ])("recognises the dog prefix in %s", (heading) => {
+    expect(
+      parseDetail(`<div class="with-bootstrap"><h1>${heading}</h1></div>`),
+    ).toMatchObject({
+      name: "Medo",
+      species: "dog",
+    });
+  });
+
+  it("classifies as a dog with no name when the heading is only the prefix", () => {
+    expect(
+      parseDetail('<div class="with-bootstrap"><h1>Pes</h1></div>'),
+    ).toMatchObject({
+      name: undefined,
+      species: "dog",
+    });
+  });
 });
 
 describe("normalize", () => {

@@ -257,6 +257,15 @@ const provider: AdoptionProvider = {
       sex: facts.sex,
       birthDate: facts.birthDate,
       intakeDate: intakeDateFromDays(facts.daysInShelter, raw.fetchedAt),
+      // Checked the live site 2026-08-29: the archive cards (psi/ and macke/)
+      // and the detail page's .info-box never carry a status row, only IME,
+      // ROJSTVO, PASMA and SPOL. The one status-like word actually seen in a
+      // description ("karantena", on a dog's page) described a past event in
+      // the animal's history, not its current availability, which is the
+      // same kind of false positive meli's Facebook-pasted prose risks - so
+      // it stays unparsed. A listing present on the archive is the
+      // availability signal; the site removes an animal from it once it is
+      // no longer up for adoption.
       status: "available",
       images:
         rights === null

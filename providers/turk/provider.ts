@@ -209,11 +209,12 @@ export function parseApproximateAgeMonths(value: string): number | undefined {
 // boundaries: "nekastriran" must not read as "kastriran", "stara" must not
 // read as "star". And only sex-specific words: "mačka" is both a female cat
 // and the accusative of the male "maček", and "muce" is what the listings call
-// cats in general, so neither is here.
+// cats in general, so neither is here. "kuža" is likewise just the colloquial
+// word for a dog of either sex, not a sex marker, so it is not here either.
 const FEMALE_MARKERS =
   /\b(?:mešank\w*|psičk\w*|psic\w*|mucka\w*|samic\w*|sterilizirana|stara|odrasla)\b/u;
 const MALE_MARKERS =
-  /\b(?:mešan(?:ec|c\w+|č\w*)|kuž\w*|maček|mačkon\w*|mucek\w*|samec|samč\w*|kastriran\w*|star|odrasel)\b/u;
+  /\b(?:mešan(?:ec|c\w+|č\w*)|maček|mačkon\w*|mucek\w*|samec|samč\w*|kastriran\w*|star|odrasel)\b/u;
 
 export function parseSex(value: string): Sex | undefined {
   const normalized = value.normalize("NFC").toLocaleLowerCase("sl");
@@ -339,6 +340,17 @@ export function parseDetail(body: string): DetailFacts {
   }
   const post = readPost(payload);
   if (!post) throw new Error(`${PROVIDER_ID}: post payload is not a post`);
+  // parsePosts (the list path) already drops lost-and-found and adopted
+  // posts before they ever reach a ref. This is the single-post endpoint
+  // fetch() falls back to for an animal discover() never saw, and it has no
+  // such filter of its own, so it has to repeat the check here rather than
+  // let postFacts's "other" fallback hand back a full listing, description
+  // and all, for a post that was never meant to be in the dataset.
+  if (!postSpecies(post.categories)) {
+    throw new Error(
+      `${PROVIDER_ID}: post ${post.id} is not in an adoptable category`,
+    );
+  }
   return postFacts(post);
 }
 

@@ -10,6 +10,7 @@ import type {
 } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { shelterLogosDir, shelterLogoManifestPath } from "./paths";
+import { writeFileAtomic } from "./write-atomic";
 
 // Where the static site serves the files written to shelterLogosDir.
 const PUBLIC_PREFIX = "/media/shelter-logos";
@@ -230,14 +231,19 @@ function headerValue(value: string | string[] | undefined): string | undefined {
 
 function readManifest(path: string): LogoManifest {
   if (!existsSync(path)) return { entries: {} };
+  let why: string;
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (parsed && typeof parsed.entries === "object" && parsed.entries) {
       return { entries: parsed.entries };
     }
-  } catch {
-    // A broken manifest just means a full re-fetch.
+    why = "no entries object";
+  } catch (error) {
+    why = String(error);
   }
+  // Loud, because the entry is the only record of which file belongs to which
+  // shelter: nothing on disk can be matched back up.
+  console.warn(`logos: the manifest at ${path} is unreadable (${why})`);
   return { entries: {} };
 }
 
@@ -273,6 +279,21 @@ export async function cacheLogos(
   const next: LogoManifest = { entries: {} };
   const discovered: Record<string, string> = {};
   mkdirSync(logosDir, { recursive: true });
+
+  // Same rule as the photo cache: with no usable manifest the sweep below
+  // reads every file on disk as an orphan, and a shelter whose logo fetch
+  // fails this run would lose the copy it already had. Keep the files for one
+  // run, warn, and sweep on the next one.
+  const startedWith = readdirSync(logosDir);
+  const manifestLost =
+    Object.keys(previous.entries).length === 0 && startedWith.length > 0;
+  if (manifestLost) {
+    console.warn(
+      `logos: no usable manifest at ${manifestPath} but ` +
+        `${startedWith.length} file(s) in ${logosDir}. Keeping them and ` +
+        `skipping the deletion sweep for this run.`,
+    );
+  }
 
   let fetched = 0;
   let reused = 0;
@@ -395,13 +416,19 @@ export async function cacheLogos(
     Object.values(next.entries).map((entry) => entry.file),
   );
   let deleted = 0;
-  for (const file of readdirSync(logosDir)) {
-    if (referenced.has(file)) continue;
-    rmSync(join(logosDir, file));
-    deleted++;
+  if (!manifestLost) {
+    for (const file of readdirSync(logosDir)) {
+      if (referenced.has(file)) continue;
+      try {
+        rmSync(join(logosDir, file));
+        deleted++;
+      } catch (error) {
+        console.warn(`logo file ${file}: could not be deleted (${error})`);
+      }
+    }
   }
 
-  writeFileSync(manifestPath, JSON.stringify(next, null, 2));
+  writeFileAtomic(manifestPath, JSON.stringify(next, null, 2));
 
   return { manifest: next, fetched, reused, deleted, discovered };
 }

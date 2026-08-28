@@ -7,6 +7,7 @@ import provider, {
   parseApproximateAgeMonths,
   parseDetail,
   parseList,
+  parseSex,
 } from "./provider";
 
 const policy = ProviderPolicy.parse(
@@ -75,6 +76,42 @@ describe("parseDetail", () => {
       sex: "unknown",
       approximateAgeMonths: 18,
     });
+  });
+
+  it("reads a description pasted in from Facebook, wrapped in divs instead of <p>", () => {
+    const facts = parseDetail(
+      loadFixture(import.meta.url, "detail-dog-wrapped.html"),
+    );
+    expect(facts.description).toBe(
+      "Runo išče svoj dom! Runo je čudovit 5-letni kuža srednje velikosti, ki potrpežljivo čaka na svoj dom.",
+    );
+    // .portfolio-single-items is excluded even though this listing (unlike
+    // any real one seen so far) has content in it.
+    expect(facts.description).not.toContain("Oznake");
+    // The contact sign-off is boilerplate, not the animal's own text.
+    expect(facts.description).not.toContain("Za več informacij");
+    expect(facts.approximateAgeMonths).toBe(60);
+  });
+});
+
+describe("parseSex", () => {
+  it.each([
+    ["Lina je približno leto dni stara psička.", "female"],
+    ["Samica, zelo prijazna.", "female"],
+    ["Samček, star eno leto.", "male"],
+    ["Maček, star eno leto.", "male"],
+    // "pes" is the plain Slovenian word for dog, not a sex marker. A female
+    // dog described only with "pes" (no sex-specific word) must not come
+    // out male. Same for "kuža" (colloquial "doggie"), used for dogs of
+    // either sex.
+    ["Lina je lep pes, rada teka in se igra.", undefined],
+    ["Runo je prijazen kuža, ki čaka na dom.", undefined],
+    // "mačka" is the plain Slovenian word for cat (as "pes" is for dog), not
+    // a sex marker either: a male cat is still a "mačka" in ordinary usage.
+    ["Muri je črna mačka.", undefined],
+    ["Muri je črna muca.", "female"],
+  ] as const)("%s → %s", (input, expected) => {
+    expect(parseSex(input)).toBe(expected);
   });
 });
 

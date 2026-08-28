@@ -15,6 +15,7 @@ import type {
 } from "@posvoji/provider-sdk";
 import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
+import { writeFileAtomic } from "./write-atomic";
 
 // Where the static site serves the files written to cachedImagesDir.
 const PUBLIC_PREFIX = "/media/animals";
@@ -133,7 +134,7 @@ function isCacheableImage(image: AnimalImage): boolean {
 // Whether a surface may draw this image at all, cached or hotlinked. Same rule
 // as permittedPhotos in apps/web/lib/animal-images.ts, which is what decides
 // which photo a card and a detail page actually lead with.
-function isDrawableImage(image: AnimalImage): boolean {
+export function isDrawableImage(image: AnimalImage): boolean {
   return isCacheableImage(image) || image.rights === "display-permitted";
 }
 
@@ -433,17 +434,40 @@ function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export function readImageCacheManifest(path: string): ImageCacheManifest {
-  if (!existsSync(path)) return { entries: {} };
+// "absent" is a first run and is fine. "unreadable" is a file that is there
+// and cannot be used, which is a different and much worse thing: the manifest
+// maps a source URL to a content-addressed file, and nothing on disk can
+// reconstruct that mapping.
+export type ManifestState = "absent" | "loaded" | "unreadable";
+
+export interface LoadedImageCacheManifest {
+  manifest: ImageCacheManifest;
+  state: ManifestState;
+}
+
+export function loadImageCacheManifest(
+  path: string,
+): LoadedImageCacheManifest {
+  if (!existsSync(path)) return { manifest: { entries: {} }, state: "absent" };
+  let why: string;
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (parsed && typeof parsed.entries === "object" && parsed.entries) {
-      return { entries: parsed.entries };
+      return { manifest: { entries: parsed.entries }, state: "loaded" };
     }
-  } catch {
-    // A broken manifest just means a full re-fetch.
+    why = "no entries object";
+  } catch (error) {
+    why = String(error);
   }
-  return { entries: {} };
+  console.warn(
+    `images: the cache manifest at ${path} is unreadable (${why}). Every ` +
+      `cached copy has lost its source URL and will be fetched again.`,
+  );
+  return { manifest: { entries: {} }, state: "unreadable" };
+}
+
+export function readImageCacheManifest(path: string): ImageCacheManifest {
+  return loadImageCacheManifest(path).manifest;
 }
 
 export interface CacheImagesResult {
@@ -483,6 +507,24 @@ export async function cacheImages(
   const previous = readImageCacheManifest(manifestPath);
   const next: ImageCacheManifest = { entries: {} };
   mkdirSync(mediaDir, { recursive: true });
+
+  // A manifest that is gone or unreadable makes every entry look uncached, and
+  // the sweep at the end reads "not in the manifest" as "nobody wants it": on
+  // a scoped run that is every other provider's photos, on a full run every
+  // URL whose fetch failed this once. Files are cheap and a re-crawl of a
+  // thousand photos is not, so a run that starts with no manifest and a media
+  // directory full of files keeps the files and skips the sweep. The manifest
+  // fills back in as URLs are fetched, and the next run sweeps normally.
+  const startedWith = readdirSync(mediaDir);
+  const manifestLost =
+    Object.keys(previous.entries).length === 0 && startedWith.length > 0;
+  if (manifestLost) {
+    console.warn(
+      `images: no usable cache manifest at ${manifestPath} but ` +
+        `${startedWith.length} file(s) in ${mediaDir}. Keeping them and ` +
+        `skipping the deletion sweep for this run.`,
+    );
+  }
 
   // Scoped runs still walk every cache-permitted URL, because the deletion
   // sweep below reads next.entries as the full list of what is still wanted.
@@ -606,13 +648,21 @@ export async function cacheImages(
     ]),
   );
   let deleted = 0;
-  for (const file of readdirSync(mediaDir)) {
-    if (referenced.has(file)) continue;
-    rmSync(join(mediaDir, file));
-    deleted++;
+  if (!manifestLost) {
+    for (const file of readdirSync(mediaDir)) {
+      if (referenced.has(file)) continue;
+      try {
+        rmSync(join(mediaDir, file));
+        deleted++;
+      } catch (error) {
+        // A file held open by another process, or a stray directory. Neither
+        // is worth losing the rest of the run over.
+        console.warn(`image ${file}: could not be deleted (${error})`);
+      }
+    }
   }
 
-  writeFileSync(manifestPath, JSON.stringify(next, null, 2));
+  writeFileAtomic(manifestPath, JSON.stringify(next, null, 2));
 
   return {
     animals: withCachedUrls(animals, next),

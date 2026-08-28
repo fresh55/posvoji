@@ -1,7 +1,7 @@
 # The project owner confirmed Horjul's permission on 2026-08-18, covering the
 # shelter catalogue, the animal photographs and the descriptions. The parser
-# does not extract descriptions yet, so none are ingested until it does; the
-# policy records the grant, not the implementation.
+# extracts the newest journal ("Dnevnik") entry as the description, with the
+# adoption-questionnaire sentence stripped out.
 providerId: horjul
 source: https://www.zavetisce-horjul.net/iscejo-dom/
 enabled: true

@@ -10,12 +10,14 @@ import {
 import { join } from "node:path";
 import sharp from "sharp";
 import type { Animal, Species } from "@posvoji/schema";
+import { isDrawableImage } from "./cache-images";
 import {
   cachedImagesDir,
   fontsDir,
   shareCardManifestPath,
   shareCardsDir,
 } from "./paths";
+import { writeFileAtomic } from "./write-atomic";
 
 // Where the static site serves the files written to shareCardsDir.
 const PUBLIC_PREFIX = "/media/share";
@@ -145,18 +147,21 @@ export function shareCardUrlFor(file: string): string {
 // Only our own cached copy is ever drawn into a card. A display-permitted
 // photo may be shown from the shelter's server; it may not be baked into an
 // image we host, so those animals get a typographic card instead.
+//
+// The card shows the photo the page leads with, which is the first drawable
+// image and nothing else: reaching past a display-permitted lead for a
+// cache-permitted photo further down would put a picture on the card that the
+// site never shows. Same rule as heroSourceUrls and permittedPhotos.
 export function photoSourceFor(
   animal: Animal,
   mediaDir = cachedImagesDir,
 ): string | undefined {
-  for (const image of animal.images) {
-    if (image.rights !== "cache-permitted") continue;
-    const cached = image.cachedUrl;
-    if (!cached || !cached.startsWith("/media/animals/")) continue;
-    const path = join(mediaDir, cached.slice("/media/animals/".length));
-    if (existsSync(path)) return path;
-  }
-  return undefined;
+  const lead = animal.images.find(isDrawableImage);
+  if (!lead || lead.rights !== "cache-permitted") return undefined;
+  const cached = lead.cachedUrl;
+  if (!cached || !cached.startsWith("/media/animals/")) return undefined;
+  const path = join(mediaDir, cached.slice("/media/animals/".length));
+  return existsSync(path) ? path : undefined;
 }
 
 function escapeMarkup(value: string): string {
@@ -412,14 +417,17 @@ export interface ShareCardManifest {
 
 function readManifest(path: string): ShareCardManifest {
   if (!existsSync(path)) return { entries: {} };
+  let why: string;
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (parsed && typeof parsed.entries === "object" && parsed.entries) {
       return { entries: parsed.entries };
     }
-  } catch {
-    // A broken manifest just means every card is drawn again.
+    why = "no entries object";
+  } catch (error) {
+    why = String(error);
   }
+  console.warn(`share cards: the manifest at ${path} is unreadable (${why})`);
   return { entries: {} };
 }
 
@@ -469,6 +477,20 @@ export async function writeShareCards(
   const previous = readManifest(manifestPath);
   const next: ShareCardManifest = { entries: {} };
   mkdirSync(cardsDir, { recursive: true });
+
+  // Same rule as the photo and logo caches: with no usable manifest the sweep
+  // below reads every card on disk as an orphan, and an animal whose card
+  // fails to draw this run would lose the card it already had.
+  const startedWith = readdirSync(cardsDir);
+  const manifestLost =
+    Object.keys(previous.entries).length === 0 && startedWith.length > 0;
+  if (manifestLost) {
+    console.warn(
+      `share cards: no usable manifest at ${manifestPath} but ` +
+        `${startedWith.length} file(s) in ${cardsDir}. Keeping them and ` +
+        `skipping the deletion sweep for this run.`,
+    );
+  }
 
   let written = 0;
   let reused = 0;
@@ -522,13 +544,19 @@ export async function writeShareCards(
     Object.values(next.entries).flatMap((entry) => entry.files),
   );
   let deleted = 0;
-  for (const file of readdirSync(cardsDir)) {
-    if (referenced.has(file)) continue;
-    rmSync(join(cardsDir, file));
-    deleted++;
+  if (!manifestLost) {
+    for (const file of readdirSync(cardsDir)) {
+      if (referenced.has(file)) continue;
+      try {
+        rmSync(join(cardsDir, file));
+        deleted++;
+      } catch (error) {
+        console.warn(`share card ${file}: could not be deleted (${error})`);
+      }
+    }
   }
 
-  writeFileSync(manifestPath, JSON.stringify(next, null, 2));
+  writeFileAtomic(manifestPath, JSON.stringify(next, null, 2));
 
   return { written, reused, deleted };
 }

@@ -85,23 +85,43 @@ export function parseApproximateAgeMonths(
   return /\b(?:približno\s+)?leto\s+dni\b/iu.test(normalized) ? 12 : undefined;
 }
 
-function parseSex(value: string): Sex | undefined {
+export function parseSex(value: string): Sex | undefined {
   const normalized = value.normalize("NFC").toLocaleLowerCase("sl");
-  const female = /\b(?:samička|samica|psička|psica|mačka)\b/u.test(normalized);
-  const male = /\b(?:samček|samec|kuža|pes|maček)\b/u.test(normalized);
+  // "pes" (dog) and "mačka" (cat) are the plain species nouns in Slovenian,
+  // not sex markers: a female dog is still a "pes" and a male cat is still a
+  // "mačka" in ordinary usage, so both are excluded here. Likewise "kuža"
+  // (colloquial "doggie") is used for dogs of either sex. Only forms that are
+  // themselves sex-specific stay: samica/samička/psica/psička/muca for
+  // female, samec/samček/maček for male.
+  const female = /\b(?:samička|samica|psička|psica|muca)\b/u.test(normalized);
+  const male = /\b(?:samček|samec|maček)\b/u.test(normalized);
   if (female && male) return "unknown";
   if (female) return "female";
   if (male) return "male";
   return undefined;
 }
 
+// Most listings type the text straight into the editor as direct-child <p>
+// elements, but some are pasted in from Facebook, which wraps every line in
+// its own obfuscated-class div and puts the actual text one level deeper in
+// a leaf `div[dir="auto"]` (the wrapping divs never carry that attribute
+// themselves). A direct-child selector loses those entirely. .portfolio-
+// single-items is always empty on current listings, but its class name
+// names it as a tag/share block, so it is excluded the same defensive way
+// obalno excludes its gallery and donation panels.
+const NOT_ANIMAL_TEXT = ".portfolio-single-items";
+
 function parseDescription($: cheerio.CheerioAPI): string | undefined {
   const parts: string[] = [];
-  $("article.portfolio-single > p").each((_, element) => {
-    const text = $(element).text().normalize("NFC").replace(/\s+/g, " ").trim();
-    if (/^Za več informacij\b/iu.test(text)) return false;
-    if (text) parts.push(text);
-  });
+  $("article.portfolio-single")
+    .first()
+    .find("p, div[dir='auto']")
+    .filter((_, element) => $(element).closest(NOT_ANIMAL_TEXT).length === 0)
+    .each((_, element) => {
+      const text = $(element).text().normalize("NFC").replace(/\s+/g, " ").trim();
+      if (/^Za več informacij\b/iu.test(text)) return false;
+      if (text) parts.push(text);
+    });
   return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
@@ -212,6 +232,15 @@ const provider: AdoptionProvider = {
       species: facts.species,
       sex: facts.sex,
       approximateAgeMonths: facts.approximateAgeMonths,
+      // Checked the live site 2026-08-29: the archive (meli-center.si/iscejo-dom/)
+      // and several detail pages carry no reservation/adoption signal at all.
+      // Listing titles are always "X išče(ta) nov(e) dom(ove)", never a
+      // suffix like zonzani's "(rezervirano)"; the portfolio-category-psi/
+      // -macke classes are species only, not a status; and the sampled
+      // descriptions (some typed directly, some pasted from Facebook posts)
+      // had no status wording to weigh either. A listing present on the
+      // archive is the availability signal; the site removes an animal from
+      // it once it is no longer up for adoption.
       status: "available",
       images:
         rights === null

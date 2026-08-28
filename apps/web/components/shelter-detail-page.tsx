@@ -7,7 +7,7 @@ import { ShelterAvatar } from "@/components/shelter-avatar";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { loadDataset } from "@/lib/dataset";
+import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS } from "@/lib/labels";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -159,7 +159,9 @@ export function ShelterDetailPage({
               {text.animalsTitle}
             </h2>
             <ShelterAnimalGrid
-              animals={animals}
+              // The same cards and the same dialog as the home page, so the
+              // same projection: see animalsForClient in lib/dataset.ts.
+              animals={animalsForClient(animals)}
               logos={logos}
               emptyLabel={text.emptyAnimals}
               referenceDate={dataset?.generatedAt ?? new Date().toISOString()}

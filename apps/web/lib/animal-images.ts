@@ -21,10 +21,22 @@ export type PermittedPhoto = {
   blurDataURL?: string;
 };
 
+/** Whether a surface may draw this image at all. permittedPhotos keeps
+ *  exactly these, in the order they arrive, so the first one to pass is the
+ *  photo a card shows and the one a dialog opens on. Its own function because
+ *  the client projection in lib/dataset.ts has to answer the same question and
+ *  the two must not drift into different ideas of which photo leads. */
+export function isDrawableImage(image: Animal["images"][number]): boolean {
+  return (
+    image.rights === "cache-permitted" || image.rights === "display-permitted"
+  );
+}
+
 // Images without explicit display permission stay on the shelter's own site.
 // Cacheable images prefer our local, resized copy when ingest has produced one.
 export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
   return images.flatMap((image) => {
+    if (!isDrawableImage(image)) return [];
     if (image.rights === "cache-permitted") {
       // The derived fields describe our own copy. A cache that failed leaves
       // the shelter's file hotlinked, and none of them apply to it.
@@ -40,8 +52,7 @@ export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
         },
       ];
     }
-    if (image.rights === "display-permitted") return [{ src: image.sourceUrl }];
-    return [];
+    return [{ src: image.sourceUrl }];
   });
 }
 

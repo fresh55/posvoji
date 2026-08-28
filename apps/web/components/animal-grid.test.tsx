@@ -19,7 +19,6 @@ import {
   UNDO_WINDOW_MS,
 } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
-import { CARD_GRID } from "@/lib/card-grid";
 import { animalsForClient } from "@/lib/dataset";
 
 // AnimalGrid renders its own I18nProvider-consuming children, but the
@@ -134,12 +133,21 @@ function stubIntersectionObserver(): ObserverStub {
 // lays nothing out, so the columns are stubbed instead of laid out. Only the
 // card grid's element answers differently: the rest of the tree reads computed
 // style too, and gets jsdom's real answer.
+//
+// Found by its data attribute and not by its classes, for the reason the grid
+// marks itself with one: a class list is layout, and layout is free to gain a
+// class. Matched on the class list, one call to cn() around CARD_GRID would
+// have left this patching nothing, and every column count here quietly
+// charging the two-column fallback instead.
 const realComputedStyle = window.getComputedStyle.bind(window);
 
 function stubGridColumns(tracks: string) {
   window.getComputedStyle = (element: Element, pseudo?: string | null) => {
     const style = realComputedStyle(element, pseudo ?? undefined);
-    if (element instanceof HTMLElement && element.className === CARD_GRID) {
+    if (
+      element instanceof HTMLElement &&
+      element.hasAttribute("data-card-grid")
+    ) {
       Object.defineProperty(style, "gridTemplateColumns", {
         configurable: true,
         value: tracks,
@@ -413,74 +421,61 @@ describe("how much of the grid is drawn", () => {
     expect(document.activeElement).toBe(firstAdded.querySelector("a"));
   });
 
-  it("takes wider steps and settles later where the grid draws four columns", () => {
-    // The budget is rows, so four columns buy twice the cards of two for the
-    // same scroll distance: steps of 60 rather than 30, and 160 drawn rather
-    // than 80. Two steps to spend it, so the sentinel has to survive the
-    // first. The remainder is larger than one press delivers, so the button
-    // offers its full stride.
-    stubGridColumns(columnTracks(4));
-    const beyond = pastTheBudget(4, CARDS_PER_CLICK + 10);
-    const { callbacks } = stubIntersectionObserver();
-    const { container } = renderGrid(beyond);
+  // Where two columns spend the whole budget in one step, three and four take
+  // two, and the second one is short. That is one shape and not two, so it is
+  // written once: a wider grid buys proportionally more cards for the same
+  // scroll distance (45 a step at three columns, 60 at four), and either way a
+  // full second stride would run past the budget, which is the case the clamp
+  // exists for. The spare each one is given is what the button is then left to
+  // offer: the remainder at three columns, a full press worth at four.
+  it.each([
+    { columns: 3, spare: 10 },
+    { columns: 4, spare: CARDS_PER_CLICK + 10 },
+  ])(
+    "steps by the columns it draws and clamps the last step at the target ($columns columns)",
+    ({ columns, spare }) => {
+      expect(INITIAL_CARDS + ROWS_PER_STEP * columns * 2).toBeGreaterThan(
+        TARGET_ROWS * columns,
+      );
 
-    act(() => {
-      for (const callback of callbacks) callback([{ isIntersecting: true }]);
-    });
+      stubGridColumns(columnTracks(columns));
+      const beyond = pastTheBudget(columns, spare);
+      const { callbacks } = stubIntersectionObserver();
+      const { container } = renderGrid(beyond);
 
-    expect(screen.getAllByRole("article")).toHaveLength(
-      INITIAL_CARDS + ROWS_PER_STEP * 4,
-    );
-    expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
 
-    act(() => {
-      for (const callback of callbacks) callback([{ isIntersecting: true }]);
-    });
+      // One full stride, short of the budget, so the sentinel stands and
+      // nothing interrupts the scroll yet.
+      expect(screen.getAllByRole("article")).toHaveLength(
+        INITIAL_CARDS + ROWS_PER_STEP * columns,
+      );
+      expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
 
-    expect(screen.getAllByRole("article")).toHaveLength(TARGET_ROWS * 4);
-    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: `Prikaži še ${CARDS_PER_CLICK}` }),
-    ).toBeTruthy();
-  });
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
 
-  it("clamps the last step at the row target where three columns would overshoot", () => {
-    // Three columns step by 45, and 60 plus two of those is 150: past the
-    // 120-card budget, so a full second stride would draw ten rows more than
-    // TARGET_ROWS names. The last step is what is left of the budget instead,
-    // so the grid settles on the number the constant names.
-    expect(INITIAL_CARDS + ROWS_PER_STEP * 3 * 2).toBeGreaterThan(
-      TARGET_ROWS * 3,
-    );
-
-    stubGridColumns(columnTracks(3));
-    const beyond = pastTheBudget(3, 10);
-    const { callbacks } = stubIntersectionObserver();
-    const { container } = renderGrid(beyond);
-
-    act(() => {
-      for (const callback of callbacks) callback([{ isIntersecting: true }]);
-    });
-
-    // One full stride, short of the budget, so the sentinel stands.
-    expect(screen.getAllByRole("article")).toHaveLength(
-      INITIAL_CARDS + ROWS_PER_STEP * 3,
-    );
-    expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
-
-    act(() => {
-      for (const callback of callbacks) callback([{ isIntersecting: true }]);
-    });
-
-    expect(screen.getAllByRole("article")).toHaveLength(TARGET_ROWS * 3);
-    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
-    expect(screen.getByRole("button", { name: "Prikaži še 10" })).toBeTruthy();
-    expect(
-      screen.getByText(`${TARGET_ROWS * 3} od ${beyond.length} živali`),
-    ).toBeTruthy();
-  });
+      // The second step is the short one. The grid settles on the number
+      // TARGET_ROWS names rather than a stride past it, and the way on is the
+      // button, carrying a press worth or the remainder, whichever is less.
+      expect(screen.getAllByRole("article")).toHaveLength(
+        TARGET_ROWS * columns,
+      );
+      expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+      expect(
+        screen.getByRole("button", {
+          name: `Prikaži še ${Math.min(CARDS_PER_CLICK, spare)}`,
+        }),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(`${TARGET_ROWS * columns} od ${beyond.length} živali`),
+      ).toBeTruthy();
+    },
+  );
 
   it("re-arms the observation on a step that leaves the sentinel standing", () => {
     // An observer reports a change of state and nothing else, so after a step

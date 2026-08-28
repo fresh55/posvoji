@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { ROW, openPicker, pickerTrigger, rows } from "./picker";
+import { ROW, openPicker, rows } from "./picker";
 
 // The unit tests render the picker to static markup and read its data-*
 // attributes, which covers the state contract. Three things are left over that

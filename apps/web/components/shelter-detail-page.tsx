@@ -1,4 +1,4 @@
-import { Globe, Info, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { Globe, Info, Mail, MapPin, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -21,7 +21,7 @@ const pageText = {
     animalsTitle: "Živali iz tega zavetišča",
     emptyAnimals: "Trenutno ni objavljenih živali iz tega zavetišča.",
     providerNotice:
-      "To zavetišče podatke o živalih deli z izrecnim dovoljenjem. Vsaka žival je povezana na izvirno objavo pri zavetišču.",
+      "Vsaka žival je povezana na izvirno objavo pri zavetišču.",
     registryNotice:
       "Zavetišče je navedeno iz javnega registra UVHVVR. Za zdaj še nima urejenega vira podatkov o živalih na Posvoji.si, zato tukaj ni seznama; za posvojitev se obrnite nanje neposredno.",
   },
@@ -31,7 +31,7 @@ const pageText = {
     animalsTitle: "Animals from this shelter",
     emptyAnimals: "No animals from this shelter are published yet.",
     providerNotice:
-      "This shelter shares animal data with explicit permission. Every animal links back to its original listing at the shelter.",
+      "Every animal links back to its original listing at the shelter.",
     registryNotice:
       "This shelter is listed from the public UVHVVR registry. It does not yet have a data feed on Posvoji.si, so there is no animal list here; contact the shelter directly to ask about adoption.",
   },
@@ -143,11 +143,7 @@ export function ShelterDetailPage({
                   : "bg-muted/40 text-muted-foreground",
               )}
             >
-              {hasData ? (
-                <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-              ) : (
-                <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-              )}
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               <p>{hasData ? text.providerNotice : text.registryNotice}</p>
             </div>
           </div>

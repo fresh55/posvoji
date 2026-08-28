@@ -4,7 +4,7 @@ import { SheltersPage } from "@/components/shelters-page";
 export const metadata: Metadata = {
   title: "Shelters | Posvoji.si",
   description:
-    "A list of Slovenian animal shelters: which ones share a structured animal list with us by permission, and where to find contact details for the rest.",
+    "A list of Slovenian animal shelters: which ones have a structured animal list here, and where to find contact details for the rest.",
 };
 
 export default function Shelters() {

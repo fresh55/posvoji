@@ -12,7 +12,7 @@ const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
     back: "Živali za posvojitev",
-    providerBadge: "Deli podatke z dovoljenjem",
+    providerBadge: "Strukturiran seznam živali",
     registryBadge: "Le kontaktni podatki",
     noAnimalsYet: "brez živali za zdaj",
     registrySource: "Vir registra: UVHVVR (gov.si).",
@@ -20,7 +20,7 @@ const pageText = {
   en: {
     title: "Shelters across Slovenia",
     back: "Animals for adoption",
-    providerBadge: "Shares data with permission",
+    providerBadge: "Structured animal list",
     registryBadge: "Contact details only",
     noAnimalsYet: "no animals yet",
     registrySource: "Registry source: UVHVVR (gov.si).",
@@ -50,8 +50,8 @@ export function SheltersPage({ locale }: { locale: Locale }) {
 
   const intro =
     locale === "sl"
-      ? `${shelterCount(shelters.length, locale)} iz javnega registra UVHVVR. ${shelterCount(withData, locale)} trenutno deli strukturiran seznam živali z dovoljenjem; za ostala so na voljo kontaktni podatki.`
-      : `${shelterCount(shelters.length, locale)} from the public UVHVVR registry. ${shelterCount(withData, locale)} currently share a structured animal list by permission; the rest list contact details only.`;
+      ? `${shelterCount(shelters.length, locale)} iz javnega registra UVHVVR. Za ${shelterCount(withData, locale)} je na voljo strukturiran seznam živali; za ostala so na voljo kontaktni podatki.`
+      : `${shelterCount(shelters.length, locale)} from the public UVHVVR registry. ${shelterCount(withData, locale)} have a structured animal list here; the rest list contact details only.`;
 
   return (
     <I18nProvider locale={locale}>

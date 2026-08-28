@@ -4,7 +4,7 @@ import { SheltersPage } from "@/components/shelters-page";
 export const metadata: Metadata = {
   title: "Zavetišča | Posvoji.si",
   description:
-    "Seznam slovenskih zavetišč za živali: katera z nami delijo strukturiran seznam živali z dovoljenjem in kje najdete kontaktne podatke za ostala.",
+    "Seznam slovenskih zavetišč za živali: za katera je na voljo strukturiran seznam živali in kje najdete kontaktne podatke za ostala.",
 };
 
 export default function Zavetisca() {

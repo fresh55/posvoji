@@ -1,4 +1,4 @@
-import { Info, MapPin, PawPrint, ShieldCheck } from "lucide-react";
+import { Info, List, MapPin, PawPrint } from "lucide-react";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import type { Locale } from "@/lib/i18n";
@@ -65,7 +65,7 @@ export function ShelterCard({
             )}
           >
             {hasAnimals ? (
-              <ShieldCheck className="size-3" aria-hidden />
+              <List className="size-3" aria-hidden />
             ) : (
               <Info className="size-3" aria-hidden />
             )}

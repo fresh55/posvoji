@@ -33,7 +33,8 @@
   /* Where the back-to-top control sits, and the one place that distance is
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
-     than restating the same arithmetic (site-footer.tsx). */
+     than restating the same arithmetic (site-footer.tsx). Retuned at lg,
+     below, where there is no dock left to clear. */
   --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom));
 }
 
@@ -53,6 +54,11 @@
     --section-gap: 2.5rem;
     --column-gap: 2rem;
     --sticky-top: 1.5rem;
+    /* The dock is gone from here up, so the button drops to the corner it
+       would have had all along. The footer stops deriving its run-off from
+       this at the same width (lg:pb-6 in site-footer.tsx), so the shorter
+       distance does not reach the footer's padding. */
+    --back-to-top-bottom: 1.5rem;
   }
 }
 

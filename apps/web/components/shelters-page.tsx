@@ -3,7 +3,7 @@ import { ShelterCard } from "@/components/shelter-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
@@ -32,7 +32,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
   const logos = getShelterLogos();
-  const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = locale === "sl" ? "/" : "/en";
   const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
@@ -57,7 +56,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          githubTitle={messages.githubTitle}
           homeHref={homeHref}
           languagePaths={{ sl: "/zavetisca", en: "/en/shelters" }}
         />

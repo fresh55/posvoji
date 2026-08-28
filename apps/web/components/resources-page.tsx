@@ -1,7 +1,7 @@
 import { I18nProvider } from "@/components/i18n-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { Card } from "@/components/ui/card";
 
 type LocalizedText = Record<Locale, string>;
@@ -264,7 +264,6 @@ const pageText = {
 } satisfies Record<Locale, Record<string, string>>;
 
 export function ResourcesPage({ locale }: { locale: Locale }) {
-  const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = locale === "sl" ? "/" : "/en";
 
@@ -272,7 +271,6 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          githubTitle={messages.githubTitle}
           homeHref={homeHref}
           languagePaths={{ sl: "/viri", en: "/en/resources" }}
         />
@@ -336,7 +334,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
           ))}
         </main>
 
-        <SiteFooter locale={locale} showResourcesLink={false} />
+        <SiteFooter locale={locale} />
       </div>
     </I18nProvider>
   );

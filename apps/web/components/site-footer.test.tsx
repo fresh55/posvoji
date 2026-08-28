@@ -38,6 +38,21 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("link", { name: "Zavetišča" })).toBeTruthy();
   });
 
+  // Two links and no more. The shelter login is the header's, as a button
+  // from lg and in the dropdown below it, and repeating it at the bottom of a
+  // page the length of the grid bought nothing. The resources page is hidden
+  // in lib/site-links.ts while it waits for a pass over its contents; it
+  // still builds and still answers on /viri.
+  it("lists the two pages and nothing else", () => {
+    const { container } = render(<SiteFooter locale="sl" />);
+
+    const nav = container.querySelector("nav");
+    const hrefs = Array.from(nav?.querySelectorAll("a") ?? []).map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(hrefs).toEqual(["/zavetisca", FOUND_ANIMAL_PATHS.sl]);
+  });
+
   it("clears the floating filter dock on the one page that has one", () => {
     // The grid reserved its own run-off for the dock, but the grid is not what
     // ends the document. Without this the dock sat on top of the only links

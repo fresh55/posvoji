@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -18,37 +18,76 @@ const SHOW_AFTER_SCREENS = 2;
 // Clear of the dock, with a gap above it, so the two read as a stack rather
 // than a collision. The distance itself is --back-to-top-bottom in globals.css,
 // because the footer has to clear this button in turn and derives its own
-// run-off from the same number. From lg the dock is gone and the button drops
-// to the corner it would have had all along.
+// run-off from the same number, and that token is retuned at lg where there is
+// no dock left to clear.
+//
+// From lg the button also stops at the top of the footer rather than riding
+// over it. The button is pinned to the viewport's right edge and the footer's
+// links to the container's, and the container is max-w-7xl and centred, so the
+// two are the same edge exactly when the viewport is about as wide as the
+// container: measured at 1024 and 1280 the button covered the right half of the
+// last link and won the hit test for it. Moving it horizontally is not open to
+// us, which is worth writing down so it is not proposed again: pinning to the
+// container's inner edge puts the button on the links' own edge at every width,
+// and there is only room outside the container above about 1400px. So it goes
+// up instead.
+//
+// Below lg this is left out of the CSS and the variable goes unread, because
+// the clearance there is the footer's `docked` padding, which reserves a strip
+// for this button rather than moving it. Lifting as well would be that same
+// clearance counted twice. That does mean a page mounting BackToTop without a
+// docked footer has no clearance below lg; today site-page.tsx is the only one
+// that mounts it and it passes `docked`.
 const PLACEMENT =
-  "fixed right-4 bottom-(--back-to-top-bottom) z-40 lg:right-6 lg:bottom-6";
+  "fixed right-4 bottom-(--back-to-top-bottom) z-40 lg:right-6 lg:bottom-[calc(var(--back-to-top-bottom)+var(--back-to-top-lift,0px))]";
 
 export function BackToTop() {
   const { messages } = useI18n();
   const [shown, setShown] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let frame = 0;
+    // Resolved once. The footer is a sibling of the tree this button is
+    // mounted in, so there is no ref to pass down, but it is in the same
+    // commit and so is already in the document by the time an effect runs.
+    const footer = document.querySelector("footer");
     const read = () => {
       frame = 0;
       setShown(window.scrollY > window.innerHeight * SHOW_AFTER_SCREENS);
+      // How much of the footer is on screen, which is exactly how far the
+      // button has to come up to sit on top of it: the inset it already holds
+      // off the viewport's bottom edge becomes the gap above the footer. Zero
+      // for the whole length of the grid, and written straight onto the node
+      // rather than held in state, so the frames where it does change cost no
+      // render.
+      const overlap = footer
+        ? Math.max(0, window.innerHeight - footer.getBoundingClientRect().top)
+        : 0;
+      ref.current?.style.setProperty("--back-to-top-lift", `${overlap}px`);
     };
-    // Coalesced into a frame: scroll fires far more often than this answer
-    // can change, and the listener runs over a very long document.
-    const onScroll = () => {
+    // Coalesced into a frame: these events fire far more often than the
+    // answers can change, and the listener runs over a very long document.
+    const onViewportChange = () => {
       if (frame) return;
       frame = requestAnimationFrame(read);
     };
     read();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onViewportChange, { passive: true });
+    // Resizing moves the footer under a button that has not scrolled, and at
+    // the end of the document it changes how much of the footer is on screen
+    // without firing a scroll at all.
+    window.addEventListener("resize", onViewportChange);
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onViewportChange);
+      window.removeEventListener("resize", onViewportChange);
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
   return (
     <Button
+      ref={ref}
       type="button"
       variant="outline"
       size="icon"

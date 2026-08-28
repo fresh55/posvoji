@@ -100,8 +100,17 @@ function query() {
 // by hand.
 type ObserverEntries = { isIntersecting: boolean }[];
 
-function stubIntersectionObserver(): ((entries: ObserverEntries) => void)[] {
-  const callbacks: ((entries: ObserverEntries) => void)[] = [];
+// The callbacks to fire by hand, and every registration the grid made against
+// them. The registrations matter as much as the callbacks: a step has to
+// re-arm its observation, and re-arming is the observe call.
+type ObserverStub = {
+  callbacks: ((entries: ObserverEntries) => void)[];
+  calls: { method: "observe" | "unobserve"; node: Element }[];
+};
+
+function stubIntersectionObserver(): ObserverStub {
+  const callbacks: ObserverStub["callbacks"] = [];
+  const calls: ObserverStub["calls"] = [];
   Object.defineProperty(window, "IntersectionObserver", {
     configurable: true,
     writable: true,
@@ -109,12 +118,16 @@ function stubIntersectionObserver(): ((entries: ObserverEntries) => void)[] {
       constructor(callback: (entries: ObserverEntries) => void) {
         callbacks.push(callback);
       }
-      observe() {}
-      unobserve() {}
+      observe(node: Element) {
+        calls.push({ method: "observe", node });
+      }
+      unobserve(node: Element) {
+        calls.push({ method: "unobserve", node });
+      }
       disconnect() {}
     },
   });
-  return callbacks;
+  return { callbacks, calls };
 }
 
 // The step is measured off the rendered grid's own column count, and jsdom
@@ -342,7 +355,7 @@ describe("how much of the grid is drawn", () => {
 
   it("draws the first chunk, then grows when the sentinel comes into view", () => {
     stubGridColumns(columnTracks(2));
-    const callbacks = stubIntersectionObserver();
+    const { callbacks } = stubIntersectionObserver();
     renderGrid(many);
 
     expect(screen.getAllByRole("article")).toHaveLength(INITIAL_CARDS);
@@ -370,7 +383,7 @@ describe("how much of the grid is drawn", () => {
     // to offer.
     stubGridColumns(columnTracks(2));
     const beyond = pastTheBudget(2, 10);
-    const callbacks = stubIntersectionObserver();
+    const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
 
     act(() => {
@@ -407,7 +420,7 @@ describe("how much of the grid is drawn", () => {
     // offers its full stride.
     stubGridColumns(columnTracks(4));
     const beyond = pastTheBudget(4, CARDS_PER_CLICK + 10);
-    const callbacks = stubIntersectionObserver();
+    const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
 
     act(() => {
@@ -431,12 +444,42 @@ describe("how much of the grid is drawn", () => {
     ).toBeTruthy();
   });
 
+  it("re-arms the observation on a step that leaves the sentinel standing", () => {
+    // An observer reports a change of state and nothing else, so after a step
+    // it is still holding "intersecting" and only a delivered leave moves it
+    // off that. A reader who is already at the end of the document when a step
+    // lands grows the page entirely below the viewport, and measured on
+    // 28 August 2026 Chrome did not always report the leave that follows: two
+    // of three loads at 1440x900 in a headed browser missed it. The grid froze
+    // at one step for good, with no entry left to come and no button to press.
+    stubGridColumns(columnTracks(4));
+    const beyond = pastTheBudget(4, CARDS_PER_CLICK);
+    const { callbacks, calls } = stubIntersectionObserver();
+    const { container } = renderGrid(beyond);
+
+    const sentinel = container.querySelector("[data-grid-sentinel]");
+    expect(sentinel).toBeTruthy();
+    const armed = calls.length;
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    // Still short of the budget, so the sentinel stands, and the step has
+    // registered it again rather than leaving the next entry to the geometry.
+    expect(container.querySelector("[data-grid-sentinel]")).toBe(sentinel);
+    expect(calls.slice(armed)).toEqual([
+      { method: "unobserve", node: sentinel },
+      { method: "observe", node: sentinel },
+    ]);
+  });
+
   it("charges an unmeasurable grid for two columns", () => {
     // Deliberately unstubbed: jsdom lays out nothing, so this is the real
     // computed value the fallback exists for. The step is the two-column one,
     // and a list long enough that a four-column step would show as 120.
     const beyond = pastTheBudget(4, 0);
-    const callbacks = stubIntersectionObserver();
+    const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
 
     act(() => {
@@ -451,7 +494,7 @@ describe("how much of the grid is drawn", () => {
 
   it("goes back to the first chunk when the filters change", () => {
     stubGridColumns(columnTracks(2));
-    const callbacks = stubIntersectionObserver();
+    const { callbacks } = stubIntersectionObserver();
     renderGrid(many);
 
     act(() => {

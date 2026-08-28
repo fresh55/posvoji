@@ -113,10 +113,12 @@ const STEP_MARGIN = "1200px 0px";
 // breakpoint of its own, so there is no second copy of CARD_GRID's layout
 // (lib/card-grid.ts) here to drift away from it.
 //
-// Fifteen rows is also what keeps the observer alive across a step. The
-// sentinel only delivers another entry by leaving the watched band and coming
-// back, and fifteen rows is some 4,500px even at two columns, far past the
-// 1200px STEP_MARGIN above.
+// Fifteen rows is also more than the watched band, being some 4,500px even at
+// two columns against the 1200px STEP_MARGIN above. That is what stops a step
+// from asking for the next one the moment it lands, so the grid grows a step
+// at a time as the reader descends. It is not what keeps the observer alive
+// across a step: the sentinel's ref re-arms it (watchSentinel below), because
+// the browser does not reliably report the leave that used to do the job.
 export const ROWS_PER_STEP = 15;
 export const TARGET_ROWS = 45;
 
@@ -273,14 +275,36 @@ export function AnimalGrid({
   // the step above it, which measures the drawn columns off this element.
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // The sentinel's own ref is the observer's lifetime, and that lifetime is now
-  // one sorted list rather than one step: the callback closes over the list
-  // alone, so a step no longer takes the observer down and puts a new one up.
-  // What delivers the next entry is the sentinel leaving the watched band and
-  // coming back, which a step of fifteen rows guarantees, being far more than
-  // the 1200px margin below. The step is a functional update for the same
-  // reason: it reads the count off the state it is updating rather than off a
-  // closure that would have to be rebuilt to stay current.
+  // The sentinel's own ref is the observer's lifetime, and that lifetime is one
+  // sorted list rather than one step: the callback closes over the list alone,
+  // so a step does not take the observer down and put a new one up. The step is
+  // a functional update for the same reason: it reads the count off the state
+  // it is updating rather than off a closure that would have to be rebuilt to
+  // stay current.
+  //
+  // What a step does have to do is re-arm the observation, which is the
+  // unobserve and observe pair at the end of the callback. This used to be left
+  // to the geometry, on the reasoning that a step already delivers the next
+  // entry by moving the sentinel: fifteen rows is some 4,500px even at two
+  // columns, far past the 1200px margin below, so the sentinel leaves the
+  // watched band and comes back. It does leave. Whether the browser says so is
+  // a different question, and an observer reports a change of state and nothing
+  // else, so across a step it is still holding "intersecting" and only a
+  // delivered leave can move it off that.
+  //
+  // A reader who is at the end of the document when a step lands grows the page
+  // entirely below the viewport, where nothing that is painted changes.
+  // Measured on 28 August 2026, Chrome delivered that leave on some loads of
+  // that shape and not others: two of three loads at 1440x900 in a headed
+  // browser missed it, and 1280x800 and 1920x1080 the same. A missed leave was
+  // permanent, because no further entry could ever arrive. The grid stopped at
+  // one step, the sentinel never gave way to the button, and four hundred of
+  // the five hundred animals had no way onto the page at all.
+  //
+  // Re-arming does not depend on a transition. A fresh observation is always
+  // delivered an initial entry, measured against wherever the sentinel stands
+  // by then, so the grid either takes the next step or waits for a real scroll,
+  // and neither of those is something the browser has to volunteer.
   const watchSentinel = useCallback(
     (node: HTMLDivElement | null) => {
       if (!node) return;
@@ -308,6 +332,9 @@ export function AnimalGrid({
                 settled: drawn >= TARGET_ROWS * columns,
               };
             });
+            // The re-arm. Nothing else asks this observer for another entry.
+            observer.unobserve(node);
+            observer.observe(node);
           }
         },
         { rootMargin: STEP_MARGIN },

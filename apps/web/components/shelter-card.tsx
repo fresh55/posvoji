@@ -32,7 +32,17 @@ export function ShelterCard({
     <Card asChild>
       <a
         href={href}
-        className="group flex flex-col gap-4 p-5 transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2"
+        // min-w-0, or this card sets the width of the column it sits in. As a
+        // grid item its automatic minimum size is its min-content width, and
+        // `truncate` on the name below is white-space: nowrap, whose
+        // min-content is the whole name however long it runs. So the track
+        // grew to fit "Zavetišče za zapuščene živali Ljubljana" unbroken and
+        // overflowed the page: measured on a 390px phone, a 358px grid
+        // holding a 413px card, and the whole document scrolled sideways.
+        // The truncation could not save it, because the box was never asked
+        // to be narrow in the first place. AnimalCard is spared the same
+        // thing by the overflow-hidden it carries for its photo.
+        className="group flex min-w-0 flex-col gap-4 p-5 transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <div className="flex items-center gap-3">
           <ShelterAvatar name={shelter.name} logo={logo} />

@@ -1,9 +1,13 @@
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
-import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
+import { Animal, ChangeSet, Dataset } from "@posvoji/schema";
+import { applyAllowedFields } from "./allowed-fields";
 import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
+import { buildChangeSet } from "./changes";
+import { flagList, flagValue, hasFlag } from "./cli";
+import { guardExcludedPaths, type CrawlClient } from "./crawl-guard";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import {
@@ -12,44 +16,31 @@ import {
   fetchPortalOverrides,
 } from "./portal-overrides";
 import { providers } from "./registry";
+import {
+  carryFirstSeenAt,
+  guardMassRemoval,
+  readPreviousDataset,
+  retainableAnimals,
+} from "./run-guards";
 import { writeShareCards } from "./share-cards";
 import { datasetDir, overrideReportPath } from "./paths";
+import { writeFileAtomic } from "./write-atomic";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
+
+const argv = process.argv.slice(2);
 
 // A targeted export refreshes one provider while preserving every other
 // provider's last validated records. This is useful when onboarding a new
 // remote-image provider without re-crawling hundreds of unrelated animals.
-const providerFlag = process.argv.indexOf("--provider");
-const requestedProviderId =
-  providerFlag === -1 ? undefined : process.argv[providerFlag + 1];
-if (providerFlag !== -1 && !requestedProviderId) {
-  throw new Error("--provider requires a provider id");
-}
+const requestedProviderId = flagValue(argv, "--provider");
+// A shelter really can rehome most of its animals at once, so the removal
+// guard below has an escape hatch. Repeatable, and comma-separated lists work.
+const acceptRemovals = new Set(flagList(argv, "--accept-removals"));
+// Only for a previous dataset that is unreadable and not worth restoring.
+const discardPrevious = hasFlag(argv, "--discard-previous");
 
-function readPreviousDataset(): Dataset | undefined {
-  const path = join(datasetDir, "animals.json");
-  if (!existsSync(path)) return undefined;
-  const result = Dataset.safeParse(JSON.parse(readFileSync(path, "utf8")));
-  return result.success ? result.data : undefined;
-}
-
-// fetchedAt and lastSeenAt change on every run, so they can't count as a change.
-function stableView(animal: Animal): string {
-  const { source, ...rest } = animal;
-  const { fetchedAt: _f, lastSeenAt: _l, ...stableSource } = source;
-  return JSON.stringify({ ...rest, source: stableSource });
-}
-
-function toChangeEntry(animal: Animal): ChangeEntry {
-  return {
-    id: animal.id,
-    providerId: animal.source.providerId,
-    sourceUrl: animal.source.sourceUrl,
-    species: animal.species,
-    name: animal.name,
-  };
-}
+const datasetPath = join(datasetDir, "animals.json");
 
 function loadValidPolicies(): LoadedPolicy[] {
   const { policies, errors } = loadPolicies();
@@ -68,7 +59,7 @@ function loadValidPolicies(): LoadedPolicy[] {
 // providers themselves in parallel just removes the artificial wait for an
 // unrelated host to finish first.
 async function crawlProvider(
-  client: PoliteClient,
+  client: CrawlClient,
   policy: LoadedPolicy["policy"],
 ): Promise<Animal[]> {
   const provider = providers.find((p) => p.id === policy.providerId);
@@ -77,7 +68,10 @@ async function crawlProvider(
       `policy ${policy.providerId} is enabled but no provider is registered`,
     );
   }
-  const ctx = { client, policy };
+  // ProviderContext types client as the concrete PoliteClient, so the guard
+  // is handed over as one. It forwards everything it does not refuse.
+  const guarded = guardExcludedPaths(client, policy) as unknown as PoliteClient;
+  const ctx = { client: guarded, policy };
   const refs = await provider.discover(ctx);
   console.log(`${provider.id}: discovered ${refs.length} animals`);
   const animals: Animal[] = [];
@@ -88,30 +82,76 @@ async function crawlProvider(
   return animals;
 }
 
-async function crawl(
-  client: PoliteClient,
-  policies: LoadedPolicy[],
-): Promise<Animal[]> {
-  const results = await Promise.all(
-    policies
-      .filter(({ policy }) => policy.enabled)
-      .map(({ policy }) => crawlProvider(client, policy)),
-  );
-  return results.flat();
+interface CrawlOutcome {
+  animals: Animal[];
+  // Providers whose crawl completed. Everybody else's records come from the
+  // previous dataset.
+  crawled: Set<string>;
+  failed: string[];
 }
 
-const previous = readPreviousDataset();
-const previousById = new Map(
-  (previous?.animals ?? []).map((a) => [a.id, a] as const),
-);
+// One shelter's site being down, or its robots.txt refusing us, must not throw
+// away every other shelter's finished crawl. A failed provider keeps its
+// previous animals and the run exits non-zero so cron notices.
+async function crawl(
+  client: CrawlClient,
+  policies: LoadedPolicy[],
+): Promise<CrawlOutcome> {
+  const enabled = policies.filter(({ policy }) => policy.enabled);
+  const settled = await Promise.allSettled(
+    enabled.map(({ policy }) => crawlProvider(client, policy)),
+  );
+
+  const animals: Animal[] = [];
+  const crawled = new Set<string>();
+  const failed: string[] = [];
+  for (const [index, result] of settled.entries()) {
+    const providerId = enabled[index]!.policy.providerId;
+    if (result.status === "fulfilled") {
+      crawled.add(providerId);
+      animals.push(...result.value);
+      continue;
+    }
+    failed.push(providerId);
+    const reason =
+      result.reason instanceof Error
+        ? (result.reason.stack ?? result.reason.message)
+        : String(result.reason);
+    console.error(`crawl ${providerId} FAILED: ${reason}`);
+  }
+  return { animals, crawled, failed };
+}
+
+const previous = readPreviousDataset(datasetPath, { discardPrevious });
 
 const policies = loadValidPolicies();
+const policyById = new Map(
+  policies.map(({ policy }) => [policy.providerId, policy] as const),
+);
+
+if (requestedProviderId) {
+  const target = policyById.get(requestedProviderId);
+  if (!target) {
+    throw new Error(`unknown provider: ${requestedProviderId}`);
+  }
+  // A disabled provider used to pass this check, crawl nothing and take its
+  // animals down with it.
+  if (!target.enabled) {
+    throw new Error(
+      `provider ${requestedProviderId} is disabled in its policy.yaml, so a ` +
+        `targeted run would crawl nothing and drop every animal it has`,
+    );
+  }
+  if (target.permission.status !== "granted") {
+    throw new Error(
+      `provider ${requestedProviderId} has permission.status ` +
+        `"${target.permission.status}", not "granted"`,
+    );
+  }
+}
 const crawlPolicies = requestedProviderId
   ? policies.filter(({ policy }) => policy.providerId === requestedProviderId)
   : policies;
-if (requestedProviderId && crawlPolicies.length === 0) {
-  throw new Error(`unknown provider: ${requestedProviderId}`);
-}
 const client = new PoliteClient({ userAgent: USER_AGENT });
 
 // Fetched before the crawl, not after it. A bad token or a payload that no
@@ -120,26 +160,31 @@ const client = new PoliteClient({ userAgent: USER_AGENT });
 // The request is milliseconds, so there is nothing to gain by overlapping it.
 const portalPayload = await fetchPortalOverrides();
 
-const crawled = await crawl(client, crawlPolicies);
+const { animals: crawled, crawled: crawledProviderIds, failed } = await crawl(
+  client,
+  crawlPolicies,
+);
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
-const refreshed = crawled.map((animal) => {
-  const before = previousById.get(animal.id);
-  if (!before) return animal;
-  return {
-    ...animal,
-    source: { ...animal.source, firstSeenAt: before.source.firstSeenAt },
-  };
-});
+// Matched by id first and by the page it came from second, so a provider that
+// changes how it derives ids does not reset every date it has.
+const refreshed = carryFirstSeenAt(previous?.animals ?? [], crawled);
 
-const refreshedProviderIds = new Set(
-  crawlPolicies.map(({ policy }) => policy.providerId),
+// Everything this run did not re-crawl: the other shelters on a targeted run,
+// and any provider whose crawl failed above. Their records come back from the
+// previous dataset rather than being dropped, but only while their policy
+// still lets us publish them, so a shelter that switched off or withdrew its
+// permission leaves the dataset even on a run that never crawled it.
+const carried = (previous?.animals ?? []).filter(
+  (animal) => !crawledProviderIds.has(animal.source.providerId),
 );
-const preserved = requestedProviderId
-  ? (previous?.animals ?? []).filter(
-      (animal) => !refreshedProviderIds.has(animal.source.providerId),
-    )
-  : [];
+const { animals: preserved, dropped } = retainableAnimals(carried, policyById);
+for (const drop of dropped) {
+  console.warn(
+    `dropped ${drop.count} carried-over animal(s) of ${drop.providerId}: ${drop.reason}`,
+  );
+}
+
 // Preserved animals go through the same normalization as freshly crawled
 // ones, so a bad value already in the previous dataset is cleaned up even
 // by a targeted run that does not re-crawl its provider.
@@ -166,15 +211,35 @@ if (misattributed.length > 0) {
   );
 }
 
+// The policy backstop for what each shelter granted. It runs here, over the
+// crawled and the carried-over records alike, for three reasons:
+//
+// - after normalization, so it sees the field set that would actually ship
+//   rather than one a later step still edits;
+// - before image caching, so a photo from a provider that did not list
+//   images is never requested, let alone written to disk;
+// - before the portal overrides, because those are not crawled content. A
+//   shelter typing a correction into our own portal is stating the fact
+//   itself, which is a stronger grant than the crawl permission this list
+//   records; the same is already true of descriptions, where an override
+//   sets shortDescription whatever the policy's descriptions grant says.
+const restricted = applyAllowedFields(seeded, policyById);
+for (const { providerId, field, count } of restricted.stripped) {
+  console.warn(
+    `allowedFields: ${providerId}: field ${field} is not in allowedFields, ` +
+      `stripped from ${count} animal(s)`,
+  );
+}
+
 // Shelter corrections from the portal are merged in after the crawl (and
 // after firstSeenAt is carried over) so a re-crawl can never silently
 // clobber them, and before image caching and the change-set diff so an
 // overridden field — including a status change — shows up in changes.json
 // as an update and ships in the written dataset.
 const overrideResult = portalPayload
-  ? applyOverrides(seeded, portalPayload)
+  ? applyOverrides(restricted.animals, portalPayload)
   : null;
-const overridden = overrideResult?.animals ?? seeded;
+const overridden = overrideResult?.animals ?? restricted.animals;
 if (overrideResult) {
   const moved = overrideResult.conflicts.filter((c) => c.kind === "moved");
   console.log(
@@ -194,6 +259,15 @@ if (overrideResult) {
   }
 }
 
+// The last check before anything destructive. A parser whose selectors stopped
+// matching returns an empty list without an error, and every step below this
+// line reads that as "the shelter emptied": the photos, the cards and the
+// records go, and firstSeenAt is reset for whatever comes back.
+guardMassRemoval(previous?.animals ?? [], overridden, {
+  accepted: acceptRemovals,
+  crawledProviderIds,
+});
+
 // Cache permitted photos before the dataset is written so cachedUrl ships
 // with it; the same sync deletes copies that fell out of the dataset.
 const imagePolicies = new Map(
@@ -209,7 +283,7 @@ const { animals, fetched, reused, deleted, derived } = await cacheImages(
   overridden,
   client,
   imagePolicies,
-  requestedProviderId ? { refreshProviderIds: refreshedProviderIds } : {},
+  requestedProviderId ? { refreshProviderIds: crawledProviderIds } : {},
 );
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
@@ -249,7 +323,6 @@ for (const [providerId, url] of Object.entries(logos.discovered)) {
   console.log(`logos: ${providerId} discovered ${url} (pin it in policy.yaml)`);
 }
 
-const currentIds = new Set(animals.map((a) => a.id));
 const generatedAt = new Date().toISOString();
 
 // Share cards are drawn from the cached photos, so they come after the image
@@ -263,34 +336,27 @@ console.log(
   `share cards: ${cards.written} drawn, ${cards.reused} reused, ${cards.deleted} deleted`,
 );
 
-const changes: ChangeSet = {
+// Parsed once, then used for both the diff and the file. The two used to
+// disagree on key order alone: the file carries the schema's order, an animal
+// that just went through the image cache carries cachedUrl and its derived
+// fields appended, and JSON.stringify follows insertion order, so every cached
+// animal showed up as updated on every run.
+const dataset: Dataset = Dataset.parse({ generatedAt, animals });
+const changes = buildChangeSet({
   generatedAt,
-  added: animals.filter((a) => !previousById.has(a.id)).map(toChangeEntry),
-  updated: animals
-    .filter((a) => {
-      const before = previousById.get(a.id);
-      return before !== undefined && stableView(before) !== stableView(a);
-    })
-    .map(toChangeEntry),
-  removed: (previous?.animals ?? [])
-    .filter((a) => !currentIds.has(a.id))
-    .map(toChangeEntry),
-};
+  previous: previous?.animals ?? [],
+  current: dataset.animals,
+});
 
-const dataset: Dataset = { generatedAt, animals };
-
-writeFileSync(
-  join(datasetDir, "animals.json"),
-  JSON.stringify(Dataset.parse(dataset), null, 2),
-);
-writeFileSync(
+writeFileAtomic(datasetPath, JSON.stringify(dataset, null, 2));
+writeFileAtomic(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),
 );
 // Written on every run, including runs with no portal configured, so the
 // file never goes stale and an empty report cannot be mistaken for "the
 // shelters have corrected nothing".
-writeFileSync(
+writeFileAtomic(
   overrideReportPath,
   JSON.stringify(
     buildOverrideReport(generatedAt, portalPayload, overrideResult),
@@ -300,6 +366,15 @@ writeFileSync(
 );
 
 console.log(
-  `exported ${animals.length} animals ` +
+  `exported ${dataset.animals.length} animals ` +
     `(+${changes.added.length} ~${changes.updated.length} -${changes.removed.length}) to ${datasetDir}`,
 );
+
+if (failed.length > 0) {
+  console.error(
+    `crawl failed for ${failed.length} provider(s): ${failed.join(", ")}. ` +
+      `Their previous records were carried forward and the dataset was ` +
+      `written, but this run is not a clean one.`,
+  );
+  process.exitCode = 1;
+}

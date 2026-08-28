@@ -9,7 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   GetBytesOptions,
   PoliteBytesResponse,
@@ -861,6 +861,76 @@ describe("cacheImages", () => {
     ]) {
       expect(left).toContain(file);
     }
+  });
+
+  it("keeps every file when the manifest was lost", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+    const before = readdirSync(mediaDir).sort();
+
+    // The manifest is the only thing that maps a source URL to its
+    // content-addressed file, so losing it makes every file look like an
+    // orphan. The files outlive it by a run.
+    rmSync(manifestPath);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.deleted).toBe(0);
+    expect(readdirSync(mediaDir).sort()).toEqual(before);
+    expect(warn.mock.calls.map(String).join(" ")).toMatch(
+      /skipping the deletion sweep/,
+    );
+    warn.mockRestore();
+  });
+
+  it("warns loudly when the manifest is there but unreadable", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    writeFileSync(manifestPath, '{"entries": {"https://img.si/luna.jpg"');
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.deleted).toBe(0);
+    expect(warn.mock.calls.map(String).join(" ")).toMatch(/unreadable/);
+    warn.mockRestore();
+  });
+
+  it("sweeps again on the run after the manifest came back", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    rmSync(manifestPath);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // The lost-manifest run refetches what it still wants, so the manifest is
+    // whole again; the next run sweeps whatever nobody claimed.
+    const refetch = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), refetch, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    warn.mockRestore();
+
+    expect(result.deleted).toBe(HERO_FILES);
+    expect(readdirSync(mediaDir)).toHaveLength(0);
   });
 
   it("caches nothing for a provider without cache permission", async () => {

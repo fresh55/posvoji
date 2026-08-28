@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
   CARD_HEIGHT,
@@ -167,6 +167,38 @@ describe("photoSourceFor", () => {
     expect(photoSourceFor(a, mediaDir)).toBeUndefined();
   });
 
+  it("takes no photo from behind a display-permitted lead", () => {
+    // The page leads with the photo it may only hotlink, so a card drawn from
+    // the cached photo below it would show something the site never shows.
+    const a = animal({
+      id: "x",
+      images: [
+        { sourceUrl: "https://example.si/lead.jpg", rights: "display-permitted" },
+        {
+          sourceUrl: "https://example.si/second.jpg",
+          cachedUrl: "/media/animals/abc.webp",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(photoSourceFor(a, mediaDir)).toBeUndefined();
+  });
+
+  it("skips a lead the site would not draw at all", () => {
+    const a = animal({
+      id: "x",
+      images: [
+        { sourceUrl: "https://example.si/unknown.jpg", rights: "unknown" },
+        {
+          sourceUrl: "https://example.si/lead.jpg",
+          cachedUrl: "/media/animals/abc.webp",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(photoSourceFor(a, mediaDir)).toBe(join(mediaDir, "abc.webp"));
+  });
+
   it("ignores a cached copy that is no longer on disk", () => {
     const a = animal({
       id: "x",
@@ -294,6 +326,21 @@ describe("writeShareCards", () => {
       "zonzani_2.sl.jpg",
       "zonzani_2.en.jpg",
     ]);
+  });
+
+  it("keeps every card when the manifest was lost", async () => {
+    await run([withPhoto, factsOnly]);
+    const before = readdirSync(cardsDir).sort();
+
+    // Without the manifest every card looks like an orphan, and an animal
+    // whose card fails to draw this run would lose the card it had.
+    rmSync(manifestPath);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const again = await run([]);
+    warn.mockRestore();
+
+    expect(again.deleted).toBe(0);
+    expect(readdirSync(cardsDir).sort()).toEqual(before);
   });
 
   it("keeps going when one animal's photo cannot be read", async () => {

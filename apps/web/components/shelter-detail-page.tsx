@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS } from "@/lib/labels";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { getShelterBySlug } from "@/lib/shelters";
@@ -57,7 +57,6 @@ export function ShelterDetailPage({
   );
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
-  const messages = getMessages(locale);
   const text = pageText[locale];
   const indexHref = locale === "sl" ? "/zavetisca" : "/en/shelters";
 
@@ -65,7 +64,6 @@ export function ShelterDetailPage({
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          githubTitle={messages.githubTitle}
           homeHref={locale === "sl" ? "/" : "/en"}
           languagePaths={{
             sl: `/zavetisca/${shelter.id}`,

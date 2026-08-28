@@ -36,7 +36,6 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          githubTitle={messages.githubTitle}
           homeHref={homeHref}
           languagePaths={{
             sl: FOUND_ANIMAL_PATHS.sl,

@@ -114,7 +114,7 @@ export function SiteMenu() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={messages.moreInformation}
+          aria-label={messages.menu}
           className="tap-target lg:hidden"
         >
           <Menu className="size-4" aria-hidden />

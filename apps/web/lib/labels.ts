@@ -101,6 +101,23 @@ export function shelterCount(n: number, locale: Locale): string {
     : `${n} ${n === 1 ? "shelter" : "shelters"}`;
 }
 
+/**
+ * The date the shelter register was published, for the provenance line the
+ * shelters index and every shelter page carry.
+ *
+ * Read as UTC, because a date-only string parses as UTC midnight and reading
+ * it locally moves it into the previous day west of Greenwich. An unparseable
+ * value prints as it was written rather than as "Invalid Date".
+ */
+export function registerDateLabel(value: string, locale: Locale): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale === "sl" ? "sl-SI" : "en-GB", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 // Deliberately count-free. The picker's roster is the whole UVHVVR registry,
 // live shelters and the ones with nothing listed alike, which is a different
 // number from the live-shelter count the hero states in the same breath

@@ -33,6 +33,13 @@ const badgeVariants = cva(
         // card's long-stay mark, two of them raw var(--status-warn-*) reads.
         // A badge is where a badge's colours belong.
         warn: "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
+        // The filter green, for the same reason warn is here: it is the mark
+        // the site puts on a shelter that shares its animals, and every call
+        // site was spelling the three tokens itself. As a link it keeps its
+        // colour and moves the border, because outline's wash to bg-muted is
+        // the one hover this badge cannot take.
+        accent:
+          "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] [a]:hover:border-[var(--filter-accent-strong)]",
         quiet: "border-transparent bg-muted text-muted-foreground",
         // On a photograph a wash has nothing to sit on. A 15% fill tints an
         // arbitrary backdrop rather than covering it, and backdrop-blur takes

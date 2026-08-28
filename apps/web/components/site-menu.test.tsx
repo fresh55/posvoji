@@ -33,7 +33,7 @@ function openMenu(locale: "sl" | "en", triggerName: string) {
 
 describe("the header menu", () => {
   it("carries the footer's links and the login under them", () => {
-    openMenu("sl", "Več informacij");
+    openMenu("sl", "Meni");
 
     const items = screen.getAllByRole("menuitem");
     expect(items.map((item) => item.textContent)).toEqual([
@@ -49,7 +49,7 @@ describe("the header menu", () => {
   });
 
   it("routes the English visitor to the English pages", () => {
-    openMenu("en", "More information");
+    openMenu("en", "Menu");
 
     const items = screen.getAllByRole("menuitem");
     expect(items.map((item) => item.getAttribute("href"))).toEqual([
@@ -63,7 +63,7 @@ describe("the header menu", () => {
   // only unlisted, in lib/site-links.ts, and the dropdown is the surface that
   // used to show every link there was.
   it("leaves the hidden resources page out", () => {
-    openMenu("sl", "Več informacij");
+    openMenu("sl", "Meni");
 
     const items = screen.getAllByRole("menuitem");
     expect(items.some((item) => item.getAttribute("href") === "/viri")).toBe(

@@ -11,8 +11,17 @@ const sl = {
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
   moreInformation: "Več informacij",
+  // The hamburger button that opens the mobile menu. Distinct from
+  // moreInformation, which stays on the <nav> landmarks around the same
+  // links: a button that opens a menu has to say so, not describe what is
+  // inside it.
+  menu: "Meni",
   backToTop: "Na vrh strani",
   backToAnimals: "Nazaj na živali",
+  notFoundTitle: "Stran ne obstaja",
+  notFoundBody: "Povezava je morda napačna ali stran ni več na voljo.",
+  errorTitle: "Nekaj je šlo narobe",
+  tryAgain: "Poskusi znova",
   resources: "Strokovno preverjeni viri",
   shelters: "Zavetišča",
   // Not "Za zavetišča", which names an audience and leaves the shelter to
@@ -366,8 +375,13 @@ const en: Messages = {
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
   moreInformation: "More information",
+  menu: "Menu",
   backToTop: "Back to top",
   backToAnimals: "Back to the animals",
+  notFoundTitle: "Page not found",
+  notFoundBody: "The link may be wrong, or the page is no longer here.",
+  errorTitle: "Something went wrong",
+  tryAgain: "Try again",
   resources: "Trusted animal-care resources",
   shelters: "Shelters",
   shelterLogin: "Login for shelters",

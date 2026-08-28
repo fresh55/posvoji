@@ -33,10 +33,17 @@ export function ShelterAvatar({
   name,
   logo,
   size = "sm",
+  accent = false,
 }: {
   name: string;
   logo: ShelterLogo | undefined;
   size?: keyof typeof SIZE_CLASS;
+  /** Paint the letter fallback in the site's provider green. Only true where
+   *  the shelter actually shares an animal list: green marks that state
+   *  everywhere else, so an initial wearing it on a contact-only shelter
+   *  claimed something false. A shelter with a logo is unaffected, since its
+   *  chip is keyed to the logo's own ink. */
+  accent?: boolean;
 }) {
   if (logo) {
     return (
@@ -64,7 +71,10 @@ export function ShelterAvatar({
     <span
       aria-hidden
       className={cn(
-        "grid shrink-0 place-items-center rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] font-medium text-[var(--filter-accent-foreground)]",
+        "grid shrink-0 place-items-center rounded-ui border font-medium",
+        accent
+          ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
+          : "border-border bg-muted text-muted-foreground",
         SIZE_CLASS[size].fallback,
       )}
     >

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { MUTED_LINK } from "@/lib/link-styles";
 
 // A shelter page is reached two ways: from the shelters index, and from a
 // card in the grid, which is where most people come from. The link back named
@@ -62,7 +63,7 @@ export function BackLink({
   const grid = useSyncExternalStore(subscribeToNothing, gridReferrer, noGrid);
 
   return (
-    <a href={grid ?? href} className={className}>
+    <a href={grid ?? href} className={className ?? MUTED_LINK}>
       ← {grid ? messages.backToAnimals : label}
     </a>
   );

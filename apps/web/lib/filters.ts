@@ -6,6 +6,7 @@ import type {
 } from "@posvoji/schema";
 import type { AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
+import { homePath } from "@/lib/shelter-path";
 import {
   LEGACY_TAB_SLUGS,
   SPECIES_TAB_ORDER,
@@ -1351,6 +1352,21 @@ export function serializeFilters(filters: Filters): string {
   setValues("care", filters.care);
   // Commas are legal unencoded, and these links get shared by hand.
   return params.toString().replace(/%2C/g, ",");
+}
+
+/**
+ * The animals grid showing one shelter and nothing else.
+ *
+ * Built through serializeFilters rather than by spelling the query, because
+ * PARAM_NAMES is private and parseFilters drops a param it does not know
+ * without complaining: a link that spelled its own key would keep working as a
+ * link and quietly stop filtering. The same name is what prehydration-script.ts
+ * watches to hide the results until the filter has been applied, so a hand
+ * written key would also flash the unfiltered grid.
+ */
+export function shelterAnimalsPath(shelterId: string, locale: Locale): string {
+  const query = serializeFilters({ ...EMPTY_FILTERS, shelter: [shelterId] });
+  return `${homePath(locale)}?${query}`;
 }
 
 // Unknown slugs are dropped silently: a stale shared link should degrade to

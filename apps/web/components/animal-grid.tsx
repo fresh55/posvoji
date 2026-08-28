@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -86,11 +87,41 @@ const STAGGERED_CARDS = 12;
 // Rendering only. Every count on the page, the facet numbers and the dialog's
 // sibling list all still read the whole filtered set.
 export const INITIAL_CARDS = 60;
-const CARDS_PER_STEP = 60;
+export const CARDS_PER_STEP = 60;
 
 // How far below the last drawn card the next step is asked for, so the grid is
 // already longer by the time the visitor gets there.
 const STEP_MARGIN = "1200px 0px";
+
+// How many of those steps happen on their own before the grid starts asking.
+// Unbounded, the sentinel re-armed 1200px ahead of the reader every time, so
+// the document grew faster than anyone could descend it and the footer -
+// which is the only way to any other page - could not be scrolled to at all.
+// Once the budget is spent the sentinel gives way to a button, and the footer
+// stands one press below whatever is drawn.
+//
+// Two budgets, because the page is not the same length twice. A phone draws
+// two columns, so 120 cards is sixty rows; a desktop draws three or four, so
+// 180 is forty-five to sixty. Measured as scroll distance the two come out
+// within a screen of each other, which is the number that actually matters:
+// how far the footer can run from someone who wants it.
+export const AUTO_STEPS_PHONE = 1;
+export const AUTO_STEPS_DESKTOP = 2;
+
+// A press is a stronger signal than a scroll, so it buys more. At 120 a full
+// unfiltered dataset is three or four presses end to end, without the grid
+// ever mounting hundreds of cards nobody asked to see.
+export const CARDS_PER_CLICK = 120;
+
+// Read at step time rather than held in state: the cap only matters inside
+// the observer callback, and matchMedia there is always current, where a
+// value captured at mount would go stale across a rotation or a resize.
+function autoDrawLimit(): number {
+  const steps = window.matchMedia("(min-width: 1024px)").matches
+    ? AUTO_STEPS_DESKTOP
+    : AUTO_STEPS_PHONE;
+  return INITIAL_CARDS + steps * CARDS_PER_STEP;
+}
 
 // Which species-absence message key fills the {species} slot of
 // noResultsShelterSingular/Plural. Keyed by the species tab rather than
@@ -196,11 +227,19 @@ export function AnimalGrid({
   // filter, sort or species move hands down a different array, the count stops
   // applying, and the grid is read from its top again. No effect has to notice
   // and no render of the new list is ever made against the old one's count.
-  const [chunk, setChunk] = useState<{ of: ClientAnimal[]; drawn: number }>({
+  // `settled` is the auto-step budget being spent: from then on the grid only
+  // grows by the button below, and a new list starts the budget over.
+  const [chunk, setChunk] = useState<{
+    of: ClientAnimal[];
+    drawn: number;
+    settled: boolean;
+  }>({
     of: sorted,
     drawn: INITIAL_CARDS,
+    settled: false,
   });
   const drawn = chunk.of === sorted ? chunk.drawn : INITIAL_CARDS;
+  const settled = chunk.of === sorted && chunk.settled;
   // slice clamps, so the whole list and a prefix of it are the same call.
   const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
   const hasMore = drawn < sorted.length;
@@ -219,7 +258,7 @@ export function AnimalGrid({
       // jsdom, and anything else with no observer, gets the whole list rather
       // than a grid with no way to grow.
       if (typeof IntersectionObserver === "undefined") {
-        setChunk({ of: sorted, drawn: sorted.length });
+        setChunk({ of: sorted, drawn: sorted.length, settled: true });
         return;
       }
       const observer = new IntersectionObserver(
@@ -227,12 +266,12 @@ export function AnimalGrid({
           if (entries.some((entry) => entry.isIntersecting)) {
             // The same guard the render reads the count through: a count
             // counted against another list starts again from the top.
-            setChunk((previous) => ({
-              of: sorted,
-              drawn:
+            setChunk((previous) => {
+              const drawn =
                 (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                CARDS_PER_STEP,
-            }));
+                CARDS_PER_STEP;
+              return { of: sorted, drawn, settled: drawn >= autoDrawLimit() };
+            });
           }
         },
         { rootMargin: STEP_MARGIN },
@@ -242,6 +281,29 @@ export function AnimalGrid({
     },
     [sorted],
   );
+
+  // The button's step, once the automatic budget above is spent. Focus moves
+  // to the first card the press added: the reading position a screen reader
+  // or a keyboard should resume from, and the button itself can unmount when
+  // the list runs out, which would otherwise drop focus on <body>.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [focusOrdinal, setFocusOrdinal] = useState<number | null>(null);
+  const showMore = useCallback(() => {
+    setFocusOrdinal(drawn);
+    setChunk((previous) => ({
+      of: sorted,
+      drawn:
+        (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
+        CARDS_PER_CLICK,
+      settled: true,
+    }));
+  }, [drawn, sorted]);
+  useEffect(() => {
+    if (focusOrdinal === null) return;
+    const card = gridRef.current?.querySelectorAll("article")[focusOrdinal];
+    card?.querySelector("a")?.focus();
+    setFocusOrdinal(null);
+  }, [focusOrdinal]);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
@@ -576,8 +638,15 @@ export function AnimalGrid({
       // not the grid alone: the toolbar above the cards carries the result
       // count and the tab tallies, and those are as unfiltered as the cards are.
       data-slot={RESULTS_SLOT}
+      // No bottom clearance of its own. The section used to carry
+      // pb-[calc(6.5rem+env(safe-area-inset-bottom))] below lg so the mobile
+      // filter dock could not sit on the last row of cards, from the days
+      // when the grid was what ended the document. The footer ends it now and
+      // clears the dock itself (its docked prop, site-footer.tsx), and the
+      // footer block is taller than the dock's band, so the grid's clearance
+      // only stacked a second, empty one on top - a hole between the
+      // load-more count and the footer the height of both.
       className={cn(
-        "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0",
         hasSidebar &&
           "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
       )}
@@ -722,7 +791,7 @@ export function AnimalGrid({
             </Button>
           </EmptyState>
         ) : (
-          <div className={CARD_GRID}>
+          <div ref={gridRef} className={CARD_GRID}>
             {page.map((animal, ordinal) => (
               <AnimalCard
                 key={animal.id}
@@ -773,7 +842,7 @@ export function AnimalGrid({
             {/* Nothing to read and nothing to press: it exists so the observer
                 has something to watch, and it says so rather than adding a
                 nameless row to the grid a screen reader has to walk past. */}
-            {hasMore && (
+            {hasMore && !settled && (
               <div
                 ref={watchSentinel}
                 aria-hidden
@@ -784,6 +853,33 @@ export function AnimalGrid({
                 data-grid-sentinel
                 className="col-span-full h-px"
               />
+            )}
+            {/* What replaces the sentinel once the budget is spent. The count
+                under the button is the transparency the sentinel never owed
+                anyone: how much of the list is on the page, and how much a
+                press still stands between the reader and the footer. */}
+            {hasMore && settled && (
+              <div className="col-span-full flex flex-col items-center gap-2 py-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={showMore}
+                  // Real height below lg, not a tap-target overlay: this is
+                  // the one control at the bottom of the list, and h-8 is
+                  // short of what a thumb needs.
+                  className="max-lg:min-h-11 max-lg:px-4"
+                >
+                  {t("showMoreAnimals", {
+                    n: Math.min(CARDS_PER_CLICK, sorted.length - drawn),
+                  })}
+                </Button>
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {t("shownOfTotal", {
+                    shown: page.length,
+                    total: sorted.length,
+                  })}
+                </p>
+              </div>
             )}
           </div>
         )}

@@ -56,13 +56,21 @@ throws away caching that is safe to keep.
 
 Filenames are the sha256 of the processed bytes, sliced to 16 hex characters,
 plus `.webp` or `.thumb.webp` (see `apps/ingest/src/cache-images.ts`,
-`processImage` and `thumbFileFor`). A re-encoded or replaced photo gets a new
-name; the old name never changes contents. That makes the file permanently
+`processImage` and `thumbFileFor`). A replaced photo gets a new name; the old
+name never points at a different picture. That makes the file permanently
 cacheable:
 
 ```
 Cache-Control: public, max-age=31536000, immutable
 ```
+
+One case does rewrite an existing name: a `DERIVATIVE_VERSION` bump re-cuts
+the thumb, rungs and hero avif from the master, and derivative names come
+from the master's hash rather than their own bytes. The picture is the same
+and only the encoding changed, so a cache that keeps serving the previous
+bytes for the rest of the year is showing the right image either way. The
+master itself is never re-encoded in place, so this never affects `.webp`
+files named for their own contents.
 
 ### `/media/shelter-logos/*`
 

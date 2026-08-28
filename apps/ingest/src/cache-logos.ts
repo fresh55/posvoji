@@ -19,6 +19,10 @@ const PUBLIC_PREFIX = "/media/shelter-logos";
 // the shelter.
 const MAX_SIZE = 128;
 const WEBP_QUALITY = 90;
+// Same trade as the photo cache: effort costs batch time nobody waits on and
+// returns smaller files at the same quality. One logo per shelter, so the
+// cost here is nothing at all.
+const WEBP_EFFORT = 6;
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 
 const ACCEPT_IMAGES = "image/avif,image/webp,image/*,*/*;q=0.8";
@@ -208,7 +212,7 @@ export async function processLogo(source: Buffer): Promise<{
       fit: "inside",
       withoutEnlargement: true,
     })
-    .webp({ quality: WEBP_QUALITY })
+    .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
     .toBuffer({ resolveWithObject: true });
   const hash = createHash("sha256").update(data).digest("hex").slice(0, 16);
   return {

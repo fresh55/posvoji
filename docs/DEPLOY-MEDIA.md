@@ -10,7 +10,7 @@ inside the release artifact at all.
 
 | Directory | Written by | Naming | Size (current dataset) |
 |---|---|---|---|
-| `public/media/animals/` | `pnpm dataset:export`, `pnpm images:derive` | content hash | ~236 MB |
+| `public/media/animals/` | `pnpm dataset:export`, `pnpm images:derive` | content hash | ~232 MB |
 | `public/media/shelter-logos/` | `pnpm dataset:export`, `pnpm logos:fetch` | content hash | ~70 KB |
 | `public/media/share/` | `pnpm dataset:export` only | animal id | ~39 MB |
 
@@ -18,12 +18,15 @@ inside the release artifact at all.
 photo is named `<sha256-16>.webp`, and its derivatives sit beside it under the
 same hash: `<hash>.thumb.webp`, `<hash>-<width>.webp` for each ladder rung
 (320/480/640px, skipping any rung at or above the photo's own width), and
-`<hash>.avif` for an animal's first (hero) image. A re-encode or a replaced
-source photo gets a new hash, so nothing under this directory ever changes its
-bytes under an existing name. `dataset:export` fetches, encodes and derives in
-one pass; `images:derive` only backfills derivatives (thumb, rungs, blur
-placeholder, hero avif) from photos already on disk, without any network
-request, which is what a schema-only change needs.
+`<hash>.avif` for an animal's first (hero) image. A re-encoded or replaced
+source photo gets a new hash, so a master never changes its bytes under an
+existing name. Its derivatives can: they are named for the master's hash, and
+a `DERIVATIVE_VERSION` bump in `cache-images.ts` re-cuts all of them from the
+masters already on disk, under the same names and without a single request.
+`dataset:export` fetches, encodes and derives in one pass; `images:derive`
+only derives (thumb, rungs, blur placeholder, hero avif) from photos already
+on disk, without any network request, which is what a schema-only change or a
+version bump needs.
 
 **`shelter-logos/`** (`apps/ingest/src/cache-logos.ts`). Same scheme:
 `<sha256-16>.webp`, content-hashed, so a redesigned logo gets a new name. Tiny
@@ -52,7 +55,7 @@ themselves served to visitors.
 
 A release-symlink deploy makes a fresh directory per release and flips a
 symlink (for example `/srv/posvoji/current`) to point at it once the build
-succeeds. Shipping 275 MB of media inside that per-release directory means
+succeeds. Shipping 271 MB of media inside that per-release directory means
 copying it on every deploy for files that mostly have not changed.
 
 Keep media in one shared directory on the host, outside every release:

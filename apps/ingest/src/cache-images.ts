@@ -37,6 +37,21 @@ const BLUR_QUALITY = 20;
 // sharp's AVIF quality scale sits lower than its WebP one for the same
 // perceived result. 55 matches WebP q80 closely while staying smaller.
 const AVIF_QUALITY = 55;
+// Encoder effort buys smaller files at the same quality, and costs only batch
+// time nobody waits on. Measured over 10 cached masters: webp effort 6 lands
+// 5.9% under sharp's default 4 for 63% more encode time, and avif effort 6
+// lands the same bytes as the default with 3% less error against the master.
+// Above that the returns stop: avif effort 8 and 9 were larger, not smaller.
+// smartSubsample was measured too and left off: it costs 1.4% more bytes for
+// a quality difference in the third decimal.
+const WEBP_EFFORT = 6;
+const AVIF_EFFORT = 6;
+// Part of every manifest entry, so a change to how derivatives are encoded
+// re-cuts them from the cached masters instead of leaving the previous
+// release's files in place. Same idea as share-cards' renderer version. The
+// re-derivation is local: it never refetches, and it never touches a master.
+// v1 = thumb, rungs, placeholder and avif at sharp's default effort.
+export const DERIVATIVE_VERSION = 2;
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 
 const ACCEPT_IMAGES = "image/avif,image/webp,image/*,*/*;q=0.8";
@@ -62,6 +77,9 @@ export interface CachedImageEntry {
   // An <hash>.avif sibling of the cached copy exists. Only an animal's first
   // image gets one.
   avif?: boolean;
+  // Which DERIVATIVE_VERSION cut the files above. Absent on entries written
+  // before the field existed, which is what v1 means.
+  derivativeVersion?: number;
   etag?: string;
   lastModified?: string;
   fetchedAt: string;
@@ -196,7 +214,7 @@ export async function processImage(source: Buffer): Promise<{
   const { data, info } = await sharp(source)
     .rotate() // apply EXIF orientation before it is stripped
     .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-    .webp({ quality: WEBP_QUALITY })
+    .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
     .toBuffer({ resolveWithObject: true });
   const hash = createHash("sha256").update(data).digest("hex").slice(0, 16);
   return { file: `${hash}.webp`, data, width: info.width, height: info.height };
@@ -213,7 +231,9 @@ export interface DerivedCounts {
 // an older manifest gains one without another request to the shelter. Only
 // cache-permitted images ever reach the manifest, so the rights check is
 // already behind us. The pass is a backfill: a file already on disk, or a
-// placeholder already in the manifest, is left as it is.
+// placeholder already in the manifest, is left as it is, unless the entry
+// was cut by an older DERIVATIVE_VERSION, in which case all of it is cut
+// again from the master that is already on disk.
 export async function deriveVariants(
   manifest: ImageCacheManifest,
   heroes: ReadonlySet<string>,
@@ -243,17 +263,28 @@ export async function deriveVariants(
     let source: Buffer | undefined;
     const read = (): Buffer => (source ??= readFileSync(sourcePath));
 
+    // An entry cut by an older version has every derivative redone under the
+    // same name: the names come from the master's hash, and the master is not
+    // re-encoded here, so nothing is added, removed or refetched.
+    const stale = group.entries.some(
+      (entry) => (entry.derivativeVersion ?? 1) !== DERIVATIVE_VERSION,
+    );
+    // A derivative that failed to encode leaves the entry on its old version
+    // so the next run tries again, exactly as a missing file does.
+    let complete = true;
+
     const thumbPath = join(mediaDir, thumbFileFor(file));
-    if (!existsSync(thumbPath)) {
+    if (stale || !existsSync(thumbPath)) {
       try {
         const thumb = await sharp(read())
           .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
-          .webp({ quality: WEBP_QUALITY })
+          .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
           .toBuffer();
         writeFileSync(thumbPath, thumb);
         counts.thumbs++;
       } catch (error) {
         console.warn(`image ${file}: thumbnail failed (${error})`);
+        complete = false;
       }
     }
 
@@ -263,49 +294,54 @@ export async function deriveVariants(
       // and the cached copy remains the largest one.
       if (rung >= width) continue;
       const rungPath = join(mediaDir, rungFileFor(file, rung));
-      if (existsSync(rungPath)) {
+      if (!stale && existsSync(rungPath)) {
         widths.push(rung);
         continue;
       }
       try {
         const resized = await sharp(read())
           .resize({ width: rung })
-          .webp({ quality: WEBP_QUALITY })
+          .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
           .toBuffer();
         writeFileSync(rungPath, resized);
         widths.push(rung);
         counts.rungs++;
       } catch (error) {
         console.warn(`image ${file}: ${rung}px rung failed (${error})`);
+        complete = false;
       }
     }
     widths.push(width);
 
-    let blurDataURL = group.entries.find((e) => e.blurDataURL)?.blurDataURL;
+    let blurDataURL = stale
+      ? undefined
+      : group.entries.find((e) => e.blurDataURL)?.blurDataURL;
     if (!blurDataURL) {
       try {
         const blur = await sharp(read())
           .resize({ width: BLUR_WIDTH })
-          .webp({ quality: BLUR_QUALITY })
+          .webp({ quality: BLUR_QUALITY, effort: WEBP_EFFORT })
           .toBuffer();
         blurDataURL = `data:image/webp;base64,${blur.toString("base64")}`;
         counts.blurs++;
       } catch (error) {
         console.warn(`image ${file}: blur placeholder failed (${error})`);
+        complete = false;
       }
     }
 
     let avif = group.hero;
-    if (avif && !existsSync(join(mediaDir, avifFileFor(file)))) {
+    if (avif && (stale || !existsSync(join(mediaDir, avifFileFor(file))))) {
       try {
         const encoded = await sharp(read())
-          .avif({ quality: AVIF_QUALITY })
+          .avif({ quality: AVIF_QUALITY, effort: AVIF_EFFORT })
           .toBuffer();
         writeFileSync(join(mediaDir, avifFileFor(file)), encoded);
         counts.avifs++;
       } catch (error) {
         console.warn(`image ${file}: avif failed (${error})`);
         avif = false;
+        complete = false;
       }
     }
 
@@ -316,6 +352,7 @@ export async function deriveVariants(
       // file in the deletion sweep.
       if (avif) entry.avif = true;
       else delete entry.avif;
+      if (complete) entry.derivativeVersion = DERIVATIVE_VERSION;
     }
   }
 

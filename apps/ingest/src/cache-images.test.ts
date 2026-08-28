@@ -17,6 +17,7 @@ import type {
 import { Animal as AnimalSchema } from "@posvoji/schema";
 import type { Animal, ImagePolicy } from "@posvoji/schema";
 import {
+  DERIVATIVE_VERSION,
   avifFileFor,
   cacheImages,
   cacheableUrls,
@@ -588,6 +589,103 @@ describe("cacheImages", () => {
     expect(existsSync(join(mediaDir, avifFileFor(main)))).toBe(true);
     expect(result.animals[0]!.images[0]!.blurDataURL).toMatch(/^data:image\//);
     expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
+  });
+
+  it("records the derivative version and round-trips it", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), client, CACHE_ONLY, { mediaDir, manifestPath });
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url].derivativeVersion).toBe(DERIVATIVE_VERSION);
+
+    // A second run reads the field back and finds nothing left to cut.
+    const second = await cacheImages(
+      animals(),
+      new StubClient(new Map()),
+      CACHE_ONLY,
+      { mediaDir, manifestPath },
+    );
+    expect(second.derived).toEqual({
+      thumbs: 0,
+      rungs: 0,
+      blurs: 0,
+      avifs: 0,
+    });
+  });
+
+  it("re-cuts every derivative when the recorded version moved on", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const before = await cacheImages(animals(), first, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    const main = before.animals[0]!.images[0]!.cachedUrl!.split("/").pop()!;
+    const filesBefore = readdirSync(mediaDir).sort();
+    const masterBytes = readFileSync(join(mediaDir, main));
+
+    // A manifest written by an older encoder, with every file still in place.
+    const stale = JSON.parse(readFileSync(manifestPath, "utf8"));
+    stale.entries[url].derivativeVersion = DERIVATIVE_VERSION - 1;
+    writeFileSync(manifestPath, JSON.stringify(stale));
+
+    const second = new StubClient(new Map());
+    const result = await cacheImages(animals(), second, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    // Nothing was requested, and nothing was added or swept: the same names
+    // carry newly encoded bytes.
+    expect(second.calls).toHaveLength(0);
+    expect(result.deleted).toBe(0);
+    expect(readdirSync(mediaDir).sort()).toEqual(filesBefore);
+    expect(result.derived).toEqual({
+      thumbs: 1,
+      rungs: 3,
+      blurs: 1,
+      avifs: 1,
+    });
+    // The master is a fetched file, not a derivative, so it is left alone.
+    expect(readFileSync(join(mediaDir, main))).toEqual(masterBytes);
+    // Every derivative is still readable, and the entry has moved on.
+    for (const rung of [320, 480, 640]) {
+      const meta = await sharp(
+        readFileSync(join(mediaDir, rungFileFor(main, rung))),
+      ).metadata();
+      expect(meta.width).toBe(rung);
+    }
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url].derivativeVersion).toBe(DERIVATIVE_VERSION);
+    expect(manifest.entries[url].blurDataURL).toMatch(/^data:image\/webp;/);
+  });
+
+  it("treats a manifest without the version field as version 1", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    const old = JSON.parse(readFileSync(manifestPath, "utf8"));
+    delete old.entries[url].derivativeVersion;
+    writeFileSync(manifestPath, JSON.stringify(old));
+
+    const result = await cacheImages(
+      animals(),
+      new StubClient(new Map()),
+      CACHE_ONLY,
+      { mediaDir, manifestPath },
+    );
+
+    expect(result.derived).toEqual({
+      thumbs: 1,
+      rungs: 3,
+      blurs: 1,
+      avifs: 1,
+    });
   });
 
   it("sweeps the derivatives of a dropped photo and keeps the rest", async () => {

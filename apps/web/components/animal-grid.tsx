@@ -287,7 +287,7 @@ export function AnimalGrid({
       setCleared(filters);
     }
     clearAll();
-  }, [activeCount, clearAll, filters, visible.length]);
+  }, [activeCount, clearAll, filters]);
 
   // Every other filter action undoes itself by being repeated. This one
   // cannot, so the row keeps a way back for a few seconds, and then drops it.

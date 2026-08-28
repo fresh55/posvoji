@@ -8,6 +8,7 @@ import { cacheLogos, logoTargets } from "./cache-logos";
 import { buildChangeSet } from "./changes";
 import { flagList, flagValue, hasFlag } from "./cli";
 import { guardExcludedPaths, type CrawlClient } from "./crawl-guard";
+import { exitCodeForRun } from "./exit-codes";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import {
@@ -92,7 +93,8 @@ interface CrawlOutcome {
 
 // One shelter's site being down, or its robots.txt refusing us, must not throw
 // away every other shelter's finished crawl. A failed provider keeps its
-// previous animals and the run exits non-zero so cron notices.
+// previous animals and the run exits 2 so the scheduler notices without
+// reading that as a reason to skip the deploy.
 async function crawl(
   client: CrawlClient,
   policies: LoadedPolicy[],
@@ -370,11 +372,14 @@ console.log(
     `(+${changes.added.length} ~${changes.updated.length} -${changes.removed.length}) to ${datasetDir}`,
 );
 
+// See exit-codes.ts for what the codes mean. In short: a run that got this
+// far wrote a dataset, so it exits 0 or 2, never 1. The scheduled crawl
+// deploys on both and refuses on anything else.
 if (failed.length > 0) {
   console.error(
     `crawl failed for ${failed.length} provider(s): ${failed.join(", ")}. ` +
       `Their previous records were carried forward and the dataset was ` +
       `written, but this run is not a clean one.`,
   );
-  process.exitCode = 1;
 }
+process.exitCode = exitCodeForRun(failed.length);

@@ -49,10 +49,25 @@ function sameSiteUrl(href: string): URL | undefined {
   return url.origin === BASE_URL ? url : undefined;
 }
 
+// The theme renders up to 100 cards per species page server-side, with no
+// pagination below that. A catalogue that fills the page could be silently
+// truncated, so this fails loudly instead, mirroring turk's MAX_PAGES guard:
+// reaching the cap means the parser needs pagination support, not a partial
+// list.
+const MAX_CARDS = 100;
+
 export function parseList(html: string): SourceAnimalRef[] {
   const $ = cheerio.load(html);
+  const cards = $("article.project");
+  if (cards.length >= MAX_CARDS) {
+    throw new Error(
+      `${PROVIDER_ID}: page rendered ${cards.length} cards, at or over the ` +
+        `${MAX_CARDS}-card cap; it is likely paginated and the parser needs ` +
+        "pagination support",
+    );
+  }
   const refs = new Map<string, SourceAnimalRef>();
-  $("article.project").each((_, el) => {
+  cards.each((_, el) => {
     const article = $(el);
     // The list pages filter by species tag only, so they also carry
     // sponsorship-only animals (no isce-dom) and the odd already-adopted one
@@ -488,9 +503,8 @@ const provider: AdoptionProvider = {
   id: PROVIDER_ID,
 
   async discover(ctx) {
-    // Dogs and cats hang off the policy source as separate species pages. The
-    // theme renders up to 100 cards per page server-side, no pagination below
-    // that.
+    // Dogs and cats hang off the policy source as separate species pages.
+    // parseList guards the per-page card cap.
     const refs = new Map<string, SourceAnimalRef>();
     for (const path of ["psi", "muce"]) {
       const url = `${ctx.policy.source}/${path}`;

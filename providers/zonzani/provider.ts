@@ -41,10 +41,25 @@ function sameSiteUrl(value: string): URL | undefined {
   }
 }
 
+// Same theme as muri: up to 100 cards render per species page server-side,
+// with no pagination below that. A catalogue that fills the page could be
+// silently truncated, so this fails loudly instead, mirroring turk's
+// MAX_PAGES guard: reaching the cap means the parser needs pagination
+// support, not a partial list.
+const MAX_CARDS = 100;
+
 export function parseList(html: string): SourceAnimalRef[] {
   const $ = cheerio.load(html);
+  const cards = $("article.project");
+  if (cards.length >= MAX_CARDS) {
+    throw new Error(
+      `${PROVIDER_ID}: page rendered ${cards.length} cards, at or over the ` +
+        `${MAX_CARDS}-card cap; it is likely paginated and the parser needs ` +
+        "pagination support",
+    );
+  }
   const refs = new Map<string, SourceAnimalRef>();
-  $("article.project").each((_, element) => {
+  cards.each((_, element) => {
     const href = $(element).find(".cmsms_project_title a").first().attr("href");
     const url = href ? sameSiteUrl(href) : undefined;
     const sourceAnimalId = url?.pathname.match(DETAIL_PATH)?.[1];

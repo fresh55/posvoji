@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   GetBytesOptions,
   PoliteBytesResponse,
@@ -398,6 +398,35 @@ describe("cacheLogos", () => {
 
     expect(result.manifest.entries["zonzani"]).toBeDefined();
     expect(result.deleted).toBe(0);
+  });
+
+  it("keeps every file when the manifest was lost", async () => {
+    const options = { logosDir: logosDir(), manifestPath };
+    const targets = [{ providerId: "zonzani", homeUrl: "https://zavetisce.si" }];
+    await cacheLogos(
+      targets,
+      new StubClient(
+        new Map([["https://zavetisce.si", `<img class="logo" src="/logo.png">`]]),
+        new Map([
+          ["https://zavetisce.si/logo.png", { status: 200, body: await pngBytes() }],
+        ]),
+      ),
+      options,
+    );
+
+    // Without the manifest every file on disk looks like an orphan, and a
+    // shelter whose fetch fails this run would lose the copy it had.
+    rmSync(manifestPath);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheLogos(
+      targets,
+      new StubClient(new Map(), new Map()),
+      options,
+    );
+    warn.mockRestore();
+
+    expect(result.deleted).toBe(0);
+    expect(readdirSync(logosDir())).toHaveLength(1);
   });
 
   it("keeps nothing when the source is not a processable image", async () => {

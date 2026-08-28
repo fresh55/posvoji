@@ -112,7 +112,11 @@ function parseIdentity($: cheerio.CheerioAPI): {
   // Mačja hiša occasionally publishes a dog on its /muce/ list. In that
   // case both the list card and detail heading carry an explicit "pes"
   // prefix; the URL and /files/oglasi_muce/ photo path remain cat-shaped.
-  const dog = heading.match(/^pes\s+(.+)$/iu);
+  // The prefix has shown up as "Pes: Medo", "PES - Medo" and with a
+  // non-breaking space ("pes\u00a0Medo"), so match the leading word loosely:
+  // case-insensitive, optionally followed by punctuation and/or whitespace
+  // before the name.
+  const dog = heading.match(/^pes\b[\s:\-/\u00a0]*(.*)$/iu);
   return dog
     ? { name: dog[1]!.trim() || undefined, species: "dog" }
     : { name: heading || undefined, species: "cat" };

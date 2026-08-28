@@ -41,6 +41,25 @@ describe("parseList", () => {
       },
     ]);
   });
+
+  // Same theme as muri: up to 100 cards render per page with no pagination
+  // below that, so a page that fills the cap could be silently truncating
+  // the catalogue. A fixture with 100 real cards is impractical, so this
+  // generates the smallest markup that still counts: bare article.project
+  // elements.
+  function cardsHtml(count: number): string {
+    return `<div>${"<article class=\"project\"></article>".repeat(count)}</div>`;
+  }
+
+  it("parses a page just under the card cap without complaint", () => {
+    expect(parseList(cardsHtml(99))).toEqual([]);
+  });
+
+  it("throws instead of silently truncating a page at or over the card cap", () => {
+    expect(() => parseList(cardsHtml(100))).toThrow(
+      /page rendered 100 cards.*pagination support/,
+    );
+  });
 });
 
 describe("parseSlovenianDate", () => {

@@ -287,9 +287,12 @@ export function AnimalGrid({
   // or a keyboard should resume from, and the button itself can unmount when
   // the list runs out, which would otherwise drop focus on <body>.
   const gridRef = useRef<HTMLDivElement>(null);
-  const [focusOrdinal, setFocusOrdinal] = useState<number | null>(null);
+  // A ref rather than state: nothing renders from this, it only says which
+  // card the next paint should hand focus to. The effect below runs off the
+  // count the press changed, so it lands after those cards exist.
+  const focusOrdinal = useRef<number | null>(null);
   const showMore = useCallback(() => {
-    setFocusOrdinal(drawn);
+    focusOrdinal.current = drawn;
     setChunk((previous) => ({
       of: sorted,
       drawn:
@@ -299,11 +302,12 @@ export function AnimalGrid({
     }));
   }, [drawn, sorted]);
   useEffect(() => {
-    if (focusOrdinal === null) return;
-    const card = gridRef.current?.querySelectorAll("article")[focusOrdinal];
+    const ordinal = focusOrdinal.current;
+    if (ordinal === null) return;
+    focusOrdinal.current = null;
+    const card = gridRef.current?.querySelectorAll("article")[ordinal];
     card?.querySelector("a")?.focus();
-    setFocusOrdinal(null);
-  }, [focusOrdinal]);
+  }, [drawn]);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands

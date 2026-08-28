@@ -13,7 +13,7 @@ import {
   Venus,
   type LucideIcon,
 } from "lucide-react";
-import type { Animal, AnimalSize, Sex } from "@posvoji/schema";
+import type { AnimalSize, Sex } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -21,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import type { AnimalFields } from "@/lib/animal";
 import { GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
 import {
   ageGroup,
@@ -317,7 +318,7 @@ export function AnimalFacts({
   animal,
   reference,
 }: {
-  animal: Animal;
+  animal: AnimalFields;
   /** The dataset's own build time, so every span agrees with the cards. */
   reference: Date;
 }) {

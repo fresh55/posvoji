@@ -12,6 +12,7 @@ import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalGrid, INITIAL_CARDS, UNDO_WINDOW_MS } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { animalsForClient } from "@/lib/dataset";
 
 // AnimalGrid renders its own I18nProvider-consuming children, but the
 // component itself does not open one: the page shell normally does that, so
@@ -19,7 +20,13 @@ import { I18nProvider } from "@/components/i18n-provider";
 function renderGrid(animals: Animal[], locale: "sl" | "en" = "sl") {
   return render(
     <I18nProvider locale={locale}>
-      <AnimalGrid animals={animals} logos={{}} referenceDate="2026-01-01" />
+      <AnimalGrid
+        // The grid is a client component, so what it is handed on the page is
+        // the projection, not the dataset's own animals.
+        animals={animalsForClient(animals)}
+        logos={{}}
+        referenceDate="2026-01-01"
+      />
     </I18nProvider>,
   );
 }

@@ -9,15 +9,14 @@ import {
   type MouseEvent,
 } from "react";
 import { ChevronRight, House } from "lucide-react";
-import type { Animal } from "@posvoji/schema";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import type { ClientAnimal } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
-import { permittedImageUrls } from "@/lib/animal-images";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
@@ -57,7 +56,7 @@ export function AnimalCard({
   className,
   style,
 }: {
-  animal: Animal;
+  animal: ClientAnimal;
   /** The dataset's build time, so prerendered ages survive hydration. */
   reference: Date;
   /** The grid's active tab, so the meta line can drop what the tab already said. */
@@ -78,7 +77,9 @@ export function AnimalCard({
   const cardRef = useRef<HTMLElement>(null);
   const headingId = useId();
   const [photoIndex, setPhotoIndex] = useState(0);
-  const photoCount = permittedImageUrls(animal.images).length;
+  // Every photo here is one the card may draw: the projection that built this
+  // animal dropped the rest.
+  const photoCount = animal.images.length;
   const waitMonths = longStayMonths(animal, reference);
   const wait =
     waitMonths === undefined ? undefined : ageLabel(waitMonths, locale);
@@ -178,7 +179,8 @@ export function AnimalCard({
       >
         <div className="relative shrink-0">
           <PhotoGallery
-            animal={animal}
+            images={animal.images}
+            name={animal.name}
             sizes={CARD_PHOTO_SIZES}
             tone={settled ? QUIET_PHOTO : undefined}
             href={href}

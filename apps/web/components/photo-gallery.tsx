@@ -9,13 +9,11 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import type { Animal } from "@posvoji/schema";
 import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   adjacentImages,
-  permittedPhotos,
   photoDotWindow,
   photoSrcSet,
   type PermittedPhoto,
@@ -75,7 +73,13 @@ const AXIS_SLOP_PX = 8;
 const PRELOAD_DWELL_MS = 150;
 
 type PhotoGalleryProps = {
-  animal: Animal;
+  /** Already resolved to what is drawn, and already free of anything no
+   *  surface may draw. The client gets them off the animal it was handed
+   *  (see animalsForClient); a server-rendered page resolves its own with
+   *  permittedPhotos. Either way the rights are settled before this. */
+  images: PermittedPhoto[];
+  /** The animal's, for the alt text on a surface that is not a link. */
+  name?: string | null;
   sizes: string;
   className?: string;
   /**
@@ -100,7 +104,8 @@ type PhotoGalleryProps = {
 };
 
 export function PhotoGallery({
-  animal,
+  images,
+  name,
   sizes,
   className,
   tone,
@@ -111,7 +116,6 @@ export function PhotoGallery({
   eager = false,
   avif = false,
 }: PhotoGalleryProps) {
-  const images = permittedPhotos(animal.images);
   const [ownIndex, setOwnIndex] = useState(0);
   const swipeStart = useRef<SwipeStart | null>(null);
   const suppressImageLink = useRef(false);
@@ -338,7 +342,7 @@ export function PhotoGallery({
       // the card names the animal twice over already: in its heading and in
       // the link the heading sits inside. "Rex" is not a text alternative for
       // a photograph of Rex, and it does not change when the gallery does.
-      alt={href ? "" : (animal.name ?? messages.unnamed)}
+      alt={href ? "" : (name ?? messages.unnamed)}
       sizes={sizes}
       eager={eager}
       avif={avif}

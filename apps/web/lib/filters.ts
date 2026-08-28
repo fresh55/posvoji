@@ -1,10 +1,10 @@
 import type {
-  Animal,
   AnimalSize,
   EnergyLevel,
   Sex,
   Species,
 } from "@posvoji/schema";
+import type { AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import {
   LEGACY_TAB_SLUGS,
@@ -117,7 +117,7 @@ export type ToggleDef = {
   key: ToggleKey;
   label: string;
   species?: Species;
-  matches: (animal: Animal) => boolean;
+  matches: (animal: AnimalFields) => boolean;
 };
 
 // Nouns, not adjectives: Slovenian would force a gender on "cepljen" that
@@ -170,12 +170,12 @@ export function toggleLabel(key: ToggleKey, locale: Locale = "sl"): string {
 }
 
 /** Only a recorded yes counts, so "unknown" and no both drop out. */
-export function goodWithMatches(animal: Animal, key: GoodWithKey): boolean {
+export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean {
   return animal.goodWith?.[key] === "yes";
 }
 
 /** Only a recorded yes counts, so "unknown" and no both drop out. */
-export function homeMatches(animal: Animal, key: HomeKey): boolean {
+export function homeMatches(animal: AnimalFields, key: HomeKey): boolean {
   switch (key) {
     case "apartment":
       return animal.apartmentOk === "yes";
@@ -183,7 +183,7 @@ export function homeMatches(animal: Animal, key: HomeKey): boolean {
 }
 
 /** Only a shelter that said so counts; an unanswered animal is not one. */
-export function careMatches(animal: Animal, key: CareKey): boolean {
+export function careMatches(animal: AnimalFields, key: CareKey): boolean {
   switch (key) {
     case "patient":
       return animal.specialNeeds === true;
@@ -243,7 +243,7 @@ export function ageGroup(months: number): AgeGroup {
   return "senior";
 }
 
-function matchesSpecies(animal: Animal, species: SpeciesFilter): boolean {
+function matchesSpecies(animal: AnimalFields, species: SpeciesFilter): boolean {
   return species === "all" || TAB_OF_SPECIES[animal.species] === species;
 }
 
@@ -314,7 +314,7 @@ type FilterIndex = {
   ages: { at: number; values: Column<AgeGroup> } | null;
 };
 
-function buildIndex(animals: readonly Animal[]): FilterIndex {
+function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const species: Species[] = [];
   const sex: (string | undefined)[] = [];
   const size: (string | undefined)[] = [];
@@ -371,9 +371,9 @@ function buildIndex(animals: readonly Animal[]): FilterIndex {
 // own. The page asks its eleven questions of the same two lists on every
 // render, so in practice this builds twice per dataset and is read from
 // thereafter.
-const indexes = new WeakMap<readonly Animal[], FilterIndex>();
+const indexes = new WeakMap<readonly AnimalFields[], FilterIndex>();
 
-function indexOf(animals: readonly Animal[]): FilterIndex {
+function indexOf(animals: readonly AnimalFields[]): FilterIndex {
   const cached = indexes.get(animals);
   if (cached !== undefined) return cached;
   const index = buildIndex(animals);
@@ -440,7 +440,7 @@ type Pass = {
   query: Query;
 };
 
-function passOf(animals: Animal[], filters: Filters, now: Date): Pass {
+function passOf(animals: AnimalFields[], filters: Filters, now: Date): Pass {
   const index = indexOf(animals);
   return {
     index,
@@ -572,11 +572,14 @@ export function chipKey(facet: FilterFacet, value: string): string {
   return `${facet}:${value}`;
 }
 
-export function applyFilters(
-  animals: Animal[],
+// Generic, because what comes back is what went in: the dataset's own animals
+// on the server and the client projection of them in the grid (see
+// lib/animal.ts). The filtering itself reads none of what the two differ on.
+export function applyFilters<T extends AnimalFields>(
+  animals: T[],
   filters: Filters,
   now: Date,
-): Animal[] {
+): T[] {
   const pass = passOf(animals, filters, now);
   return animals.filter(
     (_, slot) =>
@@ -600,7 +603,7 @@ export function applyFilters(
 // fail two and no single pick can bring it back. That is the answer the five
 // separate walks gave, read off one pass.
 export function facetCounts(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Record<MultiGroup, Map<string, number>> {
@@ -629,7 +632,7 @@ export function facetCounts(
 // removes the group it is measuring. The number then answers what this choice
 // itself can add under the filters from every other section.
 export function toggleCounts(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
@@ -653,7 +656,7 @@ export function toggleCounts(
 // animals that answer this facet and leave no other picked one unanswered,
 // since an animal answering this facet cannot be failing on it.
 export function goodWithCounts(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
@@ -701,7 +704,7 @@ function orSectionCounts(
 }
 
 export function homeCounts(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
@@ -709,7 +712,7 @@ export function homeCounts(
 }
 
 export function careCounts(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
@@ -738,7 +741,7 @@ export function careCounts(
  *  only ever widens, by exactly the animals that fail that facet and nothing
  *  else. */
 export function chipGains(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Map<string, number> {
@@ -853,7 +856,10 @@ export function chipGains(
 
 // The panel measures itself against the species tab rather than the whole
 // dataset, so what it offers is what the animals on screen can be narrowed by.
-export function bySpecies(animals: Animal[], species: SpeciesFilter): Animal[] {
+export function bySpecies<T extends AnimalFields>(
+  animals: T[],
+  species: SpeciesFilter,
+): T[] {
   // The same array back on the Vse tab, and deliberately: a copy is a second
   // identity, and a second identity is a second index over the very same
   // animals (see indexOf). Every caller treats the pool as read-only, and the
@@ -907,7 +913,7 @@ function narrows(matching: number, total: number): boolean {
 
 // A toggle that every animal passes (or none do) can't narrow anything.
 export function visibleToggles(
-  animals: Animal[],
+  animals: AnimalFields[],
   species: SpeciesFilter,
   selected: readonly ToggleKey[],
 ): ToggleDef[] {
@@ -929,7 +935,7 @@ export function visibleToggles(
 function visibleFacet<Key extends string>(
   keys: readonly Key[],
   column: "goodWith" | "home" | "care",
-  animals: Animal[],
+  animals: AnimalFields[],
   selected: readonly Key[],
 ): Key[] {
   const counts = answeredCounts(indexOf(animals)[column], keys.length);
@@ -939,21 +945,21 @@ function visibleFacet<Key extends string>(
 }
 
 export function visibleGoodWith(
-  animals: Animal[],
+  animals: AnimalFields[],
   selected: readonly GoodWithKey[],
 ): GoodWithKey[] {
   return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected);
 }
 
 export function visibleHome(
-  animals: Animal[],
+  animals: AnimalFields[],
   selected: readonly HomeKey[],
 ): HomeKey[] {
   return visibleFacet(HOME_KEYS, "home", animals, selected);
 }
 
 export function visibleCare(
-  animals: Animal[],
+  animals: AnimalFields[],
   selected: readonly CareKey[],
 ): CareKey[] {
   return visibleFacet(CARE_KEYS, "care", animals, selected);
@@ -975,7 +981,7 @@ export function visibleCare(
  *  record's shape is what every caller types against, and a member that lies
  *  is worse than one nobody reads. */
 export function speciesFacetCounts(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Record<SpeciesFilter, number> {
@@ -1000,7 +1006,7 @@ export function speciesFacetCounts(
  *  decides which shelters exist (animal-grid.tsx). A filter may move a tab's
  *  number, but it may not take the tab off the strip, or narrowing to "samica"
  *  would delete the way back to the other species. */
-export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> {
+export function speciesCounts(animals: AnimalFields[]): Record<SpeciesFilter, number> {
   const counts: Record<SpeciesFilter, number> = {
     all: animals.length,
     dog: 0,
@@ -1025,7 +1031,7 @@ export function speciesCounts(animals: Animal[]): Record<SpeciesFilter, number> 
 // selection are two questions of the same state, and taking them separately
 // left every caller passing filters.species and filters to the same call.
 export function visibleGroups(
-  animals: Animal[],
+  animals: AnimalFields[],
   filters: Filters,
   now: Date,
 ): Record<MultiGroup, boolean> {
@@ -1224,7 +1230,7 @@ export function careOptions(
 // inheriting whichever branch happens to be last.
 export function groupOptions(
   group: MultiGroup,
-  animals: Animal[],
+  animals: AnimalFields[],
   locale: Locale = "sl",
 ): FilterOption[] {
   switch (group) {
@@ -1254,7 +1260,7 @@ export function groupOptions(
 export function optionLabel(
   group: MultiGroup,
   value: string,
-  animals: Animal[],
+  animals: AnimalFields[],
   locale: Locale = "sl",
 ): string {
   const option = groupOptions(group, animals, locale).find(

@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { PawPrint } from "lucide-react";
-import type { Animal } from "@posvoji/schema";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
@@ -20,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
+import type { ClientAnimal } from "@/lib/animal";
 import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -129,7 +129,7 @@ export function AnimalGrid({
   municipalities,
   offSiteShelters,
 }: {
-  animals: Animal[];
+  animals: ClientAnimal[];
   logos: ShelterLogos;
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
@@ -196,7 +196,7 @@ export function AnimalGrid({
   // filter, sort or species move hands down a different array, the count stops
   // applying, and the grid is read from its top again. No effect has to notice
   // and no render of the new list is ever made against the old one's count.
-  const [chunk, setChunk] = useState<{ of: Animal[]; drawn: number }>({
+  const [chunk, setChunk] = useState<{ of: ClientAnimal[]; drawn: number }>({
     of: sorted,
     drawn: INITIAL_CARDS,
   });

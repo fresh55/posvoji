@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Animal, AdoptionStatus, Species } from "@posvoji/schema";
+import type { ClientAnimal } from "./animal";
+import { animalsForClient } from "./dataset";
 import { summarizeShelters } from "./shelter-summary";
 
 const NOW = new Date("2026-08-01T00:00:00Z");
@@ -11,29 +13,39 @@ function animal(
   extra: Partial<
     Pick<Animal, "intakeDate" | "name" | "status" | "images">
   > = {},
-): Animal {
-  return {
-    id,
-    source: {
-      providerId: shelterId,
-      sourceUrl: `https://example.org/${id}`,
-      fetchedAt: "2026-08-01T00:00:00Z",
-      firstSeenAt: "2026-08-01T00:00:00Z",
-      lastSeenAt: "2026-08-01T00:00:00Z",
+): ClientAnimal {
+  // Through the projection the grid is handed, because that is where a photo
+  // stops being a set of rights and becomes the file a face is drawn from.
+  return animalsForClient([
+    {
+      id,
+      source: {
+        providerId: shelterId,
+        sourceUrl: `https://example.org/${id}`,
+        fetchedAt: "2026-08-01T00:00:00Z",
+        firstSeenAt: "2026-08-01T00:00:00Z",
+        lastSeenAt: "2026-08-01T00:00:00Z",
+      },
+      shelter: { id: shelterId, name: shelterId, city: "Celje" },
+      species,
+      status: (extra.status ?? "available") as AdoptionStatus,
+      intakeDate: extra.intakeDate,
+      name: extra.name,
+      images: extra.images ?? [],
+      attribution: "Vir: test",
     },
-    shelter: { id: shelterId, name: shelterId, city: "Celje" },
-    species,
-    status: (extra.status ?? "available") as AdoptionStatus,
-    intakeDate: extra.intakeDate,
-    name: extra.name,
-    images: extra.images ?? [],
-    attribution: "Vir: test",
-  };
+  ])[0]!;
 }
 
-// A single permitted photo, the same shape permittedImageUrls looks for.
+// A single photo the shelter granted display rights to, which resolves to the
+// shelter's own file.
 function photo(id: string): Animal["images"] {
   return [{ sourceUrl: `https://example.org/${id}.jpg`, rights: "display-permitted" }];
+}
+
+// One the shelter granted nothing for. No surface draws it, so no face either.
+function privatePhoto(id: string): Animal["images"] {
+  return [{ sourceUrl: `https://example.org/${id}.jpg`, rights: "unknown" }];
 }
 
 describe("summarizeShelters", () => {
@@ -252,6 +264,24 @@ describe("summarizeShelters", () => {
       expect(summaries.get("jug")?.faces?.map((face) => face.name)).toEqual([
         "Bine",
       ]);
+    });
+
+    it("says nothing about an animal whose photo may not be drawn", () => {
+      const summaries = summarizeShelters(
+        [
+          animal("a", "jug", "dog", {
+            intakeDate: "2020-08-01",
+            name: "A",
+            images: privatePhoto("a"),
+          }),
+        ],
+        "sl",
+        NOW,
+      );
+
+      // The photo exists in the dataset and no surface on the site may draw
+      // it, so it is gone before this is asked, the same as everywhere else.
+      expect(summaries.get("jug")?.faces).toBeUndefined();
     });
 
     it("says nothing when nobody at the shelter has a photo", () => {

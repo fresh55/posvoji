@@ -82,14 +82,19 @@ describe("animalsForClient", () => {
       ]),
     ]);
 
+    // The photo nobody may draw is gone, so the one after it both leads the
+    // list and keeps the placeholder.
+    expect(projected!.images.map((image) => image.src)).toEqual([
+      "/media/animals/luna-2.webp",
+      "/media/animals/luna-3.webp",
+    ]);
     expect(projected!.images.map((image) => image.blurDataURL)).toEqual([
-      undefined,
       BLUR,
       undefined,
     ]);
   });
 
-  it("leaves every other field alone and does not mutate the input", () => {
+  it("ships the resolved photo and nothing the server used to resolve it", () => {
     const source = animal([
       {
         sourceUrl: "https://shelter.example/luna-1.jpg",
@@ -114,14 +119,46 @@ describe("animalsForClient", () => {
     const [projected] = animalsForClient([source]);
 
     expect(projected!.id).toBe(source.id);
-    expect(projected!.images[1]).toEqual({
-      sourceUrl: "https://shelter.example/luna-2.jpg",
-      cachedUrl: "/media/animals/luna-2.webp",
+    // What crosses the boundary is the answer, not the question: no rights, no
+    // sourceUrl behind a cached copy, and no cachedUrl beside the src it is.
+    expect(projected!.images[0]).toEqual({
+      src: "/media/animals/luna-1.webp",
       width: 600,
       height: 400,
       widths: [320, 480, 600],
-      rights: "cache-permitted",
+      avif: true,
+      blurDataURL: BLUR,
+    });
+    // Strict, because a key standing for an absent field is not free: React
+    // ships an undefined value as "$undefined".
+    expect(projected!.images[1]).toStrictEqual({
+      src: "/media/animals/luna-2.webp",
+      width: 600,
+      height: 400,
+      widths: [320, 480, 600],
     });
     expect(source.images[1]!.blurDataURL).toBe(BLUR);
+  });
+
+  it("leaves a hotlinked photo on the shelter's own file", () => {
+    const [projected] = animalsForClient([
+      animal([
+        // Cacheable, but the cache never produced a copy, so the derived
+        // fields describe nothing and the shelter's file is what is drawn.
+        {
+          sourceUrl: "https://shelter.example/luna-1.jpg",
+          rights: "cache-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-2.jpg",
+          rights: "display-permitted",
+        },
+      ]),
+    ]);
+
+    expect(projected!.images).toEqual([
+      { src: "https://shelter.example/luna-1.jpg" },
+      { src: "https://shelter.example/luna-2.jpg" },
+    ]);
   });
 });

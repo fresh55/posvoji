@@ -1,5 +1,5 @@
-import type { Animal, Species } from "@posvoji/schema";
-import { permittedImageUrls } from "@/lib/animal-images";
+import type { Species } from "@posvoji/schema";
+import type { AnimalFields, ClientAnimal } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import { ageLabel, monthsInShelter } from "@/lib/labels";
@@ -43,7 +43,7 @@ export type ShelterSummary = {
 // The same three statuses the animal card's long-stay mark skips (see
 // longStayMonths in labels.ts): an adopted animal's stay is history, and a
 // reserved or held one is not waiting for the visitor's decision.
-function isWaiting(animal: Animal): boolean {
+function isWaiting(animal: AnimalFields): boolean {
   return (
     animal.status !== "adopted" &&
     animal.status !== "hold" &&
@@ -65,7 +65,7 @@ function isWaiting(animal: Animal): boolean {
  *  No LONG_STAY_MONTHS threshold: this is the longest wait in the house, which
  *  is a fact whether or not it has crossed the mark the animal card draws. */
 export function summarizeShelters(
-  animals: Animal[],
+  animals: ClientAnimal[],
   locale: Locale,
   now: Date,
 ): Map<string, ShelterSummary> {
@@ -98,13 +98,14 @@ export function summarizeShelters(
       }
     }
 
-    // The same permitted photos the grid and the dialog already show: a
-    // shelter with display rights on nothing gets no faces, exactly as it
-    // gets no photos anywhere else on the site.
-    const [photo] = permittedImageUrls(animal.images);
+    // The same photos the grid and the dialog already show: the projection
+    // handed in has dropped the ones the shelter granted no display right to,
+    // so a shelter with rights on nothing gets no faces, exactly as it gets no
+    // photos anywhere else on the site.
+    const photo = animal.images[0];
     if (photo) {
       const candidates = faceCandidates.get(id) ?? [];
-      candidates.push({ name, months, src: photo });
+      candidates.push({ name, months, src: photo.src });
       faceCandidates.set(id, candidates);
     }
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
-import type { Animal } from "@posvoji/schema";
+import type { AnimalFields } from "@/lib/animal";
 import { useI18n } from "@/components/i18n-provider";
 import {
   animalPath,
@@ -40,7 +40,7 @@ export function useAnimalDialog({
   basePath,
 }: {
   /** The list the dialog reads from, and what a path is resolved against. */
-  animals: Animal[];
+  animals: AnimalFields[];
   /** The list's own address, and where closing the dialog returns to. */
   basePath: string;
 }) {

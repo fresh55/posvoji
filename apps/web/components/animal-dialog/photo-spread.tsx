@@ -17,7 +17,6 @@ import {
   useTransform,
   type MotionValue,
 } from "motion/react";
-import type { Animal } from "@posvoji/schema";
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
 import { STAGE_WIDTH } from "@/components/animal-dialog/photo-wash";
 import { AnimalPhoto } from "@/components/animal-photo";
@@ -28,7 +27,8 @@ import {
 } from "@/components/photo-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { permittedPhotos, type PermittedPhoto } from "@/lib/animal-images";
+import type { ClientAnimal } from "@/lib/animal";
+import type { PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 
 // Five photos is where a fan still reads as a fan. Past that the window walks
@@ -538,7 +538,7 @@ export function PhotoSpread({
   animal,
   onWashSource,
 }: {
-  animal: Animal;
+  animal: ClientAnimal;
   /**
    * Which photo the stage wash should be showing. The wash is mounted above
    * this component so it outlives the remount, which is the only way one
@@ -548,7 +548,8 @@ export function PhotoSpread({
 }) {
   const { messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  const images = permittedPhotos(animal.images);
+  // Already resolved and already filtered to what may be drawn.
+  const images = animal.images;
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxOrigin, setLightboxOrigin] = useState<DOMRect | undefined>(
@@ -574,7 +575,8 @@ export function PhotoSpread({
   if (images.length === 0) {
     return (
       <PhotoGallery
-        animal={animal}
+        images={images}
+        name={animal.name}
         sizes="(max-width: 639px) 100vw, 24rem"
         className="relative aspect-[4/3] w-full overflow-hidden bg-muted sm:mx-auto sm:w-[58%] sm:rounded-ui sm:border"
       />

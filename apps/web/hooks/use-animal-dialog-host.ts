@@ -1,22 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Animal } from "@posvoji/schema";
+import type { AnimalFields } from "@/lib/animal";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useAnimalDialog } from "@/hooks/use-animal-dialog";
 
 // Everything a grid needs to host the animal dialog: which animal is open,
 // where it grows from, what it steps through, and what a stale link does.
 // useAnimalDialog owns the address; this owns what the grid does around it.
-export function useAnimalDialogHost({
+// Generic over the animal shape so the selected animal comes back as the same
+// type the caller handed in, which is what the dialog is then given.
+export function useAnimalDialogHost<T extends AnimalFields>({
   animals,
   shown,
   basePath,
 }: {
   /** The list a path is resolved against, whole rather than filtered. */
-  animals: Animal[];
+  animals: T[];
   /** The list on screen, in the order shown. The dialog steps through it. */
-  shown: Animal[];
+  shown: T[];
   /** The list's own address, and where closing the dialog returns to. */
   basePath: string;
 }) {

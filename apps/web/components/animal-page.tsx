@@ -10,6 +10,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { permittedPhotos } from "@/lib/animal-images";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -69,7 +70,11 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           <div className="grid gap-8 sm:grid-cols-2 sm:items-start">
             {hasPhoto && (
               <PhotoGallery
-                animal={animal}
+                // Resolved here rather than by the grid's client projection:
+                // this page carries one animal, and its gallery blurs whichever
+                // photo the visitor steps to, so every placeholder stays.
+                images={permittedPhotos(animal.images)}
+                name={animal.name}
                 // The hero is half of a two-column grid inside max-w-5xl, so
                 // it settles at 31rem once the page stops growing; between sm
                 // and there it is a little under half the viewport, and below

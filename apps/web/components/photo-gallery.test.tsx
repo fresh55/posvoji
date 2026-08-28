@@ -5,7 +5,9 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
+import type { ClientAnimal } from "@/lib/animal";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
+import { animalsForClient } from "@/lib/dataset";
 
 afterEach(() => {
   cleanup();
@@ -21,7 +23,14 @@ const NOW = new Date("2026-01-01T00:00:00.000Z");
 const FRAME_WIDTH = 300;
 const FAR = FRAME_WIDTH * 0.22;
 
-function animal(rest: Partial<Animal> = {}): Animal {
+// Written in the dataset's own shape and handed over through the projection
+// the server runs, so the gallery is given exactly what it is given on the
+// page: photos already resolved to the file each one is drawn from.
+function animal(rest: Partial<Animal> = {}): ClientAnimal {
+  return animalsForClient([schemaAnimal(rest)])[0]!;
+}
+
+function schemaAnimal(rest: Partial<Animal> = {}): Animal {
   return {
     id: "rex",
     source: {

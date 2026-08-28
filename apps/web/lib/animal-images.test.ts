@@ -3,7 +3,6 @@ import type { Animal } from "@posvoji/schema";
 import {
   adjacentImages,
   MAX_PHOTO_DOTS,
-  permittedImageUrls,
   permittedPhotos,
   photoAvifUrl,
   photoDotWindow,
@@ -39,42 +38,6 @@ describe("photoDotWindow", () => {
 
   it("never returns a negative start for a gallery with no photos", () => {
     expect(photoDotWindow(0, 0)).toEqual({ start: 0, count: 0 });
-  });
-});
-
-describe("permittedImageUrls", () => {
-  it("returns every permitted image in source order", () => {
-    expect(
-      permittedImageUrls([
-        {
-          sourceUrl: "https://shelter.example/luna-1.jpg",
-          cachedUrl: "/media/animals/luna-1.webp",
-          rights: "cache-permitted",
-        },
-        {
-          sourceUrl: "https://shelter.example/luna-2.jpg",
-          rights: "display-permitted",
-        },
-        {
-          sourceUrl: "https://shelter.example/luna-private.jpg",
-          rights: "unknown",
-        },
-      ] satisfies Animal["images"]),
-    ).toEqual([
-      "/media/animals/luna-1.webp",
-      "https://shelter.example/luna-2.jpg",
-    ]);
-  });
-
-  it("falls back to the source while a cacheable image is not cached", () => {
-    expect(
-      permittedImageUrls([
-        {
-          sourceUrl: "https://shelter.example/luna.jpg",
-          rights: "cache-permitted",
-        },
-      ] satisfies Animal["images"]),
-    ).toEqual(["https://shelter.example/luna.jpg"]);
   });
 });
 
@@ -120,6 +83,40 @@ describe("adjacentImages", () => {
 });
 
 describe("permittedPhotos", () => {
+  it("returns every permitted image in source order", () => {
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna-1.jpg",
+          cachedUrl: "/media/animals/luna-1.webp",
+          rights: "cache-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-2.jpg",
+          rights: "display-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-private.jpg",
+          rights: "unknown",
+        },
+      ] satisfies Animal["images"]).map((photo) => photo.src),
+    ).toEqual([
+      "/media/animals/luna-1.webp",
+      "https://shelter.example/luna-2.jpg",
+    ]);
+  });
+
+  it("falls back to the source while a cacheable image is not cached", () => {
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"]).map((photo) => photo.src),
+    ).toEqual(["https://shelter.example/luna.jpg"]);
+  });
+
   it("carries the derived fields of a cached copy", () => {
     expect(
       permittedPhotos([
@@ -143,6 +140,25 @@ describe("permittedPhotos", () => {
         avif: true,
         blurDataURL: "data:image/webp;base64,UklGRg==",
       },
+    ]);
+  });
+
+  it("carries no key for a field ingest never derived", () => {
+    // These photos are serialized into the page for the client components
+    // that draw them, and React writes an undefined value out as "$undefined",
+    // so an absent field has to be an absent key rather than an empty one.
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          cachedUrl: "/media/animals/luna.webp",
+          width: 800,
+          height: 600,
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"]),
+    ).toStrictEqual([
+      { src: "/media/animals/luna.webp", width: 800, height: 600 },
     ]);
   });
 

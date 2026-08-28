@@ -23,10 +23,8 @@ export type PermittedPhoto = {
 
 /** Whether a surface may draw this image at all. permittedPhotos keeps
  *  exactly these, in the order they arrive, so the first one to pass is the
- *  photo a card shows and the one a dialog opens on. Its own function because
- *  the client projection in lib/dataset.ts has to answer the same question and
- *  the two must not drift into different ideas of which photo leads. */
-export function isDrawableImage(image: Animal["images"][number]): boolean {
+ *  photo a card shows and the one a dialog opens on. */
+function isDrawableImage(image: Animal["images"][number]): boolean {
   return (
     image.rights === "cache-permitted" || image.rights === "display-permitted"
   );
@@ -34,6 +32,12 @@ export function isDrawableImage(image: Animal["images"][number]): boolean {
 
 // Images without explicit display permission stay on the shelter's own site.
 // Cacheable images prefer our local, resized copy when ingest has produced one.
+//
+// The one place the rights become a URL. Every surface reads photos through
+// it: the server-rendered animal page calls it directly, and everything behind
+// the client boundary gets its result from animalsForClient in lib/dataset.ts,
+// which is what keeps `rights` and `sourceUrl` off the wire without a second
+// idea of which photo is drawn from which file.
 export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
   return images.flatMap((image) => {
     if (!isDrawableImage(image)) return [];
@@ -41,24 +45,21 @@ export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
       // The derived fields describe our own copy. A cache that failed leaves
       // the shelter's file hotlinked, and none of them apply to it.
       if (!image.cachedUrl) return [{ src: image.sourceUrl }];
-      return [
-        {
-          src: image.cachedUrl,
-          width: image.width,
-          height: image.height,
-          widths: image.widths,
-          avif: image.avif,
-          blurDataURL: image.blurDataURL,
-        },
-      ];
+      // Only the fields ingest actually derived, and no key for the ones it
+      // did not. These photos are serialized into the page for the client
+      // components that draw them, and React writes an undefined value out as
+      // "$undefined": a key standing for an absent field costs more on the
+      // wire than the field would have.
+      const photo: PermittedPhoto = { src: image.cachedUrl };
+      if (image.width !== undefined) photo.width = image.width;
+      if (image.height !== undefined) photo.height = image.height;
+      if (image.widths !== undefined) photo.widths = image.widths;
+      if (image.avif !== undefined) photo.avif = image.avif;
+      if (image.blurDataURL !== undefined) photo.blurDataURL = image.blurDataURL;
+      return [photo];
     }
     return [{ src: image.sourceUrl }];
   });
-}
-
-/** The same list as URLs, for callers that only count photos or name one. */
-export function permittedImageUrls(images: Animal["images"]): string[] {
-  return permittedPhotos(images).map((photo) => photo.src);
 }
 
 function isCachedCopy(src: string): boolean {

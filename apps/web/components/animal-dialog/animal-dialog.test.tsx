@@ -16,6 +16,7 @@ import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalPath } from "@/lib/animal-path";
+import { animalsForClient } from "@/lib/dataset";
 
 // The filter dock and the drawer read the viewport before they render, and
 // the dismiss gesture asks whether it is on the phone layout. jsdom reports
@@ -107,7 +108,13 @@ const REFERENCE = "2026-08-18T00:00:00.000Z";
 function renderGrid(animals: Animal[] = ANIMALS) {
   return render(
     <I18nProvider locale="sl">
-      <AnimalGrid animals={animals} logos={{}} referenceDate={REFERENCE} />
+      <AnimalGrid
+        // What the page hands a client component: photos already resolved,
+        // and a placeholder only on the one a card and this dialog open on.
+        animals={animalsForClient(animals)}
+        logos={{}}
+        referenceDate={REFERENCE}
+      />
     </I18nProvider>,
   );
 }
@@ -468,7 +475,11 @@ describe("animal dialog", () => {
   });
 
   it("offers the longest-waiting sort from the callout when it would change something", async () => {
-    const longtimer = animal("cufi", "Cufi", { intakeDate: "2022-06-15" });
+    // Rendered on its own rather than through the grid, so the projection the
+    // grid would have run is run here.
+    const longtimer = animalsForClient([
+      animal("cufi", "Cufi", { intakeDate: "2022-06-15" }),
+    ])[0]!;
     const onSeeLongestWaiting = vi.fn();
     render(
       <I18nProvider locale="sl">

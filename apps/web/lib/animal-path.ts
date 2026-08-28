@@ -1,4 +1,4 @@
-import type { Animal } from "@posvoji/schema";
+import type { AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import { decodeOrRaw } from "@/lib/location-search";
 
@@ -52,7 +52,7 @@ export type AnimalPathParts = {
 };
 
 /** The three segments of an animal's address, and the route's own params. */
-export function animalPathParts(animal: Animal): AnimalPathParts {
+export function animalPathParts(animal: AnimalFields): AnimalPathParts {
   const name = animal.name ? slugify(animal.name) : "";
   return {
     animal: `${name || animal.species}-${idSuffix(animal.id)}`,
@@ -64,7 +64,7 @@ export function animalPathParts(animal: Animal): AnimalPathParts {
 }
 
 /** The animal's own page: what a share hands over, in the reader's language. */
-export function animalPath(animal: Animal, locale: Locale): string {
+export function animalPath(animal: AnimalFields, locale: Locale): string {
   const parts = animalPathParts(animal);
   return `${PREFIX[locale]}/${parts.animal}/${parts.city}/${parts.shelter}`;
 }
@@ -88,9 +88,9 @@ export function animalSlugFromPath(pathname: string): string | null {
   return match?.[1] ? decodeOrRaw(match[1]) : null;
 }
 
-export function findAnimalBySlug(
-  animals: readonly Animal[],
+export function findAnimalBySlug<T extends AnimalFields>(
+  animals: readonly T[],
   slug: string,
-): Animal | undefined {
+): T | undefined {
   return animals.find((animal) => animalPathParts(animal).animal === slug);
 }

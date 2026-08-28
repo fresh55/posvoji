@@ -378,9 +378,10 @@ describe("how much of the grid is drawn", () => {
   });
 
   it("swaps the sentinel for a button once the automatic budget is spent", () => {
-    // Two columns, so a step is 30 cards and the budget is 90: the first step
-    // spends all of it. Ten more than that, so the button has something left
-    // to offer.
+    // Two columns, so a step is 30 cards, but the budget is only 80: the
+    // first step already overshoots it and clamps down to what is left of
+    // the budget instead of running its full stride. Ten more than that, so
+    // the button has something left to offer.
     stubGridColumns(columnTracks(2));
     const beyond = pastTheBudget(2, 10);
     const { callbacks } = stubIntersectionObserver();
@@ -393,7 +394,7 @@ describe("how much of the grid is drawn", () => {
     // The budget is spent: the sentinel is gone, the grid stops growing on
     // its own, and the way on is a real control with the remainder on it.
     const drawn = TARGET_ROWS * 2;
-    expect(drawn).toBe(INITIAL_CARDS + ROWS_PER_STEP * 2);
+    expect(drawn).toBeLessThan(INITIAL_CARDS + ROWS_PER_STEP * 2);
     expect(screen.getAllByRole("article")).toHaveLength(drawn);
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
     const more = screen.getByRole("button", { name: "Prikaži še 10" });
@@ -414,8 +415,8 @@ describe("how much of the grid is drawn", () => {
 
   it("takes wider steps and settles later where the grid draws four columns", () => {
     // The budget is rows, so four columns buy twice the cards of two for the
-    // same scroll distance: steps of 60 rather than 30, and 180 drawn rather
-    // than 90. Two steps to spend it, so the sentinel has to survive the
+    // same scroll distance: steps of 60 rather than 30, and 160 drawn rather
+    // than 80. Two steps to spend it, so the sentinel has to survive the
     // first. The remainder is larger than one press delivers, so the button
     // offers its full stride.
     stubGridColumns(columnTracks(4));
@@ -445,12 +446,13 @@ describe("how much of the grid is drawn", () => {
   });
 
   it("clamps the last step at the row target where three columns would overshoot", () => {
-    // Three columns step by 45, and 60 plus two of those is 150: fifty rows
-    // drawn where TARGET_ROWS promises forty-five, which measured some 1,500px
-    // of page nobody asked for. The last step is what is left of the budget
-    // instead, so the grid settles on the number the constant names.
-    expect(INITIAL_CARDS + ROWS_PER_STEP * 3 * 2).toBe(150);
-    expect(TARGET_ROWS * 3).toBe(135);
+    // Three columns step by 45, and 60 plus two of those is 150: past the
+    // 120-card budget, so a full second stride would draw ten rows more than
+    // TARGET_ROWS names. The last step is what is left of the budget instead,
+    // so the grid settles on the number the constant names.
+    expect(INITIAL_CARDS + ROWS_PER_STEP * 3 * 2).toBeGreaterThan(
+      TARGET_ROWS * 3,
+    );
 
     stubGridColumns(columnTracks(3));
     const beyond = pastTheBudget(3, 10);
@@ -513,7 +515,8 @@ describe("how much of the grid is drawn", () => {
   it("charges an unmeasurable grid for two columns", () => {
     // Deliberately unstubbed: jsdom lays out nothing, so this is the real
     // computed value the fallback exists for. The step is the two-column one,
-    // and a list long enough that a four-column step would show as 120.
+    // which the two-column budget then clamps, and a list long enough that a
+    // four-column step would show as 120.
     const beyond = pastTheBudget(4, 0);
     const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
@@ -523,7 +526,7 @@ describe("how much of the grid is drawn", () => {
     });
 
     expect(screen.getAllByRole("article")).toHaveLength(
-      INITIAL_CARDS + ROWS_PER_STEP * 2,
+      Math.min(INITIAL_CARDS + ROWS_PER_STEP * 2, TARGET_ROWS * 2),
     );
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
   });

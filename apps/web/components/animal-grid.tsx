@@ -120,7 +120,7 @@ const STEP_MARGIN = "1200px 0px";
 // across a step: the sentinel's ref re-arms it (watchSentinel below), because
 // the browser does not reliably report the leave that used to do the job.
 export const ROWS_PER_STEP = 15;
-export const TARGET_ROWS = 45;
+export const TARGET_ROWS = 40;
 
 // A press is a stronger signal than a scroll, so it buys more. At 120 a full
 // unfiltered dataset is three or four presses end to end, without the grid
@@ -324,9 +324,9 @@ export function AnimalGrid({
             // counted against another list starts again from the top.
             //
             // Clamped at the budget, so the last step is what is left of it
-            // rather than a full stride past it. Unclamped, three columns went
-            // 60, 105, 150: fifty rows drawn where TARGET_ROWS promises
-            // forty-five, and some 1,500px of page nobody asked for. A short
+            // rather than a full stride past it. Unclamped, three columns once
+            // went 60, 105, 150: fifty rows drawn where TARGET_ROWS then
+            // promised forty-five, and some 1,500px of page nobody asked for. A short
             // last step is nothing for the re-arm below to worry about either,
             // because a step that reaches the budget settles, and settling
             // unmounts the sentinel. Only the full-size steps before it have a

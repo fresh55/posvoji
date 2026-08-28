@@ -42,11 +42,12 @@ test("draws an initial page of cards and grows it as the sentinel is reached", a
   }
 
   // Real growth, not "changed once by one card": the narrowest budget on the
-  // narrowest grid is 45 rows of two columns, so 90 cards, which is half again
-  // the initial page and well short of the ~500-animal dataset running out.
+  // narrowest grid is 40 rows of two columns, so 80 cards, which is a third
+  // again the initial page and well short of the ~500-animal dataset running
+  // out.
   const drawn = await cards(page).count();
   expect(steps).toBeGreaterThan(0);
-  expect(drawn).toBeGreaterThanOrEqual(90);
+  expect(drawn).toBeGreaterThanOrEqual(80);
 
   // Settled, and the settled state says so: the way on is a control the
   // visitor presses, with the count of what is drawn under it, so the footer

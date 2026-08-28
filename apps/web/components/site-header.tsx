@@ -1,5 +1,6 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
+import { SiteMenu, SiteNav } from "@/components/site-menu";
 import type { Locale } from "@/lib/i18n";
 
 type SiteHeaderProps = {
@@ -30,6 +31,9 @@ export function SiteHeader({
         posvoji.si
       </a>
       <div className="flex items-center gap-3">
+        {/* Destinations first, meta controls after: what the site has to
+            offer stands ahead of the knobs for reading it. */}
+        <SiteNav />
         <LanguageSwitcher paths={languagePaths} />
         <a
           href="https://github.com/fresh55/posvoji"
@@ -52,6 +56,7 @@ export function SiteHeader({
             <span className="hidden md:inline">{canHelp}</span>
           </span>
         </a>
+        <SiteMenu />
       </div>
     </header>
   );

@@ -10,7 +10,13 @@ import {
 } from "@testing-library/react";
 import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnimalGrid, INITIAL_CARDS, UNDO_WINDOW_MS } from "./animal-grid";
+import {
+  AnimalGrid,
+  CARDS_PER_CLICK,
+  CARDS_PER_STEP,
+  INITIAL_CARDS,
+  UNDO_WINDOW_MS,
+} from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
 
@@ -321,6 +327,92 @@ describe("how much of the grid is drawn", () => {
   it("renders the whole list where there is no observer to grow it", () => {
     renderGrid(many);
     expect(screen.getAllByRole("article")).toHaveLength(many.length);
+  });
+
+  it("swaps the sentinel for a button once the automatic budget is spent", () => {
+    // matchMedia is mocked to matches: false above, so this runs on the phone
+    // budget: one automatic step, then the button. Ten more than the budget
+    // covers, so the button has something left to offer.
+    const beyond = Array.from(
+      { length: INITIAL_CARDS + CARDS_PER_STEP + 10 },
+      (_, i) => animal(`dog-${i}`, "dog", "muri"),
+    );
+    const callbacks = stubIntersectionObserver();
+    const { container } = renderGrid(beyond);
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    // The budget is spent: the sentinel is gone, the grid stops growing on
+    // its own, and the way on is a real control with the remainder on it.
+    const drawn = INITIAL_CARDS + CARDS_PER_STEP;
+    expect(screen.getAllByRole("article")).toHaveLength(drawn);
+    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+    const more = screen.getByRole("button", { name: "Prikaži še 10" });
+    expect(
+      screen.getByText(`${drawn} od ${beyond.length} živali`),
+    ).toBeTruthy();
+
+    fireEvent.click(more);
+
+    // Everything is drawn, the button has nothing left to say, and focus
+    // stands on the first card the press added rather than falling to body
+    // with the unmounted button.
+    expect(screen.getAllByRole("article")).toHaveLength(beyond.length);
+    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    const firstAdded = screen.getAllByRole("article")[drawn];
+    expect(document.activeElement).toBe(firstAdded.querySelector("a"));
+  });
+
+  it("keeps scrolling on its own for another step on a desktop viewport", () => {
+    // Five steps' worth, so after the two free desktop steps the remainder is
+    // still larger than a press delivers and the button offers its full 120.
+    const beyond = Array.from(
+      { length: INITIAL_CARDS + 5 * CARDS_PER_STEP },
+      (_, i) => animal(`dog-${i}`, "dog", "muri"),
+    );
+    const matchMedia = window.matchMedia as ReturnType<typeof vi.fn>;
+    matchMedia.mockImplementation((media: string) => ({
+      matches: true,
+      media,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      const callbacks = stubIntersectionObserver();
+      const { container } = renderGrid(beyond);
+
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
+
+      // One step in, a desktop still has budget: the sentinel stays armed and
+      // no button interrupts the scroll yet.
+      expect(screen.getAllByRole("article")).toHaveLength(
+        INITIAL_CARDS + CARDS_PER_STEP,
+      );
+      expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
+
+      // The second step is the last free one, and the remainder is larger
+      // than a press delivers, so the button offers its full stride.
+      expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+      expect(
+        screen.getByRole("button", { name: `Prikaži še ${CARDS_PER_CLICK}` }),
+      ).toBeTruthy();
+    } finally {
+      matchMedia.mockImplementation((media: string) => ({
+        matches: false,
+        media,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }));
+    }
   });
 
   it("goes back to the first chunk when the filters change", () => {

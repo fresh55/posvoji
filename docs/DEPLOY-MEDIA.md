@@ -97,16 +97,21 @@ directive to read them with anyway.
 
 1. Media sync into `/srv/posvoji/media`, then `chown`/`chmod` and a file count
    printed as a sanity line.
-2. A new `/srv/posvoji/releases/<sha12>-<UTC stamp>/`, the artifact unpacked
+2. Orphan cleanup: delete media on the host that the local dataset no longer
+   references. See "Deleting withdrawn media" below.
+3. `scripts/verify-media.mjs` shipped to a throwaway directory on the host and
+   run there against `/srv/posvoji/media`, aborting before the flip on a
+   nonzero exit. See "Verify before flipping the symlink" below.
+4. A new `/srv/posvoji/releases/<sha12>-<UTC stamp>/`, the artifact unpacked
    into it, same ownership and modes.
-3. A health check of the new directory while nothing points at it yet:
+5. A health check of the new directory while nothing points at it yet:
    `index.html` exists and is nonempty, and so does one hashed asset taken
    from the artifact listing.
-4. `ln -sfn` onto `/srv/posvoji/current`. One operation, so no request sees a
+6. `ln -sfn` onto `/srv/posvoji/current`. One operation, so no request sees a
    missing `current/`.
-5. `curl -skI --resolve posvoji.si:443:127.0.0.1` from the host, expecting 200
+7. `curl -skI --resolve posvoji.si:443:127.0.0.1` from the host, expecting 200
    or 401, printed.
-6. Prune to the newest three releases, sorted by mtime and skipping whatever
+8. Prune to the newest three releases, sorted by mtime and skipping whatever
    `current` resolves to, so a rollback cannot delete the release it points
    at.
 
@@ -139,21 +144,32 @@ The release name is the commit sha and the UTC time of the deploy, so a
 directory on the host says which commit it is without looking anything up.
 
 The sync the script runs is a `tar` stream, which adds and overwrites but
-never removes. `rsync -a --delete` is what this should become:
+never removes. `rsync -a --delete` would be the natural way to mirror the
+sweep `cacheImages`, `cacheLogos` and `writeShareCards` already run locally,
+where a file no longer referenced by the dataset is removed, but Git Bash on
+Windows carries no `rsync` binary, so the script cannot rely on it.
 
-```bash
-rsync -a --delete apps/web/public/media/ deploy-host:/srv/posvoji/media/
-```
+Instead it does the same job as a list diff. The local, sorted list of every
+relative path under `apps/web/public/media/` is piped to the host, which sorts
+its own `find` listing the same way and runs `comm -13` between the two to get
+the paths that exist on the host but not locally. Both sides sort with
+`LC_ALL=C`; a locale mismatch between the two produces a bogus diff (this was
+hit for real during development). The remote-only paths are deleted with a
+null-safe `xargs`, and only ever the remote-only paths: nothing in the local
+list is ever touched.
 
-`--delete` matters as much as the copy does: it mirrors the sweep `cacheImages`,
-`cacheLogos` and `writeShareCards` already run locally, where a file no longer
-referenced by the dataset is removed. Without `--delete`, a photo the shelter
-took down, or a shelter that opted out entirely, would keep serving from
-production indefinitely after it disappeared from the ingest machine. The
-right-to-exit clause in [DATA-POLICY.md](DATA-POLICY.md) depends on this sync
-actually removing files, not just adding them. Until the script switches to
-rsync, a file that leaves the ingest machine has to be removed from
-`/srv/posvoji/media` by hand.
+This matters for the right-to-exit clause in [DATA-POLICY.md](DATA-POLICY.md):
+a photo a shelter takes down, or a shelter that opts out entirely, has to stop
+being served, not just stop being linked from the dataset. Without a delete
+step it would keep serving from production indefinitely after it disappeared
+from the ingest machine.
+
+The delete step is guarded: if the number of candidate deletions is over
+`ORPHAN_DELETE_MAX` (500 in the script), it refuses to delete anything and
+tells the operator to look, rather than acting on what might be a truncated or
+empty local list. An empty local list is refused outright, before the diff
+even runs, for the same reason. `--dry-run` computes nothing on either side
+and only prints the intent.
 
 With media outside the release tree, the release artifact should exclude
 `public/media/` entirely, and the web server serves `/media/` from the shared
@@ -258,16 +274,26 @@ pnpm media:verify /srv/posvoji/media   # on the host, against the shared root
 `scripts/verify-media.mjs` reads `data/dist/animals.json`, `share-cards.json`
 and `shelter-logos.json`, derives every media path the site can request, and
 checks each one exists under the media root given as its argument
-(`apps/web/public/media` by default). It exits nonzero and lists every file it
-could not find. Node builtins only, so it runs on the deploy host with nothing
-installed: copy the script and `data/dist/*.json` across and run it there, or
-check the sync itself with `rsync -an --delete` and read what it still wants to
-transfer.
+(`apps/web/public/media` by default). It groups the referenced paths by their
+subdirectory (`animals/`, `share/`, `shelter-logos/`), reads each of those
+once with `readdirSync`, and checks membership against that listing rather
+than calling `existsSync` per file, which is what makes ~9000 files cheap to
+check. It exits nonzero and lists every file it could not find. Node builtins
+only, so it runs on the deploy host with nothing installed.
 
-`scripts/deploy.sh` runs the local one in its preflight, before it builds
-anything: the host copy is written from the local one, so a gap there is a gap
-everywhere. The host-side run is still worth doing by hand after a sync that
-looked odd. Three failure modes make this worth a step of its own.
+`scripts/deploy.sh` runs it twice, against two different directories, and both
+matter. The preflight run is against `apps/web/public/media`, the local
+directory the build is about to read; it fails fast, before a long build,
+but a gap here is nearly impossible since that is the same directory ingest
+just wrote. The deploy stage ships the script plus the `data/dist/*.json`
+manifests it reads to a throwaway directory on the host and runs it there
+against `/srv/posvoji/media`, after the media sync and the orphan cleanup and
+before the release symlink flips, aborting the deploy on a nonzero exit. That
+second run is the one that can actually fail: it is checking the sync itself,
+on the disk a visitor's request will actually be served from, which is the
+exact gap the local run cannot see. The host-side run is still worth doing by
+hand (`pnpm media:verify /srv/posvoji/media` over an ssh session) after a sync
+that looked odd. Three failure modes make this worth a step of its own.
 
 A missing `.avif` renders a **blank hero**, not the WebP beside it. `<picture>`
 commits to a `<source>` by its MIME type before it requests anything, so once

@@ -21,7 +21,7 @@
 //
 // Node builtins only, so it runs on a host with nothing installed.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -136,10 +136,46 @@ for (const [id, entry] of Object.entries(logoManifest?.entries ?? {})) {
 }
 
 // --- the check -------------------------------------------------------------
+//
+// Every referenced path lives under one of three fixed subdirectories
+// (animals/, share/, shelter-logos/), flat inside each. Rather than an
+// existsSync per file (~9000 stat syscalls, slow on Windows and on the
+// host's disk), read each referenced subdirectory once into a Set and check
+// basenames against it.
+
+function subdirOf(relative) {
+  const slash = relative.indexOf("/");
+  return slash === -1 ? "" : relative.slice(0, slash);
+}
+
+function basenameOf(relative) {
+  const slash = relative.indexOf("/");
+  return slash === -1 ? relative : relative.slice(slash + 1);
+}
+
+function listDir(dir) {
+  try {
+    return new Set(readdirSync(dir));
+  } catch (error) {
+    // No such subdirectory: every file it was expected to hold is missing,
+    // not a crash.
+    if (error.code === "ENOENT") return new Set();
+    throw error;
+  }
+}
+
+const subdirs = new Set();
+for (const relative of referenced.keys()) subdirs.add(subdirOf(relative));
+
+const listings = new Map();
+for (const subdir of subdirs) {
+  listings.set(subdir, listDir(join(mediaRoot, subdir)));
+}
 
 const missing = [];
 for (const [relative, reasons] of referenced) {
-  if (!existsSync(join(mediaRoot, relative))) {
+  const present = listings.get(subdirOf(relative));
+  if (!present.has(basenameOf(relative))) {
     missing.push({ relative, reasons: [...reasons] });
   }
 }

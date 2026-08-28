@@ -47,6 +47,12 @@ FILE_MODE="640"
 # How many release directories to keep after a deploy, the new one included.
 KEEP_RELEASES=3
 
+# Safety limit on the media orphan-delete step below. More candidate
+# deletions than this and the script refuses and asks a human to look,
+# rather than deleting: a truncated or empty local file list should never be
+# able to wipe the host's media directory.
+ORPHAN_DELETE_MAX=500
+
 # --- local paths -------------------------------------------------------------
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -80,7 +86,8 @@ Stages:
   1. Preflight     clean tree, dataset present, media present, pnpm media:verify
   2. Build         git worktree at HEAD, pnpm install, pnpm --filter web build
   3. Artifact      tar of apps/web/out without media/ and without .br/.gz
-  4. Deploy        media sync, release upload, health check, symlink flip, prune
+  4. Deploy        media sync, orphan cleanup, host media verify, release
+                   upload, health check, symlink flip, prune
 
 Docs: docs/DEPLOY-MEDIA.md
 USAGE
@@ -120,6 +127,16 @@ remote() {
     return 0
   fi
   ssh_exec "${cmd}"
+}
+
+# The chown/chmod incantation applied to both the media directory and each
+# release directory: owner and group first, then directories and files get
+# their own mode because they need different ones. Both call sites want
+# exactly this for one directory, differing only in which directory.
+own_and_mode_cmd() {
+  local dir="$1"
+  printf 'chown -R %s %s && find %s -type d -exec chmod %s {} + && find %s -type f -exec chmod %s {} +' \
+    "${OWNERSHIP}" "${dir}" "${dir}" "${DIR_MODE}" "${dir}" "${FILE_MODE}"
 }
 
 # Same, but the remote command reads a tar stream from a local pipeline. The
@@ -338,21 +355,82 @@ fi
 #     renders blank heroes and missing ladder rungs, and neither one shows up
 #     anywhere except in front of a visitor. See docs/DEPLOY-MEDIA.md.
 #
-#     This sync adds and overwrites; it never removes. The eventual goal is
-#     `rsync -a --delete`, which is what actually mirrors the local sweep and
-#     what the right-to-exit clause in DATA-POLICY.md depends on: a photo a
-#     shelter took down has to stop being served, not just stop being linked.
-#     Until rsync is on the host, a file that leaves the ingest machine stays
-#     on the host until someone removes it by hand.
+#     rsync is not on the Windows side of this script (Git Bash carries no
+#     rsync binary), so this is a tar add-and-overwrite stream. It never
+#     removes a file by itself; the list diff below does that instead.
 remote_stream "syncing media (add and overwrite only, no deletes)" \
   "tar -C '${LOCAL_MEDIA}' -cf - ." \
   "mkdir -p ${MEDIA_DIR} && tar -C ${MEDIA_DIR} -xf - --no-same-owner"
 
 remote "fixing ownership and modes on the media directory" \
-  "chown -R ${OWNERSHIP} ${MEDIA_DIR} && find ${MEDIA_DIR} -type d -exec chmod ${DIR_MODE} {} + && find ${MEDIA_DIR} -type f -exec chmod ${FILE_MODE} {} +"
+  "$(own_and_mode_cmd "${MEDIA_DIR}")"
 
 remote "counting media files on the host" \
   "printf 'media files on host: ' && find ${MEDIA_DIR} -type f | wc -l"
+
+# (a2) Right to exit: a photo a shelter withdraws has to stop being served,
+#      not just stop being linked from the dataset (see DATA-POLICY.md). The
+#      tar sync above only adds and overwrites, so a file the ingest machine
+#      no longer has would otherwise keep answering 200 on the host forever.
+#      This sends the sorted local file list to the host and has it diff that
+#      against its own sorted listing with comm, deleting exactly the
+#      remote-only entries. ORPHAN_DELETE_MAX guards against a truncated or
+#      empty local list wiping the host: past that many candidate deletions,
+#      it refuses and asks a human to look instead of deleting.
+LOCAL_MEDIA_LIST_CMD="cd '${LOCAL_MEDIA}' && find . -type f | sed 's|^\\./||' | LC_ALL=C sort"
+HOST_ORPHAN_DIFF_CMD="tmp_local=\$(mktemp)
+tmp_remote=\$(mktemp)
+cat >\"\${tmp_local}\"
+local_count=\$(wc -l <\"\${tmp_local}\")
+if [ \"\${local_count}\" -eq 0 ]; then
+  echo 'refusing to diff against an empty local media list; check the media sync by hand' >&2
+  rm -f \"\${tmp_local}\" \"\${tmp_remote}\"
+  exit 1
+fi
+find ${MEDIA_DIR} -type f | sed 's|^${MEDIA_DIR}/||' | LC_ALL=C sort >\"\${tmp_remote}\"
+orphans=\$(comm -13 \"\${tmp_local}\" \"\${tmp_remote}\")
+orphan_count=\$(printf '%s\\n' \"\${orphans}\" | grep -c .)
+if [ \"\${orphan_count}\" -eq 0 ]; then
+  echo 'no orphaned media files on the host'
+elif [ \"\${orphan_count}\" -gt ${ORPHAN_DELETE_MAX} ]; then
+  echo \"refusing to delete \${orphan_count} orphaned files, over the ${ORPHAN_DELETE_MAX}-file safety limit; check the media sync by hand\" >&2
+  rm -f \"\${tmp_local}\" \"\${tmp_remote}\"
+  exit 1
+else
+  printf '%s\\n' \"\${orphans}\" | sed \"s|^|${MEDIA_DIR}/|\" | tr '\\n' '\\0' | xargs -0 rm -f --
+  echo \"removed \${orphan_count} orphaned media file(s) from the host\"
+fi
+rm -f \"\${tmp_local}\" \"\${tmp_remote}\""
+remote_stream "removing media the host has that the dataset no longer references" \
+  "${LOCAL_MEDIA_LIST_CMD}" "${HOST_ORPHAN_DIFF_CMD}"
+
+# (a3) Verify the media the host now actually has, not the local directory
+#      the build just read from (where a gap is nearly impossible). This is
+#      the only check in the whole pipeline that can catch the exact failure
+#      this script is organised around: a missing .avif renders a blank hero
+#      with no fallback, and a missing ladder rung renders nothing, and
+#      neither fails a build or the pre-flip health check below, which only
+#      looks at index.html and one JS chunk. verify-media.mjs is Node
+#      builtins only for exactly this: it can run on a host with nothing
+#      installed. Ships the script plus the data/dist manifests it reads to a
+#      throwaway directory on the host, runs it against the shared media
+#      root, and aborts before the flip on a nonzero exit.
+HOST_VERIFY_DIR="/tmp/posvoji-verify-${RELEASE_NAME}"
+HOST_VERIFY_FILES="scripts/verify-media.mjs data/dist/animals.json"
+for extra in data/dist/share-cards.json data/dist/shelter-logos.json; do
+  if [ -f "${REPO_ROOT}/${extra}" ]; then
+    HOST_VERIFY_FILES="${HOST_VERIFY_FILES} ${extra}"
+  fi
+done
+remote_stream "shipping verify-media.mjs and the dist manifests to the host" \
+  "tar -C '${REPO_ROOT}' -cf - ${HOST_VERIFY_FILES}" \
+  "mkdir -p ${HOST_VERIFY_DIR} && tar -C ${HOST_VERIFY_DIR} -xf - --no-same-owner"
+
+remote "verifying media on the host" \
+  "node ${HOST_VERIFY_DIR}/scripts/verify-media.mjs ${MEDIA_DIR}
+verify_status=\$?
+rm -rf ${HOST_VERIFY_DIR}
+exit \${verify_status}"
 
 # (b) The release directory.
 remote_stream "uploading the release to ${RELEASE_DIR}" \
@@ -360,7 +438,7 @@ remote_stream "uploading the release to ${RELEASE_DIR}" \
   "mkdir -p ${RELEASE_DIR} && tar -C ${RELEASE_DIR} -xzf - --no-same-owner"
 
 remote "fixing ownership and modes on the release" \
-  "chown ${OWNERSHIP} ${RELEASES_DIR} && chmod ${DIR_MODE} ${RELEASES_DIR} && chown -R ${OWNERSHIP} ${RELEASE_DIR} && find ${RELEASE_DIR} -type d -exec chmod ${DIR_MODE} {} + && find ${RELEASE_DIR} -type f -exec chmod ${FILE_MODE} {} +"
+  "chown ${OWNERSHIP} ${RELEASES_DIR} && chmod ${DIR_MODE} ${RELEASES_DIR} && $(own_and_mode_cmd "${RELEASE_DIR}")"
 
 # (c) Check the new directory before anything points at it. A release that
 #     unpacked short is still invisible at this point; after the flip it is the

@@ -322,10 +322,21 @@ export function AnimalGrid({
             const columns = gridColumns(gridRef.current);
             // The same guard the render reads the count through: a count
             // counted against another list starts again from the top.
+            //
+            // Clamped at the budget, so the last step is what is left of it
+            // rather than a full stride past it. Unclamped, three columns went
+            // 60, 105, 150: fifty rows drawn where TARGET_ROWS promises
+            // forty-five, and some 1,500px of page nobody asked for. A short
+            // last step is nothing for the re-arm below to worry about either,
+            // because a step that reaches the budget settles, and settling
+            // unmounts the sentinel. Only the full-size steps before it have a
+            // sentinel left to deliver anything.
             setChunk((previous) => {
-              const drawn =
+              const drawn = Math.min(
                 (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                ROWS_PER_STEP * columns;
+                  ROWS_PER_STEP * columns,
+                TARGET_ROWS * columns,
+              );
               return {
                 of: sorted,
                 drawn,

@@ -444,6 +444,42 @@ describe("how much of the grid is drawn", () => {
     ).toBeTruthy();
   });
 
+  it("clamps the last step at the row target where three columns would overshoot", () => {
+    // Three columns step by 45, and 60 plus two of those is 150: fifty rows
+    // drawn where TARGET_ROWS promises forty-five, which measured some 1,500px
+    // of page nobody asked for. The last step is what is left of the budget
+    // instead, so the grid settles on the number the constant names.
+    expect(INITIAL_CARDS + ROWS_PER_STEP * 3 * 2).toBe(150);
+    expect(TARGET_ROWS * 3).toBe(135);
+
+    stubGridColumns(columnTracks(3));
+    const beyond = pastTheBudget(3, 10);
+    const { callbacks } = stubIntersectionObserver();
+    const { container } = renderGrid(beyond);
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    // One full stride, short of the budget, so the sentinel stands.
+    expect(screen.getAllByRole("article")).toHaveLength(
+      INITIAL_CARDS + ROWS_PER_STEP * 3,
+    );
+    expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    expect(screen.getAllByRole("article")).toHaveLength(TARGET_ROWS * 3);
+    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+    expect(screen.getByRole("button", { name: "Prikaži še 10" })).toBeTruthy();
+    expect(
+      screen.getByText(`${TARGET_ROWS * 3} od ${beyond.length} živali`),
+    ).toBeTruthy();
+  });
+
   it("re-arms the observation on a step that leaves the sentinel standing", () => {
     // An observer reports a change of state and nothing else, so after a step
     // it is still holding "intersecting" and only a delivered leave moves it

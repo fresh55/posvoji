@@ -265,22 +265,16 @@ else {
 Write-Stage 'Scheduled tasks'
 
 # A -Once trigger with a repetition is how you get "every N hours forever"
-# out of this module. -RepetitionDuration [TimeSpan]::MaxValue is the
-# documented way to say "no end", and some builds reject it, so there is a
-# ten year fallback that outlives this machine.
+# out of this module. Not [TimeSpan]::MaxValue: the trigger cmdlet accepts it,
+# but the Task Scheduler service rejects the XML it serializes to
+# (Duration:P99999999DT23H59M59S, 0x80041318) at registration, after the
+# cmdlet error has already scrolled by. Ten years outlives this machine.
 function New-RepeatingTrigger {
   param([datetime]$At, [int]$IntervalHours)
 
-  $interval = New-TimeSpan -Hours $IntervalHours
-  try {
-    return New-ScheduledTaskTrigger -Once -At $At `
-      -RepetitionInterval $interval -RepetitionDuration ([TimeSpan]::MaxValue)
-  }
-  catch {
-    Write-Info 'RepetitionDuration [TimeSpan]::MaxValue was rejected here, using 3650 days'
-    return New-ScheduledTaskTrigger -Once -At $At `
-      -RepetitionInterval $interval -RepetitionDuration (New-TimeSpan -Days 3650)
-  }
+  return New-ScheduledTaskTrigger -Once -At $At `
+    -RepetitionInterval (New-TimeSpan -Hours $IntervalHours) `
+    -RepetitionDuration (New-TimeSpan -Days 3650)
 }
 
 function Register-CrawlTask {
@@ -317,9 +311,13 @@ function Register-CrawlTask {
     return
   }
 
+  # -ErrorAction Stop, then read the task back: the service validates the
+  # task XML only at registration, and a rejection there is a non-terminating
+  # error that would otherwise scroll past a false "registered" line.
   Register-ScheduledTask -TaskName $Name -TaskPath $TaskPath `
     -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal `
-    -Description $Description | Out-Null
+    -Description $Description -ErrorAction Stop | Out-Null
+  $null = Get-ScheduledTask -TaskName $Name -TaskPath $TaskPath -ErrorAction Stop
   Write-Info "registered $TaskPath$Name"
 }
 

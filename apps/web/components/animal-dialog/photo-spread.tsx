@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   useEffect,
   useLayoutEffect,
@@ -18,9 +17,9 @@ import {
   useTransform,
   type MotionValue,
 } from "motion/react";
-import type { Animal } from "@posvoji/schema";
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
 import { STAGE_WIDTH } from "@/components/animal-dialog/photo-wash";
+import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-provider";
 import {
   GALLERY_BUTTON_CLASS,
@@ -28,7 +27,8 @@ import {
 } from "@/components/photo-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { permittedImageUrls } from "@/lib/animal-images";
+import type { ClientAnimal } from "@/lib/animal";
+import type { PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 
 // Five photos is where a fan still reads as a fan. Past that the window walks
@@ -125,9 +125,14 @@ const PHONE_SOLO_STAGE_ASPECT =
 const PHOTO_FRAME_CLASS =
   "origin-bottom overflow-hidden rounded-ui border border-foreground/10 bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-// Images are served unoptimized today, so this picks nothing; it is here so
-// the fan asks for the right file if that ever changes. The wash behind the
-// fan runs off the thumb instead and carries its own.
+// What the fan's photos really measure. On a phone the stage is full bleed
+// and the front photo takes 66-80% of it; on a desktop the dialog caps at
+// 48rem, the stage takes 80% of that and a photo 58% of the stage, which is
+// about 22rem. The wash behind the fan runs off the thumb and carries its own.
+//
+// No AVIF here, deliberately: the fan draws five photos, four of them scaled
+// to under 60%, and the AVIF sibling only exists at the cached copy's full
+// width. Serving it would hand the whole fan the largest file there is.
 const PHOTO_SIZES = "(max-width: 639px) 80vw, 24rem";
 
 // The dialog counts photos where the grid card shows dots: the card is a
@@ -200,7 +205,7 @@ function fanSlots(count: number, active: number): { index: number; offset: numbe
  * moves under a drag as one thing, every frame, without a re-render.
  */
 function PhoneFanPhoto({
-  source,
+  photo,
   index,
   offset,
   count,
@@ -211,7 +216,7 @@ function PhoneFanPhoto({
   active,
   onPick,
 }: {
-  source: string;
+  photo: PermittedPhoto;
   index: number;
   offset: number;
   count: number;
@@ -270,7 +275,7 @@ function PhoneFanPhoto({
           : { ...FAN_SPRING, delay: entrance }
       }
     >
-      <Image src={source} alt="" fill sizes={PHOTO_SIZES} className="object-cover" />
+      <AnimalPhoto photo={photo} alt="" sizes={PHOTO_SIZES} className="object-cover" />
       {/* The count sits on the photo being looked at, and it is what tells
           you how many there are in total. */}
       {active && count > 1 && (
@@ -293,7 +298,7 @@ function PhoneFan({
   onSelect,
   onOpenLightbox,
 }: {
-  images: string[];
+  images: PermittedPhoto[];
   activeIndex: number;
   onSelect: (index: number) => void;
   onOpenLightbox: (from: DOMRect) => void;
@@ -488,7 +493,7 @@ function PhoneFan({
           return (
             <PhoneFanPhoto
               key={index}
-              source={images[index]}
+              photo={images[index]}
               index={index}
               offset={offset}
               count={images.length}
@@ -533,7 +538,7 @@ export function PhotoSpread({
   animal,
   onWashSource,
 }: {
-  animal: Animal;
+  animal: ClientAnimal;
   /**
    * Which photo the stage wash should be showing. The wash is mounted above
    * this component so it outlives the remount, which is the only way one
@@ -543,7 +548,8 @@ export function PhotoSpread({
 }) {
   const { messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  const images = permittedImageUrls(animal.images);
+  // Already resolved and already filtered to what may be drawn.
+  const images = animal.images;
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxOrigin, setLightboxOrigin] = useState<DOMRect | undefined>(
@@ -559,7 +565,9 @@ export function PhotoSpread({
   // Reported rather than read from above, because which photo is showing is
   // this component's business. An animal with nothing to show reports nothing
   // and the wash goes out with it.
-  const washSource = images[activeIndex];
+  // The wash runs off the 112px thumb, which is derived from the cached copy
+  // and named after it, so it is the photo's own src the wash needs.
+  const washSource = images[activeIndex]?.src;
   useEffect(() => {
     onWashSource?.(washSource);
   }, [onWashSource, washSource]);
@@ -567,7 +575,8 @@ export function PhotoSpread({
   if (images.length === 0) {
     return (
       <PhotoGallery
-        animal={animal}
+        images={images}
+        name={animal.name}
         sizes="(max-width: 639px) 100vw, 24rem"
         className="relative aspect-[4/3] w-full overflow-hidden bg-muted sm:mx-auto sm:w-[58%] sm:rounded-ui sm:border"
       />
@@ -688,10 +697,9 @@ export function PhotoSpread({
                       }
                 }
               >
-                <Image
-                  src={images[index]}
+                <AnimalPhoto
+                  photo={images[index]}
                   alt=""
-                  fill
                   sizes={PHOTO_SIZES}
                   className="object-cover"
                 />

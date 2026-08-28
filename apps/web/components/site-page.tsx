@@ -3,7 +3,7 @@ import { FoundAnimalButton } from "@/components/found-animal-button";
 import { I18nProvider } from "@/components/i18n-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { loadDataset } from "@/lib/dataset";
+import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
@@ -84,7 +84,10 @@ export function SitePage({ locale }: { locale: Locale }) {
           </div>
 
           <AnimalGrid
-            animals={animals}
+            // Everything above this line is counted on the server and stays
+            // here; the grid is a client component, so what it is given is
+            // what ends up in the page's flight payload.
+            animals={animalsForClient(animals)}
             logos={getShelterLogos()}
             referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
             municipalities={municipalities}

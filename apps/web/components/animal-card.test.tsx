@@ -5,13 +5,22 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
+import type { ClientAnimal } from "@/lib/animal";
+import { animalsForClient } from "@/lib/dataset";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
 
 afterEach(cleanup);
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
 
-function animal(rest: Partial<Animal> = {}): Animal {
+// Written in the dataset's own shape and handed over through the projection
+// the server runs, so these fixtures carry exactly what a card is given on the
+// page: photos already resolved, and no rights left to read.
+function animal(rest: Partial<Animal> = {}): ClientAnimal {
+  return animalsForClient([schemaAnimal(rest)])[0]!;
+}
+
+function schemaAnimal(rest: Partial<Animal> = {}): Animal {
   return {
     id: "rex",
     source: {

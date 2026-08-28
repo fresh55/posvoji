@@ -1,9 +1,9 @@
 "use client";
 
 import { ExternalLink, Heart, Hourglass } from "lucide-react";
-import type { Animal } from "@posvoji/schema";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
+import type { AnimalFields } from "@/lib/animal";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { ageLabel, longStayMonths } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ export function ShelterBlock({
   ctaMirrored = false,
   onSeeLongestWaiting,
 }: {
-  animal: Animal;
+  animal: AnimalFields;
   logos: ShelterLogos;
   /** The dataset's own build time, so the wait agrees with the cards. */
   reference: Date;

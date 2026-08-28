@@ -112,6 +112,104 @@ describe("Animal", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts a cached image with dimensions, a ladder and a placeholder", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          cachedUrl: "/media/animals/0123456789abcdef.webp",
+          width: 800,
+          height: 600,
+          widths: [320, 480, 640, 800],
+          avif: true,
+          blurDataURL: "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0=",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a non-positive or fractional image dimension", () => {
+    for (const bad of [0, -800, 800.5]) {
+      const result = Animal.safeParse({
+        ...validAnimal,
+        images: [
+          {
+            sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+            width: bad,
+            rights: "cache-permitted",
+          },
+        ],
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("rejects a widths ladder holding something other than positive integers", () => {
+    for (const bad of [[320, 0], [320, -480], ["640"]]) {
+      const result = Animal.safeParse({
+        ...validAnimal,
+        images: [
+          {
+            sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+            widths: bad,
+            rights: "cache-permitted",
+          },
+        ],
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("rejects a blurDataURL that is not an inline image", () => {
+    for (const bad of [
+      "https://www.macjahisa.si/media/luna.jpg",
+      "data:text/plain;base64,aGVsbG8=",
+      "UklGRhoAAABXRUJQVlA4TA0=",
+    ]) {
+      const result = Animal.safeParse({
+        ...validAnimal,
+        images: [
+          {
+            sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+            blurDataURL: bad,
+            rights: "cache-permitted",
+          },
+        ],
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("accepts an image without any of the derived fields", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          rights: "display-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an unknown field on an image", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          photographerEmail: "foto@example.si",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("accepts every apartmentOk answer", () => {
     for (const answer of ["yes", "no", "unknown"]) {
       const result = Animal.safeParse({ ...validAnimal, apartmentOk: answer });

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ChangeEntry, ChangeSet, Dataset } from "@posvoji/schema";
-import { cacheImages } from "./cache-images";
+import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
@@ -205,7 +205,7 @@ mkdirSync(datasetDir, { recursive: true });
 // a full export. Preserved providers stay in scope for the deletion sweep but
 // out of scope for requests, so their cached files and URLs are neither
 // deleted nor needlessly rechecked.
-const { animals, fetched, reused, deleted } = await cacheImages(
+const { animals, fetched, reused, deleted, derived } = await cacheImages(
   overridden,
   client,
   imagePolicies,
@@ -214,6 +214,23 @@ const { animals, fetched, reused, deleted } = await cacheImages(
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
 );
+console.log(
+  `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
+    `${derived.blurs} placeholders, ${derived.avifs} avif derived`,
+);
+
+// cachedUrl is set by cacheImages above, so this catches whatever it could
+// not cache: a source that 404s, exceeds the size cap or fails to decode.
+const hotlinked = hotlinkedCachePermittedImages(animals);
+if (hotlinked.length > 0) {
+  const detail =
+    hotlinked.length <= 5
+      ? hotlinked.map((h) => h.sourceUrl).join(", ")
+      : [...new Set(hotlinked.map((h) => h.providerId))].join(", ");
+  console.warn(
+    `images: ${hotlinked.length} cache-permitted image(s) left hotlinked (${detail})`,
+  );
+}
 
 // Shelter logos are keyed by provider, not by animal, so the sync runs over
 // every permitted shelter even on a targeted run: revalidation keeps that

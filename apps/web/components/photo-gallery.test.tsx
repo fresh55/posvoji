@@ -2,11 +2,17 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
+import type { ClientAnimal } from "@/lib/animal";
+import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
+import { animalsForClient } from "@/lib/dataset";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
 
@@ -17,7 +23,14 @@ const NOW = new Date("2026-01-01T00:00:00.000Z");
 const FRAME_WIDTH = 300;
 const FAR = FRAME_WIDTH * 0.22;
 
-function animal(rest: Partial<Animal> = {}): Animal {
+// Written in the dataset's own shape and handed over through the projection
+// the server runs, so the gallery is given exactly what it is given on the
+// page: photos already resolved to the file each one is drawn from.
+function animal(rest: Partial<Animal> = {}): ClientAnimal {
+  return animalsForClient([schemaAnimal(rest)])[0]!;
+}
+
+function schemaAnimal(rest: Partial<Animal> = {}): Animal {
   return {
     id: "rex",
     source: {
@@ -109,6 +122,106 @@ function counter() {
   const match = text.match(/(\d+)\D+(\d+)/);
   return match ? `${match[1]} / ${match[2]}` : null;
 }
+
+// Cached copies with the ladder ingest derives, for the tests that are about
+// which file a browser is offered. The gallery's own fixture above stays on
+// display-permitted photos, which is the single-file fallback.
+const CACHED: Animal["images"] = Array.from({ length: 3 }, (_, i) => ({
+  sourceUrl: `https://example.test/photo-${i}.jpg`,
+  cachedUrl: `/media/animals/photo-${i}.webp`,
+  width: 800,
+  height: 600,
+  widths: [320, 480, 640, 800],
+  blurDataURL: "data:image/webp;base64,UklGRg==",
+  rights: "cache-permitted" as const,
+}));
+
+/** Every image the gallery builds to warm the cache, in the order it made
+ *  them. new window.Image() is the only way that preload is observable. */
+function capturePreloads() {
+  const made: { src: string; srcset: string; sizes: string }[] = [];
+  class FakeImage {
+    src = "";
+    srcset = "";
+    sizes = "";
+    fetchPriority = "";
+    decoding = "";
+    constructor() {
+      made.push(this);
+    }
+  }
+  vi.stubGlobal("Image", FakeImage);
+  return made;
+}
+
+describe("photo gallery candidates", () => {
+  it("offers the card's photo as a ladder, with the card's own sizes", () => {
+    setup({ images: CACHED });
+
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    expect(photo?.getAttribute("srcset")).toBe(
+      "/media/animals/photo-0-320.webp 320w, " +
+        "/media/animals/photo-0-480.webp 480w, " +
+        "/media/animals/photo-0-640.webp 640w, " +
+        "/media/animals/photo-0.webp 800w",
+    );
+    // The string the grid's own layout derives. A card that stated its width
+    // by hand would go stale the first time the grid changed.
+    expect(photo?.getAttribute("sizes")).toBe(CARD_PHOTO_SIZES);
+  });
+
+  it("shows the inline placeholder under the photo while it loads", () => {
+    setup({ images: CACHED });
+
+    const layer = document.querySelector(
+      '[data-slot="photo-frame"] div[aria-hidden][style*="background-image"]',
+    );
+    expect(layer?.getAttribute("style")).toContain("data:image/webp;base64,");
+  });
+
+  it("leaves a photo with no cached copy on its single source", () => {
+    // The card fixture's own photos: display-permitted, served from the
+    // shelter, with no ladder and no placeholder to offer.
+    setup();
+
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    expect(photo?.getAttribute("src")).toBe("https://example.test/photo-0.jpg");
+    expect(photo?.getAttribute("srcset")).toBeNull();
+    expect(
+      document.querySelector(
+        '[data-slot="photo-frame"] div[aria-hidden][style*="background-image"]',
+      ),
+    ).toBeNull();
+  });
+
+  it("preloads the rung the layout would pick, not the largest file", () => {
+    const preloads = capturePreloads();
+    setup({ images: CACHED });
+
+    // Stepping the gallery warms the two photos either side of the new one.
+    fireEvent.click(screen.getByLabelText("Naslednja fotografija"));
+
+    expect(preloads).toHaveLength(2);
+    // The same ladder and the same sizes the rendered photo carries, so the
+    // browser runs its own selection and the visitor's later request is a
+    // cache hit rather than a second, different file.
+    expect(preloads[0].srcset).toContain("/media/animals/photo-0-320.webp 320w");
+    expect(preloads[0].srcset).toContain("/media/animals/photo-0.webp 800w");
+    expect(preloads[0].sizes).toBe(CARD_PHOTO_SIZES);
+    expect(preloads[0].src).toBe("/media/animals/photo-0.webp");
+  });
+
+  it("preloads a shelter-hosted photo with nothing to choose between", () => {
+    const preloads = capturePreloads();
+    setup();
+
+    fireEvent.click(screen.getByLabelText("Naslednja fotografija"));
+
+    expect(preloads[0].src).toBe("https://example.test/photo-0.jpg");
+    expect(preloads[0].srcset).toBe("");
+    expect(preloads[0].sizes).toBe("");
+  });
+});
 
 describe("photo gallery swipe", () => {
   beforeEach(() => {

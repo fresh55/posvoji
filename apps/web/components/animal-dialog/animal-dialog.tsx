@@ -17,7 +17,6 @@ import {
   useMotionValue,
   useReducedMotion,
 } from "motion/react";
-import type { Animal } from "@posvoji/schema";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { PhotoBloom } from "@/components/animal-dialog/photo-bloom";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
@@ -34,7 +33,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { permittedImageUrls } from "@/lib/animal-images";
+import type { ClientAnimal } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
 import { speciesLabel } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
@@ -134,7 +133,7 @@ export function AnimalDialog({
   onSeeLongestWaiting,
 }: {
   /** Undefined while nothing is open, and for an id no animal answers to. */
-  animal: Animal | undefined;
+  animal: ClientAnimal | undefined;
   logos: ShelterLogos;
   origin?: DialogOrigin;
   /** The ids on screen, in the order they are shown. */
@@ -209,7 +208,7 @@ export function AnimalDialog({
   const [washSource, setWashSource] = useState<string | undefined>(undefined);
   // The card shows an animal's first photo, and so does the fan on the way in,
   // so that is the one the bloom carries across.
-  const firstPhoto = lastAnimal && permittedImageUrls(lastAnimal.images)[0];
+  const firstPhoto = lastAnimal?.images[0];
 
   if (!lastAnimal) return null;
 
@@ -303,7 +302,7 @@ export function AnimalDialog({
         <DialogOverlay />
         {/* Outside the content on purpose: the content carries the zoom, and a
             copy aimed at viewport coordinates cannot sit inside a transform. */}
-        <PhotoBloom from={origin?.photo} source={firstPhoto} />
+        <PhotoBloom from={origin?.photo} photo={firstPhoto} />
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"

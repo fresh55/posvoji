@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { PawPrint } from "lucide-react";
-import type { Animal } from "@posvoji/schema";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
@@ -20,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
+import type { ClientAnimal } from "@/lib/animal";
 import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -129,7 +129,7 @@ export function AnimalGrid({
   municipalities,
   offSiteShelters,
 }: {
-  animals: Animal[];
+  animals: ClientAnimal[];
   logos: ShelterLogos;
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
@@ -196,7 +196,7 @@ export function AnimalGrid({
   // filter, sort or species move hands down a different array, the count stops
   // applying, and the grid is read from its top again. No effect has to notice
   // and no render of the new list is ever made against the old one's count.
-  const [chunk, setChunk] = useState<{ of: Animal[]; drawn: number }>({
+  const [chunk, setChunk] = useState<{ of: ClientAnimal[]; drawn: number }>({
     of: sorted,
     drawn: INITIAL_CARDS,
   });
@@ -287,7 +287,7 @@ export function AnimalGrid({
       setCleared(filters);
     }
     clearAll();
-  }, [activeCount, clearAll, filters, visible.length]);
+  }, [activeCount, clearAll, filters]);
 
   // Every other filter action undoes itself by being repeated. This one
   // cannot, so the row keeps a way back for a few seconds, and then drops it.
@@ -762,7 +762,7 @@ export function AnimalGrid({
                 species={filters.species}
                 // The first row, which is the largest image on the screen and
                 // was queueing behind the bundle like the other 499.
-                priority={ordinal < 4}
+                eager={ordinal < 4}
                 onOpen={handleOpen}
                 // A shelter's own page renders these same cards and leaves
                 // this off, because there the line would be the page linking

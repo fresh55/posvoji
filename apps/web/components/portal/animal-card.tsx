@@ -22,6 +22,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
 import type { PortalSaveState } from "@/hooks/use-portal-animals";
 import { Button } from "@/components/ui/button";
+import { thumbnailUrl } from "@/lib/animal-images";
 import { ageInMonths } from "@/lib/filters";
 import { formatAge } from "@/lib/labels";
 import type { PortalAnimal, PortalAnimalPatch } from "@/lib/portal-api";
@@ -98,14 +99,16 @@ export function PortalAnimalCard({
     <article className="space-y-3 rounded-ui border p-3 transition-colors hover:border-foreground/25 focus-within:border-foreground/25 sm:p-4">
       <div className="flex items-start gap-3">
         {animal.thumbnailUrl ? (
-          // The thumbnail is whatever the crawl found, usually still on the
-          // shelter's own host, so next/image would need a build-time
-          // allowlist of every shelter domain.
+          // next/image would need a build-time allowlist of every shelter
+          // domain, since a cache-permitted photo can still fall back to the
+          // shelter's own host. thumbnailUrl() rewrites our own cached copies
+          // to the 112px derivative; anything else passes through unchanged.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={animal.thumbnailUrl}
+            src={thumbnailUrl(animal.thumbnailUrl)}
             alt=""
             loading="lazy"
+            decoding="async"
             className="size-16 shrink-0 rounded-ui border bg-muted/40 object-cover"
           />
         ) : (

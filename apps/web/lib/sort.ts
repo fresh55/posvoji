@@ -1,4 +1,4 @@
-import type { Animal } from "@posvoji/schema";
+import type { AnimalFields } from "@/lib/animal";
 import { ageInMonths } from "./filters";
 import { cityAt, distanceKm, type LatLon } from "./geo";
 import type { Locale } from "./i18n";
@@ -114,7 +114,7 @@ function compareOptionalNumber(
 // rather than looked up again, and compareOptionalNumber then puts it after
 // everything that could be placed.
 function kmByCity(
-  animals: Animal[],
+  animals: AnimalFields[],
   origin: LatLon,
 ): Map<string, number | undefined> {
   const km = new Map<string, number | undefined>();
@@ -126,8 +126,11 @@ function kmByCity(
   return km;
 }
 
-export function sortAnimals(
-  animals: Animal[],
+// Generic for the reason applyFilters is: the list handed in comes back, and
+// an order reads none of what the dataset animal and its client projection
+// differ on.
+export function sortAnimals<T extends AnimalFields>(
+  animals: T[],
   sort: AnimalSort = DEFAULT_ANIMAL_SORT,
   locale: Locale = "sl",
   now: Date = new Date(),
@@ -135,7 +138,7 @@ export function sortAnimals(
    *  browser or their own typing can supply it, so every server render simply
    *  leaves it out and effectiveSort below falls back for them. */
   origin?: LatLon,
-): Animal[] {
+): T[] {
   const collator = new Intl.Collator(locale, { sensitivity: "base" });
   // Read once, so the order the comparator switches on and the order the
   // distances were prepared for cannot disagree.

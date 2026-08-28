@@ -2,11 +2,11 @@
 
 import { useMemo } from "react";
 import { PawPrint } from "lucide-react";
-import type { Animal } from "@posvoji/schema";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
+import type { ClientAnimal } from "@/lib/animal";
 import { CARD_GRID } from "@/lib/card-grid";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import type { ShelterLogos } from "@/lib/shelter-logos";
@@ -21,7 +21,7 @@ export function ShelterAnimalGrid({
   referenceDate,
   basePath,
 }: {
-  animals: Animal[];
+  animals: ClientAnimal[];
   logos: ShelterLogos;
   emptyLabel: string;
   /** When the dataset was built; ages are measured from it, not the clock. */

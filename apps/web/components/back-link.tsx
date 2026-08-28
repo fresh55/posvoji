@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useI18n } from "@/components/i18n-provider";
 
 // A shelter page is reached two ways: from the shelters index, and from a
@@ -28,11 +28,25 @@ function gridReferrer(): string | undefined {
   return `${url.pathname}${url.search}`;
 }
 
+// The referrer never changes once the page has loaded, so there is nothing to
+// subscribe to; this exists only to satisfy useSyncExternalStore's contract.
+function subscribeToNothing(): () => void {
+  return () => {};
+}
+
+/** The static fallback: what the server, and a crawler, always see. */
+function noGrid(): undefined {
+  return undefined;
+}
+
 /**
  * The way back, named after wherever the visitor actually came from. Renders
  * the static fallback on the server and on the first client paint, so the
- * markup a crawler and a cold load see is the index link it always was; the
- * upgrade happens in an effect once the referrer can be read.
+ * markup a crawler and a cold load see is the index link it always was.
+ * useSyncExternalStore's server/client snapshot split does the same job an
+ * effect-plus-setState used to: it defers reading document.referrer until
+ * after hydration without ever rendering a value the server could not also
+ * have produced.
  */
 export function BackLink({
   href,
@@ -45,11 +59,7 @@ export function BackLink({
   className?: string;
 }) {
   const { messages } = useI18n();
-  const [grid, setGrid] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    setGrid(gridReferrer());
-  }, []);
+  const grid = useSyncExternalStore(subscribeToNothing, gridReferrer, noGrid);
 
   return (
     <a href={grid ?? href} className={className}>

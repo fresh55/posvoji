@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   useEffect,
   useRef,
@@ -10,13 +9,14 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import type { Animal } from "@posvoji/schema";
+import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
-  adjacentImageUrls,
-  permittedImageUrls,
+  adjacentImages,
   photoDotWindow,
+  photoSrcSet,
+  type PermittedPhoto,
 } from "@/lib/animal-images";
 import { translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -73,7 +73,13 @@ const AXIS_SLOP_PX = 8;
 const PRELOAD_DWELL_MS = 150;
 
 type PhotoGalleryProps = {
-  animal: Animal;
+  /** Already resolved to what is drawn, and already free of anything no
+   *  surface may draw. The client gets them off the animal it was handed
+   *  (see animalsForClient); a server-rendered page resolves its own with
+   *  permittedPhotos. Either way the rights are settled before this. */
+  images: PermittedPhoto[];
+  /** The animal's, for the alt text on a surface that is not a link. */
+  name?: string | null;
   sizes: string;
   className?: string;
   /**
@@ -91,11 +97,15 @@ type PhotoGalleryProps = {
   index?: number;
   onIndexChange?: (index: number) => void;
   /** Above-the-fold cards, so the largest image on screen is not lazy. */
-  priority?: boolean;
+  eager?: boolean;
+  /** Serve the AVIF sibling of the photo where ingest derived one. See
+   *  AnimalPhoto: only worth it where the layout asks for the top rung. */
+  avif?: boolean;
 };
 
 export function PhotoGallery({
-  animal,
+  images,
+  name,
   sizes,
   className,
   tone,
@@ -103,9 +113,9 @@ export function PhotoGallery({
   onNavigate,
   index,
   onIndexChange,
-  priority = false,
+  eager = false,
+  avif = false,
 }: PhotoGalleryProps) {
-  const images = permittedImageUrls(animal.images);
   const [ownIndex, setOwnIndex] = useState(0);
   const swipeStart = useRef<SwipeStart | null>(null);
   const suppressImageLink = useRef(false);
@@ -152,15 +162,25 @@ export function PhotoGallery({
   }
 
   function preloadAdjacent(index: number) {
-    for (const source of adjacentImageUrls(images, index)) {
-      if (preloadedImages.current.has(source)) continue;
-      preloadedImages.current.add(source);
+    for (const photo of adjacentImages(images, index)) {
+      if (preloadedImages.current.has(photo.src)) continue;
+      preloadedImages.current.add(photo.src);
       const preload = new window.Image();
       // The visitor has not asked for these yet, so they must not compete with
       // the photo they are actually looking at.
       preload.fetchPriority = "low";
       preload.decoding = "async";
-      preload.src = source;
+      // The same ladder and the same sizes the rendered photo carries, set
+      // before src so the browser runs its own selection over them. That is
+      // what makes the preload fetch the rung this layout would pick rather
+      // than the 800px file at every width, and it means the fetch the visitor
+      // then triggers is a cache hit rather than a second, different file.
+      const srcSet = photoSrcSet(photo);
+      if (srcSet) {
+        preload.sizes = sizes;
+        preload.srcset = srcSet;
+      }
+      preload.src = photo.src;
     }
   }
 
@@ -316,20 +336,16 @@ export function PhotoGallery({
   };
 
   const imageContent = image ? (
-    <Image
-      src={image}
+    <AnimalPhoto
+      photo={image}
       // Empty when the photo is a link, because that anchor is aria-hidden and
       // the card names the animal twice over already: in its heading and in
       // the link the heading sits inside. "Rex" is not a text alternative for
       // a photograph of Rex, and it does not change when the gallery does.
-      alt={href ? "" : (animal.name ?? messages.unnamed)}
-      fill
-      // Inert while next.config.ts keeps images unoptimized: that emits a bare
-      // <img> with no srcset, so there is one candidate at every width and
-      // nothing for this to choose between. Kept because it is correct for the
-      // day optimization is turned on, and wrong to silently drop until then.
+      alt={href ? "" : (name ?? messages.unnamed)}
       sizes={sizes}
-      priority={priority}
+      eager={eager}
+      avif={avif}
       // The zoom is the card's hover lift reaching the photograph: the frame
       // clips it, so nothing moves but the picture inside its box. Named to
       // the card's group rather than an unqualified one, so it answers a

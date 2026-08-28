@@ -1,4 +1,5 @@
-import type { Animal, AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
+import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
+import type { AnimalFields } from "@/lib/animal";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 import { translate } from "@/lib/i18n";
 import {
@@ -212,7 +213,7 @@ export const META_DOT_CLASS = "text-muted-foreground/50";
  *  string back apart; animalMeta below is this joined, for the callers that
  *  want one string. */
 export function animalMetaParts(
-  animal: Animal,
+  animal: AnimalFields,
   locale: Locale = "sl",
   now: Date = new Date(),
   species: SpeciesFilter = "all",
@@ -233,7 +234,7 @@ export function animalMetaParts(
 }
 
 export function animalMeta(
-  animal: Animal,
+  animal: AnimalFields,
   locale: Locale = "sl",
   now: Date = new Date(),
   species: SpeciesFilter = "all",
@@ -284,7 +285,7 @@ export const EMPHATIC_STAY_MONTHS = 60;
 // The wait in months of an animal that has waited long and is actually up
 // for adoption, or undefined. Reserved and held animals are not waiting for
 // the visitor's decision, and an adopted one's stay is history.
-export function longStayMonths(animal: Animal, now: Date): number | undefined {
+export function longStayMonths(animal: AnimalFields, now: Date): number | undefined {
   if (!animal.intakeDate) return undefined;
   // An allowlist and not a denylist of the other three. A fifth status added
   // to the schema would silently inherit the mark under a denylist, and this

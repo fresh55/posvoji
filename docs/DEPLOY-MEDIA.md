@@ -164,12 +164,14 @@ being served, not just stop being linked from the dataset. Without a delete
 step it would keep serving from production indefinitely after it disappeared
 from the ingest machine.
 
-The delete step is guarded: if the number of candidate deletions is over
-`ORPHAN_DELETE_MAX` (500 in the script), it refuses to delete anything and
-tells the operator to look, rather than acting on what might be a truncated or
-empty local list. An empty local list is refused outright, before the diff
-even runs, for the same reason. `--dry-run` computes nothing on either side
-and only prints the intent.
+The delete step is guarded twice. The count of the local file list is taken on
+the ingest machine and checked on the host, and a list that arrives short of it
+is refused before the diff runs: that is what stops a local `find` that died
+partway from reading as "the dataset dropped every name it never sent". Behind
+that sits a backstop on the size of the deletion itself, a share of what the
+host holds, which refuses and prints the first of the candidate files instead
+of acting. The constants are in the script and carry their reasoning there.
+`--dry-run` computes nothing on either side and only prints the intent.
 
 With media outside the release tree, the release artifact should exclude
 `public/media/` entirely, and the web server serves `/media/` from the shared

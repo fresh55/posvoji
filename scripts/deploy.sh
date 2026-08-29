@@ -47,11 +47,22 @@ FILE_MODE="640"
 # How many release directories to keep after a deploy, the new one included.
 KEEP_RELEASES=3
 
-# Safety limit on the media orphan-delete step below. More candidate
-# deletions than this and the script refuses and asks a human to look,
-# rather than deleting: a truncated or empty local file list should never be
-# able to wipe the host's media directory.
-ORPHAN_DELETE_MAX=500
+# Backstop on the media orphan-delete step below, not the safeguard. What
+# makes that step safe is the exact count check: the host is told how many
+# lines the local file list should have and refuses to diff against a list
+# that arrived short. This share is what is left over for anything that check
+# cannot see, expressed against the size of the directory so it does not have
+# to be retuned as the dataset grows. A flat ceiling had to be: it refused a
+# routine cleanup of files left behind by ordinary adoptions.
+#
+# The floor keeps a small media directory from being hair trigger.
+#
+# The ingest has the same policy one layer down, where guardMassRemoval in
+# apps/ingest/src/run-guards.ts refuses to write a dataset that lost most of a
+# provider's animals. That guard is why a catastrophic dataset never reaches
+# this directory in the first place. Change one, look at the other.
+ORPHAN_DELETE_MAX_PERCENT=20
+ORPHAN_DELETE_MIN=500
 
 # --- local paths -------------------------------------------------------------
 
@@ -365,35 +376,45 @@ remote_stream "syncing media (add and overwrite only, no deletes)" \
 remote "fixing ownership and modes on the media directory" \
   "$(own_and_mode_cmd "${MEDIA_DIR}")"
 
-remote "counting media files on the host" \
-  "printf 'media files on host: ' && find ${MEDIA_DIR} -type f | wc -l"
-
 # (a2) Right to exit: a photo a shelter withdraws has to stop being served,
 #      not just stop being linked from the dataset (see DATA-POLICY.md). The
 #      tar sync above only adds and overwrites, so a file the ingest machine
 #      no longer has would otherwise keep answering 200 on the host forever.
 #      This sends the sorted local file list to the host and has it diff that
 #      against its own sorted listing with comm, deleting exactly the
-#      remote-only entries. ORPHAN_DELETE_MAX guards against a truncated or
-#      empty local list wiping the host: past that many candidate deletions,
-#      it refuses and asks a human to look instead of deleting.
+#      remote-only entries.
+#
+#      What the host must not do is delete against a list that arrived
+#      incomplete, and a truncated list is not an empty one: a local find that
+#      dies partway sends a short list that ends in a clean EOF, and every
+#      name it never sent looks like a file the dataset dropped. So the count
+#      is taken here and checked there. A short list is refused before the
+#      diff, whatever its length, which is the thing a threshold could only
+#      ever approximate. This step also prints the host's file count, which
+#      it has to compute for the diff anyway.
 LOCAL_MEDIA_LIST_CMD="cd '${LOCAL_MEDIA}' && find . -type f | sed 's|^\\./||' | LC_ALL=C sort"
+LOCAL_MEDIA_COUNT="$(eval "${LOCAL_MEDIA_LIST_CMD}" | grep -c .)"
 HOST_ORPHAN_DIFF_CMD="tmp_local=\$(mktemp)
 tmp_remote=\$(mktemp)
 cat >\"\${tmp_local}\"
-local_count=\$(wc -l <\"\${tmp_local}\")
-if [ \"\${local_count}\" -eq 0 ]; then
-  echo 'refusing to diff against an empty local media list; check the media sync by hand' >&2
+local_count=\$(grep -c . <\"\${tmp_local}\")
+if [ \"\${local_count}\" -ne ${LOCAL_MEDIA_COUNT} ]; then
+  echo \"refusing to diff against a local media list of \${local_count} files where ${LOCAL_MEDIA_COUNT} were sent; it did not arrive whole, so nothing was deleted\" >&2
   rm -f \"\${tmp_local}\" \"\${tmp_remote}\"
   exit 1
 fi
 find ${MEDIA_DIR} -type f | sed 's|^${MEDIA_DIR}/||' | LC_ALL=C sort >\"\${tmp_remote}\"
+remote_count=\$(grep -c . <\"\${tmp_remote}\")
+echo \"media files on host: \${remote_count}\"
 orphans=\$(comm -13 \"\${tmp_local}\" \"\${tmp_remote}\")
 orphan_count=\$(printf '%s\\n' \"\${orphans}\" | grep -c .)
+allowed=\$(( \${remote_count} * ${ORPHAN_DELETE_MAX_PERCENT} / 100 ))
+if [ \"\${allowed}\" -lt ${ORPHAN_DELETE_MIN} ]; then allowed=${ORPHAN_DELETE_MIN}; fi
 if [ \"\${orphan_count}\" -eq 0 ]; then
   echo 'no orphaned media files on the host'
-elif [ \"\${orphan_count}\" -gt ${ORPHAN_DELETE_MAX} ]; then
-  echo \"refusing to delete \${orphan_count} orphaned files, over the ${ORPHAN_DELETE_MAX}-file safety limit; check the media sync by hand\" >&2
+elif [ \"\${orphan_count}\" -gt \"\${allowed}\" ]; then
+  echo \"refusing to delete \${orphan_count} of the host's \${remote_count} media files, over the ${ORPHAN_DELETE_MAX_PERCENT} percent backstop (\${allowed}); nothing was deleted. The first of them:\" >&2
+  printf '%s\\n' \"\${orphans}\" | head -20 >&2
   rm -f \"\${tmp_local}\" \"\${tmp_remote}\"
   exit 1
 else

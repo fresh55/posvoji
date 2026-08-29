@@ -114,7 +114,12 @@ export class PoliteClient {
   constructor(options: PoliteClientOptions) {
     this.userAgent = options.userAgent;
     this.botName = options.botName ?? "PosvojiBot";
-    this.minDelayMs = options.minDelayMs ?? 10_000;
+    // 3 seconds, one request at a time per host (see withHostLock). robots.txt
+    // Crawl-delay wins whenever it asks for longer (see respectDelay's
+    // Math.max). This is the floor, not the ceiling: it is the minimum gap the
+    // DATA-POLICY.md promise of "vecsekundni razmik" (a multi-second gap)
+    // needs, not the maximum a host can ask for.
+    this.minDelayMs = options.minDelayMs ?? 3_000;
     this.maxRetries = options.maxRetries ?? 3;
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }

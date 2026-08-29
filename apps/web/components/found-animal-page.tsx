@@ -1,5 +1,6 @@
 import { FoundAnimalLookup } from "@/components/found-animal-lookup";
 import { I18nProvider } from "@/components/i18n-provider";
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
@@ -43,14 +44,9 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
+        <main className="flex w-full max-w-xl flex-1 flex-col gap-6 py-page-y">
           <div className="space-y-5">
-            <a
-              href={homeHref}
-              className="inline-flex max-lg:tap-target text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              ← {messages.backToAnimals}
-            </a>
+            <PageBreadcrumb locale={locale} current={messages.muniTab} />
             <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
               {messages.muniPromptTitle}
             </h1>

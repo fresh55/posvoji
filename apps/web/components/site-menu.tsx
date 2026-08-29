@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { Locale } from "@/lib/i18n";
 import { siteLinks } from "@/lib/site-links";
+import { cn } from "@/lib/utils";
 
 // The footer's links, reachable from the top of the page. On the homepage the
 // grid runs long under the reader, so the footer is a real distance away; the
@@ -24,6 +26,20 @@ import { siteLinks } from "@/lib/site-links";
 // desktop could show is what it saves nothing to do. Below lg every link
 // folds into the dropdown, the login among them.
 
+/** Whether a link points at the page the header is already on.
+ *
+ *  Read off the language-switcher's own map rather than a prop of its own:
+ *  the switcher needs this page's address in both locales, which is strictly
+ *  more than "which page am I", so asking each page for the second thing as
+ *  well only creates two values that can disagree after a route rename. */
+function isCurrent(
+  paths: Record<Locale, string> | undefined,
+  locale: Locale,
+  href: string,
+): boolean {
+  return paths?.[locale] === href;
+}
+
 // Inline links for lg and up. Two of them, which is the whole roster a
 // visitor can see: "Viri" is hidden for now in lib/site-links.ts, and the
 // login to the far right is a door to a different site rather than a
@@ -32,7 +48,7 @@ import { siteLinks } from "@/lib/site-links";
 // the grid - the hero line only offers the second one on the homepage, and
 // the footer is the length of the grid away. Muted until hovered, so the
 // brand to their left stays the only thing in full ink up there.
-export function SiteNav() {
+export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
   const { locale, messages } = useI18n();
   const links = siteLinks(locale, messages).filter((link) => link.inline);
 
@@ -51,15 +67,30 @@ export function SiteNav() {
       // that at six to one, which is where the eye stops reading across.
       className="hidden items-center gap-6 lg:flex"
     >
-      {links.map((link) => (
-        <a
-          key={link.key}
-          href={link.href}
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {link.label}
-        </a>
-      ))}
+      {links.map((link) => {
+        // The page the reader is already on. The footer has always dropped its
+        // own link rather than offering it (site-footer.tsx's
+        // showSheltersLink), and the header offering one anyway is the two
+        // halves of the same site disagreeing about where the visitor is. It
+        // stays in the row rather than disappearing, because a nav whose items
+        // move between pages is harder to learn than one that marks the
+        // current place; aria-current is what a screen reader reads off it,
+        // and the full ink is what everyone else sees.
+        const current = isCurrent(paths, locale, link.href);
+        return (
+          <a
+            key={link.key}
+            href={link.href}
+            aria-current={current ? "page" : undefined}
+            className={cn(
+              "text-sm transition-colors hover:text-foreground",
+              current ? "text-foreground" : "text-muted-foreground",
+            )}
+          >
+            {link.label}
+          </a>
+        );
+      })}
     </nav>
   );
 }
@@ -102,7 +133,7 @@ export function ShelterLogin() {
 
 // The same links as a dropdown, below lg only, where the header genuinely
 // has no room for them beside the language switcher.
-export function SiteMenu() {
+export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
   const { locale, messages } = useI18n();
   const links = siteLinks(locale, messages);
   const quiet = links.filter((link) => link.quiet);
@@ -121,9 +152,22 @@ export function SiteMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-48">
+        {/* Marked here too. Below lg this dropdown is the whole nav, which is
+            most of this site's traffic, and a menu that offers the page you
+            are reading is the same disagreement the inline row above fixed. */}
         {loud.map((link) => (
           <DropdownMenuItem key={link.key} asChild className="min-h-11">
-            <a href={link.href}>{link.label}</a>
+            <a
+              href={link.href}
+              aria-current={
+                isCurrent(paths, locale, link.href) ? "page" : undefined
+              }
+              className={
+                isCurrent(paths, locale, link.href) ? "font-medium" : undefined
+              }
+            >
+              {link.label}
+            </a>
           </DropdownMenuItem>
         ))}
         {quiet.length > 0 && <DropdownMenuSeparator />}

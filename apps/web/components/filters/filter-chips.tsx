@@ -72,7 +72,7 @@ const SCOPE_VISIBLE = 3;
 // border-ring with the ring, because this shape has a border to move. The
 // hand-rolled ring-2 was the odd one out against every primitive's ring-3.
 const CHIP_PILL =
-  "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
+  "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
 
 // The look a pill wears when pressing it takes its filter off, which is every
 // pill but the "+N".
@@ -463,7 +463,7 @@ export function FilterChips({
               onClearAll();
             }}
             aria-label={messages.clearAllFilters}
-            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:tap-target"
+            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
           >
             {messages.clearAll}
           </button>
@@ -533,7 +533,7 @@ export function UndoOffer({
         type="button"
         onClick={onUndo}
         aria-label={messages.undoClearFilters}
-        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:tap-target"
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
       >
         <Undo2 className="size-3.5" aria-hidden />
         {messages.undoClear}

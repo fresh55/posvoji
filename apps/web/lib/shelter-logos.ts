@@ -33,7 +33,19 @@ export type ShelterLogos = Record<string, ShelterLogo>;
 // Read at build time, like the dataset itself. A logo is shelter content, so
 // it is fetched by the ingest run rather than committed: before the first run
 // this is empty and every shelter falls back to an initial-letter avatar.
+// Read once. The build prerenders every animal and shelter page and each one
+// asks for the manifest, so without this the same 3.6 KB file is stat'd, read
+// and parsed about a thousand times for an answer that cannot change between
+// pages. Same shape lib/shelters.ts and lib/dataset.ts already use.
+let cached: ShelterLogos | undefined;
+
 export function getShelterLogos(): ShelterLogos {
+  if (cached) return cached;
+  cached = readShelterLogos();
+  return cached;
+}
+
+function readShelterLogos(): ShelterLogos {
   if (!existsSync(manifestPath)) return {};
   try {
     const parsed = JSON.parse(readFileSync(manifestPath, "utf8"));

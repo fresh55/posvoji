@@ -11,6 +11,12 @@ const sl = {
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
   moreInformation: "Več informacij",
+  // The footer's own <nav>. It used to carry moreInformation as well, and on
+  // the shelters page the header nav and this one both render from lg up, so
+  // a screen reader's landmarks rotor listed two navigations under one name
+  // and neither said which was which. The header keeps the general name; the
+  // one at the bottom of the page says where it is.
+  footerLinks: "Povezave v nogi",
   // The hamburger button that opens the mobile menu. Distinct from
   // moreInformation, which stays on the <nav> landmarks around the same
   // links: a button that opens a menu has to say so, not describe what is
@@ -18,6 +24,9 @@ const sl = {
   menu: "Meni",
   backToTop: "Na vrh strani",
   backToAnimals: "Nazaj na živali",
+  /** The root crumb. The site root is the animal grid, so the trail names it
+   *  as the place it is rather than as an abstract "home". */
+  allAnimals: "Vse živali",
   notFoundTitle: "Stran ne obstaja",
   notFoundBody: "Povezava je morda napačna ali stran ni več na voljo.",
   errorTitle: "Nekaj je šlo narobe",
@@ -375,9 +384,11 @@ const en: Messages = {
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
   moreInformation: "More information",
+  footerLinks: "Footer links",
   menu: "Menu",
   backToTop: "Back to top",
   backToAnimals: "Back to the animals",
+  allAnimals: "All animals",
   notFoundTitle: "Page not found",
   notFoundBody: "The link may be wrong, or the page is no longer here.",
   errorTitle: "Something went wrong",

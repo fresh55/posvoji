@@ -1,6 +1,15 @@
-import { Globe, Info, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import {
+  Globe,
+  Info,
+  Mail,
+  MapPin,
+  MapPinned,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
 import { notFound } from "next/navigation";
-import { BackLink } from "@/components/back-link";
+import { Fragment } from "react";
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { I18nProvider } from "@/components/i18n-provider";
 import { JsonLd } from "@/components/json-ld";
 import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
@@ -12,9 +21,13 @@ import { Button } from "@/components/ui/button";
 import { mailtoHref, telHref } from "@/lib/contact-links";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
 import { MUTED_LINK } from "@/lib/link-styles";
+import {
+  type CoveredMunicipality,
+  shelterCoverage,
+} from "@/lib/municipality-coverage";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -23,7 +36,6 @@ import { cn } from "@/lib/utils";
 
 const pageText = {
   sl: {
-    back: "Zavetišča",
     website: "Spletna stran",
     animalsTitle: "Živali iz tega zavetišča",
     emptyAnimals: "Trenutno ni objavljenih živali iz tega zavetišča.",
@@ -35,9 +47,17 @@ const pageText = {
     openInSearch: "Odpri v iskalniku živali",
     source: "Vir: UVHVVR — register zavetišč (gov.si)",
     asOf: "stanje",
+    coverageTitle: "Pokriva občine",
+    coverageNote:
+      "Po javno dostopnih podatkih je to zavetišče pristojno za zapuščene živali iz teh občin.",
+    coverageShowAll: "Prikaži vse občine ({count})",
+    coverageDogsOnly: "samo psi",
+    coverageCatsOnly: "samo mačke",
+    coverageSource: "Vir:",
+    coverageDatedSource:
+      "Del podatkov je iz starejših virov; pred obiskom preveri pri zavetišču ali občini.",
   },
   en: {
-    back: "Shelters",
     website: "Website",
     animalsTitle: "Animals from this shelter",
     emptyAnimals: "No animals from this shelter are published yet.",
@@ -49,8 +69,58 @@ const pageText = {
     openInSearch: "Open in the animal search",
     source: "Source: UVHVVR — shelter registry (gov.si)",
     asOf: "as of",
+    coverageTitle: "Municipalities covered",
+    coverageNote:
+      "By publicly available data, this shelter is responsible for stray animals from these municipalities.",
+    coverageShowAll: "Show all municipalities ({count})",
+    coverageDogsOnly: "dogs only",
+    coverageCatsOnly: "cats only",
+    coverageSource: "Source:",
+    coverageDatedSource:
+      "Some of this comes from older sources; confirm with the shelter or municipality before visiting.",
   },
 } satisfies Record<Locale, Record<string, string>>;
+
+type PageText = (typeof pageText)[Locale];
+
+/** How many municipality names stand in the open before the rest move behind
+ *  a disclosure. The widest shelter in the registry covers 26 občin: a dozen
+ *  chips still read as one fact about the shelter, the full list reads as a
+ *  page of its own. */
+const MUNICIPALITY_PREVIEW = 12;
+
+// Names, not sentences. A municipality carries a species tag only where the
+// registry limits the shelter to one species there, which is a difference
+// someone standing over a found animal needs before they call.
+function MunicipalityChips({
+  municipalities,
+  text,
+}: {
+  municipalities: CoveredMunicipality[];
+  text: PageText;
+}) {
+  return (
+    <ul className="flex flex-wrap gap-1.5">
+      {municipalities.map((municipality) => (
+        <li
+          key={municipality.name}
+          className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground"
+        >
+          {municipality.name}
+          {municipality.species && (
+            <span className="ml-1 text-2xs">
+              (
+              {municipality.species === "dogs"
+                ? text.coverageDogsOnly
+                : text.coverageCatsOnly}
+              )
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function ShelterDetailPage({
   locale,
@@ -69,11 +139,20 @@ export function ShelterDetailPage({
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
   const text = pageText[locale];
+  const messages = getMessages(locale);
   const indexHref = sheltersIndexPath(locale);
   const registerDate = shelterRegisterDate();
   const asOf = registerDate
     ? registerDateLabel(registerDate, locale)
     : undefined;
+  // One groupBy over the municipality registry the found-animal lookup
+  // already reads at build time, taken from the other end. Undefined when no
+  // row names this shelter, and then nothing below renders.
+  const coverage = shelterCoverage(shelter.id);
+  const shownMunicipalities =
+    coverage?.municipalities.slice(0, MUNICIPALITY_PREVIEW) ?? [];
+  const restMunicipalities =
+    coverage?.municipalities.slice(MUNICIPALITY_PREVIEW) ?? [];
 
   return (
     <I18nProvider locale={locale}>
@@ -86,13 +165,27 @@ export function ShelterDetailPage({
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10">
+        <main className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10">
           {/* This page is where the shelter's own facts live, so the machine
               readable copy of them belongs here rather than on the index. */}
           <JsonLd data={shelterJsonLd(shelter, locale)} />
 
           <div className="space-y-5">
-            <BackLink href={indexHref} label={text.back} />
+            {/* The one page on the site that is two levels down, and the only
+                one whose trail says something the header nav does not: this
+                shelter belongs to the register, and the register belongs to
+                the grid. The back link it replaced pointed at the index on a
+                cold load and at the root on a warm one, so the control that
+                expressed depth was the one that skipped a level. */}
+            <PageBreadcrumb
+              locale={locale}
+              // messages.shelters, not a copy in this file's own pageText:
+              // the index page labels the identical crumb from there, and two
+              // sources for one word is the drift PageBreadcrumb exists to
+              // end.
+              trail={[{ label: messages.shelters, href: indexHref }]}
+              current={shelter.name}
+            />
 
             <div className="flex flex-wrap items-center gap-4">
               <ShelterAvatar
@@ -180,6 +273,77 @@ export function ShelterDetailPage({
               />
             </div>
           </div>
+
+          {/* The one fact this page can carry that the register cannot: which
+              občine this shelter answers for. It sits with the shelter's own
+              facts, under the contacts someone came here to use and above the
+              animal list, because it is about the shelter and not about the
+              animals. */}
+          {coverage && (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-base font-medium tracking-tight">
+                <MapPinned
+                  className="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+                {text.coverageTitle}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {text.coverageNote}
+              </p>
+
+              <MunicipalityChips
+                municipalities={shownMunicipalities}
+                text={text}
+              />
+
+              {/* A native disclosure: the full list is in the HTML either
+                  way, it opens with JavaScript off, and the summary names the
+                  total, so the cap is never silent. */}
+              {restMunicipalities.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                    {text.coverageShowAll.replace(
+                      "{count}",
+                      String(coverage.municipalities.length),
+                    )}
+                  </summary>
+                  <div className="pt-3">
+                    <MunicipalityChips
+                      municipalities={restMunicipalities}
+                      text={text}
+                    />
+                  </div>
+                </details>
+              )}
+
+              {/* Cited here rather than in the line at the foot of the page:
+                  this table has its own sources, separate from the register
+                  the rest of the entry comes from. */}
+              <p className="text-xs text-muted-foreground">
+                {text.coverageSource}{" "}
+                {coverage.sources.map((source, index) => (
+                  <Fragment key={source.id}>
+                    {index > 0 && ", "}
+                    {source.url ? (
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground"
+                      >
+                        {source.label}
+                      </a>
+                    ) : (
+                      source.label
+                    )}{" "}
+                    ({source.date})
+                  </Fragment>
+                ))}
+                .{!coverage.confirmed && <> {text.coverageDatedSource}</>}
+              </p>
+            </section>
+          )}
 
           <section className="space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b pb-3">

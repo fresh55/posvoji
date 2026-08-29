@@ -44,6 +44,122 @@ export type LookupEntry = {
   nearest: NearbyShelter[];
 };
 
+/** One municipality a shelter is on record as covering. `species` is set only
+ *  where the registry limits the shelter to one species, the same way
+ *  LookupCoverage carries it. */
+export type CoveredMunicipality = {
+  name: string;
+  species?: "dogs" | "cats";
+};
+
+/** A source behind at least one row of a shelter's coverage, kept whole so a
+ *  page can cite it the way the coverage card does. */
+export type CoverageCitation = {
+  id: string;
+  label: string;
+  url?: string;
+  date: string;
+};
+
+export type ShelterCoverage = {
+  municipalities: CoveredMunicipality[];
+  /** The distinct sources behind those municipalities, in the order the
+   *  registry first cites them. */
+  sources: CoverageCitation[];
+  /** True only when every source behind the list is confirmed. The dated
+   *  source caveat is keyed on this, same as the coverage card. */
+  confirmed: boolean;
+};
+
+/** Municipality names are Slovenian in both locales, so they collate under
+ *  "sl" whatever the page locale is. */
+const municipalityCollator = new Intl.Collator("sl");
+
+// The reverse of the mapping buildMunicipalityEntries reads: one groupBy over
+// the same rows, keyed by shelter id, so a shelter page can answer "which
+// občine is this shelter responsible for". Cached because
+// data/municipalities.yaml is checked into the repo and cannot change while
+// pages are being rendered, and every shelter page asks for the index.
+let coverageIndex: Map<string, ShelterCoverage> | undefined;
+
+export function buildShelterCoverageIndex(): Map<string, ShelterCoverage> {
+  if (coverageIndex !== undefined) return coverageIndex;
+
+  const { municipalities, sources } = loadMunicipalities();
+  const shelterIds = new Set(loadShelters().map((shelter) => shelter.id));
+
+  type Group = {
+    municipalities: Map<string, CoveredMunicipality>;
+    sources: Map<string, CoverageCitation>;
+    confirmed: boolean;
+  };
+  const grouped = new Map<string, Group>();
+
+  for (const municipality of municipalities) {
+    for (const coverage of municipality.coverage) {
+      const source = sources[coverage.source];
+      // A row pointing at an unknown shelter or source is a data bug the
+      // registry tests catch. Dropping it holds the promise this index makes:
+      // every municipality it names belongs to a real shelter and is backed
+      // by a source the page can print.
+      if (!shelterIds.has(coverage.shelter) || !source) continue;
+
+      let group = grouped.get(coverage.shelter);
+      if (!group) {
+        group = {
+          municipalities: new Map(),
+          sources: new Map(),
+          confirmed: true,
+        };
+        grouped.set(coverage.shelter, group);
+      }
+
+      const seen = group.municipalities.get(municipality.name);
+      if (seen) {
+        // One shelter listed twice in the same municipality covers both
+        // species there, so the merged entry carries no species tag.
+        if (seen.species !== coverage.species) seen.species = undefined;
+      } else {
+        group.municipalities.set(municipality.name, {
+          name: municipality.name,
+          species: coverage.species,
+        });
+      }
+
+      group.sources.set(coverage.source, {
+        id: coverage.source,
+        label: source.label,
+        url: source.url,
+        date: source.date,
+      });
+      if (!source.confirmed) group.confirmed = false;
+    }
+  }
+
+  const index = new Map<string, ShelterCoverage>();
+  for (const [shelterId, group] of grouped) {
+    index.set(shelterId, {
+      municipalities: [...group.municipalities.values()].sort((a, b) =>
+        municipalityCollator.compare(a.name, b.name),
+      ),
+      sources: [...group.sources.values()],
+      confirmed: group.confirmed,
+    });
+  }
+
+  coverageIndex = index;
+  return coverageIndex;
+}
+
+/** The municipalities one shelter covers, or undefined when the registry has
+ *  no row for it. Undefined rather than an empty entry, so a caller renders
+ *  nothing at all instead of an empty heading. */
+export function shelterCoverage(
+  shelterId: string,
+): ShelterCoverage | undefined {
+  return buildShelterCoverageIndex().get(shelterId);
+}
+
 // Build-time join of the three registries a municipality answer needs: the
 // municipality → shelter mapping, the shelter contacts, and how many animals
 // each shelter currently shares on the site. Runs on the server only; the

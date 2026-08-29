@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProviderPolicy } from "@posvoji/schema";
 import type { Animal } from "@posvoji/schema";
+import { reuseAnimal } from "./incremental-crawl";
 import {
   carryFirstSeenAt,
   countByProvider,
@@ -136,6 +137,21 @@ describe("findMassRemovals", () => {
     expect(findMassRemovals(previous, current).map((r) => r.providerId)).toEqual(
       ["macja-hisa"],
     );
+  });
+
+  it("counts an animal the crawl reused as present", () => {
+    // The incremental crawl skips the detail page of an animal that is still
+    // on the list page and republishes what we hold. It was seen, it ships,
+    // and the guard has to see a provider that lost nothing.
+    const previous = many(12);
+    const current = previous.map((animal) =>
+      reuseAnimal(animal, "2026-08-29T06:00:00.000Z"),
+    );
+    expect(
+      findMassRemovals(previous, current, {
+        crawledProviderIds: new Set(["macja-hisa"]),
+      }),
+    ).toEqual([]);
   });
 });
 

@@ -1,7 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
-import { Animal, ChangeSet, Dataset } from "@posvoji/schema";
+import { ChangeSet, Dataset } from "@posvoji/schema";
+import type { Animal, ProviderPolicy } from "@posvoji/schema";
 import { applyAllowedFields } from "./allowed-fields";
 import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
@@ -9,6 +10,15 @@ import { buildChangeSet } from "./changes";
 import { flagList, flagValue, hasFlag } from "./cli";
 import { guardExcludedPaths, type CrawlClient } from "./crawl-guard";
 import { exitCodeForRun } from "./exit-codes";
+import {
+  advanceCrawlState,
+  crawlProviderIncrementally,
+  crawlStatePath,
+  forceFullRefresh,
+  readCrawlState,
+  type CrawlState,
+  type ProviderCrawlResult,
+} from "./incremental-crawl";
 import { loadPolicies, type LoadedPolicy } from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import {
@@ -40,6 +50,11 @@ const requestedProviderId = flagValue(argv, "--provider");
 const acceptRemovals = new Set(flagList(argv, "--accept-removals"));
 // Only for a previous dataset that is unreadable and not worth restoring.
 const discardPrevious = hasFlag(argv, "--discard-previous");
+// Re-reads every listed animal's detail page instead of only the ones the
+// incremental schedule says are due. For a parser change that has to reach
+// every record at once; CRAWL_GENERATION in incremental-crawl.ts is the
+// version of this that does not need anybody to remember the flag.
+const refreshAll = hasFlag(argv, "--refresh-all");
 
 const datasetPath = join(datasetDir, "animals.json");
 
@@ -62,7 +77,9 @@ function loadValidPolicies(): LoadedPolicy[] {
 async function crawlProvider(
   client: CrawlClient,
   policy: LoadedPolicy["policy"],
-): Promise<Animal[]> {
+  previousAnimals: readonly Animal[],
+  state: CrawlState,
+): Promise<ProviderCrawlResult> {
   const provider = providers.find((p) => p.id === policy.providerId);
   if (!provider) {
     throw new Error(
@@ -73,14 +90,13 @@ async function crawlProvider(
   // is handed over as one. It forwards everything it does not refuse.
   const guarded = guardExcludedPaths(client, policy) as unknown as PoliteClient;
   const ctx = { client: guarded, policy };
-  const refs = await provider.discover(ctx);
-  console.log(`${provider.id}: discovered ${refs.length} animals`);
-  const animals: Animal[] = [];
-  for (const ref of refs) {
-    const raw = await provider.fetch(ctx, ref);
-    animals.push(Animal.parse(await provider.normalize(ctx, raw)));
-  }
-  return animals;
+  // The list page still decides who is listed, and every listed animal ends up
+  // in the result. What this skips is the detail page of an animal we already
+  // hold and read recently enough.
+  return crawlProviderIncrementally(provider, ctx, {
+    previous: previousAnimals,
+    forcedBecause: forceFullRefresh(state, policy, refreshAll),
+  });
 }
 
 interface CrawlOutcome {
@@ -89,6 +105,14 @@ interface CrawlOutcome {
   // previous dataset.
   crawled: Set<string>;
   failed: string[];
+  // Providers that re-fetched every listed animal, so every record they just
+  // produced came from the current parsers under the current policy. Only
+  // these advance the crawl state.
+  fullyRefreshed: ProviderPolicy[];
+  // Detail pages read, and detail pages the run did not have to read, over
+  // every provider that finished.
+  fetched: number;
+  reused: number;
 }
 
 // One shelter's site being down, or its robots.txt refusing us, must not throw
@@ -98,20 +122,31 @@ interface CrawlOutcome {
 async function crawl(
   client: CrawlClient,
   policies: LoadedPolicy[],
+  previousAnimals: readonly Animal[],
+  state: CrawlState,
 ): Promise<CrawlOutcome> {
   const enabled = policies.filter(({ policy }) => policy.enabled);
   const settled = await Promise.allSettled(
-    enabled.map(({ policy }) => crawlProvider(client, policy)),
+    enabled.map(({ policy }) =>
+      crawlProvider(client, policy, previousAnimals, state),
+    ),
   );
 
   const animals: Animal[] = [];
   const crawled = new Set<string>();
   const failed: string[] = [];
+  const fullyRefreshed: ProviderPolicy[] = [];
+  let fetched = 0;
+  let reused = 0;
   for (const [index, result] of settled.entries()) {
-    const providerId = enabled[index]!.policy.providerId;
+    const policy = enabled[index]!.policy;
+    const providerId = policy.providerId;
     if (result.status === "fulfilled") {
       crawled.add(providerId);
-      animals.push(...result.value);
+      animals.push(...result.value.animals);
+      fetched += result.value.fetched;
+      reused += result.value.reused;
+      if (result.value.fullRefresh) fullyRefreshed.push(policy);
       continue;
     }
     failed.push(providerId);
@@ -121,10 +156,14 @@ async function crawl(
         : String(result.reason);
     console.error(`crawl ${providerId} FAILED: ${reason}`);
   }
-  return { animals, crawled, failed };
+  return { animals, crawled, failed, fullyRefreshed, fetched, reused };
 }
 
 const previous = readPreviousDataset(datasetPath, { discardPrevious });
+// Which generation of the parsers, and which policy, produced the records we
+// are about to reuse. A missing or unreadable file forces a full crawl, which
+// is the safe direction.
+const crawlState = readCrawlState();
 
 const policies = loadValidPolicies();
 const policyById = new Map(
@@ -162,9 +201,16 @@ const client = new PoliteClient({ userAgent: USER_AGENT });
 // The request is milliseconds, so there is nothing to gain by overlapping it.
 const portalPayload = await fetchPortalOverrides();
 
-const { animals: crawled, crawled: crawledProviderIds, failed } = await crawl(
-  client,
-  crawlPolicies,
+const {
+  animals: crawled,
+  crawled: crawledProviderIds,
+  failed,
+  fullyRefreshed,
+  fetched: detailsFetched,
+  reused: detailsReused,
+} = await crawl(client, crawlPolicies, previous?.animals ?? [], crawlState);
+console.log(
+  `detail pages: ${detailsFetched} fetched, ${detailsReused} reused`,
 );
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
@@ -362,6 +408,18 @@ writeFileAtomic(
   overrideReportPath,
   JSON.stringify(
     buildOverrideReport(generatedAt, portalPayload, overrideResult),
+    null,
+    2,
+  ),
+);
+// Written with the dataset rather than at the end of the crawl: it says which
+// providers' records on disk were produced by the current parsers, so it may
+// only advance once those records are the ones on disk. A provider that failed,
+// or that only refreshed the animals that were due, keeps its old entry.
+writeFileAtomic(
+  crawlStatePath,
+  JSON.stringify(
+    advanceCrawlState(crawlState, fullyRefreshed, generatedAt),
     null,
     2,
   ),

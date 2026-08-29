@@ -3,6 +3,7 @@ import { Dataset } from "@posvoji/schema";
 import type { Animal } from "@posvoji/schema";
 import { buildChangeSet } from "./changes";
 import { withCachedUrls, type ImageCacheManifest } from "./cache-images";
+import { reuseAnimal } from "./incremental-crawl";
 
 const GENERATED_AT = "2026-08-28T06:00:00Z";
 const SOURCE_URL = "https://img.si/luna.jpg";
@@ -99,6 +100,43 @@ describe("buildChangeSet", () => {
     expect(
       buildChangeSet({ generatedAt: GENERATED_AT, previous, current }).updated,
     ).toEqual([]);
+  });
+
+  it("reports nothing for an animal whose detail page was not re-read", () => {
+    // The whole point of the incremental crawl: an animal the run skipped is
+    // republished from the previous dataset with a new lastSeenAt, and that
+    // must not read as an update. The image fields go the same round trip they
+    // would on a crawled animal: reuseAnimal takes off what the last run's
+    // cache grafted, and cacheImages grafts it back from the manifest.
+    const previous = asWritten(withCachedUrls([animal()], MANIFEST));
+    const reused = reuseAnimal(previous[0]!, "2026-08-28T06:00:00.000Z");
+    const current = Dataset.parse({
+      generatedAt: GENERATED_AT,
+      animals: withCachedUrls([reused], MANIFEST),
+    }).animals;
+
+    expect(current[0]!.source.lastSeenAt).toBe("2026-08-28T06:00:00.000Z");
+    expect(current[0]!.source.fetchedAt).toBe(previous[0]!.source.fetchedAt);
+    expect(
+      buildChangeSet({ generatedAt: GENERATED_AT, previous, current }),
+    ).toMatchObject({ added: [], updated: [], removed: [] });
+  });
+
+  it("reports a skipped animal as updated when its cached photo went away", () => {
+    // The reason reuseAnimal strips the cache fields rather than republishing
+    // them: a source photo that has since 404'd leaves the manifest, the sweep
+    // deletes the file, and the record must stop pointing at it.
+    const previous = asWritten(withCachedUrls([animal()], MANIFEST));
+    const reused = reuseAnimal(previous[0]!, "2026-08-28T06:00:00.000Z");
+    const current = Dataset.parse({
+      generatedAt: GENERATED_AT,
+      animals: withCachedUrls([reused], { entries: {} }),
+    }).animals;
+
+    expect(current[0]!.images[0]!.cachedUrl).toBeUndefined();
+    expect(
+      buildChangeSet({ generatedAt: GENERATED_AT, previous, current }).updated,
+    ).toHaveLength(1);
   });
 
   it("still catches a real change, an arrival and a departure", () => {

@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -14,6 +15,7 @@ import type {
   PoliteBytesResponse,
 } from "@posvoji/provider-sdk";
 import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
+import { mapByHost } from "./by-host";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
 
@@ -278,6 +280,38 @@ export async function processImage(
   return { file: `${hash}.webp`, data, width: info.width, height: info.height };
 }
 
+// Names the temporary copy below. A counter is enough inside one process and
+// the pid keeps two runs against the same media directory apart.
+let nextTempId = 0;
+
+// A processed photo is named by its own bytes, so two different source URLs
+// can encode to the same target, and those two URLs can now be on two hosts
+// being fetched at the same time. Two synchronous writes cannot interleave
+// inside this process, but a second ingest run against the same media
+// directory can be halfway through writing the very file deriveVariants is
+// about to read. Writing beside the target under a unique name and renaming
+// over it leaves every reader on one whole file or on none.
+function writeContentAddressed(target: string, data: Buffer): void {
+  if (existsSync(target)) return;
+  const tmp = `${target}.${process.pid}-${nextTempId++}.tmp`;
+  writeFileSync(tmp, data);
+  try {
+    renameSync(tmp, target);
+  } catch (error) {
+    // Windows refuses to rename over a file another process holds open. The
+    // name is a hash of the bytes, so whatever is already there is the file
+    // we were writing: drop our copy and keep it. Anything else is a real
+    // failure and is raised.
+    try {
+      rmSync(tmp, { force: true });
+    } catch {
+      // The sweep at the end of the run collects it, since nothing
+      // references it.
+    }
+    if (!existsSync(target)) throw error;
+  }
+}
+
 export interface DerivedCounts {
   thumbs: number;
   rungs: number;
@@ -490,6 +524,14 @@ export interface CacheImagesOptions {
   refreshProviderIds?: ReadonlySet<string>;
 }
 
+// What one URL's turn produced. An absent entry drops the URL from the
+// manifest; an absent counter means the turn was neither a fetch nor a reuse,
+// which is every carry-forward path.
+interface UrlOutcome {
+  entry?: CachedImageEntry;
+  counted?: "fetched" | "reused";
+}
+
 // The removal path is the sync itself: an image that is no longer referenced
 // by any cache-permitted animal — or whose source now answers 404/410 — has
 // its file deleted on the next run.
@@ -541,26 +583,26 @@ export async function cacheImages(
           ),
         );
 
-  let fetched = 0;
-  let reused = 0;
-
-  for (const url of cacheableUrls(animals, imagePolicies)) {
+  // One URL's turn. Nothing here touches next.entries or the counters: the
+  // outcome is handed back and applied once every host has finished, so the
+  // manifest keeps the order cacheableUrls produced and the counters are
+  // summed in a single place instead of being incremented from several
+  // workers at once.
+  const cacheOne = async (url: string): Promise<UrlOutcome> => {
     const prev = previous.entries[url];
     const prevUsable =
       prev !== undefined && existsSync(join(mediaDir, prev.file));
+    // Keep what we have, cache nothing new. Reached by every failure path
+    // below, and none of them counts as a fetch or a reuse.
+    const keepPrevious: UrlOutcome = prevUsable ? { entry: prev } : {};
 
-    if (inScope && !inScope.has(url)) {
-      if (prevUsable) next.entries[url] = prev;
-      continue;
-    }
+    if (inScope && !inScope.has(url)) return keepPrevious;
 
     if (
       prevUsable &&
       Date.now() - Date.parse(prev.fetchedAt) < revalidateAfterMs
     ) {
-      next.entries[url] = prev;
-      reused++;
-      continue;
+      return { entry: prev, counted: "reused" };
     }
 
     let res: PoliteBytesResponse;
@@ -572,33 +614,28 @@ export async function cacheImages(
           : undefined,
       });
     } catch (error) {
-      // Network trouble or robots.txt: keep what we have, cache nothing new.
-      if (prevUsable) next.entries[url] = prev;
+      // Network trouble or robots.txt.
       console.warn(`image ${url}: fetch failed (${error})`);
-      continue;
+      return keepPrevious;
     }
 
     if (res.notModified && prevUsable) {
-      next.entries[url] = prev;
-      reused++;
-      continue;
+      return { entry: prev, counted: "reused" };
     }
 
     if (res.status === 404 || res.status === 410) {
       // The shelter removed the source photo; our copy goes with it.
-      continue;
+      return {};
     }
 
     if (res.status !== 200 || res.body === null) {
-      if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: HTTP ${res.status}, not cached`);
-      continue;
+      return keepPrevious;
     }
 
     if (res.body.length > MAX_SOURCE_BYTES) {
-      if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: ${res.body.length} bytes exceeds cap`);
-      continue;
+      return keepPrevious;
     }
 
     let processed;
@@ -607,23 +644,38 @@ export async function cacheImages(
         console.warn(`image ${url}: needed a tolerant decode (${error})`);
       });
     } catch (error) {
-      if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: not a processable image (${error})`);
-      continue;
+      return keepPrevious;
     }
 
-    const target = join(mediaDir, processed.file);
-    if (!existsSync(target)) writeFileSync(target, processed.data);
-    next.entries[url] = {
-      file: processed.file,
-      width: processed.width,
-      height: processed.height,
-      etag: headerValue(res.headers["etag"]),
-      lastModified: headerValue(res.headers["last-modified"]),
-      fetchedAt: new Date().toISOString(),
+    writeContentAddressed(join(mediaDir, processed.file), processed.data);
+    return {
+      counted: "fetched",
+      entry: {
+        file: processed.file,
+        width: processed.width,
+        height: processed.height,
+        etag: headerValue(res.headers["etag"]),
+        lastModified: headerValue(res.headers["last-modified"]),
+        fetchedAt: new Date().toISOString(),
+      },
     };
-    fetched++;
-  }
+  };
+
+  // Hosts run at the same time, each host's own photos one after the other.
+  const urls = cacheableUrls(animals, imagePolicies);
+  const outcomes = await mapByHost(urls, (url) => url, cacheOne);
+
+  let fetched = 0;
+  let reused = 0;
+  urls.forEach((url, index) => {
+    // cacheableUrls deduplicates, so every outcome carries its own key and no
+    // two of them can write the same entry.
+    const outcome = outcomes[index]!;
+    if (outcome.entry) next.entries[url] = outcome.entry;
+    if (outcome.counted === "fetched") fetched++;
+    else if (outcome.counted === "reused") reused++;
+  });
 
   // Thumbs, rungs, placeholders and the hero AVIF are all cut from our own
   // processed copies, without a single request.

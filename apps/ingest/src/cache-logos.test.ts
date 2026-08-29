@@ -85,6 +85,63 @@ class StubClient {
   }
 }
 
+// Records what was in flight while the logos were taken: overall, and for one
+// host. Every request holds for a moment, so a loop that finishes one shelter
+// before starting the next can never push either peak above 1.
+class ConcurrencyClient {
+  peak = 0;
+  peakPerHost = 0;
+  order: string[] = [];
+  private inFlight = 0;
+  private perHost = new Map<string, number>();
+
+  constructor(
+    private html: Map<string, string>,
+    private bytes: Map<string, StubResponse>,
+    private holdMs = 5,
+  ) {}
+
+  private async hold<T>(url: string, answer: () => T): Promise<T> {
+    const host = new URL(url).host;
+    this.order.push(url);
+    this.inFlight++;
+    const onHost = (this.perHost.get(host) ?? 0) + 1;
+    this.perHost.set(host, onHost);
+    this.peak = Math.max(this.peak, this.inFlight);
+    this.peakPerHost = Math.max(this.peakPerHost, onHost);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, this.holdMs));
+      return answer();
+    } finally {
+      this.inFlight--;
+      this.perHost.set(host, (this.perHost.get(host) ?? 1) - 1);
+    }
+  }
+
+  async get(url: string): Promise<PoliteResponse> {
+    return this.hold(url, () => {
+      const body = this.html.get(url);
+      if (body === undefined) {
+        return { status: 404, body: null, notModified: false, headers: {} };
+      }
+      return { status: 200, body, notModified: false, headers: {} };
+    });
+  }
+
+  async getBytes(url: string): Promise<PoliteBytesResponse> {
+    return this.hold(url, () => {
+      const res = this.bytes.get(url);
+      if (!res) return { status: 404, body: null, notModified: false, headers: {} };
+      return {
+        status: res.status,
+        body: res.body,
+        notModified: res.notModified ?? false,
+        headers: res.headers ?? {},
+      };
+    });
+  }
+}
+
 describe("logoTargets", () => {
   it("takes only enabled providers with a permitted logo", () => {
     const targets = logoTargets([
@@ -448,5 +505,45 @@ describe("cacheLogos", () => {
 
     expect(result.fetched).toBe(0);
     expect(result.manifest.entries).toEqual({});
+  });
+
+  it("takes every shelter's logo at the same time, one request per shelter", async () => {
+    const shelters = ["macjahisa.si", "muri.si", "zonzani.si"];
+    const html = new Map<string, string>();
+    const bytes = new Map<string, StubResponse>();
+    for (const [index, host] of shelters.entries()) {
+      html.set(`https://${host}`, `<img class="logo" src="/logo.png">`);
+      bytes.set(`https://${host}/logo.png`, {
+        status: 200,
+        body: await pngBytes(64, `#${(index + 3) * 111111}`),
+      });
+    }
+    const client = new ConcurrencyClient(html, bytes);
+
+    const result = await cacheLogos(
+      shelters.map((host, index) => ({
+        providerId: `shelter-${index}`,
+        homeUrl: `https://${host}`,
+      })),
+      client,
+      { logosDir: logosDir(), manifestPath },
+    );
+
+    // Each shelter's home page and logo still go out one after the other
+    // against its own server; only the wait for the other shelters is gone.
+    expect(client.peak).toBe(shelters.length);
+    expect(client.peakPerHost).toBe(1);
+    for (const host of shelters) {
+      expect(client.order.filter((url) => url.includes(host))).toEqual([
+        `https://${host}`,
+        `https://${host}/logo.png`,
+      ]);
+    }
+    expect(result.fetched).toBe(shelters.length);
+    expect(Object.keys(result.discovered)).toEqual([
+      "shelter-0",
+      "shelter-1",
+      "shelter-2",
+    ]);
   });
 });

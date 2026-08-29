@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
@@ -9,6 +16,7 @@ import type {
   PoliteResponse,
 } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
+import { mapByHost } from "./by-host";
 import { shelterLogosDir, shelterLogoManifestPath } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
 
@@ -229,6 +237,34 @@ function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+// Names the temporary copy below. A counter is enough inside one process and
+// the pid keeps two runs against the same directory apart.
+let nextTempId = 0;
+
+// Same reasoning as the photo cache's writeContentAddressed: two shelters
+// sharing a logo land on one content-addressed name, and shelters are now
+// fetched at the same time. Write beside the target and rename over it, so a
+// reader in this run or in another one sees a whole file or none.
+function writeContentAddressed(target: string, data: Buffer): void {
+  if (existsSync(target)) return;
+  const tmp = `${target}.${process.pid}-${nextTempId++}.tmp`;
+  writeFileSync(tmp, data);
+  try {
+    renameSync(tmp, target);
+  } catch (error) {
+    // Windows refuses to rename over a file another process holds open. The
+    // name is a hash of the bytes, so what is already there is what we were
+    // writing: drop our copy and keep it.
+    try {
+      rmSync(tmp, { force: true });
+    } catch {
+      // The sweep at the end of the run collects it, since nothing
+      // references it.
+    }
+    if (!existsSync(target)) throw error;
+  }
+}
+
 function readManifest(path: string): LogoManifest {
   if (!existsSync(path)) return { entries: {} };
   let why: string;
@@ -260,6 +296,15 @@ export interface CacheLogosOptions {
   logosDir?: string;
   manifestPath?: string;
   revalidateAfterDays?: number;
+}
+
+// What one shelter's turn produced. An absent entry drops the shelter from
+// the manifest; an absent counter means the turn was neither a fetch nor a
+// reuse, which is every carry-forward path.
+interface LogoOutcome {
+  entry?: CachedLogoEntry;
+  counted?: "fetched" | "reused";
+  discovered?: string;
 }
 
 // One logo per permitted shelter. A shelter that revokes the grant drops out
@@ -295,15 +340,23 @@ export async function cacheLogos(
     );
   }
 
-  let fetched = 0;
-  let reused = 0;
-
-  for (const target of targets) {
+  // One shelter's turn: its home page, then its logo, in that order. Nothing
+  // here touches next.entries, discovered or the counters. The outcome is
+  // handed back and applied once every host has finished, so both records keep
+  // the order of `targets` and the counters are summed in one place.
+  const cacheOne = async (target: {
+    providerId: string;
+    homeUrl: string;
+    logoUrl?: string;
+  }): Promise<LogoOutcome> => {
     const prev = previous.entries[target.providerId];
     const prevUsable =
       prev !== undefined &&
       prev.tone !== undefined &&
       existsSync(join(logosDir, prev.file));
+    // Keep what we have, take nothing new. Reached by every failure path
+    // below, and none of them counts as a fetch or a reuse.
+    const keepPrevious: LogoOutcome = prevUsable ? { entry: prev } : {};
 
     if (
       prevUsable &&
@@ -312,12 +365,11 @@ export async function cacheLogos(
       // the cached guess, otherwise the pin would not take effect for a month.
       (target.logoUrl === undefined || target.logoUrl === prev.sourceUrl)
     ) {
-      next.entries[target.providerId] = prev;
-      reused++;
-      continue;
+      return { entry: prev, counted: "reused" };
     }
 
     let sourceUrl = target.logoUrl;
+    let discoveredUrl: string | undefined;
     if (!sourceUrl) {
       try {
         const home = await client.get(target.homeUrl);
@@ -325,22 +377,19 @@ export async function cacheLogos(
           console.warn(
             `logo ${target.providerId}: home page HTTP ${home.status}`,
           );
-          if (prevUsable) next.entries[target.providerId] = prev;
-          continue;
+          return keepPrevious;
         }
         sourceUrl = discoverLogoUrl(home.body, target.homeUrl);
       } catch (error) {
         // Network trouble or robots.txt: keep what we have, take nothing new.
-        if (prevUsable) next.entries[target.providerId] = prev;
         console.warn(`logo ${target.providerId}: home page failed (${error})`);
-        continue;
+        return keepPrevious;
       }
       if (!sourceUrl) {
-        if (prevUsable) next.entries[target.providerId] = prev;
         console.warn(`logo ${target.providerId}: no logo found on the page`);
-        continue;
+        return keepPrevious;
       }
-      discovered[target.providerId] = sourceUrl;
+      discoveredUrl = sourceUrl;
     }
 
     let res: PoliteBytesResponse;
@@ -353,33 +402,28 @@ export async function cacheLogos(
             : undefined,
       });
     } catch (error) {
-      if (prevUsable) next.entries[target.providerId] = prev;
       console.warn(`logo ${target.providerId}: fetch failed (${error})`);
-      continue;
+      return { ...keepPrevious, discovered: discoveredUrl };
     }
 
     if (res.notModified && prevUsable) {
-      next.entries[target.providerId] = prev;
-      reused++;
-      continue;
+      return { entry: prev, counted: "reused", discovered: discoveredUrl };
     }
 
     if (res.status === 404 || res.status === 410) {
       // The shelter removed the file; our copy goes with it.
       console.warn(`logo ${target.providerId}: ${sourceUrl} is gone`);
-      continue;
+      return { discovered: discoveredUrl };
     }
 
     if (res.status !== 200 || res.body === null) {
-      if (prevUsable) next.entries[target.providerId] = prev;
       console.warn(`logo ${target.providerId}: HTTP ${res.status}, not cached`);
-      continue;
+      return { ...keepPrevious, discovered: discoveredUrl };
     }
 
     if (res.body.length > MAX_SOURCE_BYTES) {
-      if (prevUsable) next.entries[target.providerId] = prev;
       console.warn(`logo ${target.providerId}: ${res.body.length} bytes exceeds cap`);
-      continue;
+      return { ...keepPrevious, discovered: discoveredUrl };
     }
 
     let processed;
@@ -387,27 +431,50 @@ export async function cacheLogos(
       processed = await processLogo(res.body);
     } catch (error) {
       // Reached for .ico and for anything that was not an image at all.
-      if (prevUsable) next.entries[target.providerId] = prev;
       console.warn(
         `logo ${target.providerId}: ${sourceUrl} is not a processable image (${error})`,
       );
-      continue;
+      return { ...keepPrevious, discovered: discoveredUrl };
     }
 
-    const path = join(logosDir, processed.file);
-    if (!existsSync(path)) writeFileSync(path, processed.data);
-    next.entries[target.providerId] = {
-      file: processed.file,
-      width: processed.width,
-      height: processed.height,
-      tone: processed.tone,
-      sourceUrl,
-      etag: headerValue(res.headers["etag"]),
-      lastModified: headerValue(res.headers["last-modified"]),
-      fetchedAt: new Date().toISOString(),
+    writeContentAddressed(join(logosDir, processed.file), processed.data);
+    return {
+      counted: "fetched",
+      discovered: discoveredUrl,
+      entry: {
+        file: processed.file,
+        width: processed.width,
+        height: processed.height,
+        tone: processed.tone,
+        sourceUrl,
+        etag: headerValue(res.headers["etag"]),
+        lastModified: headerValue(res.headers["last-modified"]),
+        fetchedAt: new Date().toISOString(),
+      },
     };
-    fetched++;
-  }
+  };
+
+  // One worker per shelter site. Each shelter's home page and logo still go
+  // out one after the other against its own host, and PoliteClient keeps its
+  // delay between them; only the wait for other shelters is gone. Two
+  // shelters that happen to share a host share a queue and stay serialized.
+  const outcomes = await mapByHost(
+    targets,
+    (target) => target.homeUrl,
+    cacheOne,
+  );
+
+  let fetched = 0;
+  let reused = 0;
+  targets.forEach((target, index) => {
+    // logoTargets comes from the policy files, where providerId is unique and
+    // validated, so no two outcomes can write the same entry.
+    const outcome = outcomes[index]!;
+    if (outcome.entry) next.entries[target.providerId] = outcome.entry;
+    if (outcome.discovered) discovered[target.providerId] = outcome.discovered;
+    if (outcome.counted === "fetched") fetched++;
+    else if (outcome.counted === "reused") reused++;
+  });
 
   // Content addressing can share one file between shelters, so deletion goes
   // by "no longer referenced". Sweeping the whole directory also clears

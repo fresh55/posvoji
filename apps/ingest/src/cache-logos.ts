@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
@@ -19,6 +12,7 @@ import type { ProviderPolicy } from "@posvoji/schema";
 import { mapByHost } from "./by-host";
 import { shelterLogosDir, shelterLogoManifestPath } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
+import { writeContentAddressed } from "./write-content-addressed";
 
 // Where the static site serves the files written to shelterLogosDir.
 const PUBLIC_PREFIX = "/media/shelter-logos";
@@ -235,34 +229,6 @@ export async function processLogo(source: Buffer): Promise<{
 
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-// Names the temporary copy below. A counter is enough inside one process and
-// the pid keeps two runs against the same directory apart.
-let nextTempId = 0;
-
-// Same reasoning as the photo cache's writeContentAddressed: two shelters
-// sharing a logo land on one content-addressed name, and shelters are now
-// fetched at the same time. Write beside the target and rename over it, so a
-// reader in this run or in another one sees a whole file or none.
-function writeContentAddressed(target: string, data: Buffer): void {
-  if (existsSync(target)) return;
-  const tmp = `${target}.${process.pid}-${nextTempId++}.tmp`;
-  writeFileSync(tmp, data);
-  try {
-    renameSync(tmp, target);
-  } catch (error) {
-    // Windows refuses to rename over a file another process holds open. The
-    // name is a hash of the bytes, so what is already there is what we were
-    // writing: drop our copy and keep it.
-    try {
-      rmSync(tmp, { force: true });
-    } catch {
-      // The sweep at the end of the run collects it, since nothing
-      // references it.
-    }
-    if (!existsSync(target)) throw error;
-  }
 }
 
 function readManifest(path: string): LogoManifest {

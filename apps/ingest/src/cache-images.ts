@@ -3,7 +3,6 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -18,6 +17,7 @@ import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
 import { mapByHost } from "./by-host";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
+import { writeContentAddressed } from "./write-content-addressed";
 
 // Where the static site serves the files written to cachedImagesDir.
 const PUBLIC_PREFIX = "/media/animals";
@@ -278,38 +278,6 @@ export async function processImage(
   const { data, info } = result;
   const hash = createHash("sha256").update(data).digest("hex").slice(0, 16);
   return { file: `${hash}.webp`, data, width: info.width, height: info.height };
-}
-
-// Names the temporary copy below. A counter is enough inside one process and
-// the pid keeps two runs against the same media directory apart.
-let nextTempId = 0;
-
-// A processed photo is named by its own bytes, so two different source URLs
-// can encode to the same target, and those two URLs can now be on two hosts
-// being fetched at the same time. Two synchronous writes cannot interleave
-// inside this process, but a second ingest run against the same media
-// directory can be halfway through writing the very file deriveVariants is
-// about to read. Writing beside the target under a unique name and renaming
-// over it leaves every reader on one whole file or on none.
-function writeContentAddressed(target: string, data: Buffer): void {
-  if (existsSync(target)) return;
-  const tmp = `${target}.${process.pid}-${nextTempId++}.tmp`;
-  writeFileSync(tmp, data);
-  try {
-    renameSync(tmp, target);
-  } catch (error) {
-    // Windows refuses to rename over a file another process holds open. The
-    // name is a hash of the bytes, so whatever is already there is the file
-    // we were writing: drop our copy and keep it. Anything else is a real
-    // failure and is raised.
-    try {
-      rmSync(tmp, { force: true });
-    } catch {
-      // The sweep at the end of the run collects it, since nothing
-      // references it.
-    }
-    if (!existsSync(target)) throw error;
-  }
 }
 
 export interface DerivedCounts {

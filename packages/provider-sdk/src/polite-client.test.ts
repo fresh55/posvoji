@@ -368,6 +368,46 @@ describe("PoliteClient", () => {
 
       expect(Date.now() - started).toBeLessThan(200);
     });
+
+    // The next two tests use the real constructor default instead of the
+    // client() helper's minDelayMs: 0, so they pay for an actual multi-second
+    // wait. That cost is the point: it is the only way to prove the default
+    // is 3s, not the old 10s, and that a longer robots Crawl-delay still wins
+    // via Math.max(minDelayMs, crawlDelayMs) in respectDelay().
+
+    it("defaults minDelayMs to 3 seconds when robots.txt sets no Crawl-delay", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "User-agent: *");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const started = Date.now();
+      await new PoliteClient({
+        userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
+      }).getBytes(`${ORIGIN}/cat.jpg`);
+      const elapsed = Date.now() - started;
+
+      expect(elapsed).toBeGreaterThanOrEqual(2_900);
+      // Well under the old 10s default: catches a regression the other way.
+      expect(elapsed).toBeLessThan(5_000);
+    }, 10_000);
+
+    it("still honors a robots Crawl-delay longer than the 3s default", async () => {
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(200, "User-agent: *\nCrawl-delay: 3.5");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+
+      const started = Date.now();
+      await new PoliteClient({
+        userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
+      }).getBytes(`${ORIGIN}/cat.jpg`);
+      const elapsed = Date.now() - started;
+
+      // If Math.max ever regressed to picking minDelayMs, this would stop at
+      // ~3s instead of the declared 3.5s.
+      expect(elapsed).toBeGreaterThanOrEqual(3_300);
+    }, 10_000);
   });
 
   describe("get", () => {

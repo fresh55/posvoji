@@ -74,8 +74,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${REPO_ROOT}-logs"
 
 NOTIFY_PS1="${REPO_ROOT}/scripts/crawl-notify.ps1"
+KEEPAWAKE_PS1="${REPO_ROOT}/scripts/crawl-keepawake.ps1"
 DEPLOY_SH="${REPO_ROOT}/scripts/deploy.sh"
 DATASET="${REPO_ROOT}/data/dist/animals.json"
+
+# Removed by the EXIT trap, which is what tells the keepawake helper to let
+# the machine sleep again.
+KEEPAWAKE_FLAG="${LOG_DIR}/.keepawake"
 
 # --- helpers -----------------------------------------------------------------
 
@@ -127,6 +132,32 @@ dataset_summary() {
   ' "${DATASET}" 2>/dev/null || printf 'dataset summary unavailable'
 }
 
+# WakeToRun gets the machine up for the run, nothing keeps it up. A crawl
+# waits on shelter servers for half an hour with the CPU near idle, which is
+# indistinguishable from an unused machine, so the idle timer sleeps it and
+# the run dies mid-fetch having written nothing. Never fails the run: an
+# unprotected crawl is worth attempting, it just might not survive the night.
+start_keepawake() {
+  if [ ! -x "${POWERSHELL}" ] || [ ! -f "${KEEPAWAKE_PS1}" ]; then
+    log "keepawake: no powershell.exe or no crawl-keepawake.ps1, sleep may end this run"
+    return 0
+  fi
+
+  : > "${KEEPAWAKE_FLAG}"
+  "${POWERSHELL}" -NoProfile -NonInteractive -ExecutionPolicy Bypass \
+    -File "$(cygpath -w "${KEEPAWAKE_PS1}")" \
+    -FlagFile "$(cygpath -w "${KEEPAWAKE_FLAG}")" \
+    >/dev/null 2>&1 &
+
+  log "keepawake: holding the system awake (pid $!)"
+}
+
+# The helper polls for the flag, so deleting it is the whole handoff. Cheap
+# and idempotent, which is what an EXIT trap has to be.
+stop_keepawake() {
+  rm -f "${KEEPAWAKE_FLAG}" 2>/dev/null || true
+}
+
 # A machine that woke for this run may not have a network yet, and every
 # stage below needs one. Tries both resolvers so a single blackholed address
 # does not read as "no internet", and logs which one answered.
@@ -158,6 +189,11 @@ main() {
   # the run log and on stdout. Task Scheduler discards stdout, so the file is
   # the only copy that survives.
   exec > >(tee -a "${log_file}") 2>&1
+
+  # Before anything that takes time, and released however this run ends,
+  # abort() included.
+  trap stop_keepawake EXIT
+  start_keepawake
 
   log "=== scheduled crawl starting ==="
   log "repo:  ${REPO_ROOT}"

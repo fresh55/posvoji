@@ -222,6 +222,15 @@ nothing double-deploys.
 **Nobody logged on means no run at all.** Interactive logon type, by choice.
 The dead man's switch is what catches a stretch of this.
 
+**A run holds the machine awake, but only against the idle timer.**
+`WakeToRun` gets the PC up for the run and does nothing to keep it up, and a
+crawl spends half an hour waiting on shelter servers with the CPU near idle,
+which is what an unused machine looks like. The first real run, on 29 August
+2026, was lost that way eleven minutes in. `scripts/crawl-keepawake.ps1` now
+holds `ES_SYSTEM_REQUIRED` for as long as the run's flag file exists, so the
+idle timer cannot end a crawl. Choosing Sleep or Shut down by hand still ends
+it, as it should; that run writes nothing and the next one starts over.
+
 **A changed home IP address breaks the deploy at the first ssh.** The host
 only accepts SSH from the maintainer's home address, so when the ISP hands out
 a new one, `deploy.sh` fails in the deploy stage with a `BatchMode=yes`

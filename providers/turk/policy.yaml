@@ -13,7 +13,11 @@ descriptions: full-permitted
 
 logo:
   use: permitted
-  url: https://zavetisceturk.com/wp-content/uploads/2018/01/cropped-cropped-logo-ZA-DOKUMENT-2.png
+  # The full-resolution master the site's own media library holds, not the
+  # 240px twice-cropped derivative the header draws. Same mark, same grant:
+  # the header copy is small enough that the register was downscaling an
+  # already-downscaled file, and the fine strokes came out mushy.
+  url: https://zavetisceturk.com/wp-content/uploads/2018/01/logo-ZA-DOKUMENT.png
   date: 2026-08-20
   reference: project-owner-confirmation-logos-2026-08-20
 

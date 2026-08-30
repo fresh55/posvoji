@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { undersizedTargets } from "./reach";
+
 // The register's geometry, which the unit tests cannot see.
 //
 // Every layout bug this page has had was invisible to a green suite and was
@@ -31,6 +33,14 @@ import { expect, test, type Page } from "@playwright/test";
 //
 // Selectors are data-* attributes and roles, the contract the components
 // keep, never class names. See shelter-map.spec.ts for the same rule.
+//
+// A heading tag is not a contract either. The card's name was read here as
+// "h3" until the level moved to h2, which it had to: the section prints no
+// heading of its own, so the cards were the first level under the page's h1
+// and the outline skipped a step. Nothing about this file's subject changed,
+// but two measurements stopped finding a card's name. data-card-link is the
+// attribute the card already carries for the stretched hit area, and it says
+// what is wanted here, which is the link that names the card.
 
 const REGISTER = "/zavetisca";
 const CARD = 'li[id^="zavetisce-"]';
@@ -75,7 +85,9 @@ async function alignment(page: Page): Promise<Alignment> {
       const rows: { top: number; cards: Element[] }[] = [];
       for (const card of cards) {
         const top = card.getBoundingClientRect().top;
-        const row = rows.find((candidate) => Math.abs(candidate.top - top) <= 2);
+        const row = rows.find(
+          (candidate) => Math.abs(candidate.top - top) <= 2,
+        );
         if (row) row.cards.push(card);
         else rows.push({ top, cards: [card] });
       }
@@ -88,7 +100,7 @@ async function alignment(page: Page): Promise<Alignment> {
         if (row.cards.length < 2) return;
 
         const named = (card: Element) =>
-          card.querySelector("h3")?.textContent?.trim() ?? "?";
+          card.querySelector("[data-card-link]")?.textContent?.trim() ?? "?";
         const channelsOf = (card: Element) =>
           [...card.querySelectorAll("a[data-contact]")]
             .map((link) => link.getAttribute("data-contact"))
@@ -130,7 +142,9 @@ async function alignment(page: Page): Promise<Alignment> {
           if (tops.length < 2) continue;
           const sets = new Set(
             row.cards
-              .filter((card) => card.querySelector(`a[data-contact="${channel}"]`))
+              .filter((card) =>
+                card.querySelector(`a[data-contact="${channel}"]`),
+              )
               .map(channelsOf),
           );
           if (sets.size > 1) continue;
@@ -185,7 +199,7 @@ test.describe("the shelters register", () => {
     expect(before.compared).toBeGreaterThan(0);
 
     const grew = await first.evaluate((card) => {
-      const link = card.querySelector("h3 a");
+      const link = card.querySelector("[data-card-link]");
       if (!link) return false;
       const height = card.getBoundingClientRect().height;
       link.textContent =
@@ -220,9 +234,7 @@ test.describe("the shelters register", () => {
         return {
           left: Math.round(box.left),
           top: Math.round(box.top),
-          borderRight: Math.round(
-            parseFloat(style.borderRightWidth) || 0,
-          ),
+          borderRight: Math.round(parseFloat(style.borderRightWidth) || 0),
         };
       });
       return {
@@ -288,8 +300,8 @@ test.describe("the shelters register", () => {
         providers: group("providers"),
         animals: group("animals"),
         cards: document.querySelectorAll(cardSelector).length,
-        pills: [...document.querySelectorAll("[data-animals]")].map(
-          (pill) => Number(pill.getAttribute("data-animals")),
+        pills: [...document.querySelectorAll("[data-animals]")].map((pill) =>
+          Number(pill.getAttribute("data-animals")),
         ),
       };
     }, CARD);
@@ -310,5 +322,203 @@ test.describe("the shelters register", () => {
     // passes trivially against a page that rendered nothing.
     expect(counted.cards).toBeGreaterThan(0);
     expect(counted.pills.length).toBeGreaterThan(0);
+  });
+
+  // What a phone actually does to this page, which is the width most of the
+  // traffic reads it at and the one none of the measurements above used.
+  // Everything before this line is about a row of cards agreeing with itself,
+  // and below sm there is no row: the grid is one column, seventeen cards
+  // deep, about seven screens of it.
+
+  // The card had no width defence at all, and nobody could see it.
+  //
+  // The contact rows carry `truncate`, which was inert: nothing in the chain
+  // from the footer slot down to the visible span set min-width 0, so each
+  // slot is a grid item whose automatic minimum is its own min-content, and
+  // the longest email address in the card set the track's width instead of
+  // ellipsising inside it. At 100% text the register's real addresses happen
+  // to fit, so the page looked correct and the truncation it was written to
+  // rely on had never once run.
+  //
+  // Raising the text size is what exposes it, and it is also the case that
+  // matters: at 200% the page grew to 534px inside a 375px viewport and
+  // scrolled sideways, which is a WCAG 1.4.4 failure at AA.
+  //
+  // 320px because that is the reflow width WCAG names, and the root font size
+  // is doubled rather than the viewport halved because that is the failure
+  // being guarded: the card's width is set by content that scales with the
+  // type, and a test that only narrowed the viewport would keep passing
+  // against the bug.
+  test("reflows at 200% text without scrolling sideways", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto(REGISTER);
+    await expect(page.locator(CARD).first()).toBeVisible();
+
+    const measured = await page.evaluate(async (cardSelector) => {
+      const root = document.documentElement;
+      const at = async (fontSize: string) => {
+        root.style.fontSize = fontSize;
+        // Two frames, or the read happens before the relayout it caused.
+        await new Promise((done) => requestAnimationFrame(() => done(null)));
+        await new Promise((done) => requestAnimationFrame(() => done(null)));
+        const cards = [...document.querySelectorAll(cardSelector)];
+        return {
+          overflow: root.scrollWidth - root.clientWidth,
+          // The widest card against the width it was given. A card that wants
+          // more than its column is the mechanism; the page overflow above is
+          // the symptom, and asserting both says which one broke.
+          widestCard: Math.max(
+            ...cards.map((card) => card.scrollWidth - card.clientWidth),
+          ),
+          cards: cards.length,
+        };
+      };
+
+      const base = await at("16px");
+      const doubled = await at("32px");
+      root.style.fontSize = "";
+      return { base, doubled };
+    }, CARD);
+
+    expect(measured.base.cards).toBeGreaterThan(0);
+
+    // A pixel of slack for sub-pixel rounding, and no more.
+    expect(measured.base.overflow).toBeLessThanOrEqual(1);
+    expect(measured.base.widestCard).toBeLessThanOrEqual(1);
+    expect(measured.doubled.overflow).toBeLessThanOrEqual(1);
+    expect(measured.doubled.widestCard).toBeLessThanOrEqual(1);
+  });
+
+  // Every target on the page big enough for a thumb, hit-tested rather than
+  // measured off a box or a class; reach.ts carries why.
+  //
+  // The contact rows are what this is really guarding. They were 36px tall
+  // and 2px apart, stacking a tel:, a mailto: and an external site inside a
+  // card that is itself a link, so a miss of a few pixels silently opened a
+  // mail composer. They are the page's primary action on a phone.
+  test("gives every control a thumb-sized target at 375px", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(REGISTER);
+    await expect(page.locator(CARD).first()).toBeVisible();
+
+    const small = await undersizedTargets(page);
+
+    // measured is the honest half, the same as `compared` above, and it earns
+    // its place here twice over: undersizedTargets skips controls that are
+    // drawn but not yet offered, and a skip rule written slightly too wide
+    // would empty the sweep and pass on nothing at all.
+    expect(small.measured).toBeGreaterThan(0);
+    expect(small.failures).toEqual([]);
+  });
+
+  // The outline a screen reader navigates by, which on a page seven screens
+  // deep is the only way through it that is not scrolling.
+  //
+  // The cards were h3 under the page's h1 with no h2 anywhere: the section
+  // that holds them carries an accessible label rather than a printed
+  // heading, so nothing filled the level. Asserted as "no level is skipped"
+  // rather than "the cards are h2", because which level is correct follows
+  // from whether the section prints a heading of its own, and that is a
+  // design decision this file should not pin.
+  test("prints a heading outline with no skipped level", async ({ page }) => {
+    await page.goto(REGISTER);
+    await expect(page.locator(CARD).first()).toBeVisible();
+
+    const levels = await page.evaluate(() =>
+      [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) =>
+        Number(heading.tagName.slice(1)),
+      ),
+    );
+
+    expect(levels.length).toBeGreaterThan(1);
+    expect(levels[0]).toBe(1);
+
+    const skips = levels
+      .map((level, index) => ({ level, previous: levels[index - 1] ?? level }))
+      .filter((step) => step.level > step.previous + 1);
+    expect(skips).toEqual([]);
+  });
+
+  // A shelter's mark, drawn at its own proportions or not drawn at all.
+  //
+  // markBox in shelter-avatar.tsx computes an exact pixel box and sets it as
+  // an inline width and height. When the row it sits in runs short the width
+  // gives way and the height does not, so the mark is squashed rather than
+  // scaled: Horjul measured 144x27 against a natural 384x71, and with a wider
+  // count pill beside it came out 129x27, a ratio of 4.78 against the file's
+  // own 5.41.
+  //
+  // 320px is where the margin actually is. The caps were calibrated against
+  // the two-column band at 640px, which leaves about 256px inside the card
+  // padding; the single column at 320px leaves 246px, and the widest pill
+  // takes 84 to 92 of it rather than the 80 the calibration assumed. Two of
+  // the seventeen marks have six pixels of slack there.
+  test("draws every mark at its own proportions at 320px", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto(REGISTER);
+    await expect(page.locator(CARD).first()).toBeVisible();
+
+    // The marks are lazy and this page is seven screens deep, so most of them
+    // are not fetched at all on arrival: their natural size is zero and the
+    // ratio below would divide by it. Asking for them eagerly changes when the
+    // page loads them and not how it draws them, which is what is asserted
+    // here. Waiting on `complete` rather than decode(), because a lazy image
+    // that never enters the viewport never settles its decode promise and the
+    // measurement would hang instead of failing.
+    await page.evaluate((cardSelector) => {
+      for (const image of document.querySelectorAll<HTMLImageElement>(
+        `${cardSelector} img`,
+      )) {
+        image.loading = "eager";
+      }
+    }, CARD);
+    // Settled, not loaded. A 404 sets `complete` and leaves naturalWidth at 0,
+    // so requiring a natural size here waits for something that will never
+    // arrive: apps/web/public/media is gitignored and written by the ingest
+    // run, so a fresh clone serves every mark as a 404 and this hung for the
+    // full timeout on a message about waiting rather than about the logos.
+    // Waiting only for the fetches to settle lets the count below be the thing
+    // that fails, and it says what is missing.
+    await page.waitForFunction(
+      (cardSelector) =>
+        [
+          ...document.querySelectorAll<HTMLImageElement>(`${cardSelector} img`),
+        ].every((image) => image.complete),
+      CARD,
+    );
+
+    const marks = await page.evaluate((cardSelector) => {
+      const images = [
+        ...document.querySelectorAll<HTMLImageElement>(`${cardSelector} img`),
+      ];
+
+      // A mark that failed to load is not a mark drawn at the wrong
+      // proportions, so it is dropped here rather than counted as a ratio of
+      // zero over zero. The count assertion below is what notices that they
+      // all went.
+      return images
+        .filter((image) => image.naturalWidth > 0 && image.naturalHeight > 0)
+        .map((image) => {
+          const box = image.getBoundingClientRect();
+          return {
+            src: image.currentSrc.slice(-24),
+            drawn: box.width / box.height,
+            natural: image.naturalWidth / image.naturalHeight,
+          };
+        });
+    }, CARD);
+
+    // Every card carrying a logo in the manifest, or the media never made it
+    // onto disk. See the wait above.
+    expect(marks.length).toBeGreaterThan(0);
+
+    // 3%, which is the rounding markBox does on both dimensions and nothing
+    // more. A squash shows up an order of magnitude above this.
+    const distorted = marks.filter(
+      (mark) => Math.abs(mark.drawn / mark.natural - 1) > 0.03,
+    );
+    expect(distorted).toEqual([]);
   });
 });

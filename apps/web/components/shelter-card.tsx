@@ -64,10 +64,25 @@ export type ShelterCardText = {
 //
 // A row, not an icon. Behind a 24px glyph the number lived only in an
 // aria-label, so a desktop reader who had just found a stray could see that a
-// shelter had a phone and never what it was. min-h-9 keeps each row a real
-// target without the 44px a bare icon needed, because the row is the target.
+// shelter had a phone and never what it was. min-h-9 is a real target for a
+// pointer without the 44px a bare icon needed, because the row is the target.
+//
+// A thumb is not a pointer, and that is where the reasoning above stops. 36px
+// clears WCAG 2.5.8 AA and sits under both platform minimums, on the control
+// this page exists for: three destinations 38px apart (tel:, mailto:, and a
+// site that leaves us), stacked inside a card whose name stretches an ::after
+// over the whole box as a fourth. Missing the phone by a few pixels opens a
+// mail composer or walks to the shelter's page, and nothing says so happened.
+// So the row is drawn at 44px below lg, which is where site-menu turns into
+// the dropdown and site-header takes its own tap-target: this repo's pointer
+// boundary, not a number picked for this card.
+//
+// Grown rather than overlaid with tap-target, because the rows are 2px apart;
+// the tap-target utility in globals.css carries that rule. The card is free to
+// be taller: below sm the grid is one column, so no neighbour holds it to a
+// height.
 const CONTACT_ROW =
-  "relative z-10 flex min-h-9 items-center gap-2.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring";
+  "relative z-10 flex min-h-9 max-lg:min-h-11 items-center gap-2.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring";
 
 /** A website as the part of it worth reading. The scheme and the www are on
  *  every one of them, and the card has room for the host, not the URL. */
@@ -217,8 +232,11 @@ export function ShelterCard({
               track of their own and would open a gap between a name and its
               own town, which reads worse than a small line sitting a little
               higher on one card than the next. */}
+          {/* h2, because the section that holds these cards prints no
+              heading of its own. The decision and its consequences live with
+              that aria-label, on SheltersAtlasText.heading. */}
           <ItemTitle asChild>
-            <h3>
+            <h2>
               <a
                 href={shelter.href}
                 data-card-link
@@ -226,10 +244,35 @@ export function ShelterCard({
               >
                 {shelter.name}
               </a>
-            </h3>
+            </h2>
           </ItemTitle>
-          <ItemDescription className="flex items-center gap-1">
-            <MapPin className="size-3 shrink-0" aria-hidden />
+          {/* The town at 14px below sm, which is the sort key drawn large
+              enough to be read while scrolling.
+
+              The grid is ordered by town and says so above itself, but below
+              sm it is one column seventeen cards deep and the reader sees
+              about one and a half of them at a time. At 12px muted, under a
+              16px medium name, the one line that carries the ordering was the
+              quietest thing on the card, so the sequence read as no order at
+              all and there was no way to look for a particular shelter.
+
+              sm exactly, because that is where the grid becomes two columns
+              (sm:grid-cols-2). Above it the register is scanned as a grid
+              rather than travelled through, the town is next to its neighbours
+              rather than a screen away from them, and every measurement in the
+              comments on this file was taken at 12px. Nothing above the
+              breakpoint changes.
+
+              The glyph goes with the size. Every contact row on this card
+              pairs text-sm with size-3.5, and a 12px pin beside 14px text
+              would be the one place the card paired them differently.
+
+              ItemDescription's own base is text-xs, and tailwind-merge keeps
+              the later of two sizes in the same group: the unprefixed text-sm
+              wins here, while sm:text-xs is a different modifier and
+              survives. */}
+          <ItemDescription className="flex items-center gap-1 text-sm sm:text-xs">
+            <MapPin className="size-3.5 shrink-0 sm:size-3" aria-hidden />
             <span className="truncate">{shelter.city}</span>
           </ItemDescription>
         </ItemContent>
@@ -258,6 +301,11 @@ export function ShelterCard({
             being asked to remember. */}
         {shelter.phone || shelter.email || shelter.website ? (
           <ItemFooter asChild>
+            {/* gap-0.5 holds at both row heights. Nothing is drawn at a row's
+                edge, so what is read here is the space between two lines of
+                text, and that is 18px at a 36px row and 26px at a 44px one:
+                the touch rows separate on their own, and widening the gap
+                would only buy air the card pays for in height. */}
             <ul className="gap-0.5">
               {shelter.phone && (
                 // The visible number is the label and the accessible name adds

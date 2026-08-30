@@ -1,4 +1,5 @@
 import { Building2, MapPinned, PawPrint, ShieldCheck } from "lucide-react";
+import { BackToTop } from "@/components/back-to-top";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { I18nProvider } from "@/components/i18n-provider";
 import { JsonLd } from "@/components/json-ld";
@@ -20,11 +21,7 @@ import {
 import { shelterCensus } from "@/lib/shelter-census";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import {
-  homePath,
-  sheltersIndexPath,
-  shelterPath,
-} from "@/lib/shelter-path";
+import { homePath, sheltersIndexPath, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
 import { siteLinks } from "@/lib/site-links";
 
@@ -106,7 +103,6 @@ function lede(locale: Locale): string {
     : "Vsa slovenska zavetišča za živali, s kontakti na enem mestu. Kjer nam zavetišče to dovoli, objavimo tudi njegove živali.";
 }
 
-
 export function SheltersPage({ locale }: { locale: Locale }) {
   const shelters = loadShelters();
   const dataset = loadDataset();
@@ -179,10 +175,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader
-          homeHref={homeHref}
-          languagePaths={SHELTER_INDEX_PATHS}
-        />
+        <SiteHeader homeHref={homeHref} languagePaths={SHELTER_INDEX_PATHS} />
 
         {/* Full width, the same as the home page's main (site-page.tsx). The
             header and the footer bleed to the 7xl frame, so a 5xl main put the
@@ -232,9 +225,37 @@ export function SheltersPage({ locale }: { locale: Locale }) {
 
                   The sentence stays beside the button rather than inside it:
                   it explains what the lookup does, and a button label that is
-                  a full sentence stops reading as a control. */}
+                  a full sentence stops reading as a control.
+
+                  Drawn at 44px below lg, which is where this repo puts the
+                  touch/pointer boundary (site-menu.tsx switches to the
+                  dropdown there). size="sm" is h-8, and at 32px this was the
+                  smallest deliberate control on a page whose brand,
+                  breadcrumb, hamburger and footer links all reach 44. Grown
+                  rather than overlaid with tap-target, for the reason that
+                  utility's own block in globals.css gives, and because this
+                  one is meant to be the loudest thing under the lede for
+                  somebody holding a stray: a 32px button that merely accepts
+                  a 44px tap still reads as small. The padding goes with the
+                  height, or a 44px box on 10px of side padding reads as a
+                  stretched pill.
+
+                  min-h-11 and not h-11, the same spelling animal-grid.tsx
+                  uses on the same variant: a floor lets the label wrap and
+                  the box follow, where a fixed height would clip it. Nothing
+                  wraps at the sizes this is read at today, which is exactly
+                  why the difference would go unnoticed.
+
+                  From lg the classes stop applying and the button is size="sm"
+                  again, unchanged: outline and small is the treatment argued
+                  for above, and a pointer does not need the 44. */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:min-h-11 max-lg:gap-1.5 max-lg:px-4"
+                >
                   <a href={FOUND_ANIMAL_PATHS[locale]}>
                     <MapPinned aria-hidden />
                     {text.lookupLink}
@@ -367,7 +388,33 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           </p>
         </main>
 
-        <SiteFooter locale={locale} showSheltersLink={false} />
+        {/* The register is 5,967px at 375px, which is 7.3 screens, and nothing
+            on this page is fixed or sticky: the header is static, so from the
+            last card the language switcher, the nav and the trail are all
+            about 6,000px of hand scrolling away. The homepage grid has had
+            this control since it was written (animal-filters.tsx) and this
+            page never got it, although it is the second longest document on
+            the site.
+
+            A client component under a server one. It reads scroll position
+            and measures the footer, so it has to be, and mounting it from
+            here only marks the boundary: everything above stays server
+            rendered. It takes its label from I18nProvider, which this page
+            already wraps the tree in. */}
+        <BackToTop />
+
+        {/* docked, on a page that has no dock.
+
+            The prop's name is the homepage's, but what it does is padding
+            derived from --back-to-top-bottom (see site-footer.tsx), and that
+            is the strip the button parks in. Below lg the button does not
+            lift over the footer the way it does from lg; it stays pinned to
+            the viewport, so at the end of the document it lands on whatever
+            the footer has put there, which here is the only route to any
+            other page at phone width. This reserves that strip once. It is
+            not double clearance: there is no dock on this page to have
+            reserved it already. */}
+        <SiteFooter locale={locale} showSheltersLink={false} docked />
       </div>
     </I18nProvider>
   );

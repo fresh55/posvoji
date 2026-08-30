@@ -43,11 +43,17 @@ const WIDTH_FALLOFF = 0.35;
 // xs, sm and lg are one scale, picked by how much room the placement has.
 // "register" is not a fourth step on it: it is a placement, named for the one
 // it exists for, and its numbers are measured against that page. The
-// register's narrowest card is the two-column band at 640px, which leaves
-// about 256px inside the card padding, and the widest count pill beside the
-// mark takes 80 of it. 144 plus the chip's own padding is what still fits
-// there with room to spare, and it is a third of the 394px card the
-// three-column band draws, which is the width the marks are actually read at.
+// register's narrowest card leaves 246px inside the card padding, and two
+// bands draw it: the single column at a 320px viewport, and the first step of
+// the two-column band at 640px. The widest count pill beside the mark takes
+// 92 of that. 144 plus the chip's own padding is what still fits there, and
+// it is a third of the 394px card the three-column band draws, which is the
+// width the marks are actually read at.
+//
+// The margin there is thin, and a count pill grows with the number in it, so
+// the widest marks are not guaranteed to clear it forever. What happens when
+// they do not is the aspect-ratio on the drawn mark below: the mark gets
+// smaller rather than flatter, and nothing else on the row moves.
 // `fallback` is the avatar drawn where there is no logo: a diameter off the
 // Tailwind scale and the letter size that sits in it, which stays near 37% of
 // the diameter the way an avatar's initials usually do. A letter that keeps
@@ -239,7 +245,27 @@ export function ShelterAvatar({
           // treatment: it never takes a chip, because the rectangle a chip
           // would draw is the one the file already has.
           className={cn(logo.opaque && "rounded-ui")}
-          style={{ width: box.width, height: box.height }}
+          // The width and the ratio rather than the width and the height, and
+          // the two spell the same box: the ratio is markBox's own two
+          // numbers, so every mark still draws at the exact pixels it
+          // computed and none of them moved.
+          //
+          // What changes is the case where the row runs short. The mark is a
+          // flex item and inRow above gives its width up rather than push the
+          // count pill off the card, so a height fixed in px beside a width
+          // that shrinks flattened the mark: Horjul measured 144x27 drawn at
+          // 129x27, a 5.33:1 wordmark stretched to 4.78:1. Tied to the width,
+          // the height comes down with it and the mark is a smaller mark.
+          //
+          // The box scales, not the ink inside a box that keeps its old
+          // height, which is why this is not object-fit: contain. The chip is
+          // sized from this box and an opaque mark rounds its corners, so a
+          // letterboxed mark would leave the chip standing too tall around it
+          // and the rounding sitting off the plate it is meant to follow.
+          style={{
+            width: box.width,
+            aspectRatio: `${box.width} / ${box.height}`,
+          }}
         />
       </span>,
     );

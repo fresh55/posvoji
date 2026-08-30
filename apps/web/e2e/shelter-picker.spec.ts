@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { donePill, openPicker, pickerTrigger, rows } from "./picker";
+import { MIN_TARGET, reachedBox } from "./reach";
 
 // The panel's own flows, as opposed to shelter-map.spec.ts, which pins the map
 // beside it. The unit tests render this panel into jsdom, which reports every
@@ -230,26 +231,13 @@ test.describe("mobile", () => {
     const row = rows(dialog).first();
     await expect(row).toBeVisible();
 
-    // Hit-tested, not measured. A computed height and a class assertion both
-    // pass on a target something else is drawn over, and the whole point of
-    // the rule is that a thumb landing there reaches this control.
-    const reached = await row.evaluate((el) => {
-      const box = el.getBoundingClientRect();
-      const probe = (x: number, y: number) => {
-        const hit = document.elementFromPoint(x, y);
-        return hit === el || el.contains(hit);
-      };
-      return {
-        height: box.height,
-        top: probe(box.x + box.width / 2, box.y + 2),
-        middle: probe(box.x + box.width / 2, box.y + box.height / 2),
-        bottom: probe(box.x + box.width / 2, box.y + box.height - 2),
-      };
-    });
+    // Hit-tested, not measured; see reach.ts for why a computed height and a
+    // class assertion both pass on a target something else is drawn over.
+    const reached = await reachedBox(row);
 
-    expect(reached.height).toBeGreaterThanOrEqual(44);
+    expect(reached.height).toBeGreaterThanOrEqual(MIN_TARGET);
     expect(reached.top).toBe(true);
-    expect(reached.middle).toBe(true);
+    expect(reached.centre).toBe(true);
     expect(reached.bottom).toBe(true);
   });
 
@@ -258,19 +246,12 @@ test.describe("mobile", () => {
     const trigger = offGroupTrigger(dialog);
     await trigger.scrollIntoViewIfNeeded();
 
-    const reached = await trigger.evaluate((el) => {
-      const box = el.getBoundingClientRect();
-      const hit = document.elementFromPoint(
-        box.x + box.width / 2,
-        box.y + box.height / 2,
-      );
-      return { height: box.height, hits: hit === el || el.contains(hit) };
-    });
+    const reached = await reachedBox(trigger);
 
-    // 36px, the same floor the sort toggle and the reset beside it take: this
-    // row sits between two others and a full 44 on all three would push the
-    // header taller than the sheet budgets for. It still clears WCAG 2.5.8.
+    // 36px, and deliberately not MIN_TARGET: this row sits between two others
+    // and a full 44 on all three would push the header taller than the sheet
+    // budgets for. It still clears WCAG 2.5.8.
     expect(reached.height).toBeGreaterThanOrEqual(36);
-    expect(reached.hits).toBe(true);
+    expect(reached.centre).toBe(true);
   });
 });

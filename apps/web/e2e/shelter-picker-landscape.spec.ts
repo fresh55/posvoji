@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { donePill, openPicker } from "./picker";
+import { isReachable } from "./reach";
 
 // Regression cover for the fix that lets the picker's own content column
 // scroll to its footer on a viewport too short for the sheet's fixed chrome
@@ -15,18 +16,6 @@ import { donePill, openPicker } from "./picker";
 // phone held sideways is 390px tall (this repo's own convention, see
 // filter-sheet.tsx), and 320x568 is the narrowest phone still worth
 // supporting (the sheet-height comment's own worst case).
-
-async function isReachable(pill: Locator): Promise<boolean> {
-  return pill.evaluate((el) => {
-    const box = el.getBoundingClientRect();
-    if (box.width === 0 || box.height === 0) return false;
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false;
-    const hit = document.elementFromPoint(x, y);
-    return hit === el || el.contains(hit);
-  });
-}
 
 async function assertReachableAndClickable(
   page: Page,

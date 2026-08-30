@@ -6,6 +6,7 @@ import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { animalCount } from "@/lib/labels";
 import type { Locale } from "@/lib/i18n";
 import { Card } from "@/components/ui/card";
+import { mailtoHref, telHref } from "@/lib/contact-links";
 
 export type CoverageCardText = {
   dogs: string;
@@ -64,7 +65,7 @@ export function CoverageCard({
 
       {coverage.phone && (
         <Button asChild className="w-full">
-          <a href={`tel:${coverage.phone.replace(/\s/g, "")}`}>
+          <a href={telHref(coverage.phone)}>
             <Phone className="size-4 shrink-0" aria-hidden />
             {text.call.replace("{phone}", coverage.phone)}
           </a>
@@ -80,7 +81,7 @@ export function CoverageCard({
           <li className="flex items-center gap-2">
             <Mail className="size-3.5 shrink-0" aria-hidden />
             <a
-              href={`mailto:${coverage.email}`}
+              href={mailtoHref(coverage.email)}
               className="truncate underline-offset-4 hover:text-foreground hover:underline"
             >
               {coverage.email}

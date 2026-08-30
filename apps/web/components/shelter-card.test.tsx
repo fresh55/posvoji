@@ -41,7 +41,7 @@ describe("the shelter card", () => {
     render(<ShelterCard shelter={shelter()} text={text} />);
 
     const name = screen.getByRole("heading", {
-      level: 3,
+      level: 2,
       name: "Zavetišče Zonzani",
     });
     expect(within(name).getByRole("link")).toBeTruthy();
@@ -92,14 +92,18 @@ describe("the shelter card", () => {
   });
 
   it("prints the number rather than hiding it behind an icon", () => {
-    render(<ShelterCard shelter={shelter({ phone: "03 749 06 00" })} text={text} />);
+    render(
+      <ShelterCard shelter={shelter({ phone: "03 749 06 00" })} text={text} />,
+    );
 
     // Behind a 24px glyph the number lived only in an aria-label, so a desktop
     // reader who had just found a stray could see that a shelter had a phone
-    // and never what it was. The spaces come out of the href, or a phone
-    // cannot dial it.
+    // and never what it was. The href is E.164 while the label stays the way
+    // the register writes it: a national number dials only on a handset whose
+    // own region is Slovenia, and the visitor most likely to be holding a
+    // stray here is on a foreign SIM. See lib/contact-links.ts.
     const link = screen.getByRole("link", { name: "Telefon: 03 749 06 00" });
-    expect(link.getAttribute("href")).toBe("tel:037490600");
+    expect(link.getAttribute("href")).toBe("tel:+38637490600");
     expect(within(link).getByText("03 749 06 00")).toBeTruthy();
   });
 
@@ -184,10 +188,21 @@ describe("the shelter card", () => {
         />,
       );
       const img = container.querySelector("img");
-      return {
-        width: Number.parseFloat(img?.style.width ?? "0"),
-        height: Number.parseFloat(img?.style.height ?? "0"),
-      };
+      // The height is not written as a style any more. It is tied to the
+      // width through aspect-ratio, so that a row which runs short takes the
+      // whole box down together instead of shrinking the width against a
+      // height pinned in pixels, which drew the mark flatter than it is. The
+      // ratio markBox emits is its own two numbers, so this recovers exactly
+      // the height it computed. See shelter-avatar.tsx.
+      const width = Number.parseFloat(img?.style.width ?? "0");
+      // The ratio's own two numbers are markBox's, and its first is the width
+      // already read above, so the second is the height with no arithmetic in
+      // between. Written out, the multiply and divide read as a conversion
+      // that could produce something else.
+      const [, height] = (img?.style.aspectRatio ?? "0/0")
+        .split("/")
+        .map((part) => Number.parseFloat(part));
+      return { width, height };
     };
 
     const portrait = box({ width: 105, height: 128 });

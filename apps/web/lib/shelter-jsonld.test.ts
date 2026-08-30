@@ -97,7 +97,7 @@ describe("shelterJsonLd", () => {
     expect(node.url).toBe("https://posvoji.si/zavetisca/muri");
     expect(node["@id"]).toBe("https://posvoji.si/zavetisca/muri#shelter");
     expect(node.sameAs).toEqual(["https://zavodmuri.si/"]);
-    expect(node.telephone).toBe("01 234 56 78");
+    expect(node.telephone).toBe("+38612345678");
     expect(node.email).toBe("zavod.muri@gmail.com");
     expect(node.address).toEqual({
       "@type": "PostalAddress",

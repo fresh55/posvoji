@@ -143,7 +143,32 @@ class ConcurrencyClient {
 }
 
 describe("logoTargets", () => {
-  it("takes only enabled providers with a permitted logo", () => {
+  // The logo grant stands on its own. A shelter that publishes no list we
+  // ingest can still permit its mark, and gating the sync on `enabled` meant
+  // the only way to draw that logo was to claim we crawl them.
+  it("takes a permitted logo from a provider we do not crawl", () => {
+    const targets = logoTargets([
+      policy({
+        providerId: "oskar",
+        source: "https://zavetisceoskar.si/",
+        enabled: false,
+        ingestion: "manual",
+        images: "none",
+        descriptions: "facts-only",
+        logo: { use: "permitted", date: "2026-08-30" },
+      }),
+    ]);
+
+    expect(targets).toEqual([
+      {
+        providerId: "oskar",
+        homeUrl: "https://zavetisceoskar.si",
+        logoUrl: undefined,
+      },
+    ]);
+  });
+
+  it("takes only providers with a permitted logo", () => {
     const targets = logoTargets([
       policy({
         providerId: "macja-hisa",

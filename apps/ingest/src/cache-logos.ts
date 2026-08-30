@@ -90,11 +90,18 @@ export function publicUrlFor(file: string): string {
 // Only providers whose policy carries a dated logo grant. The policy is the
 // only authority here: `images: cache-permitted` covers animal photographs,
 // never the shelter's own mark.
+//
+// `enabled` is deliberately not part of the test. It says whether we crawl a
+// shelter's animals, which is a different grant on a different date from the
+// one covering its mark, and the schema keeps them apart for that reason. A
+// shelter that publishes no list we ingest can still let us print its logo
+// beside its phone number, and requiring `enabled` here meant the only way to
+// show that logo was to claim we crawl them.
 export function logoTargets(
   policies: ProviderPolicy[],
 ): { providerId: string; homeUrl: string; logoUrl?: string }[] {
   return policies
-    .filter((policy) => policy.enabled && policy.logo.use === "permitted")
+    .filter((policy) => policy.logo.use === "permitted")
     .map((policy) => ({
       providerId: policy.providerId,
       homeUrl: new URL(policy.source).origin,

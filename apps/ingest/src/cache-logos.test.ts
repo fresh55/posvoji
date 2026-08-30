@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -217,6 +224,20 @@ describe("logoTargets", () => {
         logoUrl: undefined,
       },
     ]);
+  });
+
+  it("carries a supplied file path through", () => {
+    const targets = logoTargets([
+      policy({
+        logo: {
+          use: "permitted",
+          date: "2026-08-30",
+          file: "data/shelter-logos/potepuhi.jpg",
+        },
+      }),
+    ]);
+    expect(targets[0]!.logoFile).toBe("data/shelter-logos/potepuhi.jpg");
+    expect(targets[0]!.logoUrl).toBeUndefined();
   });
 
   it("carries a pinned logo url through", () => {
@@ -458,6 +479,65 @@ describe("cacheLogos", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   const logosDir = () => join(dir, "files");
+
+  // A shelter with no site to fetch from sends the artwork instead, and the
+  // file travels with the repository. Nothing about that turn touches the
+  // network: no home page, no logo request, no discovery.
+  it("reads a supplied logo off the disk without a request", async () => {
+    const client = new StubClient(new Map(), new Map());
+    const root = join(dir, "root");
+    mkdirSync(join(root, "data", "shelter-logos"), { recursive: true });
+    writeFileSync(
+      join(root, "data", "shelter-logos", "potepuhi.jpg"),
+      await sharp({
+        create: { width: 300, height: 120, channels: 3, background: "#ffffff" },
+      })
+        .jpeg()
+        .toBuffer(),
+    );
+
+    const result = await cacheLogos(
+      [
+        {
+          providerId: "potepuhi",
+          homeUrl: "https://example.si",
+          logoFile: "data/shelter-logos/potepuhi.jpg",
+        },
+      ],
+      client,
+      { logosDir: logosDir(), manifestPath, fileRoot: root },
+    );
+
+    expect(client.pages).toEqual([]);
+    expect(client.files).toEqual([]);
+    const entry = result.manifest.entries["potepuhi"]!;
+    expect(entry.sourceUrl).toBe("data/shelter-logos/potepuhi.jpg");
+    // Flat white with nothing transparent in it: its own plate, no chip.
+    expect(entry.opaque).toBe(true);
+    expect(entry.chipOnLight).toBe(false);
+    expect(entry.chipOnDark).toBe(false);
+    expect(existsSync(join(logosDir(), entry.file))).toBe(true);
+  });
+
+  it("refuses a supplied path that climbs out of the repository", async () => {
+    const client = new StubClient(new Map(), new Map());
+    const root = join(dir, "root");
+    mkdirSync(root, { recursive: true });
+
+    const result = await cacheLogos(
+      [
+        {
+          providerId: "potepuhi",
+          homeUrl: "https://example.si",
+          logoFile: "../outside.png",
+        },
+      ],
+      client,
+      { logosDir: logosDir(), manifestPath, fileRoot: root },
+    );
+
+    expect(result.manifest.entries["potepuhi"]).toBeUndefined();
+  });
 
   it("discovers, fetches and records a logo", async () => {
     const client = new StubClient(

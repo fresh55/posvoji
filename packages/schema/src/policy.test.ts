@@ -76,6 +76,48 @@ describe("ProviderPolicy", () => {
     expect(result.success).toBe(true);
   });
 
+  // A mark the shelter sent us rather than published: there is no URL to pin,
+  // so the file travels with the repository and the policy names its path.
+  it("accepts a permitted logo supplied as a file", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      logo: {
+        use: "permitted",
+        file: "data/shelter-logos/potepuhi.jpg",
+        date: "2026-08-30",
+      },
+      permission: { status: "granted", date: "2026-08-30" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a logo that is both fetched and supplied", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      logo: {
+        use: "permitted",
+        url: "https://www.macjahisa.si/logo.png",
+        file: "data/shelter-logos/macja-hisa.png",
+        date: "2026-08-30",
+      },
+      permission: { status: "granted", date: "2026-08-30" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a supplied path that climbs out of the repository", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      logo: {
+        use: "permitted",
+        file: "../../etc/passwd",
+        date: "2026-08-30",
+      },
+      permission: { status: "granted", date: "2026-08-30" },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects a permitted logo without a date", () => {
     const result = ProviderPolicy.safeParse({
       ...basePolicy,

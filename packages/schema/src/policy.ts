@@ -23,6 +23,19 @@ export const LogoPolicy = z.strictObject({
   // The logo file itself. Left out, the fetcher looks for one on the
   // shelter's home page and pins what it found back here.
   url: z.url().optional(),
+  // A mark the shelter handed us rather than published, as a path from the
+  // repository root. Some shelters have no site to fetch from, or publish
+  // only a banner with a phone number burnt into it, and send the artwork
+  // instead; there is no URL to pin for those, so the file travels with the
+  // repository and the sync reads it from disk.
+  file: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9][a-z0-9._/-]*$/i, "logo.file must be a relative path")
+    .refine((path) => !path.split("/").includes(".."), {
+      message: "logo.file must not climb out of the repository",
+    })
+    .optional(),
   // The logo grant is its own decision on its own date, so it records them
   // rather than borrowing the photo grant's.
   date: z.iso.date().optional(),
@@ -99,6 +112,20 @@ export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
       code: "custom",
       path: ["descriptions"],
       message: `provider "${p.providerId}" has no granted permission: descriptions must be "facts-only"`,
+    });
+  }
+  if (p.logo.url !== undefined && p.logo.file !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["logo", "file"],
+      message: `provider "${p.providerId}": a logo is fetched from url or read from file, not both`,
+    });
+  }
+  if (p.logo.use === "none" && p.logo.file !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["logo", "file"],
+      message: `provider "${p.providerId}": logo.file is set but logo.use is "none"`,
     });
   }
   if (p.logo.use !== "none" && p.logo.date === undefined) {

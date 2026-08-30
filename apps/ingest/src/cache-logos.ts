@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import type {
@@ -10,7 +10,7 @@ import type {
 } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { mapByHost } from "./by-host";
-import { shelterLogosDir, shelterLogoManifestPath } from "./paths";
+import { repoRoot, shelterLogosDir, shelterLogoManifestPath } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
 import { writeContentAddressed } from "./write-content-addressed";
 
@@ -103,15 +103,23 @@ export function publicUrlFor(file: string): string {
 // shelter that publishes no list we ingest can still let us print its logo
 // beside its phone number, and requiring `enabled` here meant the only way to
 // show that logo was to claim we crawl them.
-export function logoTargets(
-  policies: ProviderPolicy[],
-): { providerId: string; homeUrl: string; logoUrl?: string }[] {
+export interface LogoTarget {
+  providerId: string;
+  homeUrl: string;
+  logoUrl?: string;
+  // A path from the repository root, for a mark the shelter sent us rather
+  // than published. Read from disk instead of fetched; see cacheOne.
+  logoFile?: string;
+}
+
+export function logoTargets(policies: ProviderPolicy[]): LogoTarget[] {
   return policies
     .filter((policy) => policy.logo.use === "permitted")
     .map((policy) => ({
       providerId: policy.providerId,
       homeUrl: new URL(policy.source).origin,
       logoUrl: policy.logo.url,
+      logoFile: policy.logo.file,
     }));
 }
 
@@ -423,6 +431,9 @@ export interface CacheLogosOptions {
   logosDir?: string;
   manifestPath?: string;
   revalidateAfterDays?: number;
+  // What logo.file paths are resolved against. The repository root in a real
+  // run; a fixture tree in a test.
+  fileRoot?: string;
 }
 
 // What one shelter's turn produced. An absent entry drops the shelter from
@@ -438,12 +449,13 @@ interface LogoOutcome {
 // of logoTargets, so the next run deletes its file: the removal path is the
 // sync itself, as it is for photographs.
 export async function cacheLogos(
-  targets: { providerId: string; homeUrl: string; logoUrl?: string }[],
+  targets: LogoTarget[],
   client: LogoClient,
   options: CacheLogosOptions = {},
 ): Promise<CacheLogosResult> {
   const logosDir = options.logosDir ?? shelterLogosDir;
   const manifestPath = options.manifestPath ?? shelterLogoManifestPath;
+  const fileRoot = options.fileRoot ?? repoRoot;
   const revalidateAfterMs =
     (options.revalidateAfterDays ?? REVALIDATE_AFTER_DAYS) * 24 * 60 * 60_000;
 
@@ -505,11 +517,7 @@ export async function cacheLogos(
   // here touches next.entries, discovered or the counters. The outcome is
   // handed back and applied once every host has finished, so both records keep
   // the order of `targets` and the counters are summed in one place.
-  const cacheOne = async (target: {
-    providerId: string;
-    homeUrl: string;
-    logoUrl?: string;
-  }): Promise<LogoOutcome> => {
+  const cacheOne = async (target: LogoTarget): Promise<LogoOutcome> => {
     const stored = previous.entries[target.providerId];
     // The file on disk is the whole test. An entry written before a judgement
     // existed is not stale, because refreshed() takes every judgement off the
@@ -523,6 +531,54 @@ export async function cacheLogos(
     // Keep what we have, take nothing new. Reached by every failure path
     // below, and none of them counts as a fetch or a reuse.
     const keepPrevious: LogoOutcome = prevUsable ? { entry: prev } : {};
+
+    // A mark the shelter handed us rather than published. No request, no
+    // revalidation window and no discovery: the file travels with the
+    // repository, so the only question is what it holds today. processLogo is
+    // deterministic and the name is the hash of its output, so re-reading an
+    // unchanged file rewrites nothing.
+    if (target.logoFile !== undefined) {
+      const path = resolve(fileRoot, target.logoFile);
+      // The schema forbids a climbing path, and this is the second lock: a
+      // policy is a file in the repository, but it names something the sync
+      // then reads off the disk.
+      const inside = relative(fileRoot, path);
+      if (inside.startsWith("..") || inside === "") {
+        console.warn(
+          `logo ${target.providerId}: ${target.logoFile} is outside the repository`,
+        );
+        return keepPrevious;
+      }
+      let processed;
+      let modified: Date;
+      try {
+        modified = statSync(path).mtime;
+        processed = await processLogo(readFileSync(path));
+      } catch (error) {
+        console.warn(
+          `logo ${target.providerId}: ${target.logoFile} could not be read (${error})`,
+        );
+        return keepPrevious;
+      }
+      writeContentAddressed(join(logosDir, processed.file), processed.data);
+      return {
+        counted: prev?.file === processed.file ? "reused" : "fetched",
+        entry: {
+          file: processed.file,
+          width: processed.width,
+          height: processed.height,
+          chipOnLight: processed.chipOnLight,
+          chipOnDark: processed.chipOnDark,
+          opaque: processed.opaque,
+          // Where a reviewer finds the artwork this came from, which for a
+          // supplied file is a path rather than a URL.
+          sourceUrl: target.logoFile,
+          // The file's own timestamp, so a run that changes nothing writes
+          // the same manifest.
+          fetchedAt: modified.toISOString(),
+        },
+      };
+    }
 
     if (
       prevUsable &&

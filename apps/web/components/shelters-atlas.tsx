@@ -34,8 +34,10 @@ export type SheltersInvite = {
  *
  * No search, no tabs, no filter and no detail pane. Every one of those existed
  * to reach a fact the page was not showing; a card that prints its shelter's
- * number, address, site, animal count and how many občine it answers for has
- * nothing left to hide behind a control. Seventeen entries is one page. A
+ * mark, name, town, the count of animals a shelter sharing its list holds, and
+ * its phone, email and site has nothing left to hide behind a control. The
+ * občina coverage is not among them and does not come back: that question is
+ * the found-animal lookup's. Seventeen entries is one page. A
  * search box over a list the reader can already see is ceremony, and the one
  * search worth having on this site, the občina lookup, belongs to the
  * found-animal flow that owns that question.
@@ -77,10 +79,20 @@ export function SheltersAtlas({
           lines now, so a third column at 1280px still leaves each one a
           readable measure, and seventeen shelters plus the invitation is
           eighteen cells: the last row comes out even at two columns and at
-          three. items-stretch is the default and kept, so every card in a row
-          draws the same box; what the cards put inside that box is their own,
-          and the register's card top-aligns its contacts rather than pushing
-          them to the bottom edge (see shelter-card.tsx).
+          three.
+
+          The rows are the cards' own sections rather than the cards. Every
+          cell spans three implicit rows and the shelter card takes those three
+          as its own tracks (Item's subgrid layout), so a row of cards agrees
+          section by section: the tallest logo plate sets the first, the longest
+          name the second, the longest contact list the third. What used to do
+          this was a reserved title line and a cancelled mt-auto on the card,
+          each true of the seventeen names in data/shelters.yaml and of nothing
+          else. Nothing here is sized in advance now.
+
+          The implicit rows are auto, which is the default and is why no
+          grid-auto-rows is spelled out: the tracks are whatever the row's
+          contents need.
 
           Tailwind's preflight strips the marker and WebKit drops the list role
           with it, so role="list" is spelled out: without it this is announced
@@ -97,13 +109,26 @@ export function SheltersAtlas({
         {/* The eighteenth cell. Below the grid it was the loudest thing on the
             page under the h1 and it sat above the provenance line that is the
             page's actual credential; in the grid it is one card among the
-            shelters, which is what it is asking to become. */}
+            shelters, which is what it is asking to become.
+
+            row-span-3 and nothing else. It spans the same three rows a card
+            does, so the cells beside it keep the rhythm, but it is still a flex
+            column inside: it has no media, no title track and no footer, so
+            there is nothing here for a subgrid to line up with, and asking for
+            one would only pin these three paragraphs to tracks the cards own.
+
+            One thing to know if this block ever grows: an item spanning three
+            auto tracks that is taller than all three can hold spreads the
+            excess over them, so an invitation taller than every card in its row
+            would add air above those cards' logos as well as under their
+            contacts. It is shorter than a card with two contact rows today, and
+            it should stay that way. */}
         {invite && (
           <Card
             asChild
             className="border-dashed-muted border-dashed bg-transparent shadow-none"
           >
-            <li className="flex flex-col gap-2 p-5">
+            <li className="row-span-3 flex flex-col gap-2 p-5">
               <h3 className="font-medium">{invite.title}</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {invite.body}

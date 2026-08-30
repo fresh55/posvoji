@@ -57,6 +57,11 @@ export type ShelterCardText = {
 // Every contact sits under the name's stretched ::after, which covers the whole
 // card, so each needs relative + z-10 to take its own presses.
 //
+// data-contact on each row is a test contract, not decoration: the e2e suite
+// selects on roles and data attributes and never on classes, and the alignment
+// spec has to be able to ask for the phone row of one card and the phone row
+// of its neighbour. Nothing in the app reads it, so it looks unused. It is not.
+//
 // A row, not an icon. Behind a 24px glyph the number lived only in an
 // aria-label, so a desktop reader who had just found a stray could see that a
 // shelter had a phone and never what it was. min-h-9 keeps each row a real
@@ -84,6 +89,12 @@ function websiteLabel(url: string): string {
  * it, eleven wordmarks running from square to five times as wide started every
  * name at a different x; above it, each one can keep its own proportions
  * inside a fixed plate and no neighbouring line has to agree with it.
+ *
+ * The card is laid out on the grid row's own tracks (Item's subgrid layout),
+ * so its three sections are as tall as the tallest of that section across the
+ * row: the logos on one line, the contacts starting on one line. That is
+ * structural, and it holds for a name of any length and for a section that
+ * grows for a reason nobody has thought of yet.
  */
 export function ShelterCard({
   shelter,
@@ -95,7 +106,7 @@ export function ShelterCard({
   const host = shelter.website ? websiteLabel(shelter.website) : undefined;
 
   return (
-    <Item asChild variant="outline">
+    <Item asChild variant="outline" layout="subgrid">
       <li
         id={`zavetisce-${shelter.id}`}
         // relative, because the name's anchor stretches an ::after over this
@@ -110,25 +121,27 @@ export function ShelterCard({
             because it is the one thing on the card that only some shelters
             have. Under the town it was part of the text stack, so the eleven
             cards carrying it pushed their contacts a line below the six that
-            do not: at 1440px the first row's phones sat at 575, 603 and 575,
-            which is the stagger the footer's mt-0 and the title's reserved
-            line exist to prevent. Up here it shares a row that every card
-            draws at the same height whatever else is true, so the text below
-            starts at one y across the whole grid.
+            do not: at 1440px the first row's phones sat at 575, 603 and 575.
+            The subgrid would line those rows up now whatever the count did to
+            them, but it would do it by growing the content track on every card
+            in the row, which is a band of air under the six shorter names to
+            pay for a line on the eleven. Up here it shares a row every card
+            draws at the plate's height whatever else is true, and costs
+            nothing.
 
             It reads better for the scan, too. Ranged right on a fixed row, the
             counts form a column the eye can run down to find the shelters
             with animals, instead of appearing at whatever height each card's
             name happened to end. */}
         <ItemMedia className="justify-between gap-3">
-          {/* "wide" rather than "sm": this is the one place the whole set of
-              logos is drawn side by side, so it is the one place a wordmark
+          {/* "register" rather than "sm": this is the one place the whole set
+              of logos is drawn side by side, so it is the one place a wordmark
               shrunk by the plate's width is read against a square logo drawn
               at full height. See SIZE_CLASS. */}
           <ShelterAvatar
             name={shelter.name}
             logo={shelter.logo}
-            size="wide"
+            size="register"
             track
           />
 
@@ -155,25 +168,27 @@ export function ShelterCard({
         </ItemMedia>
 
         <ItemContent>
-          {/* Two title lines reserved, but only between sm and xl.
+          {/* No reserved second line here any more.
 
-              The contacts below are top-aligned so the rows line up by what
-              they are across a grid row (see the footer's comment), and that
-              only holds while the blocks above them are the same height. In
-              the two-column band the column is narrow enough that the longest
-              names wrap: at 768px two of the first row's names take one line
-              and one takes two, which pushed that card's phone row 22px below
-              its neighbour's. Reserving the second line makes a one-line and a
-              two-line name present the same block, so the rows meet again.
+              A sm:max-xl:min-h-[2lh] used to sit on this title, because in the
+              two-column band the longest names wrap and a two-line name pushed
+              its own contacts 22px below its neighbour's. Reserving a line made
+              the two present the same block. It held only while no name took
+              three, and a name long enough to take three is one row of
+              data/shelters.yaml away: the same measurement with a name that
+              wraps twice puts the phone rows 115px apart again, and nothing
+              says so.
 
-              Scoped sm:max-xl: because the band is the only place it is true.
-              Below sm there is one column and nothing to line up with, so the
-              reserved line would only be a gap under every short name; from xl
-              the third column is still wide enough that no name in the
-              register wraps, so there is nothing to reserve. The unit is lh,
-              the title's own line box, so this stays right if the title's font
-              size or leading-snug ever changes. */}
-          <ItemTitle asChild className="sm:max-xl:min-h-[2lh]">
+              The content track is the reservation now, and it is as tall as
+              the tallest title in the row whether that is one line or four.
+
+              The town stays with the name rather than with the track: where a
+              neighbour's name takes an extra line, the slack falls under the
+              pair and not between them. Lining the towns up too would want a
+              track of their own and would open a gap between a name and its
+              own town, which reads worse than a small line sitting a little
+              higher on one card than the next. */}
+          <ItemTitle asChild>
             <h3>
               <a
                 href={shelter.href}
@@ -190,27 +205,30 @@ export function ShelterCard({
           </ItemDescription>
         </ItemContent>
 
-        {(shelter.phone || shelter.email || shelter.website) && (
-          <ItemFooter asChild className="mt-0">
-            {/* ItemFooter carries the column; this card overrides its mt-auto
-                and takes only the row spacing on the list itself.
+        {/* The contacts sit in the row's third track, which is as tall as the
+            longest contact list in the row and starts at one y across it. The
+            slack a short list has left over falls to the bottom of the card,
+            where nothing is printed, rather than pushing its one row down to
+            sit level with a neighbour's last one. Item's subgrid layout is what
+            zeroes the mt-auto that would otherwise do exactly that.
 
-                mt-auto lines the blocks up by their bottom edge across a row,
-                which is the wrong edge here: the contacts are printed rows
-                rather than a bar of icons, so a card holding a phone alone had
-                its one row sitting level with its neighbours' email rows, a
-                phone reading across from an address, and a gap of air where
-                the town ended. Top-aligned, the rows line up by what they are
-                (phone with phone, email with email) and the slack a short card
-                has left over falls to the bottom of the card, where nothing is
-                printed.
+            What lines up is the position in the list, not the channel. The
+            three rows are always drawn in this order, so where two cards hold
+            the same channels a phone reads across from a phone; where one is
+            missing a channel the ones below it move up a row, and Zavetišče
+            Johanca, which holds only an email, prints it across from its
+            neighbours' phones. Fixing that would mean a track per channel and a
+            blank row printed on every card that lacks one, which is a hole in
+            the card to buy an alignment nobody reading one card can see.
 
-                The override is spelled on ItemFooter rather than on the ul,
-                because ItemFooter's className goes through cn(): tailwind-merge
-                drops the mt-auto and leaves one margin utility, where Slot
-                would have concatenated both classes and left the winner to
-                stylesheet order. ItemFooter itself is untouched; mt-auto is
-                still right for an item whose footer is a row of controls. */}
+            The footer is drawn whether or not there is anything to put in it.
+            Every one of the seventeen shelters holds a phone, an email or a
+            site today, so the empty case is unreachable from data/shelters.yaml
+            as it stands; a card that skipped the slot would still have to span
+            the track, and a card that renders an empty one does that without
+            being asked to remember. */}
+        {shelter.phone || shelter.email || shelter.website ? (
+          <ItemFooter asChild>
             <ul className="gap-0.5">
               {shelter.phone && (
                 // The visible number is the label and the accessible name adds
@@ -225,6 +243,7 @@ export function ShelterCard({
                 <li>
                   <a
                     href={telHref(shelter.phone)}
+                    data-contact="phone"
                     className={CONTACT_ROW}
                     aria-label={`${text.phone}: ${shelter.phone}`}
                     title={shelter.phone}
@@ -238,6 +257,7 @@ export function ShelterCard({
                 <li>
                   <a
                     href={mailtoHref(shelter.email)}
+                    data-contact="email"
                     className={CONTACT_ROW}
                     aria-label={`${text.email}: ${shelter.email}`}
                     title={shelter.email}
@@ -258,6 +278,7 @@ export function ShelterCard({
                     href={shelter.website}
                     target="_blank"
                     rel="noreferrer"
+                    data-contact="website"
                     className={CONTACT_ROW}
                     aria-label={`${text.website}: ${host} ${text.newWindow}`}
                     title={host}
@@ -269,6 +290,8 @@ export function ShelterCard({
               )}
             </ul>
           </ItemFooter>
+        ) : (
+          <ItemFooter />
         )}
       </li>
     </Item>

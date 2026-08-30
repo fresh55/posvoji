@@ -7,11 +7,22 @@ import { cn } from "@/lib/utils";
 // A logo is fitted by height and allowed to run wide, because shelter logos
 // are mostly wordmarks: forcing one into the square the fallback uses would
 // shrink it to an unreadable strip. The fallback letter stays square.
+//
+// xs, sm and lg are one scale, picked by how much room the placement has.
+// "register" is not a fourth step on it: it is a placement, and it is named
+// for the one it exists for, because what sets its numbers is not a size the
+// caller wanted but the fact that the register draws every logo in the set
+// side by side.
 const SIZE_CLASS = {
   // For chip-scale placements where sm's 44px chip crowds a compact card, the
   // map pick card's header being the first of these.
   xs: { chip: "h-9 max-w-24 px-1.5", logo: "h-6", fallback: "size-9 text-sm" },
   sm: { chip: "h-11 max-w-28 px-2", logo: "h-7", fallback: "size-11 text-base" },
+  lg: {
+    chip: "h-14 max-w-36 px-2.5",
+    logo: "h-9",
+    fallback: "size-14 text-lg",
+  },
   // sm's logo height with a plate wide enough for a wordmark, for the register
   // card, which is the only placement that draws every logo in the set side by
   // side and so the only one where their heights are compared.
@@ -27,15 +38,10 @@ const SIZE_CLASS = {
   // The fallback is h-12 square against a 128px logo plate, which is a wider
   // spread than sm's, so both plates take the same 48px height and read as one
   // family with the letter's own square kept.
-  wide: {
+  register: {
     chip: "h-12 max-w-32 px-2",
     logo: "h-7",
     fallback: "size-12 text-base",
-  },
-  lg: {
-    chip: "h-14 max-w-36 px-2.5",
-    logo: "h-9",
-    fallback: "size-14 text-lg",
   },
 } as const;
 
@@ -46,14 +52,14 @@ const SIZE_CLASS = {
 // column instead, so every name starts at the same x.
 //
 // sm's 80px is the measured median chip; xs and lg keep the same proportion to
-// their chip height, since no caller has measured them. wide's 128px is not a
-// median but the width the widest wordmark needs to stay readable, and it is
+// their chip height, since no caller has measured them. register's 128px is not
+// a median but the width the widest wordmark needs to stay readable, and it is
 // the same value as that size's max-w, so the track never squeezes a plate.
 const TRACK_CLASS = {
   xs: "w-16",
   sm: "w-20",
-  wide: "w-32",
   lg: "w-24",
+  register: "w-32",
 } as const;
 
 // Shelters draw their logo for their own site's background, so the ink is

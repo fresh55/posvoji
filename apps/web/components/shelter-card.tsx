@@ -180,7 +180,16 @@ export function ShelterCard({
               census line's shield: the pill's green is what says "shares its
               data", so the glyph is free to say what the number counts. */}
           {animals !== undefined && (
-            <p className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]">
+            // data-animals is a test contract, the same as data-contact on
+            // the rows below: the census line above the grid states how many
+            // shelters share a list and how many animals they hold, and the
+            // only way to check the page agrees with itself is to add these
+            // up. The number rather than the label, because Slovenian agrees
+            // the noun with it and a test should not be parsing the dual.
+            <p
+              data-animals={animals}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]"
+            >
               <PawPrint className="size-3 shrink-0" aria-hidden />
               {text.animals(animals)}
             </p>

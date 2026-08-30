@@ -17,6 +17,7 @@ import {
   shelterCount,
   waitingLabel,
 } from "@/lib/labels";
+import { shelterCensus } from "@/lib/shelter-census";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import {
@@ -130,11 +131,23 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   // readers of it: the card's marker, which prints one shelter's number, and
   // the census line, whose provider count is how many shelters are in here at
   // all. Counted off the dataset rather than off the cards, because it is the
-  // dataset that decides whether a shelter shares a list.
-  const animalsByShelter = new Map<string, number>();
-  for (const animal of animals) {
-    const id = animal.shelter.id;
-    animalsByShelter.set(id, (animalsByShelter.get(id) ?? 0) + 1);
+  // dataset that decides whether a shelter shares a list, and joined to the
+  // register there rather than here, so the two readers cannot come to
+  // different totals. See lib/shelter-census.ts.
+  const census = shelterCensus(shelters, animals);
+
+  // An animal at a shelter the register does not list has no card to be
+  // counted on, no detail page to link to and no permission recorded anywhere
+  // the site can see. It is a provider enabled ahead of its registry entry,
+  // which is a data fault rather than a page state, so the index refuses to
+  // render instead of publishing a census that disagrees with its own grid.
+  if (census.unregistered.length > 0) {
+    throw new Error(
+      "The dataset holds animals for shelters the register does not list: " +
+        `${census.unregistered.join(", ")}\n` +
+        "Add them to data/shelters.yaml or disable the provider. The register " +
+        "is the source of truth for which shelters exist.",
+    );
   }
 
   const collator = new Intl.Collator(locale === "sl" ? "sl" : "en");
@@ -144,7 +157,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       name: shelter.name,
       city: shelter.city,
       href: shelterPath(shelter.id, locale),
-      animals: animalsByShelter.get(shelter.id),
+      animals: census.byShelter.get(shelter.id),
       logo: logos[shelter.id],
       website: shelter.website,
       email: shelter.email,
@@ -154,11 +167,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       (a, b) =>
         collator.compare(a.city, b.city) || collator.compare(a.name, b.name),
     );
-
-  // The census's own number: how many shelters share a list at all. It states
-  // the total; which shelters they are, and with how many animals each, is
-  // what the cards' markers answer.
-  const withData = animalsByShelter.size;
 
   const registerDate = shelterRegisterDate();
   const asOf = registerDate
@@ -264,44 +272,58 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                   shelters.length > 0 && {
                     key: "shelters",
                     icon: Building2,
+                    count: shelters.length,
                     body: (
                       <span className="tabular-nums">
                         {shelterCount(shelters.length, locale)}
                       </span>
                     ),
                   },
-                  withData > 0 && {
+                  census.withData > 0 && {
                     key: "providers",
                     icon: ShieldCheck,
+                    count: census.withData,
                     body: (
                       <span>
                         {/* The count in the green the site marks a
                             data-sharing shelter with everywhere else, because
                             it is the same fact. */}
                         <span className="font-medium tabular-nums text-[var(--filter-accent-foreground)]">
-                          {withData}
+                          {census.withData}
                         </span>{" "}
-                        {sharesDataLabel(withData, locale)}
+                        {sharesDataLabel(census.withData, locale)}
                       </span>
                     ),
                   },
-                  animals.length > 0 && {
+                  census.animals > 0 && {
                     key: "animals",
                     icon: PawPrint,
+                    count: census.animals,
                     body: (
                       <span>
                         <span className="tabular-nums">
-                          {animalCount(animals.length, locale)}
+                          {animalCount(census.animals, locale)}
                         </span>{" "}
-                        {waitingLabel(animals.length, locale)}
+                        {waitingLabel(census.animals, locale)}
                       </span>
                     ),
                   },
                 ]
                   .filter((group) => group !== false)
-                  .map(({ key, icon: Icon, body }) => (
+                  .map(({ key, icon: Icon, count, body }) => (
+                    // data-census and data-count are a test contract, not
+                    // decoration, the same as data-contact on the cards'
+                    // rows. What has to be checkable from the rendered page
+                    // is that this line and the grid's green pills agree:
+                    // one pill per shelter counted here, and the pills adding
+                    // up to the total. Read off an attribute rather than the
+                    // text, because Slovenian agrees the noun with the number
+                    // and a test parsing "186 živali" would be parsing the
+                    // dual as well.
                     <span
                       key={key}
+                      data-census={key}
+                      data-count={count}
                       className="flex items-center gap-1.5 py-0.5 sm:px-4 sm:first:pl-0 sm:last:pr-0"
                     >
                       <Icon className="size-3.5 shrink-0" aria-hidden />

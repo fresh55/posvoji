@@ -255,4 +255,60 @@ test.describe("the shelters register", () => {
     // And the page itself does not scroll sideways at a phone's width.
     expect(geometry.overflow).toBeLessThanOrEqual(1);
   });
+
+  // The page's arithmetic, which is the other thing on it that can be wrong
+  // without anything looking wrong.
+  //
+  // The census line and the grid's green pills state the same fact twice: how
+  // many shelters share a list with us, and how many animals they hold. They
+  // are counted once now, in lib/shelter-census.ts, and that is unit tested;
+  // what is checked here is that the two things the page draws off that count
+  // are still drawing off it. A census wired to the dataset's own totals and
+  // pills wired to the register would agree today and disagree the first time
+  // a provider was enabled ahead of its registry entry, which is exactly the
+  // sort of change nobody looks at this page after.
+  //
+  // Read off data-census, data-count and data-animals rather than the text.
+  // Slovenian agrees the noun with the number and has a dual, so "186 živali",
+  // "2 živali" and "1 žival" are three different shapes; a test parsing them
+  // would be testing lib/labels.ts by accident.
+  test("prints a census the grid's own pills add up to", async ({ page }) => {
+    await page.goto(REGISTER);
+    await expect(page.locator(CARD).first()).toBeVisible();
+
+    const counted = await page.evaluate((cardSelector) => {
+      const number = (element: Element | null, attribute: string) =>
+        element ? Number(element.getAttribute(attribute)) : null;
+
+      const group = (key: string) =>
+        number(document.querySelector(`[data-census="${key}"]`), "data-count");
+
+      return {
+        shelters: group("shelters"),
+        providers: group("providers"),
+        animals: group("animals"),
+        cards: document.querySelectorAll(cardSelector).length,
+        pills: [...document.querySelectorAll("[data-animals]")].map(
+          (pill) => Number(pill.getAttribute("data-animals")),
+        ),
+      };
+    }, CARD);
+
+    // The register's own two numbers: a card per shelter counted.
+    expect(counted.shelters).toBe(counted.cards);
+
+    // One pill per shelter the census says shares a list, and no pill
+    // printing a zero, which is the rule the card is written to.
+    expect(counted.pills.length).toBe(counted.providers);
+    expect(counted.pills.every((count) => count > 0)).toBe(true);
+
+    // And the total is what those pills add up to.
+    const summed = counted.pills.reduce((sum, count) => sum + count, 0);
+    expect(summed).toBe(counted.animals);
+
+    // The honest half, the same as `compared` above: every assertion here
+    // passes trivially against a page that rendered nothing.
+    expect(counted.cards).toBeGreaterThan(0);
+    expect(counted.pills.length).toBeGreaterThan(0);
+  });
 });

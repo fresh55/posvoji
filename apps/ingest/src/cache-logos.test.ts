@@ -227,16 +227,30 @@ describe("discoverLogoUrl", () => {
 
 describe("processLogo", () => {
   it("fits a logo inside the box without enlarging it", async () => {
-    const processed = await processLogo(await pngBytes(300));
-    expect(processed.width).toBe(128);
-    expect(processed.height).toBe(128);
+    const processed = await processLogo(await pngBytes(600));
+    expect(processed.width).toBe(384);
+    expect(processed.height).toBe(384);
     expect(processed.file).toMatch(/^[0-9a-f]{16}\.webp$/);
     expect(processed.chipOnLight).toBe(false);
   });
 
-  it("leaves a small logo at its own size", async () => {
+  it("leaves a small raster logo at its own size", async () => {
     const processed = await processLogo(await pngBytes(40));
     expect(processed.width).toBe(40);
+  });
+
+  // A vector has no size of its own, only the one its author typed. Rendering
+  // it at that size and then refusing to enlarge the bitmap pinned Maribor's
+  // mark, which declares width="85", to 85px: the most scalable source in the
+  // register produced the smallest copy in it.
+  it("draws a vector at the size it is kept at, not the size it declares", async () => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="85" height="40" viewBox="0 0 85 40">' +
+        '<rect width="85" height="40" fill="#101010"/></svg>',
+    );
+
+    const processed = await processLogo(svg);
+    expect(processed.width).toBeGreaterThan(300);
   });
 
   // The site sizes a logo by the cached file's dimensions, so a transparent

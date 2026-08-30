@@ -3,6 +3,15 @@ import type { Locale, Messages } from "@/lib/i18n";
 
 export type SiteLinkKey = "shelters" | "foundAnimal" | "resources" | "portal";
 
+/** The resources page in both locales, the same contract FOUND_ANIMAL_PATHS
+ *  keeps for the lookup. The pair had been written out by hand in three
+ *  places, which is two more than can be kept in step: the roster below, the
+ *  page's own language switcher, and the sitemap. */
+export const RESOURCES_PATHS = {
+  sl: "/viri",
+  en: "/en/resources",
+} as const;
+
 export type SiteLink = {
   key: SiteLinkKey;
   href: string;
@@ -62,7 +71,7 @@ export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
     // there means saying so in site-footer.tsx too.
     {
       key: "resources",
-      href: locale === "sl" ? "/viri" : "/en/resources",
+      href: RESOURCES_PATHS[locale],
       label: messages.resources,
       hidden: true,
     },

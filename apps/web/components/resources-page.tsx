@@ -3,6 +3,7 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { RESOURCES_PATHS } from "@/lib/site-links";
 import { Card } from "@/components/ui/card";
 
 type LocalizedText = Record<Locale, string>;
@@ -272,7 +273,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
           homeHref={homeHref}
-          languagePaths={{ sl: "/viri", en: "/en/resources" }}
+          languagePaths={RESOURCES_PATHS}
         />
 
         <main className="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">

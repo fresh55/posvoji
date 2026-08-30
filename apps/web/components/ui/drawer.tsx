@@ -72,6 +72,10 @@ function DrawerContent({
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
+          // The sheet stays full-bleed. A horizontal inset on the frame leaves
+          // the overlay showing down the notch side and draws this border where
+          // it used to be off-screen; the way to clear an inset here is to pad
+          // the content, which filter-sheet.tsx already does for the bottom.
           "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[96%] flex-col rounded-ui-top border bg-popover text-popover-foreground shadow-lg",
           className
         )}

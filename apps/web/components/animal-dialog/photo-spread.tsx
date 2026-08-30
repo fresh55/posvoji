@@ -275,6 +275,10 @@ function PhoneFanPhoto({
           : { ...FAN_SPRING, delay: entrance }
       }
     >
+      {/* Decorative on purpose: the button around it is already named
+          "Pokaži fotografijo 2" / "Odpri fotografijo 2 ...", and an alt here
+          would say the same photo twice. The lightbox this opens is where the
+          picture gets its own alternative. */}
       <AnimalPhoto photo={photo} alt="" sizes={PHOTO_SIZES} className="object-cover" />
       {/* The count sits on the photo being looked at, and it is what tells
           you how many there are in total. */}
@@ -697,6 +701,8 @@ export function PhotoSpread({
                       }
                 }
               >
+                {/* Decorative, same as the phone fan's: the button around it
+                    already names which photo this is. */}
                 <AnimalPhoto
                   photo={images[index]}
                   alt=""

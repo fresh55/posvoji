@@ -34,7 +34,9 @@ def me_payload(user) -> dict:
     shelters = Shelter.objects.filter(memberships__user=user).order_by("name")
     return {
         "email": user.email,
-        "shelters": [{"slug": s.slug, "name": s.name} for s in shelters],
+        "shelters": [
+            {"slug": s.slug, "name": s.name, "city": s.city} for s in shelters
+        ],
     }
 
 

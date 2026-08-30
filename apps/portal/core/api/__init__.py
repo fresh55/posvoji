@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 from ..security import session_auth
 from .animals import router as animals_router
 from .auth import router as auth_router
+from .dev import router as dev_router
 from .export import router as export_router
 
 api = NinjaAPI(
@@ -13,6 +14,9 @@ api = NinjaAPI(
 )
 
 api.add_router("", auth_router, tags=["auth"])
+# Answers 404 for every route unless PORTAL_DEV_LOGIN is on, which DEBUG
+# gates. Registered unconditionally so the check lives in one place.
+api.add_router("", dev_router, tags=["dev"])
 api.add_router("", animals_router, tags=["animals"])
 api.add_router("", export_router, tags=["export"])
 

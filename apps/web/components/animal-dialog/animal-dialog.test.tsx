@@ -669,6 +669,25 @@ describe("animal dialog", () => {
     );
   });
 
+  // The wash reaches 12% past the stage on each side, which on a phone is 124%
+  // of the screen, and the dialog answered with a horizontal scrollbar. jsdom
+  // has no layout to measure, so what is pinned is the clip that stops it,
+  // where the overhang stands. The dialog's own max-sm:overflow-x-hidden is
+  // policy for the whole surface, not this fix, so it is not asserted here.
+  it("clips the stage wash rather than letting it widen the dialog", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    await waitFor(() => expect(washImage(dialog)).toBeTruthy());
+    const stage = slot(dialog, "photo-wash").parentElement;
+    expect(stage).toBeTruthy();
+    expect(stage?.className).toContain("overflow-x-clip");
+    // The overhang is decoration from sm up, where it has room inside the
+    // dialog, so the clip belongs to the phone alone.
+    expect(stage?.className).toContain("sm:overflow-x-visible");
+  });
+
   // A link straight to an animal has no card to grow out of, so the dialog
   // falls back to the zoom it always had rather than flying a photo in from
   // nowhere.
@@ -709,7 +728,11 @@ describe("animal dialog", () => {
     );
     expect(window.history.length).toBe(entries);
     expect(window.history.state?.animal).toBe(true);
-    expect(within(animalDialog()).getByText("Muri")).toBeTruthy();
+    // By its heading: the sr-only line that announces the step carries the
+    // same name, and a plain text match now finds both.
+    expect(
+      within(animalDialog()).getByRole("heading", { name: "Muri" }),
+    ).toBeTruthy();
 
     // One step back still closes, rather than walking the animals in reverse.
     await act(async () => {
@@ -717,6 +740,33 @@ describe("animal dialog", () => {
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(window.location.pathname).toBe("/");
+  });
+
+  // Radix speaks the title once, on open. A title that changes afterwards is
+  // not announced again, so the arrows and the page keys used to move a screen
+  // reader to a different animal without a word.
+  it("announces the animal it stepped to, and not the one it opened on", async () => {
+    renderGrid();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+
+    expect(slot(dialog, "animal-announcement").textContent).toBe("");
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Naslednja žival" }),
+    );
+    await waitFor(() =>
+      expect(slot(animalDialog(), "animal-announcement").textContent).toBe(
+        "Muri",
+      ),
+    );
+
+    fireEvent.keyDown(animalDialog(), { key: "PageUp" });
+    await waitFor(() =>
+      expect(slot(animalDialog(), "animal-announcement").textContent).toBe(
+        "Rex",
+      ),
+    );
   });
 
   it("walks the list with the page keys and stops at the ends", async () => {
@@ -787,6 +837,37 @@ describe("animal dialog", () => {
     expect(within(panel).getByRole("status").textContent).toBe(
       "Povezava kopirana",
     );
+  });
+
+  // The confirmation used to sit in the tree from the start with its words
+  // already in it, fading in on a copy. A live region whose text never changes
+  // has nothing to announce, so the copy was silent.
+  it("says the link was copied only once it has been", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
+    });
+    const sheet = await screen.findByText("Deli to žival");
+    const panel = sheet.closest("[data-slot=popover-content]") as HTMLElement;
+
+    // Mounted and empty: the region has to be there before its text arrives.
+    const status = within(panel).getByRole("status");
+    expect(status.textContent).toBe("");
+
+    await act(async () => {
+      fireEvent.click(
+        within(panel).getByRole("button", { name: "Kopiraj povezavo" }),
+      );
+    });
+
+    expect(status.textContent).toBe("Povezava kopirana");
   });
 
   it("offers the platform's own share sheet when there is one", async () => {

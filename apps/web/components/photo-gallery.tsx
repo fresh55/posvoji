@@ -340,9 +340,25 @@ export function PhotoGallery({
       photo={image}
       // Empty when the photo is a link, because that anchor is aria-hidden and
       // the card names the animal twice over already: in its heading and in
-      // the link the heading sits inside. "Rex" is not a text alternative for
-      // a photograph of Rex, and it does not change when the gallery does.
-      alt={href ? "" : (name ?? messages.unnamed)}
+      // the link the heading sits inside.
+      //
+      // On a plain surface the picture is the only thing there, so it gets a
+      // real alternative. "Rex" alone was not one: it names the subject and
+      // reads the same for every photo in the set, so the position goes in it
+      // and the alt changes as the gallery is walked.
+      alt={
+        href
+          ? ""
+          : translate(
+              locale,
+              images.length > 1 ? "photoAlt" : "photoAltSingle",
+              {
+                name: name ?? messages.unnamed,
+                current: imageIndex + 1,
+                total: images.length,
+              },
+            )
+      }
       sizes={sizes}
       eager={eager}
       avif={avif}

@@ -27,7 +27,7 @@ export function PortalShell({
       {/* One motion feature bundle for the whole portal, so no page or card
           has to carry its own. */}
       <LazyMotion features={domAnimation}>
-        <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+        <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
           <header className="bleed flex items-center justify-between gap-3 border-b py-4">
             {/* The site is a static export and navigates with plain anchors
                 everywhere; next/link is not used in this repo. */}

@@ -17,6 +17,7 @@ import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { speciesLabel } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 
 const pageText = {
   sl: {
@@ -48,7 +49,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
           homeHref={indexHref}
           languagePaths={{
@@ -71,7 +72,9 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           <div className="space-y-5">
             <PageBreadcrumb locale={locale} current={animal.name ?? text.back} />
 
-            <div className="grid gap-8 sm:grid-cols-2 sm:items-start">
+            {/* Two columns only when there is a photo to fill the first one.
+                Without one the facts column sat alone beside an empty half. */}
+            <div className={cn("grid gap-8", hasPhoto && "sm:grid-cols-2 sm:items-start")}>
             {hasPhoto && (
               <PhotoGallery
                 // Resolved here rather than by the grid's client projection:

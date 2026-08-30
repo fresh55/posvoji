@@ -10,39 +10,11 @@ from pathlib import Path
 
 import yaml
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from core.accounts import ensure_user
 from core.models import Shelter, ShelterMembership
-
-USERNAME_MAX_LENGTH = 150
-
-
-def _unique_username(email: str) -> str:
-    user_model = get_user_model()
-    base = email.strip().lower()[:USERNAME_MAX_LENGTH]
-    candidate = base
-    suffix = 2
-    while user_model.objects.filter(username=candidate).exists():
-        tail = f"-{suffix}"
-        candidate = f"{base[: USERNAME_MAX_LENGTH - len(tail)]}{tail}"
-        suffix += 1
-    return candidate
-
-
-def _ensure_user(email: str) -> tuple[object, bool]:
-    user_model = get_user_model()
-    user = user_model.objects.filter(email__iexact=email).order_by("pk").first()
-    if user is not None:
-        return user, False
-    # No password is ever set: the portal authenticates by magic link only.
-    user = user_model.objects.create_user(
-        username=_unique_username(email),
-        email=email,
-        password=None,
-    )
-    return user, True
 
 
 class Command(BaseCommand):
@@ -98,7 +70,7 @@ class Command(BaseCommand):
                 without_email.append(slug)
                 continue
 
-            user, user_created = _ensure_user(email)
+            user, user_created = ensure_user(email)
             users_created += int(user_created)
             _, membership_created = ShelterMembership.objects.get_or_create(
                 user=user, shelter=shelter

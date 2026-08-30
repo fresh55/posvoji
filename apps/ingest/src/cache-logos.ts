@@ -201,6 +201,19 @@ export async function inkTone(image: Buffer): Promise<LogoTone> {
   return dark / counted < 0.03 && nearWhite / counted > 0.5 ? "light" : "dark";
 }
 
+// The margin a source file carries is not the mark. Several shelters export
+// their logo with a wide transparent apron, and the site sizes a logo by the
+// cached file's dimensions, so an untrimmed apron shrinks the drawn ink by
+// exactly its share of the box. A uniform image makes trim throw; it has no
+// margin to lose, so it is used as it came.
+async function trimmed(source: Buffer): Promise<Buffer> {
+  try {
+    return await sharp(source).trim({ threshold: 10 }).toBuffer();
+  } catch {
+    return source;
+  }
+}
+
 // Logos are line art and flat colour with transparency, so they are fitted
 // inside a box rather than cropped, and the alpha channel is kept.
 export async function processLogo(source: Buffer): Promise<{
@@ -210,7 +223,7 @@ export async function processLogo(source: Buffer): Promise<{
   height: number;
   tone: LogoTone;
 }> {
-  const { data, info } = await sharp(source)
+  const { data, info } = await sharp(await trimmed(source))
     .resize({
       width: MAX_SIZE,
       height: MAX_SIZE,
@@ -308,15 +321,33 @@ export async function cacheLogos(
     );
   }
 
-  // A kept entry with its tone re-measured from the cached bytes. An
-  // unreadable file keeps its recorded tone; the next revalidation replaces
-  // it anyway.
-  const retoned = async (entry: CachedLogoEntry): Promise<CachedLogoEntry> => {
+  // A kept entry re-judged from the cached bytes. The tone rule and the trim
+  // are judgements about bytes we already hold, so a change to either has to
+  // reach a logo that keeps answering 304, not wait for the shelter to
+  // redesign it. The file is rewritten only when trimming would actually
+  // change its dimensions: a re-encode of unchanged pixels is not
+  // byte-stable, so rewriting unconditionally would mint a new content hash
+  // every run. An unreadable file keeps its entry; the next revalidation
+  // replaces it anyway.
+  const refreshed = async (entry: CachedLogoEntry): Promise<CachedLogoEntry> => {
     try {
-      return {
-        ...entry,
-        tone: await inkTone(readFileSync(join(logosDir, entry.file))),
-      };
+      const bytes = readFileSync(join(logosDir, entry.file));
+      const alreadyTrim = await sharp(await trimmed(bytes)).metadata();
+      if (
+        alreadyTrim.width !== entry.width ||
+        alreadyTrim.height !== entry.height
+      ) {
+        const processed = await processLogo(bytes);
+        writeContentAddressed(join(logosDir, processed.file), processed.data);
+        return {
+          ...entry,
+          file: processed.file,
+          width: processed.width,
+          height: processed.height,
+          tone: processed.tone,
+        };
+      }
+      return { ...entry, tone: await inkTone(bytes) };
     } catch {
       return entry;
     }
@@ -336,12 +367,9 @@ export async function cacheLogos(
       stored !== undefined &&
       stored.tone !== undefined &&
       existsSync(join(logosDir, stored.file));
-    // The tone is a judgement about the cached bytes, not a fact fetched with
-    // them, so a kept copy gets today's judgement: without this, a change to
-    // inkTone would never reach a logo that keeps answering 304.
-    //
+    // A kept copy gets today's judgement of its bytes (see refreshed above).
     // prev stays a const so the prevUsable checks below keep narrowing it.
-    const prev = storedUsable ? await retoned(stored) : undefined;
+    const prev = storedUsable ? await refreshed(stored) : undefined;
     const prevUsable = prev !== undefined;
     // Keep what we have, take nothing new. Reached by every failure path
     // below, and none of them counts as a fetch or a reuse.

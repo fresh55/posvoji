@@ -238,6 +238,31 @@ describe("processLogo", () => {
     const processed = await processLogo(await pngBytes(40));
     expect(processed.width).toBe(40);
   });
+
+  // The site sizes a logo by the cached file's dimensions, so a transparent
+  // apron around the mark shrinks the drawn ink by its share of the box.
+  it("trims transparent margins down to the mark", async () => {
+    const ink = await sharp({
+      create: { width: 20, height: 12, channels: 4, background: "#101010" },
+    })
+      .png()
+      .toBuffer();
+    const padded = await sharp({
+      create: {
+        width: 96,
+        height: 96,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([{ input: ink, left: 38, top: 42 }])
+      .png()
+      .toBuffer();
+
+    const processed = await processLogo(padded);
+    expect(processed.width).toBe(20);
+    expect(processed.height).toBe(12);
+  });
 });
 
 describe("inkTone", () => {

@@ -348,12 +348,6 @@ export function timeInShelter(
 // so they cannot disagree about who counts as waiting long.
 export const LONG_STAY_MONTHS = 36;
 
-// Past this the card stops saying it quietly. Five years is the top few
-// percent of the dataset (24 of 503 at the time of writing, against 101
-// wearing the three-year mark), which is what keeps a louder mark meaning
-// anything.
-export const EMPHATIC_STAY_MONTHS = 60;
-
 // The wait in months of an animal that has waited long and is actually up
 // for adoption, or undefined. Reserved and held animals are not waiting for
 // the visitor's decision, and an adopted one's stay is history.

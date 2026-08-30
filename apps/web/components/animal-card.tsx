@@ -22,7 +22,6 @@ import type { SpeciesFilter } from "@/lib/filters";
 import {
   ageLabel,
   animalMetaParts,
-  EMPHATIC_STAY_MONTHS,
   longStayMonths,
   META_DOT_CLASS,
   META_SEPARATOR,
@@ -81,8 +80,6 @@ export function AnimalCard({
   // animal dropped the rest.
   const photoCount = animal.images.length;
   const waitMonths = longStayMonths(animal, reference);
-  const wait =
-    waitMonths === undefined ? undefined : ageLabel(waitMonths, locale);
   // The animal's own page, which is also what the dialog writes to the
   // address bar when this card is clicked. Filters are deliberately left out:
   // the href is written at build time, where the visitor's filters do not
@@ -200,7 +197,7 @@ export function AnimalCard({
             overlay
             className="absolute left-1.5 top-1.5"
           />
-          {wait && (
+          {waitMonths !== undefined && (
             // On the photo, opposite the counter, for the same reason the
             // status is: it is a flag about the animal's situation, not one of
             // the animal's own facts. Off the text block it stops competing
@@ -216,26 +213,21 @@ export function AnimalCard({
             // that case, because an animal that grew up in the shelter has
             // waited exactly as long as it has been alive. The verb settles it
             // in four characters and pays for them with the icon.
-            // Two tiers of the same mark, and neither of them amber. On the
-            // "Vse" tab most visible cards carry it, and a solid warm pill on
-            // every photo is an alarm ringing so often it stops being one.
-            // The blurred quiet pill is the base tier; past
-            // EMPHATIC_STAY_MONTHS it inverts instead, because in a crowd of
-            // quiet marks the waits that run to five years and past
-            // disappeared. The filled warm treatment stays with the status
-            // badge, which really does disqualify a card.
+            //
+            // One quiet tier, and not amber. A solid warm pill on every photo
+            // is an alarm ringing so often it stops being one, and the filled
+            // warm treatment stays with the status badge, which really does
+            // disqualify a card. A second, louder tier for the longest waits
+            // does not work either: the default sort is longest in shelter, so
+            // every card above the fold would wear it.
             //
             // Top right, opposite the status. The bottom edge belongs to the
             // gallery dots now, and on a phone card the two met in the middle.
             <Badge
-              variant={
-                waitMonths !== undefined && waitMonths >= EMPHATIC_STAY_MONTHS
-                  ? "overlay-strong"
-                  : "overlay-quiet"
-              }
+              variant="overlay-quiet"
               className="absolute right-1.5 top-1.5"
             >
-              {t("longStayMark", { duration: wait })}
+              {t("longStayMark", { duration: ageLabel(waitMonths, locale) })}
             </Badge>
           )}
         </div>
@@ -254,14 +246,11 @@ export function AnimalCard({
           // the pt on the sibling is the gap this anchor no longer spans, and
           // its pb-3 is this one's missing bottom.
           //
-          // gap-1 and not space-y-1. space-y-* puts a margin on
-          // :not(:last-child), and :last-child is structural: at sm and up the
-          // phone-only wait line is display:none but still a child, so the meta
-          // stopped being last, took a 4px bottom margin, and collapsed it
-          // straight through an anchor that has no bottom padding. Every card
-          // carrying a wait label sat its shelter line 4px lower than its
-          // neighbours'. gap is not a margin, never collapses, and is not
-          // emitted for a hidden item.
+          // gap-1 and not space-y-1. space-y-* is a margin on
+          // :not(:last-child), so the moment a child here is conditional or
+          // hidden at a breakpoint, the one above it takes a 4px bottom margin
+          // and collapses it through an anchor with no bottom padding. That
+          // shipped once, when the wait line was still in this block.
           className="flex flex-col gap-1 px-3 pt-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background"
         >
           {/* The name owns its line. It used to share one with the status

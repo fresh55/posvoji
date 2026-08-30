@@ -74,6 +74,14 @@ describe("animalDescription", () => {
     expect(description).not.toContain("najlepša");
   });
 
+  // The card's line is cut to a card's width; this sentence is not. Named on
+  // its own because the two tests above assert other contracts and could be
+  // rewritten without noticing that the sex went with them.
+  it("keeps the sex the card's line gave up", () => {
+    expect(animalDescription(animal(), "sl", REFERENCE)).toContain("samica");
+    expect(animalDescription(animal(), "en", REFERENCE)).toContain("female");
+  });
+
   it("says so when the animal is no longer waiting", () => {
     const adopted = animal({ status: "adopted" });
     expect(animalDescription(adopted, "sl", REFERENCE)).toContain(

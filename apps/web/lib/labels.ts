@@ -26,11 +26,6 @@ const SPECIES: Record<Locale, Record<Species, string>> = {
   },
 };
 
-const SEX: Record<Locale, Record<Sex, string>> = {
-  sl: { male: "samec", female: "samica", unknown: "" },
-  en: { male: "male", female: "female", unknown: "" },
-};
-
 // Slovenian has a dual, so 1, 2, 3-4 and 5+ each take a different form.
 function pick(
   n: number,
@@ -241,6 +236,35 @@ export function sheltersDropped(n: number, locale: Locale): string {
   return `${participle} ${shelterCount(n, locale)}.`;
 }
 
+// What the next press on an armed region will do, said before it does it.
+//
+// On a pointer that cannot hover the first tap names a region and the second
+// commits every shelter in it, and a name and two counts do not say what the
+// second tap is about to take. "Osrednjeslovenska · 4 zavetišča · 31 živali"
+// reads as a description of the shape; the visitor still has to guess that
+// pressing it again picks all four. This is the sentence that stops the guess,
+// and the callout and the region's own aria-label both carry it, so the eye
+// and the screen reader are told the same thing.
+//
+// Both directions, because the commit is a toggle: a region whose shelters are
+// all picked already is dropped by that second tap, and a callout promising to
+// select them would be describing the opposite of what happens.
+//
+// shelterCount serves both verbs with no second set of forms. It returns the
+// nominative, and the accusative "izbere"/"odstrani" put their object in is
+// identical for a neuter noun in every form the ladder has: zavetišče,
+// zavetišči, zavetišča, zavetišč.
+export function regionCommitNote(
+  n: number,
+  dropping: boolean,
+  locale: Locale,
+): string {
+  if (locale === "en") {
+    return `${dropping ? "Removes" : "Selects"} ${shelterCount(n, locale)}`;
+  }
+  return `${dropping ? "Odstrani" : "Izbere"} ${shelterCount(n, locale)}`;
+}
+
 // An age of zero months is a number nobody says out loud.
 export function ageLabel(months: number, locale: Locale): string {
   if (months === 0) return translate(locale, "lessThanMonth");
@@ -251,25 +275,6 @@ export function speciesLabel(species: Species, locale: Locale): string {
   return SPECIES[locale][species];
 }
 
-// "Mačka · samica · 2 leti", skipping whatever we don't know.
-//
-// `species` is the grid's active tab. When it names one species, the word
-// comes off: the tab already said it, and repeating it costs the line the room
-// it needs. At a 390px phone the content box is 145px and
-// "Mačka · samica · 11 mesecev" is 192px, so 263 of 503 cards wrapped and
-// orphaned the unit onto a second line ("Mačka · samica · 11" / "mesecev").
-// Without the species word exactly one animal in the registry still wraps.
-// "Mačka" is 43px against "Pes" at 24px, which is why this read as a cat
-// problem.
-//
-// Size takes the slot the species word vacated, and only that slot. It is on
-// 44% of dogs and 16% of cats, which is thin, but it is the only field left
-// with enough coverage to be worth a place, and it is a thing people decide
-// on. Adding it as a fourth item instead put the line straight back over the
-// edge it had just been pulled off: three items is what the card's width buys
-// at every breakpoint, so the line trades one for one rather than growing.
-// Lowercased, because in a middot list of lowercase attributes "Srednja"
-// reads as the start of a new sentence.
 /** The separator between the meta line's facts. Exported because the card
  *  draws the parts itself to dim these, and a private literal split back out
  *  of the joined string in another file is a contract nothing enforces. */
@@ -280,10 +285,26 @@ export const META_SEPARATOR = " · ";
  *  the card's meta line and the shelter header's do not drift apart. */
 export const META_DOT_CLASS = "text-muted-foreground/50";
 
-/** The facts themselves, in order, with the empty ones dropped. The card maps
- *  over these so it can style the separators without splitting the joined
- *  string back apart; animalMeta below is this joined, for the callers that
- *  want one string. */
+/** The card's fact line, as its parts: "Mačka · 2 leti", skipping whatever we
+ *  don't know. The card maps over these so it can style the separators without
+ *  splitting a joined string back apart.
+ *
+ *  Two facts, and which two depends on the tab. That is what the card's width
+ *  buys on a phone, and a third wraps onto a second line, which makes every
+ *  card in that grid row taller.
+ *
+ *  `species` is the grid's active tab. When it names one species the word comes
+ *  off, because the tab already said it and "Mačka" is nearly twice the width
+ *  of "Pes", which is why the wrapping read as a cat problem. Size takes that
+ *  vacated slot and only that slot: it is on 44% of dogs and 16% of cats, which
+ *  is thin, but it is the only field left with the coverage to be worth a place
+ *  and it is a thing people decide on. Lowercased, because in a middot list of
+ *  lowercase attributes "Srednja" reads as the start of a new sentence.
+ *
+ *  Sex is the fact that gave up its place once size took the species word's: it
+ *  is the one here that does not change what a visitor taps next. It stays a
+ *  filter, a fact on the animal's own page, and a word in the link preview's
+ *  sentence, which composes its own list for that reason (animal-share.ts). */
 export function animalMetaParts(
   animal: AnimalFields,
   locale: Locale = "sl",
@@ -291,27 +312,23 @@ export function animalMetaParts(
   species: SpeciesFilter = "all",
 ): string[] {
   const months = ageInMonths(animal, now);
+  const age = months !== undefined ? ageLabel(months, locale) : "";
   // Only a tab that names one species has already said the word. The merged
   // Ostale tab holds rabbits and whatever else, so there the line still has
-  // to say which animal this is.
+  // to say which animal this is. Two literals of two rather than one of three
+  // with a hole in it, so "at most two, and which two" is what the code says
+  // rather than something the reader derives from a flag read twice.
   const named = species === "dog" || species === "cat";
-  return [
-    named ? "" : speciesLabel(animal.species, locale),
-    animal.sex ? SEX[locale][animal.sex] : "",
-    months !== undefined ? ageLabel(months, locale) : "",
-    named && animal.size
-      ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)
-      : "",
-  ].filter(Boolean);
-}
-
-export function animalMeta(
-  animal: AnimalFields,
-  locale: Locale = "sl",
-  now: Date = new Date(),
-  species: SpeciesFilter = "all",
-): string {
-  return animalMetaParts(animal, locale, now, species).join(META_SEPARATOR);
+  return (
+    named
+      ? [
+          age,
+          animal.size
+            ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)
+            : "",
+        ]
+      : [speciesLabel(animal.species, locale), age]
+  ).filter(Boolean);
 }
 
 // Whole months since intake, same arithmetic as ageInMonths in filters.ts but

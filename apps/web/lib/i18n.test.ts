@@ -5,7 +5,8 @@ import { groupLabel, groupOptions, toggleLabel } from "./filters";
 import {
   allShelters,
   animalCount,
-  animalMeta,
+  animalMetaParts,
+  META_SEPARATOR,
   monthsInShelter,
   shelterCount,
   sheltersMissingFromMap,
@@ -13,6 +14,11 @@ import {
   statusLabel,
   timeInShelter,
 } from "./labels";
+
+// The card renders these parts separately so it can dim the separators; joined
+// is the form a reader checks a translation against.
+const meta = (animal: Animal, locale: "sl" | "en", now?: Date) =>
+  animalMetaParts(animal, locale, now).join(META_SEPARATOR);
 
 describe("translations", () => {
   it("interpolates translated messages", () => {
@@ -45,8 +51,10 @@ describe("localized labels", () => {
       approximateAgeMonths: 18,
     } as Animal;
 
-    expect(animalMeta(animal, "sl")).toBe("Pes · samica · 1 leto");
-    expect(animalMeta(animal, "en")).toBe("Dog · female · 1 year");
+    // The fixture carries a sex and the line does not: two facts is all the
+    // card's width buys, so the sex reads on the animal's own page instead.
+    expect(meta(animal, "sl")).toBe("Pes · 1 leto");
+    expect(meta(animal, "en")).toBe("Dog · 1 year");
   });
 
   it("derives card age from a known birth date", () => {
@@ -57,8 +65,8 @@ describe("localized labels", () => {
     } as Animal;
     const now = new Date("2026-08-18T00:00:00Z");
 
-    expect(animalMeta(animal, "sl", now)).toBe("Mačka · samica · 2 leti");
-    expect(animalMeta(animal, "en", now)).toBe("Cat · female · 2 years");
+    expect(meta(animal, "sl", now)).toBe("Mačka · 2 leti");
+    expect(meta(animal, "en", now)).toBe("Cat · 2 years");
   });
 
   it("translates filter choices", () => {

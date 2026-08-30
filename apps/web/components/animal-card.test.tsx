@@ -204,14 +204,21 @@ describe("AnimalCard meta line", () => {
     // The middots are spans of their own now, so the sentence is read off the
     // element rather than matched as one text node. Found through the card's
     // heading, so it stays the meta line even if the card grows another <p>.
-    expect(metaLine()).toBe("Pes · samec · 3 leta");
+    //
+    // The fixture carries a sex, which is what makes the exact string prove
+    // the line leaves it out. Two facts is all the card's width buys.
+    expect(metaLine()).toBe("Pes · 3 leta");
   });
 
   it("drops the species once a tab has already said it", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
-          animal={animal({ sex: "male", approximateAgeMonths: 36 })}
+          animal={animal({
+            sex: "male",
+            approximateAgeMonths: 36,
+            size: "medium",
+          })}
           reference={NOW}
           species="dog"
           onOpen={() => undefined}
@@ -219,7 +226,7 @@ describe("AnimalCard meta line", () => {
       </I18nProvider>,
     );
 
-    expect(metaLine()).toBe("samec · 3 leta");
+    expect(metaLine()).toBe("3 leta · srednja");
   });
 });
 

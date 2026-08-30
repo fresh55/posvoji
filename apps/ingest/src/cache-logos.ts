@@ -17,10 +17,23 @@ import { writeContentAddressed } from "./write-content-addressed";
 // Where the static site serves the files written to shelterLogosDir.
 const PUBLIC_PREFIX = "/media/shelter-logos";
 
-// The logo renders at 44 CSS pixels in the shelter block and smaller in the
-// grid, so 128 covers every use at 2x. A shelter's full-size artwork stays at
-// the shelter.
-const MAX_SIZE = 128;
+// A shelter's full-size artwork stays at the shelter; this is the box the
+// cached copy is fitted inside.
+//
+// 128 was right when a logo was drawn at 44 CSS pixels. The register now sizes
+// each mark from its own proportions and draws them up to 144 CSS pixels wide,
+// and the shelter page's hero up to 170, so 128 stopped being a 2x copy and
+// started being an upscale: three of the eleven were drawn larger than the
+// pixels we held. 384 covers the widest placement at 2x with room over.
+//
+// These are flat colour and line art, so the file grows far less than the
+// area does.
+const MAX_SIZE = 384;
+
+// What a vector source is rasterized at, capped so a mark declaring a tiny
+// viewBox cannot ask for an enormous bitmap.
+const MAX_SVG_DENSITY = 1200;
+const DEFAULT_SVG_DENSITY = 72;
 const WEBP_QUALITY = 90;
 // Same trade as the photo cache: effort costs batch time nobody waits on and
 // returns smaller files at the same quality. One logo per shelter, so the
@@ -191,10 +204,21 @@ const MIN_CONTRAST = 3;
 // these marks is the lettering, so a mark has to keep most of itself: Meli at
 // 15% and Ljubljana at 35% are mostly black type and lose it.
 //
-// Both numbers sit in a gap rather than on a boundary. Measured across the
-// eleven cached logos, the shares clear on white run 0, 0, 0, then 27 and up;
-// on the dark card they run up to 50, then 81 and up. Nothing in the set is
-// within ten points of either threshold.
+// Both numbers sit in a gap rather than on a boundary, measured across the
+// eleven cached logos. On white the shares run 0, 0, 0, 13, then 25 and up, so
+// 20 splits a twelve-point window. On the dark card they run up to 51, then 80
+// and up, so 60 splits a twenty-nine point one. The tightest margin in the set
+// is Mačja hiša at 5 points clear of the white threshold, which is the logo
+// this rule most has to get right: it is the yellow one whose black outline
+// carries it.
+//
+// The share is measured on the cached copy, so it moves with the resolution
+// that copy is kept at. Raising MAX_SIZE from 128 to 384 took Obalno from 30%
+// to 13% on white and gave it a chip it had not had: a small render blurs pale
+// ink against transparency into darker edge pixels, and counts those as ink
+// that holds. The larger copy is the truer measure, being nearer the artwork
+// the shelter drew, but a change to MAX_SIZE is a change to these numbers and
+// the flags want re-reading when it happens.
 const HOLDS_ON_LIGHT = 0.2;
 const HOLDS_ON_DARK = 0.6;
 
@@ -264,6 +288,47 @@ async function trimmed(source: Buffer): Promise<Buffer> {
   }
 }
 
+// A vector, drawn at the size we are going to keep it at.
+//
+// sharp renders an SVG at the size the file declares, at 72 dpi, and the
+// resize below will not enlarge a bitmap. Together those pin a vector to
+// whatever its author happened to type in the width attribute: Maribor's mark
+// declares width="85", so the shelter with the most scalable source in the
+// register had the smallest copy of any of them. Raising the density asks the
+// renderer for the pixels instead of asking the resizer to invent them.
+//
+// Anything that is not a vector comes back untouched, including the cached
+// webp that refreshed() re-reads.
+async function rasterized(source: Buffer): Promise<Buffer> {
+  let width = 0;
+  let height = 0;
+  try {
+    const meta = await sharp(source).metadata();
+    if (meta.format !== "svg") return source;
+    width = meta.width ?? 0;
+    height = meta.height ?? 0;
+  } catch {
+    // Unreadable here is unreadable in processLogo, which reports it.
+    return source;
+  }
+
+  const longest = Math.max(width, height);
+  if (longest <= 0) return source;
+  const density = Math.min(
+    MAX_SVG_DENSITY,
+    Math.max(
+      DEFAULT_SVG_DENSITY,
+      Math.ceil((DEFAULT_SVG_DENSITY * MAX_SIZE) / longest),
+    ),
+  );
+  try {
+    return await sharp(source, { density }).png().toBuffer();
+  } catch {
+    // A density the renderer refuses is not worth losing the logo over.
+    return source;
+  }
+}
+
 // Logos are line art and flat colour with transparency, so they are fitted
 // inside a box rather than cropped, and the alpha channel is kept.
 export async function processLogo(source: Buffer): Promise<
@@ -274,7 +339,10 @@ export async function processLogo(source: Buffer): Promise<
     height: number;
   }
 > {
-  const { data, info } = await sharp(await trimmed(source))
+  // Rasterize before trimming: trimming a vector would render it at its
+  // declared size first and throw the resolution away before the resize ever
+  // sees it.
+  const { data, info } = await sharp(await trimmed(await rasterized(source)))
     .resize({
       width: MAX_SIZE,
       height: MAX_SIZE,

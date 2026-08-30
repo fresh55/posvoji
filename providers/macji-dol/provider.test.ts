@@ -3,11 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { loadFixture, PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ProviderPolicy } from "@posvoji/schema";
-import provider, {
-  parseDetail,
-  parseIntakeDate,
-  parseList,
-} from "./provider";
+import provider, { parseDetail, parseIntakeDate, parseList } from "./provider";
 
 const policy = ProviderPolicy.parse(
   parse(readFileSync(new URL("./policy.yaml", import.meta.url), "utf8")),
@@ -58,7 +54,11 @@ describe("parseDetail", () => {
       parseDetail(loadFixture(import.meta.url, "detail-pair-separate.html")),
     ).toEqual({
       name: "Iris in Melisa",
+      // WooCommerce marks the product in stock, which is the site saying the
+      // cats are still to be had.
+      status: "available",
       sex: "female",
+      apartmentOk: undefined,
       intakeDate: undefined,
       description:
         "Iris in Melisa sta v zavetišču od maja 2025. Ni nujno, da odideta v skupen dom.",
@@ -68,6 +68,20 @@ describe("parseDetail", () => {
         "https://www.macji-dol.si/wp-content/uploads/example/iris-melisa.jpg",
       ],
     });
+  });
+
+  it("reads the stock flag WooCommerce writes on the product", () => {
+    const html = loadFixture(import.meta.url, "detail-no-terms.html");
+
+    expect(parseDetail(html).status).toBe("available");
+    // The one state the live site was never seen in. A cat marked out of
+    // stock is not to be had, which is "hold": nothing here claims it was
+    // adopted, only that it is not on offer.
+    expect(parseDetail(html.replace(/\binstock\b/, "outofstock")).status).toBe(
+      "hold",
+    );
+    // A container with no flag leaves the reading to normalize().
+    expect(parseDetail(html.replace(/\binstock\b/, "")).status).toBeUndefined();
   });
 
   it("also preserves a title whose text explicitly requires adoption together", () => {
@@ -85,7 +99,8 @@ describe("parseDetail", () => {
 
   it("omits goodWith entirely when the page has no Družabnost field", () => {
     expect(
-      parseDetail(loadFixture(import.meta.url, "detail-no-terms.html")).goodWith,
+      parseDetail(loadFixture(import.meta.url, "detail-no-terms.html"))
+        .goodWith,
     ).toBeUndefined();
   });
 

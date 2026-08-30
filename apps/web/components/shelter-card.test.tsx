@@ -68,6 +68,29 @@ describe("the shelter card", () => {
     expect(screen.queryByRole("link", { name: /Spletna stran/ })).toBeNull();
   });
 
+  it("names each contact row's channel for the e2e suite", () => {
+    render(
+      <ShelterCard
+        shelter={shelter({
+          phone: "03 749 06 00",
+          email: "info@zonzani.si",
+          website: "https://www.zonzani.si/",
+        })}
+        text={text}
+      />,
+    );
+
+    // data-contact is a test contract: the alignment spec asks for one card's
+    // phone row and its neighbour's, and the e2e suite selects on roles and
+    // data attributes rather than on classes. Nothing in the app reads these,
+    // so this is what says they are not dead.
+    expect(
+      [...document.querySelectorAll("[data-contact]")].map((row) =>
+        row.getAttribute("data-contact"),
+      ),
+    ).toEqual(["phone", "email", "website"]);
+  });
+
   it("prints the number rather than hiding it behind an icon", () => {
     render(<ShelterCard shelter={shelter({ phone: "03 749 06 00" })} text={text} />);
 

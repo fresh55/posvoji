@@ -30,13 +30,49 @@ const ITEM_VARIANTS = {
   outline: CARD_SURFACE,
 } as const;
 
+// How the three slots are stacked, and it is opt-in: an item is a flex column
+// unless a caller asks for the other one, because subgrid is a contract with a
+// parent grid and most callers have no such parent.
+const ITEM_LAYOUTS = {
+  /** A flex column. Each slot is as tall as its own contents. */
+  stack: "flex flex-col gap-4",
+  /**
+   * The item's slots take their heights from the grid row it sits in, so a row
+   * of items lines up section by section: media against media, title against
+   * title, footer against footer.
+   *
+   * The contract with the parent, and it is the caller's job to keep it: the
+   * parent is a grid whose implicit rows are auto (the default), and every
+   * cell in it spans three of them. An item that skips a slot still spans
+   * three, and the missing one is an empty track rather than a shifted one,
+   * which is the whole point.
+   *
+   * gap rather than nothing, so a browser without subgrid support has a
+   * spacing to fall back on: grid-template-rows: subgrid is dropped as invalid
+   * there, the item becomes an ordinary three-row grid, and it draws what the
+   * stack layout draws. Alignment across the row is what is lost, which is
+   * where this page stood before subgrid.
+   *
+   * The footer's mt-auto is undone here rather than at each call site. In a
+   * flex column it pushes the footer to the bottom edge; against a subgrid
+   * track it pushes the footer to the bottom of a track that is already the
+   * height of the tallest footer in the row, which staggers exactly the rows
+   * this layout exists to line up. An auto margin in the block axis also beats
+   * align-self, so zeroing it is the only way to start-align the slot.
+   */
+  subgrid:
+    "grid grid-rows-subgrid row-span-3 gap-4 [&>[data-slot=item-footer]]:mt-0",
+} as const;
+
 function Item({
   className,
   variant = "default",
+  layout = "stack",
   asChild = false,
   ...props
 }: React.ComponentProps<"div"> & {
   variant?: keyof typeof ITEM_VARIANTS;
+  layout?: keyof typeof ITEM_LAYOUTS;
   asChild?: boolean;
 }) {
   const Comp = asChild ? Slot.Root : "div";
@@ -46,7 +82,8 @@ function Item({
       data-slot="item"
       data-variant={variant}
       className={cn(
-        "flex min-w-0 flex-col gap-4 p-5",
+        "min-w-0 p-5",
+        ITEM_LAYOUTS[layout],
         ITEM_VARIANTS[variant],
         className,
       )}
@@ -116,10 +153,13 @@ function ItemDescription({ className, ...props }: React.ComponentProps<"p">) {
 /**
  * What sits under the description, pushed to the bottom of the item.
  *
- * mt-auto is what makes a row of items agree: a shelter with one contact
- * channel and one with three draw the same height inside a stretched grid
- * cell, and the footers line up across the row instead of floating wherever
- * the content above them happened to end.
+ * mt-auto is right for a footer of controls: a row of items drawn in stretched
+ * grid cells puts its buttons on one line at the bottom instead of floating
+ * wherever the content above them happened to end.
+ *
+ * It is wrong for a footer of printed rows, which wants to start where the
+ * row's footer track starts. The subgrid layout zeroes it for that reason, and
+ * this stays the default.
  */
 function ItemFooter({
   className,

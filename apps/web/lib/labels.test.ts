@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
   animalMeta,
-  EMPHATIC_STAY_MONTHS,
   LONG_STAY_MONTHS,
   longStayMonths,
   registerDateLabel,
@@ -55,7 +54,7 @@ describe("longStayMonths", () => {
     return date.toISOString().slice(0, 10);
   }
 
-  it("starts at the long-stay threshold and reaches the emphatic one", () => {
+  it("starts at the long-stay threshold and keeps counting past it", () => {
     expect(
       longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS - 1) }), NOW),
     ).toBeUndefined();
@@ -63,8 +62,8 @@ describe("longStayMonths", () => {
       longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS) }), NOW),
     ).toBe(LONG_STAY_MONTHS);
     expect(
-      longStayMonths(animal({ intakeDate: intake(EMPHATIC_STAY_MONTHS) }), NOW),
-    ).toBe(EMPHATIC_STAY_MONTHS);
+      longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS * 2) }), NOW),
+    ).toBe(LONG_STAY_MONTHS * 2);
   });
 
   it("says nothing about an animal the visitor cannot act on", () => {

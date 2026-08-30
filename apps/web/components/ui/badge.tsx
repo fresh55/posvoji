@@ -42,18 +42,22 @@ const badgeVariants = cva(
           "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] [a]:hover:border-[var(--filter-accent-strong)]",
         quiet: "border-transparent bg-muted text-muted-foreground",
         // On a photograph a wash has nothing to sit on. A 15% fill tints an
-        // arbitrary backdrop rather than covering it, and backdrop-blur takes
-        // detail out without moving luminance, so amber ink over a mid-tone
-        // photo was 1.38:1. These two bring their own opaque ground instead.
+        // arbitrary backdrop rather than covering it, so amber ink over a
+        // mid-tone photo was 1.38:1. These two bring their own opaque ground
+        // instead, and the ground has to stay opaque: at 85% the muted ink
+        // measured 4.15:1 over the darkest photos in the grid, under the 4.5:1
+        // that 12px text needs. Nothing below about 91% clears it over a black
+        // photo, and by then the photo no longer shows through anyway.
+        //
+        // No backdrop-filter either. It promotes each badge to its own
+        // compositing layer, where Chrome keeps subpixel text antialiasing
+        // only while the layer is fully opaque, and against an opaque ground
+        // it blurs pixels that are then completely covered. It was buying
+        // nothing on either of these.
         "overlay-warn":
-          "border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)] shadow-xs backdrop-blur-sm",
+          "border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)] shadow-xs",
         "overlay-quiet":
-          "border-transparent bg-background text-muted-foreground shadow-xs backdrop-blur-sm",
-        // The loudest mark a photo carries, monochrome on purpose: the same
-        // inversion the pressed species tab uses, for the handful of cards
-        // whose one fact outranks the amber tier above.
-        "overlay-strong":
-          "border-transparent bg-foreground text-background shadow-xs backdrop-blur-sm",
+          "border-transparent bg-background text-muted-foreground shadow-xs",
       },
     },
     defaultVariants: {

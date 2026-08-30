@@ -118,6 +118,22 @@ describe("AnimalCard long-stay mark", () => {
 
     expect(screen.getByText("Waiting 3 years")).toBeTruthy();
   });
+
+  // One tier, however long the wait. A reintroduced threshold would pass at
+  // the mark itself, so this asks at a wait well past any of them.
+  it("keeps the quiet pill at the longest waits", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS * 3) })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText(/Čaka/).dataset.variant).toBe("overlay-quiet");
+  });
 });
 
 describe("AnimalCard status", () => {

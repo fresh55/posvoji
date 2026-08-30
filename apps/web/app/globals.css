@@ -25,7 +25,28 @@
    grow with the viewport, but changing one relationship must not loosen every
    other part of the page. */
 :root {
-  --gutter: 1rem;
+  /* The frame's horizontal inset, and the floor it may shrink to.
+     viewport-fit=cover draws the page under the rounded corners and the
+     sensor housing, so the frame carries env(safe-area-inset-*) itself or a
+     landscape notch crosses the h1, the breadcrumb and the card text. max()
+     and not a sum, so the breakpoint floors below stay the frame untouched
+     wherever the insets report 0px. One symmetric value and not a left and a
+     right token: the insets differ only in landscape, which is the
+     orientation with width to spare, and per-side gutters would push the
+     centred max-w-7xl column off centre against a notch on one side.
+     The insets sit in --gutter itself rather than in a padding-only token,
+     because bleed negates --gutter to reach the shell edge: a background is
+     meant to run under the notch while its contents are not, and a separate
+     token would leave that background inset by the notch. px-gutter and bleed
+     are the only consumers, so nothing vertical picks up a horizontal inset.
+     The 0px fallbacks keep the property valid, and the page padding standing,
+     in a browser that has env() but not these names. */
+  --gutter-min: 1rem;
+  --gutter: max(
+    var(--gutter-min),
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px)
+  );
   --page-y: 2rem;
   --section-gap: 1.5rem;
   --column-gap: 1.5rem;
@@ -36,11 +57,24 @@
      than restating the same arithmetic (site-footer.tsx). Retuned at lg,
      below, where there is no dock left to clear. */
   --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  /* The other half of the same corner, beside the distance it pairs with
+     rather than spelled into a class string. viewport-fit=cover puts the
+     sensor housing over a long edge in landscape, and a control pinned at a
+     flat 1rem sits under it: fixed positioning resolves against the whole
+     screen, not the safe part.
+
+     max() and not the sum --back-to-top-bottom uses, because the two are
+     different quantities. The bottom is clearance over the dock, which itself
+     sits above the home indicator, so those stack. This is an edge margin the
+     inset replaces, the same as --gutter above. */
+  --back-to-top-right: max(1rem, env(safe-area-inset-right, 0px));
 }
 
 @media (width >= 40rem) {
   :root {
-    --gutter: 1.5rem;
+    /* The floor moves with the viewport, the insets do not: --gutter above
+       reads whichever of the two is larger. */
+    --gutter-min: 1.5rem;
     --page-y: 2.5rem;
     --section-gap: 2rem;
     --column-gap: 2rem;
@@ -49,7 +83,7 @@
 
 @media (width >= 64rem) {
   :root {
-    --gutter: 2rem;
+    --gutter-min: 2rem;
     --page-y: 3rem;
     --section-gap: 2.5rem;
     --column-gap: 2rem;
@@ -59,6 +93,7 @@
        this at the same width (lg:pb-6 in site-footer.tsx), so the shorter
        distance does not reach the footer's padding. */
     --back-to-top-bottom: 1.5rem;
+    --back-to-top-right: max(1.5rem, env(safe-area-inset-right, 0px));
   }
 }
 
@@ -540,7 +575,22 @@
    Two cautions. The control needs its own stacking context, which the
    position here provides, and any scroll container between the control and
    the viewport clips this layer at its padding edge, so that container needs
-   padding of its own to hold it. */
+   padding of its own to hold it.
+
+   And a third, which decides whether to reach for this at all: the layer
+   overhangs the drawing, so it only works where the control has room around
+   it. A control drawn at 36px carries an overhang of 4px per side, and a
+   neighbour closer than that takes presses meant for it, or has its own
+   taken. Both have been measured here: the language switcher's two halves sit
+   2px apart and the register card stacks three contact rows 2px apart, and in
+   each case the overlay reached over the gap and the later element in the DOM
+   won the hit test.
+
+   So: overlay an isolated control, grow the drawn box of a crowded one
+   (min-h-11 and min-w-11 behind the same breakpoint). The boundary is not a
+   judgement call, it is whether a neighbour is inside the overhang. Call
+   sites that grow instead of overlaying should point here rather than
+   restating the rule. */
 @utility tap-target {
   position: relative;
   &::after {

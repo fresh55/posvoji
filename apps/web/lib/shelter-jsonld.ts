@@ -1,3 +1,4 @@
+import { telNumber } from "@/lib/contact-links";
 import type { Locale } from "@/lib/i18n";
 import { shelterPath, sheltersIndexPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
@@ -130,7 +131,12 @@ export function shelterJsonLd(
     },
   };
   if (shelter.website) node.sameAs = [shelter.website];
-  if (shelter.phone) node.telephone = shelter.phone;
+  // E.164, not the grouped national form the register writes and the page
+  // prints. This value is read by machines rather than by the visitor, and a
+  // consumer that dials it has no way to know which country's numbering plan
+  // "03 749 06 00" belongs to. Schema.org says as much, and it is the same
+  // reason the card's tel: href carries a country code (lib/contact-links.ts).
+  if (shelter.phone) node.telephone = telNumber(shelter.phone);
   if (shelter.email) node.email = shelter.email;
   return node;
 }

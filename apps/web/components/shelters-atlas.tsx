@@ -4,15 +4,53 @@ import {
   type ShelterCardText,
 } from "@/components/shelter-card";
 import { Card } from "@/components/ui/card";
+import { MUTED_LINK } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
+
+/** The invitation cell's anchor, named once because two things point at it:
+ *  the cell itself and the mobile-only link above the grid. Not derived from
+ *  any copy string, so it survives a rewording in either locale.
+ *
+ *  Deliberately not "za-zavetisca", which is one letter off the skip link's
+ *  landing pad at the foot of this file ("za-zavetisci") and would leave two
+ *  anchors on one page that a reader has to spell out to tell apart. */
+const INVITE_ID = "ste-zavetisce";
 
 export type SheltersAtlasText = {
-  /** The section's own name, carried on the list: the cards' own headings are
-   *  the shelter names, which take h3 under the page's h1. */
+  /** The section's accessible name, and the section prints no heading of its
+   *  own. The cards' headings are the shelter names and they take h2 directly
+   *  under the page's h1 for that reason: with no heading rendered between the
+   *  two, a card at h3 skips a level, and on a 6000px page the outline is how
+   *  a heading rotor reads the register.
+   *
+   *  A rendered h2 here was the alternative and it is worse whichever way it is
+   *  drawn. Visible, it prints "Zavetišča" a third time inside 100px, under an
+   *  h1 reading "Zavetišča po Sloveniji" and above a line reading "Razvrščeno
+   *  po kraju.", and it names nothing the h1 has not named, because this
+   *  section is the whole of the page's content. sr-only, it puts a heading in
+   *  the outline that no sighted reader can find on the page, and it buys one
+   *  wrapper heading to step past on the way to the seventeen headings that are
+   *  the actual destinations.
+   *
+   *  So: a name for the landmark rotor, no heading, and the cards at h2. The
+   *  three move together, and a card that goes back to h3 reopens the skip.
+   *
+   *  Printed once, on the section. It was on the list as well, so a reader
+   *  arriving at the grid heard "Zavetišča, region" and then "Zavetišča, list,
+   *  18 items": one word twice inside two announcements, the second of them
+   *  spending the reader's attention on nothing new. The region is the copy
+   *  that keeps it, because it is the one a reader can jump to from anywhere on
+   *  a 6000px page; the list is only ever entered from inside the region that
+   *  has just named it, and "list, 18 items" is the whole of what it has left
+   *  to say there. */
   heading: string;
   skip: string;
-  /** "Razvrščeno po kraju." / "Sorted by town." The grid is ordered by town
-   *  and the town is the card's small second line, so on arrival the sequence
-   *  reads as no order at all. One line above the list says what it is. */
+  /** "Razvrščeno po kraju." / "Sorted by town." The grid is ordered by town,
+   *  and the order is not something the cards themselves can state: a reader at
+   *  375px sees about one and a half of them, and two towns in sequence do not
+   *  teach a rule. Setting the town large enough to scan while scrolling makes
+   *  the key legible, which is a different thing from making the order
+   *  predictable, so this line stays whatever size the town is drawn at. */
   sortNote: string;
 };
 
@@ -69,11 +107,52 @@ export function SheltersAtlas({
         {text.skip}
       </a>
 
-      {/* Directly above the grid and nowhere else: it is a property of the
-          list that follows, so it has to be read before the list rather than
-          found under it. Small and muted, with no icon and no box, because it
-          is a note about the page and not a control on it. */}
-      <p className="mb-3 text-sm text-muted-foreground">{text.sortNote}</p>
+      {/* The sort note, and beside it the one thing on this page addressed to
+          somebody who is not here to read the register.
+
+          The invitation is the grid's eighteenth cell, which is right: it is
+          one card among the shelters rather than a banner over them, and the
+          comment on that cell argues it at length. On three columns it lands
+          in the last visible row. On one column it is about 5,700px down, so
+          the only route in for a shelter we do not hold yet sits behind
+          seventeen cards of the register, and the header's login is no help to
+          them: it only answers an address already on file. So below sm the
+          note's own line carries an anchor to the cell, which costs no height
+          in a band that at 375px already holds the h1, the lede, the lookup
+          button and its sentence, and the census over two lines. It stays
+          quieter than that button: whoever has just found a stray outranks
+          whoever runs a shelter. invite.title is the label, so no copy string
+          is added and SheltersAtlasText is untouched.
+
+          flex-wrap, and the link does not hold its width. The two sit at
+          opposite ends of one line wherever both fit, which is every size the
+          page is read at; past that the link takes a line of its own rather
+          than pushing the row wider than the column. Held rigid at 200% text
+          on a 320px phone it wanted 191px against a 288px column and put the
+          whole document into a horizontal scroll, which is the failure the
+          card's slots had, arriving from the other direction. */}
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4">
+        {/* Directly above the grid and nowhere else: it is a property of the
+            list that follows, so it has to be read before the list rather
+            than found under it. Small and muted, with no icon and no box,
+            because it is a note about the page and not a control on it. */}
+        <p className="text-sm text-muted-foreground">{text.sortNote}</p>
+        {invite && (
+          <a
+            href={`#${INVITE_ID}`}
+            // The site's quiet secondary link, which already carries the
+            // tap-target this needs (lib/link-styles.ts). Overlaid rather
+            // than grown, because the nearest control is a band above; see
+            // the tap-target utility in globals.css for that rule. The
+            // standing underline is the one departure: this points into the
+            // page rather than out of it, and the sort note beside it is
+            // prose, so the link has to read as a link before it is hovered.
+            className={cn(MUTED_LINK, "underline sm:hidden")}
+          >
+            {invite.title}
+          </a>
+        )}
+      </div>
 
       {/* Two columns from sm and three from xl. The cards carry six or seven
           lines now, so a third column at 1280px still leaves each one a
@@ -96,12 +175,11 @@ export function SheltersAtlas({
 
           Tailwind's preflight strips the marker and WebKit drops the list role
           with it, so role="list" is spelled out: without it this is announced
-          as eighteen unrelated headings rather than as a list of them. */}
-      <ul
-        role="list"
-        aria-label={text.heading}
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
-      >
+          as eighteen unrelated headings rather than as a list of them.
+
+          The role and nothing else. The section's aria-label used to be
+          repeated here; see SheltersAtlasText.heading for why it is not. */}
+      <ul role="list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {shelters.map((shelter) => (
           <ShelterCard key={shelter.id} shelter={shelter} text={card} />
         ))}
@@ -128,8 +206,20 @@ export function SheltersAtlas({
             asChild
             className="border-dashed-muted border-dashed bg-transparent shadow-none"
           >
-            <li className="row-span-3 flex flex-col gap-2 p-5">
-              <h3 className="font-medium">{invite.title}</h3>
+            <li
+              id={INVITE_ID}
+              // scroll-mt-24, the same offset the shelter cards carry, so an
+              // arrival from the anchor above lands with the dashed edge clear
+              // of the viewport top rather than flush against it.
+              className="row-span-3 flex scroll-mt-24 flex-col gap-2 p-5"
+            >
+              {/* h2, the rank the shelter names beside it take. The outline
+                  has to say what the layout says: after seventeen h2s an h3
+                  here reads as a subsection of the last shelter, which is the
+                  one thing this cell is not. Preflight leaves a heading at the
+                  inherited size, so the rank changes and the drawing does
+                  not. */}
+              <h2 className="font-medium">{invite.title}</h2>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {invite.body}
               </p>

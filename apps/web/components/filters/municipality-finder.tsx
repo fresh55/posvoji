@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { telHref } from "@/lib/contact-links";
 import {
   CoverageCard,
   type CoverageCardText,
@@ -415,7 +416,7 @@ export function MunicipalityFinder({
                           </span>
                           {shelter.phone && (
                             <a
-                              href={`tel:${shelter.phone.replace(/\s/g, "")}`}
+                              href={telHref(shelter.phone)}
                               className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2 py-1 text-xs transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
                             >
                               <Phone className="size-3" aria-hidden />

@@ -59,9 +59,23 @@ const ITEM_LAYOUTS = {
    * height of the tallest footer in the row, which staggers exactly the rows
    * this layout exists to line up. An auto margin in the block axis also beats
    * align-self, so zeroing it is the only way to start-align the slot.
+   *
+   * min-w-0 on every slot, for the same reason and in the same place. A slot
+   * here is a grid item, so its automatic minimum is its own min-content: one
+   * unbreakable string anywhere inside it (a long email in the footer, a mark
+   * beside a count in the media row) sizes the track, the track sizes the
+   * column, and the card grows past the card instead of the contents giving
+   * way. Any truncate a caller put on the text stays inert until this is set.
+   *
+   * It belongs to the layout rather than to the slots. The property is the
+   * same on all of them and the reason is the same, so writing it per slot
+   * meant four declarations and three copies of this paragraph, and the two
+   * slots this file leaves unshipped (ItemGroup, ItemHeader, ItemActions, see
+   * the header) would each have reopened the hole on the day they landed. The
+   * hole is invisible at normal text size, which is how it survived this long.
    */
   subgrid:
-    "grid grid-rows-subgrid row-span-3 gap-4 [&>[data-slot=item-footer]]:mt-0",
+    "grid grid-rows-subgrid row-span-3 gap-4 [&>*]:min-w-0 [&>[data-slot=item-footer]]:mt-0",
 } as const;
 
 function Item({
@@ -98,6 +112,11 @@ function Item({
  * shrink-0 and nothing else: the media decides its own dimensions, because
  * what goes here varies (a fixed avatar track, an icon, a photo) and a size
  * asserted by the slot would be a size every caller has to undo.
+ *
+ * shrink-0 is the stack case, where the media keeps its width beside a text
+ * column that would otherwise squeeze it. It says nothing in the subgrid
+ * layout, because a grid item does not flex; the min-w-0 that case needs is
+ * on the layout itself, in ITEM_LAYOUTS.
  */
 function ItemMedia({ className, ...props }: React.ComponentProps<"div">) {
   return (

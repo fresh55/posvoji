@@ -1,12 +1,4 @@
-import {
-  Globe,
-  Info,
-  Mail,
-  MapPin,
-  MapPinned,
-  Phone,
-  ShieldCheck,
-} from "lucide-react";
+import { Globe, Info, Mail, MapPin, MapPinned, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
@@ -39,7 +31,7 @@ const pageText = {
     website: "Spletna stran",
     animalsTitle: "Živali iz tega zavetišča",
     providerNotice:
-      "To zavetišče podatke o živalih deli z izrecnim dovoljenjem. Vsaka žival je povezana na izvirno objavo pri zavetišču.",
+      "Vsaka žival je povezana na izvirno objavo pri zavetišču.",
     registryNotice:
       "Zavetišče je navedeno iz javnega registra UVHVVR. Za zdaj še nima urejenega vira podatkov o živalih na Posvoji.si, zato tukaj ni seznama; za posvojitev se obrnite nanje neposredno.",
     mapLabel: "Lega zavetišča na zemljevidu Slovenije",
@@ -60,7 +52,7 @@ const pageText = {
     website: "Website",
     animalsTitle: "Animals from this shelter",
     providerNotice:
-      "This shelter shares animal data with explicit permission. Every animal links back to its original listing at the shelter.",
+      "Every animal links back to its original listing at the shelter.",
     registryNotice:
       "This shelter is listed from the public UVHVVR registry. It does not yet have a data feed on Posvoji.si, so there is no animal list here; contact the shelter directly to ask about adoption.",
     mapLabel: "The shelter's location on a map of Slovenia",
@@ -266,11 +258,7 @@ export function ShelterDetailPage({
                       : "bg-muted/40 text-muted-foreground",
                   )}
                 >
-                  {hasData ? (
-                    <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  ) : (
-                    <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  )}
+                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
                   <p>{hasData ? text.providerNotice : text.registryNotice}</p>
                 </div>
               </div>

@@ -88,7 +88,7 @@ function websiteLabel(url: string): string {
  * The logo sits on its own line above the name rather than beside it. Beside
  * it, eleven wordmarks running from square to five times as wide started every
  * name at a different x; above it, each one can keep its own proportions
- * inside a fixed plate and no neighbouring line has to agree with it.
+ * inside a fixed row and no neighbouring line has to agree with it.
  *
  * The card is laid out on the grid row's own tracks (Item's subgrid layout),
  * so its three sections are as tall as the tallest of that section across the
@@ -104,6 +104,15 @@ export function ShelterCard({
   text: ShelterCardText;
 }) {
   const host = shelter.website ? websiteLabel(shelter.website) : undefined;
+  // never-print-a-zero: absent and zero are the same answer here, and both
+  // mean "we publish no list for this shelter". Folded into one optional
+  // number rather than a boolean beside the original field, because the mark
+  // and the count pill have to be drawn on the same test and the pill still
+  // needs the number itself.
+  const animals =
+    shelter.animals !== undefined && shelter.animals > 0
+      ? shelter.animals
+      : undefined;
 
   return (
     <Item asChild variant="outline" layout="subgrid">
@@ -126,7 +135,7 @@ export function ShelterCard({
             them, but it would do it by growing the content track on every card
             in the row, which is a band of air under the six shorter names to
             pay for a line on the eleven. Up here it shares a row every card
-            draws at the plate's height whatever else is true, and costs
+            draws at the row's fixed height whatever else is true, and costs
             nothing.
 
             It reads better for the scan, too. Ranged right on a fixed row, the
@@ -135,14 +144,25 @@ export function ShelterCard({
             name happened to end. */}
         <ItemMedia className="justify-between gap-3">
           {/* "register" rather than "sm": this is the one place the whole set
-              of logos is drawn side by side, so it is the one place a wordmark
-              shrunk by the plate's width is read against a square logo drawn
-              at full height. See SIZE_CLASS. */}
+              of logos is drawn side by side, so it is the one place one mark's
+              drawn size is read against another's. See WIDTH_FALLOFF.
+
+              The mark sits on the card rather than in a plate, and the fixed
+              row it is centred in is what holds the grid together: whatever
+              shape the mark turns out to be, the row below it starts at the
+              same y on every card. */}
           <ShelterAvatar
             name={shelter.name}
             logo={shelter.logo}
             size="register"
-            track
+            // The same test the count pill below is drawn on, so the two can
+            // never disagree: green is one statement on this site, and a ring
+            // wearing it on a shelter with no list would be making it falsely.
+            // No shelter in the register is both logo-less and a data
+            // provider today, so this draws nothing yet; it is here so that
+            // the first one to grant us a list is coloured by the rule rather
+            // than by a later patch.
+            accent={animals !== undefined}
           />
 
           {/* Which shelters the census is counting, and with how many animals
@@ -157,12 +177,12 @@ export function ShelterCard({
               the card, so a second link here would have to lift itself out of
               it with relative z-10 the way the contact rows do, and it would
               point where the card already points. The paw rather than the
-              census line's shield: the plate's green is what says "shares its
+              census line's shield: the pill's green is what says "shares its
               data", so the glyph is free to say what the number counts. */}
-          {shelter.animals !== undefined && shelter.animals > 0 && (
+          {animals !== undefined && (
             <p className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]">
               <PawPrint className="size-3 shrink-0" aria-hidden />
-              {text.animals(shelter.animals)}
+              {text.animals(animals)}
             </p>
           )}
         </ItemMedia>

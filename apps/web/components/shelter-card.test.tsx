@@ -146,7 +146,9 @@ describe("the shelter card", () => {
         shelter={shelter({
           logo: {
             url: "/media/shelter-logos/abc.webp",
-            tone: "dark",
+            chipOnLight: false,
+            chipOnDark: true,
+            opaque: false,
             width: 300,
             height: 100,
           },
@@ -159,6 +161,67 @@ describe("the shelter card", () => {
     // second reading of it is noise.
     const logo = document.querySelector("img");
     expect(logo?.getAttribute("alt")).toBe("");
+  });
+
+  it("draws a portrait mark tall and a wordmark wide rather than both at one height", () => {
+    // The register is the one page that draws every shelter's mark side by
+    // side, so it is the one page where a fixed height is read as a size. The
+    // set runs from 0.82:1 to about 4:1, and at a fixed height the portrait
+    // mark came out a fifth of the wordmark's size. See WIDTH_FALLOFF.
+    const box = (logo: { width: number; height: number }) => {
+      const { container } = render(
+        <ShelterCard
+          shelter={shelter({
+            logo: {
+              url: "/media/shelter-logos/a.webp",
+              chipOnLight: false,
+              chipOnDark: true,
+              opaque: false,
+              ...logo,
+            },
+          })}
+          text={text}
+        />,
+      );
+      const img = container.querySelector("img");
+      return {
+        width: Number.parseFloat(img?.style.width ?? "0"),
+        height: Number.parseFloat(img?.style.height ?? "0"),
+      };
+    };
+
+    const portrait = box({ width: 105, height: 128 });
+    const wordmark = box({ width: 128, height: 27 });
+
+    expect(portrait.height).toBeGreaterThan(wordmark.height);
+    expect(portrait.width).toBeLessThan(wordmark.width);
+    // Neither is crushed the way the old fixed 28px cap crushed the portrait
+    // one, and neither runs away with the row: the wider mark buys its width
+    // with height, so the two areas stay within about twice each other.
+    expect(portrait.height).toBeGreaterThan(40);
+    expect(wordmark.height).toBeGreaterThan(24);
+    const area = (b: { width: number; height: number }) => b.width * b.height;
+    expect(area(wordmark) / area(portrait)).toBeLessThan(2);
+  });
+
+  it("keeps the green off a mark for a shelter that shares no list", () => {
+    // Green says one thing on this site, and the count pill beside the mark
+    // says it too. An avatar wearing it on a contact-only shelter would be
+    // claiming a list we do not have.
+    const plate = (over: Partial<ShelterCardData>) => {
+      const { container } = render(
+        <ShelterCard
+          shelter={shelter({ name: "Zavetišče Potepuhi", ...over })}
+          text={text}
+        />,
+      );
+      // The letter is the shelter's own initial, cut past the generic first
+      // word: "Zavetišče Potepuhi" draws a P. See lib/shelter-initial.ts.
+      return within(container).getByText("P").className;
+    };
+
+    expect(plate({ animals: 4 })).toContain("--filter-accent");
+    expect(plate({})).not.toContain("--filter-accent");
   });
 
   it("says how many animals a shelter that shares its list holds", () => {

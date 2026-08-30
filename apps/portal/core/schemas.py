@@ -27,6 +27,7 @@ class ErrorOut(Schema):
 class ShelterOut(Schema):
     slug: str
     name: str
+    city: str = ""
 
 
 class MeOut(Schema):
@@ -44,6 +45,27 @@ class VerifyIn(Schema):
     model_config = ConfigDict(extra="forbid")
 
     token: str = Field(max_length=512)
+
+
+class DevShelterOut(ShelterOut):
+    """One row of the development shelter picker.
+
+    `registered` says whether `email` is the shelter's registry address or a
+    stand in minted for a shelter the registry lists without one.
+    """
+
+    email: str
+    registered: bool
+
+
+class DevLoginIn(Schema):
+    # extra="forbid" is the CSRF guard here, not tidiness. django-ninja parses
+    # any content type as JSON, so a cross site HTML form could post to this
+    # route as text/plain; such a body always carries an extra key, which
+    # forbid rejects with 422 before anyone is signed in.
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str = Field(max_length=64)
 
 
 class AnimalOut(Schema):

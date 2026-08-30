@@ -67,6 +67,34 @@ API are same site in both environments (`localhost:3000` to `localhost:8000`,
 so the API endpoints do not carry a CSRF token of their own. The frontend has
 to send its requests with `credentials: "include"`.
 
+### Signing in as a shelter in development
+
+Waiting for a mail to look at one shelter's workspace, then another, does not
+work while the portal is being built. `PORTAL_DEV_LOGIN` adds two routes that
+skip it. It is off unless you ask for it, so start the server with
+`PORTAL_DEV_LOGIN=true` in the environment; `.env.example` already carries
+the line.
+
+```bash
+curl http://localhost:8000/api/auth/dev/shelters
+curl -X POST http://localhost:8000/api/auth/dev/login   -H 'Content-Type: application/json' -d '{"slug": "zonzani"}'
+```
+
+The login page shows the same list as a picker under the form, so a shelter is
+one click away. Run `seed_shelters` first, or the list is empty.
+
+`/api/auth/dev/login` signs in as the shelter's own registry login, so the
+session is the one that shelter would get by mail. A shelter the registry
+lists without an address gets a login at `<slug>@dev.invalid`, a reserved TLD
+that can never receive anything, plus the membership to go with it.
+
+**This is an authentication bypass.** It is off unless the variable is set,
+and forced off whenever `PORTAL_DEBUG` is false, so setting the variable on a
+deployment does nothing. Both routes answer 404 when it is off, so a portal
+that does not have it never advertises them. On the frontend the picker is
+behind `process.env.NODE_ENV`, so `pnpm --filter web build` drops the
+component from the bundle.
+
 ## Routes
 
 | Method | Path | Auth |
@@ -74,6 +102,8 @@ to send its requests with `credentials: "include"`.
 | POST | `/api/auth/request-link` | none, always 204 |
 | POST | `/api/auth/verify` | none, 401 on a bad token |
 | POST | `/api/auth/logout` | none, always 204 |
+| GET | `/api/auth/dev/shelters` | none, 404 unless `PORTAL_DEV_LOGIN` |
+| POST | `/api/auth/dev/login` | none, 404 unless `PORTAL_DEV_LOGIN` |
 | GET | `/api/me` | session |
 | GET | `/api/shelters/{slug}/animals` | session and membership |
 | PUT | `/api/shelters/{slug}/animals/{animal_id}` | session and membership |
@@ -238,6 +268,7 @@ variables.
 | `DATASET_PATH` | `data/dist/animals.json` | Crawled dataset, read only. |
 | `SHELTERS_YAML` | `data/shelters.yaml` | Registry read by `seed_shelters`. |
 | `PORTAL_EXPORT_TOKEN` | unset | Bearer token for `/api/export`. Unset disables the endpoint. |
+| `PORTAL_DEV_LOGIN` | `false`, and forced off whenever `PORTAL_DEBUG` is off | Enables the development shelter picker. |
 | `PORTAL_SECURE_COOKIES` | `false` when `PORTAL_DEBUG` is on | Marks the session cookie secure. |
 | `PORTAL_SESSION_COOKIE_DOMAIN` | unset | Set only if the cookie has to span subdomains. |
 | `PORTAL_SESSION_AGE` | `1209600` | Session lifetime in seconds. |

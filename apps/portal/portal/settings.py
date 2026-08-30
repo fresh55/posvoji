@@ -99,6 +99,13 @@ AUTHENTICATION_BACKENDS = [
 ]
 SESAME_MAX_AGE = 3600
 
+# Development only: /api/auth/dev/* lists every shelter and opens a session as
+# any of them without a mail round trip. `DEBUG and` is the real guard, so
+# setting the variable on a deployment does nothing. The default is off as
+# well, so a deployment that forgets PORTAL_DEBUG does not also get an
+# unauthenticated sign in as any shelter.
+PORTAL_DEV_LOGIN = DEBUG and _env_bool("PORTAL_DEV_LOGIN", False)
+
 LANGUAGE_CODE = "sl"
 TIME_ZONE = "Europe/Ljubljana"
 USE_I18N = True

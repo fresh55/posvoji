@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
+import dynamic from "next/dynamic";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,19 @@ import {
   verifyToken,
 } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
+
+// The import sits inside a branch on a compile time literal, so a production
+// build folds it away and never emits the picker's chunk. See the component.
+const PortalDevLogin =
+  process.env.NODE_ENV === "production"
+    ? null
+    : dynamic(
+        () =>
+          import("@/components/portal/portal-dev-login").then(
+            (module) => module.PortalDevLogin,
+          ),
+        { ssr: false },
+      );
 
 type LoginState =
   | { step: "form"; error?: string }
@@ -285,6 +299,10 @@ export function PortalLogin() {
           </>
         )}
       </m.section>
+
+      {/* Nothing in a production build, and nothing when the API runs
+          without PORTAL_DEV_LOGIN. */}
+      {PortalDevLogin && <PortalDevLogin />}
     </PortalShell>
   );
 }

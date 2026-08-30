@@ -45,7 +45,9 @@ def test_request_link_emails_a_member(client, member):
 def test_verify_opens_a_session_and_me_returns_the_shelters(client, member, shelter):
     expected = {
         "email": member.email,
-        "shelters": [{"slug": shelter.slug, "name": shelter.name}],
+        "shelters": [
+            {"slug": shelter.slug, "name": shelter.name, "city": shelter.city}
+        ],
     }
 
     verified = post(client, VERIFY, {"token": get_token(member)})
@@ -55,6 +57,17 @@ def test_verify_opens_a_session_and_me_returns_the_shelters(client, member, shel
     me = client.get(ME)
     assert me.status_code == 200
     assert me.json() == expected
+
+
+@pytest.mark.django_db
+def test_me_returns_an_empty_city_when_the_registry_has_none(member_client, shelter):
+    shelter.city = ""
+    shelter.save()
+
+    response = member_client.get(ME)
+
+    assert response.status_code == 200
+    assert response.json()["shelters"][0]["city"] == ""
 
 
 @pytest.mark.django_db

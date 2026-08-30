@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -11,8 +18,8 @@ import type {
 import { ProviderPolicy } from "@posvoji/schema";
 import {
   cacheLogos,
+  logoSurface,
   discoverLogoUrl,
-  inkTone,
   logoTargets,
   processLogo,
   publicUrlFor,
@@ -42,6 +49,30 @@ async function pngBytes(size = 64, colour = "#3366cc"): Promise<Buffer> {
       background: colour,
     },
   })
+    .png()
+    .toBuffer();
+}
+
+/** A mark on a transparent ground, which is what a shelter logo usually is.
+ *
+ *  A solid rectangle will not do for the surface tests: with no clear pixel in
+ *  it, it is a file that brings its own background, and the chip questions are
+ *  not asked of those at all. */
+async function inkBytes(colour: string, size = 32): Promise<Buffer> {
+  const ink = await sharp({
+    create: { width: size, height: size, channels: 4, background: colour },
+  })
+    .png()
+    .toBuffer();
+  return sharp({
+    create: {
+      width: size * 2,
+      height: size * 2,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([{ input: ink, left: size / 2, top: size / 2 }])
     .png()
     .toBuffer();
 }
@@ -143,7 +174,32 @@ class ConcurrencyClient {
 }
 
 describe("logoTargets", () => {
-  it("takes only enabled providers with a permitted logo", () => {
+  // The logo grant stands on its own. A shelter that publishes no list we
+  // ingest can still permit its mark, and gating the sync on `enabled` meant
+  // the only way to draw that logo was to claim we crawl them.
+  it("takes a permitted logo from a provider we do not crawl", () => {
+    const targets = logoTargets([
+      policy({
+        providerId: "oskar",
+        source: "https://zavetisceoskar.si/",
+        enabled: false,
+        ingestion: "manual",
+        images: "none",
+        descriptions: "facts-only",
+        logo: { use: "permitted", date: "2026-08-30" },
+      }),
+    ]);
+
+    expect(targets).toEqual([
+      {
+        providerId: "oskar",
+        homeUrl: "https://zavetisceoskar.si",
+        logoUrl: undefined,
+      },
+    ]);
+  });
+
+  it("takes only providers with a permitted logo", () => {
     const targets = logoTargets([
       policy({
         providerId: "macja-hisa",
@@ -168,6 +224,20 @@ describe("logoTargets", () => {
         logoUrl: undefined,
       },
     ]);
+  });
+
+  it("carries a supplied file path through", () => {
+    const targets = logoTargets([
+      policy({
+        logo: {
+          use: "permitted",
+          date: "2026-08-30",
+          file: "data/shelter-logos/potepuhi.jpg",
+        },
+      }),
+    ]);
+    expect(targets[0]!.logoFile).toBe("data/shelter-logos/potepuhi.jpg");
+    expect(targets[0]!.logoUrl).toBeUndefined();
   });
 
   it("carries a pinned logo url through", () => {
@@ -227,48 +297,151 @@ describe("discoverLogoUrl", () => {
 
 describe("processLogo", () => {
   it("fits a logo inside the box without enlarging it", async () => {
-    const processed = await processLogo(await pngBytes(300));
-    expect(processed.width).toBe(128);
-    expect(processed.height).toBe(128);
+    const processed = await processLogo(await pngBytes(600));
+    expect(processed.width).toBe(384);
+    expect(processed.height).toBe(384);
     expect(processed.file).toMatch(/^[0-9a-f]{16}\.webp$/);
-    expect(processed.tone).toBe("dark");
+    expect(processed.chipOnLight).toBe(false);
   });
 
-  it("leaves a small logo at its own size", async () => {
+  it("leaves a small raster logo at its own size", async () => {
     const processed = await processLogo(await pngBytes(40));
     expect(processed.width).toBe(40);
   });
+
+  // A vector has no size of its own, only the one its author typed. Rendering
+  // it at that size and then refusing to enlarge the bitmap pinned Maribor's
+  // mark, which declares width="85", to 85px: the most scalable source in the
+  // register produced the smallest copy in it.
+  it("draws a vector at the size it is kept at, not the size it declares", async () => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="85" height="40" viewBox="0 0 85 40">' +
+        '<rect width="85" height="40" fill="#101010"/></svg>',
+    );
+
+    const processed = await processLogo(svg);
+    expect(processed.width).toBeGreaterThan(300);
+  });
+
+  // The site sizes a logo by the cached file's dimensions, so a transparent
+  // apron around the mark shrinks the drawn ink by its share of the box.
+  it("trims transparent margins down to the mark", async () => {
+    const ink = await sharp({
+      create: { width: 20, height: 12, channels: 4, background: "#101010" },
+    })
+      .png()
+      .toBuffer();
+    const padded = await sharp({
+      create: {
+        width: 96,
+        height: 96,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([{ input: ink, left: 38, top: 42 }])
+      .png()
+      .toBuffer();
+
+    const processed = await processLogo(padded);
+    expect(processed.width).toBe(20);
+    expect(processed.height).toBe(12);
+  });
 });
 
-describe("inkTone", () => {
-  it("calls a white wordmark light ink", async () => {
-    expect(await inkTone(await pngBytes(32, "#ffffff"))).toBe("light");
+describe("logoSurface", () => {
+  it("gives a white wordmark something to sit on in light mode only", async () => {
+    expect(await logoSurface(await inkBytes("#ffffff"))).toEqual({
+      chipOnLight: true,
+      chipOnDark: false,
+      opaque: false,
+    });
   });
 
-  it("calls a black wordmark dark ink", async () => {
-    expect(await inkTone(await pngBytes(32, "#101010"))).toBe("dark");
+  it("gives a black wordmark something to sit on in dark mode only", async () => {
+    expect(await logoSurface(await inkBytes("#101010"))).toEqual({
+      chipOnLight: false,
+      chipOnDark: true,
+      opaque: false,
+    });
   });
 
-  // The bright fills must not outvote the black line art: a logo whose text
-  // is black needs the white chip no matter how much yellow it carries.
-  it("calls a bright logo with black line art dark ink", async () => {
+  // The case a light-or-dark reading gets wrong in both directions. This ink
+  // has no dark pixel, so it was called light and plated in dark mode where
+  // it was already legible; and it reaches 1.9:1 on white, where it was left
+  // bare and washed out. It is the shelter's own orange (Horjul).
+  it("gives a mid-tone orange the light chip and leaves it bare on dark", async () => {
+    expect(await logoSurface(await inkBytes("#e8842c"))).toEqual({
+      chipOnLight: true,
+      chipOnDark: false,
+      opaque: false,
+    });
+  });
+
+  // A quarter of the ink being dark is enough to carry the drawing on white,
+  // because that quarter is the outline the bright fill sits inside. Mačja
+  // hiša is this logo and it reads on both cards with no chip at all.
+  it("leaves a bright logo with black line art bare on both", async () => {
     const outline = await sharp({
-      create: { width: 64, height: 16, channels: 4, background: "#000000" },
+      create: { width: 64, height: 20, channels: 4, background: "#000000" },
     })
       .png()
       .toBuffer();
     const logo = await sharp({
-      create: { width: 64, height: 64, channels: 4, background: "#f5c400" },
+      create: {
+        width: 64,
+        height: 80,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
     })
-      .composite([{ input: outline, left: 0, top: 48 }])
+      .composite([
+        {
+          input: await sharp({
+            create: {
+              width: 64,
+              height: 64,
+              channels: 4,
+              background: "#f5c400",
+            },
+          })
+            .png()
+            .toBuffer(),
+          left: 0,
+          top: 0,
+        },
+        { input: outline, left: 0, top: 44 },
+      ])
       .png()
       .toBuffer();
 
-    expect(await inkTone(logo)).toBe("dark");
+    expect(await logoSurface(logo)).toEqual({
+      chipOnLight: false,
+      chipOnDark: false,
+      opaque: false,
+    });
   });
 
-  // A logo is mostly transparent padding, so averaging every pixel would
-  // report almost every logo as light ink.
+  // A file with no transparent pixel anywhere carries its own background, so
+  // the card is not behind it and a chip would only be a second rectangle
+  // behind the first. Several shelters send exactly this: a JPEG of the mark
+  // on flat white.
+  it("reads a file with no transparency as bringing its own ground", async () => {
+    const white = await sharp({
+      create: { width: 64, height: 64, channels: 3, background: "#ffffff" },
+    })
+      .jpeg()
+      .toBuffer();
+
+    expect(await logoSurface(white)).toEqual({
+      chipOnLight: false,
+      chipOnDark: false,
+      opaque: true,
+    });
+  });
+
+  // A logo is mostly transparent padding, so counting every pixel would read
+  // almost every logo as pale.
   it("ignores transparent padding around the ink", async () => {
     const ink = await sharp({
       create: { width: 8, height: 8, channels: 4, background: "#000000" },
@@ -287,7 +460,11 @@ describe("inkTone", () => {
       .png()
       .toBuffer();
 
-    expect(await inkTone(padded)).toBe("dark");
+    expect(await logoSurface(padded)).toEqual({
+      chipOnLight: false,
+      chipOnDark: true,
+      opaque: false,
+    });
   });
 });
 
@@ -302,6 +479,65 @@ describe("cacheLogos", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   const logosDir = () => join(dir, "files");
+
+  // A shelter with no site to fetch from sends the artwork instead, and the
+  // file travels with the repository. Nothing about that turn touches the
+  // network: no home page, no logo request, no discovery.
+  it("reads a supplied logo off the disk without a request", async () => {
+    const client = new StubClient(new Map(), new Map());
+    const root = join(dir, "root");
+    mkdirSync(join(root, "data", "shelter-logos"), { recursive: true });
+    writeFileSync(
+      join(root, "data", "shelter-logos", "potepuhi.jpg"),
+      await sharp({
+        create: { width: 300, height: 120, channels: 3, background: "#ffffff" },
+      })
+        .jpeg()
+        .toBuffer(),
+    );
+
+    const result = await cacheLogos(
+      [
+        {
+          providerId: "potepuhi",
+          homeUrl: "https://example.si",
+          logoFile: "data/shelter-logos/potepuhi.jpg",
+        },
+      ],
+      client,
+      { logosDir: logosDir(), manifestPath, fileRoot: root },
+    );
+
+    expect(client.pages).toEqual([]);
+    expect(client.files).toEqual([]);
+    const entry = result.manifest.entries["potepuhi"]!;
+    expect(entry.sourceUrl).toBe("data/shelter-logos/potepuhi.jpg");
+    // Flat white with nothing transparent in it: its own plate, no chip.
+    expect(entry.opaque).toBe(true);
+    expect(entry.chipOnLight).toBe(false);
+    expect(entry.chipOnDark).toBe(false);
+    expect(existsSync(join(logosDir(), entry.file))).toBe(true);
+  });
+
+  it("refuses a supplied path that climbs out of the repository", async () => {
+    const client = new StubClient(new Map(), new Map());
+    const root = join(dir, "root");
+    mkdirSync(root, { recursive: true });
+
+    const result = await cacheLogos(
+      [
+        {
+          providerId: "potepuhi",
+          homeUrl: "https://example.si",
+          logoFile: "../outside.png",
+        },
+      ],
+      client,
+      { logosDir: logosDir(), manifestPath, fileRoot: root },
+    );
+
+    expect(result.manifest.entries["potepuhi"]).toBeUndefined();
+  });
 
   it("discovers, fetches and records a logo", async () => {
     const client = new StubClient(
@@ -323,7 +559,7 @@ describe("cacheLogos", () => {
     expect(result.fetched).toBe(1);
     const entry = result.manifest.entries["zonzani"]!;
     expect(entry.sourceUrl).toBe("https://zavetisce.si/logo.png");
-    expect(entry.tone).toBe("dark");
+    expect(entry.chipOnLight).toBe(false);
     expect(entry.etag).toBe('"v1"');
     expect(existsSync(join(logosDir(), entry.file))).toBe(true);
     expect(publicUrlFor(entry.file)).toBe(`/media/shelter-logos/${entry.file}`);

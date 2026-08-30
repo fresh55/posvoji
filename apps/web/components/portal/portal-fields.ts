@@ -203,6 +203,35 @@ export function choiceCard(selected: boolean, className?: string): string {
 }
 
 /**
+ * A value the crawl read off the shelter's own website, drawn on the control
+ * that would replace it. It has to read as "this is what your page says", not
+ * as "you chose this": on the 2026-08-20 export 95% of the animals carry
+ * status "available" and not one of those was typed here, so an accent on all
+ * of them would present our reading as the shelter's answer and leave nothing
+ * to distinguish the ones they have actually confirmed.
+ */
+export const CHOICE_CARD_INHERITED =
+  "border-dashed border-foreground/30 bg-muted/40 text-foreground hover:border-foreground/40 hover:bg-muted/40";
+
+/**
+ * The fields an adopter filters the public site by that the crawl almost
+ * never reads. On the 2026-08-20 export not one of the 503 animals carried an
+ * energy level or a "good with kids" answer, so those filters return nothing
+ * however many animals would in fact match. Only a shelter can close that,
+ * which is why the card names the ones still unanswered.
+ *
+ * The labels are the short form on purpose: they run together on one line
+ * under the card, where the full "Se razume z otroki" would not fit.
+ */
+export const SEARCHABLE_FIELDS = [
+  { key: "energy", label: "energija" },
+  { key: "goodWithKids", label: "otroci" },
+  { key: "goodWithDogs", label: "psi" },
+  { key: "goodWithCats", label: "mačke" },
+  { key: "apartmentOk", label: "stanovanje" },
+] as const;
+
+/**
  * Selected state for a deliberate "I don't know" answer. It is still a
  * choice, not a blank, so it stays marked selected, just without the green
  * accent that means "known and positive".

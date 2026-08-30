@@ -1,0 +1,43 @@
+# Machine-readable permission record. CI validates every policy.yaml against
+# the ProviderPolicy schema: a provider cannot be enabled, show images or carry
+# more than bare facts without granted, dated permission from the shelter.
+#
+# This one records a logo grant and nothing else. The shelter publishes no
+# animal list we ingest, so enabled stays false and no adapter is registered
+# for it: the crawl skips it entirely and only the logo sync reads this file.
+providerId: potepuhi
+# The shelter has no website of its own. Its only public presence is a
+# Facebook page, which is what `source` names here so the origin this policy
+# belongs to is recorded rather than invented. Nothing is fetched from it.
+source: https://www.facebook.com/p/Zavetišče-Potepuhi-61565692166024/
+enabled: false
+
+ingestion: manual
+images: none
+descriptions: facts-only
+
+logo:
+  use: permitted
+  # Supplied by the project owner rather than fetched: the shelter publishes
+  # this mark only as a Facebook image, whose URL is signed and expires, so
+  # there is nothing stable to pin. The green cat and dog heads forming a
+  # heart, beside the POTEPUHI ZAVETIŠČE wordmark, on flat white.
+  file: data/shelter-logos/potepuhi.jpg
+  date: 2026-08-30
+  reference: project-owner-confirmation-logos-2026-08-30
+
+permission:
+  status: granted
+  date: 2026-08-30
+  reference: project-owner-confirmation-logos-2026-08-30
+  notes: >-
+    Project owner confirmed permission to use this shelter's logo and supplied
+    the artwork. The grant recorded here covers the mark only: no animal data
+    is taken from this shelter, which is why enabled is false, images are none
+    and descriptions stay facts-only.
+
+attribution: "Vir: Zavetišče Potepuhi"
+
+crawl:
+  intervalHours: 12
+  excludePaths: []

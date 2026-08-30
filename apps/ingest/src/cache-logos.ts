@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import type {
@@ -10,17 +10,30 @@ import type {
 } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { mapByHost } from "./by-host";
-import { shelterLogosDir, shelterLogoManifestPath } from "./paths";
+import { repoRoot, shelterLogosDir, shelterLogoManifestPath } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
 import { writeContentAddressed } from "./write-content-addressed";
 
 // Where the static site serves the files written to shelterLogosDir.
 const PUBLIC_PREFIX = "/media/shelter-logos";
 
-// The logo renders at 44 CSS pixels in the shelter block and smaller in the
-// grid, so 128 covers every use at 2x. A shelter's full-size artwork stays at
-// the shelter.
-const MAX_SIZE = 128;
+// A shelter's full-size artwork stays at the shelter; this is the box the
+// cached copy is fitted inside.
+//
+// 128 was right when a logo was drawn at 44 CSS pixels. The register now sizes
+// each mark from its own proportions and draws them up to 144 CSS pixels wide,
+// and the shelter page's hero up to 170, so 128 stopped being a 2x copy and
+// started being an upscale: three of the eleven were drawn larger than the
+// pixels we held. 384 covers the widest placement at 2x with room over.
+//
+// These are flat colour and line art, so the file grows far less than the
+// area does.
+const MAX_SIZE = 384;
+
+// What a vector source is rasterized at, capped so a mark declaring a tiny
+// viewBox cannot ask for an enormous bitmap.
+const MAX_SVG_DENSITY = 1200;
+const DEFAULT_SVG_DENSITY = 72;
 const WEBP_QUALITY = 90;
 // Same trade as the photo cache: effort costs batch time nobody waits on and
 // returns smaller files at the same quality. One logo per shelter, so the
@@ -34,19 +47,30 @@ const ACCEPT_IMAGES = "image/avif,image/webp,image/*,*/*;q=0.8";
 // without any request until it is this old.
 const REVALIDATE_AFTER_DAYS = 30;
 
-// Whether the logo's own ink is light or dark. Shelter logos are supplied as
-// transparent PNGs drawn for one background: a white wordmark vanishes on a
-// light card, a black one on a dark card. Recording the ink lets the site sit
-// each logo on a chip it contrasts with, in either theme.
-export type LogoTone = "light" | "dark";
+// Whether a mark needs something to sit on, per card background. Shelter
+// logos are supplied as transparent files drawn for one background: a white
+// wordmark vanishes on a light card, a black one on a dark card, and a mid
+// tone can fail on one while reading perfectly on the other. Asking the
+// question once per background rather than sorting the ink into "light" or
+// "dark" is what keeps the site from boxing a mark that was already legible,
+// or leaving one bare that was not.
+export interface LogoSurface {
+  chipOnLight: boolean;
+  chipOnDark: boolean;
+  // Whether the file has no transparency at all, so the mark arrives with a
+  // background of its own. Most shelters export a transparent PNG or SVG and
+  // the card is their ground; a few send a JPEG, where the white or coloured
+  // rectangle behind the mark is part of the file and cannot be taken out
+  // without punching holes in the artwork that shares its colour.
+  opaque: boolean;
+}
 
-export interface CachedLogoEntry {
+export interface CachedLogoEntry extends LogoSurface {
   // Content-addressed by the processed bytes, so a re-encode or a redesigned
   // logo gets a new name and the stale copy is swept.
   file: string;
   width: number;
   height: number;
-  tone: LogoTone;
   // Kept so a reviewer can see exactly which file on the shelter's site this
   // came from without re-running discovery.
   sourceUrl: string;
@@ -72,15 +96,30 @@ export function publicUrlFor(file: string): string {
 // Only providers whose policy carries a dated logo grant. The policy is the
 // only authority here: `images: cache-permitted` covers animal photographs,
 // never the shelter's own mark.
-export function logoTargets(
-  policies: ProviderPolicy[],
-): { providerId: string; homeUrl: string; logoUrl?: string }[] {
+//
+// `enabled` is deliberately not part of the test. It says whether we crawl a
+// shelter's animals, which is a different grant on a different date from the
+// one covering its mark, and the schema keeps them apart for that reason. A
+// shelter that publishes no list we ingest can still let us print its logo
+// beside its phone number, and requiring `enabled` here meant the only way to
+// show that logo was to claim we crawl them.
+export interface LogoTarget {
+  providerId: string;
+  homeUrl: string;
+  logoUrl?: string;
+  // A path from the repository root, for a mark the shelter sent us rather
+  // than published. Read from disk instead of fetched; see cacheOne.
+  logoFile?: string;
+}
+
+export function logoTargets(policies: ProviderPolicy[]): LogoTarget[] {
   return policies
-    .filter((policy) => policy.enabled && policy.logo.use === "permitted")
+    .filter((policy) => policy.logo.use === "permitted")
     .map((policy) => ({
       providerId: policy.providerId,
       homeUrl: new URL(policy.source).origin,
       logoUrl: policy.logo.url,
+      logoFile: policy.logo.file,
     }));
 }
 
@@ -166,49 +205,179 @@ export function discoverLogoUrl(
   return best?.href;
 }
 
-// What decides the chip is the near-black ink, not the average colour. A
-// colourful logo with black outlines or a black wordmark falls apart on a
-// dark chip however bright its fills are (the mean got exactly that wrong for
-// a yellow logo with black line art), while a mark drawn in white simply has
-// no dark pixels at all. So: light ink only when dark pixels are essentially
-// absent and the rest is bright; everything else goes on the white chip.
-export async function inkTone(image: Buffer): Promise<LogoTone> {
+// The two card backgrounds a mark is drawn on, as relative luminance. --card
+// is oklch(1 0 0) in light and oklch(0.205 0 0) in dark, and for a neutral the
+// oklab lightness is the cube root of the linear value.
+const CARD_LIGHT_LUMINANCE = 1;
+const CARD_DARK_LUMINANCE = 0.205 ** 3;
+
+// WCAG 1.4.11's minimum for a graphic. A mark is a drawing, not body copy.
+const MIN_CONTRAST = 3;
+
+// How much of a mark's ink has to clear MIN_CONTRAST for the mark to be left
+// on the card bare.
+//
+// Two different shares, because the two failures are not the same failure.
+// Against white, ink fails only where it is pale, and a mark with any real
+// dark structure keeps its drawing: Mačja hiša reads perfectly on white with
+// 27% of its ink dark enough, because that 27% is the outline the yellow sits
+// inside. Against the dark card the ink that fails is the dark ink, which in
+// these marks is the lettering, so a mark has to keep most of itself: Meli at
+// 15% and Ljubljana at 35% are mostly black type and lose it.
+//
+// Both numbers sit in a gap rather than on a boundary, measured across the
+// eleven cached logos. On white the shares run 0, 0, 0, 13, then 25 and up, so
+// 20 splits a twelve-point window. On the dark card they run up to 51, then 80
+// and up, so 60 splits a twenty-nine point one. The tightest margin in the set
+// is Mačja hiša at 5 points clear of the white threshold, which is the logo
+// this rule most has to get right: it is the yellow one whose black outline
+// carries it.
+//
+// The share is measured on the cached copy, so it moves with the resolution
+// that copy is kept at. Raising MAX_SIZE from 128 to 384 took Obalno from 30%
+// to 13% on white and gave it a chip it had not had: a small render blurs pale
+// ink against transparency into darker edge pixels, and counts those as ink
+// that holds. The larger copy is the truer measure, being nearer the artwork
+// the shelter drew, but a change to MAX_SIZE is a change to these numbers and
+// the flags want re-reading when it happens.
+const HOLDS_ON_LIGHT = 0.2;
+const HOLDS_ON_DARK = 0.6;
+
+function toLinear(value: number): number {
+  const channel = value / 255;
+  return channel <= 0.04045
+    ? channel / 12.92
+    : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function contrastRatio(a: number, b: number): number {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+// What decides a chip is whether the mark survives the card it is drawn on,
+// measured, rather than which side of a brightness threshold its ink falls.
+// Sorting the ink into "light" or "dark" got two cases wrong in opposite
+// directions: a yellow mark with black line art was called light and boxed on
+// a dark plate it never needed, and an orange wordmark with no dark pixel at
+// all was called dark and left bare on white, where none of it reached 3:1.
+// Both answers come out of the same count here, so neither can contradict the
+// other.
+export async function logoSurface(image: Buffer): Promise<LogoSurface> {
   const { data, info } = await sharp(image)
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  let sum = 0;
-  let dark = 0;
+  let holdsOnLight = 0;
+  let holdsOnDark = 0;
   let counted = 0;
+  let clear = 0;
   for (let i = 0; i < data.length; i += info.channels) {
     const alpha = info.channels === 4 ? (data[i + 3] ?? 0) : 255;
+    // Fully transparent is what makes a file's own rectangle not part of the
+    // mark. A hairline of anti-aliasing is not, so this asks for wholly clear
+    // pixels rather than merely not-opaque ones.
+    if (alpha === 0) clear++;
     if (alpha < 128) continue;
-    const r = data[i] ?? 0;
-    const g = data[i + 1] ?? 0;
-    const b = data[i + 2] ?? 0;
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    sum += luminance;
-    if (luminance < 100) dark++;
+    const luminance =
+      0.2126 * toLinear(data[i] ?? 0) +
+      0.7152 * toLinear(data[i + 1] ?? 0) +
+      0.0722 * toLinear(data[i + 2] ?? 0);
+    if (contrastRatio(luminance, CARD_LIGHT_LUMINANCE) >= MIN_CONTRAST) {
+      holdsOnLight++;
+    }
+    if (contrastRatio(luminance, CARD_DARK_LUMINANCE) >= MIN_CONTRAST) {
+      holdsOnDark++;
+    }
     counted++;
   }
 
-  // A logo with no opaque pixel at all is treated as dark ink, which puts it
-  // on the light chip the majority use.
-  if (counted === 0) return "dark";
-  return dark / counted < 0.03 && sum / counted > 140 ? "light" : "dark";
+  // A file with no clear pixel anywhere brings its own ground. The card is
+  // not behind that mark, its own rectangle is, so a chip would only be a
+  // second background behind the first: the site rounds its corners instead
+  // and draws it as the plate it already is.
+  const opaque = clear === 0;
+
+  // A logo with no opaque pixel at all is left bare on both: there is no ink
+  // for a chip to rescue.
+  if (counted === 0) {
+    return { chipOnLight: false, chipOnDark: false, opaque: false };
+  }
+  return {
+    chipOnLight: !opaque && holdsOnLight / counted < HOLDS_ON_LIGHT,
+    chipOnDark: !opaque && holdsOnDark / counted < HOLDS_ON_DARK,
+    opaque,
+  };
+}
+
+// The margin a source file carries is not the mark. Several shelters export
+// their logo with a wide transparent apron, and the site sizes a logo by the
+// cached file's dimensions, so an untrimmed apron shrinks the drawn ink by
+// exactly its share of the box. A uniform image makes trim throw; it has no
+// margin to lose, so it is used as it came.
+async function trimmed(source: Buffer): Promise<Buffer> {
+  try {
+    return await sharp(source).trim({ threshold: 10 }).toBuffer();
+  } catch {
+    return source;
+  }
+}
+
+// A vector, drawn at the size we are going to keep it at.
+//
+// sharp renders an SVG at the size the file declares, at 72 dpi, and the
+// resize below will not enlarge a bitmap. Together those pin a vector to
+// whatever its author happened to type in the width attribute: Maribor's mark
+// declares width="85", so the shelter with the most scalable source in the
+// register had the smallest copy of any of them. Raising the density asks the
+// renderer for the pixels instead of asking the resizer to invent them.
+//
+// Anything that is not a vector comes back untouched, including the cached
+// webp that refreshed() re-reads.
+async function rasterized(source: Buffer): Promise<Buffer> {
+  let width = 0;
+  let height = 0;
+  try {
+    const meta = await sharp(source).metadata();
+    if (meta.format !== "svg") return source;
+    width = meta.width ?? 0;
+    height = meta.height ?? 0;
+  } catch {
+    // Unreadable here is unreadable in processLogo, which reports it.
+    return source;
+  }
+
+  const longest = Math.max(width, height);
+  if (longest <= 0) return source;
+  const density = Math.min(
+    MAX_SVG_DENSITY,
+    Math.max(
+      DEFAULT_SVG_DENSITY,
+      Math.ceil((DEFAULT_SVG_DENSITY * MAX_SIZE) / longest),
+    ),
+  );
+  try {
+    return await sharp(source, { density }).png().toBuffer();
+  } catch {
+    // A density the renderer refuses is not worth losing the logo over.
+    return source;
+  }
 }
 
 // Logos are line art and flat colour with transparency, so they are fitted
 // inside a box rather than cropped, and the alpha channel is kept.
-export async function processLogo(source: Buffer): Promise<{
-  file: string;
-  data: Buffer;
-  width: number;
-  height: number;
-  tone: LogoTone;
-}> {
-  const { data, info } = await sharp(source)
+export async function processLogo(source: Buffer): Promise<
+  LogoSurface & {
+    file: string;
+    data: Buffer;
+    width: number;
+    height: number;
+  }
+> {
+  // Rasterize before trimming: trimming a vector would render it at its
+  // declared size first and throw the resolution away before the resize ever
+  // sees it.
+  const { data, info } = await sharp(await trimmed(await rasterized(source)))
     .resize({
       width: MAX_SIZE,
       height: MAX_SIZE,
@@ -223,7 +392,7 @@ export async function processLogo(source: Buffer): Promise<{
     data,
     width: info.width,
     height: info.height,
-    tone: await inkTone(data),
+    ...(await logoSurface(data)),
   };
 }
 
@@ -262,6 +431,9 @@ export interface CacheLogosOptions {
   logosDir?: string;
   manifestPath?: string;
   revalidateAfterDays?: number;
+  // What logo.file paths are resolved against. The repository root in a real
+  // run; a fixture tree in a test.
+  fileRoot?: string;
 }
 
 // What one shelter's turn produced. An absent entry drops the shelter from
@@ -277,12 +449,13 @@ interface LogoOutcome {
 // of logoTargets, so the next run deletes its file: the removal path is the
 // sync itself, as it is for photographs.
 export async function cacheLogos(
-  targets: { providerId: string; homeUrl: string; logoUrl?: string }[],
+  targets: LogoTarget[],
   client: LogoClient,
   options: CacheLogosOptions = {},
 ): Promise<CacheLogosResult> {
   const logosDir = options.logosDir ?? shelterLogosDir;
   const manifestPath = options.manifestPath ?? shelterLogoManifestPath;
+  const fileRoot = options.fileRoot ?? repoRoot;
   const revalidateAfterMs =
     (options.revalidateAfterDays ?? REVALIDATE_AFTER_DAYS) * 24 * 60 * 60_000;
 
@@ -306,23 +479,106 @@ export async function cacheLogos(
     );
   }
 
+  // A kept entry re-judged from the cached bytes. The tone rule and the trim
+  // are judgements about bytes we already hold, so a change to either has to
+  // reach a logo that keeps answering 304, not wait for the shelter to
+  // redesign it. The file is rewritten only when trimming would actually
+  // change its dimensions: a re-encode of unchanged pixels is not
+  // byte-stable, so rewriting unconditionally would mint a new content hash
+  // every run. An unreadable file keeps its entry; the next revalidation
+  // replaces it anyway.
+  const refreshed = async (entry: CachedLogoEntry): Promise<CachedLogoEntry> => {
+    try {
+      const bytes = readFileSync(join(logosDir, entry.file));
+      const alreadyTrim = await sharp(await trimmed(bytes)).metadata();
+      if (
+        alreadyTrim.width !== entry.width ||
+        alreadyTrim.height !== entry.height
+      ) {
+        const processed = await processLogo(bytes);
+        writeContentAddressed(join(logosDir, processed.file), processed.data);
+        return {
+          ...entry,
+          file: processed.file,
+          width: processed.width,
+          height: processed.height,
+          chipOnLight: processed.chipOnLight,
+          chipOnDark: processed.chipOnDark,
+          opaque: processed.opaque,
+        };
+      }
+      return { ...entry, ...(await logoSurface(bytes)) };
+    } catch {
+      return entry;
+    }
+  };
+
   // One shelter's turn: its home page, then its logo, in that order. Nothing
   // here touches next.entries, discovered or the counters. The outcome is
   // handed back and applied once every host has finished, so both records keep
   // the order of `targets` and the counters are summed in one place.
-  const cacheOne = async (target: {
-    providerId: string;
-    homeUrl: string;
-    logoUrl?: string;
-  }): Promise<LogoOutcome> => {
-    const prev = previous.entries[target.providerId];
-    const prevUsable =
-      prev !== undefined &&
-      prev.tone !== undefined &&
-      existsSync(join(logosDir, prev.file));
+  const cacheOne = async (target: LogoTarget): Promise<LogoOutcome> => {
+    const stored = previous.entries[target.providerId];
+    // The file on disk is the whole test. An entry written before a judgement
+    // existed is not stale, because refreshed() takes every judgement off the
+    // bytes: an older manifest is brought up to date without a request.
+    const storedUsable =
+      stored !== undefined && existsSync(join(logosDir, stored.file));
+    // A kept copy gets today's judgement of its bytes (see refreshed above).
+    // prev stays a const so the prevUsable checks below keep narrowing it.
+    const prev = storedUsable ? await refreshed(stored) : undefined;
+    const prevUsable = prev !== undefined;
     // Keep what we have, take nothing new. Reached by every failure path
     // below, and none of them counts as a fetch or a reuse.
     const keepPrevious: LogoOutcome = prevUsable ? { entry: prev } : {};
+
+    // A mark the shelter handed us rather than published. No request, no
+    // revalidation window and no discovery: the file travels with the
+    // repository, so the only question is what it holds today. processLogo is
+    // deterministic and the name is the hash of its output, so re-reading an
+    // unchanged file rewrites nothing.
+    if (target.logoFile !== undefined) {
+      const path = resolve(fileRoot, target.logoFile);
+      // The schema forbids a climbing path, and this is the second lock: a
+      // policy is a file in the repository, but it names something the sync
+      // then reads off the disk.
+      const inside = relative(fileRoot, path);
+      if (inside.startsWith("..") || inside === "") {
+        console.warn(
+          `logo ${target.providerId}: ${target.logoFile} is outside the repository`,
+        );
+        return keepPrevious;
+      }
+      let processed;
+      let modified: Date;
+      try {
+        modified = statSync(path).mtime;
+        processed = await processLogo(readFileSync(path));
+      } catch (error) {
+        console.warn(
+          `logo ${target.providerId}: ${target.logoFile} could not be read (${error})`,
+        );
+        return keepPrevious;
+      }
+      writeContentAddressed(join(logosDir, processed.file), processed.data);
+      return {
+        counted: prev?.file === processed.file ? "reused" : "fetched",
+        entry: {
+          file: processed.file,
+          width: processed.width,
+          height: processed.height,
+          chipOnLight: processed.chipOnLight,
+          chipOnDark: processed.chipOnDark,
+          opaque: processed.opaque,
+          // Where a reviewer finds the artwork this came from, which for a
+          // supplied file is a path rather than a URL.
+          sourceUrl: target.logoFile,
+          // The file's own timestamp, so a run that changes nothing writes
+          // the same manifest.
+          fetchedAt: modified.toISOString(),
+        },
+      };
+    }
 
     if (
       prevUsable &&
@@ -411,7 +667,9 @@ export async function cacheLogos(
         file: processed.file,
         width: processed.width,
         height: processed.height,
-        tone: processed.tone,
+        chipOnLight: processed.chipOnLight,
+        chipOnDark: processed.chipOnDark,
+        opaque: processed.opaque,
         sourceUrl,
         etag: headerValue(res.headers["etag"]),
         lastModified: headerValue(res.headers["last-modified"]),

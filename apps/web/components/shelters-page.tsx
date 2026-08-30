@@ -213,8 +213,17 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                   padding used to be written per group (pr-4, pl-4 pr-4, pl-4)
                   and had to be re-derived by hand whenever a group could be
                   absent; first:pl-0 last:pr-0 lets the row space itself
-                  whichever groups survive the filter. */}
-              <p className="flex flex-wrap items-center divide-x divide-border pt-1 text-sm text-muted-foreground">
+                  whichever groups survive the filter.
+
+                  The hairlines and the padding start at sm, because neither
+                  survives a wrap. divide-x rules the trailing edge of every
+                  group but the last, which is a separator only while the
+                  groups are on one line: at 375px the third wraps, and the
+                  second is left drawing a stroke into the empty end of line
+                  one while the third starts line two 16px in from the column
+                  edge on its own pl-4. Below sm the row spaces itself with
+                  gaps instead, which wrap cleanly. */}
+              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground sm:gap-x-0 sm:divide-x sm:divide-border">
                 {[
                   shelters.length > 0 && {
                     key: "shelters",
@@ -257,7 +266,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                   .map(({ key, icon: Icon, body }) => (
                     <span
                       key={key}
-                      className="flex items-center gap-1.5 px-4 py-0.5 first:pl-0 last:pr-0"
+                      className="flex items-center gap-1.5 py-0.5 sm:px-4 sm:first:pl-0 sm:last:pr-0"
                     >
                       <Icon className="size-3.5 shrink-0" aria-hidden />
                       {body}

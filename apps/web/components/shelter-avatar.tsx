@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { shelterInitial } from "@/lib/shelter-initial";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,10 @@ const TONE_CLASS = {
 
 // Logos are read from the ingest manifest at build time (see
 // lib/shelter-logos.ts), so a shelter without one never risks a 404: it gets
-// an initial-letter avatar instead.
+// an initial-letter avatar instead. The letter comes from
+// lib/shelter-initial.ts rather than from the head of the name, so the plates
+// down a grid of cards are different letters; every call site gets that by
+// passing the name it already passes.
 export function ShelterAvatar({
   name,
   logo,
@@ -126,7 +130,7 @@ export function ShelterAvatar({
         SIZE_CLASS[size].fallback,
       )}
     >
-      {name.slice(0, 1).toUpperCase()}
+      {shelterInitial(name)}
     </span>,
   );
 }

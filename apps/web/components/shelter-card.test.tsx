@@ -94,13 +94,23 @@ describe("the shelter card", () => {
   });
 
   it("falls back to an initial when the shelter has no logo", () => {
-    render(<ShelterCard shelter={shelter()} text={text} />);
+    render(
+      <ShelterCard
+        shelter={shelter({ name: "Veterinarska bolnica Brežice" })}
+        text={text}
+      />,
+    );
 
     // The manifest is read at build time, so a shelter without a logo never
     // risks a 404: it gets a letter, and that letter is decoration the name
     // beside it already says.
+    //
+    // The letter is the first distinctive word's, not the name's first
+    // character: half the register opens with "Zavetišče" or "Veterina", so
+    // the head of the name drew the same plate on card after card. See
+    // lib/shelter-initial.ts.
     expect(screen.queryByRole("img")).toBeNull();
-    expect(screen.getByText("Z")).toBeTruthy();
+    expect(screen.getByText("B")).toBeTruthy();
   });
 
   it("draws the logo when the manifest has one", () => {

@@ -67,9 +67,10 @@ export function SheltersAtlas({
           lines now, so a third column at 1280px still leaves each one a
           readable measure, and seventeen shelters plus the invitation is
           eighteen cells: the last row comes out even at two columns and at
-          three. items-stretch is the default and wanted here, because the
-          contact block inside each card is pushed down by mt-auto and the
-          blocks then line up across a row.
+          three. items-stretch is the default and kept, so every card in a row
+          draws the same box; what the cards put inside that box is their own,
+          and the register's card top-aligns its contacts rather than pushing
+          them to the bottom edge (see shelter-card.tsx).
 
           Tailwind's preflight strips the marker and WebKit drops the list role
           with it, so role="list" is spelled out: without it this is announced
@@ -106,8 +107,13 @@ export function SheltersAtlas({
                   cannot give: the way in for one we do not hold yet. The
                   login is a magic link to an address already on file, so a
                   new shelter pressing it gets an email that never arrives and
-                  no explanation. */}
-              <p className="mt-auto text-sm leading-relaxed text-muted-foreground">
+                  no explanation.
+
+                  It follows the body rather than sitting on the cell's bottom
+                  edge: the invitation is two paragraphs of one thought, and
+                  mt-auto opened a band of blank between them as wide as the
+                  tallest card in the row. */}
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {invite.note}{" "}
                 <a
                   href={invite.joinHref}

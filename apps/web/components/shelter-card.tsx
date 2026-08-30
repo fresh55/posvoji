@@ -112,9 +112,26 @@ export function ShelterCard({
         </ItemContent>
 
         {(shelter.phone || shelter.email || shelter.website) && (
-          <ItemFooter asChild>
-            {/* ItemFooter already carries mt-auto and the column; only the
-                row spacing is this card's own. */}
+          <ItemFooter asChild className="mt-0">
+            {/* ItemFooter carries the column; this card overrides its mt-auto
+                and takes only the row spacing on the list itself.
+
+                mt-auto lines the blocks up by their bottom edge across a row,
+                which is the wrong edge here: the contacts are printed rows
+                rather than a bar of icons, so a card holding a phone alone had
+                its one row sitting level with its neighbours' email rows, a
+                phone reading across from an address, and a gap of air where
+                the town ended. Top-aligned, the rows line up by what they are
+                (phone with phone, email with email) and the slack a short card
+                has left over falls to the bottom of the card, where nothing is
+                printed.
+
+                The override is spelled on ItemFooter rather than on the ul,
+                because ItemFooter's className goes through cn(): tailwind-merge
+                drops the mt-auto and leaves one margin utility, where Slot
+                would have concatenated both classes and left the winner to
+                stylesheet order. ItemFooter itself is untouched; mt-auto is
+                still right for an item whose footer is a row of controls. */}
             <ul className="gap-0.5">
               {shelter.phone && (
                 // The visible number is the label and the accessible name adds

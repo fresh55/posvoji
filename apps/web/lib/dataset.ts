@@ -21,17 +21,71 @@ const datasetPath = join(
 // is undefined so a genuine null result is cached too.
 let cached: Dataset | null | undefined;
 
+// The refusal is cached the same as the answer. loadDataset is called once
+// per rendered page and the export prerenders about a thousand of them, so a
+// file that will not parse would otherwise be read, parsed and validated a
+// thousand times over on the way to the same error. Before this function
+// learned to refuse, the failure was cached as null and cost one read.
+let refusal: Error | undefined;
+
 // Read at build time. The file is absent until a provider is enabled.
+//
+// Absent and unreadable are not the same answer, and this used to give both
+// of them as null. Absent is the ordinary state of a checkout that has not
+// run an ingest yet, and every surface is written to handle it: the grid is
+// empty, the census prints no animal count, the shelters index draws the
+// register alone. Unreadable is a data/dist that cannot be believed, which
+// looks exactly the same on the page and is not the same thing at all. So:
+// missing stays null, and a file that is there but will not parse or will not
+// validate stops the build with what is wrong with it.
+//
+// What that guards against is not a torn write. apps/ingest validates with
+// Dataset.parse before writing and writes through writeFileAtomic, which
+// renames a complete temporary file over the target, so a reader sees one
+// whole version or the other. It is the two sides drifting: the crawl and the
+// site build are separate scheduled jobs, so the dataset on disk was written
+// by whichever @posvoji/schema the ingest run held, and this build is reading
+// it with whichever one apps/web holds now. A hand-edited or partly restored
+// data/dist lands here too.
 export function loadDataset(): Dataset | null {
+  if (refusal) throw refusal;
   if (cached !== undefined) return cached;
   if (!existsSync(datasetPath)) {
     cached = null;
     return cached;
   }
-  const parsed = Dataset.safeParse(
-    JSON.parse(readFileSync(datasetPath, "utf8")),
-  );
-  cached = parsed.success ? parsed.data : null;
+
+  let json: unknown;
+  try {
+    json = JSON.parse(readFileSync(datasetPath, "utf8"));
+  } catch (cause) {
+    refusal = new Error(
+      `The dataset is not valid JSON: ${datasetPath}\n` +
+        "Re-run pnpm dataset:export.",
+      { cause },
+    );
+    throw refusal;
+  }
+
+  const parsed = Dataset.safeParse(json);
+  if (!parsed.success) {
+    refusal = new Error(
+      `The dataset does not match the schema apps/web was built against: ${datasetPath}\n` +
+        parsed.error.issues
+          .slice(0, 10)
+          .map(
+            (issue) => `  ${issue.path.join(".") || "(root)"}: ${issue.message}`,
+          )
+          .join("\n") +
+        (parsed.error.issues.length > 10
+          ? `\n  and ${parsed.error.issues.length - 10} more`
+          : "") +
+        "\nRe-run pnpm dataset:export against this checkout.",
+    );
+    throw refusal;
+  }
+
+  cached = parsed.data;
   return cached;
 }
 

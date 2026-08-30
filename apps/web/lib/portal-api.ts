@@ -17,7 +17,10 @@ export function portalUrl(path: string): string {
   return `${portalBaseUrl()}${path}`;
 }
 
-export type PortalShelter = { slug: string; name: string };
+// city feeds the public animal address (see lib/animal-path.ts). Optional so
+// a session served by an older API still parses; the link falls back to the
+// path's own "slovenija" segment through an empty city.
+export type PortalShelter = { slug: string; name: string; city?: string };
 
 export type PortalSession = { email: string; shelters: PortalShelter[] };
 
@@ -47,7 +50,7 @@ export type PortalEnergy = (typeof PORTAL_ENERGIES)[number];
 export const PORTAL_COMPATIBILITIES = ["yes", "no", "unknown"] as const;
 export type PortalCompatibility = (typeof PORTAL_COMPATIBILITIES)[number];
 
-/** The fields a shelter may override, in the order the editor shows them. */
+/** The fields a shelter may override. The editor orders them its own way. */
 export const PORTAL_FIELDS = [
   "name",
   "status",

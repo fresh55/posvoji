@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { m, useReducedMotion } from "motion/react";
-import { STATUS_META, choiceCard } from "@/components/portal/portal-fields";
+import {
+  CHOICE_CARD_INHERITED,
+  STATUS_META,
+  choiceCard,
+} from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
 import { PORTAL_STATUSES, type PortalStatus } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
@@ -12,14 +16,26 @@ const POP_MS = 520;
 // The four statuses are the daily work, so they are one tap on the card
 // itself rather than a field inside a form. Icon first: staff scan the row
 // for the shape, not for the word.
-const BUTTON_LAYOUT = "h-11 flex-1 px-2 text-xs font-medium focus-visible:z-10";
+//
+// h-9, not the h-11 this started at. A shelter with 185 cats scrolls this row
+// 185 times, and the height it was costing is worth more to the line under it
+// naming the fields no crawl can fill.
+const BUTTON_LAYOUT = "h-9 flex-1 px-2 text-xs font-medium focus-visible:z-10";
 
 export function StatusActions({
   value,
+  source = "shelter",
   busy = false,
   onSelect,
 }: {
   value: PortalStatus | null;
+  /**
+   * Whose answer `value` is. "site" is what the crawl read off the shelter's
+   * own page, which the row draws as inherited rather than as a choice the
+   * shelter made. Pressed state still follows the effective value, because
+   * that is what the control currently means.
+   */
+  source?: "shelter" | "site";
   busy?: boolean;
   onSelect: (status: PortalStatus) => void;
 }) {
@@ -43,23 +59,32 @@ export function StatusActions({
       {PORTAL_STATUSES.map((status) => {
         const meta = STATUS_META[status];
         const Icon = meta.icon;
-        const selected = value === status;
-        const popping = popped === status && selected;
+        const current = value === status;
+        const chosen = current && source === "shelter";
+        const inherited = current && source === "site";
+        const popping = popped === status && current;
 
         return (
           <button
             key={status}
             type="button"
-            aria-pressed={selected}
+            aria-pressed={current}
             disabled={busy}
             onClick={() => {
-              if (selected) return;
+              // An inherited value is not a choice yet, so tapping the one the
+              // site already says is a real edit: the shelter is confirming
+              // it, which stops the crawl from moving the value later.
+              if (chosen) return;
               setPopped(status);
               onSelect(status);
             }}
             className={choiceCard(
-              selected,
-              cn(BUTTON_LAYOUT, selected && meta.selected),
+              chosen,
+              cn(
+                BUTTON_LAYOUT,
+                chosen && meta.selected,
+                inherited && CHOICE_CARD_INHERITED,
+              ),
             )}
           >
             <m.span

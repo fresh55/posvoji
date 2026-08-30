@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Check,
+  ExternalLink,
   LoaderCircle,
   Pencil,
   TriangleAlert,
@@ -12,6 +13,7 @@ import { m, useReducedMotion } from "motion/react";
 import { AnimalEditor } from "@/components/portal/animal-editor";
 import { OverrideMark, RevertButton } from "@/components/portal/override-mark";
 import {
+  SEARCHABLE_FIELDS,
   SEX_META,
   isPortalSex,
   isPortalStatus,
@@ -22,10 +24,17 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
 import type { PortalSaveState } from "@/hooks/use-portal-animals";
 import { Button } from "@/components/ui/button";
+import type { AnimalFields } from "@/lib/animal";
 import { thumbnailUrl } from "@/lib/animal-images";
+import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
 import { formatAge } from "@/lib/labels";
-import type { PortalAnimal, PortalAnimalPatch } from "@/lib/portal-api";
+import type {
+  PortalAnimal,
+  PortalAnimalPatch,
+  PortalField,
+  PortalShelter,
+} from "@/lib/portal-api";
 
 // The public site's arithmetic, read through the API's nulls, so the same
 // birth date turns into the same number of months on both sides.
@@ -58,10 +67,39 @@ function Glyph({
   return <Icon className={className} strokeWidth={1.75} aria-hidden />;
 }
 
+/**
+ * The searchable fields this animal still has no answer for, keys and all.
+ * The line under the card prints the labels; the keys are what lets it open
+ * the editor at the first of them.
+ */
+function missingFields(animal: PortalAnimal) {
+  return SEARCHABLE_FIELDS.filter((field) => animal[field.key] === null);
+}
+
+/**
+ * The public address of this animal's own page. animalPath() takes a dataset
+ * animal and the portal never holds one, but it reads only the id, the name,
+ * the species and the shelter's town and id (see lib/animal-path.ts), and the
+ * portal has all five. The value is complete for the call, which is what the
+ * cast stands on.
+ */
+function publicPath(animal: PortalAnimal, shelter: PortalShelter): string {
+  const fields = {
+    id: animal.id,
+    name: animal.name ?? undefined,
+    species: animal.species ?? "zival",
+    shelter: { id: shelter.slug, city: shelter.city ?? "" },
+  } as unknown as AnimalFields;
+  return animalPath(fields, "sl");
+}
+
 function metaLine(animal: PortalAnimal, now: Date): string {
   const months = ageMonths(animal, now);
   return [
     portalSpeciesLabel(animal.species),
+    // Crawled or typed here, the breed is the word staff recognise the animal
+    // by, so it sits next to the species rather than only inside the editor.
+    animal.breed ?? "",
     isPortalSex(animal.sex) && animal.sex !== "unknown"
       ? SEX_META[animal.sex].label.toLowerCase()
       : "",
@@ -73,16 +111,26 @@ function metaLine(animal: PortalAnimal, now: Date): string {
 
 export function PortalAnimalCard({
   animal,
+  shelter,
   saveState,
   onSave,
 }: {
   animal: PortalAnimal;
+  /** The shelter this card is listed under, for the public link's address. */
+  shelter: PortalShelter;
   saveState: PortalSaveState;
   onSave: (patch: PortalAnimalPatch) => Promise<boolean>;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const [editing, setEditing] = useState(false);
+  // The field the editor should open at, set only when the card names one.
+  const [editorField, setEditorField] = useState<PortalField | null>(null);
   const now = useMemo(() => new Date(), []);
+
+  function openEditor(field: PortalField | null) {
+    setEditorField(field);
+    setEditing(true);
+  }
 
   const speciesIcon = portalSpeciesIcon(animal.species);
   const name = animal.name ?? portalText.unnamed;
@@ -94,6 +142,7 @@ export function PortalAnimalCard({
   );
   const saving = saveState.status === "saving";
   const failed = saveState.status === "error";
+  const missing = missingFields(animal);
 
   return (
     <article className="space-y-3 rounded-ui border p-3 transition-colors hover:border-foreground/25 focus-within:border-foreground/25 sm:p-4">
@@ -133,7 +182,12 @@ export function PortalAnimalCard({
             )}
           </div>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Glyph icon={speciesIcon} className="size-3.5 shrink-0" />
+            {/* Only next to a photo. Without one the square to the left is
+                already this same icon, and drawing it twice on one row says
+                nothing the placeholder has not said. */}
+            {animal.thumbnailUrl && (
+              <Glyph icon={speciesIcon} className="size-3.5 shrink-0" />
+            )}
             <span className="truncate">{metaLine(animal, now)}</span>
           </p>
         </div>
@@ -158,9 +212,7 @@ export function PortalAnimalCard({
           {saveState.status === "saved" && (
             <m.span
               key="saved"
-              initial={
-                shouldReduceMotion ? false : { opacity: 0, scale: 0.92 }
-              }
+              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="inline-flex items-center gap-1 rounded-4xl border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-1.5 py-0.5 text-2xs font-medium text-[var(--filter-accent-foreground)]"
@@ -183,32 +235,98 @@ export function PortalAnimalCard({
               disabled={saving}
               onRevert={() => void onSave({ status: null })}
             />
+          ) : status === null ? (
+            <span className="text-2xs text-muted-foreground">
+              {portalText.statusUnknown}
+            </span>
           ) : (
-            status === null && (
-              <span className="text-2xs text-muted-foreground">
-                {portalText.statusUnknown}
+            // Almost every animal lands here: the value is the crawl's
+            // reading of the shelter's own page, and saying so is what keeps
+            // the row from looking like a question already answered.
+            <span className="flex items-center gap-1">
+              <span
+                title={portalText.statusFromSiteHint}
+                className="text-2xs text-muted-foreground"
+              >
+                {portalText.statusFromSite}
               </span>
-            )
+              {/* Tapping the already-pressed status card pins the value too,
+                  but nothing about a pressed card offers that. This is the
+                  same save with a name on it, and it is the only one a touch
+                  user can find: the hint above is a hover title. */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={saving}
+                title={portalText.statusConfirmHint}
+                aria-label={portalText.statusConfirmHint}
+                onClick={() => void onSave({ status })}
+                className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground hover:text-foreground"
+              >
+                <Check aria-hidden />
+                {portalText.statusConfirm}
+              </Button>
+            </span>
           )}
         </div>
         <StatusActions
           value={status}
+          source={statusOverridden ? "shelter" : "site"}
           busy={saving}
           onSelect={(next) => void onSave({ status: next })}
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button
+      {missing.length > 0 && (
+        // Sits directly above the button that opens the editor, so the list
+        // and the way to answer it read as one thing. The line is also the
+        // shortest way in: it opens the editor at the first field it names,
+        // instead of leaving the shelter to find that field in the form.
+        //
+        // What it does goes in the title, not in an aria-label: the visible
+        // text has to stay the accessible name, or voice control has no way
+        // to say this button's name (WCAG 2.5.3).
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           disabled={saving}
-          onClick={() => setEditing(true)}
+          title={fill(portalText.missingOpen, { name })}
+          onClick={() => openEditor(missing[0].key)}
+          className="block w-full rounded-ui text-left text-2xs leading-relaxed text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
         >
-          <Pencil aria-hidden />
-          {portalText.edit}
-        </Button>
+          <span className="font-medium">{portalText.missingTitle}</span>{" "}
+          <span className="underline decoration-dotted underline-offset-2">
+            {missing.map((field) => field.label).join(", ")}
+          </span>
+        </button>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={() => openEditor(null)}
+          >
+            <Pencil aria-hidden />
+            {portalText.edit}
+          </Button>
+
+          {/* The listing as an adopter reads it. A new tab, because the
+              shelter is working through a list and must not lose its place. */}
+          <Button asChild variant="ghost" size="sm">
+            <a
+              href={publicPath(animal, shelter)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink aria-hidden />
+              {portalText.publicListing}
+            </a>
+          </Button>
+        </div>
 
         {failed && (
           <p
@@ -225,6 +343,7 @@ export function PortalAnimalCard({
         animal={animal}
         open={editing}
         onOpenChange={setEditing}
+        initialField={editorField}
         saveState={saveState}
         onSave={onSave}
       />

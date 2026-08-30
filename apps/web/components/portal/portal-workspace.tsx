@@ -1,15 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ExternalLink,
   Inbox,
   LoaderCircle,
   LogOut,
+  SearchX,
   TriangleAlert,
 } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import { PortalAnimalCard } from "@/components/portal/animal-card";
+import {
+  PortalListTools,
+  filterPortalAnimals,
+} from "@/components/portal/list-tools";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { portalText } from "@/components/portal/portal-text";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
@@ -21,6 +26,7 @@ import {
   usePortalSession,
 } from "@/hooks/use-portal-session";
 import { animalCount } from "@/lib/labels";
+import type { PortalStatus } from "@/lib/portal-api";
 
 function CardSkeleton() {
   return (
@@ -73,9 +79,19 @@ export function PortalWorkspace() {
   const { state, reload: reloadSession, signOut } = usePortalSession();
   const [chosen, setChosen] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<PortalStatus | null>(null);
 
   const shelters = state.status === "ready" ? state.session.shelters : [];
   const active = chosen ?? shelters[0]?.slug ?? null;
+  // The card needs the whole shelter, not its slug: the public link it draws
+  // is built from the name and the town as well.
+  const activeShelter = shelters.find((shelter) => shelter.slug === active);
+
+  const clearFilters = useCallback(() => {
+    setQuery("");
+    setStatus(null);
+  }, []);
 
   // The guard: no session, no workspace. replace() so the back button does
   // not walk into a page that will only bounce again.
@@ -95,6 +111,11 @@ export function PortalWorkspace() {
     save,
   } = usePortalAnimals(active, onUnauthorized);
 
+  const visible = useMemo(
+    () => filterPortalAnimals(animals, query, status),
+    [animals, query, status],
+  );
+
   const actions =
     state.status === "ready" ? (
       <div className="flex items-center gap-2">
@@ -103,7 +124,14 @@ export function PortalWorkspace() {
         </span>
         {active && (
           <Button asChild variant="outline" size="sm">
-            <a href={`/zavetisca/${active}`} title={portalText.publicPage}>
+            {/* A new tab, so a shelter checking the public page does not
+                lose the workspace it was halfway through. */}
+            <a
+              href={`/zavetisca/${active}`}
+              target="_blank"
+              rel="noreferrer"
+              title={portalText.publicPage}
+            >
               <ExternalLink aria-hidden />
               {/* The label collapses on a phone but stays readable to a
                   screen reader, so the icon is never the only name. */}
@@ -168,7 +196,12 @@ export function PortalWorkspace() {
             <ShelterSwitcher
               shelters={shelters}
               active={active}
-              onSelect={setChosen}
+              onSelect={(slug) => {
+                // A filter set over one shelter's list means nothing over the
+                // next one's, so switching starts from the whole list again.
+                setChosen(slug);
+                clearFilters();
+              }}
             />
           )}
 
@@ -186,6 +219,11 @@ export function PortalWorkspace() {
               </div>
               <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
                 {portalText.animalsLead}
+              </p>
+              {/* Said once here rather than in a per-card tooltip, which a
+                  touch user never opens. */}
+              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                {portalText.statusInheritedLead}
               </p>
             </div>
 
@@ -218,30 +256,59 @@ export function PortalWorkspace() {
             )}
 
             {listState.status === "ready" && animals.length > 0 && (
-              <div className="space-y-3">
-                {animals.map((animal, index) => (
-                  <m.div
-                    key={animal.id}
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.22,
-                      ease: "easeOut",
-                      // Explicit per-card delay rather than a variant
-                      // stagger, and capped so a long list does not keep the
-                      // last cards waiting.
-                      delay: Math.min(index, 8) * 0.03,
-                    }}
-                  >
-                    <PortalAnimalCard
-                      animal={animal}
-                      saveState={saveStates[animal.id] ?? { status: "idle" }}
-                      onSave={(patch) => save(animal.id, patch)}
-                    />
-                  </m.div>
-                ))}
-              </div>
+              <PortalListTools
+                animals={animals}
+                query={query}
+                onQueryChange={setQuery}
+                status={status}
+                onStatusChange={setStatus}
+              />
             )}
+
+            {listState.status === "ready" &&
+              animals.length > 0 &&
+              visible.length === 0 && (
+                <Notice
+                  icon={SearchX}
+                  title={portalText.noMatchesTitle}
+                  action={
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      {portalText.showAll}
+                    </Button>
+                  }
+                >
+                  {portalText.noMatchesLead}
+                </Notice>
+              )}
+
+            {listState.status === "ready" &&
+              visible.length > 0 &&
+              activeShelter && (
+                <div className="space-y-3">
+                  {visible.map((animal, index) => (
+                    <m.div
+                      key={animal.id}
+                      initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.22,
+                        ease: "easeOut",
+                        // Explicit per-card delay rather than a variant
+                        // stagger, and capped so a long list does not keep the
+                        // last cards waiting.
+                        delay: Math.min(index, 8) * 0.03,
+                      }}
+                    >
+                      <PortalAnimalCard
+                        animal={animal}
+                        shelter={activeShelter}
+                        saveState={saveStates[animal.id] ?? { status: "idle" }}
+                        onSave={(patch) => save(animal.id, patch)}
+                      />
+                    </m.div>
+                  ))}
+                </div>
+              )}
           </section>
         </>
       )}

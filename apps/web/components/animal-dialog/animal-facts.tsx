@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Building2,
   CalendarClock,
@@ -327,6 +327,17 @@ export function AnimalFacts({
   // so the component is keyed by animal where it is used.
   const [showHealthDetails, setShowHealthDetails] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  // The summary pill is the control and the whole of what it replaces: it goes
+  // out of the tree the moment it is pressed, and focus went to the body with
+  // it, which drops a keyboard visitor back at the top of the document. The
+  // row it opened takes the focus instead.
+  const healthRow = useRef<HTMLUListElement>(null);
+  const handOverHealthFocus = useRef(false);
+  useEffect(() => {
+    if (!handOverHealthFocus.current) return;
+    handOverHealthFocus.current = false;
+    healthRow.current?.querySelector("button")?.focus();
+  }, [showHealthDetails]);
   const months = ageInMonths(animal, reference);
   const stayMonths = animal.intakeDate
     ? monthsInShelter(animal.intakeDate, reference)
@@ -415,13 +426,24 @@ export function AnimalFacts({
             </ul>
           )}
           {medical.length > 0 && (
-            <ul aria-label={messages.health} className="flex flex-wrap gap-2">
+            <ul
+              ref={healthRow}
+              aria-label={messages.health}
+              className="flex flex-wrap gap-2"
+            >
               {fullRecord && !showHealthDetails ? (
                 <li>
                   <button
                     type="button"
                     aria-expanded={false}
-                    onClick={() => setShowHealthDetails(true)}
+                    onClick={(event) => {
+                      // Only where the press really holds focus. A mouse click
+                      // in Safari leaves focus where it was, and moving it then
+                      // would be a jump nobody asked for.
+                      handOverHealthFocus.current =
+                        document.activeElement === event.currentTarget;
+                      setShowHealthDetails(true);
+                    }}
                     className={cn(HEALTH_PILL_CLASS, "cursor-pointer")}
                   >
                     <ClipboardCheck

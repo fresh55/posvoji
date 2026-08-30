@@ -126,8 +126,17 @@ export function StageWash({
     // Both layouts run a fan now, so both get the same wash behind it.
     <div className="pointer-events-none absolute inset-0">
       {/* The stage's own box, so the wash keeps the geometry it had when it
-          lived inside the fan. */}
-      <div className={cn("relative mx-auto h-full", STAGE_WIDTH)}>
+          lived inside the fan. Under sm the stage is the whole screen and the
+          wash's 12% overhang each side reaches past it, so it clips on that one
+          axis, the same choice the fan makes in photo-spread.tsx. Clipping one
+          axis leaves the overhang above and below intact. From sm the stage is
+          a centered band with room to spare and the wash is drawn in full. */}
+      <div
+        className={cn(
+          "relative mx-auto h-full overflow-x-clip sm:overflow-x-visible",
+          STAGE_WIDTH,
+        )}
+      >
         <Wash
           slot="photo-wash"
           source={source}

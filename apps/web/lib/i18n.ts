@@ -44,6 +44,12 @@ const sl = {
   previousPhoto: "Prejšnja fotografija",
   nextPhoto: "Naslednja fotografija",
   photoCount: "Fotografija {current} od {total}",
+  // The photograph's own text alternative, for a surface where the picture is
+  // not already named by the control around it. The animal's name alone is not
+  // one: it names the subject and reads the same for every photo in the set, so
+  // the position is part of it. A lone photo has no position to state.
+  photoAlt: "Fotografija: {name}, {current} od {total}",
+  photoAltSingle: "Fotografija: {name}",
   showPhoto: "Pokaži fotografijo {n}",
   viewPhotoLarge: "Odpri fotografijo {n} čez cel zaslon",
   openDetails: "Odpri podrobnosti o {name}",
@@ -404,6 +410,8 @@ const en: Messages = {
   previousPhoto: "Previous photo",
   nextPhoto: "Next photo",
   photoCount: "Photo {current} of {total}",
+  photoAlt: "Photo of {name}, {current} of {total}",
+  photoAltSingle: "Photo of {name}",
   showPhoto: "Show photo {n}",
   viewPhotoLarge: "Open photo {n} full screen",
   openDetails: "Open details for {name}",

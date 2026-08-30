@@ -228,15 +228,18 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
           </Button>
         </div>
 
+        {/* The words are what appear, not their opacity: the line used to sit
+            in the tree already saying it, which gives a screen reader nothing
+            to notice. It stays mounted but empty, because a live region has to
+            be there before its text arrives, and keeps its line so the sheet
+            does not jump. */}
         <p
           role="status"
           aria-live="polite"
-          className={cn(
-            "text-center text-xs text-[var(--filter-accent-strong)] transition-opacity",
-            copied ? "opacity-100" : "opacity-0",
-          )}
+          aria-atomic="true"
+          className="min-h-4 text-center text-xs text-[var(--filter-accent-strong)]"
         >
-          {messages.linkCopied}
+          {copied ? messages.linkCopied : null}
         </p>
       </PopoverContent>
     </Popover>

@@ -247,7 +247,14 @@ export function PhotoLightbox({
               >
                 <AnimalPhoto
                   photo={image}
-                  alt=""
+                  // The photograph is the whole of this view, so it carries a
+                  // real alternative rather than the empty one the fan's
+                  // thumbnails take. Nothing else here names it: the dialog's
+                  // title is sr-only and the counter beside it is aria-hidden.
+                  alt={t(
+                    many ? "photoAlt" : "photoAltSingle",
+                    { name: title, current: index + 1, total: images.length },
+                  )}
                   // The full screen, which is what puts the top of the ladder
                   // on every phone and most desktops. That is the right answer
                   // here: this is the view somebody opened to look closely.

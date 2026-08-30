@@ -67,8 +67,14 @@ export type DialogOrigin = {
 // motion-reduce:duration-0, not motion-reduce:animate-none: see the comment
 // on DialogOverlay in ui/dialog.tsx for why the animate-none guard does not
 // actually take effect on a data-open:/data-closed: element.
+// max-sm:overflow-x-hidden is policy, not the fix for any one layer: naming
+// only the vertical axis leaves the other computing to auto, and on a phone
+// the dialog is the viewport, so it never scrolls sideways. Decoration that
+// overhangs still clips itself where it stands (photo-wash.tsx). Anything wide
+// enough to need reading, a long URL or a table, has to wrap or scroll inside
+// its own box, because this boundary will not offer it a scrollbar.
 const CONTENT_CLASS =
-  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 max-sm:h-dvh max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
+  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 max-sm:h-dvh max-sm:overflow-x-hidden max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame, and pulls itself up
 // under the photos so the fan overlaps its top edge. The wide top padding is
@@ -200,6 +206,24 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
+  // Radix announces the title on open and never again, so stepping to another
+  // animal changed every word in the dialog in silence. The name goes through a
+  // live region instead. Adjusted during render the way lastAnimal above is.
+  const [announced, setAnnounced] = useState<{
+    id: string | undefined;
+    name: string;
+  }>({ id: animal?.id, name: "" });
+  if (announced.id !== animal?.id) {
+    setAnnounced({
+      id: animal?.id,
+      // Silent on the way in, because the title has just been announced, and
+      // silent on the way out. Only a step from one animal to another is news.
+      name:
+        animal && announced.id !== undefined
+          ? (animal.name ?? messages.unnamed)
+          : "",
+    });
+  }
   // The fan is remounted per animal so its photos start over, which means the
   // wash cannot live inside it: it would go out with the old animal and come
   // back from nothing. Held here instead, it is one continuous layer, and
@@ -318,6 +342,19 @@ export function AnimalDialog({
             returnFocus.current = null;
           }}
         >
+          {/* Mounted empty for as long as the dialog is open, so the name of
+              the animal stepped to arrives as a change in a region that was
+              already there. */}
+          <span
+            data-slot="animal-announcement"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="sr-only"
+          >
+            {announced.name}
+          </span>
+
           {/* On a phone the close button rides over the photo; on a wider
               screen it belongs on the card's own title line. */}
           <DialogPrimitive.Close asChild>

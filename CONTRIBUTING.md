@@ -7,11 +7,14 @@ Hvala! Contributions are welcome in Slovenian or English.
 ```bash
 pnpm install
 pnpm typecheck
+pnpm lint
 pnpm test
 ```
 
-Node >= 22 and pnpm are required. There are no services to run; the whole
-project works offline from fixtures.
+Node >= 22, pnpm, Python >= 3.12 and uv are required for the complete check
+suite. No external services are needed; the whole project works offline from
+fixtures. See [`apps/portal/README.md`](apps/portal/README.md) only when you
+need to run the shelter portal itself.
 
 ### When `next dev` reports an error the build does not
 
@@ -36,6 +39,7 @@ what it says.
 - **`providers/`**: the main contribution surface. One folder per shelter.
 - **`apps/web`**: the site (Next.js static export + shadcn/ui).
 - **`apps/ingest`**: the batch pipeline.
+- **`apps/portal`**: authenticated shelter logins and listing overrides.
 - **`packages/`**: schema and SDK. Changes here affect everything, so open an
   issue first.
 

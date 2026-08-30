@@ -35,7 +35,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
           homeHref={homeHref}
           languagePaths={{

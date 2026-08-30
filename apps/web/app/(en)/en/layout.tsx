@@ -26,7 +26,7 @@ export default function EnglishLayout({ children }: LayoutProps<"/en">) {
     // on this element before React ever sees it.
     <html lang="en" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-dvh flex-col">
         <PrehydrationFilterScript />
         {children}
       </body>

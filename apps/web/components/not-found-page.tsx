@@ -28,7 +28,7 @@ export function NotFoundPage({
 
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
+      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
         <SiteHeader homeHref={homeHref} languagePaths={{ sl: "/", en: "/en" }} />
 
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center">

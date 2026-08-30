@@ -30,7 +30,7 @@ export default function SlovenianLayout({ children }: LayoutProps<"/">) {
     // on this element before React ever sees it.
     <html lang="sl" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-dvh flex-col">
         <PrehydrationFilterScript />
         {children}
       </body>

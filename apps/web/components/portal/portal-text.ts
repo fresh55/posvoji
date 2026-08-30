@@ -21,6 +21,7 @@ export const portalText = {
   sentHint: "Če je ni, poglejte še med vsiljeno pošto.",
   sendAgain: "Pošlji na drug naslov",
   emailRequired: "Vpišite e-naslov.",
+  emailInvalid: "E-naslov ni v pravi obliki. Preverite vnos.",
   verifying: "Preverjam povezavo …",
   expiredTitle: "Povezava ne velja več",
   expiredLead:
@@ -118,6 +119,11 @@ export const portalText = {
   saving: "Shranjujem …",
   saved: "Shranjeno",
   cancel: "Prekliči",
+  // Every way out of the editor passes through this once something is typed.
+  discardTitle: "Popravki niso shranjeni",
+  discardLead: "Če zdaj zaprete okno, se vpisano izgubi.",
+  keepEditing: "Nadaljuj urejanje",
+  discardChanges: "Zavrzi popravke",
   saveError: "Shranjevanje ni uspelo. Poskusite znova.",
   invalidError: "Podatek ni v pravi obliki. Preverite vnos.",
   edited: "Urejeno",

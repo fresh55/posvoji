@@ -19,6 +19,7 @@ export function ChoiceGrid<Value extends string>({
   value,
   onPick,
   disabled,
+  describedBy,
 }: {
   /** Names the group for screen readers; the visible label sits above it. */
   label: string;
@@ -27,9 +28,16 @@ export function ChoiceGrid<Value extends string>({
   value: Value | null;
   onPick: (value: Value) => void;
   disabled: boolean;
+  /** The field's hint, so the group carries it as its description. */
+  describedBy?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="grid grid-cols-3 gap-1.5">
+    <div
+      role="group"
+      aria-label={label}
+      aria-describedby={describedBy}
+      className="grid grid-cols-3 gap-1.5"
+    >
       {options.map((option) => {
         const {
           icon: Icon,
@@ -45,10 +53,14 @@ export function ChoiceGrid<Value extends string>({
             aria-pressed={selected}
             disabled={disabled}
             onClick={() => onPick(option)}
+            // Three columns in a dialog leave about 100px a card on a phone,
+            // which "Uravnotežen" does not fit beside its icon. Stacked and
+            // wrapping below sm, side by side once there is room; min-h so a
+            // second line grows the card instead of being cut off.
             className={choiceCard(
               selected,
               cn(
-                "h-11 px-2 text-xs font-medium",
+                "min-h-11 flex-col gap-0.5 px-1.5 py-1.5 text-center text-xs leading-tight font-medium sm:flex-row sm:gap-1.5 sm:px-2",
                 selected && mutedWhenSelected && CHOICE_CARD_MUTED,
               ),
             )}
@@ -58,7 +70,7 @@ export function ChoiceGrid<Value extends string>({
               strokeWidth={1.75}
               aria-hidden
             />
-            <span className="truncate">{text}</span>
+            <span className="max-w-full">{text}</span>
           </button>
         );
       })}

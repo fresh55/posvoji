@@ -4,12 +4,31 @@ import type { MouseEvent } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 // No flags. A flag is a country and these are languages, which is a mismatch
 // that only ever runs one way in practice: Slovenian is spoken outside
 // Slovenia and English is the first language of a dozen countries, none of
 // which is picked out by the union jack this used to draw beside it. The name
 // is already here in both sizes, and the name is the thing being chosen.
+// What both halves wear, hoisted out of the ternary that used to spell it
+// twice: the two differ only in colour, and the touch floor below is the part
+// that must not drift between them.
+//
+// Grown rather than overlaid with tap-target. These sit 2px apart, so the
+// overlay each one lays out to 44px reaches across the gap and over its
+// neighbour: measured on a 390px phone, the right edge of SL hit-tested as EN,
+// because EN comes later in the DOM and won. That rule is written down once,
+// on the tap-target utility in globals.css.
+//
+// min-w-11 with the height, because 44px is a square and this only ever had
+// the one side of it. The label is two characters, so px-3 brought the box to
+// 42 and 43: tall enough and a little narrow, which is the half of the rule
+// that is easy to miss when the fix is written as a height. Hit-tested at
+// 375px, not read off the class.
+const SWITCH =
+  "rounded-ui px-2 font-normal max-lg:min-h-11 max-lg:min-w-11 max-lg:px-3";
+
 const LANGUAGES = [
   { locale: "sl", href: "/", shortName: "SL", name: "Slovenščina" },
   { locale: "en", href: "/en", shortName: "EN", name: "English" },
@@ -37,18 +56,12 @@ export function LanguageSwitcher({
           asChild
           size="xs"
           variant="ghost"
-          // max-lg:min-h-11 and not max-lg:tap-target. These two sit 2px
-          // apart, so the overlay each one laid out to 44px reached across
-          // the gap and over its neighbour: measured on a 390px phone, the
-          // right edge of SL hit-tested as EN, because EN comes later in the
-          // DOM and won. filter-chips.tsx met the same thing and wrote down
-          // the same answer: past a certain closeness the control has to
-          // grow, not merely claim.
-          className={
+          className={cn(
+            SWITCH,
             locale === language.locale
-              ? "rounded-ui bg-background px-2 font-normal text-foreground shadow-sm hover:bg-background max-lg:min-h-11 max-lg:px-3"
-              : "rounded-ui px-2 font-normal text-muted-foreground hover:text-foreground max-lg:min-h-11 max-lg:px-3"
-          }
+              ? "bg-background text-foreground shadow-sm hover:bg-background"
+              : "text-muted-foreground hover:text-foreground",
+          )}
         >
           <a
             href={paths?.[language.locale] ?? language.href}

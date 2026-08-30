@@ -1,6 +1,13 @@
 import { loadPolicies } from "./policies";
+import { providers } from "./registry";
+import { validateProviderRegistry } from "./registry-validation";
 
-const { policies, errors } = loadPolicies();
+const loaded = loadPolicies();
+const { policies } = loaded;
+const errors = [
+  ...loaded.errors,
+  ...validateProviderRegistry(policies, providers),
+];
 
 for (const { dir, policy } of policies) {
   const state = policy.enabled ? "enabled" : "disabled";

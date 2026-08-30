@@ -6,13 +6,15 @@ Instructions for coding agents working in this repo. Humans want
 ## What this is
 
 Posvoji.si is an open index of animals waiting for a home in Slovenian
-shelters. A pnpm workspace, Node 22+, no backend, no services. Everything,
-including the whole test suite, runs offline from fixtures.
+shelters. The static index is a pnpm workspace on Node 22+; the optional
+shelter self-service portal is a Django app on Python 3.12 managed with uv.
+Everything, including the whole test suite, runs offline from fixtures.
 
 | Path | What's in it |
 |---|---|
 | `apps/web` | Next.js site, static export, shadcn/ui |
 | `apps/ingest` | Batch pipeline: validate, crawl, diff, export |
+| `apps/portal` | Django API for shelter logins and listing overrides |
 | `packages/schema` | Zod models: `Animal`, `ProviderPolicy`, `Dataset`, `ChangeSet` |
 | `packages/provider-sdk` | Provider interface, polite HTTP client, fixture harness |
 | `providers/*` | One adapter per shelter, each with its `policy.yaml` |
@@ -46,11 +48,15 @@ Full rules and examples: [docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md).
 
 ```bash
 pnpm typecheck
+pnpm lint
 pnpm test
 pnpm validate:policies
 ```
 
-All three must pass. Run `pnpm --filter web build` if you touched `apps/web`.
+All four must pass. `pnpm test` and `pnpm lint` include the portal checks and
+therefore require Python 3.12 and uv. Run `pnpm --filter web build` if you
+touched `apps/web`. `pnpm check` runs the complete sequence, including that
+build.
 
 ## Rules that are not yours to relax
 

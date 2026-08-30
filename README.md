@@ -29,13 +29,16 @@ source and last-sync time.
   written, dated permission.
 - **Source over copy:** the index points people back to the shelter instead of
   replacing its website.
-- **Static by design:** the ingest pipeline writes JSON; the web app exports
-  static files. There is no production database or public API.
+- **Static public index:** the ingest pipeline writes JSON and the web app
+  exports static files. The separate shelter portal has a private API and
+  database for authenticated corrections; the public site does not query it.
 - **Offline tests:** parsers run against small fixtures. CI never crawls shelter
   websites.
 
 ```text
 shelter website ──▶ polite ingest ──▶ animals.json + changes.json ──▶ static site
+                          ▲
+shelter staff ──▶ private portal API ──▶ reviewed field overrides
 ```
 
 ## Data boundaries
@@ -59,7 +62,8 @@ Read the binding rules in the [data policy](docs/DATA-POLICY.md).
 
 ## Quick start
 
-Requires **Node.js 22+** and **pnpm 10**.
+The static index requires **Node.js 22+** and **pnpm 10**. Running the complete
+test suite also requires **Python 3.12+** and **uv** for the shelter portal.
 
 ```bash
 pnpm install
@@ -67,7 +71,9 @@ pnpm test
 pnpm --filter web dev
 ```
 
-No database, API keys or external services are needed for local development.
+No external services, live crawling, or API keys are needed for local
+development. The portal uses a local SQLite database; its setup is documented
+in [`apps/portal/README.md`](apps/portal/README.md).
 
 ## Contributing
 
@@ -87,6 +93,7 @@ requests are squash-merged.
 | --- | --- | --- |
 | `apps/web` | Next.js static site | AGPL-3.0-only |
 | `apps/ingest` | Validate, crawl, diff and export | AGPL-3.0-only |
+| `apps/portal` | Django shelter self-service API | AGPL-3.0-only |
 | `packages/schema` | Zod data models | MIT |
 | `packages/provider-sdk` | Provider interface, polite client and fixture tools | MIT |
 | `providers/*` | Shelter adapters and machine-readable policies | MIT |

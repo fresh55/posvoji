@@ -400,13 +400,18 @@ function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function readManifest(path: string): LogoManifest {
-  if (!existsSync(path)) return { entries: {} };
+// `read` is whether a manifest was actually understood, which is not the same
+// as it having entries in it. A run that legitimately caches no logo writes an
+// empty one, and the sweep has to be able to tell that apart from a manifest
+// that went missing: read as loss, an empty manifest means the files it would
+// have named are never swept at all.
+function readManifest(path: string): { manifest: LogoManifest; read: boolean } {
+  if (!existsSync(path)) return { manifest: { entries: {} }, read: false };
   let why: string;
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (parsed && typeof parsed.entries === "object" && parsed.entries) {
-      return { entries: parsed.entries };
+      return { manifest: { entries: parsed.entries }, read: true };
     }
     why = "no entries object";
   } catch (error) {
@@ -415,7 +420,7 @@ function readManifest(path: string): LogoManifest {
   // Loud, because the entry is the only record of which file belongs to which
   // shelter: nothing on disk can be matched back up.
   console.warn(`logos: the manifest at ${path} is unreadable (${why})`);
-  return { entries: {} };
+  return { manifest: { entries: {} }, read: false };
 }
 
 export interface CacheLogosResult {
@@ -459,7 +464,7 @@ export async function cacheLogos(
   const revalidateAfterMs =
     (options.revalidateAfterDays ?? REVALIDATE_AFTER_DAYS) * 24 * 60 * 60_000;
 
-  const previous = readManifest(manifestPath);
+  const { manifest: previous, read: manifestRead } = readManifest(manifestPath);
   const next: LogoManifest = { entries: {} };
   const discovered: Record<string, string> = {};
   mkdirSync(logosDir, { recursive: true });
@@ -468,9 +473,13 @@ export async function cacheLogos(
   // reads every file on disk as an orphan, and a shelter whose logo fetch
   // fails this run would lose the copy it already had. Keep the files for one
   // run, warn, and sweep on the next one.
+  //
+  // Lost means we could not read one, not that the one we read was empty. A
+  // run where every shelter has withdrawn its grant writes an empty manifest
+  // legitimately, and reading that as loss would leave its files on disk for
+  // good.
   const startedWith = readdirSync(logosDir);
-  const manifestLost =
-    Object.keys(previous.entries).length === 0 && startedWith.length > 0;
+  const manifestLost = !manifestRead && startedWith.length > 0;
   if (manifestLost) {
     console.warn(
       `logos: no usable manifest at ${manifestPath} but ` +
@@ -703,13 +712,26 @@ export async function cacheLogos(
   // Content addressing can share one file between shelters, so deletion goes
   // by "no longer referenced". Sweeping the whole directory also clears
   // orphans left by a lost manifest.
+  //
+  // A file this run stopped referencing is kept for one more run, because
+  // something is usually still holding the manifest that named it. A logo is
+  // renamed whenever its bytes change, so deleting the old name in the same
+  // run that writes the new one leaves every reader of the previous manifest
+  // pointing at a 404: a dev server that had already answered went on serving
+  // the old names until it was restarted, and a build that started before the
+  // sync finished would ship them. Keeping one generation costs a few KB and
+  // closes that window; the run after this one sweeps them, because by then
+  // they are unreferenced by both manifests.
   const referenced = new Set(
     Object.values(next.entries).map((entry) => entry.file),
+  );
+  const referencedBefore = new Set(
+    Object.values(previous.entries).map((entry) => entry.file),
   );
   let deleted = 0;
   if (!manifestLost) {
     for (const file of readdirSync(logosDir)) {
-      if (referenced.has(file)) continue;
+      if (referenced.has(file) || referencedBefore.has(file)) continue;
       try {
         rmSync(join(logosDir, file));
         deleted++;

@@ -649,8 +649,13 @@ describe("cacheLogos", () => {
     );
   });
 
-  it("drops a shelter that no longer permits its logo, and its file", async () => {
+  // The file outlives the entry by one run. Something is usually still holding
+  // the manifest that named it, and a logo is renamed whenever its bytes
+  // change, so deleting it the moment it stops being referenced leaves every
+  // reader of the previous manifest pointing at a 404.
+  it("drops a shelter that no longer permits its logo, and its file a run later", async () => {
     const options = { logosDir: logosDir(), manifestPath };
+    const empty = () => new StubClient(new Map(), new Map());
     await cacheLogos(
       [{ providerId: "zonzani", homeUrl: "https://zavetisce.si" }],
       new StubClient(
@@ -663,11 +668,42 @@ describe("cacheLogos", () => {
     );
     expect(readdirSync(logosDir())).toHaveLength(1);
 
-    const result = await cacheLogos([], new StubClient(new Map(), new Map()), options);
+    // The entry goes at once, so the site stops drawing it immediately.
+    const first = await cacheLogos([], empty(), options);
+    expect(first.manifest.entries).toEqual({});
+    expect(first.deleted).toBe(0);
+    expect(readdirSync(logosDir())).toHaveLength(1);
 
-    expect(result.manifest.entries).toEqual({});
-    expect(result.deleted).toBe(1);
+    // By the next run no manifest names it and the sweep takes it.
+    const second = await cacheLogos([], empty(), options);
+    expect(second.deleted).toBe(1);
     expect(readdirSync(logosDir())).toEqual([]);
+  });
+
+  // The window the grace generation exists for: a mark whose bytes change is
+  // written under a new name, and the old one has to stay readable for
+  // whatever is still holding the manifest that named it.
+  it("keeps the previous file for a run when a logo is replaced", async () => {
+    const options = { logosDir: logosDir(), manifestPath };
+    const targets = [{ providerId: "zonzani", homeUrl: "https://zavetisce.si" }];
+    const serve = (body: Buffer) =>
+      new StubClient(
+        new Map([["https://zavetisce.si", `<img class="logo" src="/logo.png">`]]),
+        new Map([["https://zavetisce.si/logo.png", { status: 200, body }]]),
+      );
+
+    const before = await cacheLogos(targets, serve(await pngBytes(64)), options);
+    const oldFile = before.manifest.entries["zonzani"]!.file;
+
+    const after = await cacheLogos(targets, serve(await pngBytes(48)), {
+      ...options,
+      revalidateAfterDays: 0,
+    });
+    const newFile = after.manifest.entries["zonzani"]!.file;
+
+    expect(newFile).not.toBe(oldFile);
+    expect(existsSync(join(logosDir(), newFile))).toBe(true);
+    expect(existsSync(join(logosDir(), oldFile))).toBe(true);
   });
 
   it("keeps the previous copy when the home page cannot be read", async () => {

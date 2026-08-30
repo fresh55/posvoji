@@ -25,16 +25,36 @@ export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
           32px here was set when the row held one link and there was no gap
           inside it to out-rank; with two links in the row the group gap has
           to stay the wider of the two or the brand joins the nav. */}
-      <div className="flex items-center gap-10">
+      {/* min-w-0 down the brand, so the wordmark is the thing that gives when
+          the row runs out of room.
+
+          Nothing in this header could shrink. At 200% text on a 320px phone,
+          which is what WCAG 1.4.4 asks the page to survive, the brand wanted
+          237px and the controls beside it 155, and the header pushed the
+          document to 460px inside a 320px viewport: the whole site scrolled
+          sideways, every page of it. A flex item's automatic minimum is its
+          own min-content, and "posvoji.si" has no break in it, so the row had
+          no way to be narrower than the word.
+
+          The wordmark is the right thing to lose. It is the one part of the
+          brand that is also written in the tab title, the one the mark beside
+          it already stands for, and the only element in the row that is not a
+          control. Truncated it still reads as the brand; the logo, the
+          language switcher and the menu have nowhere to go.
+
+          At every size the site is read at today the word fits and nothing
+          here draws differently. This is what happens past that point, which
+          previously was a horizontal scrollbar. */}
+      <div className="flex min-w-0 items-center gap-10">
         <a
           href={homeHref}
           // The primary way home, and the logo drew it 40px tall. The utility
           // grows the tappable box without moving the drawing.
-          className="flex max-lg:tap-target items-center gap-2 font-medium tracking-tight"
+          className="flex min-w-0 max-lg:tap-target items-center gap-2 font-medium tracking-tight"
           aria-label="posvoji.si"
         >
-          <Logo className="h-10 w-auto" />
-          posvoji.si
+          <Logo className="h-10 w-auto shrink-0" />
+          <span className="truncate">posvoji.si</span>
         </a>
         <SiteNav paths={languagePaths} />
       </div>

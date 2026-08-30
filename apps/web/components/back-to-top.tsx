@@ -36,10 +36,14 @@ const SHOW_AFTER_SCREENS = 2;
 // the clearance there is the footer's `docked` padding, which reserves a strip
 // for this button rather than moving it. Lifting as well would be that same
 // clearance counted twice. That does mean a page mounting BackToTop without a
-// docked footer has no clearance below lg; today site-page.tsx is the only one
-// that mounts it and it passes `docked`.
+// docked footer has no clearance below lg, so every mount has to pass it:
+// animal-filters.tsx mounts this for the homepage grid and shelters-page.tsx
+// for the register, and both of their footers are docked.
+// Both distances are tokens in globals.css, retuned there at lg. The right one
+// carries the safe-area inset the bottom one had all along; see
+// --back-to-top-right for why the two compose their insets differently.
 const PLACEMENT =
-  "fixed right-4 bottom-(--back-to-top-bottom) z-40 lg:right-6 lg:bottom-[calc(var(--back-to-top-bottom)+var(--back-to-top-lift,0px))]";
+  "fixed right-(--back-to-top-right) bottom-(--back-to-top-bottom) z-40 lg:bottom-[calc(var(--back-to-top-bottom)+var(--back-to-top-lift,0px))]";
 
 export function BackToTop() {
   const { messages } = useI18n();

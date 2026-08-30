@@ -137,11 +137,18 @@ export function ShelterCard({
                 // The visible number is the label and the accessible name adds
                 // the channel in front of it, which is what WCAG 2.5.3 asks of
                 // a control whose label is visible.
+                //
+                // title repeats a value the card usually prints in full. It is
+                // there for the one that does not fit: a long address or host
+                // truncates to an ellipsis, and without a tooltip the whole
+                // value is left only in the aria-label, where a mouse cannot
+                // reach it.
                 <li>
                   <a
                     href={telHref(shelter.phone)}
                     className={CONTACT_ROW}
                     aria-label={`${text.phone}: ${shelter.phone}`}
+                    title={shelter.phone}
                   >
                     <Phone className="size-3.5 shrink-0" aria-hidden />
                     <span className="truncate">{shelter.phone}</span>
@@ -154,6 +161,7 @@ export function ShelterCard({
                     href={mailtoHref(shelter.email)}
                     className={CONTACT_ROW}
                     aria-label={`${text.email}: ${shelter.email}`}
+                    title={shelter.email}
                   >
                     <Mail className="size-3.5 shrink-0" aria-hidden />
                     <span className="truncate">{shelter.email}</span>
@@ -173,6 +181,7 @@ export function ShelterCard({
                     rel="noreferrer"
                     className={CONTACT_ROW}
                     aria-label={`${text.website}: ${host} ${text.newWindow}`}
+                    title={host}
                   >
                     <Globe className="size-3.5 shrink-0" aria-hidden />
                     <span className="truncate">{host}</span>

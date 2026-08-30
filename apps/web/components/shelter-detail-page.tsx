@@ -187,84 +187,94 @@ export function ShelterDetailPage({
               current={shelter.name}
             />
 
-            <div className="flex flex-wrap items-center gap-4">
-              <ShelterAvatar
-                name={shelter.name}
-                logo={logos[shelter.id]}
-                size="lg"
-                // Green here only where the notice below it is also green.
-                // The hero and that notice are the one statement this page
-                // makes about the shelter's data, so they say it together or
-                // not at all.
-                accent={hasData}
-              />
-              <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-                  {shelter.name}
-                </h1>
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <MapPin className="size-3.5 shrink-0" aria-hidden />
-                  {shelter.city}
-                  {/* The number someone arriving from a card most wants:
-                      whether this shelter has more to show. Absent rather
-                      than zero for a registry shelter, whose notice below
-                      already explains why there is no list. */}
-                  {hasData && (
-                    <>
-                      <span className={META_DOT_CLASS}>·</span>
-                      {animalCount(animals.length, locale)}
-                    </>
+            {/* The map beside the whole header stack, not beside the notice
+                alone. Paired with just the notice it set the row's height:
+                the drawing is 320 by 210, so any width that keeps it legible
+                makes it taller than one or two lines of text, and the
+                difference came out as a dead band under the notice. The
+                hero, the contacts and the notice together are taller than
+                the map at every width the register produces, so beside the
+                stack it fills the empty right of the header and sets no
+                height of its own. Below sm it follows the notice, where the
+                single column puts it. */}
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8">
+              <div className="min-w-0 flex-1 space-y-5">
+                <div className="flex flex-wrap items-center gap-4">
+                  <ShelterAvatar
+                    name={shelter.name}
+                    logo={logos[shelter.id]}
+                    size="lg"
+                    // Green here only where the notice below it is also green.
+                    // The hero and that notice are the one statement this page
+                    // makes about the shelter's data, so they say it together or
+                    // not at all.
+                    accent={hasData}
+                  />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+                      {shelter.name}
+                    </h1>
+                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="size-3.5 shrink-0" aria-hidden />
+                      {shelter.city}
+                      {/* The number someone arriving from a card most wants:
+                          whether this shelter has more to show. Absent rather
+                          than zero for a registry shelter, whose notice below
+                          already explains why there is no list. */}
+                      {hasData && (
+                        <>
+                          <span className={META_DOT_CLASS}>·</span>
+                          {animalCount(animals.length, locale)}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {shelter.website && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={shelter.website} target="_blank" rel="noreferrer">
+                        <Globe aria-hidden />
+                        {text.website}
+                      </a>
+                    </Button>
                   )}
-                </p>
-              </div>
-            </div>
+                  {shelter.email && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={mailtoHref(shelter.email)}>
+                        <Mail aria-hidden />
+                        {shelter.email}
+                      </a>
+                    </Button>
+                  )}
+                  {shelter.phone && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={telHref(shelter.phone)}>
+                        <Phone aria-hidden />
+                        {shelter.phone}
+                      </a>
+                    </Button>
+                  )}
+                </div>
 
-            <div className="flex flex-wrap gap-2">
-              {shelter.website && (
-                <Button asChild variant="outline" size="sm">
-                  <a href={shelter.website} target="_blank" rel="noreferrer">
-                    <Globe aria-hidden />
-                    {text.website}
-                  </a>
-                </Button>
-              )}
-              {shelter.email && (
-                <Button asChild variant="outline" size="sm">
-                  <a href={mailtoHref(shelter.email)}>
-                    <Mail aria-hidden />
-                    {shelter.email}
-                  </a>
-                </Button>
-              )}
-              {shelter.phone && (
-                <Button asChild variant="outline" size="sm">
-                  <a href={telHref(shelter.phone)}>
-                    <Phone aria-hidden />
-                    {shelter.phone}
-                  </a>
-                </Button>
-              )}
-            </div>
-
-            {/* The notice says what this page can offer; the map says where
-                the shelter is, which is the one thing the index card cannot
-                carry. Side by side above sm, because each is short and the
-                notice alone left the right half of the page empty. */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-              <div
-                className={cn(
-                  "flex flex-1 items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
-                  hasData
-                    ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
-                    : "bg-muted/40 text-muted-foreground",
-                )}
-              >
-                {hasData ? (
-                  <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-                ) : (
-                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-                )}
-                <p>{hasData ? text.providerNotice : text.registryNotice}</p>
+                {/* The notice says what this page can offer: whether the animal
+                    list below is the shelter's own, or why there is none. */}
+                <div
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
+                    hasData
+                      ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
+                      : "bg-muted/40 text-muted-foreground",
+                  )}
+                >
+                  {hasData ? (
+                    <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  ) : (
+                    <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  )}
+                  <p>{hasData ? text.providerNotice : text.registryNotice}</p>
+                </div>
               </div>
               <ShelterLocationMap
                 city={shelter.city}
@@ -345,34 +355,43 @@ export function ShelterDetailPage({
             </section>
           )}
 
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b pb-3">
-              <h2 className="text-xl font-medium tracking-tight sm:text-2xl">
-                {text.animalsTitle}
-              </h2>
-              {/* The grid here carries this shelter's animals and no filters.
-                  The home grid reads the shelter off the address, so this hands
-                  the same animals to the sex, age and size controls that only
-                  live there. */}
-              {hasData && (
+          {/* Only where there are animals to show. A registry shelter has no
+              list at all, which the notice above already says; a heading over
+              an empty grid said the same fact a second time and framed it as a
+              list that happens to be empty this week. */}
+          {hasData && (
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b pb-3">
+                <h2 className="text-xl font-medium tracking-tight sm:text-2xl">
+                  {text.animalsTitle}
+                </h2>
+                {/* The grid here carries this shelter's animals and no filters.
+                    The home grid reads the shelter off the address, so this
+                    hands the same animals to the sex, age and size controls
+                    that only live there. */}
                 <a
                   href={shelterAnimalsPath(shelter.id, locale)}
                   className={MUTED_LINK}
                 >
                   {text.openInSearch}
                 </a>
-              )}
-            </div>
-            <ShelterAnimalGrid
-              // The same cards and the same dialog as the home page, so the
-              // same projection: see animalsForClient in lib/dataset.ts.
-              animals={animalsForClient(animals)}
-              logos={logos}
-              emptyLabel={text.emptyAnimals}
-              referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
-              basePath={`${indexHref}/${shelter.id}`}
-            />
-          </section>
+              </div>
+              <ShelterAnimalGrid
+                // The same cards and the same dialog as the home page, so the
+                // same projection: see animalsForClient in lib/dataset.ts.
+                animals={animalsForClient(animals)}
+                logos={logos}
+                // The section above only renders with animals in hand, so the
+                // grid's own empty state cannot be reached from this page. The
+                // label is still passed because the grid keeps that state for
+                // its own sake, and a caller that lands there with no words is
+                // worse than one string nobody reads.
+                emptyLabel={text.emptyAnimals}
+                referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
+                basePath={`${indexHref}/${shelter.id}`}
+              />
+            </section>
+          )}
 
           {/* Where this entry came from, on the page that is about this one
               shelter. The index says the same thing for the whole list. */}

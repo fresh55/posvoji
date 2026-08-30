@@ -229,7 +229,7 @@ variables.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PORTAL_SECRET_KEY` | insecure dev value | Django secret key. Required in production. |
+| `PORTAL_SECRET_KEY` | insecure dev value | Django signing key. Production startup fails unless a private value is set. |
 | `PORTAL_DEBUG` | `true` | Set to `false` in production. |
 | `PORTAL_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma separated hosts. |
 | `PORTAL_DB_PATH` | `apps/portal/db.sqlite3` | SQLite file. |

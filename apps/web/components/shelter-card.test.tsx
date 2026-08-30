@@ -204,20 +204,22 @@ describe("the shelter card", () => {
 
   it("keeps the green off a mark for a shelter that shares no list", () => {
     // Green says one thing on this site, and the count pill beside the mark
-    // says it too. A ring wearing it on a contact-only shelter would be
+    // says it too. An avatar wearing it on a contact-only shelter would be
     // claiming a list we do not have.
-    const ring = (over: Partial<ShelterCardData>) => {
+    const plate = (over: Partial<ShelterCardData>) => {
       const { container } = render(
         <ShelterCard
           shelter={shelter({ name: "Zavetišče Potepuhi", ...over })}
           text={text}
         />,
       );
-      return container.querySelector("svg path")?.getAttribute("stroke") ?? "";
+      // The letter is the shelter's own initial, cut past the generic first
+      // word: "Zavetišče Potepuhi" draws a P. See lib/shelter-initial.ts.
+      return within(container).getByText("P").className;
     };
 
-    expect(ring({ animals: 4 })).toContain("--filter-accent");
-    expect(ring({})).not.toContain("--filter-accent");
+    expect(plate({ animals: 4 })).toContain("--filter-accent");
+    expect(plate({})).not.toContain("--filter-accent");
   });
 
   it("says how many animals a shelter that shares its list holds", () => {

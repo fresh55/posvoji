@@ -48,25 +48,44 @@ const WIDTH_FALLOFF = 0.35;
 // mark takes 80 of it. 144 plus the chip's own padding is what still fits
 // there with room to spare, and it is a third of the 394px card the
 // three-column band draws, which is the width the marks are actually read at.
+// `fallback` is the avatar drawn where there is no logo: a diameter off the
+// Tailwind scale and the letter size that sits in it, which stays near 37% of
+// the diameter the way an avatar's initials usually do. A letter that keeps
+// one proportion of a 32px avatar is a thin mark, and the same proportion of
+// a 56px one is a balloon.
 const SIZE = {
   // Chip-scale placements where sm crowds a compact card.
-  xs: { row: "h-9", height: 26, maxHeight: 28, maxWidth: 72, ring: 30 },
-  sm: { row: "h-12", height: 34, maxHeight: 36, maxWidth: 92, ring: 38 },
-  lg: { row: "h-20", height: 62, maxHeight: 66, maxWidth: 170, ring: 58 },
+  xs: {
+    row: "h-9",
+    height: 26,
+    maxHeight: 28,
+    maxWidth: 72,
+    fallback: "size-8 text-xs",
+  },
+  sm: {
+    row: "h-12",
+    height: 34,
+    maxHeight: 36,
+    maxWidth: 92,
+    fallback: "size-10 text-sm",
+  },
+  lg: {
+    row: "h-20",
+    height: 62,
+    maxHeight: 66,
+    maxWidth: 170,
+    fallback: "size-14 text-xl",
+  },
   // The register card. The one placement that draws every logo in the set
   // side by side, so the one placement where the falloff above is actually
   // read.
-  register: { row: "h-16", height: 52, maxHeight: 54, maxWidth: 144, ring: 46 },
-} as const;
-
-// The initial's size inside the ring's 48-unit viewBox, so it grows with the
-// ring but not in step with it: a letter that keeps one proportion of a 30px
-// ring is a thin mark, and the same proportion of a 58px ring is a balloon.
-const RING_TEXT = {
-  xs: 20,
-  sm: 19,
-  lg: 17,
-  register: 18,
+  register: {
+    row: "h-16",
+    height: 52,
+    maxHeight: 54,
+    maxWidth: 144,
+    fallback: "size-12 text-lg",
+  },
 } as const;
 
 // A chip is drawn only where the mark would otherwise be ink on ink.
@@ -132,26 +151,24 @@ function markBox(logo: ShelterLogo, size: keyof typeof SIZE) {
   return { width: Math.round(width), height: Math.round(height) };
 }
 
-// The ring the initial-letter fallback is drawn in.
+// The avatar the initial-letter fallback is drawn in.
 //
 // Six of the seventeen shelters in the register have not granted us their
-// logo, and we do not take one without a grant. What stands in for it must not
-// look like a logo we do have, which is the whole trouble with the grey square
-// it used to be: at a glance the six read as shelters whose mark happened to
-// be a letter.
+// logo, and we do not take one without a grant. What stands in for it should
+// not be mistaken for a logo we do have, and the circle does that work on its
+// own: every real mark on this page is a rectangle sitting on the card, so a
+// filled round plate is plainly a stand-in rather than somebody's wordmark.
 //
-// A pen circle cannot be mistaken for a mark on a wall. This is one stroke,
-// four quarters whose radii run from 17.0 to 20.6 so the curve never settles
-// into a true circle, and rather than closing it carries on past the start and
-// lays a second line beside the first, which is what a hand does. Drawn once
-// here rather than imported, because it is six numbers different from a circle
-// and nothing else in the site needs it.
-//
-// The wobble has to be this large to be seen. At half of it the ring rendered
-// as a plain 46px circle, which is the default avatar of every product on the
-// web and says nothing about a shelter we were not given a logo by.
-const RING_PATH =
-  "M22.4 5.6C33.8 5.6 43 13.2 43 22.6C43 34 35.1 43.2 25.4 43.2C14 43.2 4.8 35.1 4.8 25.2C4.8 14.4 12.7 5.6 22.4 5.6C26 6.2 29.4 7 32.6 8.6";
+// A drawn pen ring stood here first and was too much personality for the job.
+// This is the avatar shape the rest of the web uses, in the site's own muted
+// tokens: bg-muted behind muted-foreground, one border for an edge, because
+// --muted is oklch(0.97) against a white card and a borderless plate has 1.06:1
+// to hold itself with.
+const FALLBACK_PLATE = "border-border bg-muted text-muted-foreground";
+
+// Green says one thing on this site. See the accent prop.
+const FALLBACK_ACCENT =
+  "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]";
 
 /**
  * A shelter's mark, or a drawn stand-in where we have no right to one.
@@ -171,14 +188,14 @@ export function ShelterAvatar({
   name: string;
   logo: ShelterLogo | undefined;
   size?: keyof typeof SIZE;
-  /** Paint the fallback ring in the site's provider green. Only true where the
-   *  shelter actually shares an animal list: green says that one thing
-   *  everywhere on this site, so a ring wearing it on a contact-only shelter
+  /** Paint the fallback avatar in the site's provider green. Only true where
+   *  the shelter actually shares an animal list: green says that one thing
+   *  everywhere on this site, so a plate wearing it on a contact-only shelter
    *  claimed something false. A shelter with a logo is unaffected, since a
    *  real mark carries its own colour. */
   accent?: boolean;
 }) {
-  const { row, ring } = SIZE[size];
+  const { row } = SIZE[size];
 
   // The row, not the mark, is what every caller is really placing. Fixed
   // height, contents pinned left, so a column of these agrees on where the
@@ -222,51 +239,19 @@ export function ShelterAvatar({
     );
   }
 
+  // aria-hidden, because the letter is cut from the shelter's own name, which
+  // is printed beside it: read out, it is the name's first letter and then the
+  // name.
   return inRow(
-    <svg
+    <span
       aria-hidden
-      width={ring}
-      height={ring}
-      viewBox="0 0 48 48"
-      fill="none"
-      // The same pull left the chip takes, for the same reason: the ring's
-      // stroke sits about 4px inside its own box, so without this the six
-      // shelters drawing one stood indented from the eleven drawing a mark.
-      className="-ml-1 shrink-0"
+      className={cn(
+        "flex shrink-0 select-none items-center justify-center rounded-full border font-medium",
+        accent ? FALLBACK_ACCENT : FALLBACK_PLATE,
+        SIZE[size].fallback,
+      )}
     >
-      <path
-        d={RING_PATH}
-        // The ring is filled only where it is green. Muted, it is a line and
-        // nothing else: a filled grey circle is the plate this replaced.
-        fill={accent ? "var(--filter-accent)" : "none"}
-        stroke={
-          accent ? "var(--filter-accent-border)" : "var(--muted-foreground)"
-        }
-        // Muted, not faint. A pen line at 0.45 read as a smudge beside marks
-        // that are solid ink, and the six shelters drawing it are six of
-        // seventeen: they have to hold the grid, not apologise for being in it.
-        strokeOpacity={accent ? 1 : 0.6}
-        strokeWidth={1.9}
-        strokeLinecap="round"
-      />
-      <text
-        // The ring's own centre, which is not the viewBox's: the wobble puts
-        // it about a unit up and left of 24, and a letter centred on 24 sat
-        // visibly low in it.
-        x="23.9"
-        y="24.6"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={RING_TEXT[size]}
-        fontWeight={500}
-        fill={
-          accent
-            ? "var(--filter-accent-foreground)"
-            : "var(--muted-foreground)"
-        }
-      >
-        {shelterInitial(name)}
-      </text>
-    </svg>,
+      {shelterInitial(name)}
+    </span>,
   );
 }

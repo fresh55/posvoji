@@ -233,6 +233,12 @@ export function ShelterAvatar({
           // file's; the style is the drawn box markBox worked out.
           width={logo.width}
           height={logo.height}
+          // A mark that brings its own background is a plate already, and a
+          // square-cornered one reads as an unfinished image sitting on the
+          // card rather than as part of it. Rounding it is the whole
+          // treatment: it never takes a chip, because the rectangle a chip
+          // would draw is the one the file already has.
+          className={cn(logo.opaque && "rounded-ui")}
           style={{ width: box.width, height: box.height }}
         />
       </span>,

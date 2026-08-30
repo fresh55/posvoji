@@ -18,9 +18,29 @@ describe("reading the shelter logo manifest", () => {
       url: "/media/shelter-logos/abc.webp",
       chipOnLight: true,
       chipOnDark: false,
+      opaque: false,
       width: 128,
       height: 40,
     });
+  });
+
+  it("carries the flag for a mark that brings its own background", () => {
+    // A file with no transparency is its own plate: the site rounds its
+    // corners instead of putting a chip behind a rectangle that is already
+    // there. Absent from an older manifest it reads false, which is what
+    // every logo cached before the flag existed was.
+    const logos = logosFromEntries({
+      sevnica: {
+        ...entry,
+        chipOnLight: false,
+        chipOnDark: false,
+        opaque: true,
+      },
+      horjul: { ...entry, chipOnLight: true, chipOnDark: false },
+    });
+
+    expect(logos["sevnica"]).toMatchObject({ opaque: true });
+    expect(logos["horjul"]).toMatchObject({ opaque: false });
   });
 
   it("reads a manifest still carrying the older light-or-dark reading", () => {

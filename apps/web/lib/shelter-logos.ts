@@ -21,6 +21,12 @@ export interface ShelterLogo {
   // dark card, and the light-or-dark reading got that backwards both ways.
   chipOnLight: boolean;
   chipOnDark: boolean;
+  // Whether the file has no transparency, so the mark arrives with its own
+  // rectangle behind it. Those get their corners rounded rather than a chip:
+  // the background they carry is already the plate, and a chip behind it would
+  // only be a second one. Absent from an older manifest, where it reads false,
+  // which is what every logo written before this was.
+  opaque: boolean;
   // The cached copy's own dimensions. Shelter logos are mostly wide
   // wordmarks, so the avatar needs the real ratio to give one a slot it fits
   // in rather than letterboxing it into a square.
@@ -57,7 +63,7 @@ export function getShelterLogos(): ShelterLogos {
 
 /** The chip flags for one entry, from either shape the manifest has had.
  *
- *  The ingest run measures both answers now (chipNeeds in
+ *  The ingest run measures both answers now (logoSurface in
  *  apps/ingest/src/cache-logos.ts), but a data/dist written before that
  *  carries one "light" or "dark" reading of the ink instead, and data/dist is
  *  an artifact that gets restored, copied between clones and written by
@@ -100,6 +106,9 @@ export function logosFromEntries(entries: Record<string, unknown>): ShelterLogos
     logos[id] = {
       url: `/media/shelter-logos/${file}`,
       ...chips,
+      // Older manifests have no such field, and every logo written before it
+      // existed came from a transparent file.
+      opaque: entry["opaque"] === true,
       width,
       height,
     };

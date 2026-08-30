@@ -10,7 +10,11 @@ descriptions: full-permitted
 
 logo:
   use: permitted
-  url: https://zavetisce-mb.si/wp-content/uploads/2023/04/jhmb-logo.svg
+  # The colour lockup rather than the white knockout the dark header uses.
+  # Same swan emblem and SKUPINA JHMB wordmark; drawn in its own colours it
+  # reads on the card without the dark chip white ink has to have, and its
+  # viewBox is 175x57 against the white file's 85x40.
+  url: https://zavetisce-mb.si/wp-content/uploads/2024/02/skupina-jhmb-logo-lezec.svg
   date: 2026-08-20
   reference: project-owner-confirmation-logos-2026-08-20
 

@@ -11,7 +11,7 @@ import type {
 import { ProviderPolicy } from "@posvoji/schema";
 import {
   cacheLogos,
-  chipNeeds,
+  logoSurface,
   discoverLogoUrl,
   logoTargets,
   processLogo,
@@ -42,6 +42,30 @@ async function pngBytes(size = 64, colour = "#3366cc"): Promise<Buffer> {
       background: colour,
     },
   })
+    .png()
+    .toBuffer();
+}
+
+/** A mark on a transparent ground, which is what a shelter logo usually is.
+ *
+ *  A solid rectangle will not do for the surface tests: with no clear pixel in
+ *  it, it is a file that brings its own background, and the chip questions are
+ *  not asked of those at all. */
+async function inkBytes(colour: string, size = 32): Promise<Buffer> {
+  const ink = await sharp({
+    create: { width: size, height: size, channels: 4, background: colour },
+  })
+    .png()
+    .toBuffer();
+  return sharp({
+    create: {
+      width: size * 2,
+      height: size * 2,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([{ input: ink, left: size / 2, top: size / 2 }])
     .png()
     .toBuffer();
 }
@@ -304,18 +328,20 @@ describe("processLogo", () => {
   });
 });
 
-describe("chipNeeds", () => {
+describe("logoSurface", () => {
   it("gives a white wordmark something to sit on in light mode only", async () => {
-    expect(await chipNeeds(await pngBytes(32, "#ffffff"))).toEqual({
+    expect(await logoSurface(await inkBytes("#ffffff"))).toEqual({
       chipOnLight: true,
       chipOnDark: false,
+      opaque: false,
     });
   });
 
   it("gives a black wordmark something to sit on in dark mode only", async () => {
-    expect(await chipNeeds(await pngBytes(32, "#101010"))).toEqual({
+    expect(await logoSurface(await inkBytes("#101010"))).toEqual({
       chipOnLight: false,
       chipOnDark: true,
+      opaque: false,
     });
   });
 
@@ -324,9 +350,10 @@ describe("chipNeeds", () => {
   // it was already legible; and it reaches 1.9:1 on white, where it was left
   // bare and washed out. It is the shelter's own orange (Horjul).
   it("gives a mid-tone orange the light chip and leaves it bare on dark", async () => {
-    expect(await chipNeeds(await pngBytes(32, "#e8842c"))).toEqual({
+    expect(await logoSurface(await inkBytes("#e8842c"))).toEqual({
       chipOnLight: true,
       chipOnDark: false,
+      opaque: false,
     });
   });
 
@@ -340,15 +367,55 @@ describe("chipNeeds", () => {
       .png()
       .toBuffer();
     const logo = await sharp({
-      create: { width: 64, height: 64, channels: 4, background: "#f5c400" },
+      create: {
+        width: 64,
+        height: 80,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
     })
-      .composite([{ input: outline, left: 0, top: 44 }])
+      .composite([
+        {
+          input: await sharp({
+            create: {
+              width: 64,
+              height: 64,
+              channels: 4,
+              background: "#f5c400",
+            },
+          })
+            .png()
+            .toBuffer(),
+          left: 0,
+          top: 0,
+        },
+        { input: outline, left: 0, top: 44 },
+      ])
       .png()
       .toBuffer();
 
-    expect(await chipNeeds(logo)).toEqual({
+    expect(await logoSurface(logo)).toEqual({
       chipOnLight: false,
       chipOnDark: false,
+      opaque: false,
+    });
+  });
+
+  // A file with no transparent pixel anywhere carries its own background, so
+  // the card is not behind it and a chip would only be a second rectangle
+  // behind the first. Several shelters send exactly this: a JPEG of the mark
+  // on flat white.
+  it("reads a file with no transparency as bringing its own ground", async () => {
+    const white = await sharp({
+      create: { width: 64, height: 64, channels: 3, background: "#ffffff" },
+    })
+      .jpeg()
+      .toBuffer();
+
+    expect(await logoSurface(white)).toEqual({
+      chipOnLight: false,
+      chipOnDark: false,
+      opaque: true,
     });
   });
 
@@ -372,9 +439,10 @@ describe("chipNeeds", () => {
       .png()
       .toBuffer();
 
-    expect(await chipNeeds(padded)).toEqual({
+    expect(await logoSurface(padded)).toEqual({
       chipOnLight: false,
       chipOnDark: true,
+      opaque: false,
     });
   });
 });

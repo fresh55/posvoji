@@ -5,7 +5,11 @@ import { ChevronRight, FlaskConical, LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
 import { slugify } from "@/lib/animal-path";
-import { portalUrl } from "@/lib/portal-api";
+import {
+  clearCsrfToken,
+  fetchCsrfToken,
+  portalUrl,
+} from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,9 +23,10 @@ import { cn } from "@/lib/utils";
  * calls answers 404 unless the portal runs with PORTAL_DEV_LOGIN, which
  * Django's DEBUG gates.
  *
- * Nothing here is imported by the rest of the portal: the fetches are written
- * out rather than added to lib/portal-api.ts, which every page loads. The
- * strings stay here too, out of portal-text.ts, for the same reason.
+ * The development routes themselves stay out of lib/portal-api.ts, which every
+ * portal page loads. Only the shared CSRF bootstrap is reused, because the API
+ * protects this authentication shortcut like every other state-changing call.
+ * The strings stay here too, out of portal-text.ts, for the same reason.
  */
 
 /** One shelter and the login the picker would open it as. */
@@ -44,13 +49,25 @@ async function fetchDevShelters(): Promise<DevShelter[]> {
 }
 
 async function devLogin(slug: string): Promise<void> {
-  const response = await fetch(portalUrl("/api/auth/dev/login"), {
-    method: "POST",
-    credentials: "include",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ slug }),
-  });
+  const send = async (): Promise<Response> =>
+    fetch(portalUrl("/api/auth/dev/login"), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-CSRFToken": await fetchCsrfToken(),
+      },
+      body: JSON.stringify({ slug }),
+    });
+
+  let response = await send();
+  if (response.status === 403) {
+    clearCsrfToken();
+    response = await send();
+  }
   if (!response.ok) throw new Error(String(response.status));
+  clearCsrfToken();
 }
 
 export function PortalDevLogin() {

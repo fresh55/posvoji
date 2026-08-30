@@ -11,11 +11,16 @@ from django.conf import settings
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth import logout as django_logout
 from django.core.mail import send_mail
+from django.http import HttpResponse
+from django.middleware.csrf import get_token as get_csrf_token
+from django.utils.cache import add_never_cache_headers
 from ninja import Router, Status
-from sesame.utils import get_token, get_user
+from sesame.utils import get_token as get_login_token
+from sesame.utils import get_user
 
 from ..models import Shelter
-from ..schemas import ErrorOut, MeOut, RequestLinkIn, VerifyIn
+from ..schemas import CsrfOut, ErrorOut, MeOut, RequestLinkIn, VerifyIn
+from ..security import csrf_auth, request_link_throttle
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -25,7 +30,7 @@ EMAIL_BODY = (
     "Pozdravljeni,\n\n"
     "s to povezavo se prijavite v portal Posvoji.si:\n\n"
     "{url}\n\n"
-    "Povezava velja eno uro in jo je mogoce uporabiti veckrat do izteka.\n"
+    "Povezava velja eno uro in jo je mogoce uporabiti samo enkrat.\n"
     "Ce prijave niste zahtevali, sporocilo prezrite.\n"
 )
 
@@ -41,7 +46,7 @@ def me_payload(user) -> dict:
 
 
 def build_login_url(user) -> str:
-    query = urlencode({"token": get_token(user)})
+    query = urlencode({"token": get_login_token(user)})
     return f"{settings.FRONTEND_URL}{settings.MAGIC_LINK_PATH}?{query}"
 
 
@@ -53,13 +58,27 @@ def send_login_link(user) -> None:
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
         )
-    except OSError:
-        # A failed send must not change the response, otherwise the endpoint
-        # would tell the caller which addresses exist.
+    except Exception:
+        # Email backends are extensible and aren't limited to OSError. Any
+        # ordinary delivery failure must retain the same 204 response as an
+        # unknown address; process-control exceptions still propagate because
+        # this deliberately does not catch BaseException.
         logger.exception("could not send a login link")
 
 
-@router.post("/auth/request-link", auth=None, response={204: None})
+@router.get("/auth/csrf", auth=None, response=CsrfOut)
+def csrf_token(request, response: HttpResponse):
+    """Bootstrap the double-submit token required by unsafe API requests."""
+    add_never_cache_headers(response)
+    return {"csrfToken": get_csrf_token(request)}
+
+
+@router.post(
+    "/auth/request-link",
+    auth=csrf_auth,
+    throttle=request_link_throttle,
+    response={204: None},
+)
 def request_link(request, payload: RequestLinkIn):
     """Always 204. The response never reveals whether the account exists."""
     email = payload.email.strip()
@@ -79,7 +98,7 @@ def request_link(request, payload: RequestLinkIn):
     return Status(204, None)
 
 
-@router.post("/auth/verify", auth=None, response={200: MeOut, 401: ErrorOut})
+@router.post("/auth/verify", auth=csrf_auth, response={200: MeOut, 401: ErrorOut})
 def verify(request, payload: VerifyIn):
     user = get_user(payload.token)
     if user is None or not user.shelter_memberships.exists():
@@ -88,7 +107,7 @@ def verify(request, payload: VerifyIn):
     return Status(200, me_payload(user))
 
 
-@router.post("/auth/logout", auth=None, response={204: None})
+@router.post("/auth/logout", response={204: None})
 def logout(request):
     django_logout(request)
     return Status(204, None)

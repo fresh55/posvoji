@@ -27,6 +27,9 @@ type Demo = {
   selected?: string[];
   origin?: LatLon;
   highlightedValue?: string;
+  spotlightValues?: string[];
+  spotlightNote?: string;
+  spotlightFrom?: LatLon;
 };
 
 // Five cities in five different statistical regions, with five distinct
@@ -148,9 +151,12 @@ const DEMOS: Demo[] = [
     ],
   },
   {
-    title: "Origin dot",
+    title: "Origin distance and municipality connector",
     pins: [pin("origin-marker", "Zavetišče Velenje", "Velenje", 15)],
     origin: cityAt("Žalec"),
+    spotlightValues: ["origin-marker"],
+    spotlightNote: "Responsible shelter",
+    spotlightFrom: cityAt("Celje"),
   },
   {
     title: "Highlighted from a list row hover",
@@ -164,20 +170,37 @@ const DEMOS: Demo[] = [
 
 function DemoGrid() {
   return (
-    <div className="grid grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3">
+    // Two columns on a desktop keep each real map stage wider than the 512px
+    // container-query cut used by the picker. One column on a phone drops
+    // below it, so the gallery shows the same region-only plate a phone does
+    // instead of a desktop marker layer squeezed into a narrow card.
+    <div className="grid grid-cols-1 gap-8 p-4 sm:p-8 xl:grid-cols-2">
       {DEMOS.map((demo) => (
         <div
           key={demo.title}
+          data-map-demo={demo.title}
           className="space-y-2 rounded-ui border border-border p-4"
         >
           <p className="text-sm font-medium">{demo.title}</p>
-          <ShelterMap
-            pins={demo.pins}
-            selected={demo.selected ?? []}
-            onPick={() => undefined}
-            origin={demo.origin}
-            highlightedValue={demo.highlightedValue}
-          />
+          {/* ShelterMap asks the picker stage how wide it is before drawing
+              small furniture and marker glyphs. The gallery used to omit
+              that named container, so every card answered as if it had
+              unlimited room. Keep the same context here that the real picker
+              supplies around its plate. */}
+          <div data-map-stage="gallery" className="@container/map-stage">
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <ShelterMap
+                pins={demo.pins}
+                selected={demo.selected ?? []}
+                onPick={() => undefined}
+                origin={demo.origin}
+                highlightedValue={demo.highlightedValue}
+                spotlightValues={demo.spotlightValues}
+                spotlightNote={demo.spotlightNote}
+                spotlightFrom={demo.spotlightFrom}
+              />
+            </div>
+          </div>
         </div>
       ))}
     </div>
@@ -193,21 +216,27 @@ export default function DevMapStatesPage() {
 
   return (
     <I18nProvider locale="sl">
-      <div className="space-y-12 pb-16">
-        <div>
+      <main data-map-gallery className="bg-background text-foreground">
+        <section
+          data-map-gallery-theme="light"
+          className="bg-background text-foreground pb-8"
+        >
           <h1 className="p-8 pb-0 text-lg font-semibold">
             Map states, light
           </h1>
           <DemoGrid />
-        </div>
+        </section>
 
-        <div className="dark bg-background text-foreground">
+        <section
+          data-map-gallery-theme="dark"
+          className="dark bg-background text-foreground pb-8"
+        >
           <h1 className="p-8 pb-0 text-lg font-semibold">
             Map states, dark
           </h1>
           <DemoGrid />
-        </div>
-      </div>
+        </section>
+      </main>
     </I18nProvider>
   );
 }

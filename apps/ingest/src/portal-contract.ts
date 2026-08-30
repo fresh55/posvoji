@@ -36,16 +36,20 @@ export type OverrideFields = z.infer<typeof OverrideFields>;
 // key means there was no crawled animal to read. Deriving this shape keeps it
 // synchronized with the override fields above.
 type BaselineShape = {
-  [K in keyof typeof OverrideFields.shape]: z.ZodOptional<
-    z.ZodNullable<(typeof OverrideFields.shape)[K]>
-  >;
+  [K in keyof typeof OverrideFields.shape]: K extends "status"
+    ? z.ZodOptional<z.ZodNullable<typeof AdoptionStatus>>
+    : z.ZodOptional<z.ZodNullable<(typeof OverrideFields.shape)[K]>>;
 };
 
 export const BaselineFields = z.strictObject(
   Object.fromEntries(
     Object.entries(OverrideFields.shape).map(([key, field]) => [
       key,
-      field.nullable().optional(),
+      // A shelter may only override status with a concrete workflow state,
+      // but the crawler's public Animal schema also allows "unknown". The
+      // baseline records that crawled value, so it deliberately has the wider
+      // status domain while every other field mirrors its override validator.
+      (key === "status" ? AdoptionStatus : field).nullable().optional(),
     ]),
   ) as BaselineShape,
 );

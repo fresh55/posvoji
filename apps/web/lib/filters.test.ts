@@ -574,6 +574,15 @@ describe("URL codec", () => {
     expect(serializeFilters(filters)).toBe("vrsta=ostalo");
   });
 
+  it.each(["constructor", "toString"])(
+    "drops the inherited species slug %s",
+    (slug) => {
+      const filters = parseFilters(`vrsta=${slug}`);
+      expect(filters.species).toBe("all");
+      expect(serializeFilters(filters)).toBe("");
+    },
+  );
+
   it("degrades a stale velikost carried onto the cat tab", () => {
     const filters = parseFilters("vrsta=macka&velikost=majhna&spol=samica");
     expect(filters.size).toEqual([]);

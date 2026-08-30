@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Animal, Species } from "./animal";
+import { HttpUrl } from "./url";
 
 export const Dataset = z.strictObject({
   generatedAt: z.iso.datetime(),
@@ -10,7 +11,7 @@ export type Dataset = z.infer<typeof Dataset>;
 export const ChangeEntry = z.strictObject({
   id: z.string().min(1),
   providerId: z.string().min(1),
-  sourceUrl: z.url(),
+  sourceUrl: HttpUrl,
   species: Species,
   name: z.string().optional(),
 });

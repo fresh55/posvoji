@@ -10,6 +10,7 @@ import {
   countByProvider,
   findMassRemovals,
   guardMassRemoval,
+  guardUniqueAnimalIds,
   readPreviousDataset,
   retainableAnimals,
 } from "./run-guards";
@@ -222,6 +223,23 @@ describe("carryFirstSeenAt", () => {
     const [result] = carryFirstSeenAt([animal("luna")], [now]);
 
     expect(result).toBe(now);
+  });
+});
+
+describe("guardUniqueAnimalIds", () => {
+  it("accepts globally unique ids", () => {
+    expect(() =>
+      guardUniqueAnimalIds([animal("1"), animal("1", "muri")]),
+    ).not.toThrow();
+  });
+
+  it("rejects a duplicate before map-based consumers can collapse it", () => {
+    const first = animal("1");
+    const duplicate = { ...animal("2", "muri"), id: first.id };
+
+    expect(() => guardUniqueAnimalIds([first, duplicate])).toThrow(
+      /duplicate animal id: "macja-hisa:1".*Refusing to merge overrides/,
+    );
   });
 });
 

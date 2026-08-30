@@ -4,6 +4,12 @@ import robotsParser from "robots-parser";
 const BACKOFF_BASE_MS = 2_000;
 const BACKOFF_CAP_MS = 60_000;
 const RETRY_AFTER_CAP_MS = 600_000;
+// Large enough for the source photos the ingest pipeline accepts, but finite
+// so a bad or hostile endpoint cannot exhaust the crawler's memory.
+const DEFAULT_MAX_RESPONSE_BYTES = 25 * 1024 * 1024;
+// RFC 9309 permits crawlers to impose a robots.txt limit of at least 500 KiB.
+// 512 KiB keeps that file deliberately much smaller than fetched content.
+const MAX_ROBOTS_BYTES = 512 * 1024;
 // RFC 9309 asks crawlers to follow at least five robots.txt redirects. The
 // same budget is used for content so a moved page is still reachable.
 const MAX_REDIRECTS = 5;
@@ -46,6 +52,21 @@ export interface ConditionalValidators {
 export interface GetBytesOptions {
   accept?: string;
   validators?: ConditionalValidators;
+  // Overrides the default response-body limit. Must be a positive safe
+  // integer; the read is aborted as soon as this many bytes are exceeded.
+  maxBytes?: number;
+}
+
+export class ResponseBodyTooLargeError extends Error {
+  readonly url: string;
+  readonly maxBytes: number;
+
+  constructor(url: string, maxBytes: number) {
+    super(`response body exceeds ${maxBytes} bytes: ${url}`);
+    this.name = "ResponseBodyTooLargeError";
+    this.url = url;
+    this.maxBytes = maxBytes;
+  }
 }
 
 export function parseRetryAfter(
@@ -97,6 +118,83 @@ function decodeBody(body: Buffer, contentType: string | undefined): string {
   }
 }
 
+type ResponseBody = AsyncIterable<Uint8Array> & {
+  destroy(error?: Error): unknown;
+};
+
+interface ReadBodyOptions {
+  collect?: boolean;
+  honorContentLength?: boolean;
+  truncate?: boolean;
+}
+
+function validateMaxBytes(maxBytes: number): void {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+    throw new TypeError("maxBytes must be a positive safe integer");
+  }
+}
+
+function declaredContentLength(
+  headers: Record<string, string | string[] | undefined>,
+): bigint | undefined {
+  const value = headerValue(headers["content-length"])?.trim();
+  if (!value || !/^\d+$/.test(value)) return undefined;
+  return BigInt(value);
+}
+
+function throwBodyTooLarge(
+  body: ResponseBody,
+  url: string,
+  maxBytes: number,
+): never {
+  // Destroying the stream closes the response immediately instead of draining
+  // an attacker-controlled body merely to make the connection reusable.
+  body.destroy();
+  throw new ResponseBodyTooLargeError(url, maxBytes);
+}
+
+async function readBodyWithLimit(
+  body: ResponseBody,
+  headers: Record<string, string | string[] | undefined>,
+  url: string,
+  maxBytes: number,
+  options: ReadBodyOptions = {},
+): Promise<Buffer> {
+  if (options.honorContentLength !== false) {
+    const declared = declaredContentLength(headers);
+    if (
+      options.truncate !== true &&
+      declared !== undefined &&
+      declared > BigInt(maxBytes)
+    ) {
+      throwBodyTooLarge(body, url, maxBytes);
+    }
+  }
+
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of body) {
+    if (total + chunk.byteLength > maxBytes) {
+      if (options.truncate === true) {
+        const remaining = maxBytes - total;
+        if (options.collect !== false && remaining > 0) {
+          chunks.push(Buffer.from(chunk.subarray(0, remaining)));
+        }
+        body.destroy();
+        return options.collect === false
+          ? Buffer.alloc(0)
+          : Buffer.concat(chunks, maxBytes);
+      }
+      throwBodyTooLarge(body, url, maxBytes);
+    }
+    total += chunk.byteLength;
+    if (options.collect !== false) chunks.push(Buffer.from(chunk));
+  }
+  return options.collect === false
+    ? Buffer.alloc(0)
+    : Buffer.concat(chunks, total);
+}
+
 // The crawl policy lives here so no provider can get it wrong: robots.txt, one
 // request at a time per host, a delay between them, backoff, and revalidation.
 export class PoliteClient {
@@ -139,13 +237,15 @@ export class PoliteClient {
     url: string,
     options: GetBytesOptions = {},
   ): Promise<PoliteBytesResponse> {
+    const maxBytes = options.maxBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
+    validateMaxBytes(maxBytes);
     const target = new URL(url);
     return this.withHostLock(target.host, async () => {
       await this.ensureRobots(target.origin);
       if (!this.isAllowed(target.origin, url)) {
         throw new Error(`robots.txt disallows fetching ${url}`);
       }
-      return this.requestWithRetries(target.host, url, options);
+      return this.requestWithRetries(target.host, url, options, maxBytes);
     });
   }
 
@@ -153,10 +253,16 @@ export class PoliteClient {
     host: string,
     url: string,
     options: GetBytesOptions,
+    maxBytes: number,
   ): Promise<PoliteBytesResponse> {
     let current = url;
     for (let hop = 0; ; hop++) {
-      const res = await this.attemptWithRetries(host, current, options);
+      const res = await this.attemptWithRetries(
+        host,
+        current,
+        options,
+        maxBytes,
+      );
       const next =
         hop < MAX_REDIRECTS ? redirectTarget(current, res) : undefined;
       // A cross-origin redirect is handed back untouched: the caller decides
@@ -174,6 +280,7 @@ export class PoliteClient {
     host: string,
     url: string,
     options: GetBytesOptions,
+    maxBytes: number,
   ): Promise<PoliteBytesResponse> {
     for (let attempt = 0; ; attempt++) {
       await this.respectDelay(host);
@@ -191,13 +298,20 @@ export class PoliteClient {
         // The body read is part of the attempt: a reset or a timeout halfway
         // through the download has to be retried like a failed connect.
         if (status === 304) {
-          await res.body.arrayBuffer();
+          // A 304 Content-Length describes the selected representation, not
+          // a response body, so do not reject on that header. Still bound any
+          // bytes a non-conforming peer actually sends.
+          await readBodyWithLimit(res.body, headers, url, maxBytes, {
+            collect: false,
+            honorContentLength: false,
+          });
           body = null;
         } else {
-          body = Buffer.from(await res.body.arrayBuffer());
+          body = await readBodyWithLimit(res.body, headers, url, maxBytes);
         }
       } catch (error) {
         this.lastRequestAt.set(host, Date.now());
+        if (error instanceof ResponseBodyTooLargeError) throw error;
         if (attempt >= this.maxRetries) throw error;
         await sleep(computeBackoffMs(attempt));
         continue;
@@ -290,6 +404,7 @@ export class PoliteClient {
         break;
       } catch (error) {
         this.lastRequestAt.set(host, Date.now());
+        if (error instanceof ResponseBodyTooLargeError) throw error;
         if (attempt >= this.maxRetries) {
           // Nothing is cached, so a later call gets a fresh chance instead of
           // the origin staying denied for the rest of the process.
@@ -316,7 +431,15 @@ export class PoliteClient {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
       const status = res.statusCode;
-      const body = await res.body.text();
+      const body = (
+        await readBodyWithLimit(
+          res.body,
+          res.headers,
+          current,
+          MAX_ROBOTS_BYTES,
+          { truncate: true },
+        )
+      ).toString("utf8");
       if (REDIRECT_STATUSES.has(status) && hop < MAX_REDIRECTS) {
         const location = headerValue(res.headers["location"]);
         const next =

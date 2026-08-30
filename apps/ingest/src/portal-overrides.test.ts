@@ -434,6 +434,64 @@ describe("fetchPortalOverrides", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("fetches the configured export with a bearer token and timeout", async () => {
+    process.env["PORTAL_EXPORT_URL"] = "https://portal.posvoji.si/base/";
+    process.env["PORTAL_EXPORT_TOKEN"] = "secret";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(payload([])), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPortalOverrides()).resolves.toEqual(payload([]));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://portal.posvoji.si/base/api/export",
+      expect.objectContaining({
+        headers: { Authorization: "Bearer secret" },
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
+
+  it("rejects non-HTTP portal URLs before making a request", async () => {
+    process.env["PORTAL_EXPORT_URL"] = "file:///tmp/export.json";
+    process.env["PORTAL_EXPORT_TOKEN"] = "secret";
+
+    await expect(fetchPortalOverrides()).rejects.toThrow(/HTTP\(S\) URL/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a declared oversized portal response before reading it", async () => {
+    process.env["PORTAL_EXPORT_URL"] = "https://portal.posvoji.si";
+    process.env["PORTAL_EXPORT_TOKEN"] = "secret";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("{}", { headers: { "content-length": "5242881" } }),
+      ),
+    );
+
+    await expect(fetchPortalOverrides()).rejects.toThrow(/exceeds 5242880 bytes/);
+  });
+
+  it("stops an oversized streamed portal response without a length header", async () => {
+    process.env["PORTAL_EXPORT_URL"] = "https://portal.posvoji.si";
+    process.env["PORTAL_EXPORT_TOKEN"] = "secret";
+    const chunk = new Uint8Array(1024 * 1024);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let index = 0; index < 6; index += 1) controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(stream)));
+
+    await expect(fetchPortalOverrides()).rejects.toThrow(/exceeds 5242880 bytes/);
+  });
+
   it("throws when the saved export does not match the contract", async () => {
     const path = join(tmpdir(), "posvoji-bad-portal-export.json");
     writeFileSync(path, JSON.stringify({ generatedAt: "2026-08-18T06:00:00Z" }));

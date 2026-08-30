@@ -1,7 +1,7 @@
 // Builds apps/web/public/map-hillshade.png, the relief the shelter map lays
 // under its region fills.
 //
-// Run it from the repo root with plain node, no dependencies:
+// Run it from the repo root after installing the workspace dependencies:
 //
 //   node scripts/build-map-hillshade.mjs
 //
@@ -13,7 +13,7 @@
 // THE PIPELINE, end to end, so the asset is reproducible.
 //
 // Source. AWS Open Data terrain tiles, the Mapzen terrarium encoding, at
-// https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png.
+// https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png.
 // Public HTTP, no key. Elevation in metres is (R * 256 + G + B / 256) - 32768.
 // The underlying model over Slovenia is SRTM and the other public sources
 // Mapzen merged; the attribution line in the location picker credits them.
@@ -73,8 +73,21 @@ registerHooks({
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "apps", "web", "public", "map-hillshade.png");
 const GEO = pathToFileURL(join(HERE, "..", "apps", "web", "lib", "geo.ts")).href;
+const POLITE_CLIENT = pathToFileURL(
+  join(HERE, "..", "packages", "provider-sdk", "src", "polite-client.ts"),
+).href;
 
 const { MAP_WIDTH, MAP_HEIGHT, unproject: projectUnproject } = await import(GEO);
+const { PoliteClient } = await import(POLITE_CLIENT);
+
+// Terrain is an external source just like a shelter site. Keeping it behind
+// the SDK gives robots.txt, one request at a time per host, the repository's
+// multi-second delay and bounded retries instead of letting this one-off asset
+// builder quietly bypass the same network policy every provider follows.
+const terrainClient = new PoliteClient({
+  userAgent: "PosvojiTerrainBuilder/1.0 (+https://posvoji.si)",
+  botName: "PosvojiTerrainBuilder",
+});
 
 // The projection's bounding box, read back out of the real unproject() rather
 // than copied by hand. Everything below that needs a bound (tile selection,
@@ -304,8 +317,9 @@ async function fetchTiles() {
   // Float32Array is a few megabytes and there is nothing to be clever about.
   const elevation = new Float32Array(width * height);
 
-  // Fetched in parallel: 24 independent HTTP requests to the same public
-  // bucket, and nothing after this loop needs any one tile before another.
+  // Submitted together because nothing after this loop needs one tile before
+  // another. PoliteClient's per-host queue deliberately serializes the 24
+  // requests and spaces them out for the public bucket.
   const jobs = [];
   for (let ty = y0; ty <= y1; ty++) {
     for (let tx = x0; tx <= x1; tx++) {
@@ -314,10 +328,15 @@ async function fetchTiles() {
   }
   await Promise.all(
     jobs.map(async ({ tx, ty }) => {
-      const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${ZOOM}/${tx}/${ty}.png`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`${url}: ${response.status}`);
-      const { rgb } = decodePng(Buffer.from(await response.arrayBuffer()));
+      const url = `https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${ZOOM}/${tx}/${ty}.png`;
+      const response = await terrainClient.getBytes(url, {
+        accept: "image/png",
+        maxBytes: 2 * 1024 * 1024,
+      });
+      if (response.status < 200 || response.status >= 300 || !response.body) {
+        throw new Error(`${url}: ${response.status}`);
+      }
+      const { rgb } = decodePng(response.body);
       const ox = (tx - x0) * TILE;
       const oy = (ty - y0) * TILE;
       for (let y = 0; y < TILE; y++) {

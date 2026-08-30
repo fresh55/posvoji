@@ -25,6 +25,7 @@
 // The script always emits all three sections, so it always needs all three
 // inputs.
 import { readFileSync, writeFileSync } from "node:fs";
+import { readRemoteText } from "./remote-source.mjs";
 
 const SOURCE = {
   countries:
@@ -56,6 +57,7 @@ const TOLERANCE = Number(options.tolerance ?? 0.35);
 const COAST_TOLERANCE = TOLERANCE / 3;
 // Rivers are texture, not data. Nobody measures a bend.
 const RIVER_TOLERANCE = TOLERANCE * 2;
+const MAX_REMOTE_GEOJSON_BYTES = 64 * 1024 * 1024;
 
 // Must match apps/web/lib/geo.ts exactly, or the neighbours and the country
 // land in different places.
@@ -307,7 +309,11 @@ function linesOf(feature, tolerance) {
 
 async function load(source) {
   const text = /^https?:/.test(String(source))
-    ? await (await fetch(source)).text()
+    ? await readRemoteText(source, {
+        accept: "application/geo+json,application/json",
+        maxBytes: MAX_REMOTE_GEOJSON_BYTES,
+        label: `Natural Earth ${source}`,
+      })
     : readFileSync(source, "utf8");
   return JSON.parse(text);
 }

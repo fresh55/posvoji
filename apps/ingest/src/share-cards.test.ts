@@ -87,12 +87,22 @@ describe("cardText", () => {
 
 describe("shareCardFile", () => {
   it("keeps a provider-prefixed id usable as a file name", () => {
-    expect(shareCardFile("muri:16836")).toBe("muri_16836.jpg");
-    expect(shareCardFile("muri:16836", "en")).toBe("muri_16836.en.jpg");
+    expect(shareCardFile("muri:16836")).toMatch(
+      /^muri_16836-[a-f0-9]{16}\.jpg$/,
+    );
+    expect(shareCardFile("muri:16836", "en")).toMatch(
+      /^muri_16836-[a-f0-9]{16}\.en\.jpg$/,
+    );
+  });
+
+  it("does not collide when distinct ids sanitize to the same stem", () => {
+    expect(shareCardFile("a:b")).not.toBe(shareCardFile("a_b"));
+    expect(shareCardFile("a:b")).toBe(shareCardFile("a:b"));
   });
 
   it("serves the files from the site's media directory", () => {
-    expect(shareCardUrlFor("muri_16836.jpg")).toBe("/media/share/muri_16836.jpg");
+    const file = shareCardFile("muri:16836");
+    expect(shareCardUrlFor(file)).toBe(`/media/share/${file}`);
   });
 });
 
@@ -270,11 +280,13 @@ describe("writeShareCards", () => {
     const result = await run([withPhoto, factsOnly]);
 
     expect(result.written).toBe(2);
-    expect(readdirSync(cardsDir).sort()).toEqual([
-      "macja-hisa_1.jpg",
-      "zonzani_2.en.jpg",
-      "zonzani_2.sl.jpg",
-    ]);
+    expect(readdirSync(cardsDir).sort()).toEqual(
+      [
+        shareCardFile(withPhoto.id),
+        shareCardFile(factsOnly.id, "en"),
+        shareCardFile(factsOnly.id, "sl"),
+      ].sort(),
+    );
   });
 
   it("redraws nothing on a second run", async () => {
@@ -311,7 +323,7 @@ describe("writeShareCards", () => {
     const again = await run([withPhoto]);
 
     expect(again.deleted).toBe(2);
-    expect(readdirSync(cardsDir)).toEqual(["macja-hisa_1.jpg"]);
+    expect(readdirSync(cardsDir)).toEqual([shareCardFile(withPhoto.id)]);
   });
 
   it("records what it drew so the next run can skip it", async () => {
@@ -323,8 +335,8 @@ describe("writeShareCards", () => {
       "zonzani:2",
     ]);
     expect(manifest.entries["zonzani:2"].files).toEqual([
-      "zonzani_2.sl.jpg",
-      "zonzani_2.en.jpg",
+      shareCardFile(factsOnly.id, "sl"),
+      shareCardFile(factsOnly.id, "en"),
     ]);
   });
 
@@ -355,7 +367,9 @@ describe("writeShareCards", () => {
     const result = await run([broken, factsOnly]);
 
     expect(result.written).toBe(1);
-    expect(existsSync(join(cardsDir, "macja-hisa_broken.jpg"))).toBe(false);
-    expect(existsSync(join(cardsDir, "zonzani_2.sl.jpg"))).toBe(true);
+    expect(existsSync(join(cardsDir, shareCardFile(broken.id)))).toBe(false);
+    expect(
+      existsSync(join(cardsDir, shareCardFile(factsOnly.id, "sl"))),
+    ).toBe(true);
   });
 });

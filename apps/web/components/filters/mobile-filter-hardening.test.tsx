@@ -115,6 +115,44 @@ describe("mobile filter hardening", () => {
     }
   });
 
+  it("keeps the sheet mounted for a homogeneous multi-result set, so the sort control stays reachable", async () => {
+    // Three results, no facet with more than one value between them: every
+    // group and toggle list is empty, exactly what a shelter's single-species
+    // roster produces. hasFilterSheet used to read only those facets, so the
+    // dock (and the sort control living inside its sheet) vanished here even
+    // though there was still an order to pick.
+    render(
+      <I18nProvider locale="en">
+        <AnimalFilters
+          isEmpty={false}
+          filters={EMPTY_FILTERS}
+          speciesTally={{ all: 3, dog: 3, cat: 0, other: 0 }}
+          speciesRoster={{ all: 3, dog: 3, cat: 0, other: 0 }}
+          groups={[]}
+          counts={emptyCounts}
+          toggles={[]}
+          toggleTally={new Map()}
+          shelters={undefined}
+          shelterTally={new Map()}
+          chips={[]}
+          resultCount={3}
+          sort="longest-in-shelter"
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          onSortChange={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    expect(await screen.findByRole("combobox")).toBeTruthy();
+  });
+
   it("keeps the species tabs and a 44px sort control in the mobile toolbar", () => {
     render(
       <I18nProvider locale="en">
@@ -291,6 +329,53 @@ describe("mobile filter hardening", () => {
     });
 
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("hands focus to the trigger that is on screen when the two have swapped", async () => {
+    // The page mounts this dialog twice and hides one with CSS: the desktop
+    // toolbar's instance and the mobile dock's (animal-filters.tsx). Rotating
+    // a device past lg while the dialog is open swaps which of the two is
+    // drawn, so the trigger that opened it can be display:none by the time it
+    // closes, and radix's own restore then lands focus on the body.
+    const picker = (deepLink: "desktop" | "mobile") => (
+      <LocationPicker
+        options={[{ value: "test", label: "Test shelter", city: "Ljubljana" }]}
+        counts={new Map([["test", 1]])}
+        selected={[]}
+        onToggle={vi.fn()}
+        onToggleMany={vi.fn()}
+        resultCount={1}
+        deepLink={deepLink}
+      />
+    );
+    render(
+      <I18nProvider locale="en">
+        <>
+          {picker("desktop")}
+          {picker("mobile")}
+        </>
+      </I18nProvider>,
+    );
+
+    const [opened, other] = screen.getAllByRole("button", {
+      name: /Shelter:/,
+    });
+    opened.focus();
+    fireEvent.click(opened);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+
+    // The rotation, as the only part of it this component can see: one
+    // trigger stops being drawn and the other starts. jsdom lays nothing out,
+    // so both halves are stated here rather than inferred from a class.
+    opened.getClientRects = () => [] as unknown as DOMRectList;
+    other.getClientRects = () =>
+      [{ width: 120, height: 32 }] as unknown as DOMRectList;
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" });
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(other));
   });
 
   it("makes the whole chip the 44px remove target rather than a circle inside it", () => {

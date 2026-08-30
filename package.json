@@ -11,6 +11,7 @@
     "test": "pnpm test:node && pnpm test:portal",
     "test:node": "pnpm -r test",
     "test:portal": "uv run --directory apps/portal pytest",
+    "test:visual": "pnpm --filter web test:e2e:visual",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm lint:node && pnpm lint:portal",
     "lint:node": "pnpm -r lint",

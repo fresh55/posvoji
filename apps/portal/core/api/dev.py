@@ -16,6 +16,7 @@ from ninja.errors import HttpError
 from ..accounts import ensure_user
 from ..models import Shelter, ShelterMembership
 from ..schemas import DevLoginIn, DevShelterOut, MeOut
+from ..security import csrf_auth
 from .auth import me_payload
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ def dev_shelters(request):
 
 @router.post(
     "/auth/dev/login",
-    auth=None,
+    auth=csrf_auth,
     response=MeOut,
     include_in_schema=settings.PORTAL_DEV_LOGIN,
 )

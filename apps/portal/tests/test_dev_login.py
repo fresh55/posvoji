@@ -7,10 +7,17 @@ from core.models import Shelter, ShelterMembership
 SHELTERS = "/api/auth/dev/shelters"
 LOGIN = "/api/auth/dev/login"
 ME = "/api/me"
+CSRF = "/api/auth/csrf"
 
 
 def post(client, url, payload):
-    return client.post(url, data=json.dumps(payload), content_type="application/json")
+    csrf_token = client.get(CSRF).json()["csrfToken"]
+    return client.post(
+        url,
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
 
 
 @pytest.fixture

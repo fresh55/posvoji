@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { useState, type ComponentProps } from "react";
 import {
   act,
@@ -84,7 +86,7 @@ async function openPicker({
   fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
   await screen.findByRole("dialog");
 
-  return screen.getByLabelText("Bližina: kraj ali pošta");
+  return screen.getByLabelText("Kraj, pošta ali zavetišče");
 }
 
 // The registry shelters with nothing listed sit behind a fold now, shut on
@@ -258,26 +260,31 @@ describe("LocationPicker typed location", () => {
     expect(screen.queryByText(/Tega kraja ne najdem/)).toBeNull();
   });
 
-  it("complains gently once a finished input matches nothing", async () => {
+  it("says nothing about a place when the words were a name all along", async () => {
     const input = await openPicker();
 
     type(input, "qqqqq");
 
-    expect(
-      screen.getByText("Tega kraja ne najdem. Poskusi s poštno številko."),
-    ).toBeTruthy();
-    expect(rowOrder()).toEqual(["sever", "jug"]);
+    // The one box takes both, so a word the postal table does not know is a
+    // shelter being searched for, not a mistake. Calling it one used to be the
+    // reflex of a field that could hold nothing else; the list is the answer
+    // now, and it is already on screen saying so.
+    expect(screen.queryByText(/Tega kraja ne najdem/)).toBeNull();
+    expect(screen.getAllByText(/Ni zadetkov za/).length).toBeGreaterThan(0);
   });
 
-  it("does not suggest a postcode to someone who just typed one", async () => {
+  it("still names a postcode that resolves to nothing", async () => {
     const input = await openPicker();
 
     type(input, "9998");
 
+    // Four digits are the one input that cannot have been a shelter's name, so
+    // the empty list has a reason worth giving: the number was wrong, not the
+    // roster. The list says it found nothing either, which is true.
     expect(
       screen.getByText("Te poštne številke ne najdem. Preveri vnos."),
     ).toBeTruthy();
-    expect(rowOrder()).toEqual(["sever", "jug"]);
+    expect(rowOrder()).toEqual([]);
   });
 
   it("restores the given order when the input is cleared", async () => {
@@ -323,7 +330,7 @@ describe("LocationPicker typed location", () => {
     const input = await openPicker();
 
     type(input, "1000");
-    fireEvent.click(screen.getByRole("button", { name: "Počisti kraj" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti vnos" }));
 
     expect((input as HTMLInputElement).value).toBe("");
     expect(rowOrder()).toEqual(["sever", "jug"]);
@@ -397,7 +404,7 @@ describe("LocationPicker most recent act", () => {
 });
 
 describe("LocationPicker keyboard", () => {
-  it("clears the place on Escape and keeps the dialog open", async () => {
+  it("clears a typed place on Escape and keeps the dialog open", async () => {
     const input = await openPicker();
 
     type(input, "1000");
@@ -408,29 +415,192 @@ describe("LocationPicker keyboard", () => {
     expect(screen.queryByRole("dialog")).toBeTruthy();
   });
 
-  it("clears the shelter search on Escape and keeps the dialog open", async () => {
-    await openPicker();
-    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+  it("clears a typed name on Escape and keeps the dialog open", async () => {
+    const input = await openPicker();
 
-    type(search, "Sever");
+    type(input, "Sever");
     expect(rowOrder()).toEqual(["sever"]);
 
-    fireEvent.keyDown(search, { key: "Escape" });
+    fireEvent.keyDown(input, { key: "Escape" });
 
-    expect((search as HTMLInputElement).value).toBe("");
+    // One box, one rung on the Escape ladder, whichever of the two things it
+    // was holding.
+    expect((input as HTMLInputElement).value).toBe("");
     expect(rowOrder()).toEqual(["sever", "jug"]);
     expect(screen.queryByRole("dialog")).toBeTruthy();
   });
 
-  it("takes the focus off the place input on Enter", async () => {
+  it("takes the focus off the box on Enter once a place has resolved", async () => {
     const input = await openPicker();
 
     type(input, "1000");
     input.focus();
     fireEvent.keyDown(input, { key: "Enter" });
 
+    // Nothing to submit: the sort followed the typing. Enter is how a keyboard
+    // says it is done with the box.
     expect(document.activeElement).not.toBe(input);
     expect((input as HTMLInputElement).value).toBe("1000");
+  });
+});
+
+// The two boxes this dialog used to carry are one box. What the text is
+// decides what the box does with it: the postal table either recognises it, in
+// which case it is a place and the list sorts to it, or it does not, in which
+// case it is a name and the list narrows to it. What follows pins both modes
+// and, more importantly, the moment one becomes the other.
+describe("LocationPicker merged field", () => {
+  const field = () => screen.getByLabelText("Kraj, pošta ali zavetišče");
+
+  /** Which glyph the box is wearing, which is the only thing on screen that
+   *  says which of the two questions it is currently asking. */
+  const mode = () =>
+    screen
+      .getByRole("dialog")
+      .querySelector("[data-picker-field-mode]")
+      ?.getAttribute("data-picker-field-mode");
+
+  it("offers one box and not two", async () => {
+    await openPicker();
+
+    // Both old labels are gone, and exactly one text input stands in the
+    // panel: the merge is a merge, not a third field added beside them.
+    expect(screen.queryByLabelText("Išči zavetišče po imenu…")).toBeNull();
+    expect(screen.queryByLabelText("Bližina: kraj ali pošta")).toBeNull();
+    expect(
+      screen
+        .getByRole("dialog")
+        .querySelectorAll("input[aria-label='Kraj, pošta ali zavetišče']"),
+    ).toHaveLength(1);
+  });
+
+  it("filters the list by name while the words are not a place", async () => {
+    await openPicker({ offSite });
+
+    type(field(), "Sever");
+
+    expect(rowOrder()).toEqual(["sever"]);
+    expect(mode()).toBe("name");
+    // A name says nothing about an origin, so no row has a distance and the
+    // geolocation toggle is still on offer.
+    expect(screen.queryByText(/Razvrščeno po bližini/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Najbližje prvo" })).toBeTruthy();
+  });
+
+  it("sorts the whole list from a place without filtering it", async () => {
+    await openPicker();
+
+    type(field(), "Maribor");
+
+    // Every row is still there. "Maribor" is in Zavetišče Sever's own row text
+    // as its city, so a field that went on filtering after resolving the place
+    // would have thrown Ljubljana's shelter away from the visitor who just
+    // said where they were.
+    expect(rowOrder()).toEqual(["sever", "jug"]);
+    expect(mode()).toBe("place");
+    expect(
+      screen.getByText("Izhodišče: Maribor. Razvrščeno po bližini."),
+    ).toBeTruthy();
+  });
+
+  it("hands the list back the moment the name finishes into a place", async () => {
+    await openPicker();
+    const input = field();
+
+    // "Lju" is not a place yet: five districts are named "Ljubljana - X" and
+    // the table refuses to guess between them (see findByKey). So it is a
+    // name, and the only row carrying it is the Ljubljana one.
+    type(input, "Lju");
+    expect(rowOrder()).toEqual(["jug"]);
+    expect(mode()).toBe("name");
+
+    type(input, "Ljubljana");
+
+    // Finished, the same string is a town: the list opens back out and
+    // re-sorts to it, nearest first.
+    expect(rowOrder()).toEqual(["jug", "sever"]);
+    expect(mode()).toBe("place");
+    expect(
+      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+    ).toBeTruthy();
+
+    // And back again, in the other direction, because the switch is the text
+    // and nothing the visitor had to declare.
+    type(input, "Lju");
+    expect(rowOrder()).toEqual(["jug"]);
+    expect(mode()).toBe("name");
+  });
+
+  it("picks the top match on Enter while the box holds a name", async () => {
+    await openPicker();
+    const input = field();
+
+    type(input, "sever");
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    // Search-and-pick stays one gesture, which is what the name box always
+    // did. Enter in the other mode blurs instead: see the keyboard block.
+    expect(
+      screen
+        .getByRole("dialog")
+        .querySelector('[data-shelter-row="sever"] button[aria-pressed]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("turns geolocation off as soon as the words resolve to a place", async () => {
+    const geolocation = mockGeolocation();
+    await openPicker();
+
+    fireEvent.click(screen.getByRole("button", { name: "Najbližje prvo" }));
+    geolocation.succeed();
+    expect(rowOrder()).toEqual(["sever", "jug"]);
+
+    // The most recent act wins, exactly as it did in the place box: a typed
+    // town is a newer answer than a fix, so the fix goes off rather than
+    // quietly outranking what was just typed.
+    type(field(), "1000");
+
+    expect(rowOrder()).toEqual(["jug", "sever"]);
+    expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
+  });
+
+  it("selects what is in the box when the field is focused again", async () => {
+    const input = await openPicker();
+
+    type(input, "1000");
+    input.focus();
+
+    // The box holds one answer at a time, so coming back to it means
+    // replacing, not appending.
+    expect((input as HTMLInputElement).selectionStart).toBe(0);
+    expect((input as HTMLInputElement).selectionEnd).toBe(4);
+  });
+
+  it("walks into the list on ArrowDown, in either mode", async () => {
+    const input = await openPicker();
+
+    type(input, "Sever");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(document.activeElement?.textContent).toContain("Zavetišče Sever");
+
+    type(input, "1000");
+    input.focus();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    // A place sorted Ljubljana's shelter to the top, and the top row is what
+    // the key walks onto: the rule is about the list, not about the mode.
+    expect(document.activeElement?.textContent).toContain("Zavetišče Jug");
+  });
+
+  it("clears the box from its own button, whichever mode it is in", async () => {
+    const input = await openPicker();
+
+    type(input, "Sever");
+    fireEvent.click(screen.getByRole("button", { name: "Počisti vnos" }));
+
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(rowOrder()).toEqual(["sever", "jug"]);
+    expect(document.activeElement).toBe(input);
   });
 });
 
@@ -441,7 +611,7 @@ describe("LocationPicker search announcement", () => {
 
   it("says how many shelters the query left", async () => {
     await openPicker();
-    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+    const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
     // Nothing typed is nothing to say: the region carries the selection alone
     // until there is a search to report on.
@@ -457,7 +627,7 @@ describe("LocationPicker search announcement", () => {
 
   it("counts the off-site rows too, because the query narrowed them as well", async () => {
     await openPicker({ offSite });
-    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+    const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
     // "Zavetišče" matches all three rows, the two live ones and the registry
     // one under its own heading.
@@ -468,7 +638,7 @@ describe("LocationPicker search announcement", () => {
 
   it("announces the empty state in the same words it draws it", async () => {
     await openPicker();
-    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+    const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
     type(search, "zzzzz");
 
@@ -485,7 +655,7 @@ describe("LocationPicker search announcement", () => {
 
   it("goes quiet again when the query is cleared", async () => {
     await openPicker();
-    const search = screen.getByLabelText("Išči zavetišče po imenu…");
+    const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
     type(search, "zzzzz");
     type(search, "");
@@ -533,20 +703,31 @@ describe("LocationPicker sheet height", () => {
     // The fraction is still what a tall phone gets. The floor under it is the
     // fix: the sheet's chrome does not shrink with the viewport, so on a short
     // screen a fraction left the list nothing. The ceiling is measured against
-    // the stage, so the floor can never push the sheet past the dialog, and it
-    // reserves the whole caption now that the legend no longer folds away with
-    // the sheet: the compact rows, the gap and the CC BY credit together.
+    // the stage, so the floor can never push the sheet past the dialog.
     expect(height).toContain("55dvh");
     expect(height).toContain("max(55dvh,27.5rem)");
     expect(height).toContain("calc(100%_-_var(--sheet-reserve))");
-    expect(declared(ground, "--sheet-reserve")).toBe("9rem");
+
+    // And what the ceiling subtracts is the map's own floor: the height a
+    // whole 320:210 plate takes at this dialog's width, plus the caption
+    // under it. It used to be a flat 9rem, which paid for the caption alone
+    // and left the plate 69px on a 320x568 screen.
+    expect(declared(ground, "--sheet-reserve")).toBe(
+      "min(calc(var(--plate-h)_+_4rem),50%)",
+    );
+    expect(declared(ground, "--plate-h")).toBe("calc(0.65625*var(--picker-w))");
+    // --picker-w is the dialog's own width, declared where it is worn so the
+    // two cannot drift.
+    expect(
+      dialog().className.includes("[--picker-w:min(94vw,84rem)]"),
+    ).toBe(true);
   });
 
   it("keeps the list a height of its own below lg", async () => {
     await openPicker();
 
     const list = screen
-      .getByLabelText("Išči zavetišče po imenu…")
+      .getByLabelText("Kraj, pošta ali zavetišče")
       .closest("[data-picker-panel] > div")!
       .querySelector(".overflow-y-auto")!;
 
@@ -602,7 +783,7 @@ describe("LocationPicker off-site shelters", () => {
 
   it("opens itself when it holds the only answer to a search", async () => {
     const place = await openPicker({ offSite });
-    const search = screen.getByLabelText(/Išči zavetišče/);
+    const search = screen.getByLabelText(/Kraj, pošta ali zavetišče/);
 
     // A fold hiding the sole match draws a live list with nothing in it over a
     // group holding the answer, which reads as "not found" on a list that
@@ -864,7 +1045,7 @@ describe("LocationPicker legend", () => {
     expect(screen.getAllByText("Zavetišče brez živali").length).toBe(1);
   });
 
-  it("hides that row below the marker breakpoint, where there is no circle", async () => {
+  it("draws that row without a breakpoint deciding it", async () => {
     await openPicker({ offSite });
 
     const legend = screen
@@ -874,10 +1055,12 @@ describe("LocationPicker legend", () => {
       child.textContent?.includes("Zavetišče brez živali"),
     )!;
 
-    // The row follows the markers, which are drawn from md up, and not the
-    // docks: from md to lg the plate is full width and draws every one of
-    // them, below md it draws none.
-    expect(row.className).toContain("max-md:hidden");
+    // The row follows the markers, and the markers follow the plate the map
+    // has measured rather than a width the row could guess at. So there is no
+    // max-md:hidden left here: the row exists exactly when the map says it is
+    // drawing hollow circles. "LocationPicker marker copy" below is where the
+    // two sides of that are pinned together.
+    expect(row.className).not.toContain("max-md:hidden");
   });
 
   it("draws the legend glyph from the marker's own hollow-circle classes", async () => {
@@ -1361,7 +1544,7 @@ describe("LocationPicker map picking", () => {
   it("picks the top match on a search-box Enter, and asks about nothing", () => {
     const { onToggle } = openMap();
 
-    const search = screen.getByPlaceholderText("Išči zavetišče po imenu…");
+    const search = screen.getByPlaceholderText("Kraj, pošta ali zavetišče");
     fireEvent.change(search, { target: { value: "sever" } });
     fireEvent.keyDown(search, { key: "Enter" });
 
@@ -1433,11 +1616,11 @@ describe("LocationPicker map picking", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Najdena žival" }));
-    expect(screen.queryByLabelText("Išči zavetišče po imenu…")).toBeNull();
+    expect(screen.queryByLabelText("Kraj, pošta ali zavetišče")).toBeNull();
 
     fireEvent.click(marker("maribor"));
 
-    expect(screen.getByLabelText("Išči zavetišče po imenu…")).toBeTruthy();
+    expect(screen.getByLabelText("Kraj, pošta ali zavetišče")).toBeTruthy();
     // The tab came back because the click needs a list to be visible in, not
     // because it had a card to put there.
     expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
@@ -1463,7 +1646,7 @@ describe("LocationPicker floating panel", () => {
     // two-column stage starts at 1024 now, because at 768 it left a 295px map
     // beside a 408px list.
     expect(stage().className).toContain("lg:w-[calc(100%-25.5rem)]");
-    expect(screen.getByLabelText("Išči zavetišče po imenu…")).toBeTruthy();
+    expect(screen.getByLabelText("Kraj, pošta ali zavetišče")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Skrij seznam" }));
 
@@ -1476,7 +1659,7 @@ describe("LocationPicker floating panel", () => {
     // takes it off the screen at lg.
     expect(dialog().querySelector("[data-picker-rail]")).toBeTruthy();
     const list = screen
-      .getByLabelText("Išči zavetišče po imenu…")
+      .getByLabelText("Kraj, pošta ali zavetišče")
       .closest("[data-picker-panel] > div")!;
     expect(list.className).toContain("lg:hidden");
   });
@@ -1489,7 +1672,7 @@ describe("LocationPicker floating panel", () => {
 
     expect(stage().dataset.mapStage).toBe("panel");
     expect(dialog().querySelector("[data-picker-rail]")).toBeNull();
-    expect(screen.getByLabelText("Išči zavetišče po imenu…")).toBeTruthy();
+    expect(screen.getByLabelText("Kraj, pošta ali zavetišče")).toBeTruthy();
   });
 
   it("counts the selection on the rail, so folding hides nothing", async () => {
@@ -1884,7 +2067,7 @@ describe("LocationPicker shelter details", () => {
   /** The list scroller, reached the way the sheet-height block reaches it. */
   const list = () =>
     screen
-      .getByLabelText("Išči zavetišče po imenu…")
+      .getByLabelText("Kraj, pošta ali zavetišče")
       .closest("[data-picker-panel] > div")!
       .querySelector(".overflow-y-auto")!;
 
@@ -2092,7 +2275,7 @@ describe("LocationPicker details dismissal", () => {
     screen.getByRole("button", { name: `Pokaži podrobnosti za ${label}` });
   const hide = (label: string) =>
     screen.getByRole("button", { name: `Skrij podrobnosti za ${label}` });
-  const search = () => screen.getByLabelText("Išči zavetišče po imenu…");
+  const search = () => screen.getByLabelText("Kraj, pošta ali zavetišče");
 
   const summaries = new Map<string, ShelterSummary>([
     ["jug", { species: [{ species: "dog", count: 7 }] }],
@@ -2599,5 +2782,348 @@ describe("LocationPicker attribution", () => {
     expect(legend.className).toContain("lg:text-2xs");
     expect(legend.className).toContain("gap-x-3");
     expect(legend.className).toContain("lg:gap-x-4");
+  });
+});
+
+// A utility name that does not exist fails silently: the class stays in the
+// markup, the compiler emits no rule for it, and the property it was meant to
+// set is simply never set. Nothing throws, nothing warns, and a rendering test
+// asserting the class is present passes on the drop. That is what happened to
+// the sheet's top corners, which spent a while square while the class saying
+// otherwise sat on the element.
+//
+// This reads the two files as text rather than through a compiler, because the
+// question is narrow enough to answer that way: is every radius name this
+// component spells a name globals.css defines, either as a @utility of its own
+// or as an entry in the --radius-* namespace Tailwind generates its scale
+// from. Not a CSS build; the build is what would have to be run to answer
+// anything wider, and nothing wider is being asked.
+describe("LocationPicker radius utilities", () => {
+  const web = process.cwd();
+  const css = readFileSync(join(web, "app", "globals.css"), "utf8");
+  const source = readFileSync(
+    join(web, "components", "filters", "location-picker", "view.tsx"),
+    "utf8",
+  );
+
+  // Declared by hand, whole names. rounded-ui and rounded-ui-top are both of
+  // these, and they exist because --radius-ui is a :root variable: the
+  // compiler reads a scale out of @theme and out of nothing else, so the two
+  // corners this component needs have to be written as utilities.
+  const declared = new Set(
+    Array.from(css.matchAll(/@utility\s+(rounded-[\w-]+)/g), (m) => m[1]),
+  );
+
+  // The scale the generated names come from: Tailwind's own, plus every
+  // --radius-* the @theme block adds to it.
+  const themeStart = css.indexOf("@theme inline {");
+  const theme = css.slice(themeStart, css.indexOf("\n}", themeStart));
+  const scale = new Set([
+    "none",
+    "xs",
+    "sm",
+    "md",
+    "lg",
+    "xl",
+    "2xl",
+    "3xl",
+    "4xl",
+    "full",
+    ...Array.from(theme.matchAll(/--radius-([\w-]+):/g), (m) => m[1]),
+  ]);
+
+  // Every side and corner the radius utilities are generated for, logical and
+  // physical, with the whole-box form first.
+  const sides = [
+    "",
+    "s",
+    "e",
+    "t",
+    "r",
+    "b",
+    "l",
+    "ss",
+    "se",
+    "es",
+    "ee",
+    "tl",
+    "tr",
+    "br",
+    "bl",
+  ];
+
+  function defined(name: string): boolean {
+    if (declared.has(name)) return true;
+    // An arbitrary value or a variable shorthand carries its own length, so
+    // there is no name to look up. toggle-group.tsx reaches for exactly this
+    // to get one corner of --radius-ui.
+    if (/^rounded-(?:[a-z]{1,2}-)?[[(]/.test(name)) return true;
+    return sides.some((side) => {
+      const prefix = side === "" ? "rounded-" : `rounded-${side}-`;
+      return name.startsWith(prefix) && scale.has(name.slice(prefix.length));
+    });
+  }
+
+  // Class names as written, taken from double-quoted single-line literals,
+  // which is what prettier leaves every className in this file as. Variants
+  // are stripped off the front; prose in a comment is not read at all, because
+  // a class name is only a class name inside a string.
+  const used = new Set<string>();
+  for (const [literal] of source.matchAll(/"[^"\n]*"/g)) {
+    for (const token of literal.slice(1, -1).split(/\s+/)) {
+      const name = token.slice(token.lastIndexOf(":") + 1);
+      if (name.startsWith("rounded-")) used.add(name);
+    }
+  }
+
+  it("spells every radius it uses the way globals.css defines it", () => {
+    expect(used.size).toBeGreaterThan(0);
+    expect([...used].filter((name) => !defined(name))).toEqual([]);
+  });
+
+  it("gives the sheet its top corners under a name that compiles", () => {
+    expect(used.has("rounded-ui-top")).toBe(true);
+
+    // The check is only worth having if it rejects the spelling that broke.
+    // rounded-t-* is generated from the --radius-* namespace and --radius-ui
+    // is not in it, so that name resolves to no rule and both corners come out
+    // square.
+    expect(defined("rounded-t-ui")).toBe(false);
+    expect(used.has("rounded-t-ui")).toBe(false);
+
+    // And it still admits the ordinary shapes around it.
+    expect(defined("rounded-ui")).toBe(true);
+    expect(defined("rounded-ui-top")).toBe(true);
+    expect(defined("rounded-full")).toBe(true);
+    expect(defined("rounded-t-md")).toBe(true);
+    expect(defined("rounded-[2px]")).toBe(true);
+  });
+});
+
+// The dialog is a stack of scrollers: the list inside the panel's content
+// column, and that column inside the sheet. scrollIntoView cannot tell them
+// apart, because it scrolls every scrollable ancestor of the element it is
+// called on, and the column's own scroll is a shipped fix that may not be
+// taken away (see e2e/shelter-picker-landscape.spec.ts). So the one invariant
+// worth pinning is which scroller moves.
+describe("LocationPicker list scrolling", () => {
+  const summaries = new Map<string, ShelterSummary>([
+    ["sever", { species: [{ species: "dog", count: 3 }] }],
+  ]);
+
+  /** scrollTop in jsdom is a property with no layout behind it, so it is
+   *  replaced by one that remembers what was written to it. What is asserted
+   *  is the writing, which is the whole of what this component does. */
+  function trackScrollTop(element: HTMLElement): () => number {
+    let value = 0;
+    Object.defineProperty(element, "scrollTop", {
+      configurable: true,
+      get: () => value,
+      set: (next: number) => {
+        value = next;
+      },
+    });
+    return () => value;
+  }
+
+  const rect = (top: number, bottom: number) =>
+    ({ top, bottom, height: bottom - top }) as DOMRect;
+
+  /** The panel's content column: the scroller the list sits in, and the one
+   *  carrying the dialog's title, tabs and confirm button past it. */
+  const columnOf = (list: HTMLElement) =>
+    list.closest<HTMLElement>(".overflow-y-auto:not(.fade-scroll)")!;
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("scrolls the list to the shelter panel it just opened, and nothing else", async () => {
+    await openPicker({ summaries });
+    const dialog = screen.getByRole("dialog");
+    const list = dialog.querySelector<HTMLElement>(".fade-scroll")!;
+    const column = columnOf(list);
+    const listTop = trackScrollTop(list);
+    const columnTop = trackScrollTop(column);
+    // jsdom lays nothing out and reports every rectangle as zero, which reads
+    // as "already in view" and would leave any scroll a no-op. The list is a
+    // 100px window and the cell that opens sits 160px below its foot.
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
+      rect(180, 260),
+    );
+    // Assigned rather than spied: vi.spyOn on an instance whose method lives
+    // on the prototype hands back the prototype's own mock, and setting a
+    // return value on it would answer for every element in the tree.
+    list.getBoundingClientRect = () => rect(0, 100);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Pokaži podrobnosti za Zavetišče Sever",
+      }),
+    );
+
+    // The cell is 160px under the list's foot, so the list comes down by
+    // exactly that: "nearest" means the bottom edge, not the middle.
+    expect(listTop()).toBe(160);
+    // And the column has not moved, which is the invariant. It used to lose
+    // about ninety pixels here, which is the dialog title, the selection
+    // summary and the tab row.
+    expect(columnTop()).toBe(0);
+  });
+
+  it("leaves both scrollers alone when the panel is already in view", async () => {
+    await openPicker({ summaries });
+    const dialog = screen.getByRole("dialog");
+    const list = dialog.querySelector<HTMLElement>(".fade-scroll")!;
+    const column = columnOf(list);
+    const listTop = trackScrollTop(list);
+    const columnTop = trackScrollTop(column);
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
+      rect(10, 60),
+    );
+    // Assigned rather than spied: vi.spyOn on an instance whose method lives
+    // on the prototype hands back the prototype's own mock, and setting a
+    // return value on it would answer for every element in the tree.
+    list.getBoundingClientRect = () => rect(0, 100);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Pokaži podrobnosti za Zavetišče Sever",
+      }),
+    );
+
+    expect(listTop()).toBe(0);
+    expect(columnTop()).toBe(0);
+  });
+});
+
+// Two things in the dialog talk about markers, and the map is what draws them.
+// The signal is the map's measured plate, reported outward, so all three say
+// the same thing at every size instead of two of them guessing from a
+// breakpoint. jsdom lays nothing out, so the plate's box and the observer that
+// watches it are both supplied here.
+describe("LocationPicker marker copy", () => {
+  const originalObserver = globalThis.ResizeObserver;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    globalThis.ResizeObserver = originalObserver;
+  });
+
+  /** A plate of the given pixel size, measured once on mount. The real
+   *  observer re-measures on every resize; the map calls measure() itself
+   *  before observing, which is the call this stands in for. */
+  function plateDrawnAt(width: number, height: number) {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+      width,
+      height,
+    } as DOMRect);
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+  }
+
+  it("tells a plate with markers on it that a shelter can be clicked", async () => {
+    // 2.2px to the user unit, which is the desktop plate.
+    plateDrawnAt(704, 462);
+    await openPicker({ offSite });
+
+    expect(screen.getByText("Klikni regijo ali zavetišče")).toBeTruthy();
+    // And the legend explains the hollow circle, because there is one drawn.
+    expect(
+      screen.getByRole("dialog").querySelector("[data-legend-empty]"),
+    ).toBeTruthy();
+  });
+
+  it("asks for a region instead once the plate is too small to carry them", async () => {
+    // A phone held sideways: wide enough to be well past md, and a fifth of
+    // the scale a marker needs. The old md gate said "click a shelter" here.
+    plateDrawnAt(767, 21);
+    await openPicker({ offSite });
+
+    expect(screen.getByText("Izberi regijo na zemljevidu")).toBeTruthy();
+    expect(screen.queryByText("Klikni regijo ali zavetišče")).toBeNull();
+    // No marker is drawn, so nothing in the legend explains one.
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector("[data-marker-key]")).toBeNull();
+    expect(dialog.querySelector("[data-legend-empty]")).toBeNull();
+  });
+});
+
+// Where the sheet lands when the dialog opens. The map is the dialog, and on a
+// screen with no height to spare an open sheet leaves it a line rather than a
+// plate, so the fold is where such a screen starts.
+describe("LocationPicker sheet landing", () => {
+  const originalMatchMedia = window.matchMedia;
+
+  function onAViewport(short: boolean) {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation((media: string) => ({
+        matches: short && media === "(max-height: 32rem)",
+        media,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  }
+
+  afterEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: originalMatchMedia,
+    });
+  });
+
+  const sheet = () =>
+    screen.getByRole("dialog").querySelector("[data-picker-sheet]");
+
+  it("lands open on a screen with height to spare", async () => {
+    onAViewport(false);
+    await openPicker();
+
+    expect(sheet()?.getAttribute("data-picker-sheet")).toBe("open");
+  });
+
+  it("lands folded on a phone held sideways", async () => {
+    onAViewport(true);
+    await openPicker();
+
+    expect(sheet()?.getAttribute("data-picker-sheet")).toBe("collapsed");
+    // Folded, not gone: the strip that folded it says what is picked and
+    // opens it again, which is the whole of the way back.
+    const peek = screen
+      .getByRole("dialog")
+      .querySelector("[data-picker-peek]")!;
+    expect(peek.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(peek);
+    expect(sheet()?.getAttribute("data-picker-sheet")).toBe("open");
+  });
+
+  it("keeps the sheet for a found animal, whatever the screen", async () => {
+    onAViewport(true);
+    // The found-animal entry opens straight into the municipality tab, and
+    // every part of that answer lives in the sheet.
+    render(
+      <I18nProvider locale="sl">
+        <LocationPicker
+          options={options}
+          counts={counts}
+          selected={[]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          resultCount={11}
+          municipalities={[{ name: "Ljubljana", coverage: [], nearest: [] }]}
+          deepLink="mobile"
+        />
+      </I18nProvider>,
+    );
+
+    await act(async () => {
+      window.dispatchEvent(new Event(OPEN_MUNICIPALITY_LOOKUP_EVENT));
+    });
+
+    await screen.findByRole("dialog");
+    expect(sheet()?.getAttribute("data-picker-sheet")).toBe("open");
   });
 });

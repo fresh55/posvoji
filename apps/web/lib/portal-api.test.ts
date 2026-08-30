@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_PORTAL_API,
+  PRODUCTION_PORTAL_API,
   PortalError,
+  clearCsrfToken,
   fetchAnimals,
+  fetchCsrfToken,
   fetchSession,
   isUnauthorized,
   logout,
@@ -35,7 +38,13 @@ function lastCall(): FetchArgs {
   return fetchMock.mock.calls.at(-1) as FetchArgs;
 }
 
+function respondWithCsrf(status: number, body?: unknown) {
+  respond(200, { csrfToken: "test-csrf-token" });
+  respond(status, body);
+}
+
 beforeEach(() => {
+  clearCsrfToken();
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -50,6 +59,11 @@ describe("base URL", () => {
     expect(portalBaseUrl("   ")).toBe(DEFAULT_PORTAL_API);
   });
 
+  it("never falls back to a visitor's localhost in a production build", () => {
+    expect(portalBaseUrl(undefined, true)).toBe(PRODUCTION_PORTAL_API);
+    expect(portalBaseUrl("   ", true)).toBe(PRODUCTION_PORTAL_API);
+  });
+
   it("trims trailing slashes so paths concatenate cleanly", () => {
     expect(portalBaseUrl("https://api.posvoji.si/")).toBe(
       "https://api.posvoji.si",
@@ -57,6 +71,15 @@ describe("base URL", () => {
     expect(portalBaseUrl("https://api.posvoji.si///")).toBe(
       "https://api.posvoji.si",
     );
+  });
+
+  it.each([
+    "/relative",
+    "javascript:alert(1)",
+    "https://user:secret@api.posvoji.si",
+    "https://api.posvoji.si?redirect=elsewhere",
+  ])("rejects the unsafe configured base %s", (value) => {
+    expect(() => portalBaseUrl(value)).toThrow(/HTTP\(S\) URL/);
   });
 
   it("builds request URLs from the base", () => {
@@ -85,23 +108,97 @@ describe("requests", () => {
   });
 
   it("posts the login address as JSON", async () => {
-    respond(204);
+    respondWithCsrf(204);
     await requestLoginLink("info@zavetisce.si");
 
     const [url, init] = lastCall();
     expect(url).toBe(`${DEFAULT_PORTAL_API}/api/auth/request-link`);
     expect(init.method).toBe("POST");
-    expect(init.headers).toMatchObject({ "Content-Type": "application/json" });
+    expect(init.headers).toMatchObject({
+      "Content-Type": "application/json",
+      "X-CSRFToken": "test-csrf-token",
+    });
     expect(init.body).toBe(JSON.stringify({ email: "info@zavetisce.si" }));
   });
 
+  it("gets a CSRF token with the API cookie included", async () => {
+    respond(200, { csrfToken: "abc123" });
+
+    await expect(fetchCsrfToken()).resolves.toBe("abc123");
+    const [url, init] = lastCall();
+    expect(url).toBe(`${DEFAULT_PORTAL_API}/api/auth/csrf`);
+    expect(init.method).toBe("GET");
+    expect(init.credentials).toBe("include");
+  });
+
+  it("deduplicates and caches the CSRF bootstrap", async () => {
+    respond(200, { csrfToken: "abc123" });
+
+    await expect(
+      Promise.all([fetchCsrfToken(), fetchCsrfToken()]),
+    ).resolves.toEqual(["abc123", "abc123"]);
+    await expect(fetchCsrfToken()).resolves.toBe("abc123");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses the cached CSRF token across unsafe requests", async () => {
+    respond(200, { csrfToken: "abc123" });
+    respond(200, { id: "one", overrides: {} });
+    respond(200, { id: "two", overrides: {} });
+
+    await saveAnimal("zonzani", "one", { name: "One" });
+    await saveAnimal("zonzani", "two", { name: "Two" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "X-CSRFToken": "abc123",
+    });
+    expect(fetchMock.mock.calls[2]?.[1]?.headers).toMatchObject({
+      "X-CSRFToken": "abc123",
+    });
+  });
+
+  it("refreshes a stale CSRF token once after a 403", async () => {
+    respond(200, { csrfToken: "stale" });
+    respond(403, { detail: "CSRF failed" });
+    respond(200, { csrfToken: "fresh" });
+    respond(200, { id: "rex", overrides: {} });
+
+    await expect(
+      saveAnimal("zonzani", "rex", { name: "Rex" }),
+    ).resolves.toMatchObject({ id: "rex" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "X-CSRFToken": "stale",
+    });
+    expect(fetchMock.mock.calls[3]?.[1]?.headers).toMatchObject({
+      "X-CSRFToken": "fresh",
+    });
+  });
+
+  it("does not retry a second 403", async () => {
+    respond(200, { csrfToken: "stale" });
+    respond(403, { detail: "CSRF failed" });
+    respond(200, { csrfToken: "fresh" });
+    respond(403, { detail: "still forbidden" });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "Rex" }).catch(
+      (reason) => reason,
+    );
+
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.status).toBe(403);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
   it("resolves a 204 with no body to parse", async () => {
-    respond(204);
+    respondWithCsrf(204);
     await expect(logout()).resolves.toBeUndefined();
   });
 
   it("escapes the slug and the animal id in the path", async () => {
-    respond(200, { id: "zonzani:12/3", overrides: {} });
+    respondWithCsrf(200, { id: "zonzani:12/3", overrides: {} });
     await saveAnimal("zon zani", "zonzani:12/3", { status: "adopted" });
 
     const [url, init] = lastCall();
@@ -113,7 +210,7 @@ describe("requests", () => {
   });
 
   it("keeps an explicit null in the body, because null clears an override", async () => {
-    respond(200, { id: "rex", overrides: {} });
+    respondWithCsrf(200, { id: "rex", overrides: {} });
     await saveAnimal("zonzani", "rex", { name: null });
 
     const [, init] = lastCall();
@@ -122,17 +219,47 @@ describe("requests", () => {
 
   it("returns the merged animal the API answers with", async () => {
     const animal = { id: "rex", name: "Rex", overrides: { name: "Rex" } };
-    respond(200, animal);
+    respondWithCsrf(200, animal);
 
     await expect(saveAnimal("zonzani", "rex", { name: "Rex" })).resolves.toEqual(
       animal,
     );
   });
+
+  it("deduplicates overlapping exchanges of a single-use login token", async () => {
+    const session = { email: "info@example.si", shelters: [] };
+    respondWithCsrf(200, session);
+
+    const first = verifyToken("one-time-token");
+    const second = verifyToken("one-time-token");
+
+    expect(second).toBe(first);
+    await expect(first).resolves.toEqual(session);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears the cached CSRF token after verification and logout", async () => {
+    respond(200, { csrfToken: "before-login" });
+    respond(200, { email: "info@example.si", shelters: [] });
+    await verifyToken("rotating-token");
+
+    respond(200, { csrfToken: "before-logout" });
+    respond(204);
+    await logout();
+
+    respond(200, { csrfToken: "after-logout" });
+    await expect(fetchCsrfToken()).resolves.toBe("after-logout");
+
+    const csrfCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/api/auth/csrf"),
+    );
+    expect(csrfCalls).toHaveLength(3);
+  });
 });
 
 describe("errors", () => {
   it("marks 401 so the UI can send the visitor back to the login page", async () => {
-    respond(401, { detail: "invalid or expired token" });
+    respondWithCsrf(401, { detail: "invalid or expired token" });
 
     const error = await verifyToken("stale").catch((reason) => reason);
     expect(error).toBeInstanceOf(PortalError);
@@ -173,5 +300,16 @@ describe("errors", () => {
     const error = await fetchSession().catch((reason) => reason);
     expect(error.kind).toBe("server");
     expect(error.detail).toBeUndefined();
+  });
+
+  it("rejects a malformed CSRF bootstrap response", async () => {
+    respond(200, {});
+
+    const error = await requestLoginLink("info@example.si").catch(
+      (reason) => reason,
+    );
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.status).toBe(500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

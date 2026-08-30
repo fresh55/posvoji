@@ -4,13 +4,37 @@
 // carry credentials, and a 401 is the one error the UI reacts to by itself.
 
 export const DEFAULT_PORTAL_API = "http://localhost:8000";
+export const PRODUCTION_PORTAL_API = "https://api.posvoji.si";
 
 /** Base URL without a trailing slash, so paths can be concatenated. */
 export function portalBaseUrl(
   raw: string | undefined = process.env.NEXT_PUBLIC_PORTAL_API,
+  production: boolean = process.env.NODE_ENV === "production",
 ): string {
   const value = raw?.trim();
-  return (value ? value : DEFAULT_PORTAL_API).replace(/\/+$/, "");
+  const candidate = value
+    ? value
+    : production
+      ? PRODUCTION_PORTAL_API
+      : DEFAULT_PORTAL_API;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error("NEXT_PUBLIC_PORTAL_API must be an absolute HTTP(S) URL");
+  }
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username !== "" ||
+    parsed.password !== "" ||
+    parsed.search !== "" ||
+    parsed.hash !== ""
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_PORTAL_API must be an HTTP(S) URL without credentials, a query, or a fragment",
+    );
+  }
+  return candidate.replace(/\/+$/, "");
 }
 
 export function portalUrl(path: string): string {
@@ -170,27 +194,55 @@ async function readDetail(response: Response): Promise<string | undefined> {
   return undefined;
 }
 
+type PortalRequestInit = {
+  method: string;
+  body?: unknown;
+  csrf?: boolean;
+};
+
+let cachedCsrfToken: string | undefined;
+let csrfTokenRequest: Promise<string> | undefined;
+
+/** Drops the proof after an authentication endpoint may have rotated it. */
+export function clearCsrfToken(): void {
+  cachedCsrfToken = undefined;
+  csrfTokenRequest = undefined;
+}
+
+function clearCsrfTokenIfCurrent(token: string): void {
+  if (cachedCsrfToken === token) clearCsrfToken();
+}
+
 async function request<T>(
   path: string,
-  init: { method: string; body?: unknown } = { method: "GET" },
+  init: PortalRequestInit = { method: "GET" },
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
+  if (init.csrf) headers["X-CSRFToken"] = await fetchCsrfToken();
 
-  let response: Response;
-  try {
-    response = await fetch(portalUrl(path), {
-      method: init.method,
-      // The API authenticates with a session cookie and rejects cross site
-      // requests through CORS, so the cookie has to travel with every call.
-      credentials: "include",
-      headers,
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    });
-  } catch {
-    // An unreachable API and a rejected preflight both land here, with no
-    // status of their own.
-    throw new PortalError(0);
+  const send = async (): Promise<Response> => {
+    try {
+      return await fetch(portalUrl(path), {
+        method: init.method,
+        // The API authenticates with a session cookie and verifies the separate
+        // CSRF cookie/header proof on unsafe requests. Both cookies must travel.
+        credentials: "include",
+        headers: { ...headers },
+        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      });
+    } catch {
+      // An unreachable API and a rejected preflight both land here, with no
+      // status of their own.
+      throw new PortalError(0);
+    }
+  };
+
+  let response = await send();
+  if (init.csrf && response.status === 403) {
+    clearCsrfTokenIfCurrent(headers["X-CSRFToken"]);
+    headers["X-CSRFToken"] = await fetchCsrfToken();
+    response = await send();
   }
 
   if (!response.ok) throw new PortalError(response.status, await readDetail(response));
@@ -198,24 +250,75 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
-/** Always resolves. The API answers 204 whether or not the account exists. */
+/**
+ * Seeds Django's CSRF cookie and returns the matching request token.
+ *
+ * The frontend and API may live on sibling hosts, so JavaScript cannot safely
+ * assume it can read the API's cookie. Returning the token from the API keeps
+ * the cookie host-only while credentials: "include" sends it back for Django
+ * to compare with this header value.
+ */
+export function fetchCsrfToken(): Promise<string> {
+  if (cachedCsrfToken) return Promise.resolve(cachedCsrfToken);
+  if (csrfTokenRequest) return csrfTokenRequest;
+
+  const pending = request<{ csrfToken?: unknown }>("/api/auth/csrf")
+    .then((payload) => {
+      if (
+        typeof payload.csrfToken !== "string" ||
+        payload.csrfToken.length === 0
+      ) {
+        throw new PortalError(500, "invalid CSRF response");
+      }
+      if (csrfTokenRequest === pending) cachedCsrfToken = payload.csrfToken;
+      return payload.csrfToken;
+    })
+    .finally(() => {
+      if (csrfTokenRequest === pending) csrfTokenRequest = undefined;
+    });
+  csrfTokenRequest = pending;
+  return pending;
+}
+
+/** A 204 never reveals whether the account exists; throttling/network errors reject. */
 export function requestLoginLink(email: string): Promise<void> {
   return request<void>("/api/auth/request-link", {
     method: "POST",
     body: { email },
+    csrf: true,
   });
 }
+
+// React Strict Mode deliberately re-runs effects in development. A magic link
+// is single-use, so two overlapping exchanges for the same token must share
+// the first request rather than race and let the replay overwrite success with
+// an "expired" answer.
+const verificationRequests = new Map<string, Promise<PortalSession>>();
 
 /** Exchanges a magic-link token for a session. 401 means expired or forged. */
 export function verifyToken(token: string): Promise<PortalSession> {
-  return request<PortalSession>("/api/auth/verify", {
+  const pending = verificationRequests.get(token);
+  if (pending) return pending;
+
+  const verification = request<PortalSession>("/api/auth/verify", {
     method: "POST",
     body: { token },
+    csrf: true,
+  }).finally(() => {
+    clearCsrfToken();
+    if (verificationRequests.get(token) === verification) {
+      verificationRequests.delete(token);
+    }
   });
+  verificationRequests.set(token, verification);
+  return verification;
 }
 
 export function logout(): Promise<void> {
-  return request<void>("/api/auth/logout", { method: "POST" });
+  return request<void>("/api/auth/logout", {
+    method: "POST",
+    csrf: true,
+  }).finally(clearCsrfToken);
 }
 
 /** The signed-in shelter account. Raises an "unauthorized" error when there is none. */
@@ -238,6 +341,6 @@ export function saveAnimal(
 ): Promise<PortalAnimal> {
   return request<PortalAnimal>(
     `/api/shelters/${encodeURIComponent(slug)}/animals/${encodeURIComponent(animalId)}`,
-    { method: "PUT", body: patch },
+    { method: "PUT", body: patch, csrf: true },
   );
 }

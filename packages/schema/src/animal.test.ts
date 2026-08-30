@@ -70,6 +70,47 @@ describe("Animal", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts an HTTP(S) cachedUrl when the cache is hosted separately", () => {
+    for (const cachedUrl of [
+      "http://media.example.test/animals/luna.webp",
+      "https://media.example.test/animals/luna.webp",
+    ]) {
+      const result = Animal.safeParse({
+        ...validAnimal,
+        images: [
+          {
+            sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+            cachedUrl,
+            rights: "cache-permitted",
+          },
+        ],
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it.each(["javascript:alert(1)", "data:text/html,unsafe", "ftp://example.com"])(
+    "rejects the non-HTTP(S) animal source URL %s",
+    (sourceUrl) => {
+      const result = Animal.safeParse({
+        ...validAnimal,
+        source: { ...validAnimal.source, sourceUrl },
+      });
+      expect(result.success).toBe(false);
+    },
+  );
+
+  it.each(["javascript:alert(1)", "data:image/png;base64,AA==", "ftp://example.com"])(
+    "rejects the non-HTTP(S) image source URL %s",
+    (sourceUrl) => {
+      const result = Animal.safeParse({
+        ...validAnimal,
+        images: [{ sourceUrl, rights: "display-permitted" }],
+      });
+      expect(result.success).toBe(false);
+    },
+  );
+
   it("accepts a goodWith block with a partial answer", () => {
     const result = Animal.safeParse({
       ...validAnimal,
@@ -105,6 +146,26 @@ describe("Animal", () => {
         {
           sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
           cachedUrl: "media/animals/luna.webp",
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    "//evil.example/luna.webp",
+    "/media/animals/nested/luna.webp",
+    "/media/animals/../luna.webp",
+    "/media/animals/luna.webp?download=1",
+    "/media/animals/luna.webp#fragment",
+  ])("rejects the unsafe cached path %s", (cachedUrl) => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          cachedUrl,
           rights: "cache-permitted",
         },
       ],

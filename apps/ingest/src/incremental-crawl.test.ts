@@ -459,6 +459,52 @@ describe("crawlProviderIncrementally", () => {
     });
     expect(result.fullRefresh).toBe(true);
   });
+
+  it.each([
+    {
+      label: "provider",
+      alter: (value: Animal): Animal => ({
+        ...value,
+        source: { ...value.source, providerId: "muri" },
+      }),
+      message: /source\.providerId.*does not match policy providerId/,
+    },
+    {
+      label: "shelter",
+      alter: (value: Animal): Animal => ({
+        ...value,
+        shelter: { ...value.shelter, id: "muri" },
+      }),
+      message: /shelter\.id.*does not match policy providerId/,
+    },
+    {
+      label: "source animal id",
+      alter: (value: Animal): Animal => ({
+        ...value,
+        source: { ...value.source, sourceAnimalId: "other" },
+      }),
+      message: /source\.sourceAnimalId.*does not match discovered id/,
+    },
+    {
+      label: "source URL",
+      alter: (value: Animal): Animal => ({
+        ...value,
+        source: {
+          ...value.source,
+          sourceUrl: "https://example.si/somewhere-else",
+        },
+      }),
+      message: /source\.sourceUrl.*does not match discovered URL/,
+    },
+  ])("rejects normalized identity that changes the $label", async ({ alter, message }) => {
+    const { provider } = stubProvider([ref("1")]);
+    const normalize = provider.normalize;
+    provider.normalize = async (ctx, raw) => alter(await normalize(ctx, raw));
+
+    await expect(
+      crawlProviderIncrementally(provider, context(), { previous: [], now }),
+    ).rejects.toThrow(message);
+  });
 });
 
 describe("the crawl state", () => {

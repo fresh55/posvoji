@@ -3,6 +3,7 @@
 // committed, the network fetch is not part of the build.
 import { writeFileSync } from "node:fs";
 import proj4 from "proj4";
+import { readRemoteText } from "./remote-source.mjs";
 
 const SRC = process.argv[2] ?? "https://raw.githubusercontent.com/stefanb/gurs-rpe/master/data/PT.csv";
 const OUT = process.argv[3] ?? new URL("../lib/postal-districts.ts", import.meta.url);
@@ -12,6 +13,7 @@ const OUT = process.argv[3] ?? new URL("../lib/postal-districts.ts", import.meta
 const D96_TM =
   "+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
 const toWgs84 = proj4(D96_TM, "WGS84");
+const MAX_CSV_BYTES = 8 * 1024 * 1024;
 
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -26,11 +28,13 @@ function parseCsv(text) {
   });
 }
 
-const res = await fetch(SRC);
-if (!res.ok) {
-  throw new Error(`fetch ${SRC} failed: ${res.status} ${res.statusText}`);
-}
-const rows = parseCsv(await res.text());
+const rows = parseCsv(
+  await readRemoteText(SRC, {
+    accept: "text/csv,text/plain;q=0.9",
+    maxBytes: MAX_CSV_BYTES,
+    label: "GURS postal districts CSV",
+  }),
+);
 
 const districts = rows
   .map((row) => {

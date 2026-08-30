@@ -207,7 +207,10 @@ test.describe("desktop", () => {
     page,
   }) => {
     const dialog = await openPicker(page);
-    const search = dialog.getByLabel(/Išči zavetišče/);
+    // One box for a place and for a shelter's name alike. A name the postal
+    // table does not know is a name being searched for, which is what this
+    // test types.
+    const search = dialog.getByLabel(/Kraj, pošta ali zavetišče/);
 
     // A name only the off-roster group carries, read off the group itself
     // rather than hard-coded, so the registry can change under this test

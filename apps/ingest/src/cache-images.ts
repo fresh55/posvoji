@@ -514,12 +514,14 @@ export async function cacheImages(
   const revalidateAfterMs =
     (options.revalidateAfterDays ?? REVALIDATE_AFTER_DAYS) * 24 * 60 * 60_000;
 
-  const previous = readImageCacheManifest(manifestPath);
+  const { manifest: previous, state: manifestState } =
+    loadImageCacheManifest(manifestPath);
   const next: ImageCacheManifest = { entries: {} };
   mkdirSync(mediaDir, { recursive: true });
 
-  // A manifest that is gone or unreadable makes every entry look uncached, and
-  // the sweep at the end reads "not in the manifest" as "nobody wants it": on
+  // A manifest that is gone, unreadable or empty makes every entry look
+  // uncached, and the sweep at the end reads "not in the manifest" as
+  // "nobody wants it": on
   // a scoped run that is every other provider's photos, on a full run every
   // URL whose fetch failed this once. Files are cheap and a re-crawl of a
   // thousand photos is not, so a run that starts with no manifest and a media
@@ -527,7 +529,9 @@ export async function cacheImages(
   // fills back in as URLs are fetched, and the next run sweeps normally.
   const startedWith = readdirSync(mediaDir);
   const manifestLost =
-    Object.keys(previous.entries).length === 0 && startedWith.length > 0;
+    (manifestState !== "loaded" ||
+      Object.keys(previous.entries).length === 0) &&
+    startedWith.length > 0;
   if (manifestLost) {
     console.warn(
       `images: no usable cache manifest at ${manifestPath} but ` +
@@ -577,6 +581,7 @@ export async function cacheImages(
     try {
       res = await client.getBytes(url, {
         accept: ACCEPT_IMAGES,
+        maxBytes: MAX_SOURCE_BYTES,
         validators: prevUsable
           ? { etag: prev.etag, lastModified: prev.lastModified }
           : undefined,
@@ -588,7 +593,18 @@ export async function cacheImages(
     }
 
     if (res.notModified && prevUsable) {
-      return { entry: prev, counted: "reused" };
+      return {
+        entry: {
+          ...prev,
+          etag: headerValue(res.headers["etag"]) ?? prev.etag,
+          lastModified:
+            headerValue(res.headers["last-modified"]) ?? prev.lastModified,
+          // A 304 is a successful freshness check. Advancing the clock keeps
+          // the next conditional request one full revalidation window away.
+          fetchedAt: new Date().toISOString(),
+        },
+        counted: "reused",
+      };
     }
 
     if (res.status === 404 || res.status === 410) {
@@ -598,11 +614,6 @@ export async function cacheImages(
 
     if (res.status !== 200 || res.body === null) {
       console.warn(`image ${url}: HTTP ${res.status}, not cached`);
-      return keepPrevious;
-    }
-
-    if (res.body.length > MAX_SOURCE_BYTES) {
-      console.warn(`image ${url}: ${res.body.length} bytes exceeds cap`);
       return keepPrevious;
     }
 

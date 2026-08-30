@@ -100,6 +100,29 @@ export function carryFirstSeenAt(
   });
 }
 
+// IDs key routes, change entries, portal overrides and share-card manifests.
+// Every one of those consumers uses a Map or object and would silently keep
+// one of two records with the same id, so fail before any merge or media sweep
+// can turn a parser collision into a partially written export.
+export function guardUniqueAnimalIds(animals: readonly Animal[]): void {
+  const firstById = new Map<string, Animal>();
+  const duplicateIds = new Set<string>();
+
+  for (const animal of animals) {
+    if (firstById.has(animal.id)) duplicateIds.add(animal.id);
+    else firstById.set(animal.id, animal);
+  }
+
+  if (duplicateIds.size === 0) return;
+  const ids = [...duplicateIds].sort();
+  const shown = ids.slice(0, 10).map((id) => JSON.stringify(id)).join(", ");
+  const more = ids.length > 10 ? ` and ${ids.length - 10} more` : "";
+  throw new Error(
+    `duplicate animal id${ids.length === 1 ? "" : "s"}: ${shown}${more}. ` +
+      `Refusing to merge overrides, sweep media or write the dataset.`,
+  );
+}
+
 export function countByProvider(
   animals: readonly Animal[],
 ): Map<string, number> {

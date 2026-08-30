@@ -8,7 +8,7 @@ import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
 import { buildChangeSet } from "./changes";
 import { flagList, flagValue, hasFlag } from "./cli";
-import { guardExcludedPaths, type CrawlClient } from "./crawl-guard";
+import { guardProviderRequests, type CrawlClient } from "./crawl-guard";
 import { exitCodeForRun } from "./exit-codes";
 import {
   advanceCrawlState,
@@ -30,6 +30,7 @@ import { providers } from "./registry";
 import {
   carryFirstSeenAt,
   guardMassRemoval,
+  guardUniqueAnimalIds,
   readPreviousDataset,
   retainableAnimals,
 } from "./run-guards";
@@ -88,7 +89,10 @@ async function crawlProvider(
   }
   // ProviderContext types client as the concrete PoliteClient, so the guard
   // is handed over as one. It forwards everything it does not refuse.
-  const guarded = guardExcludedPaths(client, policy) as unknown as PoliteClient;
+  const guarded = guardProviderRequests(
+    client,
+    policy,
+  ) as unknown as PoliteClient;
   const ctx = { client: guarded, policy };
   // The list page still decides who is listed, and every listed animal ends up
   // in the result. What this skips is the detail page of an animal we already
@@ -237,6 +241,8 @@ for (const drop of dropped) {
 // ones, so a bad value already in the previous dataset is cleaned up even
 // by a targeted run that does not re-crawl its provider.
 const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
+
+guardUniqueAnimalIds(seeded);
 
 // The portal keys every override by the shelter slug of the account that
 // recorded it and ships that slug as providerId; this pipeline matches an

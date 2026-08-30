@@ -18,6 +18,15 @@ describe("ProviderPolicy", () => {
     expect(ProviderPolicy.safeParse(basePolicy).success).toBe(true);
   });
 
+  it.each(["javascript:alert(1)", "data:text/html,unsafe", "ftp://example.com"])(
+    "rejects the non-HTTP(S) provider source URL %s",
+    (source) => {
+      expect(ProviderPolicy.safeParse({ ...basePolicy, source }).success).toBe(
+        false,
+      );
+    },
+  );
+
   it("rejects an enabled provider without granted permission", () => {
     const result = ProviderPolicy.safeParse({ ...basePolicy, enabled: true });
     expect(result.success).toBe(false);
@@ -55,12 +64,17 @@ describe("ProviderPolicy", () => {
     if (result.success) expect(result.data.logo.use).toBe("none");
   });
 
-  it("rejects a permitted logo without granted permission", () => {
+  it("accepts a dated logo grant without catalogue permission", () => {
     const result = ProviderPolicy.safeParse({
       ...basePolicy,
-      logo: { use: "permitted" },
+      logo: {
+        use: "permitted",
+        url: "https://www.macjahisa.si/logo.png",
+        date: "2026-08-20",
+        reference: "logo-mail-thread",
+      },
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("accepts a permitted logo with granted permission", () => {
@@ -75,6 +89,18 @@ describe("ProviderPolicy", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it.each(["javascript:alert(1)", "data:image/png;base64,AA==", "ftp://example.com"])(
+    "rejects the non-HTTP(S) logo URL %s",
+    (url) => {
+      const result = ProviderPolicy.safeParse({
+        ...basePolicy,
+        logo: { use: "permitted", url, date: "2026-08-20" },
+        permission: { status: "granted", date: "2026-08-20" },
+      });
+      expect(result.success).toBe(false);
+    },
+  );
 
   // A mark the shelter sent us rather than published: there is no URL to pin,
   // so the file travels with the repository and the policy names its path.
@@ -133,5 +159,33 @@ describe("ProviderPolicy", () => {
       descriptions: "full-permitted",
     });
     expect(result.success).toBe(false);
+  });
+
+  it.each([
+    "privat-oddaja/",
+    "//example.com/private",
+    "/private?animal=1",
+    "/private#animal",
+    "/private\\animal",
+    "/private/../animals",
+    "/private/%2e%2e/animals",
+    "/private//animals",
+  ])("rejects the non-canonical crawl exclusion %s", (excluded) => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      crawl: { intervalHours: 12, excludePaths: [excluded] },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a canonical absolute crawl exclusion", () => {
+    const result = ProviderPolicy.safeParse({
+      ...basePolicy,
+      crawl: {
+        intervalHours: 12,
+        excludePaths: ["/posvoji-zival/oddajo-lastniki"],
+      },
+    });
+    expect(result.success).toBe(true);
   });
 });

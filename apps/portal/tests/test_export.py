@@ -223,3 +223,24 @@ def test_export_leaves_the_baseline_keys_out_when_there_is_none(
     body = client.get(EXPORT, **bearer(TOKEN)).json()
 
     assert set(body["overrides"][0]) == {"providerId", "animalId", "fields"}
+
+
+@pytest.mark.django_db
+def test_export_omits_recorded_at_when_every_baseline_key_is_stale(
+    client, export_token, shelter
+):
+    AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        name="Belka",
+        baseline={"status": "available"},
+        baseline_at=datetime(2026, 8, 18, 9, 0, tzinfo=UTC),
+    )
+
+    body = client.get(EXPORT, **bearer(TOKEN)).json()
+
+    assert body["overrides"][0] == {
+        "providerId": "testno",
+        "animalId": "testno:1",
+        "fields": {"name": "Belka"},
+    }

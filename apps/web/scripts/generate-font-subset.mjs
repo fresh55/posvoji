@@ -15,6 +15,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readRemoteBytes, readRemoteText } from "./remote-source.mjs";
 
 // c-caron, s-caron, z-caron in both cases, plus the d-stroke pair that comes
 // with Slovenian keyboards and appears in borrowed names.
@@ -24,13 +25,18 @@ const CSS_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&di
 // Google serves a different CSS per user agent; this one gets woff2.
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const MAX_CSS_BYTES = 512 * 1024;
+const MAX_FONT_BYTES = 4 * 1024 * 1024;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outFile = join(here, "..", "app", "fonts", "inter-slovenian-subset.woff2");
 
-const css = await fetch(CSS_URL, { headers: { "User-Agent": UA } }).then((r) => {
-  if (!r.ok) throw new Error(`Google Fonts CSS: ${r.status}`);
-  return r.text();
+const css = await readRemoteText(CSS_URL, {
+  accept: "text/css,*/*;q=0.1",
+  maxBytes: MAX_CSS_BYTES,
+  userAgent: UA,
+  botName: "PosvojiFontSubsetBuilder",
+  label: "Google Fonts CSS",
 });
 
 // The latin-ext block is the one whose range opens at U+0100; all eight letters
@@ -43,7 +49,13 @@ if (!block) throw new Error("no latin-ext @font-face in the Google CSS");
 const source = block.match(/src:\s*url\((https:[^)]+\.woff2)\)/)?.[1];
 if (!source) throw new Error("no woff2 url in the latin-ext block");
 
-const woff2 = Buffer.from(await fetch(source).then((r) => r.arrayBuffer()));
+const woff2 = await readRemoteBytes(source, {
+  accept: "font/woff2,*/*;q=0.1",
+  maxBytes: MAX_FONT_BYTES,
+  userAgent: UA,
+  botName: "PosvojiFontSubsetBuilder",
+  label: "Google Fonts latin-ext woff2",
+});
 const tmp = join(here, "..", "app", "fonts", ".inter-latin-ext.woff2");
 mkdirSync(dirname(tmp), { recursive: true });
 writeFileSync(tmp, woff2);

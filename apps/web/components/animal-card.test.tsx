@@ -204,14 +204,18 @@ describe("AnimalCard meta line", () => {
     // The middots are spans of their own now, so the sentence is read off the
     // element rather than matched as one text node. Found through the card's
     // heading, so it stays the meta line even if the card grows another <p>.
-    expect(metaLine()).toBe("Pes · samec · 3 leta");
+    expect(metaLine()).toBe("Pes · 3 leta");
   });
 
   it("drops the species once a tab has already said it", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
-          animal={animal({ sex: "male", approximateAgeMonths: 36 })}
+          animal={animal({
+            sex: "male",
+            approximateAgeMonths: 36,
+            size: "medium",
+          })}
           reference={NOW}
           species="dog"
           onOpen={() => undefined}
@@ -219,7 +223,24 @@ describe("AnimalCard meta line", () => {
       </I18nProvider>,
     );
 
-    expect(metaLine()).toBe("samec · 3 leta");
+    expect(metaLine()).toBe("3 leta · srednja");
+  });
+
+  // Two items is what the card's width buys at a 375px phone. Sex is the item
+  // that gave up its slot, and it is still a filter and a fact on the animal's
+  // own page.
+  it("leaves the sex word off the line", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ sex: "male", approximateAgeMonths: 36 })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(metaLine()).not.toContain("samec");
   });
 });
 

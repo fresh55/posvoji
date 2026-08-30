@@ -26,11 +26,6 @@ const SPECIES: Record<Locale, Record<Species, string>> = {
   },
 };
 
-const SEX: Record<Locale, Record<Sex, string>> = {
-  sl: { male: "samec", female: "samica", unknown: "" },
-  en: { male: "male", female: "female", unknown: "" },
-};
-
 // Slovenian has a dual, so 1, 2, 3-4 and 5+ each take a different form.
 function pick(
   n: number,
@@ -251,7 +246,7 @@ export function speciesLabel(species: Species, locale: Locale): string {
   return SPECIES[locale][species];
 }
 
-// "Mačka · samica · 2 leti", skipping whatever we don't know.
+// "Mačka · 2 leti", skipping whatever we don't know.
 //
 // `species` is the grid's active tab. When it names one species, the word
 // comes off: the tab already said it, and repeating it costs the line the room
@@ -265,11 +260,15 @@ export function speciesLabel(species: Species, locale: Locale): string {
 // Size takes the slot the species word vacated, and only that slot. It is on
 // 44% of dogs and 16% of cats, which is thin, but it is the only field left
 // with enough coverage to be worth a place, and it is a thing people decide
-// on. Adding it as a fourth item instead put the line straight back over the
-// edge it had just been pulled off: three items is what the card's width buys
-// at every breakpoint, so the line trades one for one rather than growing.
-// Lowercased, because in a middot list of lowercase attributes "Srednja"
+// on. Lowercased, because in a middot list of lowercase attributes "Srednja"
 // reads as the start of a new sentence.
+//
+// Two items is what the card's width buys at a 375px phone, not three. Three
+// wrapped onto a second line on 55 of 60 rendered cards on the Vse tab and on
+// 33 of 60 on Psi, which left cards in a row disagreeing in height. Sex is the
+// item that gave up its slot, because it is the one fact on the line that does
+// not change what a visitor taps next. It stays a filter, and it stays a fact
+// on the animal's own page.
 /** The separator between the meta line's facts. Exported because the card
  *  draws the parts itself to dim these, and a private literal split back out
  *  of the joined string in another file is a contract nothing enforces. */
@@ -297,7 +296,6 @@ export function animalMetaParts(
   const named = species === "dog" || species === "cat";
   return [
     named ? "" : speciesLabel(animal.species, locale),
-    animal.sex ? SEX[locale][animal.sex] : "",
     months !== undefined ? ageLabel(months, locale) : "",
     named && animal.size
       ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)

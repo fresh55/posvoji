@@ -33,16 +33,32 @@ describe("animalMeta on the species tabs", () => {
   const rabbit = animal({ sex: "female", approximateAgeMonths: 24 });
 
   it("drops the species word only on a tab that names one species", () => {
-    expect(animalMeta(rabbit, "sl", NOW, "all")).toBe(
-      "Zajček · samica · 2 leti",
-    );
+    expect(animalMeta(rabbit, "sl", NOW, "all")).toBe("Zajček · 2 leti");
     // The merged Ostale tab holds rabbits and whatever else, so the line
     // still has to say which animal this is.
-    expect(animalMeta(rabbit, "sl", NOW, "other")).toBe(
-      "Zajček · samica · 2 leti",
-    );
-    const cat = animal({ species: "cat", sex: "female", approximateAgeMonths: 24 });
-    expect(animalMeta(cat, "sl", NOW, "cat")).toBe("samica · 2 leti");
+    expect(animalMeta(rabbit, "sl", NOW, "other")).toBe("Zajček · 2 leti");
+    const cat = animal({
+      species: "cat",
+      sex: "female",
+      approximateAgeMonths: 24,
+      size: "medium",
+    });
+    expect(animalMeta(cat, "sl", NOW, "cat")).toBe("2 leti · srednja");
+  });
+
+  // Two items is what the card's width buys at a 375px phone. Sex is the item
+  // that gave up its slot, and it is still a filter and a fact on the animal's
+  // own page.
+  it("keeps the sex word off the line in both locales", () => {
+    const dog = animal({ species: "dog", sex: "male", approximateAgeMonths: 36 });
+    expect(animalMeta(dog, "sl", NOW, "all")).not.toContain("samec");
+    expect(animalMeta(dog, "sl", NOW, "all")).toBe("Pes · 3 leta");
+    expect(animalMeta(dog, "en", NOW, "all")).not.toContain("male");
+    expect(animalMeta(dog, "en", NOW, "all")).toBe("Dog · 3 years");
+
+    const she = animal({ species: "cat", sex: "female", approximateAgeMonths: 24 });
+    expect(animalMeta(she, "sl", NOW, "all")).not.toContain("samica");
+    expect(animalMeta(she, "en", NOW, "all")).not.toContain("female");
   });
 });
 

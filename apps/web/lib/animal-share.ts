@@ -6,7 +6,13 @@ import type { Animal } from "@posvoji/schema";
 import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { ageLabel, animalMeta, speciesLabel, statusLabel } from "@/lib/labels";
+import {
+  ageLabel,
+  META_SEPARATOR,
+  sexLabel,
+  speciesLabel,
+  statusLabel,
+} from "@/lib/labels";
 
 
 export { SITE_URL } from "@/lib/site";
@@ -88,7 +94,24 @@ export function animalDescription(
   reference: Date,
 ): string {
   const t = text[locale];
-  const facts = animalMeta(animal, locale, reference);
+  // Composed here rather than borrowed from the card's meta line. That line
+  // dropped the sex because two facts is what a 375px card is wide enough to
+  // hold on one row, which is a constraint a sentence in a link preview does
+  // not have. Sharing the function meant a card's width silently decided what
+  // a preview says about an animal.
+  const months = ageInMonths(animal, reference);
+  const facts = [
+    speciesLabel(animal.species, locale),
+    // Lowercased the way animalMetaParts does the size, because sexLabel
+    // hands back the filter option's own label and a capitalised "Samica"
+    // reads as the start of a new sentence in a middot list.
+    animal.sex && animal.sex !== "unknown"
+      ? sexLabel(animal.sex, locale).toLocaleLowerCase(locale)
+      : undefined,
+    months !== undefined ? ageLabel(months, locale) : undefined,
+  ]
+    .filter(Boolean)
+    .join(META_SEPARATOR);
   const head = animal.name ? `${animal.name} · ${facts}.` : `${facts}.`;
   const status = statusLabel(animal.status, locale);
   // Available is the norm and says nothing worth a sentence; an unknown

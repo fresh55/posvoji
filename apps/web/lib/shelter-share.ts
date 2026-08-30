@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
-import { shelterPath } from "@/lib/shelter-path";
+import { shelterPath, sheltersIndexPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
 
 const CARD_WIDTH = 1200;
@@ -46,6 +46,43 @@ export function shelterPlateUrl(id: string): string | undefined {
 // keep getting both. It lives in shelter-path.ts because this module cannot be
 // imported from the browser (see the note there).
 export { shelterPath };
+
+/**
+ * One page's address in both languages, as the head's canonical and its pair
+ * of hreflangs.
+ *
+ * Both callers below build the same three-line shape off a locale-keyed pair
+ * of paths, and the shape is the part worth writing once: which of the two is
+ * canonical follows from the locale being rendered, and the languages map
+ * always names both, including the page itself.
+ */
+function localeAlternates(
+  paths: Record<Locale, string>,
+  locale: Locale,
+): NonNullable<Metadata["alternates"]> {
+  return { canonical: paths[locale], languages: paths };
+}
+
+/**
+ * The shelters index's own address, and the other language's copy of it.
+ *
+ * Every shelter detail page has carried these since shelterMetadata was
+ * written, and the index they all hang off carried neither: /zavetisca and
+ * /en/shelters are the same document in two languages with nothing in either
+ * head to say so, while /zavetisca/muri names both. That is the pair most
+ * likely to be searched for, in the language the searcher is not using.
+ *
+ * A helper rather than the object written twice, because the two routes are
+ * separate files that nothing else keeps in step.
+ */
+export function sheltersIndexAlternates(
+  locale: Locale,
+): NonNullable<Metadata["alternates"]> {
+  return localeAlternates(
+    { sl: sheltersIndexPath("sl"), en: sheltersIndexPath("en") },
+    locale,
+  );
+}
 
 const text = {
   sl: {
@@ -90,13 +127,10 @@ export function shelterMetadata(
   return {
     title: `${shelter.name} | Posvoji.si`,
     description,
-    alternates: {
-      canonical: path,
-      languages: {
-        sl: shelterPath(shelter.id, "sl"),
-        en: shelterPath(shelter.id, "en"),
-      },
-    },
+    alternates: localeAlternates(
+      { sl: shelterPath(shelter.id, "sl"), en: shelterPath(shelter.id, "en") },
+      locale,
+    ),
     openGraph: {
       type: "website",
       siteName: "Posvoji.si",

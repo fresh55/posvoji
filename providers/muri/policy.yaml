@@ -11,7 +11,9 @@ descriptions: full-permitted
 
 logo:
   use: permitted
-  url: https://zavodmuri.si/wp-content/uploads/2021/03/ZM_logo-small.png
+  # The full-size upload, not the 100px copy the filename calls small. Same
+  # artwork, same grey ground, 1347px instead of 100.
+  url: https://zavodmuri.si/wp-content/uploads/2021/02/ZM_logo-02.png
   date: 2026-08-20
   reference: project-owner-confirmation-logos-2026-08-20
 

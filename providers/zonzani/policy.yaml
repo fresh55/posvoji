@@ -12,7 +12,9 @@ descriptions: full-permitted
 
 logo:
   use: permitted
-  url: https://www.zonzani.si/wp-content/uploads/2023/01/zonzani_logo_web.png
+  # The site's own 2x companion to the file this used to name: same wordmark,
+  # twice the resolution.
+  url: https://www.zonzani.si/wp-content/uploads/2023/01/zonzani_logo_web_retina.png
   date: 2026-08-20
   reference: project-owner-confirmation-logos-2026-08-20
 

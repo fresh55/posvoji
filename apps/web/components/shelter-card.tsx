@@ -1,4 +1,4 @@
-import { Globe, Mail, MapPin, Phone } from "lucide-react";
+import { Globe, Mail, MapPin, PawPrint, Phone } from "lucide-react";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import {
   Item,
@@ -13,17 +13,26 @@ import type { ShelterLogo } from "@/lib/shelter-logos";
 
 /** What a card needs, and nothing else.
  *
- *  Four things: who, where, how to reach them, and their mark. The animal
- *  count and the občina coverage were both on this card for a while and both
- *  came off: the count belongs to the animals grid it links into and is
- *  already said in the page's own census line, and the coverage question is
- *  the found-animal lookup's whole job. A register card answers "who is this
- *  and how do I reach them", and stops. */
+ *  Five things: who, where, how many animals they share with us, how to reach
+ *  them, and their mark. The občina coverage was on this card for a while and
+ *  came off, because that question is the found-animal lookup's whole job.
+ *
+ *  The animal count came off with it and is back, on a narrower reading. The
+ *  page's census line states a total ("503 živali čakajo na dom") and a count
+ *  of shelters sharing data, and neither says which shelters those are or how
+ *  many animals any one of them holds. The card is the only place that can
+ *  answer that, so it carries the shelter's own number and the register can be
+ *  read against its own totals. */
 export type ShelterCardData = {
   id: string;
   name: string;
   city: string;
   href: string;
+  /** How many animals the dataset holds for this shelter. Absent or zero for
+   *  a shelter that shares no list: the page never prints a zero, because a
+   *  zero here reads as a shelter with no animals rather than as a shelter we
+   *  publish nothing for. */
+  animals?: number;
   logo?: ShelterLogo;
   website?: string;
   email?: string;
@@ -38,6 +47,11 @@ export type ShelterCardText = {
    *  is the one thing on the card that leaves the site, and target="_blank"
    *  announces nothing on its own. */
   newWindow: string;
+  /** "5 živali" / "5 animals", from lib/labels.ts. A function rather than a
+   *  string, because Slovenian agrees the noun with the number (žival, živali)
+   *  and the card is a server component with no locale of its own: the page
+   *  holds the locale and hands the card the one formatter it needs. */
+  animals: (count: number) => string;
 };
 
 // Every contact sits under the name's stretched ::after, which covers the whole
@@ -89,12 +103,77 @@ export function ShelterCard({
         // accessible name is every word printed on it.
         className="group relative scroll-mt-24 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring"
       >
-        <ItemMedia>
-          <ShelterAvatar name={shelter.name} logo={shelter.logo} track />
+        {/* The mark on the left, the count on the right, on one line above the
+            name.
+
+            The count sits here rather than under the town, where it began,
+            because it is the one thing on the card that only some shelters
+            have. Under the town it was part of the text stack, so the eleven
+            cards carrying it pushed their contacts a line below the six that
+            do not: at 1440px the first row's phones sat at 575, 603 and 575,
+            which is the stagger the footer's mt-0 and the title's reserved
+            line exist to prevent. Up here it shares a row that every card
+            draws at the same height whatever else is true, so the text below
+            starts at one y across the whole grid.
+
+            It reads better for the scan, too. Ranged right on a fixed row, the
+            counts form a column the eye can run down to find the shelters
+            with animals, instead of appearing at whatever height each card's
+            name happened to end. */}
+        <ItemMedia className="justify-between gap-3">
+          {/* "wide" rather than "sm": this is the one place the whole set of
+              logos is drawn side by side, so it is the one place a wordmark
+              shrunk by the plate's width is read against a square logo drawn
+              at full height. See SIZE_CLASS. */}
+          <ShelterAvatar
+            name={shelter.name}
+            logo={shelter.logo}
+            size="wide"
+            track
+          />
+
+          {/* Which shelters the census is counting, and with how many animals
+              each.
+
+              The site's provider green, the same --filter-accent tokens the
+              shelter page's hero avatar and its notice wear, because it is the
+              same fact stated in the same place in the visual system: this
+              shelter shares its list with us.
+
+              A marker, not a link. The name's stretched ::after already covers
+              the card, so a second link here would have to lift itself out of
+              it with relative z-10 the way the contact rows do, and it would
+              point where the card already points. The paw rather than the
+              census line's shield: the plate's green is what says "shares its
+              data", so the glyph is free to say what the number counts. */}
+          {shelter.animals !== undefined && shelter.animals > 0 && (
+            <p className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]">
+              <PawPrint className="size-3 shrink-0" aria-hidden />
+              {text.animals(shelter.animals)}
+            </p>
+          )}
         </ItemMedia>
 
         <ItemContent>
-          <ItemTitle asChild>
+          {/* Two title lines reserved, but only between sm and xl.
+
+              The contacts below are top-aligned so the rows line up by what
+              they are across a grid row (see the footer's comment), and that
+              only holds while the blocks above them are the same height. In
+              the two-column band the column is narrow enough that the longest
+              names wrap: at 768px two of the first row's names take one line
+              and one takes two, which pushed that card's phone row 22px below
+              its neighbour's. Reserving the second line makes a one-line and a
+              two-line name present the same block, so the rows meet again.
+
+              Scoped sm:max-xl: because the band is the only place it is true.
+              Below sm there is one column and nothing to line up with, so the
+              reserved line would only be a gap under every short name; from xl
+              the third column is still wide enough that no name in the
+              register wraps, so there is nothing to reserve. The unit is lh,
+              the title's own line box, so this stays right if the title's font
+              size or leading-snug ever changes. */}
+          <ItemTitle asChild className="sm:max-xl:min-h-[2lh]">
             <h3>
               <a
                 href={shelter.href}

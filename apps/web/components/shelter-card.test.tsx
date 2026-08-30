@@ -2,6 +2,7 @@
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { animalCount } from "@/lib/labels";
 import { ShelterCard, type ShelterCardData } from "./shelter-card";
 
 afterEach(cleanup);
@@ -11,6 +12,9 @@ const text = {
   email: "E-pošta",
   phone: "Telefon",
   newWindow: "(odpre se v novem oknu)",
+  // The page's own formatter, so the test reads the string a reader gets,
+  // Slovenian agreement and all.
+  animals: (count: number) => animalCount(count, "sl"),
 };
 
 function shelter(over: Partial<ShelterCardData> = {}): ShelterCardData {
@@ -132,6 +136,26 @@ describe("the shelter card", () => {
     // second reading of it is noise.
     const logo = document.querySelector("img");
     expect(logo?.getAttribute("alt")).toBe("");
+  });
+
+  it("says how many animals a shelter that shares its list holds", () => {
+    render(<ShelterCard shelter={shelter({ animals: 2 })} text={text} />);
+
+    // The census line states a total and how many shelters are in it. Which
+    // shelters, and with how many animals each, is only ever said here.
+    //
+    // Two, not five: the dual is the form a naive plural gets wrong.
+    expect(screen.getByText("2 živali")).toBeTruthy();
+  });
+
+  it("prints nothing where a shelter shares no list", () => {
+    render(<ShelterCard shelter={shelter({ animals: 0 })} text={text} />);
+    render(<ShelterCard shelter={shelter()} text={text} />);
+
+    // never-print-a-zero, the rule the whole page keeps: "0 živali" reads as a
+    // shelter with no animals in it rather than as a shelter whose list we do
+    // not publish.
+    expect(screen.queryByText(/žival/)).toBeNull();
   });
 
   it("carries an anchor a link can name", () => {

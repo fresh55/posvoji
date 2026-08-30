@@ -1,4 +1,4 @@
-import { Building2, PawPrint, ShieldCheck } from "lucide-react";
+import { Building2, MapPinned, PawPrint, ShieldCheck } from "lucide-react";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { I18nProvider } from "@/components/i18n-provider";
 import { JsonLd } from "@/components/json-ld";
@@ -6,6 +6,7 @@ import type { ShelterCardData } from "@/components/shelter-card";
 import { SheltersAtlas } from "@/components/shelters-atlas";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -46,7 +47,8 @@ const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
     lookupLink: "Iskalnik po občinah",
-    lookupRest: "pove, katero zavetišče je pristojno za tvojo občino.",
+    lookupRest: "Pove, katero zavetišče je pristojno za tvojo občino.",
+    sortNote: "Razvrščeno po kraju.",
     website: "Spletna stran",
     email: "E-pošta",
     phone: "Telefon",
@@ -64,8 +66,9 @@ const pageText = {
   },
   en: {
     title: "Shelters across Slovenia",
-    lookupLink: "The municipality lookup",
-    lookupRest: "answers which shelter is responsible for your town.",
+    lookupLink: "Municipality lookup",
+    lookupRest: "Answers which shelter is responsible for your town.",
+    sortNote: "Sorted by town.",
     website: "Website",
     email: "Email",
     phone: "Phone",
@@ -116,11 +119,24 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   // By town, and by name for the two towns that hold two.
   //
   // Not west to east, which the gazetteer used while it drew region headings
-  // to name that order. The cards print no region, and an order the page never
-  // states is an order the reader cannot use: alphabetical towns are the one
-  // sequence somebody can predict without being told. Eleven of the seventeen
-  // names open with the word "Zavetišče", so sorting by name would order most
-  // of the page by a word printed on most of the page.
+  // to name that order. The cards print no region, so the order has to be one
+  // the reader can predict, and it has to be stated: the prominent line on a
+  // card is the name, the town is the small line under it, and by name the
+  // sequence looks arbitrary. text.sortNote says it above the grid. Eleven of
+  // the seventeen names open with the word "Zavetišče", so sorting by name
+  // would order most of the page by a word printed on most of the page.
+
+  // How many animals the dataset holds for each shelter, counted once for both
+  // readers of it: the card's marker, which prints one shelter's number, and
+  // the census line, whose provider count is how many shelters are in here at
+  // all. Counted off the dataset rather than off the cards, because it is the
+  // dataset that decides whether a shelter shares a list.
+  const animalsByShelter = new Map<string, number>();
+  for (const animal of animals) {
+    const id = animal.shelter.id;
+    animalsByShelter.set(id, (animalsByShelter.get(id) ?? 0) + 1);
+  }
+
   const collator = new Intl.Collator(locale === "sl" ? "sl" : "en");
   const cards: ShelterCardData[] = shelters
     .map((shelter) => ({
@@ -128,6 +144,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       name: shelter.name,
       city: shelter.city,
       href: shelterPath(shelter.id, locale),
+      animals: animalsByShelter.get(shelter.id),
       logo: logos[shelter.id],
       website: shelter.website,
       email: shelter.email,
@@ -138,12 +155,10 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         collator.compare(a.city, b.city) || collator.compare(a.name, b.name),
     );
 
-  // Counted off the dataset rather than off the cards: the count is the page's
-  // own fact, printed once in the lede and once in the census line, and no
-  // longer anything a card carries.
-  const withData = new Set(
-    animals.map((animal) => animal.shelter.id),
-  ).size;
+  // The census's own number: how many shelters share a list at all. It states
+  // the total; which shelters they are, and with how many animals each, is
+  // what the cards' markers answer.
+  const withData = animalsByShelter.size;
 
   const registerDate = shelterRegisterDate();
   const asOf = registerDate
@@ -187,19 +202,40 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 {lede(locale)}
               </p>
               {/* data/municipalities.yaml answers "which shelter covers my
-                  town" for all 212 občin, and this page never said so. One
-                  line, under the lede rather than beside the search, because
-                  it is a different question: not where a shelter is, but which
-                  one has to answer. */}
-              <p className="text-sm text-muted-foreground">
-                <a
-                  href={FOUND_ANIMAL_PATHS[locale]}
-                  className="underline underline-offset-4 hover:text-foreground"
-                >
-                  {text.lookupLink}
-                </a>{" "}
-                {text.lookupRest}
-              </p>
+                  town" for all 212 občin, and this page never said so. Under
+                  the lede rather than beside the search, because it is a
+                  different question: not where a shelter is, but which one has
+                  to answer.
+
+                  A button, in the outline size the shelter page already gives
+                  its contacts, rather than the underlined link this was. For
+                  somebody who has just found a stray it is the most useful
+                  thing on the page and it read as prose: a muted sentence with
+                  a link inside it, in a column of muted sentences. Outline and
+                  small is as loud as the site's action vocabulary goes without
+                  becoming a hero, which this page cannot afford: the register
+                  is what the reader came for.
+
+                  MapPinned, the glyph the shelter page's coverage heading
+                  already uses. The lookup and that section answer the same
+                  question from opposite ends, so they wear the same mark. A
+                  magnifier would have promised a search of the list on this
+                  page, which is not what it opens.
+
+                  The sentence stays beside the button rather than inside it:
+                  it explains what the lookup does, and a button label that is
+                  a full sentence stops reading as a control. */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                <Button asChild variant="outline" size="sm">
+                  <a href={FOUND_ANIMAL_PATHS[locale]}>
+                    <MapPinned aria-hidden />
+                    {text.lookupLink}
+                  </a>
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {text.lookupRest}
+                </p>
+              </div>
 
               {/* The census line: the register's totals as one typographic
                   band, no box and no fill, hairlines between the groups.
@@ -283,10 +319,12 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               email: text.email,
               phone: text.phone,
               newWindow: text.newWindow,
+              animals: (count) => animalCount(count, locale),
             }}
             text={{
               heading: text.heading,
               skip: text.skip,
+              sortNote: text.sortNote,
             }}
             invite={
               portal && {

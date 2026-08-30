@@ -10,6 +10,10 @@ export type SheltersAtlasText = {
    *  the shelter names, which take h3 under the page's h1. */
   heading: string;
   skip: string;
+  /** "Razvrščeno po kraju." / "Sorted by town." The grid is ordered by town
+   *  and the town is the card's small second line, so on arrival the sequence
+   *  reads as no order at all. One line above the list says what it is. */
+  sortNote: string;
 };
 
 /** The invitation, the grid's last cell rather than a banner under it. Every
@@ -62,6 +66,12 @@ export function SheltersAtlas({
       >
         {text.skip}
       </a>
+
+      {/* Directly above the grid and nowhere else: it is a property of the
+          list that follows, so it has to be read before the list rather than
+          found under it. Small and muted, with no icon and no box, because it
+          is a note about the page and not a control on it. */}
+      <p className="mb-3 text-sm text-muted-foreground">{text.sortNote}</p>
 
       {/* Two columns from sm and three from xl. The cards carry six or seven
           lines now, so a third column at 1280px still leaves each one a

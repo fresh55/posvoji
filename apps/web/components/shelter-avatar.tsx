@@ -12,6 +12,26 @@ const SIZE_CLASS = {
   // map pick card's header being the first of these.
   xs: { chip: "h-9 max-w-24 px-1.5", logo: "h-6", fallback: "size-9 text-sm" },
   sm: { chip: "h-11 max-w-28 px-2", logo: "h-7", fallback: "size-11 text-base" },
+  // sm's logo height with a plate wide enough for a wordmark, for the register
+  // card, which is the only placement that draws every logo in the set side by
+  // side and so the only one where their heights are compared.
+  //
+  // sm's plate left 64px of usable width (80px track, px-2), and a 28px-tall
+  // logo wider than about 2.3:1 hit that cap and lost height instead: the four
+  // widest wordmarks rendered 13px to 18px tall while a square logo rendered
+  // the full 28px, so the same card drew one shelter's mark at twice another's.
+  // 128px of plate with px-2 gives 112px of usable width. Nothing up to 4:1 is
+  // capped at all, and the widest logo in the set (4.74:1) renders about 24px
+  // rather than 13px.
+  //
+  // The fallback is h-12 square against a 128px logo plate, which is a wider
+  // spread than sm's, so both plates take the same 48px height and read as one
+  // family with the letter's own square kept.
+  wide: {
+    chip: "h-12 max-w-32 px-2",
+    logo: "h-7",
+    fallback: "size-12 text-base",
+  },
   lg: {
     chip: "h-14 max-w-36 px-2.5",
     logo: "h-9",
@@ -25,11 +45,14 @@ const SIZE_CLASS = {
 // name after one started at eight different x-offsets. The track fixes the
 // column instead, so every name starts at the same x.
 //
-// sm's 80px is the measured median chip; the other two keep the same
-// proportion to their chip height, since no caller has measured them.
+// sm's 80px is the measured median chip; xs and lg keep the same proportion to
+// their chip height, since no caller has measured them. wide's 128px is not a
+// median but the width the widest wordmark needs to stay readable, and it is
+// the same value as that size's max-w, so the track never squeezes a plate.
 const TRACK_CLASS = {
   xs: "w-16",
   sm: "w-20",
+  wide: "w-32",
   lg: "w-24",
 } as const;
 

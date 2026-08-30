@@ -24,18 +24,18 @@ const BUTTON_LAYOUT = "h-9 flex-1 px-2 text-xs font-medium focus-visible:z-10";
 
 export function StatusActions({
   value,
-  source = "shelter",
+  source,
   busy = false,
   onSelect,
 }: {
   value: PortalStatus | null;
   /**
-   * Whose answer `value` is. "site" is what the crawl read off the shelter's
-   * own page, which the row draws as inherited rather than as a choice the
-   * shelter made. Pressed state still follows the effective value, because
-   * that is what the control currently means.
+   * Whose answer `value` is. "site" is the crawl's reading of the shelter's
+   * own page, drawn as inherited rather than as a choice the shelter made.
+   * Required on purpose: a forgotten prop would present the crawl's reading
+   * as the shelter's answer, which is what this exists to prevent.
    */
-  source?: "shelter" | "site";
+  source: "shelter" | "site";
   busy?: boolean;
   onSelect: (status: PortalStatus) => void;
 }) {

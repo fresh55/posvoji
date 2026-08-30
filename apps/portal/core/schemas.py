@@ -47,16 +47,13 @@ class VerifyIn(Schema):
     token: str = Field(max_length=512)
 
 
-class DevShelterOut(Schema):
+class DevShelterOut(ShelterOut):
     """One row of the development shelter picker.
 
     `registered` says whether `email` is the shelter's registry address or a
     stand in minted for a shelter the registry lists without one.
     """
 
-    slug: str
-    name: str
-    city: str = ""
     email: str
     registered: bool
 

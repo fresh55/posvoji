@@ -37,21 +37,21 @@ def dev_email(slug: str) -> str:
 
 def _registry_login(shelter: Shelter):
     """The shelter's real login, or None when the registry had no address."""
-    membership = (
-        ShelterMembership.objects.filter(shelter=shelter)
-        .select_related("user")
-        .order_by("pk")
-        .first()
-    )
-    return membership.user if membership is not None else None
+    memberships = sorted(shelter.memberships.all(), key=lambda m: m.pk)
+    return memberships[0].user if memberships else None
 
 
-@router.get("/auth/dev/shelters", auth=None, response=list[DevShelterOut])
+@router.get(
+    "/auth/dev/shelters",
+    auth=None,
+    response=list[DevShelterOut],
+    include_in_schema=settings.PORTAL_DEV_LOGIN,
+)
 def dev_shelters(request):
     """Every shelter, with the address the picker would sign in as."""
     _require_enabled()
     rows = []
-    for shelter in Shelter.objects.all():
+    for shelter in Shelter.objects.prefetch_related("memberships__user"):
         user = _registry_login(shelter)
         rows.append(
             {
@@ -65,7 +65,12 @@ def dev_shelters(request):
     return rows
 
 
-@router.post("/auth/dev/login", auth=None, response=MeOut)
+@router.post(
+    "/auth/dev/login",
+    auth=None,
+    response=MeOut,
+    include_in_schema=settings.PORTAL_DEV_LOGIN,
+)
 def dev_login(request, payload: DevLoginIn):
     """Sign in as the shelter's own login, so the session is the real one."""
     _require_enabled()

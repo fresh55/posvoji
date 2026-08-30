@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, FlaskConical, LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import { slugify } from "@/lib/animal-path";
 import { portalUrl } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
 
@@ -79,12 +80,14 @@ export function PortalDevLogin() {
 
   const matches = useMemo(() => {
     if (!shelters) return [];
-    const needle = query.trim().toLocaleLowerCase("sl");
+    // slugify, so "macji" and "sencur" find what the shelter is actually
+    // called. Same folding the public search and the register use.
+    const needle = slugify(query);
     if (!needle) return shelters;
     return shelters.filter((shelter) =>
-      `${shelter.name} ${shelter.city} ${shelter.slug}`
-        .toLocaleLowerCase("sl")
-        .includes(needle),
+      slugify(`${shelter.name} ${shelter.city} ${shelter.slug}`).includes(
+        needle,
+      ),
     );
   }, [shelters, query]);
 

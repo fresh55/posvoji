@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,25 +40,42 @@ export type ShelterLogos = Record<string, ShelterLogo>;
 // Read at build time, like the dataset itself. A logo is shelter content, so
 // it is fetched by the ingest run rather than committed: before the first run
 // this is empty and every shelter falls back to an initial-letter avatar.
-// Read once. The build prerenders every animal and shelter page and each one
-// asks for the manifest, so without this the same 3.6 KB file is stat'd, read
-// and parsed about a thousand times for an answer that cannot change between
-// pages. Same shape lib/shelters.ts and lib/dataset.ts already use.
-let cached: ShelterLogos | undefined;
+//
+// Parsed once per version of the file. The build prerenders every animal and
+// shelter page and each one asks for the manifest, so without memoizing, the
+// same file is read and parsed about a thousand times for an answer that
+// cannot change between pages.
+//
+// Keyed on the file's mtime rather than held forever, because it does change
+// between processes. Logo files are content-addressed and the ingest run
+// sweeps the ones nothing references any more, so a manifest read before a
+// sync names files that were deleted by it: a dev server that had answered
+// once went on serving those names, and every logo on the page 404ed until
+// the server was restarted. A stat is microseconds against the parse it
+// guards, and it makes the answer follow the file.
+let cached: { logos: ShelterLogos; mtimeMs: number } | undefined;
 
 export function getShelterLogos(): ShelterLogos {
-  if (cached) return cached;
+  // No file at all is the pre-first-run state: nothing to key a cache on, and
+  // nothing to parse either.
+  let mtimeMs: number;
+  try {
+    mtimeMs = statSync(manifestPath).mtimeMs;
+  } catch {
+    return {};
+  }
+
+  if (cached && cached.mtimeMs === mtimeMs) return cached.logos;
+
   const logos = readShelterLogos();
-  // Nothing read is not worth remembering. The parse is memoized because a
-  // build asks for it once per page across a thousand pages, but memoizing an
-  // empty answer makes a momentary mismatch permanent: a dev server that read
-  // the manifest in the window between a field being renamed here and the
-  // ingest run writing it kept answering "no logos" for the rest of its life,
-  // long after the file on disk was right. There is also nothing to save in
-  // that case, since the expensive part is parsing entries there were none of.
+  // Nothing read is not worth remembering. Memoizing an empty answer made a
+  // momentary mismatch permanent: a dev server that read the manifest in the
+  // window between a field being renamed here and the ingest run writing it
+  // kept answering "no logos" long after the file on disk was right. The
+  // mtime key covers that case now too, but there is still nothing to save.
   if (Object.keys(logos).length === 0) return logos;
-  cached = logos;
-  return cached;
+  cached = { logos, mtimeMs };
+  return logos;
 }
 
 /** The chip flags for one entry, from either shape the manifest has had.

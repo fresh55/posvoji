@@ -15,12 +15,14 @@ function makeTempTree(): {
   animalsMediaDir: string;
   shareCardManifestPath: string;
   shelterLogoManifestPath: string;
+  shelterLogosDir: string;
 } {
   dir = mkdtempSync(join(tmpdir(), "posvoji-media-check-"));
   return {
     animalsMediaDir: join(dir, "animals"),
     shareCardManifestPath: join(dir, "share-cards.json"),
     shelterLogoManifestPath: join(dir, "shelter-logos.json"),
+    shelterLogosDir: join(dir, "shelter-logos"),
   };
 }
 
@@ -31,6 +33,48 @@ describe("buildMediaWarnings", () => {
     writeFileSync(join(paths.animalsMediaDir, "abc123.webp"), "");
     writeFileSync(paths.shareCardManifestPath, "{}");
     writeFileSync(paths.shelterLogoManifestPath, "{}");
+
+    expect(buildMediaWarnings(paths)).toEqual([]);
+  });
+
+  // Having the manifest is not the same as having what it points at. Logo
+  // files are content-addressed, so a mark whose bytes change is written under
+  // a new name and the old one swept: a build reading a manifest from either
+  // side of that sync ships a broken image and says nothing.
+  it("names the shelters whose logo file is not on disk", () => {
+    const paths = makeTempTree();
+    mkdirSync(paths.animalsMediaDir, { recursive: true });
+    writeFileSync(join(paths.animalsMediaDir, "abc123.webp"), "");
+    writeFileSync(paths.shareCardManifestPath, "{}");
+    mkdirSync(paths.shelterLogosDir, { recursive: true });
+    writeFileSync(join(paths.shelterLogosDir, "here.webp"), "");
+    writeFileSync(
+      paths.shelterLogoManifestPath,
+      JSON.stringify({
+        entries: {
+          horjul: { file: "here.webp" },
+          maribor: { file: "swept.webp" },
+        },
+      }),
+    );
+
+    const warnings = buildMediaWarnings(paths);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("maribor (swept.webp)");
+    expect(warnings[0]).not.toContain("horjul");
+  });
+
+  it("says nothing when every logo the manifest names is on disk", () => {
+    const paths = makeTempTree();
+    mkdirSync(paths.animalsMediaDir, { recursive: true });
+    writeFileSync(join(paths.animalsMediaDir, "abc123.webp"), "");
+    writeFileSync(paths.shareCardManifestPath, "{}");
+    mkdirSync(paths.shelterLogosDir, { recursive: true });
+    writeFileSync(join(paths.shelterLogosDir, "here.webp"), "");
+    writeFileSync(
+      paths.shelterLogoManifestPath,
+      JSON.stringify({ entries: { horjul: { file: "here.webp" } } }),
+    );
 
     expect(buildMediaWarnings(paths)).toEqual([]);
   });

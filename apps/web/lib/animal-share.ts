@@ -94,17 +94,14 @@ export function animalDescription(
   reference: Date,
 ): string {
   const t = text[locale];
-  // Composed here rather than borrowed from the card's meta line. That line
-  // dropped the sex because two facts is what a 375px card is wide enough to
-  // hold on one row, which is a constraint a sentence in a link preview does
-  // not have. Sharing the function meant a card's width silently decided what
-  // a preview says about an animal.
+  // Composed here, not borrowed from the card's meta line: that line is cut to
+  // a card's width, and a sentence in a link preview is not. Sharing one
+  // builder let a phone's width decide what a shared link says about an animal.
   const months = ageInMonths(animal, reference);
   const facts = [
     speciesLabel(animal.species, locale),
-    // Lowercased the way animalMetaParts does the size, because sexLabel
-    // hands back the filter option's own label and a capitalised "Samica"
-    // reads as the start of a new sentence in a middot list.
+    // sexLabel hands back the filter option's capitalised label, and a middot
+    // list of lowercase attributes wants it lowercase.
     animal.sex && animal.sex !== "unknown"
       ? sexLabel(animal.sex, locale).toLocaleLowerCase(locale)
       : undefined,
@@ -112,7 +109,9 @@ export function animalDescription(
   ]
     .filter(Boolean)
     .join(META_SEPARATOR);
-  const head = animal.name ? `${animal.name} · ${facts}.` : `${facts}.`;
+  const head = animal.name
+    ? `${animal.name}${META_SEPARATOR}${facts}.`
+    : `${facts}.`;
   const status = statusLabel(animal.status, locale);
   // Available is the norm and says nothing worth a sentence; an unknown
   // status has no wording at all. Both leave the shelter line standing.
@@ -135,7 +134,7 @@ export function animalTitle(
     months === undefined ? undefined : ageLabel(months, locale),
     animal.shelter.name,
   ].filter((part): part is string => Boolean(part));
-  return parts.join(" · ");
+  return parts.join(META_SEPARATOR);
 }
 
 /**

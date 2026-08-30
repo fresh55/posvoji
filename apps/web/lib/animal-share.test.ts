@@ -74,9 +74,9 @@ describe("animalDescription", () => {
     expect(description).not.toContain("najlepša");
   });
 
-  // The card's meta line dropped the sex to fit two facts on a 375px row. A
-  // sentence in a link preview has no such width, and the docstring above
-  // promises it, so this surface keeps stating it.
+  // The card's line is cut to a card's width; this sentence is not. Named on
+  // its own because the two tests above assert other contracts and could be
+  // rewritten without noticing that the sex went with them.
   it("keeps the sex the card's line gave up", () => {
     expect(animalDescription(animal(), "sl", REFERENCE)).toContain("samica");
     expect(animalDescription(animal(), "en", REFERENCE)).toContain("female");

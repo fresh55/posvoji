@@ -9,6 +9,8 @@ README.md lists them all.
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 # apps/portal -> apps -> repository root, where data/ lives.
 REPO_ROOT = BASE_DIR.parent.parent
@@ -28,8 +30,16 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-SECRET_KEY = os.environ.get("PORTAL_SECRET_KEY", "dev-only-insecure-secret-key")
 DEBUG = _env_bool("PORTAL_DEBUG", True)
+_DEVELOPMENT_SECRET_KEY = "dev-only-insecure-secret-key"
+_configured_secret_key = os.environ.get("PORTAL_SECRET_KEY", "").strip()
+if not DEBUG and (
+    not _configured_secret_key or _configured_secret_key == _DEVELOPMENT_SECRET_KEY
+):
+    raise ImproperlyConfigured(
+        "PORTAL_SECRET_KEY must be set to a private value when PORTAL_DEBUG=false"
+    )
+SECRET_KEY = _configured_secret_key or _DEVELOPMENT_SECRET_KEY
 ALLOWED_HOSTS = _env_list("PORTAL_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 
 INSTALLED_APPS = [

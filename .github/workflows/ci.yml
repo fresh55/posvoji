@@ -1,5 +1,5 @@
-# PR checks run entirely offline: typecheck, fixture tests, policy validation
-# and a static build. CI never crawls shelter websites.
+# PR checks run entirely offline: lint, typecheck, fixture tests, policy
+# validation and a static build. CI never crawls shelter websites.
 name: CI
 
 on:
@@ -20,9 +20,23 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/portal/uv.lock
+
       - run: pnpm install --frozen-lockfile
 
+      - run: uv sync --directory apps/portal --frozen
+
       - run: pnpm typecheck
+
+      - run: pnpm lint
 
       - run: pnpm test
 

@@ -11,8 +11,8 @@ import type {
 import { ProviderPolicy } from "@posvoji/schema";
 import {
   cacheLogos,
+  chipNeeds,
   discoverLogoUrl,
-  inkTone,
   logoTargets,
   processLogo,
   publicUrlFor,
@@ -231,7 +231,7 @@ describe("processLogo", () => {
     expect(processed.width).toBe(128);
     expect(processed.height).toBe(128);
     expect(processed.file).toMatch(/^[0-9a-f]{16}\.webp$/);
-    expect(processed.tone).toBe("dark");
+    expect(processed.chipOnLight).toBe(false);
   });
 
   it("leaves a small logo at its own size", async () => {
@@ -265,42 +265,56 @@ describe("processLogo", () => {
   });
 });
 
-describe("inkTone", () => {
-  it("calls a white wordmark light ink", async () => {
-    expect(await inkTone(await pngBytes(32, "#ffffff"))).toBe("light");
+describe("chipNeeds", () => {
+  it("gives a white wordmark something to sit on in light mode only", async () => {
+    expect(await chipNeeds(await pngBytes(32, "#ffffff"))).toEqual({
+      chipOnLight: true,
+      chipOnDark: false,
+    });
   });
 
-  it("calls a black wordmark dark ink", async () => {
-    expect(await inkTone(await pngBytes(32, "#101010"))).toBe("dark");
+  it("gives a black wordmark something to sit on in dark mode only", async () => {
+    expect(await chipNeeds(await pngBytes(32, "#101010"))).toEqual({
+      chipOnLight: false,
+      chipOnDark: true,
+    });
   });
 
-  // Bright is not the same as invisible-on-white: a saturated wordmark has no
-  // dark pixel and still reads fine on the white chip, so only near-white ink
-  // earns the dark one.
-  it("calls a saturated orange wordmark dark ink", async () => {
-    expect(await inkTone(await pngBytes(32, "#e8842c"))).toBe("dark");
+  // The case a light-or-dark reading gets wrong in both directions. This ink
+  // has no dark pixel, so it was called light and plated in dark mode where
+  // it was already legible; and it reaches 1.9:1 on white, where it was left
+  // bare and washed out. It is the shelter's own orange (Horjul).
+  it("gives a mid-tone orange the light chip and leaves it bare on dark", async () => {
+    expect(await chipNeeds(await pngBytes(32, "#e8842c"))).toEqual({
+      chipOnLight: true,
+      chipOnDark: false,
+    });
   });
 
-  // The bright fills must not outvote the black line art: a logo whose text
-  // is black needs the white chip no matter how much yellow it carries.
-  it("calls a bright logo with black line art dark ink", async () => {
+  // A quarter of the ink being dark is enough to carry the drawing on white,
+  // because that quarter is the outline the bright fill sits inside. Mačja
+  // hiša is this logo and it reads on both cards with no chip at all.
+  it("leaves a bright logo with black line art bare on both", async () => {
     const outline = await sharp({
-      create: { width: 64, height: 16, channels: 4, background: "#000000" },
+      create: { width: 64, height: 20, channels: 4, background: "#000000" },
     })
       .png()
       .toBuffer();
     const logo = await sharp({
       create: { width: 64, height: 64, channels: 4, background: "#f5c400" },
     })
-      .composite([{ input: outline, left: 0, top: 48 }])
+      .composite([{ input: outline, left: 0, top: 44 }])
       .png()
       .toBuffer();
 
-    expect(await inkTone(logo)).toBe("dark");
+    expect(await chipNeeds(logo)).toEqual({
+      chipOnLight: false,
+      chipOnDark: false,
+    });
   });
 
-  // A logo is mostly transparent padding, so averaging every pixel would
-  // report almost every logo as light ink.
+  // A logo is mostly transparent padding, so counting every pixel would read
+  // almost every logo as pale.
   it("ignores transparent padding around the ink", async () => {
     const ink = await sharp({
       create: { width: 8, height: 8, channels: 4, background: "#000000" },
@@ -319,7 +333,10 @@ describe("inkTone", () => {
       .png()
       .toBuffer();
 
-    expect(await inkTone(padded)).toBe("dark");
+    expect(await chipNeeds(padded)).toEqual({
+      chipOnLight: false,
+      chipOnDark: true,
+    });
   });
 });
 
@@ -355,7 +372,7 @@ describe("cacheLogos", () => {
     expect(result.fetched).toBe(1);
     const entry = result.manifest.entries["zonzani"]!;
     expect(entry.sourceUrl).toBe("https://zavetisce.si/logo.png");
-    expect(entry.tone).toBe("dark");
+    expect(entry.chipOnLight).toBe(false);
     expect(entry.etag).toBe('"v1"');
     expect(existsSync(join(logosDir(), entry.file))).toBe(true);
     expect(publicUrlFor(entry.file)).toBe(`/media/shelter-logos/${entry.file}`);

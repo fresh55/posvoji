@@ -34,19 +34,24 @@ const ACCEPT_IMAGES = "image/avif,image/webp,image/*,*/*;q=0.8";
 // without any request until it is this old.
 const REVALIDATE_AFTER_DAYS = 30;
 
-// Whether the logo's own ink is light or dark. Shelter logos are supplied as
-// transparent PNGs drawn for one background: a white wordmark vanishes on a
-// light card, a black one on a dark card. Recording the ink lets the site sit
-// each logo on a chip it contrasts with, in either theme.
-export type LogoTone = "light" | "dark";
+// Whether a mark needs something to sit on, per card background. Shelter
+// logos are supplied as transparent files drawn for one background: a white
+// wordmark vanishes on a light card, a black one on a dark card, and a mid
+// tone can fail on one while reading perfectly on the other. Asking the
+// question once per background rather than sorting the ink into "light" or
+// "dark" is what keeps the site from boxing a mark that was already legible,
+// or leaving one bare that was not.
+export interface ChipNeeds {
+  chipOnLight: boolean;
+  chipOnDark: boolean;
+}
 
-export interface CachedLogoEntry {
+export interface CachedLogoEntry extends ChipNeeds {
   // Content-addressed by the processed bytes, so a re-encode or a redesigned
   // logo gets a new name and the stale copy is swept.
   file: string;
   width: number;
   height: number;
-  tone: LogoTone;
   // Kept so a reviewer can see exactly which file on the shelter's site this
   // came from without re-running discovery.
   sourceUrl: string;
@@ -166,39 +171,84 @@ export function discoverLogoUrl(
   return best?.href;
 }
 
-// What decides the chip is whether the ink survives a white card, not the
-// average colour. A black wordmark falls apart on a dark chip however bright
-// its fills are (the mean got exactly that wrong for a yellow logo with black
-// line art), and a saturated wordmark with no dark pixel at all is still
-// perfectly visible on white (a mean threshold got exactly that wrong for an
-// orange one, and gave it a dark chip it never needed). The only ink that
-// actually needs the dark chip is ink drawn in near-white, so: light only
-// when dark pixels are essentially absent and most of the ink is near-white.
-export async function inkTone(image: Buffer): Promise<LogoTone> {
+// The two card backgrounds a mark is drawn on, as relative luminance. --card
+// is oklch(1 0 0) in light and oklch(0.205 0 0) in dark, and for a neutral the
+// oklab lightness is the cube root of the linear value.
+const CARD_LIGHT_LUMINANCE = 1;
+const CARD_DARK_LUMINANCE = 0.205 ** 3;
+
+// WCAG 1.4.11's minimum for a graphic. A mark is a drawing, not body copy.
+const MIN_CONTRAST = 3;
+
+// How much of a mark's ink has to clear MIN_CONTRAST for the mark to be left
+// on the card bare.
+//
+// Two different shares, because the two failures are not the same failure.
+// Against white, ink fails only where it is pale, and a mark with any real
+// dark structure keeps its drawing: Mačja hiša reads perfectly on white with
+// 27% of its ink dark enough, because that 27% is the outline the yellow sits
+// inside. Against the dark card the ink that fails is the dark ink, which in
+// these marks is the lettering, so a mark has to keep most of itself: Meli at
+// 15% and Ljubljana at 35% are mostly black type and lose it.
+//
+// Both numbers sit in a gap rather than on a boundary. Measured across the
+// eleven cached logos, the shares clear on white run 0, 0, 0, then 27 and up;
+// on the dark card they run up to 50, then 81 and up. Nothing in the set is
+// within ten points of either threshold.
+const HOLDS_ON_LIGHT = 0.2;
+const HOLDS_ON_DARK = 0.6;
+
+function toLinear(value: number): number {
+  const channel = value / 255;
+  return channel <= 0.04045
+    ? channel / 12.92
+    : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function contrastRatio(a: number, b: number): number {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+// What decides a chip is whether the mark survives the card it is drawn on,
+// measured, rather than which side of a brightness threshold its ink falls.
+// Sorting the ink into "light" or "dark" got two cases wrong in opposite
+// directions: a yellow mark with black line art was called light and boxed on
+// a dark plate it never needed, and an orange wordmark with no dark pixel at
+// all was called dark and left bare on white, where none of it reached 3:1.
+// Both answers come out of the same count here, so neither can contradict the
+// other.
+export async function chipNeeds(image: Buffer): Promise<ChipNeeds> {
   const { data, info } = await sharp(image)
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  let nearWhite = 0;
-  let dark = 0;
+  let holdsOnLight = 0;
+  let holdsOnDark = 0;
   let counted = 0;
   for (let i = 0; i < data.length; i += info.channels) {
     const alpha = info.channels === 4 ? (data[i + 3] ?? 0) : 255;
     if (alpha < 128) continue;
-    const r = data[i] ?? 0;
-    const g = data[i + 1] ?? 0;
-    const b = data[i + 2] ?? 0;
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    if (luminance < 100) dark++;
-    if (luminance > 220) nearWhite++;
+    const luminance =
+      0.2126 * toLinear(data[i] ?? 0) +
+      0.7152 * toLinear(data[i + 1] ?? 0) +
+      0.0722 * toLinear(data[i + 2] ?? 0);
+    if (contrastRatio(luminance, CARD_LIGHT_LUMINANCE) >= MIN_CONTRAST) {
+      holdsOnLight++;
+    }
+    if (contrastRatio(luminance, CARD_DARK_LUMINANCE) >= MIN_CONTRAST) {
+      holdsOnDark++;
+    }
     counted++;
   }
 
-  // A logo with no opaque pixel at all is treated as dark ink, which puts it
-  // on the light chip the majority use.
-  if (counted === 0) return "dark";
-  return dark / counted < 0.03 && nearWhite / counted > 0.5 ? "light" : "dark";
+  // A logo with no opaque pixel at all is left bare on both: there is no ink
+  // for a chip to rescue.
+  if (counted === 0) return { chipOnLight: false, chipOnDark: false };
+  return {
+    chipOnLight: holdsOnLight / counted < HOLDS_ON_LIGHT,
+    chipOnDark: holdsOnDark / counted < HOLDS_ON_DARK,
+  };
 }
 
 // The margin a source file carries is not the mark. Several shelters export
@@ -216,13 +266,14 @@ async function trimmed(source: Buffer): Promise<Buffer> {
 
 // Logos are line art and flat colour with transparency, so they are fitted
 // inside a box rather than cropped, and the alpha channel is kept.
-export async function processLogo(source: Buffer): Promise<{
-  file: string;
-  data: Buffer;
-  width: number;
-  height: number;
-  tone: LogoTone;
-}> {
+export async function processLogo(source: Buffer): Promise<
+  ChipNeeds & {
+    file: string;
+    data: Buffer;
+    width: number;
+    height: number;
+  }
+> {
   const { data, info } = await sharp(await trimmed(source))
     .resize({
       width: MAX_SIZE,
@@ -238,7 +289,7 @@ export async function processLogo(source: Buffer): Promise<{
     data,
     width: info.width,
     height: info.height,
-    tone: await inkTone(data),
+    ...(await chipNeeds(data)),
   };
 }
 
@@ -344,10 +395,11 @@ export async function cacheLogos(
           file: processed.file,
           width: processed.width,
           height: processed.height,
-          tone: processed.tone,
+          chipOnLight: processed.chipOnLight,
+          chipOnDark: processed.chipOnDark,
         };
       }
-      return { ...entry, tone: await inkTone(bytes) };
+      return { ...entry, ...(await chipNeeds(bytes)) };
     } catch {
       return entry;
     }
@@ -363,10 +415,11 @@ export async function cacheLogos(
     logoUrl?: string;
   }): Promise<LogoOutcome> => {
     const stored = previous.entries[target.providerId];
+    // The file on disk is the whole test. An entry written before a judgement
+    // existed is not stale, because refreshed() takes every judgement off the
+    // bytes: an older manifest is brought up to date without a request.
     const storedUsable =
-      stored !== undefined &&
-      stored.tone !== undefined &&
-      existsSync(join(logosDir, stored.file));
+      stored !== undefined && existsSync(join(logosDir, stored.file));
     // A kept copy gets today's judgement of its bytes (see refreshed above).
     // prev stays a const so the prevUsable checks below keep narrowing it.
     const prev = storedUsable ? await refreshed(stored) : undefined;
@@ -462,7 +515,8 @@ export async function cacheLogos(
         file: processed.file,
         width: processed.width,
         height: processed.height,
-        tone: processed.tone,
+        chipOnLight: processed.chipOnLight,
+        chipOnDark: processed.chipOnDark,
         sourceUrl,
         etag: headerValue(res.headers["etag"]),
         lastModified: headerValue(res.headers["last-modified"]),

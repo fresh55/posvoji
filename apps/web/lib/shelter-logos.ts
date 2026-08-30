@@ -12,14 +12,15 @@ const manifestPath = join(
   "shelter-logos.json",
 );
 
-/** Whether the logo's own ink is light or dark, measured at fetch time. */
-export type LogoTone = "light" | "dark";
-
 export interface ShelterLogo {
   url: string;
-  // Decides which chip the logo sits on, so a white wordmark stays visible in
-  // light mode and a black one in dark mode.
-  tone: LogoTone;
+  // Whether the mark needs something to sit on, measured against each card
+  // background at fetch time. Two answers rather than one reading of the ink,
+  // because a mark can need a chip on one card and be perfectly legible on
+  // the other: a mid-tone orange wordmark fails on white and reads on the
+  // dark card, and the light-or-dark reading got that backwards both ways.
+  chipOnLight: boolean;
+  chipOnDark: boolean;
   // The cached copy's own dimensions. Shelter logos are mostly wide
   // wordmarks, so the avatar needs the real ratio to give one a slot it fits
   // in rather than letterboxing it into a square.
@@ -53,18 +54,23 @@ function readShelterLogos(): ShelterLogos {
     if (!entries || typeof entries !== "object") return {};
     const logos: ShelterLogos = {};
     for (const [id, entry] of Object.entries(entries)) {
-      const { file, width, height, tone } = entry as Record<string, unknown>;
+      const { file, width, height, chipOnLight, chipOnDark } = entry as Record<
+        string,
+        unknown
+      >;
       if (
         typeof file !== "string" ||
         typeof width !== "number" ||
         typeof height !== "number" ||
-        (tone !== "light" && tone !== "dark")
+        typeof chipOnLight !== "boolean" ||
+        typeof chipOnDark !== "boolean"
       ) {
         continue;
       }
       logos[id] = {
         url: `/media/shelter-logos/${file}`,
-        tone,
+        chipOnLight,
+        chipOnDark,
         width,
         height,
       };

@@ -71,41 +71,46 @@ const RING_TEXT = {
 
 // A chip is drawn only where the mark would otherwise be ink on ink.
 //
-// Shelters draw their logo for their own site's background, so the ink is
-// white about as often as it is black, and the page follows
-// prefers-color-scheme. That is two independent facts, and the chip is needed
-// for exactly one of the four combinations on each side: dark ink needs a
-// light chip on a dark page, white ink needs a dark chip on a light page.
-// Everywhere else the mark sits on the card with nothing behind it.
+// Shelters draw their logo for their own site's background, and the page
+// follows prefers-color-scheme, so whether a mark holds is a question about a
+// mark and a card together, asked twice. The ingest run measures it that way
+// (see chipNeeds in apps/ingest/src/cache-logos.ts) and the manifest carries
+// both answers, so the two flags below are independent: a mark can want a
+// chip on one card, on the other, on neither, and in principle on both.
 //
-// Both chips are the same pair of neutrals, so the two cases read as one
+// Sorting the ink into "light" or "dark" instead got the middle of the range
+// wrong in both directions at once. Horjul's orange has no dark pixel, so it
+// counted as light ink: it was boxed on the dark card, where all of it
+// already cleared 3:1, and left bare on white, where none of it did.
+//
+// Both chips are the same pair of neutrals, so the cases read as one
 // treatment rather than as two different components. Neither can be a themed
-// token: a chip exists to disagree with the page it is on.
+// token: a chip exists to disagree with the card it is on.
 //
 // The padding and the border box are on the base class and are drawn whether
-// or not the chip is filled, so a mark keeps its exact position when the theme
+// or not a chip is filled, so a mark keeps its exact position when the theme
 // flips. Only the colour is conditional, which is what keeps this CSS-only.
 //
 // The negative margin cancels the padding exactly, so the mark itself sits
-// flush with the card's text column and the chip grows outward from it rather
+// flush with the card's text column and a chip grows outward from it rather
 // than pushing it in. Padding alone indented every mark by the chip's padding,
-// including the nine that never draw a chip, and the whole wall stood 6px
+// including the ones that never draw a chip, and the whole wall stood 6px
 // right of the shelter name under it. A filled shape wanting to sit a little
-// proud of a flat edge is the usual optical correction, so the two shelters
-// that do draw a chip are the two it is right for.
+// proud of a flat edge is the usual optical correction, so the marks that do
+// draw a chip are the ones it is right for.
 const CHIP_BASE =
   "-m-1.5 inline-flex items-center justify-center rounded-ui border border-transparent p-1.5";
 
-const TONE_CHIP = {
-  // Black or coloured ink: bare on a light page, on a light chip in dark mode.
-  dark: "dark:border-black/10 dark:bg-neutral-100",
-  // White ink: on a dark chip in light mode, bare in dark mode. The chip has
-  // to be spelled off again rather than merely not spelled on, or a
-  // neutral-800 plate stays painted over a card that is darker than it and
-  // draws exactly the box this design exists to remove.
-  light:
-    "border-white/15 bg-neutral-800 dark:border-transparent dark:bg-transparent",
-} as const;
+// Pale ink on the white card: a dark chip, spelled off again in dark mode.
+// Off rather than merely not on, or the plate stays painted over a card that
+// is darker than it and draws exactly the box this design exists to remove.
+const CHIP_ON_LIGHT =
+  "border-white/15 bg-neutral-800 dark:border-transparent dark:bg-transparent";
+
+// Dark ink on the dark card: a light chip, in dark mode only. Written after
+// CHIP_ON_LIGHT at the call site so that a mark wanting both gets this one in
+// dark mode, which is the pair tailwind-merge keeps.
+const CHIP_ON_DARK = "dark:border-black/10 dark:bg-neutral-100";
 
 /** The pixel box a logo is drawn in, from the cached copy's own dimensions.
  *
@@ -197,7 +202,13 @@ export function ShelterAvatar({
   if (logo) {
     const box = markBox(logo, size);
     return inRow(
-      <span className={cn(CHIP_BASE, TONE_CHIP[logo.tone])}>
+      <span
+        className={cn(
+          CHIP_BASE,
+          logo.chipOnLight && CHIP_ON_LIGHT,
+          logo.chipOnDark && CHIP_ON_DARK,
+        )}
+      >
         <Image
           src={logo.url}
           alt=""

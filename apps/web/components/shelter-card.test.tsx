@@ -146,7 +146,8 @@ describe("the shelter card", () => {
         shelter={shelter({
           logo: {
             url: "/media/shelter-logos/abc.webp",
-            tone: "dark",
+            chipOnLight: false,
+            chipOnDark: true,
             width: 300,
             height: 100,
           },
@@ -170,7 +171,12 @@ describe("the shelter card", () => {
       const { container } = render(
         <ShelterCard
           shelter={shelter({
-            logo: { url: "/media/shelter-logos/a.webp", tone: "dark", ...logo },
+            logo: {
+              url: "/media/shelter-logos/a.webp",
+              chipOnLight: false,
+              chipOnDark: true,
+              ...logo,
+            },
           })}
           text={text}
         />,

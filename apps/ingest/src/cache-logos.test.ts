@@ -249,6 +249,13 @@ describe("inkTone", () => {
     expect(await inkTone(await pngBytes(32, "#101010"))).toBe("dark");
   });
 
+  // Bright is not the same as invisible-on-white: a saturated wordmark has no
+  // dark pixel and still reads fine on the white chip, so only near-white ink
+  // earns the dark one.
+  it("calls a saturated orange wordmark dark ink", async () => {
+    expect(await inkTone(await pngBytes(32, "#e8842c"))).toBe("dark");
+  });
+
   // The bright fills must not outvote the black line art: a logo whose text
   // is black needs the white chip no matter how much yellow it carries.
   it("calls a bright logo with black line art dark ink", async () => {

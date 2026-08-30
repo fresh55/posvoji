@@ -166,19 +166,21 @@ export function discoverLogoUrl(
   return best?.href;
 }
 
-// What decides the chip is the near-black ink, not the average colour. A
-// colourful logo with black outlines or a black wordmark falls apart on a
-// dark chip however bright its fills are (the mean got exactly that wrong for
-// a yellow logo with black line art), while a mark drawn in white simply has
-// no dark pixels at all. So: light ink only when dark pixels are essentially
-// absent and the rest is bright; everything else goes on the white chip.
+// What decides the chip is whether the ink survives a white card, not the
+// average colour. A black wordmark falls apart on a dark chip however bright
+// its fills are (the mean got exactly that wrong for a yellow logo with black
+// line art), and a saturated wordmark with no dark pixel at all is still
+// perfectly visible on white (a mean threshold got exactly that wrong for an
+// orange one, and gave it a dark chip it never needed). The only ink that
+// actually needs the dark chip is ink drawn in near-white, so: light only
+// when dark pixels are essentially absent and most of the ink is near-white.
 export async function inkTone(image: Buffer): Promise<LogoTone> {
   const { data, info } = await sharp(image)
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  let sum = 0;
+  let nearWhite = 0;
   let dark = 0;
   let counted = 0;
   for (let i = 0; i < data.length; i += info.channels) {
@@ -188,15 +190,15 @@ export async function inkTone(image: Buffer): Promise<LogoTone> {
     const g = data[i + 1] ?? 0;
     const b = data[i + 2] ?? 0;
     const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    sum += luminance;
     if (luminance < 100) dark++;
+    if (luminance > 220) nearWhite++;
     counted++;
   }
 
   // A logo with no opaque pixel at all is treated as dark ink, which puts it
   // on the light chip the majority use.
   if (counted === 0) return "dark";
-  return dark / counted < 0.03 && sum / counted > 140 ? "light" : "dark";
+  return dark / counted < 0.03 && nearWhite / counted > 0.5 ? "light" : "dark";
 }
 
 // Logos are line art and flat colour with transparency, so they are fitted
@@ -306,6 +308,20 @@ export async function cacheLogos(
     );
   }
 
+  // A kept entry with its tone re-measured from the cached bytes. An
+  // unreadable file keeps its recorded tone; the next revalidation replaces
+  // it anyway.
+  const retoned = async (entry: CachedLogoEntry): Promise<CachedLogoEntry> => {
+    try {
+      return {
+        ...entry,
+        tone: await inkTone(readFileSync(join(logosDir, entry.file))),
+      };
+    } catch {
+      return entry;
+    }
+  };
+
   // One shelter's turn: its home page, then its logo, in that order. Nothing
   // here touches next.entries, discovered or the counters. The outcome is
   // handed back and applied once every host has finished, so both records keep
@@ -315,11 +331,18 @@ export async function cacheLogos(
     homeUrl: string;
     logoUrl?: string;
   }): Promise<LogoOutcome> => {
-    const prev = previous.entries[target.providerId];
-    const prevUsable =
-      prev !== undefined &&
-      prev.tone !== undefined &&
-      existsSync(join(logosDir, prev.file));
+    const stored = previous.entries[target.providerId];
+    const storedUsable =
+      stored !== undefined &&
+      stored.tone !== undefined &&
+      existsSync(join(logosDir, stored.file));
+    // The tone is a judgement about the cached bytes, not a fact fetched with
+    // them, so a kept copy gets today's judgement: without this, a change to
+    // inkTone would never reach a logo that keeps answering 304.
+    //
+    // prev stays a const so the prevUsable checks below keep narrowing it.
+    const prev = storedUsable ? await retoned(stored) : undefined;
+    const prevUsable = prev !== undefined;
     // Keep what we have, take nothing new. Reached by every failure path
     // below, and none of them counts as a fetch or a reuse.
     const keepPrevious: LogoOutcome = prevUsable ? { entry: prev } : {};

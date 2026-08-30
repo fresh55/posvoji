@@ -151,7 +151,7 @@ export function SpeciesTabs({
               // is about 30 more. Tightening every tab buys back roughly what
               // the new one costs, so the strip overflows no further than it
               // did and "Ostale" is no worse off.
-              "inline-flex min-w-0 items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 max-lg:tap-target",
+              "inline-flex min-w-0 items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-lg:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a

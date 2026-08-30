@@ -3,6 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import { getMessages } from "@/lib/i18n";
 import { SiteFooter } from "./site-footer";
 
 afterEach(() => cleanup());
@@ -51,6 +52,19 @@ describe("SiteFooter", () => {
       a.getAttribute("href"),
     );
     expect(hrefs).toEqual(["/zavetisca", FOUND_ANIMAL_PATHS.sl]);
+  });
+
+  // The header nav carries moreInformation, and on the shelters page both
+  // render from lg up. Two navigation landmarks under one name is a rotor
+  // that cannot tell them apart, so this one says where it is instead.
+  it("names its landmark apart from the header's", () => {
+    const messages = getMessages("sl");
+    render(<SiteFooter locale="sl" />);
+
+    expect(
+      screen.getByRole("navigation", { name: messages.footerLinks }),
+    ).toBeTruthy();
+    expect(messages.footerLinks).not.toBe(messages.moreInformation);
   });
 
   it("clears the floating filter dock on the one page that has one", () => {

@@ -26,6 +26,30 @@ const listName = {
 } satisfies Record<Locale, string>;
 
 /**
+ * The trail a page draws, as the structured data that says the same thing.
+ *
+ * Built from the very list the breadcrumb renders, so the two cannot disagree
+ * about where a page sits: a crumb the reader sees and an item Google reads
+ * come out of one array. The last item is the page itself and carries no url,
+ * which is what tells a consumer it is the current position rather than
+ * another link.
+ */
+export function breadcrumbJsonLd(
+  crumbs: readonly { label: string; href?: string }[],
+): JsonLdNode {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.label,
+      ...(crumb.href ? { item: absolute(crumb.href) } : {}),
+    })),
+  };
+}
+
+/**
  * The registry fields a JSON-LD node is allowed to read. `notes` is internal
  * working prose about permissions and is not in this type, so no builder here
  * can emit it even by spreading an entry.

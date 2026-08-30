@@ -82,7 +82,10 @@ export function SiteFooter({
       <div className="flex flex-col gap-4 sm:flex-row-reverse sm:items-start sm:justify-between sm:gap-x-10">
         {links.length > 0 && (
           <nav
-            aria-label={messages.moreInformation}
+            // Not moreInformation, which is the header nav's. On the shelters
+            // page both render from lg up, and two navigation landmarks under
+            // one name is a rotor that cannot tell them apart.
+            aria-label={messages.footerLinks}
             // A step larger below lg: these are destinations under a thumb,
             // not fine print, and text-xs let them read as the latter.
             //

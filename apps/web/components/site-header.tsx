@@ -5,6 +5,11 @@ import type { Locale } from "@/lib/i18n";
 
 type SiteHeaderProps = {
   homeHref: string;
+  /** This page's address in both locales. The language switcher needs the
+   *  pair; the nav needs only the current locale's half, to mark the item
+   *  that points at the page the reader is already on. Every page that
+   *  renders a header already passes this, so the nav gets its answer without
+   *  a second prop that could drift out of step with the first. */
   languagePaths?: Record<Locale, string>;
 };
 
@@ -31,7 +36,7 @@ export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
           <Logo className="h-10 w-auto" />
           posvoji.si
         </a>
-        <SiteNav />
+        <SiteNav paths={languagePaths} />
       </div>
       {/* Everything on the right is addressed to somebody in particular: the
           reader who wants another language, the shelter that wants in, the
@@ -40,7 +45,7 @@ export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
       <div className="flex items-center gap-3">
         <LanguageSwitcher paths={languagePaths} />
         <ShelterLogin />
-        <SiteMenu />
+        <SiteMenu paths={languagePaths} />
       </div>
     </header>
   );

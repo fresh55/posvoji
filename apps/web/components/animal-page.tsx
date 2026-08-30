@@ -4,6 +4,7 @@ import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
@@ -56,15 +57,21 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y">
-          <a
-            href={indexHref}
-            className="inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            ← {text.back}
-          </a>
+        <main className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y">
+          {/* Two crumbs and not four. The URL runs /zival/{animal}/{city}/
+              {shelter}, but /zival, /zival/{animal} and /zival/{animal}/{city}
+              are not routes and all three 404 (dynamicParams is false), so a
+              trail mirroring the path would advertise pages that do not
+              exist. The animal's shelter is named further down the page, with
+              a link of its own. */}
+          {/* space-y-5 rather than the main's own gap-8, so the trail sits
+              20px above what it introduces here as it does on every other
+              page. A breadcrumb is the same distance from its page whatever
+              the page turns out to be. */}
+          <div className="space-y-5">
+            <PageBreadcrumb locale={locale} current={animal.name ?? text.back} />
 
-          <div className="grid gap-8 sm:grid-cols-2 sm:items-start">
+            <div className="grid gap-8 sm:grid-cols-2 sm:items-start">
             {hasPhoto && (
               <PhotoGallery
                 // Resolved here rather than by the grid's client projection:
@@ -110,6 +117,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
               </div>
 
               <AnimalFacts animal={animal} reference={reference} />
+            </div>
             </div>
           </div>
 

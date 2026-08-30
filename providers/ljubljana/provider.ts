@@ -164,7 +164,13 @@ function parseSize(option: CmsOption | undefined): AnimalSize | undefined {
 }
 
 function parseStatus(pet: CmsPet): AdoptionStatus {
-  return pet.state?.slug === "poskusna-oddaja" ? "hold" : "available";
+  const slug = pet.state?.slug;
+  if (slug === "poskusna-oddaja") return "hold";
+  // No state set is the normal listed state. Any other, unrecognized state
+  // slug is a CMS status we don't know how to interpret, so stay conservative
+  // instead of guessing it means the animal is still available.
+  if (slug === null || slug === undefined) return "available";
+  return "unknown";
 }
 
 function imageUrl(photo: CmsPhoto): string | undefined {

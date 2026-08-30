@@ -35,10 +35,7 @@ export function SitePage({ locale }: { locale: Locale }) {
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader
-          githubTitle={messages.githubTitle}
-          homeHref={locale === "sl" ? "/" : "/en"}
-        />
+        <SiteHeader homeHref={locale === "sl" ? "/" : "/en"} />
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">
           <div className="space-y-1.5">

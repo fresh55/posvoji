@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 // font size inherits its leading from whatever it happens to sit in and changes
 // height when the webfont swaps. Any tier added back here brings its own h-*.
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
@@ -33,6 +33,13 @@ const badgeVariants = cva(
         // card's long-stay mark, two of them raw var(--status-warn-*) reads.
         // A badge is where a badge's colours belong.
         warn: "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
+        // The filter green, for the same reason warn is here: it is the mark
+        // the site puts on a shelter that shares its animals, and every call
+        // site was spelling the three tokens itself. As a link it keeps its
+        // colour and moves the border, because outline's wash to bg-muted is
+        // the one hover this badge cannot take.
+        accent:
+          "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] [a]:hover:border-[var(--filter-accent-strong)]",
         quiet: "border-transparent bg-muted text-muted-foreground",
         // On a photograph a wash has nothing to sit on. A 15% fill tints an
         // arbitrary backdrop rather than covering it, and backdrop-blur takes

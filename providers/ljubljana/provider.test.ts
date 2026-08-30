@@ -125,6 +125,42 @@ describe("parseDetail", () => {
       medical: undefined,
     });
   });
+
+  it("stays unknown for a CMS state it does not recognise, instead of guessing available", () => {
+    const html =
+      '<script id="__NEXT_DATA__" type="application/json">' +
+      JSON.stringify({
+        props: {
+          pageProps: {
+            pet: {
+              title: "Rex",
+              type: { slug: "pes" },
+              state: { slug: "posvojen-drugje" },
+            },
+          },
+        },
+      }) +
+      "</script>";
+    expect(parseDetail(html)).toMatchObject({ status: "unknown" });
+  });
+
+  it("treats no state as normally listed and available", () => {
+    const html =
+      '<script id="__NEXT_DATA__" type="application/json">' +
+      JSON.stringify({
+        props: {
+          pageProps: {
+            pet: {
+              title: "Rex",
+              type: { slug: "pes" },
+              state: null,
+            },
+          },
+        },
+      }) +
+      "</script>";
+    expect(parseDetail(html)).toMatchObject({ status: "available" });
+  });
 });
 
 describe("provider", () => {

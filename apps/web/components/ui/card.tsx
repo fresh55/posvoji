@@ -26,6 +26,19 @@ import { cn } from "@/lib/utils";
 // details, a coverage answer, a page section and a login form. Giving them a
 // header slot they would not fill is a bigger invention than the duplication
 // it removes; the shape is the part they actually share.
+/**
+ * The surface itself, for the one other primitive that needs to be a card
+ * without being one.
+ *
+ * ui/item.tsx is a layout (media, content, a footer pushed down) that happens
+ * to be drawn on this surface, and its outline variant had spelled these five
+ * utilities out again. Both render inside a single list on /zavetisca, so a
+ * copy meant a radius or a shadow moving on the invite cell and not on the
+ * seventeen cards beside it, which is the drift this file was written to stop.
+ */
+export const CARD_SURFACE =
+  "rounded-ui border bg-card text-card-foreground shadow-xs";
+
 function Card({
   className,
   asChild = false,
@@ -36,10 +49,7 @@ function Card({
   return (
     <Comp
       data-slot="card"
-      className={cn(
-        "rounded-ui border bg-card text-card-foreground shadow-xs",
-        className,
-      )}
+      className={cn(CARD_SURFACE, className)}
       {...props}
     />
   );

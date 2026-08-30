@@ -9,13 +9,14 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   GetBytesOptions,
   PoliteBytesResponse,
 } from "@posvoji/provider-sdk";
 import { Animal as AnimalSchema } from "@posvoji/schema";
 import type { Animal, ImagePolicy } from "@posvoji/schema";
+import { MAX_HOSTS_IN_FLIGHT } from "./by-host";
 import {
   DERIVATIVE_VERSION,
   avifFileFor,
@@ -80,6 +81,47 @@ class StubClient {
       notModified: res.notModified ?? false,
       headers: res.headers ?? {},
     };
+  }
+}
+
+// Records what was in flight while the cache ran: overall, and for one host.
+// Every request holds for a moment, so a loop that awaits one URL before
+// starting the next can never push either peak above 1. An unstubbed URL
+// answers 404, which the cache treats as "the photo is gone" and passes over
+// without a warning.
+class ConcurrencyClient {
+  peak = 0;
+  peakPerHost = 0;
+  order: string[] = [];
+  private inFlight = 0;
+  private perHost = new Map<string, number>();
+
+  constructor(
+    private responses: Map<string, StubResponse>,
+    private holdMs = 5,
+  ) {}
+
+  async getBytes(url: string): Promise<PoliteBytesResponse> {
+    const host = new URL(url).host;
+    this.order.push(url);
+    this.inFlight++;
+    const onHost = (this.perHost.get(host) ?? 0) + 1;
+    this.perHost.set(host, onHost);
+    this.peak = Math.max(this.peak, this.inFlight);
+    this.peakPerHost = Math.max(this.peakPerHost, onHost);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, this.holdMs));
+      const res = this.responses.get(url) ?? { status: 404, body: null };
+      return {
+        status: res.status,
+        body: res.body,
+        notModified: res.notModified ?? false,
+        headers: res.headers ?? {},
+      };
+    } finally {
+      this.inFlight--;
+      this.perHost.set(host, (this.perHost.get(host) ?? 1) - 1);
+    }
   }
 }
 
@@ -863,6 +905,76 @@ describe("cacheImages", () => {
     }
   });
 
+  it("keeps every file when the manifest was lost", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+    const before = readdirSync(mediaDir).sort();
+
+    // The manifest is the only thing that maps a source URL to its
+    // content-addressed file, so losing it makes every file look like an
+    // orphan. The files outlive it by a run.
+    rmSync(manifestPath);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.deleted).toBe(0);
+    expect(readdirSync(mediaDir).sort()).toEqual(before);
+    expect(warn.mock.calls.map(String).join(" ")).toMatch(
+      /skipping the deletion sweep/,
+    );
+    warn.mockRestore();
+  });
+
+  it("warns loudly when the manifest is there but unreadable", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    writeFileSync(manifestPath, '{"entries": {"https://img.si/luna.jpg"');
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.deleted).toBe(0);
+    expect(warn.mock.calls.map(String).join(" ")).toMatch(/unreadable/);
+    warn.mockRestore();
+  });
+
+  it("sweeps again on the run after the manifest came back", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    rmSync(manifestPath);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // The lost-manifest run refetches what it still wants, so the manifest is
+    // whole again; the next run sweeps whatever nobody claimed.
+    const refetch = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), refetch, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    warn.mockRestore();
+
+    expect(result.deleted).toBe(HERO_FILES);
+    expect(readdirSync(mediaDir)).toHaveLength(0);
+  });
+
   it("caches nothing for a provider without cache permission", async () => {
     const client = new StubClient(new Map());
     const remoteOnly = new Map<string, ImagePolicy>([["macja-hisa", "remote"]]);
@@ -875,5 +987,195 @@ describe("cacheImages", () => {
     expect(client.calls).toHaveLength(0);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeUndefined();
     expect(existsSync(mediaDir) ? readdirSync(mediaDir) : []).toHaveLength(0);
+  });
+
+  // PoliteClient serializes per host and waits between two requests to the
+  // same host. One loop over every photo therefore leaves ten shelters idle
+  // while the eleventh answers, which is where the run's hour went.
+  describe("across hosts", () => {
+    const shelters = [
+      { providerId: "macja-hisa", host: "macjahisa.si" },
+      { providerId: "muri", host: "muri.si" },
+      { providerId: "zonzani", host: "zonzani.si" },
+    ];
+    const policies = new Map<string, ImagePolicy>(
+      shelters.map(({ providerId }) => [providerId, "cache-permitted"]),
+    );
+    const photoUrl = (host: string, n: number) => `https://${host}/foto-${n}.jpg`;
+
+    // Three shelters, two photos each, every photo its own colour so no two
+    // land on one content-addressed file.
+    async function threeShelters(): Promise<{
+      animals: Animal[];
+      responses: Map<string, StubResponse>;
+    }> {
+      const animals: Animal[] = [];
+      const responses = new Map<string, StubResponse>();
+      let colour = 0;
+      for (const { providerId, host } of shelters) {
+        const images: Animal["images"] = [];
+        for (const n of [1, 2]) {
+          const sourceUrl = photoUrl(host, n);
+          images.push({ sourceUrl, rights: "cache-permitted" });
+          responses.set(sourceUrl, {
+            status: 200,
+            body: await pngFixture(200, 150, {
+              r: 30 + colour++ * 30,
+              g: 100,
+              b: 60,
+            }),
+          });
+        }
+        animals.push(animal({ id: providerId, providerId, images }));
+      }
+      return { animals, responses };
+    }
+
+    it("asks every shelter at the same time", async () => {
+      const { animals, responses } = await threeShelters();
+      const client = new ConcurrencyClient(responses);
+
+      const result = await cacheImages(animals, client, policies, {
+        mediaDir,
+        manifestPath,
+      });
+
+      // One request per shelter is in flight at once. A sequential loop pins
+      // this at 1 however the timers fall.
+      expect(client.peak).toBe(shelters.length);
+      expect(client.order).toHaveLength(6);
+      // The counters are summed from every host, so they still total what a
+      // single loop would have counted.
+      expect(result.fetched).toBe(6);
+      expect(result.reused).toBe(0);
+      for (const cached of result.animals.flatMap((a) => a.images)) {
+        expect(cached.cachedUrl).toBeDefined();
+      }
+    });
+
+    it("still asks one shelter for one photo at a time", async () => {
+      const { animals, responses } = await threeShelters();
+      const client = new ConcurrencyClient(responses);
+
+      await cacheImages(animals, client, policies, { mediaDir, manifestPath });
+
+      // The politeness that matters: a shelter's server never sees two of our
+      // requests overlap, and it sees them in the order the dataset lists.
+      expect(client.peakPerHost).toBe(1);
+      for (const { host } of shelters) {
+        expect(client.order.filter((url) => url.includes(host))).toEqual([
+          photoUrl(host, 1),
+          photoUrl(host, 2),
+        ]);
+      }
+    });
+
+    it("keeps one shelter's photos strictly in order behind one another", async () => {
+      // Every photo on one host, which is the shape of a real shelter: the
+      // whole list has to stay a single queue.
+      const host = "macjahisa.si";
+      const urls = [1, 2, 3, 4, 5].map((n) => photoUrl(host, n));
+      const responses = new Map<string, StubResponse>();
+      for (const [index, sourceUrl] of urls.entries()) {
+        responses.set(sourceUrl, {
+          status: 200,
+          body: await pngFixture(200, 150, {
+            r: 30 + index * 30,
+            g: 100,
+            b: 60,
+          }),
+        });
+      }
+      const client = new ConcurrencyClient(responses);
+
+      const result = await cacheImages(
+        [
+          animal({
+            id: "luna",
+            images: urls.map((sourceUrl) => ({
+              sourceUrl,
+              rights: "cache-permitted" as const,
+            })),
+          }),
+        ],
+        client,
+        CACHE_ONLY,
+        { mediaDir, manifestPath },
+      );
+
+      expect(client.peak).toBe(1);
+      expect(client.peakPerHost).toBe(1);
+      expect(client.order).toEqual(urls);
+      expect(result.fetched).toBe(5);
+    });
+
+    it("never has more than the cap in flight, however many shelters there are", async () => {
+      const hosts = Array.from({ length: 20 }, (_, n) => `zavetisce-${n}.si`);
+      // Nothing is stubbed, so every source answers 404: the cap is what is
+      // being measured, not the encoding.
+      const client = new ConcurrencyClient(new Map());
+
+      await cacheImages(
+        [
+          animal({
+            id: "luna",
+            images: hosts.map((host) => ({
+              sourceUrl: photoUrl(host, 1),
+              rights: "cache-permitted" as const,
+            })),
+          }),
+        ],
+        client,
+        CACHE_ONLY,
+        { mediaDir, manifestPath },
+      );
+
+      expect(client.peak).toBe(MAX_HOSTS_IN_FLIGHT);
+      expect(hosts.length).toBeGreaterThan(MAX_HOSTS_IN_FLIGHT);
+      // Every one of them was still asked, just not all at once.
+      expect(client.order).toHaveLength(hosts.length);
+    });
+
+    it("writes one file when two shelters answer with the same photo", async () => {
+      // Content addressing names the file after its bytes, so two hosts
+      // fetched at the same time can arrive at the same target.
+      const bytes = await pngFixture(200, 150);
+      const first = "https://macjahisa.si/luna.jpg";
+      const second = "https://muri.si/luna.jpg";
+      const client = new ConcurrencyClient(
+        new Map([
+          [first, { status: 200, body: bytes }],
+          [second, { status: 200, body: bytes }],
+        ]),
+      );
+
+      const result = await cacheImages(
+        [
+          animal({ id: "luna", images: [{ sourceUrl: first, rights: "cache-permitted" }] }),
+          animal({
+            id: "muri",
+            providerId: "muri",
+            images: [{ sourceUrl: second, rights: "cache-permitted" }],
+          }),
+        ],
+        client,
+        policies,
+        { mediaDir, manifestPath },
+      );
+
+      // Both were in flight together, so both raced for the same name.
+      expect(client.peak).toBe(2);
+      expect(result.fetched).toBe(2);
+      const files = readdirSync(mediaDir);
+      const masters = files.filter((file) => /^[0-9a-f]{16}\.webp$/.test(file));
+      expect(masters).toHaveLength(1);
+      // The copy is whole and readable, and no half-written temporary was
+      // left behind for the sweep to trip over.
+      expect(files.filter((file) => file.endsWith(".tmp"))).toEqual([]);
+      const meta = await sharp(readFileSync(join(mediaDir, masters[0]!))).metadata();
+      expect(meta.width).toBe(200);
+      const cached = result.animals.map((a) => a.images[0]!.cachedUrl);
+      expect(cached).toEqual([publicUrlFor(masters[0]!), publicUrlFor(masters[0]!)]);
+    });
   });
 });

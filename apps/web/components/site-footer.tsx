@@ -4,16 +4,12 @@ import { cn } from "@/lib/utils";
 
 export function SiteFooter({
   locale,
-  showResourcesLink = true,
   showSheltersLink = true,
-  showPortalLink = true,
   showFoundAnimalLink = true,
   docked = false,
 }: {
   locale: Locale;
-  showResourcesLink?: boolean;
   showSheltersLink?: boolean;
-  showPortalLink?: boolean;
   /**
    * The way into the found-animal lookup, on every page rather than only the
    * homepage. It did not exist anywhere else: the dialog is mounted by
@@ -33,20 +29,26 @@ export function SiteFooter({
    * carried this clearance, but the grid is not what ends the document: the
    * footer is, and it is a sibling of `main`. So the dock cleared the last
    * row of cards and then sat on top of these links, which are the only way
-   * to any other page at phone width. Measured on a 390px phone: all three
-   * were covered, and every one of them failed a hit test.
+   * to any other page at phone width. Measured on a 390px phone: every one
+   * of them was covered, and every one of them failed a hit test.
    */
   docked?: boolean;
 }) {
   const messages = getMessages(locale);
-  // The roster lives in lib/site-links.ts, shared with the header menu. What
-  // is decided here is only which of them this page shows: a page passes its
-  // own link off rather than linking to itself.
+  // The roster lives in lib/site-links.ts, shared with the header menu. Every
+  // key in it has to have an opinion recorded here, so a destination added
+  // there cannot reach the dropdown and quietly miss the footer: the two
+  // surfaces drifting apart is the thing the shared roster exists to stop.
+  // For the two links this page can show, what is decided is only whether it
+  // shows them, because a page passes its own link off rather than linking to
+  // itself. `resources` is unlisted everywhere and never reaches this filter;
+  // the shelter login is the header's now, a button from lg and a dropdown
+  // item below it.
   const shown: Record<SiteLinkKey, boolean> = {
     shelters: showSheltersLink,
     foundAnimal: showFoundAnimalLink,
-    resources: showResourcesLink,
-    portal: showPortalLink,
+    resources: false,
+    portal: false,
   };
   const links = siteLinks(locale, messages).filter((link) => shown[link.key]);
 
@@ -70,13 +72,28 @@ export function SiteFooter({
           small print that follows. From sm the row reverses so the reading
           order of the wide layout stays prose left, links right, the shape
           every colophon has taught. */}
-      <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-start sm:justify-between">
+      {/* The horizontal gap is the row's minimum, not its usual: from lg the
+          two columns are hundreds of pixels apart and it never applies. It
+          applies between sm and lg, where the prose is wide enough to reach
+          the links, and at 12px it let them touch. Measured at 768: the prose
+          ran to 12px short of "Zavetišča" and the first line read on into the
+          link row as one sentence. 40px makes the prose wrap a word earlier
+          and leaves the two columns legibly apart. */}
+      <div className="flex flex-col gap-4 sm:flex-row-reverse sm:items-start sm:justify-between sm:gap-x-10">
         {links.length > 0 && (
           <nav
-            aria-label={messages.moreInformation}
+            // Not moreInformation, which is the header nav's. On the shelters
+            // page both render from lg up, and two navigation landmarks under
+            // one name is a rotor that cannot tell them apart.
+            aria-label={messages.footerLinks}
             // A step larger below lg: these are destinations under a thumb,
             // not fine print, and text-xs let them read as the latter.
-            className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 max-lg:text-sm"
+            //
+            // 24px between them, the same as the header's row and for the
+            // same reason: "Najdena žival" carries a word space of its own,
+            // and at 16px the gap between the two links was close enough to
+            // it that the row read as one label rather than two.
+            className="flex shrink-0 flex-wrap gap-x-6 gap-y-2 max-lg:text-sm"
           >
             {links.map((link) => (
               <a

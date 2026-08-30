@@ -1,4 +1,5 @@
 import { I18nProvider } from "@/components/i18n-provider";
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -249,7 +250,6 @@ const pageText = {
       "Izbor veterinarskih smernic, recenziranih raziskav in preverjenih vodnikov o prehrani, zdravju, vedenju in dobrobiti.",
     notice:
       "Ti viri so namenjeni izobraževanju in ne nadomeščajo pregleda ali nasveta veterinarja. Povezave vodijo na zunanja spletišča, večinoma v angleščini.",
-    back: "Živali za posvojitev",
     open: "Odpri vir",
   },
   en: {
@@ -258,7 +258,6 @@ const pageText = {
       "A curated collection of veterinary guidelines, peer-reviewed research and trusted guides on nutrition, health, behaviour and welfare.",
     notice:
       "These resources are educational and do not replace an examination or advice from a veterinarian. Links open external websites, mostly in English.",
-    back: "Animals for adoption",
     open: "Open resource",
   },
 } satisfies Record<Locale, Record<string, string>>;
@@ -272,19 +271,13 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          githubTitle={messages.githubTitle}
           homeHref={homeHref}
           languagePaths={{ sl: "/viri", en: "/en/resources" }}
         />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
+        <main className="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
           <div className="space-y-5">
-            <a
-              href={homeHref}
-              className="inline-flex max-lg:tap-target text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              ← {text.back}
-            </a>
+            <PageBreadcrumb locale={locale} current={messages.resources} />
             <div className="max-w-3xl space-y-3">
               <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
                 {text.title}
@@ -336,7 +329,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
           ))}
         </main>
 
-        <SiteFooter locale={locale} showResourcesLink={false} />
+        <SiteFooter locale={locale} />
       </div>
     </I18nProvider>
   );

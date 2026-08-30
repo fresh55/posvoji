@@ -59,7 +59,7 @@ export function PortalShell({
             {children}
           </main>
 
-          <SiteFooter locale="sl" showPortalLink={false} />
+          <SiteFooter locale="sl" />
         </div>
       </LazyMotion>
     </I18nProvider>

@@ -103,7 +103,7 @@ const FACT_POPOVER_CLASS =
 // The washed-out accent keeps the green badges from outshouting the identity
 // badges above them; the summary badge and the expanded ones dress the same.
 const HEALTH_PILL_CLASS =
-  "inline-flex cursor-help items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)]/70 bg-[var(--filter-accent)]/60 px-2.5 py-1 text-xs text-[var(--filter-accent-foreground)] transition-colors hover:bg-[var(--filter-accent)]/80 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none";
+  "inline-flex cursor-help items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)]/70 bg-[var(--filter-accent)]/60 px-2.5 py-1 text-xs text-[var(--filter-accent-foreground)] transition-colors hover:bg-[var(--filter-accent)]/80 focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none";
 
 // A health badge explains itself when asked. A popover rather than a hover
 // tooltip, because a thumb cannot hover.

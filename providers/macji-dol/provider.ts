@@ -4,6 +4,7 @@ import {
   type SourceAnimalRef,
 } from "@posvoji/provider-sdk";
 import type {
+  AdoptionStatus,
   AnimalGoodWith,
   Compatibility,
   ImagePolicy,
@@ -17,6 +18,7 @@ const DETAIL_PATH = /^\/mucki-iscejo-dom\/([^/]+)\/?$/;
 
 export interface DetailFacts {
   name?: string;
+  status?: AdoptionStatus;
   sex?: Sex;
   intakeDate?: string;
   description?: string;
@@ -69,10 +71,7 @@ function normalizeLabel(value: string): string {
     .toLowerCase();
 }
 
-function labelValue(
-  $: cheerio.CheerioAPI,
-  label: string,
-): string | undefined {
+function labelValue($: cheerio.CheerioAPI, label: string): string | undefined {
   const target = normalizeLabel(label);
   const strong = $(".summary .entry-content strong")
     .filter((_, element) => normalizeLabel($(element).text()) === target)
@@ -113,8 +112,8 @@ const GOOD_WITH_TERMS: Record<
   { facet: keyof AnimalGoodWith; value: Compatibility }
 > = {
   "brez mačk": { facet: "cats", value: "no" },
-  "mačke": { facet: "cats", value: "yes" },
-  "mački": { facet: "cats", value: "yes" },
+  mačke: { facet: "cats", value: "yes" },
+  mački: { facet: "cats", value: "yes" },
   psi: { facet: "dogs", value: "yes" },
 };
 
@@ -176,6 +175,21 @@ export function parseIntakeDate(text: string): string | undefined {
   return undefined;
 }
 
+/**
+ * WooCommerce writes the stock state onto the product container. "outofstock"
+ * on an adoption listing is the site saying the cat is not to be had at the
+ * moment, which is "hold": not adoptable, without claiming it was adopted.
+ * A container with no flag leaves the reading to normalize().
+ */
+function parseStatus($: cheerio.CheerioAPI): AdoptionStatus | undefined {
+  // The product page's own container. Related products are li.product, so
+  // they cannot be picked up here.
+  const product = $("div.product").first();
+  if (product.hasClass("outofstock")) return "hold";
+  if (product.hasClass("instock")) return "available";
+  return undefined;
+}
+
 function parseDescription($: cheerio.CheerioAPI): string | undefined {
   const heading = $(".summary .entry-content h2")
     .filter((_, element) => normalizeLabel($(element).text()) === "opis")
@@ -186,17 +200,14 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
   // everything after it is generic shelter and adoption boilerplate.
   const nodes = heading.nextUntil(".wp-block-kadence-spacer").clone();
   nodes.find("br").replaceWith("\n");
-  const text = nodes
-    .text()
-    .normalize("NFC")
-    .replace(/\s+/g, " ")
-    .trim();
+  const text = nodes.text().normalize("NFC").replace(/\s+/g, " ").trim();
   return text || undefined;
 }
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const name = $("h1.product_title").first().text().normalize("NFC").trim();
+  const status = parseStatus($);
   const sexRaw = labelValue($, "Spol")?.toLowerCase();
   const description = parseDescription($);
 
@@ -211,6 +222,7 @@ export function parseDetail(html: string): DetailFacts {
 
   return {
     name: name || undefined,
+    status,
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
     intakeDate: description ? parseIntakeDate(description) : undefined,
     description,
@@ -282,13 +294,19 @@ const provider: AdoptionProvider = {
       intakeDate: facts.intakeDate,
       goodWith: facts.goodWith,
       apartmentOk: facts.apartmentOk,
-      status: "available",
+      // Presence on the list is the availability signal here, as it is for
+      // every other archive. This is the repo's only WooCommerce source, so
+      // it also publishes a stock flag; reading it costs nothing and catches
+      // a placed cat that is marked rather than unpublished.
+      status: facts.status ?? "available",
       images:
         rights === null
           ? []
           : facts.imageUrls.map((sourceUrl) => ({ sourceUrl, rights })),
       shortDescription:
-        ctx.policy.descriptions === "facts-only" ? undefined : facts.description,
+        ctx.policy.descriptions === "facts-only"
+          ? undefined
+          : facts.description,
       attribution: ctx.policy.attribution,
     };
   },

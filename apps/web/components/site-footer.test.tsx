@@ -3,6 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import { getMessages } from "@/lib/i18n";
 import { SiteFooter } from "./site-footer";
 
 afterEach(() => cleanup());
@@ -36,6 +37,34 @@ describe("SiteFooter", () => {
     expect(screen.queryByRole("link", { name: "Najdena žival" })).toBeNull();
     // The rest of the footer is untouched by that gate.
     expect(screen.getByRole("link", { name: "Zavetišča" })).toBeTruthy();
+  });
+
+  // Two links and no more. The shelter login is the header's, as a button
+  // from lg and in the dropdown below it, and repeating it at the bottom of a
+  // page the length of the grid bought nothing. The resources page is hidden
+  // in lib/site-links.ts while it waits for a pass over its contents; it
+  // still builds and still answers on /viri.
+  it("lists the two pages and nothing else", () => {
+    const { container } = render(<SiteFooter locale="sl" />);
+
+    const nav = container.querySelector("nav");
+    const hrefs = Array.from(nav?.querySelectorAll("a") ?? []).map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(hrefs).toEqual(["/zavetisca", FOUND_ANIMAL_PATHS.sl]);
+  });
+
+  // The header nav carries moreInformation, and on the shelters page both
+  // render from lg up. Two navigation landmarks under one name is a rotor
+  // that cannot tell them apart, so this one says where it is instead.
+  it("names its landmark apart from the header's", () => {
+    const messages = getMessages("sl");
+    render(<SiteFooter locale="sl" />);
+
+    expect(
+      screen.getByRole("navigation", { name: messages.footerLinks }),
+    ).toBeTruthy();
+    expect(messages.footerLinks).not.toBe(messages.moreInformation);
   });
 
   it("clears the floating filter dock on the one page that has one", () => {

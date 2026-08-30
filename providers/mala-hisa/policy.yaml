@@ -2,6 +2,13 @@
 # the shelter catalogue, the animal photographs and the descriptions. The
 # "Privat oddaja" section carries private-owner listings and stays excluded
 # from the crawl for good.
+#
+# images and descriptions below are granted, and provider.ts now ingests
+# both alongside the structured facts (name, species, sex, breed,
+# approximate age, size, status): one cached photo per animal (the
+# detail page's own featured image; the site currently renders no
+# multi-photo gallery) and the free-text description from the entry
+# content, minus the site's own navigation and unrelated pasted media.
 providerId: mala-hisa
 source: https://zavetisce-malahisa.si/psi-za-oddajo/
 enabled: true

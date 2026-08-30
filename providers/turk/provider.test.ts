@@ -23,6 +23,10 @@ const dogsPage1 = loadFixture(import.meta.url, "list-dogs-page-1.json");
 const dogsPage2 = loadFixture(import.meta.url, "list-dogs-page-2.json");
 const cats = loadFixture(import.meta.url, "list-cats.json");
 const detailDog = loadFixture(import.meta.url, "detail-dog.json");
+const detailLostAndFound = loadFixture(
+  import.meta.url,
+  "detail-lost-and-found.json",
+);
 
 const LIST_URLS = {
   dogsPage1: listUrl(policy.source, 4, 1),
@@ -114,8 +118,11 @@ describe("parseSex", () => {
     // Generic plurals say nothing about this animal.
     ["pri nas lepo sprejme tudi druge muce", undefined],
     ["Veterinarsko urejen čaka na posvojitelje", undefined],
-    // Caught alongside two females: the listing names both sexes.
-    ["Klif je kuža, odlovljen skupaj z dvema psičkama", "unknown"],
+    // "kuža" is the plain word for a dog of either sex, not a sex marker, so
+    // naming only other dogs generically settles nothing about this one.
+    ["Klif je kuža, odlovljen skupaj z dvema drugima psoma", undefined],
+    // Caught alongside a female sibling: the listing names both sexes.
+    ["Klif je samček, odlovljen skupaj s psičko", "unknown"],
   ])("%s → %s", (input, expected) => {
     expect(parseSex(input)).toBe(expected);
   });
@@ -208,6 +215,17 @@ describe("parseDetail", () => {
   it("leaves photo captions out of the description", () => {
     const pupa = parseDetail(JSON.stringify(JSON.parse(dogsPage2)[0]));
     expect(pupa.description).not.toContain("Penelope");
+  });
+
+  it("rejects a post cross-filed into a lost-and-found category", () => {
+    // parsePosts already keeps posts like this out of the list. This is the
+    // single-post payload the fallback fetch reads directly, and it carries
+    // no such filter of its own, so parseDetail has to enforce it too rather
+    // than hand back a full listing (description included) for a notice that
+    // can carry a private phone number.
+    expect(() => parseDetail(detailLostAndFound)).toThrow(
+      /post 2500 is not in an adoptable category/,
+    );
   });
 });
 
@@ -309,6 +327,50 @@ describe("fetch", () => {
     );
     expect(get.mock.calls.map(([url]) => url)).toEqual([postUrl]);
     expect(raw.data).toMatchObject({ name: "Byorn", sex: "male" });
+  });
+
+  it("throws instead of returning a lost-and-found post the fallback fetched directly", async () => {
+    const postUrl =
+      "https://zavetisceturk.com/wp-json/wp/v2/posts/2500" +
+      "?_fields=id,slug,link,title,content,categories";
+    const get = vi.fn(async (url: string) => ({
+      status: url === postUrl ? 200 : 404,
+      body: url === postUrl ? detailLostAndFound : null,
+      notModified: false,
+      headers: {},
+    }));
+    await expect(
+      provider.fetch(
+        { client: { get } as never, policy },
+        {
+          sourceAnimalId: "2500",
+          sourceUrl:
+            "https://zavetisceturk.com/index.php/2022/11/03/pogresan-placeholder/",
+        },
+      ),
+    ).rejects.toThrow(/post 2500 is not in an adoptable category/);
+  });
+
+  it("leaves the normal cached path unaffected by the fallback's extra check", async () => {
+    // Same as the "serves an animal from the payload discover already
+    // received" case above: discover() only ever caches posts parsePosts has
+    // already kept, so the eligibility check the fallback needs never
+    // triggers here.
+    const discoverGet = vi.fn(async (url: string) => ({
+      status: 200,
+      body: url === LIST_URLS.cats ? cats : dogsPage1,
+      notModified: false,
+      headers: { "x-wp-totalpages": "1" },
+    }));
+    const refs = await provider.discover({
+      client: { get: discoverGet } as never,
+      policy,
+    });
+
+    const get = vi.fn();
+    const raw = await provider.fetch({ client: { get } as never, policy }, refs[0]!);
+    expect(get).not.toHaveBeenCalled();
+    expect(raw.data).toMatchObject({ name: "Lana", species: "dog" });
   });
 });
 

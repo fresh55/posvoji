@@ -1,82 +1,319 @@
-import { Info, List, MapPin, PawPrint } from "lucide-react";
+import { Globe, Mail, MapPin, PawPrint, Phone } from "lucide-react";
 import { ShelterAvatar } from "@/components/shelter-avatar";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import { mailtoHref, telHref } from "@/lib/contact-links";
 import type { ShelterLogo } from "@/lib/shelter-logos";
-import type { Locale } from "@/lib/i18n";
-import { animalCount } from "@/lib/labels";
-import type { ShelterRegistryEntry } from "@/lib/shelters";
-import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
 
+/** What a card needs, and nothing else.
+ *
+ *  Five things: who, where, how many animals they share with us, how to reach
+ *  them, and their mark. The občina coverage was on this card for a while and
+ *  came off, because that question is the found-animal lookup's whole job.
+ *
+ *  The animal count came off with it and is back, on a narrower reading. The
+ *  page's census line states a total ("503 živali čakajo na dom") and a count
+ *  of shelters sharing data, and neither says which shelters those are or how
+ *  many animals any one of them holds. The card is the only place that can
+ *  answer that, so it carries the shelter's own number and the register can be
+ *  read against its own totals. */
+export type ShelterCardData = {
+  id: string;
+  name: string;
+  city: string;
+  href: string;
+  /** How many animals the dataset holds for this shelter. Absent or zero for
+   *  a shelter that shares no list: the page never prints a zero, because a
+   *  zero here reads as a shelter with no animals rather than as a shelter we
+   *  publish nothing for. */
+  animals?: number;
+  logo?: ShelterLogo;
+  website?: string;
+  email?: string;
+  phone?: string;
+};
+
+export type ShelterCardText = {
+  website: string;
+  email: string;
+  phone: string;
+  /** "(odpre se v novem oknu)" / "(opens in a new window)". The website link
+   *  is the one thing on the card that leaves the site, and target="_blank"
+   *  announces nothing on its own. */
+  newWindow: string;
+  /** "5 živali" / "5 animals", from lib/labels.ts. A function rather than a
+   *  string, because Slovenian agrees the noun with the number (žival, živali)
+   *  and the card is a server component with no locale of its own: the page
+   *  holds the locale and hands the card the one formatter it needs. */
+  animals: (count: number) => string;
+};
+
+// Every contact sits under the name's stretched ::after, which covers the whole
+// card, so each needs relative + z-10 to take its own presses.
+//
+// data-contact on each row is a test contract, not decoration: the e2e suite
+// selects on roles and data attributes and never on classes, and the alignment
+// spec has to be able to ask for the phone row of one card and the phone row
+// of its neighbour. Nothing in the app reads it, so it looks unused. It is not.
+//
+// A row, not an icon. Behind a 24px glyph the number lived only in an
+// aria-label, so a desktop reader who had just found a stray could see that a
+// shelter had a phone and never what it was. min-h-9 keeps each row a real
+// target without the 44px a bare icon needed, because the row is the target.
+const CONTACT_ROW =
+  "relative z-10 flex min-h-9 items-center gap-2.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring";
+
+/** A website as the part of it worth reading. The scheme and the www are on
+ *  every one of them, and the card has room for the host, not the URL. */
+function websiteLabel(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+}
+
+/**
+ * One shelter, as a card.
+ *
+ * Cards were tried twice on this page and failed twice, both times because
+ * they were empty: a name, a town and three 24px glyphs is a box full of air,
+ * and no grid geometry rescues that. What fills it is the logo given room of
+ * its own and the contacts printed rather than hidden, which is also the whole
+ * of what a reader came for. A page of full cards needs no search, no tabs and
+ * no detail pane, because there is nothing left behind them.
+ *
+ * The logo sits on its own line above the name rather than beside it. Beside
+ * it, eleven wordmarks running from square to five times as wide started every
+ * name at a different x; above it, each one can keep its own proportions
+ * inside a fixed row and no neighbouring line has to agree with it.
+ *
+ * The card is laid out on the grid row's own tracks (Item's subgrid layout),
+ * so its three sections are as tall as the tallest of that section across the
+ * row: the logos on one line, the contacts starting on one line. That is
+ * structural, and it holds for a name of any length and for a section that
+ * grows for a reason nobody has thought of yet.
+ */
 export function ShelterCard({
   shelter,
-  href,
-  logo,
-  count,
-  locale,
-  providerBadge,
-  registryBadge,
-  noAnimalsYet,
+  text,
 }: {
-  shelter: ShelterRegistryEntry;
-  href: string;
-  logo: ShelterLogo | undefined;
-  count: number;
-  locale: Locale;
-  providerBadge: string;
-  registryBadge: string;
-  noAnimalsYet: string;
+  shelter: ShelterCardData;
+  text: ShelterCardText;
 }) {
-  const hasAnimals = count > 0;
+  const host = shelter.website ? websiteLabel(shelter.website) : undefined;
+  // never-print-a-zero: absent and zero are the same answer here, and both
+  // mean "we publish no list for this shelter". Folded into one optional
+  // number rather than a boolean beside the original field, because the mark
+  // and the count pill have to be drawn on the same test and the pill still
+  // needs the number itself.
+  const animals =
+    shelter.animals !== undefined && shelter.animals > 0
+      ? shelter.animals
+      : undefined;
 
   return (
-    <Card asChild>
-      <a
-        href={href}
-        // min-w-0, or this card sets the width of the column it sits in. As a
-        // grid item its automatic minimum size is its min-content width, and
-        // `truncate` on the name below is white-space: nowrap, whose
-        // min-content is the whole name however long it runs. So the track
-        // grew to fit "Zavetišče za zapuščene živali Ljubljana" unbroken and
-        // overflowed the page: measured on a 390px phone, a 358px grid
-        // holding a 413px card, and the whole document scrolled sideways.
-        // The truncation could not save it, because the box was never asked
-        // to be narrow in the first place. AnimalCard is spared the same
-        // thing by the overflow-hidden it carries for its photo.
-        className="group flex min-w-0 flex-col gap-4 p-5 transition-colors hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2"
+    <Item asChild variant="outline" layout="subgrid">
+      <li
+        id={`zavetisce-${shelter.id}`}
+        // relative, because the name's anchor stretches an ::after over this
+        // whole box: the card is clickable without being one giant <a> whose
+        // accessible name is every word printed on it.
+        className="group relative scroll-mt-24 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring"
       >
-        <div className="flex items-center gap-3">
-          <ShelterAvatar name={shelter.name} logo={logo} />
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate font-medium">{shelter.name}</h2>
-            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-              <MapPin className="size-3 shrink-0" aria-hidden />
-              {shelter.city}
-            </p>
-          </div>
-        </div>
+        {/* The mark on the left, the count on the right, on one line above the
+            name.
 
-        <div className="mt-auto flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium",
-              hasAnimals
-                ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
-                : "border-border bg-muted/50 text-muted-foreground",
-            )}
-          >
-            {hasAnimals ? (
-              <List className="size-3" aria-hidden />
-            ) : (
-              <Info className="size-3" aria-hidden />
-            )}
-            {hasAnimals ? providerBadge : registryBadge}
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <PawPrint className="size-3" aria-hidden />
-            {hasAnimals ? animalCount(count, locale) : noAnimalsYet}
-          </span>
-        </div>
-      </a>
-    </Card>
+            The count sits here rather than under the town, where it began,
+            because it is the one thing on the card that only some shelters
+            have. Under the town it was part of the text stack, so the eleven
+            cards carrying it pushed their contacts a line below the six that
+            do not: at 1440px the first row's phones sat at 575, 603 and 575.
+            The subgrid would line those rows up now whatever the count did to
+            them, but it would do it by growing the content track on every card
+            in the row, which is a band of air under the six shorter names to
+            pay for a line on the eleven. Up here it shares a row every card
+            draws at the row's fixed height whatever else is true, and costs
+            nothing.
+
+            It reads better for the scan, too. Ranged right on a fixed row, the
+            counts form a column the eye can run down to find the shelters
+            with animals, instead of appearing at whatever height each card's
+            name happened to end. */}
+        <ItemMedia className="justify-between gap-3">
+          {/* "register" rather than "sm": this is the one place the whole set
+              of logos is drawn side by side, so it is the one place one mark's
+              drawn size is read against another's. See WIDTH_FALLOFF.
+
+              The mark sits on the card rather than in a plate, and the fixed
+              row it is centred in is what holds the grid together: whatever
+              shape the mark turns out to be, the row below it starts at the
+              same y on every card. */}
+          <ShelterAvatar
+            name={shelter.name}
+            logo={shelter.logo}
+            size="register"
+            // The same test the count pill below is drawn on, so the two can
+            // never disagree: green is one statement on this site, and a ring
+            // wearing it on a shelter with no list would be making it falsely.
+            // No shelter in the register is both logo-less and a data
+            // provider today, so this draws nothing yet; it is here so that
+            // the first one to grant us a list is coloured by the rule rather
+            // than by a later patch.
+            accent={animals !== undefined}
+          />
+
+          {/* Which shelters the census is counting, and with how many animals
+              each.
+
+              The site's provider green, the same --filter-accent tokens the
+              shelter page's hero avatar and its notice wear, because it is the
+              same fact stated in the same place in the visual system: this
+              shelter shares its list with us.
+
+              A marker, not a link. The name's stretched ::after already covers
+              the card, so a second link here would have to lift itself out of
+              it with relative z-10 the way the contact rows do, and it would
+              point where the card already points. The paw rather than the
+              census line's shield: the pill's green is what says "shares its
+              data", so the glyph is free to say what the number counts. */}
+          {animals !== undefined && (
+            <p className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]">
+              <PawPrint className="size-3 shrink-0" aria-hidden />
+              {text.animals(animals)}
+            </p>
+          )}
+        </ItemMedia>
+
+        <ItemContent>
+          {/* No reserved second line here any more.
+
+              A sm:max-xl:min-h-[2lh] used to sit on this title, because in the
+              two-column band the longest names wrap and a two-line name pushed
+              its own contacts 22px below its neighbour's. Reserving a line made
+              the two present the same block. It held only while no name took
+              three, and a name long enough to take three is one row of
+              data/shelters.yaml away: the same measurement with a name that
+              wraps twice puts the phone rows 115px apart again, and nothing
+              says so.
+
+              The content track is the reservation now, and it is as tall as
+              the tallest title in the row whether that is one line or four.
+
+              The town stays with the name rather than with the track: where a
+              neighbour's name takes an extra line, the slack falls under the
+              pair and not between them. Lining the towns up too would want a
+              track of their own and would open a gap between a name and its
+              own town, which reads worse than a small line sitting a little
+              higher on one card than the next. */}
+          <ItemTitle asChild>
+            <h3>
+              <a
+                href={shelter.href}
+                data-card-link
+                className="underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-ui group-hover:underline"
+              >
+                {shelter.name}
+              </a>
+            </h3>
+          </ItemTitle>
+          <ItemDescription className="flex items-center gap-1">
+            <MapPin className="size-3 shrink-0" aria-hidden />
+            <span className="truncate">{shelter.city}</span>
+          </ItemDescription>
+        </ItemContent>
+
+        {/* The contacts sit in the row's third track, which is as tall as the
+            longest contact list in the row and starts at one y across it. The
+            slack a short list has left over falls to the bottom of the card,
+            where nothing is printed, rather than pushing its one row down to
+            sit level with a neighbour's last one. Item's subgrid layout is what
+            zeroes the mt-auto that would otherwise do exactly that.
+
+            What lines up is the position in the list, not the channel. The
+            three rows are always drawn in this order, so where two cards hold
+            the same channels a phone reads across from a phone; where one is
+            missing a channel the ones below it move up a row, and Zavetišče
+            Johanca, which holds only an email, prints it across from its
+            neighbours' phones. Fixing that would mean a track per channel and a
+            blank row printed on every card that lacks one, which is a hole in
+            the card to buy an alignment nobody reading one card can see.
+
+            The footer is drawn whether or not there is anything to put in it.
+            Every one of the seventeen shelters holds a phone, an email or a
+            site today, so the empty case is unreachable from data/shelters.yaml
+            as it stands; a card that skipped the slot would still have to span
+            the track, and a card that renders an empty one does that without
+            being asked to remember. */}
+        {shelter.phone || shelter.email || shelter.website ? (
+          <ItemFooter asChild>
+            <ul className="gap-0.5">
+              {shelter.phone && (
+                // The visible number is the label and the accessible name adds
+                // the channel in front of it, which is what WCAG 2.5.3 asks of
+                // a control whose label is visible.
+                //
+                // title repeats a value the card usually prints in full. It is
+                // there for the one that does not fit: a long address or host
+                // truncates to an ellipsis, and without a tooltip the whole
+                // value is left only in the aria-label, where a mouse cannot
+                // reach it.
+                <li>
+                  <a
+                    href={telHref(shelter.phone)}
+                    data-contact="phone"
+                    className={CONTACT_ROW}
+                    aria-label={`${text.phone}: ${shelter.phone}`}
+                    title={shelter.phone}
+                  >
+                    <Phone className="size-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{shelter.phone}</span>
+                  </a>
+                </li>
+              )}
+              {shelter.email && (
+                <li>
+                  <a
+                    href={mailtoHref(shelter.email)}
+                    data-contact="email"
+                    className={CONTACT_ROW}
+                    aria-label={`${text.email}: ${shelter.email}`}
+                    title={shelter.email}
+                  >
+                    <Mail className="size-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{shelter.email}</span>
+                  </a>
+                </li>
+              )}
+              {shelter.website && host !== undefined && (
+                <li>
+                  {/* The only link on the card that leaves the site, and
+                      target="_blank" is silent about it, so the accessible
+                      name says so. One host, computed once: the name and the
+                      visible text are the same string by construction, which
+                      is what the sentence above promises. */}
+                  <a
+                    href={shelter.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-contact="website"
+                    className={CONTACT_ROW}
+                    aria-label={`${text.website}: ${host} ${text.newWindow}`}
+                    title={host}
+                  >
+                    <Globe className="size-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{host}</span>
+                  </a>
+                </li>
+              )}
+            </ul>
+          </ItemFooter>
+        ) : (
+          <ItemFooter />
+        )}
+      </li>
+    </Item>
   );
 }

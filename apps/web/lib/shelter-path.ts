@@ -12,5 +12,15 @@ import type { Locale } from "@/lib/i18n";
  * external modules". lib/animal-path.ts is the same shape for the same reason.
  */
 export function shelterPath(id: string, locale: Locale): string {
-  return locale === "sl" ? `/zavetisca/${id}` : `/en/shelters/${id}`;
+  return `${sheltersIndexPath(locale)}/${id}`;
+}
+
+/** The shelters index itself, the other half of the same route pair. */
+export function sheltersIndexPath(locale: Locale): string {
+  return locale === "sl" ? "/zavetisca" : "/en/shelters";
+}
+
+/** The animals grid, which is the site's root in either language. */
+export function homePath(locale: Locale): string {
+  return locale === "sl" ? "/" : "/en";
 }

@@ -3,8 +3,10 @@ import { SheltersPage } from "@/components/shelters-page";
 
 export const metadata: Metadata = {
   title: "Shelters | Posvoji.si",
+  // Written for the search that lands here, which is "shelter" and a town
+  // name. See the Slovenian route for the reasoning; the two stay mirrors.
   description:
-    "A list of Slovenian animal shelters: which ones have a structured animal list here, and where to find contact details for the rest.",
+    "Slovenian animal shelters with their phone numbers, emails and websites in one place. Find a shelter by town, municipality or postcode.",
 };
 
 export default function Shelters() {

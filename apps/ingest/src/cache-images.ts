@@ -14,7 +14,10 @@ import type {
   PoliteBytesResponse,
 } from "@posvoji/provider-sdk";
 import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
+import { mapByHost } from "./by-host";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
+import { writeFileAtomic } from "./write-atomic";
+import { writeContentAddressed } from "./write-content-addressed";
 
 // Where the static site serves the files written to cachedImagesDir.
 const PUBLIC_PREFIX = "/media/animals";
@@ -133,7 +136,7 @@ function isCacheableImage(image: AnimalImage): boolean {
 // Whether a surface may draw this image at all, cached or hotlinked. Same rule
 // as permittedPhotos in apps/web/lib/animal-images.ts, which is what decides
 // which photo a card and a detail page actually lead with.
-function isDrawableImage(image: AnimalImage): boolean {
+export function isDrawableImage(image: AnimalImage): boolean {
   return isCacheableImage(image) || image.rights === "display-permitted";
 }
 
@@ -433,17 +436,40 @@ function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export function readImageCacheManifest(path: string): ImageCacheManifest {
-  if (!existsSync(path)) return { entries: {} };
+// "absent" is a first run and is fine. "unreadable" is a file that is there
+// and cannot be used, which is a different and much worse thing: the manifest
+// maps a source URL to a content-addressed file, and nothing on disk can
+// reconstruct that mapping.
+export type ManifestState = "absent" | "loaded" | "unreadable";
+
+export interface LoadedImageCacheManifest {
+  manifest: ImageCacheManifest;
+  state: ManifestState;
+}
+
+export function loadImageCacheManifest(
+  path: string,
+): LoadedImageCacheManifest {
+  if (!existsSync(path)) return { manifest: { entries: {} }, state: "absent" };
+  let why: string;
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (parsed && typeof parsed.entries === "object" && parsed.entries) {
-      return { entries: parsed.entries };
+      return { manifest: { entries: parsed.entries }, state: "loaded" };
     }
-  } catch {
-    // A broken manifest just means a full re-fetch.
+    why = "no entries object";
+  } catch (error) {
+    why = String(error);
   }
-  return { entries: {} };
+  console.warn(
+    `images: the cache manifest at ${path} is unreadable (${why}). Every ` +
+      `cached copy has lost its source URL and will be fetched again.`,
+  );
+  return { manifest: { entries: {} }, state: "unreadable" };
+}
+
+export function readImageCacheManifest(path: string): ImageCacheManifest {
+  return loadImageCacheManifest(path).manifest;
 }
 
 export interface CacheImagesResult {
@@ -466,6 +492,14 @@ export interface CacheImagesOptions {
   refreshProviderIds?: ReadonlySet<string>;
 }
 
+// What one URL's turn produced. An absent entry drops the URL from the
+// manifest; an absent counter means the turn was neither a fetch nor a reuse,
+// which is every carry-forward path.
+interface UrlOutcome {
+  entry?: CachedImageEntry;
+  counted?: "fetched" | "reused";
+}
+
 // The removal path is the sync itself: an image that is no longer referenced
 // by any cache-permitted animal — or whose source now answers 404/410 — has
 // its file deleted on the next run.
@@ -484,6 +518,24 @@ export async function cacheImages(
   const next: ImageCacheManifest = { entries: {} };
   mkdirSync(mediaDir, { recursive: true });
 
+  // A manifest that is gone or unreadable makes every entry look uncached, and
+  // the sweep at the end reads "not in the manifest" as "nobody wants it": on
+  // a scoped run that is every other provider's photos, on a full run every
+  // URL whose fetch failed this once. Files are cheap and a re-crawl of a
+  // thousand photos is not, so a run that starts with no manifest and a media
+  // directory full of files keeps the files and skips the sweep. The manifest
+  // fills back in as URLs are fetched, and the next run sweeps normally.
+  const startedWith = readdirSync(mediaDir);
+  const manifestLost =
+    Object.keys(previous.entries).length === 0 && startedWith.length > 0;
+  if (manifestLost) {
+    console.warn(
+      `images: no usable cache manifest at ${manifestPath} but ` +
+        `${startedWith.length} file(s) in ${mediaDir}. Keeping them and ` +
+        `skipping the deletion sweep for this run.`,
+    );
+  }
+
   // Scoped runs still walk every cache-permitted URL, because the deletion
   // sweep below reads next.entries as the full list of what is still wanted.
   // Out-of-scope URLs are carried over from the previous manifest instead of
@@ -499,26 +551,26 @@ export async function cacheImages(
           ),
         );
 
-  let fetched = 0;
-  let reused = 0;
-
-  for (const url of cacheableUrls(animals, imagePolicies)) {
+  // One URL's turn. Nothing here touches next.entries or the counters: the
+  // outcome is handed back and applied once every host has finished, so the
+  // manifest keeps the order cacheableUrls produced and the counters are
+  // summed in a single place instead of being incremented from several
+  // workers at once.
+  const cacheOne = async (url: string): Promise<UrlOutcome> => {
     const prev = previous.entries[url];
     const prevUsable =
       prev !== undefined && existsSync(join(mediaDir, prev.file));
+    // Keep what we have, cache nothing new. Reached by every failure path
+    // below, and none of them counts as a fetch or a reuse.
+    const keepPrevious: UrlOutcome = prevUsable ? { entry: prev } : {};
 
-    if (inScope && !inScope.has(url)) {
-      if (prevUsable) next.entries[url] = prev;
-      continue;
-    }
+    if (inScope && !inScope.has(url)) return keepPrevious;
 
     if (
       prevUsable &&
       Date.now() - Date.parse(prev.fetchedAt) < revalidateAfterMs
     ) {
-      next.entries[url] = prev;
-      reused++;
-      continue;
+      return { entry: prev, counted: "reused" };
     }
 
     let res: PoliteBytesResponse;
@@ -530,33 +582,28 @@ export async function cacheImages(
           : undefined,
       });
     } catch (error) {
-      // Network trouble or robots.txt: keep what we have, cache nothing new.
-      if (prevUsable) next.entries[url] = prev;
+      // Network trouble or robots.txt.
       console.warn(`image ${url}: fetch failed (${error})`);
-      continue;
+      return keepPrevious;
     }
 
     if (res.notModified && prevUsable) {
-      next.entries[url] = prev;
-      reused++;
-      continue;
+      return { entry: prev, counted: "reused" };
     }
 
     if (res.status === 404 || res.status === 410) {
       // The shelter removed the source photo; our copy goes with it.
-      continue;
+      return {};
     }
 
     if (res.status !== 200 || res.body === null) {
-      if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: HTTP ${res.status}, not cached`);
-      continue;
+      return keepPrevious;
     }
 
     if (res.body.length > MAX_SOURCE_BYTES) {
-      if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: ${res.body.length} bytes exceeds cap`);
-      continue;
+      return keepPrevious;
     }
 
     let processed;
@@ -565,23 +612,38 @@ export async function cacheImages(
         console.warn(`image ${url}: needed a tolerant decode (${error})`);
       });
     } catch (error) {
-      if (prevUsable) next.entries[url] = prev;
       console.warn(`image ${url}: not a processable image (${error})`);
-      continue;
+      return keepPrevious;
     }
 
-    const target = join(mediaDir, processed.file);
-    if (!existsSync(target)) writeFileSync(target, processed.data);
-    next.entries[url] = {
-      file: processed.file,
-      width: processed.width,
-      height: processed.height,
-      etag: headerValue(res.headers["etag"]),
-      lastModified: headerValue(res.headers["last-modified"]),
-      fetchedAt: new Date().toISOString(),
+    writeContentAddressed(join(mediaDir, processed.file), processed.data);
+    return {
+      counted: "fetched",
+      entry: {
+        file: processed.file,
+        width: processed.width,
+        height: processed.height,
+        etag: headerValue(res.headers["etag"]),
+        lastModified: headerValue(res.headers["last-modified"]),
+        fetchedAt: new Date().toISOString(),
+      },
     };
-    fetched++;
-  }
+  };
+
+  // Hosts run at the same time, each host's own photos one after the other.
+  const urls = cacheableUrls(animals, imagePolicies);
+  const outcomes = await mapByHost(urls, (url) => url, cacheOne);
+
+  let fetched = 0;
+  let reused = 0;
+  urls.forEach((url, index) => {
+    // cacheableUrls deduplicates, so every outcome carries its own key and no
+    // two of them can write the same entry.
+    const outcome = outcomes[index]!;
+    if (outcome.entry) next.entries[url] = outcome.entry;
+    if (outcome.counted === "fetched") fetched++;
+    else if (outcome.counted === "reused") reused++;
+  });
 
   // Thumbs, rungs, placeholders and the hero AVIF are all cut from our own
   // processed copies, without a single request.
@@ -606,13 +668,21 @@ export async function cacheImages(
     ]),
   );
   let deleted = 0;
-  for (const file of readdirSync(mediaDir)) {
-    if (referenced.has(file)) continue;
-    rmSync(join(mediaDir, file));
-    deleted++;
+  if (!manifestLost) {
+    for (const file of readdirSync(mediaDir)) {
+      if (referenced.has(file)) continue;
+      try {
+        rmSync(join(mediaDir, file));
+        deleted++;
+      } catch (error) {
+        // A file held open by another process, or a stray directory. Neither
+        // is worth losing the rest of the run over.
+        console.warn(`image ${file}: could not be deleted (${error})`);
+      }
+    }
   }
 
-  writeFileSync(manifestPath, JSON.stringify(next, null, 2));
+  writeFileAtomic(manifestPath, JSON.stringify(next, null, 2));
 
   return {
     animals: withCachedUrls(animals, next),

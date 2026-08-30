@@ -5,6 +5,7 @@ import {
   EMPHATIC_STAY_MONTHS,
   LONG_STAY_MONTHS,
   longStayMonths,
+  registerDateLabel,
   shelterChipLabel,
 } from "./labels";
 
@@ -73,6 +74,30 @@ describe("longStayMonths", () => {
         NOW,
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("registerDateLabel", () => {
+  // The string lands in "..., stanje {date}.", where Slovenian wants the
+  // genitive "23. februarja 2026". Intl has no genitive month and dateStyle
+  // "long" gave the nominative "23. februar 2026", so the sentence was
+  // ungrammatical on the index and on all seventeen shelter pages. A numeric
+  // date carries no case.
+  it("prints a Slovenian date the provenance line can hold", () => {
+    expect(registerDateLabel("2026-02-23", "sl")).toBe("23. 2. 2026");
+    expect(registerDateLabel("2026-02-23", "sl")).not.toContain("februar");
+  });
+
+  // English reads naturally in the long form after "as of", and it is the
+  // only other place this string appears.
+  it("keeps the English long form", () => {
+    expect(registerDateLabel("2026-02-23", "en")).toBe("23 February 2026");
+  });
+
+  // Read as UTC either way: a date-only string parses as UTC midnight, and
+  // reading it locally moves it into the previous day west of Greenwich.
+  it("prints an unparseable value as it was written", () => {
+    expect(registerDateLabel("kmalu", "sl")).toBe("kmalu");
   });
 });
 

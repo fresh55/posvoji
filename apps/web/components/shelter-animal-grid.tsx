@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { PawPrint } from "lucide-react";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
@@ -14,16 +13,23 @@ import type { ShelterLogos } from "@/lib/shelter-logos";
 // The cards, the grid and the dialog wiring are the home page's; the species
 // tabs, filter sidebar and clear-filters trail that come with AnimalGrid are
 // not what a shelter page asks for.
+//
+// No empty state. This grid used to draw a dashed panel saying no animals were
+// published yet, which only a registry shelter could ever reach, and that
+// shelter's page already says the same thing in the notice above: there is no
+// feed here, so call them. Two statements of one fact, and the panel's was the
+// wrong one, framing a shelter that has no list as one whose list is empty
+// this week. The caller renders the whole section only where there are animals
+// in it, so an empty grid is not a state this component has to hold.
 export function ShelterAnimalGrid({
   animals,
   logos,
-  emptyLabel,
   referenceDate,
   basePath,
 }: {
+  /** At least one. See the note above on why there is no empty state. */
   animals: ClientAnimal[];
   logos: ShelterLogos;
-  emptyLabel: string;
   /** When the dataset was built; ages are measured from it, not the clock. */
   referenceDate: string;
   /** This shelter's own page, where closing the dialog returns to. */
@@ -43,19 +49,6 @@ export function ShelterAnimalGrid({
   // The dialog steps through this shelter's animals in the order shown.
   const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
     useAnimalDialogHost({ animals, shown: sorted, basePath });
-
-  if (animals.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-ui border border-dashed py-16 text-center">
-        <PawPrint
-          className="size-8 text-muted-foreground/50"
-          strokeWidth={1.5}
-          aria-hidden
-        />
-        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-      </div>
-    );
-  }
 
   return (
     <>

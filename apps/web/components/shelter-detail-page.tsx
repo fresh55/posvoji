@@ -38,7 +38,6 @@ const pageText = {
   sl: {
     website: "Spletna stran",
     animalsTitle: "Živali iz tega zavetišča",
-    emptyAnimals: "Trenutno ni objavljenih živali iz tega zavetišča.",
     providerNotice:
       "To zavetišče podatke o živalih deli z izrecnim dovoljenjem. Vsaka žival je povezana na izvirno objavo pri zavetišču.",
     registryNotice:
@@ -60,7 +59,6 @@ const pageText = {
   en: {
     website: "Website",
     animalsTitle: "Animals from this shelter",
-    emptyAnimals: "No animals from this shelter are published yet.",
     providerNotice:
       "This shelter shares animal data with explicit permission. Every animal links back to its original listing at the shelter.",
     registryNotice:
@@ -381,12 +379,6 @@ export function ShelterDetailPage({
                 // same projection: see animalsForClient in lib/dataset.ts.
                 animals={animalsForClient(animals)}
                 logos={logos}
-                // The section above only renders with animals in hand, so the
-                // grid's own empty state cannot be reached from this page. The
-                // label is still passed because the grid keeps that state for
-                // its own sake, and a caller that lands there with no words is
-                // worse than one string nobody reads.
-                emptyLabel={text.emptyAnimals}
                 referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
                 basePath={`${indexHref}/${shelter.id}`}
               />

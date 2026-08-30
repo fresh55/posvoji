@@ -54,12 +54,18 @@ const REVALIDATE_AFTER_DAYS = 30;
 // question once per background rather than sorting the ink into "light" or
 // "dark" is what keeps the site from boxing a mark that was already legible,
 // or leaving one bare that was not.
-export interface ChipNeeds {
+export interface LogoSurface {
   chipOnLight: boolean;
   chipOnDark: boolean;
+  // Whether the file has no transparency at all, so the mark arrives with a
+  // background of its own. Most shelters export a transparent PNG or SVG and
+  // the card is their ground; a few send a JPEG, where the white or coloured
+  // rectangle behind the mark is part of the file and cannot be taken out
+  // without punching holes in the artwork that shares its colour.
+  opaque: boolean;
 }
 
-export interface CachedLogoEntry extends ChipNeeds {
+export interface CachedLogoEntry extends LogoSurface {
   // Content-addressed by the processed bytes, so a re-encode or a redesigned
   // logo gets a new name and the stale copy is swept.
   file: string;
@@ -248,7 +254,7 @@ function contrastRatio(a: number, b: number): number {
 // all was called dark and left bare on white, where none of it reached 3:1.
 // Both answers come out of the same count here, so neither can contradict the
 // other.
-export async function chipNeeds(image: Buffer): Promise<ChipNeeds> {
+export async function logoSurface(image: Buffer): Promise<LogoSurface> {
   const { data, info } = await sharp(image)
     .ensureAlpha()
     .raw()
@@ -257,8 +263,13 @@ export async function chipNeeds(image: Buffer): Promise<ChipNeeds> {
   let holdsOnLight = 0;
   let holdsOnDark = 0;
   let counted = 0;
+  let clear = 0;
   for (let i = 0; i < data.length; i += info.channels) {
     const alpha = info.channels === 4 ? (data[i + 3] ?? 0) : 255;
+    // Fully transparent is what makes a file's own rectangle not part of the
+    // mark. A hairline of anti-aliasing is not, so this asks for wholly clear
+    // pixels rather than merely not-opaque ones.
+    if (alpha === 0) clear++;
     if (alpha < 128) continue;
     const luminance =
       0.2126 * toLinear(data[i] ?? 0) +
@@ -273,12 +284,21 @@ export async function chipNeeds(image: Buffer): Promise<ChipNeeds> {
     counted++;
   }
 
+  // A file with no clear pixel anywhere brings its own ground. The card is
+  // not behind that mark, its own rectangle is, so a chip would only be a
+  // second background behind the first: the site rounds its corners instead
+  // and draws it as the plate it already is.
+  const opaque = clear === 0;
+
   // A logo with no opaque pixel at all is left bare on both: there is no ink
   // for a chip to rescue.
-  if (counted === 0) return { chipOnLight: false, chipOnDark: false };
+  if (counted === 0) {
+    return { chipOnLight: false, chipOnDark: false, opaque: false };
+  }
   return {
-    chipOnLight: holdsOnLight / counted < HOLDS_ON_LIGHT,
-    chipOnDark: holdsOnDark / counted < HOLDS_ON_DARK,
+    chipOnLight: !opaque && holdsOnLight / counted < HOLDS_ON_LIGHT,
+    chipOnDark: !opaque && holdsOnDark / counted < HOLDS_ON_DARK,
+    opaque,
   };
 }
 
@@ -339,7 +359,7 @@ async function rasterized(source: Buffer): Promise<Buffer> {
 // Logos are line art and flat colour with transparency, so they are fitted
 // inside a box rather than cropped, and the alpha channel is kept.
 export async function processLogo(source: Buffer): Promise<
-  ChipNeeds & {
+  LogoSurface & {
     file: string;
     data: Buffer;
     width: number;
@@ -364,7 +384,7 @@ export async function processLogo(source: Buffer): Promise<
     data,
     width: info.width,
     height: info.height,
-    ...(await chipNeeds(data)),
+    ...(await logoSurface(data)),
   };
 }
 
@@ -472,9 +492,10 @@ export async function cacheLogos(
           height: processed.height,
           chipOnLight: processed.chipOnLight,
           chipOnDark: processed.chipOnDark,
+          opaque: processed.opaque,
         };
       }
-      return { ...entry, ...(await chipNeeds(bytes)) };
+      return { ...entry, ...(await logoSurface(bytes)) };
     } catch {
       return entry;
     }
@@ -592,6 +613,7 @@ export async function cacheLogos(
         height: processed.height,
         chipOnLight: processed.chipOnLight,
         chipOnDark: processed.chipOnDark,
+        opaque: processed.opaque,
         sourceUrl,
         etag: headerValue(res.headers["etag"]),
         lastModified: headerValue(res.headers["last-modified"]),

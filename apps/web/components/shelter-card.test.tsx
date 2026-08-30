@@ -148,6 +148,7 @@ describe("the shelter card", () => {
             url: "/media/shelter-logos/abc.webp",
             chipOnLight: false,
             chipOnDark: true,
+            opaque: false,
             width: 300,
             height: 100,
           },
@@ -175,6 +176,7 @@ describe("the shelter card", () => {
               url: "/media/shelter-logos/a.webp",
               chipOnLight: false,
               chipOnDark: true,
+              opaque: false,
               ...logo,
             },
           })}

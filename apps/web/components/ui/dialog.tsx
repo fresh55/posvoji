@@ -78,7 +78,12 @@ function DialogContent({
         // comment on DialogOverlay above for why the animate-none guard does
         // not actually take effect on a data-open:/data-closed: element.
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-ui border bg-popover bg-clip-padding p-5 text-sm text-popover-foreground shadow-lg duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 motion-reduce:duration-0",
+          // The margin is --gutter on each side, the same token the page
+          // padding uses. The dialog is centred, so a per-side inset would
+          // split across both edges and still leave the near edge under a
+          // notch; --gutter already takes the larger of the floor and either
+          // inset, which is what a centred box needs.
+          "fixed top-1/2 left-1/2 z-50 flex max-h-[92dvh] w-[calc(100vw-2*var(--gutter))] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-ui border bg-popover bg-clip-padding p-5 text-sm text-popover-foreground shadow-lg duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 motion-reduce:duration-0",
           className
         )}
         {...props}

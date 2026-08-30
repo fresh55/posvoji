@@ -39,6 +39,16 @@ import type {
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 
+// The dock's two children are not equal: the Filtri button needs its own text
+// and badge and nothing more, so it takes an auto column and the location
+// control takes the rest. Giving both flex-1 handed the button half the plate
+// and truncated the town name beside it. only:col-span-2 keeps a lone child on
+// the whole plate. The edges follow env(safe-area-inset-*) with the 0px
+// fallbacks globals.css documents, so the plate clears a notch or a curved
+// corner instead of running under it.
+const DOCK_CLASS =
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
+
 // Desktop has enough room for one quiet toolbar. Mobile keeps the species
 // tabs, the result count and sort in the sticky rail while the two primary
 // discovery actions share a bottom dock that spans the viewport.
@@ -116,7 +126,12 @@ export function AnimalFilters({
     toggles.length > 0 ||
     (goodWith?.options.length ?? 0) > 0 ||
     (home?.options.length ?? 0) > 0 ||
-    (care?.options.length ?? 0) > 0;
+    (care?.options.length ?? 0) > 0 ||
+    // Sort lives inside this sheet too (filter-sheet.tsx), and a homogeneous
+    // multi-animal result set has nothing left to filter but still has an
+    // order to pick, so the sheet must not vanish just because every facet
+    // count is flat.
+    resultCount > 1;
   // Values, not sections. The chips row counts the same things and sits on the
   // same screen; a badge reading 1 over a row of two pills was two answers to
   // one question.
@@ -331,15 +346,7 @@ export function AnimalFilters({
       <BackToTop />
 
       {(hasFilterSheet || shelters) && (
-        <div
-          data-slot="mobile-filter-dock"
-          // border + shadow-lg, and no ring. This plate carried a border, a
-          // ring and a shadow at once, which is three edge treatments on one
-          // object and the heaviest recipe on a screen whose cards make do
-          // with border + shadow-xs. The ring was the one saying nothing the
-          // border was not already saying.
-          className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg lg:hidden [&>*]:min-w-0 [&>*]:flex-1"
-        >
+        <div data-slot="mobile-filter-dock" className={DOCK_CLASS}>
           {hasFilterSheet && (
             <FilterSheet
               sort={sort}

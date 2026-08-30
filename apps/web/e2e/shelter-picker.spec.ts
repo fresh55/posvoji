@@ -39,6 +39,25 @@ function offGroupTrigger(dialog: Locator): Locator {
   });
 }
 
+// The off-roster group itself, named by whichever shape its heading is drawn
+// in: a fold trigger while there is something to fold, a plain paragraph when
+// the group holds the only match. ShelterRows carries role="group" and
+// aria-labelledby pointing at that heading, so this is the same element in
+// both states and it asserts the tie between the heading and the rows under
+// it rather than the presence of a sentence.
+//
+// Not getByText on the heading's own words. The map draws the same sentence
+// in a marker's callout for a shelter with nothing listed, so filtering down
+// to one such shelter and letting the pointer land on its row puts that copy
+// on screen twice and the text locator resolves to two elements. That is what
+// it did: strict mode violation, intermittently, depending on where the mouse
+// came to rest after the list relaid out.
+function offGroup(dialog: Locator): Locator {
+  return dialog.getByRole("group", {
+    name: /Trenutno brez objavljenih živali/,
+  });
+}
+
 test.describe("desktop", () => {
   test("names itself for a screen reader", async ({ page }) => {
     await page.goto("/");
@@ -217,9 +236,7 @@ test.describe("desktop", () => {
     await expect(rows(dialog)).toHaveCount(0);
     expect(await offRows(dialog).count()).toBeGreaterThan(0);
     await expect(offGroupTrigger(dialog)).toHaveCount(0);
-    await expect(
-      dialog.getByText(/Trenutno brez objavljenih živali/),
-    ).toBeVisible();
+    await expect(offGroup(dialog)).toBeVisible();
   });
 });
 

@@ -89,7 +89,7 @@ function declarations(element: Element, name: string): Map<string, string> {
  *  footer, which is everything that has to be reachable. */
 function column(): HTMLElement {
   return screen
-    .getByLabelText("Išči zavetišče po imenu…")
+    .getByLabelText("Kraj, pošta ali zavetišče")
     .closest<HTMLElement>("[data-picker-panel] > div")!;
 }
 
@@ -127,11 +127,20 @@ describe("LocationPicker sheet on a short viewport", () => {
       ([variant]) => variant.includes("short:"),
     )!;
 
-    // The ordinary ceiling reserves 9rem of stage for the caption. On a
-    // viewport short enough that the ceiling is the only term that can win,
-    // and wide enough that the caption's own rows stop wrapping, the reserve
-    // is 6rem and the sheet keeps the difference.
-    expect(reserves.get("")).toBe("9rem");
+    // The ordinary reserve is what a whole plate needs at this dialog's width
+    // plus what the caption under it costs, capped at half the stage so the
+    // map cannot bid for a screen the list also has to live on. It used to be
+    // a flat 9rem, which paid for the caption alone and left the plate 69px
+    // on a 320x568 screen.
+    expect(reserves.get("")).toBe("min(calc(var(--plate-h)_+_4rem),50%)");
+    expect(declarations(ground(), "--plate-h").get("")).toBe(
+      "calc(0.65625*var(--picker-w))",
+    );
+
+    // On a viewport short and wide enough that no split is worth having, the
+    // reserve is a flat 6rem: there the sheet lands folded and the map has
+    // the stage, so this is only what a visitor who raises the sheet anyway
+    // is charged, which is the caption and nothing else.
     expect(shortReserve).toBe("6rem");
     // Only where the sheet is the dock. From lg up the panel is a card at the
     // side of the stage with a height of its own, and a shorter reserve there
@@ -168,6 +177,20 @@ describe("LocationPicker sheet on a short viewport", () => {
     const pill = screen.getByRole("button", { name: "Pokaži 11 živali" });
     expect(column().contains(pill)).toBe(true);
     expect(column().querySelector("[data-shelter-row='jug']")).not.toBeNull();
+
+    // And the way out is pinned to the foot of that scroll rather than
+    // riding it. The column only scrolls once the chrome above has taken
+    // more than the sheet can seat, and at 320x568 it takes about 25px more:
+    // in flow that put the pill half under the sheet's bottom edge the
+    // moment the picker opened, so the way out had to be scrolled to before
+    // it could be read. Sticky keeps it where it already was in the DOM and
+    // in the order, and does nothing at all on a viewport with room for the
+    // whole column.
+    const footer = pill.parentElement!;
+    expect(footer.className).toContain("sticky");
+    expect(footer.className).toContain("bottom-0");
+    // Rows scroll under it, so it carries an opaque ground of its own.
+    expect(footer.className).toContain("bg-background");
 
     // What must not move: the peek bar folds the sheet and the tab row
     // switches the question, and neither is any use scrolled off the top of

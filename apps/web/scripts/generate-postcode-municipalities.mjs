@@ -13,6 +13,7 @@
 // "Dobrova - Polhov Gradec"), and an unmatchable name fails the run instead of
 // producing a table that silently misses a municipality.
 import { readFileSync, writeFileSync } from "node:fs";
+import { readRemoteJson } from "./remote-source.mjs";
 
 const PT_SRC =
   process.argv[2] ??
@@ -27,12 +28,7 @@ const OUT =
 // Target sample points inside a district. Enough that a municipality holding a
 // tenth of a district still lands several points.
 const TARGET_SAMPLES = 240;
-
-async function getJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`fetch ${url} failed: ${res.status}`);
-  return res.json();
-}
+const MAX_GEOJSON_BYTES = 64 * 1024 * 1024;
 
 /** Every ring of a Polygon or MultiPolygon, outer rings and holes alike. */
 function ringsOf(geometry) {
@@ -121,7 +117,18 @@ if (canonical.size !== 212) {
   throw new Error(`expected 212 municipalities in yaml, got ${canonical.size}`);
 }
 
-const [ptData, obData] = await Promise.all([getJson(PT_SRC), getJson(OB_SRC)]);
+const [ptData, obData] = await Promise.all([
+  readRemoteJson(PT_SRC, {
+    accept: "application/geo+json,application/json",
+    maxBytes: MAX_GEOJSON_BYTES,
+    label: "GURS postal districts",
+  }),
+  readRemoteJson(OB_SRC, {
+    accept: "application/geo+json,application/json",
+    maxBytes: MAX_GEOJSON_BYTES,
+    label: "GURS municipalities",
+  }),
+]);
 
 const unmatched = obData.features
   .map((feature) => feature.properties.OB_UIME)

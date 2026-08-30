@@ -52,7 +52,7 @@ def export_overrides(request):
         }
         if baseline:
             entry["baseline"] = baseline
-        if override.baseline_at is not None:
-            entry["recordedAt"] = iso_utc(override.baseline_at)
+            if override.baseline_at is not None:
+                entry["recordedAt"] = iso_utc(override.baseline_at)
         overrides.append(entry)
     return {"generatedAt": iso_utc(datetime.now(UTC)), "overrides": overrides}

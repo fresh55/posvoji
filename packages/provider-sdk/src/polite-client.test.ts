@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PoliteClientOptions } from "./polite-client";
 import {
   PoliteClient,
+  ResponseBodyTooLargeError,
   computeBackoffMs,
   parseRetryAfter,
 } from "./polite-client";
@@ -112,15 +113,70 @@ describe("PoliteClient", () => {
           path: "/cat.jpg",
           headers: { "if-none-match": '"v1"' },
         })
-        .reply(304, "");
+        // A 304 may advertise the size of the selected representation even
+        // though it has no response body. That header must not trip the cap.
+        .reply(304, "", { headers: { "content-length": "999" } });
 
       const res = await client().getBytes(`${ORIGIN}/cat.jpg`, {
         validators: { etag: '"v1"' },
+        maxBytes: 1,
       });
 
       expect(res.notModified).toBe(true);
       expect(res.body).toBeNull();
     });
+
+    it("accepts a body exactly at the caller's byte limit", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool.intercept({ path: "/cat.jpg" }).reply(200, "12345", {
+        headers: { "content-length": "5" },
+      });
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`, {
+        maxBytes: 5,
+      });
+
+      expect(res.body?.toString("utf8")).toBe("12345");
+    });
+
+    it("rejects an oversized Content-Length without retrying", async () => {
+      let requests = 0;
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(
+          200,
+          () => {
+            requests += 1;
+            return "123456";
+          },
+          { headers: { "content-length": "6" } },
+        )
+        .persist();
+
+      const result = client({ maxRetries: 1 }).getBytes(
+        `${ORIGIN}/cat.jpg`,
+        { maxBytes: 5 },
+      );
+
+      await expect(result).rejects.toMatchObject({
+        name: "ResponseBodyTooLargeError",
+        url: `${ORIGIN}/cat.jpg`,
+        maxBytes: 5,
+      });
+      expect(requests).toBe(1);
+    });
+
+    it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+      "rejects invalid maxBytes %s before making a request",
+      async (maxBytes) => {
+        await expect(
+          client().getBytes(`${ORIGIN}/cat.jpg`, { maxBytes }),
+        ).rejects.toThrow("maxBytes must be a positive safe integer");
+      },
+    );
 
     it("never revalidates on its own after seeing an ETag", async () => {
       const seen: Array<Record<string, string>> = [];
@@ -257,6 +313,36 @@ describe("PoliteClient", () => {
   });
 
   describe("robots.txt handling", () => {
+    it("uses and caches the first 512 KiB of an oversized robots.txt", async () => {
+      let requests = 0;
+      const header = "User-agent: *\n";
+      const rule = "Disallow: /private/\n";
+      const padding = "#".repeat(512 * 1024 - header.length - rule.length - 1);
+      const robots = `${header}${padding}\n${rule}Allow: /private/\n`;
+      const pool = agent.get(ORIGIN);
+      pool
+        .intercept({ path: "/robots.txt" })
+        .reply(
+          200,
+          () => {
+            requests += 1;
+            return robots;
+          },
+          { headers: { "content-length": String(robots.length) } },
+        )
+        .persist();
+      pool.intercept({ path: "/public/cat.jpg" }).reply(200, "cat");
+
+      const c = client({ maxRetries: 1 });
+      await expect(
+        c.getBytes(`${ORIGIN}/private/cat.jpg`),
+      ).rejects.toThrow(/robots\.txt disallows/);
+      const allowed = await c.getBytes(`${ORIGIN}/public/cat.jpg`);
+
+      expect(allowed.body?.toString("utf8")).toBe("cat");
+      expect(requests).toBe(1);
+    });
+
     it("follows a redirected robots.txt", async () => {
       const pool = agent.get(ORIGIN);
       pool
@@ -461,6 +547,56 @@ describe("PoliteClient", () => {
 // The mock agent cannot cut a connection halfway through a body, so this one
 // talks to a real socket. It costs one backoff (2s) on purpose.
 describe("PoliteClient body reads", () => {
+  it("aborts an oversized chunked body without retrying", async () => {
+    let hits = 0;
+    let chunksSent = 0;
+    let firstResponseClosed!: () => void;
+    const responseClosed = new Promise<void>((resolve) => {
+      firstResponseClosed = resolve;
+    });
+    const server = createServer((req, res) => {
+      if (req.url === "/robots.txt") {
+        res.writeHead(200, { "content-type": "text/plain" });
+        res.end("");
+        return;
+      }
+
+      hits += 1;
+      res.writeHead(200, { "content-type": "application/octet-stream" });
+      const timer = setInterval(() => {
+        chunksSent += 1;
+        res.write("1234");
+        if (chunksSent === 50) res.end();
+      }, 5);
+      res.on("close", () => {
+        clearInterval(timer);
+        firstResponseClosed();
+      });
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const { port } = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/stream`;
+
+    try {
+      await expect(
+        new PoliteClient({
+          userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
+          minDelayMs: 0,
+          maxRetries: 1,
+        }).getBytes(url, { maxBytes: 5 }),
+      ).rejects.toBeInstanceOf(ResponseBodyTooLargeError);
+      await responseClosed;
+
+      expect(hits).toBe(1);
+      expect(chunksSent).toBeLessThan(50);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+  });
+
   it("retries a download that dies mid-body", async () => {
     let hits = 0;
     const server = createServer((req, res) => {

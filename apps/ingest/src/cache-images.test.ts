@@ -1,5 +1,6 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -397,6 +398,10 @@ describe("cacheImages", () => {
     );
     await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
 
+    const stale = JSON.parse(readFileSync(manifestPath, "utf8"));
+    stale.entries[url].fetchedAt = "2000-01-01T00:00:00.000Z";
+    writeFileSync(manifestPath, JSON.stringify(stale));
+
     const second = new StubClient(
       new Map([[url, { status: 304, body: null, notModified: true }]]),
     );
@@ -410,6 +415,15 @@ describe("cacheImages", () => {
     expect(result.reused).toBe(1);
     expect(result.animals[0]!.images[0]!.cachedUrl).toBeDefined();
     expect(readdirSync(mediaDir)).toHaveLength(HERO_FILES);
+
+    const refreshed = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(Date.parse(refreshed.entries[url].fetchedAt)).toBeGreaterThan(
+      Date.parse("2000-01-01T00:00:00.000Z"),
+    );
+
+    const third = new StubClient(new Map());
+    await cacheImages(animals(), third, CACHE_ONLY, { mediaDir, manifestPath });
+    expect(third.calls).toHaveLength(0);
   });
 
   it("reuses a fresh copy without touching the network", async () => {
@@ -945,6 +959,25 @@ describe("cacheImages", () => {
 
     expect(result.deleted).toBe(0);
     expect(warn.mock.calls.map(String).join(" ")).toMatch(/unreadable/);
+    warn.mockRestore();
+  });
+
+  it("keeps an orphan beside a valid empty manifest", async () => {
+    mkdirSync(mediaDir, { recursive: true });
+    writeFileSync(join(mediaDir, "orphan.webp"), "stale");
+    writeFileSync(manifestPath, JSON.stringify({ entries: {} }));
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheImages([], new StubClient(new Map()), CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    expect(result.deleted).toBe(0);
+    expect(readdirSync(mediaDir)).toEqual(["orphan.webp"]);
+    expect(warn.mock.calls.map(String).join(" ")).toMatch(
+      /skipping the deletion sweep/,
+    );
     warn.mockRestore();
   });
 

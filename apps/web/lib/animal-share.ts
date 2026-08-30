@@ -6,7 +6,13 @@ import type { Animal } from "@posvoji/schema";
 import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { ageLabel, animalMeta, speciesLabel, statusLabel } from "@/lib/labels";
+import {
+  ageLabel,
+  META_SEPARATOR,
+  sexLabel,
+  speciesLabel,
+  statusLabel,
+} from "@/lib/labels";
 
 
 export { SITE_URL } from "@/lib/site";
@@ -88,8 +94,24 @@ export function animalDescription(
   reference: Date,
 ): string {
   const t = text[locale];
-  const facts = animalMeta(animal, locale, reference);
-  const head = animal.name ? `${animal.name} · ${facts}.` : `${facts}.`;
+  // Composed here, not borrowed from the card's meta line: that line is cut to
+  // a card's width, and a sentence in a link preview is not. Sharing one
+  // builder let a phone's width decide what a shared link says about an animal.
+  const months = ageInMonths(animal, reference);
+  const facts = [
+    speciesLabel(animal.species, locale),
+    // sexLabel hands back the filter option's capitalised label, and a middot
+    // list of lowercase attributes wants it lowercase.
+    animal.sex && animal.sex !== "unknown"
+      ? sexLabel(animal.sex, locale).toLocaleLowerCase(locale)
+      : undefined,
+    months !== undefined ? ageLabel(months, locale) : undefined,
+  ]
+    .filter(Boolean)
+    .join(META_SEPARATOR);
+  const head = animal.name
+    ? `${animal.name}${META_SEPARATOR}${facts}.`
+    : `${facts}.`;
   const status = statusLabel(animal.status, locale);
   // Available is the norm and says nothing worth a sentence; an unknown
   // status has no wording at all. Both leave the shelter line standing.
@@ -112,7 +134,7 @@ export function animalTitle(
     months === undefined ? undefined : ageLabel(months, locale),
     animal.shelter.name,
   ].filter((part): part is string => Boolean(part));
-  return parts.join(" · ");
+  return parts.join(META_SEPARATOR);
 }
 
 /**

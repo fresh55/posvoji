@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  animalMeta,
+  animalMetaParts,
   LONG_STAY_MONTHS,
+  META_SEPARATOR,
   longStayMonths,
   registerDateLabel,
   shelterChipLabel,
@@ -29,20 +30,40 @@ function animal(extra: Partial<Animal> = {}): Animal {
   };
 }
 
-describe("animalMeta on the species tabs", () => {
+describe("the card's meta line on the species tabs", () => {
+  // The joined form, which is what a reader checks these against. The card
+  // itself renders the parts so it can dim the separators.
+  const meta = (
+    subject: Animal,
+    locale: Parameters<typeof animalMetaParts>[1],
+    species: Parameters<typeof animalMetaParts>[3],
+  ) => animalMetaParts(subject, locale, NOW, species).join(META_SEPARATOR);
+
+  // Every fixture here carries a sex, which is what makes these exact strings
+  // prove the line leaves it out: two facts is all the card's width buys.
   const rabbit = animal({ sex: "female", approximateAgeMonths: 24 });
 
   it("drops the species word only on a tab that names one species", () => {
-    expect(animalMeta(rabbit, "sl", NOW, "all")).toBe(
-      "Zajček · samica · 2 leti",
-    );
+    expect(meta(rabbit, "sl", "all")).toBe("Zajček · 2 leti");
     // The merged Ostale tab holds rabbits and whatever else, so the line
     // still has to say which animal this is.
-    expect(animalMeta(rabbit, "sl", NOW, "other")).toBe(
-      "Zajček · samica · 2 leti",
-    );
-    const cat = animal({ species: "cat", sex: "female", approximateAgeMonths: 24 });
-    expect(animalMeta(cat, "sl", NOW, "cat")).toBe("samica · 2 leti");
+    expect(meta(rabbit, "sl", "other")).toBe("Zajček · 2 leti");
+    const cat = animal({
+      species: "cat",
+      sex: "female",
+      approximateAgeMonths: 24,
+      size: "medium",
+    });
+    expect(meta(cat, "sl", "cat")).toBe("2 leti · srednja");
+  });
+
+  it("names the species and the age in English too", () => {
+    const dog = animal({
+      species: "dog",
+      sex: "male",
+      approximateAgeMonths: 36,
+    });
+    expect(meta(dog, "en", "all")).toBe("Dog · 3 years");
   });
 });
 

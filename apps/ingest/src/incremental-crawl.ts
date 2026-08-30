@@ -301,6 +301,48 @@ function refuseExcluded(ref: SourceAnimalRef, policy: ProviderPolicy): void {
   );
 }
 
+// An adapter owns exactly the provider and source reference being crawled.
+// Animal.parse checks the public shape, but it cannot know that relationship:
+// without this guard a faulty adapter can emit another shelter's providerId
+// and receive that shelter's policy and portal overrides downstream.
+function assertNormalizedIdentity(
+  animal: Animal,
+  policy: ProviderPolicy,
+  ref: SourceAnimalRef,
+): void {
+  const mismatches: string[] = [];
+  if (animal.source.providerId !== policy.providerId) {
+    mismatches.push(
+      `source.providerId ${JSON.stringify(animal.source.providerId)} does not ` +
+        `match policy providerId ${JSON.stringify(policy.providerId)}`,
+    );
+  }
+  if (animal.shelter.id !== policy.providerId) {
+    mismatches.push(
+      `shelter.id ${JSON.stringify(animal.shelter.id)} does not match policy ` +
+        `providerId ${JSON.stringify(policy.providerId)}`,
+    );
+  }
+  if (animal.source.sourceAnimalId !== ref.sourceAnimalId) {
+    mismatches.push(
+      `source.sourceAnimalId ${JSON.stringify(animal.source.sourceAnimalId)} ` +
+        `does not match discovered id ${JSON.stringify(ref.sourceAnimalId)}`,
+    );
+  }
+  if (animal.source.sourceUrl !== ref.sourceUrl) {
+    mismatches.push(
+      `source.sourceUrl ${JSON.stringify(animal.source.sourceUrl)} does not ` +
+        `match discovered URL ${JSON.stringify(ref.sourceUrl)}`,
+    );
+  }
+  if (mismatches.length > 0) {
+    throw new Error(
+      `${policy.providerId}: normalized animal ${JSON.stringify(animal.id)} ` +
+        `has mismatched identity: ${mismatches.join("; ")}`,
+    );
+  }
+}
+
 export async function crawlProviderIncrementally(
   provider: AdoptionProvider,
   ctx: ProviderContext,
@@ -331,7 +373,9 @@ export async function crawlProviderIncrementally(
       continue;
     }
     const raw = await provider.fetch(ctx, ref);
-    animals.push(Animal.parse(await provider.normalize(ctx, raw)));
+    const animal = Animal.parse(await provider.normalize(ctx, raw));
+    assertNormalizedIdentity(animal, ctx.policy, ref);
+    animals.push(animal);
     fetched++;
   }
 

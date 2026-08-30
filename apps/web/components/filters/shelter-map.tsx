@@ -1,18 +1,16 @@
 "use client";
 
 import {
-  memo,
   useCallback,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import {
-  cityAt,
   distanceKm,
   formatKm,
   MAP_HEIGHT,
@@ -21,14 +19,9 @@ import {
   project,
   type LatLon,
 } from "@/lib/geo";
-import { useI18n } from "@/components/i18n-provider";
 import {
-  DENSITY_STEPS,
   groupTownsByRegion,
   layoutTowns,
-  mapStateName,
-  type MapStateName,
-  MAX_CLUSTER_DISCS,
   regionStatsByRegion,
   townCount,
   townIsLive,
@@ -38,134 +31,41 @@ import {
   type ShelterPin,
   type Town,
 } from "@/lib/map-layout";
-import {
-  linesPath,
-  OUTLINE_PATH,
-  REGION_PATHS,
-  ringsPath,
-  type RegionShape,
-} from "@/lib/map-regions";
-import {
-  COASTLINE,
-  NEIGHBOR_SHAPES,
-  RIVERS,
-  SLOVENIA_UNDERLAY,
-} from "@/lib/neighbor-shapes";
-import { animalCount, shelterCount } from "@/lib/labels";
+import { animalCount, regionCommitNote, shelterCount } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 import {
   type CalloutRect,
-  calloutType,
   DEFAULT_PLATE_SCALE,
   MapCallout,
   Origin,
-  ORIGIN_DASH,
-  ORIGIN_REACH,
 } from "./map-callout";
 import {
-  commitKey,
-  MAP_MORPH,
-  Marker,
-  PLATE_MIN_SCALE,
-  PLATE_TOO_SMALL,
-} from "./map-marker";
+  COUNTRY_OUTLINE,
+  ContextFade,
+  GeographicContext,
+  MixedHatch,
+} from "./shelter-map-geography";
+import { PlateFurniture } from "./shelter-map-furniture";
+import {
+  Connector,
+  OriginDistance,
+  SPOTLIGHT_RING,
+} from "./shelter-map-links";
+import {
+  coveredByLine,
+  Region,
+  regionDensityFocus,
+} from "./shelter-map-region";
+import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
+import { commitKey, Marker, PLATE_MIN_SCALE } from "./map-marker";
+import { mapFacts, type MapFacts } from "./shelter-map-facts";
 
 export type { ShelterPin } from "@/lib/map-layout";
-
-/** What was clicked, alongside the values the click toggles. The toggle needs
- *  only the values; the panel needs to know what the visitor aimed at, so it
- *  can answer with a card about that shelter or about that group.
- *
- *  A cluster disc and a lone marker both answer for one shelter. A region, and
- *  an overflow marker that gave up on one disc per shelter, both answer for a
- *  named set of them. */
-export type MapPick =
-  | { kind: "shelter"; value: string }
-  | { kind: "group"; label: string; values: string[] };
-
-// Whether this town draws the hollow "nothing listed" circle anywhere on it.
-// Read off townIsLive, which is what the marker itself decides from, so the
-// legend row appears exactly when the circles do.
-function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
-  // Past MAX_CLUSTER_DISCS the marker gives up on one disc per shelter and
-  // says the number instead, and a count disc is never hollow.
-  if (town.shelters.length > MAX_CLUSTER_DISCS) return false;
-  const live = townIsLive(town, selected);
-  // A single marker carries the town's own answer. It cannot be selected
-  // while it is not live, so liveness settles it alone.
-  if (town.shelters.length === 1) return !live;
-  // In a cluster each disc answers for its own shelter, and an off-site one
-  // stays hollow even in a town that has animals.
-  return town.shelters.some(
-    (shelter) =>
-      !selected.includes(shelter.value) &&
-      !(live && shelter.selectable !== false),
-  );
-}
-
-/** What one look at the laid-out country says, for the panel and its legend.
- *
- *  Each is a state the legend grows a row for, and each row waits for the
- *  thing it explains to exist: the solid selection green the moment a region
- *  is picked whole, the hatch the moment one is partly picked, the hollow
- *  circle the moment a shelter with nothing listed is drawn.
- *
- *  One helper and one pass, because laying the towns out and walking each one
- *  through a point-in-polygon lookup is the expensive part and every answer
- *  comes off it. All three share that layout and those stats with the map
- *  itself, so a legend row cannot claim a state the country is not in: a
- *  second definition of what "in a region" means is what would let the map and
- *  its own legend disagree.
- *
- *  hasEmpty is about markers, which are md+ only; the legend decides for
- *  itself at which widths its own rendering acts on it. */
-export function mapFacts(
-  pins: ShelterPin[],
-  selected: string[],
-): {
-  hasSelected: boolean;
-  hasMixed: boolean;
-  hasEmpty: boolean;
-} {
-  const towns = layoutTowns(pins);
-  const { byRegion } = groupTownsByRegion(towns);
-  const regions = regionStatsByRegion(byRegion, selected);
-  return {
-    hasSelected: regions.some(
-      ({ stats }) => stats.live && stats.state === true,
-    ),
-    hasMixed: regions.some(
-      ({ stats }) => stats.live && stats.state === "mixed",
-    ),
-    hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected)),
-  };
-}
-
-/** What an empty region says under "no shelters here": who answers for the
- *  municipalities inside it. Undefined when the coverage table holds nothing
- *  for that region, which leaves the annotation exactly as it was.
- *
- *  Named once because two places have to say it and must not drift: the
- *  annotation a pointer raises, and the region's own aria-label, which is the
- *  only way a screen reader ever gets at a hover. */
-function coveredByLine(
-  names: string[] | undefined,
-  t: ReturnType<typeof useI18n>["t"],
-): string | undefined {
-  if (!names?.length) return undefined;
-  // The verb agrees with how many shelters are named, and Slovenian counts a
-  // dual, so the sentence is picked here rather than interpolated into one
-  // form that would be wrong for two thirds of the cases.
-  const key =
-    names.length === 1
-      ? "regionCoveredBy"
-      : names.length === 2
-        ? "regionCoveredByTwo"
-        : "regionCoveredByMany";
-  // The same middot the map's other metadata pairs are joined by.
-  return t(key, { shelters: names.join(" · ") });
-}
+export type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
+export { mapFacts };
+export type { MapFacts };
+export { Region };
 
 /** How long a pointer has to rest on a region before the plate names it.
  *
@@ -193,6 +93,25 @@ function coveredByLine(
  *  could drift from it. */
 export const REGION_DWELL_MS = 200;
 
+/** How long a mark a coarse tap has named stays armed before the arming is
+ *  withdrawn.
+ *
+ *  A tap on a pointer with no hover stands in for a hover, and a hover ends
+ *  when the pointer leaves. A finger has no leave to give, so without this the
+ *  arming outlives the question: a region named, the phone put down, the list
+ *  read, and a stray tap on the same shape much later commits a dozen shelters
+ *  the visitor had stopped thinking about.
+ *
+ *  Six seconds is long enough to read what the tap put on the plate, which is
+ *  a name, a shelter count and an animal count, and short enough that the next
+ *  tap is a fresh question rather than the second half of a forgotten one. The
+ *  annotation goes with the arming, so nothing is left on screen implying a
+ *  press is still half made.
+ *
+ *  Exported so a test advances by exactly this rather than by a number that
+ *  could drift from it. */
+export const ARMED_TTL_MS = 6000;
+
 /** Whether this pointer can look at a mark without pressing it.
  *
  *  Everything the plate says about a region before it is picked, it says to a
@@ -212,8 +131,8 @@ export const REGION_DWELL_MS = 200;
  *  Exported so a test asks the same question the plate asks. */
 export const NO_HOVER = "(hover: none)";
 
-// Regions carry the narrow-screen controls; town markers add pointer precision
-// and their own keyboard roving from md up, where they are drawn at all.
+// Regions carry the controls on every plate; town markers add pointer precision
+// and their own keyboard roving once the measured plate can draw them clearly.
 export function ShelterMap({
   pins,
   selected,
@@ -230,6 +149,8 @@ export function ShelterMap({
   summaries,
   regionShelterNames,
   describedElsewhere,
+  onMarkersVisible,
+  onFacts,
 }: {
   pins: ShelterPin[];
   selected: string[];
@@ -288,6 +209,18 @@ export function ShelterMap({
    *  same facts on screen twice at once, a few hundred pixels apart. The name
    *  stays, because a mark under the pointer still has to say what it is. */
   describedElsewhere?: string | null;
+  /** Fired with whether the plate is currently drawing its markers, so
+   *  anything outside the map that talks about them can follow the same
+   *  answer. The panel's instruction line and its legend both used to decide
+   *  from a viewport breakpoint while this decided from the measured plate,
+   *  and the two disagreed wherever the stage was not the width its breakpoint
+   *  assumed: a landscape phone was told to click a marker it had none of, and
+   *  a plate squeezed by an open sheet lost its coins while the legend went on
+   *  explaining the hollow one. See markersVisible below for what decides it. */
+  onMarkersVisible?: (visible: boolean) => void;
+  /** Reports legend states from the layout and region stats this map already
+   *  computed, so its parent never repeats that work. */
+  onFacts?: (facts: MapFacts) => void;
 }) {
   const { locale, messages, t } = useI18n();
   // The dev gallery mounts several maps on one page, and every one of them
@@ -364,18 +297,79 @@ export function ShelterMap({
    *  calloutType in map-callout.tsx. */
   const [plateScale, setPlateScale] = useState(DEFAULT_PLATE_SCALE);
 
-  /** Whether the plate is drawn wide enough for the marker layer to be worth
-   *  mounting. The layer is hidden below that width either way, by the same
-   *  container query the paws use, but hidden is not free: some three dozen
-   *  Marker components with their collision geometry behind them are built,
-   *  committed and re-rendered on every hover for a plate nobody can see them
-   *  on. This is what actually takes them off a phone.
+  /** Whether the plate is drawn large enough to carry markers at all, and the
+   *  whole of that question.
+   *
+   *  It used to be half of it. The layer was hidden below md by a class and
+   *  taken off the tree here by the measured scale, which is two answers to
+   *  one question and they disagreed in both directions: a 700px window is
+   *  under md with a plate at twice the threshold, and a phone held sideways
+   *  is well over md with a plate at a tenth of it. The measurement is the
+   *  honest half, because what a marker needs is pixels to the user unit and
+   *  only the stage knows how many it is drawing. So the class is gone and
+   *  this decides, here and everywhere outside the map that speaks about
+   *  markers (see onMarkersVisible).
    *
    *  True until something measures otherwise, which is what keeps the server's
    *  markup and the first client paint identical. Where nothing ever measures
-   *  (no ResizeObserver, i.e. the test environment) it simply stays true and
-   *  the CSS is left holding the question on its own, exactly as before. */
-  const [plateWide, setPlateWide] = useState(true);
+   *  (no ResizeObserver, i.e. the test environment) it simply stays true. */
+  const [markersVisible, setMarkersVisible] = useState(true);
+
+  // What withdraws an arming, whoever withdraws it: the mark stops being half
+  // pressed, and the annotation the arming raised comes down with it. Both
+  // halves, because a name left standing over a mark that is no longer armed
+  // says a press is still half made when it is not.
+  //
+  // Two things withdraw one. The clock, because an arming is a hover a finger
+  // cannot end by leaving and a question nobody came back to is not a question
+  // any more (ARMED_TTL_MS says how long that is). And the plate moving out
+  // from under the finger, because the arming is about a mark at a place: the
+  // sheet folding, the panel being dragged, the page scrolling behind the
+  // dialog all leave the next tap landing on a different shape than the one
+  // that was named.
+  //
+  // Moving is measured and not inferred from the scroll itself, which is the
+  // whole of why this is written the long way. The plate is inside a dialog
+  // full of scrollers, and one of them scrolls because of the arming: naming a
+  // region tints its rows in the list and brings the first of them into view
+  // (see hoverScrollTo in location-picker.tsx). A listener that disarmed on
+  // any scroll therefore withdrew the arming the tap had just made, every
+  // time, and the second tap always found nothing to commit. Asking whether
+  // the plate's own corner moved separates the scroll that matters from the
+  // scroll this very act caused. Rounded to the pixel, because a scroller
+  // settling can report fractions of one.
+  //
+  // Only ever reached while something is armed, which only happens on a
+  // pointer that cannot hover, so a mouse hover is never what this clears.
+  const withdrawArmed = useCallback(() => {
+    setArmed(null);
+    setHoveredTownKey(null);
+    setHoveredShelterValue(null);
+    onHoverShelters?.(null);
+  }, [onHoverShelters]);
+
+  useEffect(() => {
+    if (!armed) return;
+    const corner = () => {
+      const box = plateRef.current?.getBoundingClientRect();
+      return box ? `${Math.round(box.x)},${Math.round(box.y)}` : "";
+    };
+    const armedAt = corner();
+    const withdrawIfMoved = () => {
+      if (corner() !== armedAt) withdrawArmed();
+    };
+    const timer = setTimeout(withdrawArmed, ARMED_TTL_MS);
+    // Capture on the window, because a scroll event on an inner scroller does
+    // not bubble but does pass through the capture phase above it.
+    window.addEventListener("scroll", withdrawIfMoved, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", withdrawIfMoved, { capture: true });
+    };
+  }, [armed, withdrawArmed]);
 
   /** Where each annotation on the plate has put its block of type, keyed by
    *  the site that drew it. A table and not a single rectangle because more
@@ -447,7 +441,7 @@ export function ShelterMap({
         // The same threshold the container query gates the paws on, read off
         // the scale that was just measured rather than off a width the stage's
         // own padding would have to be subtracted from.
-        setPlateWide(scale >= PLATE_MIN_SCALE);
+        setMarkersVisible(scale >= PLATE_MIN_SCALE);
       }
     };
     measure();
@@ -455,6 +449,13 @@ export function ShelterMap({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+
+  // Said outward in its own effect rather than from inside the measurement, so
+  // it is reported once per answer and not once per resize: the observer fires
+  // on every pixel of a panel folding, and the answer changes at one of them.
+  useEffect(() => {
+    onMarkersVisible?.(markersVisible);
+  }, [markersVisible, onMarkersVisible]);
 
   // Keyboard focus raises the same annotation the pointer does, so tabbing the
   // coins narrates exactly what hovering them says.
@@ -536,6 +537,14 @@ export function ShelterMap({
     () => regionStatsByRegion(byRegion, selected),
     [byRegion, selected],
   );
+  const facts = useMemo(
+    () => mapFacts(towns, regions, selected),
+    [regions, selected, towns],
+  );
+
+  useEffect(() => {
+    onFacts?.(facts);
+  }, [facts, onFacts]);
 
   // Memoized like `regions` above it: liveRegionIds only has to change when
   // `regions` itself does, so the handlers below that close over it (and are
@@ -816,6 +825,35 @@ export function ShelterMap({
     ? regions.find(({ region }) => commitKey("region", region.id) === armed)
     : undefined;
 
+  /** What the tap after this one will do to the filter, in words, or undefined
+   *  when no region is armed.
+   *
+   *  The arming was already telling the visitor which shape they had put a
+   *  finger on. It was not telling them what pressing it again would cost:
+   *  "Osrednjeslovenska · 4 zavetišča · 11 živali" describes the region, and a
+   *  region description is not a warning that the next tap takes all four. The
+   *  two-tap gesture exists so nothing is picked out of a shape nothing has
+   *  named, and this is the other half of that promise, so the second tap does
+   *  precisely what the first one announced.
+   *
+   *  Both verbs, because the commit is a toggle and stays one: a region whose
+   *  shelters are all picked is dropped by that second tap. stats.state is the
+   *  same fact isDrop works out in the picker, computed from the same values
+   *  against the same selection, so the sentence and the toggle cannot
+   *  disagree about which way the press goes.
+   *
+   *  Live regions only. An inert one carries no commit key at all, so it can
+   *  never be armed, and a note counting its zero pickable shelters would be a
+   *  promise about a press that does not exist. */
+  const armedNote =
+    armedRegion && armedRegion.stats.live
+      ? regionCommitNote(
+          armedRegion.stats.values.length,
+          armedRegion.stats.state === true,
+          locale,
+        )
+      : undefined;
+
   // A marker sits on top of its region, so both would report a hover. The
   // marker is the more precise answer and wins.
   //
@@ -839,7 +877,19 @@ export function ShelterMap({
       // One listener for the whole plate, above every mark on it, so a tap is
       // read before the mark it landed on can act on it. See the handler.
       onClickCapture={handlePlateClickCapture}
-      className={cn("h-auto w-full shrink-0", className)}
+      // A finger that moved is not a tap. The plate does not pan, so a drag
+      // across it is the page or the sheet under it moving, and the mark the
+      // finger started on is no longer the mark it is over.
+      onTouchMove={() => {
+        if (armed) withdrawArmed();
+      }}
+      // touch-action: manipulation. The plate is a field of controls a finger
+      // has to hit exactly, and the delay the browser holds every tap back by
+      // to see whether a double tap is coming is delay a two-tap gesture pays
+      // twice. It also takes double-tap zoom off the map, which on a plate
+      // this dense zooms in on whatever was under the second tap rather than
+      // picking it.
+      className={cn("h-auto w-full shrink-0 touch-manipulation", className)}
     >
       <defs>
         <MixedHatch id={hatchId} />
@@ -896,6 +946,15 @@ export function ShelterMap({
           // it: Region is memoized, and a fresh array per render would undo
           // that for all twelve of them. A live region ignores it.
           coveredBy={regionShelterNames?.get(region.id)}
+          // The armed region's own consequence, and nobody else's. A string
+          // and not the arming itself, so eleven memoized regions are handed
+          // the same undefined they were handed last render and only the one
+          // that changed redraws. The callout above is aria-hidden, as every
+          // annotation on this plate is, so the label is the only channel this
+          // sentence has to a screen reader.
+          armedNote={
+            armedRegion?.region.id === region.id ? armedNote : undefined
+          }
           hatchId={hatchId}
         />
       ))}
@@ -905,16 +964,17 @@ export function ShelterMap({
       <PlateFurniture
         towns={towns}
         calloutRects={Object.values(calloutRects)}
-        wide={plateWide}
+        wide={markersVisible}
       />
 
       {origin && onMap(origin) && <Origin at={origin} />}
 
-      {/* The class is still what hides the layer, so the server and the first
-          paint agree; plateWide is what stops building it once the plate has
-          measured itself too small to show it. See the state's own note. */}
-      {plateWide && (
-        <g className="hidden md:block">
+      {/* One gate and no class beside it: the measured plate is what decides
+          whether there are markers, here and in everything outside the map
+          that mentions them. See markersVisible for what the class was getting
+          wrong. */}
+      {markersVisible && (
+        <g>
           {towns.map((town) => (
             <Marker
               key={town.key}
@@ -1021,13 +1081,25 @@ export function ShelterMap({
               ? `${shelterCount(hoveredRegion.stats.values.length, locale)} · ${animalCount(hoveredRegion.stats.animals, locale)}`
               : messages.noSheltersInRegion
           }
-          // Only where the map has run out of shelters of its own. A live
-          // region's own counts are the answer, and naming somebody else's
-          // coverage under them would be a second answer to a question nobody
-          // asked here.
+          // Two different second lines, and never both, because a region is
+          // either live or it is not.
+          //
+          // An empty one names who answers for the municipalities inside it,
+          // which is the only thing left to say about ground with no shelters
+          // on it.
+          //
+          // A live one says what the next tap will do, but only while it is
+          // armed. A pointer that can hover has not committed to anything by
+          // arriving, so the callout it raises is a description and stays one;
+          // an arming is a press half made, and the half that has not happened
+          // yet is what has to be spelled out. Naming somebody else's coverage
+          // under a live region's own counts would be a second answer to a
+          // question nobody asked here.
           note={
             hoveredRegion.stats.live
-              ? undefined
+              ? hoveredRegion === armedRegion
+                ? armedNote
+                : undefined
               : coveredByLine(
                   regionShelterNames?.get(hoveredRegion.region.id),
                   t,
@@ -1160,1065 +1232,3 @@ function townInDirection(
   }
   return best;
 }
-
-// How far outside a marker the spotlight ring sits, in user units. Shared with
-// the connector, which stops at the ring rather than crossing it.
-const SPOTLIGHT_RING = 3.5;
-
-// Where the distance line stops short of the coin it measures to. The other
-// end stops at ORIGIN_REACH, which is the ring's own outer edge: both marks
-// give way to the line rather than being drawn through by it, the same deal
-// the municipality connector keeps.
-const DISTANCE_END_GAP = 1.2;
-// Under this much line there is nowhere to set a label that does not touch the
-// ring at one end or the coin at the other, so the line runs bare and the row
-// in the list carries the number. In kilometres this is about nineteen, which
-// is a distance nobody is surprised by.
-const DISTANCE_LABEL_MIN = 24;
-const DISTANCE_WIDTH = 0.5;
-
-/** How far the visitor is from the town under the pointer, drawn from the
- *  origin mark's edge to the coin's in the dashes the origin ring wears. The
- *  two marks answer for the same person, so they speak the same line.
- *
- *  Half the connector's width and a step quieter than it: the municipality
- *  line answers a question that was asked out loud, and this one only fills in
- *  a hover. */
-function OriginDistance({
-  origin,
-  town,
-  label,
-  scale,
-}: {
-  origin: LatLon;
-  town: Town;
-  label: string;
-  scale: number;
-}) {
-  const at = project(origin);
-  const dx = town.x - at.x;
-  const dy = town.y - at.y;
-  const length = Math.hypot(dx, dy);
-  const end = town.r + DISTANCE_END_GAP;
-  // A shelter in the visitor's own town leaves nothing between the ring and
-  // the coin, and a stub drawn through both would say less than nothing.
-  if (length <= ORIGIN_REACH + end) return null;
-  const x1 = at.x + (dx / length) * ORIGIN_REACH;
-  const y1 = at.y + (dy / length) * ORIGIN_REACH;
-  const x2 = town.x - (dx / length) * end;
-  const y2 = town.y - (dy / length) * end;
-  const type = calloutType(scale);
-  return (
-    <g aria-hidden className="pointer-events-none">
-      <line
-        data-map-distance
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        strokeWidth={DISTANCE_WIDTH}
-        strokeDasharray={ORIGIN_DASH}
-        strokeLinecap="round"
-        className="stroke-foreground opacity-55"
-      />
-      {length - ORIGIN_REACH - end >= DISTANCE_LABEL_MIN && (
-        <text
-          data-map-distance-label
-          x={(x1 + x2) / 2}
-          y={(y1 + y2) / 2}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize={type.metadata}
-          // A stroke under the fill, not the blurred halo the annotation
-          // carries. The line runs straight through this label, and a stroke
-          // knocks the dashes out from behind the letterforms where a shadow
-          // would only veil them. text-shadow is the tool for HTML in a
-          // foreignObject; paint-order is the tool for SVG text.
-          stroke="var(--background)"
-          strokeWidth={type.halo * 2}
-          strokeLinejoin="round"
-          className="fill-foreground/70 [paint-order:stroke]"
-        >
-          {label}
-        </text>
-      )}
-    </g>
-  );
-}
-
-// The plate's own type, the part a printed atlas carries and a chart does not:
-// the neighbours named, the water named, and three anchor towns so the outline
-// reads as Slovenia to somebody who does not already know the shape. None of it
-// is a control and none of it is content: aria-hidden, no pointer events, and
-// foreground alpha well under the callouts, which are the type that answers
-// questions.
-//
-// Every number below is in viewBox units and was tuned against the live plate.
-// Two rules set them. Nothing
-// sits within 4 units of a viewBox edge, because the SVG letterboxes into
-// containers of every aspect ratio and a label on the frame is a label waiting
-// to be clipped. And nothing comes within a marker's reach of a marker the real
-// roster draws: markers top out at radius 7.2 (MARKER_RADIUS_STEPS in
-// lib/map-layout.ts) and may drift a further few units under collision layout,
-// so an anchor keeps about ten units from its own town's centre.
-const FURNITURE_INK = "fill-foreground/35";
-
-// Sized to fit the land it names. Italy, Hungary and Croatia each show only a
-// wedge of themselves in this viewBox, so the type is small and letterspaced
-// rather than large: spaced capitals read as a region name at any size, which
-// is exactly why atlases set country names that way.
-const NEIGHBOR_TYPE = 4.6;
-
-// Slovenian names in both locales, deliberately. This is a Slovenian plate:
-// an Austrian sheet writes Wien whatever language you read it in, and the
-// exonyms are close enough cognates that no English reader is lost. Localizing
-// them would also put the one label the map owns into the message catalogue,
-// where copy edits could drift it off the cartography it belongs to.
-const NEIGHBOR_LABELS: {
-  text: string;
-  x: number;
-  y: number;
-  anchor: "start" | "middle" | "end";
-  /** Degrees around (x, y). Only for a country the frame holds as a sliver
-   *  too narrow for level type; the name then runs along the sliver, which is
-   *  how printed atlases set a neighbour that barely enters the sheet. */
-  rotate?: number;
-}[] = [
-  // The Friuli plain south-west of Gorizia, which is the widest Italian ground
-  // the frame holds. It ends about three units short of the frontier, measured
-  // off the rendered plate, and ten short of Vitovlje's marker at (41, 137).
-  { text: "ITALIJA", x: 4, y: 136, anchor: "start" },
-  // Carinthia, north of the Karavanke and clear of the top edge by more than
-  // the cap height.
-  { text: "AVSTRIJA", x: 150, y: 14, anchor: "middle" },
-  // Hungary inside this frame is a diagonal wedge east of the Goričko border,
-  // which runs x 286 to 299 down y 10 to 40: about 30 units of room, but only
-  // along the slant. Level type this long crossed the border into Slovenia
-  // however it was anchored, so the name runs with the wedge instead.
-  { text: "MADŽARSKA", x: 291, y: 17, anchor: "start", rotate: 38 },
-  // Gorski kotar, well south of the Kolpa.
-  { text: "HRVAŠKA", x: 215, y: 200, anchor: "middle" },
-];
-
-// Italic is the water's register on every map ever printed, so the gulf gets it
-// and nothing else does. Set in the one corner the context fade deliberately
-// spares (see SEA_KEEP_* above), which is the only open water in the frame.
-// Two stacked lines, because the water is a column about twenty units wide and
-// the name set level is thirty: one line had nowhere to stand but the Italian
-// coast, which is dry land and the wrong country besides.
-const SEA_LABEL = {
-  lines: ["Jadransko", "morje"],
-  x: 12,
-  y: 191,
-  leading: 5,
-  size: 3.4,
-};
-
-// Three towns, no dots. A dot would be a fourth kind of mark on a plate that
-// already has markers, region fills and an origin ring, and would read as a
-// shelter that is not there. The name alone is enough: these are anchors for
-// the eye, not entries in the roster.
-//
-// Ljubljana and Maribor carry real markers, and collision layout may nudge a
-// marker off its projected point, so a name offset from the raw coordinate
-// could drift away from the disc it appears to caption. Each name therefore
-// follows its town's laid-out position when one exists, sitting just off the
-// disc's own edge. Kranj has no shelter and no marker, so its name stays on
-// the projected point, pushed north-west away from Škofja Loka's marker.
-const CITY_ANCHOR_TYPE = 3.8;
-const CITY_ANCHOR_GAP = 1.8;
-
-// What one character of an anchor's name is worth in width, as a share of the
-// type size. The box is estimated from the character count rather than
-// measured: getBBox does not exist in the test environment at all, and where
-// it does exist it answers for whichever font actually loaded, so a layout
-// decision resting on it would differ between two machines drawing the same
-// plate.
-//
-// The plate's sans averages near 0.52 em a glyph across mixed-case names of
-// this kind, and the anchors add 0.04 em of tracking on top of that. 0.62 is
-// deliberately over the sum: this estimate only decides whether a name is
-// about to be read through an annotation, and being wrong one way costs an
-// anchor nobody misses for as long as the hover lasts, while being wrong the
-// other way is the two names interleaved that this exists to prevent.
-const ANCHOR_WIDTH_PER_CHAR = 0.62;
-// How far the type reaches above and below the baseline it is set on, again as
-// a share of the size and again rounded outward: ascenders run near 0.72 in
-// this family and descenders near 0.21.
-const ANCHOR_ASCENT = 0.8;
-const ANCHOR_DESCENT = 0.25;
-
-// Whether two rectangles in user units touch at all.
-function boxesOverlap(a: CalloutRect, b: CalloutRect): boolean {
-  return (
-    a.x < b.x + b.width &&
-    b.x < a.x + a.width &&
-    a.y < b.y + b.height &&
-    b.y < a.y + a.height
-  );
-}
-
-/** The box an anchor's name takes up, estimated from its character count. `x`
- *  is where the text is anchored and `y` the baseline it sits on, so a name
- *  set ragged-left grows to the right of x and one set ragged-right grows to
- *  the left of it. */
-function anchorBox(
-  text: string,
-  x: number,
-  y: number,
-  anchor: "start" | "end",
-): CalloutRect {
-  const width = text.length * CITY_ANCHOR_TYPE * ANCHOR_WIDTH_PER_CHAR;
-  return {
-    x: anchor === "start" ? x : x - width,
-    y: y - CITY_ANCHOR_TYPE * ANCHOR_ASCENT,
-    width,
-    height: CITY_ANCHOR_TYPE * (ANCHOR_ASCENT + ANCHOR_DESCENT),
-  };
-}
-const CITY_ANCHORS: {
-  city: string;
-  anchor: "start" | "end";
-}[] = [
-  { city: "Ljubljana", anchor: "start" },
-  { city: "Maribor", anchor: "start" },
-  { city: "Kranj", anchor: "end" },
-];
-
-function PlateFurniture({
-  towns,
-  calloutRects,
-  wide,
-}: {
-  towns: Town[];
-  /** Every annotation standing on the plate right now. A town anchor drawn
-   *  across one of them comes off for as long as it is up; see the anchor
-   *  branch below. */
-  calloutRects: CalloutRect[];
-  /** Whether the plate has measured itself wide enough to draw the anchors at
-   *  all. The class below still hides them; this is what stops the layout work
-   *  behind them. See plateWide in ShelterMap. */
-  wide: boolean;
-}) {
-  return (
-    // Every name on this layer is set in the map's own units, so a plate drawn
-    // a third the size sets them a third the size with it: on a phone the
-    // country names and the water came out four or five pixels, which is not
-    // quiet type, it is dirt on the paper. They leave at the same width the
-    // paws and the markers leave at, which is the width below which nothing
-    // this small can be read.
-    <g
-      aria-hidden
-      data-map-furniture
-      className={cn("pointer-events-none", PLATE_TOO_SMALL)}
-    >
-      {NEIGHBOR_LABELS.map((label) => (
-        <text
-          key={label.text}
-          data-map-neighbor={label.text}
-          x={label.x}
-          y={label.y}
-          textAnchor={label.anchor}
-          fontSize={NEIGHBOR_TYPE}
-          transform={
-            label.rotate != null
-              ? `rotate(${label.rotate} ${label.x} ${label.y})`
-              : undefined
-          }
-          className={cn("uppercase tracking-[0.16em]", FURNITURE_INK)}
-        >
-          {label.text}
-        </text>
-      ))}
-
-      <text
-        data-map-sea-label
-        x={SEA_LABEL.x}
-        y={SEA_LABEL.y}
-        textAnchor="middle"
-        fontSize={SEA_LABEL.size}
-        fontStyle="italic"
-        className={FURNITURE_INK}
-      >
-        {SEA_LABEL.lines.map((line, index) => (
-          <tspan
-            key={line}
-            x={SEA_LABEL.x}
-            y={SEA_LABEL.y + index * SEA_LABEL.leading}
-          >
-            {line}
-          </tspan>
-        ))}
-      </text>
-
-      {/* md+ only, exactly like the markers these are placed around. Below md
-          the plate draws no markers at all and the whole map is about a third
-          the size, where 3.8-unit type renders under five pixels: unreadable
-          type is not quiet, it is dirt. */}
-      {wide && (
-        <g className="hidden md:block">
-          {CITY_ANCHORS.map((anchor) => {
-            // The town's laid-out disc when the city has one, so the name stays
-            // welded to the mark it captions however far collision layout nudged
-            // it; the raw projection when it does not.
-            const town = towns.find(
-              (candidate) => candidate.city === anchor.city,
-            );
-            const at =
-              town ??
-              (() => {
-                const raw = cityAt(anchor.city);
-                return raw ? { ...project(raw), r: 0 } : null;
-              })();
-            if (!at) return null;
-            const dx =
-              anchor.anchor === "start"
-                ? at.r + CITY_ANCHOR_GAP
-                : -(at.r + CITY_ANCHOR_GAP + 0.7);
-            const textX = at.x + dx;
-            const textY = at.y + (town ? 1.4 : -3.5);
-            // The cartographic convention, and the whole reason the annotations
-            // report where they landed. An annotation carries no card, so a name
-            // drawn under one interleaves with it letter for letter: the halo
-            // keeps the annotation readable and does nothing at all for the
-            // anchor. The anchor is the one that gives way, because it answers
-            // no question. It is simply not on the plate while the annotation
-            // is, with no transition of its own: this is not a state the name is
-            // in, it is a name that is not being drawn.
-            //
-            // Anchor text only. The coins never move for an annotation, being
-            // the subject it is about, and the neighbour and sea names are set
-            // out over ground that draws no markers and raises no annotations.
-            const covered = calloutRects.some((rect) =>
-              boxesOverlap(
-                anchorBox(anchor.city, textX, textY, anchor.anchor),
-                rect,
-              ),
-            );
-            if (covered) return null;
-            return (
-              <text
-                key={anchor.city}
-                data-map-city={anchor.city}
-                x={textX}
-                y={textY}
-                textAnchor={anchor.anchor}
-                fontSize={CITY_ANCHOR_TYPE}
-                className={cn("tracking-[0.04em]", FURNITURE_INK)}
-              >
-                {anchor.city}
-              </text>
-            );
-          })}
-        </g>
-      )}
-    </g>
-  );
-}
-
-// Both ends of the connector give way to what they join: it leaves its own dot
-// and stops at the ring, so neither mark is drawn through.
-const CONNECTOR_START_GAP = 2.4;
-const CONNECTOR_END_GAP = 1.5;
-
-// The same dashes the origin ring wears, at the same width, one step quieter.
-// A municipality and its shelter are two places the visitor did not pick off
-// the map, and the dashed language is what says so.
-function Connector({ from, town }: { from: LatLon; town: Town }) {
-  const at = project(from);
-  const dx = town.x - at.x;
-  const dy = town.y - at.y;
-  const length = Math.hypot(dx, dy);
-  const end = town.r + SPOTLIGHT_RING + CONNECTOR_END_GAP;
-  // A shelter inside its own municipality leaves nothing to draw between the
-  // dot and the ring, and a stub through both would say less than nothing.
-  if (length <= CONNECTOR_START_GAP + end) return null;
-  return (
-    <line
-      data-map-connector
-      x1={at.x + (dx / length) * CONNECTOR_START_GAP}
-      y1={at.y + (dy / length) * CONNECTOR_START_GAP}
-      x2={town.x - (dx / length) * end}
-      y2={town.y - (dy / length) * end}
-      strokeWidth={0.9}
-      strokeDasharray="2 2"
-      strokeLinecap="round"
-      className="stroke-foreground opacity-60"
-    />
-  );
-}
-
-// Tile side in user units. The viewBox is 320 x 210 and the picker draws it
-// near two pixels per unit, so a 3-unit tile puts the lines about six pixels
-// apart and a 0.6-unit line renders about 1.2 pixels wide: thin enough to read
-// as hatching, wide enough not to alias away.
-const HATCH_TILE = 3;
-const HATCH_LINE_WIDTH = 0.6;
-
-// A partly picked region wore the selected green at half opacity, which sat
-// between "picked" and "a dense grey region" and read as neither. Hatching is
-// the cartographic answer: the selection colour, unmistakably not solid.
-//
-// userSpaceOnUse rather than the default objectBoundingBox: the twelve regions
-// differ in size several times over, and a tile measured in fractions of each
-// bounding box would give every region its own hatch density. The line stands
-// upright in the middle of the tile and patternTransform rotates the whole
-// tiling, so the line never straddles a tile seam and needs no duplicate to
-// close the gap at the edge.
-function MixedHatch({ id }: { id: string }) {
-  return (
-    <pattern
-      id={id}
-      patternUnits="userSpaceOnUse"
-      patternTransform="rotate(45)"
-      width={HATCH_TILE}
-      height={HATCH_TILE}
-    >
-      {/* The ground under the lines. --filter-accent is pale green on light
-          and deep green on dark, and --filter-accent-strong inverts with it,
-          so the hatch keeps its contrast in both themes. */}
-      <rect
-        width={HATCH_TILE}
-        height={HATCH_TILE}
-        fill="var(--filter-accent)"
-      />
-      <line
-        x1={HATCH_TILE / 2}
-        y1={0}
-        x2={HATCH_TILE / 2}
-        y2={HATCH_TILE}
-        stroke="var(--filter-accent-strong)"
-        strokeWidth={HATCH_LINE_WIDTH}
-      />
-    </pattern>
-  );
-}
-
-// How far the context fades in from each viewBox edge, in user units. The
-// letterbox around the SVG is wider than the viewBox on some aspect ratios, so
-// a context layer that stopped dead at the edge would rule a rectangle across
-// the panel. Roughly a twentieth of the map's width: enough to read as an
-// unbounded surround, not so much that the sea disappears.
-const CONTEXT_FADE = 14;
-
-// Where the open water is, in user units, measured off the projected Natural
-// Earth coastline: the Gulf of Trieste reaches the left edge below y 162 and
-// the bottom edge left of x 17. The sea is the only blue on the map and the
-// fade was eating exactly the corner it lives in, so the two strips that cross
-// it stop short of it. The gap between the keep line and the resume line is
-// the strip's own falloff along its length, so it ends in a gradient rather
-// than at a seam.
-const SEA_KEEP_BELOW_Y = 162;
-const SEA_FADE_RESUMES_ABOVE_Y = 132;
-const SEA_KEEP_LEFT_OF_X = 18;
-const SEA_FADE_RESUMES_RIGHT_OF_X = 50;
-
-// A luminance mask that is white in the middle and black at the edges. The
-// strips paint translucent black over the white ground rather than a gradient
-// each, so where two of them overlap in a corner the alpha compounds and the
-// corner goes dark, which is what a corner should do.
-//
-// The left and bottom strips carry a second mask of their own, which switches
-// the strip off along its length before it reaches the southwest corner. Both
-// are off there, so the sea and the Italian coast around Trieste run to the
-// viewBox edge at full strength. A map that ends at its frame is ordinary
-// cartography; a map with its only water washed out is not.
-const FADE_STRIPS = [
-  {
-    key: "t",
-    x: 0,
-    y: 0,
-    w: MAP_WIDTH,
-    h: CONTEXT_FADE,
-    from: [0, 0],
-    to: [0, 1],
-  },
-  {
-    key: "b",
-    x: 0,
-    y: MAP_HEIGHT - CONTEXT_FADE,
-    w: MAP_WIDTH,
-    h: CONTEXT_FADE,
-    from: [0, 1],
-    to: [0, 0],
-  },
-  {
-    key: "l",
-    x: 0,
-    y: 0,
-    w: CONTEXT_FADE,
-    h: MAP_HEIGHT,
-    from: [0, 0],
-    to: [1, 0],
-  },
-  {
-    key: "r",
-    x: MAP_WIDTH - CONTEXT_FADE,
-    y: 0,
-    w: CONTEXT_FADE,
-    h: MAP_HEIGHT,
-    from: [1, 0],
-    to: [0, 0],
-  },
-];
-
-// White lets the strip fade, black holds it off. Both run in user units so
-// the stops sit on the coastline the numbers were read from.
-const FADE_KEEPS = [
-  {
-    key: "l",
-    x1: 0,
-    y1: SEA_FADE_RESUMES_ABOVE_Y,
-    x2: 0,
-    y2: SEA_KEEP_BELOW_Y,
-    x: 0,
-    y: 0,
-    w: CONTEXT_FADE,
-    h: MAP_HEIGHT,
-  },
-  {
-    key: "b",
-    x1: SEA_FADE_RESUMES_RIGHT_OF_X,
-    y1: 0,
-    x2: SEA_KEEP_LEFT_OF_X,
-    y2: 0,
-    x: 0,
-    y: MAP_HEIGHT - CONTEXT_FADE,
-    w: MAP_WIDTH,
-    h: CONTEXT_FADE,
-  },
-];
-
-function ContextFade({ id }: { id: string }) {
-  return (
-    <>
-      {FADE_STRIPS.map((strip) => (
-        <linearGradient
-          key={strip.key}
-          id={`${id}-${strip.key}`}
-          x1={strip.from[0]}
-          y1={strip.from[1]}
-          x2={strip.to[0]}
-          y2={strip.to[1]}
-        >
-          <stop offset="0" stopColor="black" stopOpacity={1} />
-          <stop offset="1" stopColor="black" stopOpacity={0} />
-        </linearGradient>
-      ))}
-      {FADE_KEEPS.map((keep) => (
-        <linearGradient
-          key={keep.key}
-          id={`${id}-${keep.key}-keep`}
-          gradientUnits="userSpaceOnUse"
-          x1={keep.x1}
-          y1={keep.y1}
-          x2={keep.x2}
-          y2={keep.y2}
-        >
-          <stop offset="0" stopColor="white" />
-          <stop offset="1" stopColor="black" />
-        </linearGradient>
-      ))}
-      {FADE_KEEPS.map((keep) => (
-        <mask
-          key={keep.key}
-          id={`${id}-${keep.key}-keep-mask`}
-          maskUnits="userSpaceOnUse"
-          x={keep.x}
-          y={keep.y}
-          width={keep.w}
-          height={keep.h}
-        >
-          <rect
-            x={keep.x}
-            y={keep.y}
-            width={keep.w}
-            height={keep.h}
-            fill={`url(#${id}-${keep.key}-keep)`}
-          />
-        </mask>
-      ))}
-      <mask
-        id={id}
-        maskUnits="userSpaceOnUse"
-        x={0}
-        y={0}
-        width={MAP_WIDTH}
-        height={MAP_HEIGHT}
-      >
-        <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="white" />
-        {FADE_STRIPS.map((strip) => (
-          <rect
-            key={strip.key}
-            x={strip.x}
-            y={strip.y}
-            width={strip.w}
-            height={strip.h}
-            fill={`url(#${id}-${strip.key})`}
-            mask={
-              FADE_KEEPS.some((keep) => keep.key === strip.key)
-                ? `url(#${id}-${strip.key}-keep-mask)`
-                : undefined
-            }
-          />
-        ))}
-      </mask>
-    </>
-  );
-}
-
-// Same for every render, and the walk behind them is not free.
-const NEIGHBOR_PATHS = NEIGHBOR_SHAPES.map((neighbor) => ({
-  id: neighbor.id,
-  d: ringsPath(neighbor.rings),
-}));
-const UNDERLAY_PATH = ringsPath(SLOVENIA_UNDERLAY);
-const COASTLINE_PATH = linesPath(COASTLINE);
-const RIVERS_PATH = linesPath(RIVERS.flatMap((river) => river.lines));
-
-// The coast is an edge, not a subject. The country silhouette runs at 1.1 in
-// foreground/45; this is a third of that width at just over half the alpha, so
-// the two can share the Slovenian shore without the thinner one arguing.
-const COASTLINE_WIDTH = 0.4;
-// Thinner still, and in a tone rather than in foreground alpha, so a river
-// never reads as a border. Region fills lie over these lines inside Slovenia
-// and tint them down as a region gets busier, which is the order that keeps
-// the choropleth the thing being read.
-const RIVER_WIDTH = 0.3;
-
-// Slovenia is an alpine country and this plate was drawing it flat. The raster
-// is a real hillshade: AWS Open Data terrain tiles (Mapzen terrarium encoding,
-// SRTM and friends underneath) at zoom 9, reprojected pixel by pixel through
-// the inverse of project() in lib/geo.ts so a ridge lands where the border that
-// follows it lands, then shaded with Horn's slope and aspect under the
-// cartographic sun: azimuth 315, altitude 45. 640 x 420, twice the viewBox.
-// scripts/build-map-hillshade.mjs is the whole pipeline and reruns in a minute.
-//
-// The raster is shadow only. Flat ground is pure white, and multiply cannot
-// lighten, so nothing above the flat value could ever have shown; leaving it in
-// would only have laid a grey wash over the plate. That is why the sea and the
-// Pannonian plain cost nothing here and the Alps cost everything.
-//
-// Which leaves the two things this must not do. It must not read as a subject:
-// the choropleth keeps the floor, so the opacity is set from a token the theme
-// owns and is small enough that a region's density step still wins any
-// comparison. And it must not read as terrain across the frontier, which is
-// what the country clip is for.
-//
-// Dark carries its own token values. Multiply on a near-black land base has no
-// headroom, so dark inverts the raster and screens it: the same slopes, drawn
-// as light on dark instead of dark on light, at a lower opacity again because
-// a light mark on a dark ground carries further. See --map-relief-* in
-// globals.css.
-function Hillshade({ clipId }: { clipId: string }) {
-  return (
-    <image
-      data-map-hillshade
-      href="/map-hillshade.png"
-      x={0}
-      y={0}
-      width={MAP_WIDTH}
-      height={MAP_HEIGHT}
-      // The raster is 640 x 420 and the viewBox is 320 x 210, the same ratio,
-      // so this changes no pixel. It is here so that a future viewBox cannot
-      // silently letterbox the relief off its own coordinates.
-      preserveAspectRatio="none"
-      clipPath={`url(#${clipId})`}
-      className={cn(
-        "[mix-blend-mode:var(--map-relief-blend)]",
-        "[filter:invert(var(--map-relief-invert))]",
-        "opacity-[var(--map-relief-opacity)]",
-      )}
-    />
-  );
-}
-
-// Slovenia used to float alone on a flat panel. This is the ground it actually
-// sits on, painted before anything else: sea across the whole viewBox, then the
-// neighbouring land over it. Blue survives only where no country covers it,
-// which is the Adriatic corner and nowhere else, so the coast is drawn by the
-// land rather than by a hand-cut sea polygon that would drift from it.
-//
-// The countries carry no border stroke between them. Natural Earth and GURS
-// generalise the frontier about 1.4 units apart, so a stroked neighbour would
-// ghost a second border alongside Slovenia's own, and a silhouette that quiet
-// has no business drawing lines at all.
-function GeographicContext({
-  maskId,
-  clipId,
-}: {
-  maskId: string;
-  clipId: string;
-}) {
-  return (
-    <g aria-hidden className="pointer-events-none" mask={`url(#${maskId})`}>
-      <rect
-        data-map-sea
-        width={MAP_WIDTH}
-        height={MAP_HEIGHT}
-        fill="var(--map-sea)"
-      />
-      {NEIGHBOR_PATHS.map((neighbor) => (
-        <path
-          key={neighbor.id}
-          d={neighbor.d}
-          data-map-abroad={neighbor.id}
-          fill="var(--map-abroad)"
-        />
-      ))}
-      {/* Natural Earth's Slovenia, in the neighbours' own tone. The real
-          country covers it entirely, so it is never seen; it is here so the
-          two sources' disagreement about the border cannot open a sliver of
-          sea or canvas along it. */}
-      <path data-map-abroad="SVN" d={UNDERLAY_PATH} fill="var(--map-abroad)" />
-
-      <Hillshade clipId={clipId} />
-
-      {/* Over the land fills and under everything Slovenia draws on top of
-          them. Drawn straight through the border rather than stopping at it:
-          a river that ends at a frontier is a thing no map has ever meant.
-          Inside the country the density fills cover them, so a busy region
-          quiets its own rivers and the choropleth keeps the floor. */}
-      <path
-        data-map-rivers
-        d={RIVERS_PATH}
-        fill="none"
-        stroke="var(--map-river)"
-        strokeWidth={RIVER_WIDTH}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-
-      {/* Last, so the shore stays a clean edge over the fill it traces. It
-          says where the land stops and nothing else, which is why it is a
-          hairline and not a border. */}
-      <path
-        data-map-coastline
-        d={COASTLINE_PATH}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        className="fill-none stroke-foreground/25"
-        strokeWidth={COASTLINE_WIDTH}
-      />
-    </g>
-  );
-}
-
-// The stroke is what draws the country. It runs on inert regions too, so an
-// empty region still reads as part of the silhouette rather than as a hole.
-const REGION_STROKE = "stroke-foreground/30";
-
-// Named locally because the JSX below reads it four times; the walk behind it
-// happens once, in lib/map-regions.ts.
-const COUNTRY_OUTLINE = OUTLINE_PATH;
-
-/** What a legend hover asks of one region: wear the hover look, fade back, or
- *  nothing. */
-type DensityFocus = "match" | "dim";
-
-// Only an idle live region answers the legend. A selection is an answer the
-// visitor already gave, and dimming or lighting it would overwrite it.
-function regionDensityFocus(
-  stats: RegionStats,
-  highlightedDensity: number | null | undefined,
-): DensityFocus | undefined {
-  if (highlightedDensity == null || !stats.live || stats.state !== false) {
-    return undefined;
-  }
-  return stats.density === highlightedDensity ? "match" : "dim";
-}
-
-// Enough to push the rest of the ramp behind the step being asked about, not
-// so much that the country loses its shape.
-const DENSITY_DIM = 0.4;
-
-// --map-density and --map-density-hover are alphas, not colours. The colour is
-// --map-density-fill, which the theme owns and every step shares; only the
-// alpha moves with the ranking.
-function densityStyle(density: number, dimmed = false): CSSProperties {
-  const next = Math.min(density + 1, DENSITY_STEPS.length - 1);
-  return {
-    // Only the resting value dims. The hover value stays whole, so a pointer
-    // still lifts a dimmed region out and beats the legend.
-    "--map-density": dimmed
-      ? DENSITY_STEPS[density] * DENSITY_DIM
-      : DENSITY_STEPS[density],
-    "--map-density-hover": DENSITY_STEPS[next],
-  } as CSSProperties;
-}
-
-// The three a live region can wear. An inert one leaves before this table is
-// reached, and has no look to pick: it draws the one branch below.
-type LiveRegionState = Exclude<MapStateName, "inert">;
-
-// Selection and density share one hue and differ in commitment: density is
-// --map-density-fill, a muted green laid on at the ramp's alpha, and a
-// selected region is the saturated selection green with its own stroke. They
-// were both foreground alpha once, which made a busy region and a chosen one
-// the same picture, and a grey ramp under a green selection made the map read
-// as a statistics plate. A region highlighted from the list wears its own
-// hover look at rest, rather than fighting a real hover for the same
-// declaration. Keyed by region state so the JSX picks a class string instead
-// of nesting a nine-way ternary.
-const REGION_LOOK: Record<
-  LiveRegionState,
-  { rest: string; highlighted: string }
-> = {
-  selected: {
-    // fill is --map-selected-fill, not --filter-accent-border: the accent
-    // token sits in the same luminance band as the density ramp's darkest
-    // step (1.09:1 on light, 1.15:1 on dark, both under the ramp's own
-    // smallest step), so on dark the chosen region could composite darker
-    // than the busiest one and colour alone told nobody which region was
-    // picked. The dedicated token is tuned to keep the family's hue while
-    // clearing 1.35:1 against that step in both themes; see its definition in
-    // globals.css for the composite math.
-    //
-    // Stroke weight carries the rest of the answer, because it is the one
-    // channel every vision deficiency and every phone still reads: 1.5 at
-    // rest is already heavier than any other region ever draws (idle tops out
-    // at 1 on hover), and 1.8 on hover/highlighted keeps it the heaviest line
-    // on the plate even against an idle region's own hover step.
-    rest: "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.9] [stroke-width:1.5] hover:[fill-opacity:1] hover:[stroke-width:1.8]",
-    highlighted:
-      "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.8]",
-  },
-  // No fill utility here: the fill is the hatch pattern, set as an attribute,
-  // and a Tailwind fill class would win over it. The stroke carries most of the
-  // hover answer, because a fill-opacity step across thin lines on a pale
-  // ground barely moves; the opacity step is kept as well, since it lifts the
-  // ground the lines sit on.
-  mixed: {
-    rest: "stroke-[var(--filter-accent-strong)] [fill-opacity:0.85] [stroke-width:0.8] hover:[fill-opacity:1] hover:[stroke-width:1.3]",
-    highlighted:
-      "stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.3]",
-  },
-  idle: {
-    rest: cn(
-      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] [stroke-width:0.6] hover:[fill-opacity:var(--map-density-hover)] hover:[stroke-width:1]",
-      REGION_STROKE,
-      "hover:stroke-foreground/45",
-    ),
-    highlighted:
-      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density-hover)] [stroke-width:1] stroke-foreground/45",
-  },
-};
-
-// The keys a roving-tabindex walk answers, regions and coins alike. Named once
-// so ShelterMap's move handlers, Region's and Marker's own prop types and both
-// onKeyDown branches read off the same union instead of four hand-typed copies
-// that could drift apart. Exported for map-marker.tsx, type-only, which is why
-// the two files can import from each other without becoming circular.
-export type RegionMoveKey =
-  "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" | "Home" | "End";
-
-// Empty regions remain visible and answer a hover with their name and "no
-// shelters", but nothing more: no click, no tab stop. Every other mark on this
-// map says something when asked, and a region that said nothing read as a
-// broken map rather than as an empty one.
-//
-// Memoized: every hover anywhere on the map sets state in ShelterMap, which
-// re-renders its whole tree, and there are up to twelve of these on screen at
-// once. Only the region actually under the pointer (or newly wearing a
-// highlight, or a density-legend match) has anything to redraw; memo is what
-// stops the other eleven from doing the same work for nothing. It only pays
-// off because ShelterMap hoists every handler below to one identity shared by
-// every region, instead of building a fresh closure per region on every
-// render — see the handleRegion* callbacks and the comment above them.
-// Exported so a render-count test can spy on Region.type (the function
-// React.memo wraps) without instrumenting the component itself: nothing else
-// in the app needs this outside shelter-map.tsx.
-export const Region = memo(function Region({
-  region,
-  stats,
-  onPick,
-  tabIndex,
-  elementRef,
-  onFocus,
-  onBlur,
-  onMoveFocus,
-  onPointerEnter,
-  onPointerLeave,
-  highlighted,
-  densityFocus,
-  coveredBy,
-  hatchId,
-}: {
-  region: RegionShape;
-  stats: RegionStats;
-  /** The map's own click callback, unadapted: this component already has
-   *  region and stats as its own props, so it builds the MapPick itself
-   *  rather than being handed a wrapper that would need a fresh identity on
-   *  every render. */
-  onPick: (values: string[], from: MapPick) => void;
-  tabIndex: 0 | -1;
-  /** Takes the region's id rather than closing over it, so one function
-   *  covers every region: see the note on Region above for why that matters. */
-  elementRef: (regionId: number, element: SVGPathElement | null) => void;
-  onFocus: (regionId: number) => void;
-  onBlur: (regionId: number) => void;
-  onMoveFocus: (regionId: number, key: RegionMoveKey) => void;
-  onPointerEnter: (regionId: number, stats: RegionStats) => void;
-  onPointerLeave: (regionId: number, stats: RegionStats) => void;
-  /** A shelter in this region is hovered in the list, so it wears the same
-   *  look pointer hover would give it. */
-  highlighted: boolean;
-  /** The legend is pointing at a density step: "match" means this region is on
-   *  it, "dim" means it is not. Undefined when no step is hovered. */
-  densityFocus?: DensityFocus;
-  /** Shelters answering for the municipalities inside this region. Only an
-   *  inert region has anything to do with them: they are what its label says
-   *  after "no shelters here", so a screen reader hears what the annotation
-   *  shows. */
-  coveredBy?: string[];
-  /** The map's hatch pattern, which the mixed state fills with. */
-  hatchId: string;
-}) {
-  const { locale, messages, t } = useI18n();
-  const d = REGION_PATHS.get(region.id) ?? "";
-  // Computed before the branch so the branch is the state, rather than the
-  // state being read twice from two different tests of the same fact.
-  const stateName = mapStateName(stats.state, stats.live);
-
-  if (stateName === "inert") {
-    // The same sentence the annotation carries, from the same function: a
-    // hover and a screen reader must not learn different things about the
-    // same region.
-    const covered = coveredByLine(coveredBy, t);
-    return (
-      <path
-        d={d}
-        // Named rather than hidden. It answers a hover now, and the message is
-        // a fact about the country and not about the pointer: without it a
-        // screen reader walks the map group and finds holes exactly where the
-        // empty regions are. role="img" and not a button, because there is
-        // nothing here to press; no tabIndex, so it never joins the tab order
-        // the live regions share.
-        role="img"
-        aria-label={
-          covered
-            ? `${region.name}: ${messages.noSheltersInRegion}. ${covered}`
-            : `${region.name}: ${messages.noSheltersInRegion}`
-        }
-        data-region-state="inert"
-        // Pointer events are back on so the region can name itself, but only
-        // hover is wired: no onClick, no keyboard. On touch a tap fires
-        // pointerenter and the card appears, the same way it already does for
-        // a live region, and the next tap elsewhere fires pointerleave and
-        // takes it away. Nothing here is bespoke to touch.
-        onPointerEnter={() => onPointerEnter(region.id, stats)}
-        onPointerLeave={() => onPointerLeave(region.id, stats)}
-        strokeLinejoin="round"
-        className={cn(
-          // cursor-help, matching the legend's density swatches: this answers
-          // with information and does nothing else. cursor-pointer would
-          // promise a click that never lands.
-          "cursor-help transition-[fill] motion-reduce:transition-none",
-          // The faintest acknowledgment there is: 4% to 7% neutral. The ramp's
-          // own smallest step is 8 points (0.20 to 0.28), which is what a live
-          // region moves by on hover, so this is under half of that and lands
-          // 13 points below DENSITY_STEPS[0]. The surface confirms it heard the
-          // pointer without ever reading as "a few animals here".
-          "hover:fill-foreground/7",
-          // Neutral foreground and not the ramp's green, on purpose: "no
-          // shelters here" is a different statement from "few animals here",
-          // and a faint tint would have said the second. A full step of the
-          // ramp below DENSITY_STEPS[0] in weight, so an empty region cannot
-          // be mistaken for the quietest live one either. It stays above
-          // --map-abroad by more than it is worth arguing about: the land
-          // across the border is untinted, this is not, and the country
-          // outline settles the rest.
-          "fill-foreground/4 [stroke-width:0.6]",
-          // The stroke never moves. A live region thickens its border on
-          // hover; an empty one must not, or the two would answer alike.
-          REGION_STROKE,
-        )}
-      />
-    );
-  }
-
-  // A list hover already asked for this region by name, so the legend never
-  // fades it back.
-  const dimmed = densityFocus === "dim" && !highlighted;
-  const lit = highlighted || densityFocus === "match";
-
-  return (
-    <path
-      ref={(element) => elementRef(region.id, element)}
-      d={d}
-      role="button"
-      tabIndex={tabIndex}
-      aria-pressed={stats.state}
-      aria-label={`${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}`}
-      // Attribute and not a class, because a pattern reference cannot be
-      // written as a Tailwind fill utility.
-      fill={stateName === "mixed" ? `url(#${hatchId})` : undefined}
-      data-region-state={stateName}
-      // Only on this branch, which is the only one with a click to commit: an
-      // empty region returns above and carries none. See commitKey.
-      data-map-commit={commitKey("region", region.id)}
-      data-region-density={stats.density}
-      data-region-highlighted={highlighted || undefined}
-      data-region-density-focus={densityFocus}
-      strokeLinejoin="round"
-      onClick={() =>
-        onPick(stats.values, {
-          kind: "group",
-          label: region.name,
-          values: stats.values,
-        })
-      }
-      onFocus={() => onFocus(region.id)}
-      onBlur={() => onBlur(region.id)}
-      onPointerEnter={() => onPointerEnter(region.id, stats)}
-      onPointerLeave={() => onPointerLeave(region.id, stats)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onPick(stats.values, {
-            kind: "group",
-            label: region.name,
-            values: stats.values,
-          });
-          return;
-        }
-        if (
-          event.key === "ArrowLeft" ||
-          event.key === "ArrowRight" ||
-          event.key === "ArrowUp" ||
-          event.key === "ArrowDown" ||
-          event.key === "Home" ||
-          event.key === "End"
-        ) {
-          event.preventDefault();
-          onMoveFocus(region.id, event.key);
-        }
-      }}
-      style={
-        stats.state === false ? densityStyle(stats.density, dimmed) : undefined
-      }
-      className={cn(
-        // fill-opacity was already in the list and already animated a species
-        // switch: --map-density changes on the same element that is already
-        // mounted, so the browser has a value to interpolate from. What it did
-        // not have was a timing of its own, and the 150ms default read as a
-        // flicker rather than as the country rethinking itself. MAP_MORPH is
-        // the same 300ms ease-out the marker radii spend, so the fills and the
-        // coins settle together instead of in two waves.
-        //
-        // The hover step (fill-opacity to --map-density-hover, and the stroke
-        // width) now runs at that timing too. It is the same declaration on the
-        // same element, and a region answering a pointer in the same beat it
-        // answers a species tab is one region, not two.
-        "cursor-pointer outline-none transition-[fill,stroke,fill-opacity,stroke-width] motion-reduce:transition-none",
-        MAP_MORPH,
-        REGION_LOOK[stateName][lit ? "highlighted" : "rest"],
-        // 2.1: the selected region's own hover/highlighted stroke now runs at
-        // 1.8, so the old 1.75 focus ring would have tied it rather than
-        // outranked it. Keyboard focus has to stay the single heaviest line
-        // on the plate whatever state the region under it is in.
-        "focus-visible:stroke-foreground focus-visible:[stroke-width:2.1]",
-      )}
-    />
-  );
-});

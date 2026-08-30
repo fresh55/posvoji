@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HttpUrl } from "./url";
 
 export const Species = z.enum(["dog", "cat", "rabbit", "other"]);
 export type Species = z.infer<typeof Species>;
@@ -42,13 +43,25 @@ export type ImageRights = z.infer<typeof ImageRights>;
 // A tiny inline preview, not a link: "data:image/<type>;base64,<payload>".
 const DATA_IMAGE_URL = /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/;
 
+// The ingest cache writes one file directly under this directory. Keeping the
+// final segment to a conservative filename character set rejects protocol-
+// relative URLs, nested paths, traversal and query/fragment injection while
+// still admitting the hashed masters and their derived filename shapes.
+const CACHED_ANIMAL_PATH =
+  /^\/media\/animals\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 export const AnimalImage = z.strictObject({
-  sourceUrl: z.url(),
+  sourceUrl: HttpUrl,
   // Filled by the ingest image cache. Root-relative ("/media/animals/…")
   // because the static site serves its own copies; a full URL stays valid
   // should the cache ever move to a separate host.
   cachedUrl: z
-    .union([z.url(), z.string().regex(/^\/\S+$/)])
+    .union([
+      HttpUrl,
+      z.string().regex(CACHED_ANIMAL_PATH, {
+        error: "cachedUrl must be an HTTP(S) URL or a safe /media/animals filename",
+      }),
+    ])
     .optional(),
   // Pixel size of the cached copy, so a layout can reserve the right box
   // before the file loads. Optional: an image cached before ingest recorded
@@ -71,7 +84,7 @@ export type AnimalImage = z.infer<typeof AnimalImage>;
 export const AnimalSource = z.strictObject({
   providerId: z.string().min(1),
   sourceAnimalId: z.string().min(1).optional(),
-  sourceUrl: z.url(),
+  sourceUrl: HttpUrl,
   fetchedAt: z.iso.datetime(),
   firstSeenAt: z.iso.datetime(),
   lastSeenAt: z.iso.datetime(),

@@ -1,0 +1,121 @@
+{
+  "fieldNames": [
+    "name",
+    "shortDescription",
+    "status",
+    "sex",
+    "breed",
+    "birthDate",
+    "approximateAgeMonths",
+    "size",
+    "energy",
+    "goodWithKids",
+    "goodWithDogs",
+    "goodWithCats",
+    "apartmentOk",
+    "specialNeeds"
+  ],
+  "enumValues": {
+    "status": ["available", "reserved", "adopted", "hold"],
+    "sex": ["male", "female", "unknown"],
+    "size": ["small", "medium", "large"],
+    "energy": ["calm", "balanced", "lively"],
+    "goodWithKids": ["yes", "no", "unknown"],
+    "goodWithDogs": ["yes", "no", "unknown"],
+    "goodWithCats": ["yes", "no", "unknown"],
+    "apartmentOk": ["yes", "no", "unknown"]
+  },
+  "export": {
+    "generatedAt": "2026-08-30T12:00:00Z",
+    "overrides": [
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:01",
+        "fields": {
+          "name": "Luna",
+          "shortDescription": "Pogumna in radovedna.",
+          "status": "available",
+          "sex": "male",
+          "breed": "mesanec",
+          "birthDate": "2024-05-01",
+          "approximateAgeMonths": 28,
+          "size": "small",
+          "energy": "calm",
+          "goodWithKids": "yes",
+          "goodWithDogs": "yes",
+          "goodWithCats": "yes",
+          "apartmentOk": "yes",
+          "specialNeeds": false
+        },
+        "baseline": {
+          "name": null,
+          "shortDescription": null,
+          "status": null,
+          "sex": null,
+          "breed": null,
+          "birthDate": null,
+          "approximateAgeMonths": null,
+          "size": null,
+          "energy": null,
+          "goodWithKids": null,
+          "goodWithDogs": null,
+          "goodWithCats": null,
+          "apartmentOk": null,
+          "specialNeeds": null
+        },
+        "recordedAt": "2026-08-29T12:00:00Z"
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:02",
+        "fields": {
+          "status": "reserved",
+          "sex": "female",
+          "size": "medium",
+          "energy": "balanced",
+          "goodWithKids": "no",
+          "goodWithDogs": "no",
+          "goodWithCats": "no",
+          "apartmentOk": "no",
+          "specialNeeds": true
+        },
+        "baseline": {
+          "status": "available",
+          "sex": "male",
+          "size": "small",
+          "energy": "calm",
+          "goodWithKids": "yes",
+          "goodWithDogs": "yes",
+          "goodWithCats": "yes",
+          "apartmentOk": "yes",
+          "specialNeeds": false
+        },
+        "recordedAt": "2026-08-29T13:00:00Z"
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:03",
+        "fields": {
+          "status": "adopted",
+          "sex": "unknown",
+          "size": "large",
+          "energy": "lively",
+          "goodWithKids": "unknown",
+          "goodWithDogs": "unknown",
+          "goodWithCats": "unknown",
+          "apartmentOk": "unknown"
+        },
+        "baseline": {
+          "status": "unknown"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:04",
+        "fields": {
+          "status": "hold"
+        }
+      }
+    ]
+  }
+}

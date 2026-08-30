@@ -42,4 +42,10 @@ jobs:
 
       - run: pnpm validate:policies
 
+      - name: Install Chromium for map visual tests
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Check map screenshots
+        run: pnpm test:visual
+
       - run: pnpm --filter web build

@@ -1,12 +1,13 @@
 """Settings for the Posvoji.si shelter portal.
 
-Every secret is read from the environment. The defaults are meant for local
-development only. Production must set PORTAL_SECRET_KEY, PORTAL_DEBUG=false,
-PORTAL_ALLOWED_HOSTS, FRONTEND_URL, CORS_ORIGINS and PORTAL_EXPORT_TOKEN.
-README.md lists them all.
+The defaults are meant for local development only. An unset development
+signing key is random for each process; production must set PORTAL_SECRET_KEY,
+PORTAL_DEBUG=false, PORTAL_ALLOWED_HOSTS, FRONTEND_URL, CORS_ORIGINS and
+PORTAL_EXPORT_TOKEN. README.md lists every environment setting.
 """
 
 import os
+import secrets
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -30,16 +31,33 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _env_optional_nonnegative_int(name: str) -> int | None:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return None
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ImproperlyConfigured(f"{name} must be a non-negative integer") from error
+    if value < 0:
+        raise ImproperlyConfigured(f"{name} must be a non-negative integer")
+    return value
+
+
 DEBUG = _env_bool("PORTAL_DEBUG", True)
-_DEVELOPMENT_SECRET_KEY = "dev-only-insecure-secret-key"
+_PUBLISHED_DEVELOPMENT_SECRET_KEY = "dev-only-insecure-secret-key"
 _configured_secret_key = os.environ.get("PORTAL_SECRET_KEY", "").strip()
 if not DEBUG and (
-    not _configured_secret_key or _configured_secret_key == _DEVELOPMENT_SECRET_KEY
+    not _configured_secret_key
+    or _configured_secret_key == _PUBLISHED_DEVELOPMENT_SECRET_KEY
 ):
     raise ImproperlyConfigured(
         "PORTAL_SECRET_KEY must be set to a private value when PORTAL_DEBUG=false"
     )
-SECRET_KEY = _configured_secret_key or _DEVELOPMENT_SECRET_KEY
+# Zero-configuration development remains convenient without giving every
+# checkout one universal signing key. Restarting a process with no configured
+# key deliberately invalidates its development sessions and login links.
+SECRET_KEY = _configured_secret_key or secrets.token_urlsafe(50)
 ALLOWED_HOSTS = _env_list("PORTAL_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 
 INSTALLED_APPS = [
@@ -108,6 +126,20 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 SESAME_MAX_AGE = 3600
+# Opening a link changes last_login and invalidates that token. A forwarded or
+# leaked link therefore cannot be replayed for the rest of its one-hour life.
+SESAME_ONE_TIME = True
+
+# POST /auth/request-link is deliberately anonymous, but one client must not
+# be able to make the service send an unlimited number of messages. The
+# throttle always keys by client IP; csrf_auth's constant request.auth is not
+# an identity. Forwarded addresses remain untrusted unless the deployment
+# explicitly states how many rightmost proxy hops it controls. The narrow
+# exception is one same-host proxy hop, identified by a loopback direct peer.
+PORTAL_LOGIN_LINK_RATE = (
+    os.environ.get("PORTAL_LOGIN_LINK_RATE", "5/hour").strip() or "5/hour"
+)
+PORTAL_TRUSTED_PROXY_COUNT = _env_optional_nonnegative_int("PORTAL_TRUSTED_PROXY_COUNT")
 
 # Development only: /api/auth/dev/* lists every shelter and opens a session as
 # any of them without a mail round trip. `DEBUG and` is the real guard, so
@@ -127,9 +159,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # The portal and the API are same site in both environments
 # (localhost:3000 -> localhost:8000, posvoji.si -> api.posvoji.si), so a Lax
-# session cookie is sent with the frontend's fetch calls. Cross site requests
-# are rejected by CORS, which is why the API endpoints do not carry a CSRF
-# token of their own.
+# session cookie is sent with the frontend's fetch calls. CORS controls which
+# origins may read responses; Django's CSRF token separately protects every
+# state-changing browser request.
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = _env_bool("PORTAL_SECURE_COOKIES", not DEBUG)

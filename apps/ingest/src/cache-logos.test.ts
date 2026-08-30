@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
@@ -610,6 +611,59 @@ describe("cacheLogos", () => {
     expect(result.reused).toBe(1);
     expect(second.pages).toEqual([]);
     expect(second.files).toEqual([]);
+  });
+
+  it("starts a new freshness window when revalidation returns 304", async () => {
+    const url = "https://zavetisce.si/brand.png";
+    const targets = [
+      {
+        providerId: "zonzani",
+        homeUrl: "https://zavetisce.si",
+        logoUrl: url,
+      },
+    ];
+    const options = { logosDir: logosDir(), manifestPath };
+
+    await cacheLogos(
+      targets,
+      new StubClient(
+        new Map(),
+        new Map([
+          [
+            url,
+            {
+              status: 200,
+              body: await pngBytes(),
+              headers: { etag: '"v1"' },
+            },
+          ],
+        ]),
+      ),
+      options,
+    );
+    const stale = JSON.parse(readFileSync(manifestPath, "utf8"));
+    stale.entries.zonzani.fetchedAt = "2000-01-01T00:00:00.000Z";
+    writeFileSync(manifestPath, JSON.stringify(stale));
+
+    const second = new StubClient(
+      new Map(),
+      new Map([[url, { status: 304, body: null, notModified: true }]]),
+    );
+    const result = await cacheLogos(targets, second, {
+      ...options,
+      revalidateAfterDays: 0,
+    });
+
+    expect(second.files[0]?.options?.validators?.etag).toBe('"v1"');
+    expect(result.reused).toBe(1);
+    expect(
+      Date.parse(result.manifest.entries.zonzani!.fetchedAt),
+    ).toBeGreaterThan(Date.parse("2000-01-01T00:00:00.000Z"));
+
+    const third = new StubClient(new Map(), new Map());
+    await cacheLogos(targets, third, options);
+    expect(third.pages).toEqual([]);
+    expect(third.files).toEqual([]);
   });
 
   it("re-fetches when the policy pins a url the cached copy did not come from", async () => {

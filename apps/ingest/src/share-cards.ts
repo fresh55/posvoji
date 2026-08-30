@@ -29,7 +29,7 @@ export const CARD_HEIGHT = 630;
 
 // Part of every fingerprint, so a change to the drawing redraws the existing
 // cards instead of leaving last week's design in place.
-const RENDERER_VERSION = 1;
+const RENDERER_VERSION = 2;
 
 const JPEG_QUALITY = 84;
 
@@ -128,10 +128,16 @@ export function cardText(
   };
 }
 
-// Animal ids come from provider slugs, but a card is a file name, so anything
-// that is not plainly safe on a file system or in a URL is folded away.
+// Animal ids come from provider slugs, but a card is a file name. Sanitizing
+// alone is not injective (`a:b` and `a_b` used to overwrite the same card), so
+// keep a readable bounded stem and bind it to the complete id with a digest.
 function safeId(id: string): string {
-  return id.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const stem = id
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/^\.+/, "_")
+    .slice(0, 96);
+  const digest = createHash("sha256").update(id).digest("hex").slice(0, 16);
+  return `${stem || "animal"}-${digest}`;
 }
 
 // A photo card carries no words, so one file serves both languages. A

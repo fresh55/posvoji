@@ -27,6 +27,13 @@ location / {
 The `always` flag makes nginx send the header on error responses too, not
 just 2xx ones.
 
+If the same nginx instance proxies `api.posvoji.si` to the portal on loopback,
+pass the client chain by setting `X-Forwarded-For` to
+`$proxy_add_x_forwarded_for`. The portal trusts that single same-host hop for
+login-link rate limiting. Set `PORTAL_TRUSTED_PROXY_COUNT` to the exact number
+of controlled rightmost hops when the proxy is not on loopback or the request
+passes through more than one proxy.
+
 ## Caddy
 
 ```caddy
@@ -40,6 +47,10 @@ example.com {
     }
 }
 ```
+
+Caddy's `reverse_proxy` sets `X-Forwarded-For` for the upstream. The portal
+automatically trusts one Caddy hop when it connects on loopback; otherwise set
+`PORTAL_TRUSTED_PROXY_COUNT` to the exact number of controlled rightmost hops.
 
 ## Media cache headers
 

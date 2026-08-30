@@ -197,10 +197,28 @@ const sl = {
     "Tvoja lokacija je zunaj zemljevida. Seznam je vseeno razvrščen po bližini.",
   sortedByDistance: "Seznam je razvrščen po bližini.",
   sortedByDistanceFrom: "Izhodišče: {label}. Razvrščeno po bližini.",
-  postcodeOrTown: "Bližina: kraj ali pošta",
-  locationNotFound: "Tega kraja ne najdem. Poskusi s poštno številko.",
+  // The one box in the shelter picker, and it takes two kinds of answer: a
+  // place to measure from and a shelter's name to narrow the list to. The
+  // place comes first because it is what the box is for, and the shelter is
+  // named because a field that filters by name must not pretend it only takes
+  // towns. Three words, so it still fits the 44px box on a 390px phone.
+  //
+  // The old two fields wrote this twice, "Bližina: kraj ali pošta" over "Išči
+  // zavetišče po imenu…", and asked the visitor to decide which one their
+  // sentence belonged in before typing it. What the text is, the text now
+  // decides: see the field's own comment in location-picker/view.tsx.
+  placeOrShelter: "Kraj, pošta ali zavetišče",
+  // Only for a postcode, which is the one input that can be nothing but a
+  // failed place: four digits match no shelter's name either. A word that
+  // resolves to no place is not a mistake any more, it is a name being
+  // searched for, so there is no message about it at all.
   postcodeNotFound: "Te poštne številke ne najdem. Preveri vnos.",
-  clearLocation: "Počisti kraj",
+  // The X inside the box. Named for the box rather than for a place, because
+  // what it takes away may have been a shelter's name. Deliberately not
+  // "Počisti iskanje", which the empty list's own way out already carries:
+  // two controls one word apart, both on screen at once when a search finds
+  // nothing, would be two names for what a screen reader hears as one thing.
+  clearField: "Počisti vnos",
   shelterPickerLabel: "Zavetišče: {label}. Odpri zemljevid.",
   whereSearching: "Kje iščeš?",
   // The chip over the map says the one thing the map alone has to say, and
@@ -218,7 +236,6 @@ const sl = {
   // the verb. Accusative after "Pokaži", which for žival is the same in every
   // form as the nominative animalCount returns.
   showAnimals: "Pokaži {count}",
-  searchShelters: "Išči zavetišče po imenu…",
   noSheltersFound: "Ni zadetkov za",
   clearSearch: "Počisti iskanje",
   // The label on the hero's found-animal button, and the whole of it. A line
@@ -503,10 +520,9 @@ const en: Messages = {
     "Your location is outside the map. The list is still sorted by distance.",
   sortedByDistance: "The list is sorted by distance.",
   sortedByDistanceFrom: "From {label}. Sorted by distance.",
-  postcodeOrTown: "Near: town or postcode",
-  locationNotFound: "No such place. Try a postcode.",
+  placeOrShelter: "Town, postcode or shelter",
   postcodeNotFound: "No such postcode. Check the number.",
-  clearLocation: "Clear location",
+  clearField: "Clear input",
   shelterPickerLabel: "Shelter: {label}. Open map.",
   whereSearching: "Where are you looking?",
   mapInstructionsDesktop: "Click a region or a shelter",
@@ -515,7 +531,6 @@ const en: Messages = {
   locating: "Finding your location…",
   nearestFirst: "Nearest first",
   showAnimals: "Show {count}",
-  searchShelters: "Search shelters by name…",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
   muniPromptTitle: "Found an animal?",

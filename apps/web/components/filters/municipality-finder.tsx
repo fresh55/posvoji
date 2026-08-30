@@ -160,10 +160,37 @@ export function MunicipalityFinder({
               setPicked(null);
             }}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && matches.length > 0) {
-                setPicked(matches[0].name);
-                event.preventDefault();
-              }
+              // Enter takes the answer when there is one answer, and does
+              // nothing when there are several.
+              //
+              // It used to take matches[0] whenever the list held anything at
+              // all, which on an ambiguous query picked whichever občina the
+              // table happened to list first: "Slovenska" is six of them and
+              // Enter chose Slovenska Bistrica for everybody, then drew that
+              // shelter's card as the answer to a question about a stray found
+              // somewhere else. A wrong shelter confidently named is worse than
+              // no shelter named, because nothing on screen says to look again.
+              //
+              // Two things count as one answer. A single match is the obvious
+              // one. An exact name is the other: typing "Ljubljana" in full,
+              // where "Ljubljana" and every "Ljubljana - something" match the
+              // prefix, is somebody naming their own občina and not browsing a
+              // list, so the entry they spelled out wins over the ones that
+              // merely contain it. Folded on both sides, the same as the
+              // filter above, so "sencur" is still Šenčur.
+              //
+              // Anything else leaves the list up, which is the whole of what
+              // the visitor has to act on: it is a list of buttons, one of them
+              // is theirs, and a keypress that cannot know which must not guess.
+              if (event.key !== "Enter") return;
+              const typed = fold(query.trim());
+              const answer =
+                matches.length === 1
+                  ? matches[0]
+                  : matches.find((entry) => fold(entry.name) === typed);
+              if (!answer) return;
+              setPicked(answer.name);
+              event.preventDefault();
             }}
             placeholder={messages.muniSearch}
             aria-label={messages.muniSearch}
@@ -227,9 +254,28 @@ export function MunicipalityFinder({
             nothing to press. Both ways out are here now, in the order they are
             worth trying: ask again, or stop asking and type the postcode,
             which is the answer somebody standing in the street already has. */}
+        {/* The sentence itself, said out loud as well as drawn. A denied or
+            timed-out fix is the answer to a button somebody pressed, and it
+            arrives in a panel they are not necessarily looking at; the shelter
+            tab announces its own geolocation errors for the same reason (see
+            the status line under the place field in location-picker.tsx).
+
+            Mounted whether or not there is anything to say, which is what
+            makes it announce at all: a live region inserted together with its
+            first message is a region nothing was watching when the message
+            arrived. empty:hidden takes the paragraph's own box away in the
+            ordinary case, so an empty region costs the panel no room. The two
+            ways out below stay conditional, because they are furniture rather
+            than news. */}
+        <p
+          aria-live="polite"
+          className="text-sm text-muted-foreground empty:hidden"
+        >
+          {state.status === "error" ? state.message : ""}
+        </p>
+
         {state.status === "error" && (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">{state.message}</p>
             <p className="text-xs text-muted-foreground">
               {messages.muniPostcodeInstead}
             </p>

@@ -54,18 +54,34 @@ The tests run offline. They never read the real registry or the real dataset:
    always 204, so the endpoint cannot be used to find out which addresses
    exist.
 2. The link points at `FRONTEND_URL + /portal/prijava?token=...`. The token is
-   signed by django-sesame and is valid for one hour.
+   signed by django-sesame, is valid for one hour and can be used only once.
 3. The frontend posts the token to `POST /api/auth/verify`, which opens a
    normal Django session and sets the session cookie.
+
+`POST /api/auth/request-link` is limited to five attempts per client IP per
+hour by default. It still returns the same response for known and unknown
+addresses. The direct network peer (`REMOTE_ADDR`) supplies the identity. When
+that peer is loopback, the default same-host nginx/Caddy deployment trusts the
+rightmost address in `X-Forwarded-For`. Other proxy topologies must explicitly
+configure how many rightmost proxy hops they trust; direct non-loopback callers
+cannot select their rate-limit identity with a forwarding header.
+
+With Django's default local-memory cache, this is a best-effort per-process
+guard. Configure a shared Django cache or an upstream rate limit when the
+limit must apply across multiple application processes.
 
 In development the mail goes to the console, so the link is printed in the
 `runserver` output.
 
 The session cookie is `SameSite=Lax`, which works because the portal and the
 API are same site in both environments (`localhost:3000` to `localhost:8000`,
-`posvoji.si` to `api.posvoji.si`). Cross site requests are rejected by CORS,
-so the API endpoints do not carry a CSRF token of their own. The frontend has
-to send its requests with `credentials: "include"`.
+`posvoji.si` to `api.posvoji.si`). CORS controls which origins can read API
+responses; it does not stop a request from reaching the server. Before a
+`POST` or `PUT`, the frontend gets `/api/auth/csrf`, keeps the returned
+`csrfToken`, and sends it as `X-CSRFToken`. Every request also uses
+`credentials: "include"` so the matching CSRF and session cookies travel with
+it. Django rotates the CSRF secret when a login succeeds, so the frontend gets
+a fresh token after login.
 
 ### Signing in as a shelter in development
 
@@ -77,7 +93,11 @@ the line.
 
 ```bash
 curl http://localhost:8000/api/auth/dev/shelters
-curl -X POST http://localhost:8000/api/auth/dev/login   -H 'Content-Type: application/json' -d '{"slug": "zonzani"}'
+curl -c /tmp/portal-cookies http://localhost:8000/api/auth/csrf
+curl -b /tmp/portal-cookies -X POST http://localhost:8000/api/auth/dev/login \
+  -H 'Content-Type: application/json' \
+  -H 'X-CSRFToken: <csrfToken from the previous response>' \
+  -d '{"slug": "zonzani"}'
 ```
 
 The login page shows the same list as a picker under the form, so a shelter is
@@ -99,14 +119,15 @@ component from the bundle.
 
 | Method | Path | Auth |
 |---|---|---|
-| POST | `/api/auth/request-link` | none, always 204 |
-| POST | `/api/auth/verify` | none, 401 on a bad token |
-| POST | `/api/auth/logout` | none, always 204 |
+| GET | `/api/auth/csrf` | none; sets the CSRF cookie and returns its token |
+| POST | `/api/auth/request-link` | CSRF, always 204 |
+| POST | `/api/auth/verify` | CSRF, 401 on a bad token |
+| POST | `/api/auth/logout` | session and CSRF, always 204 |
 | GET | `/api/auth/dev/shelters` | none, 404 unless `PORTAL_DEV_LOGIN` |
-| POST | `/api/auth/dev/login` | none, 404 unless `PORTAL_DEV_LOGIN` |
+| POST | `/api/auth/dev/login` | CSRF, 404 unless `PORTAL_DEV_LOGIN` |
 | GET | `/api/me` | session |
 | GET | `/api/shelters/{slug}/animals` | session and membership |
-| PUT | `/api/shelters/{slug}/animals/{animal_id}` | session and membership |
+| PUT | `/api/shelters/{slug}/animals/{animal_id}` | session, CSRF and membership |
 | GET | `/api/export` | `Authorization: Bearer $PORTAL_EXPORT_TOKEN` |
 | GET | `/api/docs` | none |
 | any | `/admin/` | Django admin login |
@@ -259,7 +280,7 @@ variables.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PORTAL_SECRET_KEY` | insecure dev value | Django signing key. Production startup fails unless a private value is set. |
+| `PORTAL_SECRET_KEY` | random per process | Django signing key. An unset development key invalidates sessions and login links on restart; production startup fails unless a private value is set. |
 | `PORTAL_DEBUG` | `true` | Set to `false` in production. |
 | `PORTAL_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma separated hosts. |
 | `PORTAL_DB_PATH` | `apps/portal/db.sqlite3` | SQLite file. |
@@ -272,6 +293,8 @@ variables.
 | `PORTAL_SECURE_COOKIES` | `false` when `PORTAL_DEBUG` is on | Marks the session cookie secure. |
 | `PORTAL_SESSION_COOKIE_DOMAIN` | unset | Set only if the cookie has to span subdomains. |
 | `PORTAL_SESSION_AGE` | `1209600` | Session lifetime in seconds. |
+| `PORTAL_LOGIN_LINK_RATE` | `5/hour` | Maximum accepted login-link requests per client IP. Uses Django's configured cache. |
+| `PORTAL_TRUSTED_PROXY_COUNT` | unset | Number of trusted rightmost proxy hops in `X-Forwarded-For`. Unset trusts one hop only when `REMOTE_ADDR` is loopback; `0` always uses `REMOTE_ADDR`. |
 | `PORTAL_EMAIL_BACKEND` | console when `PORTAL_DEBUG` is on, otherwise SMTP | Django email backend. |
 | `PORTAL_EMAIL_HOST` | `localhost` | SMTP host. |
 | `PORTAL_EMAIL_PORT` | `25` | SMTP port. |

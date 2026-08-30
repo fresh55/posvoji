@@ -26,10 +26,9 @@ import {
   townSelectableValues,
   type Town,
 } from "@/lib/map-layout";
-// Type-only, so this never becomes a runtime import: shelter-map.tsx imports
-// Marker from this file, and a value import back would make the two modules
-// circular. Both types are erased at compile time either way.
-import type { MapPick, RegionMoveKey } from "./shelter-map";
+// Shared contracts live outside the public map facade, so this component does
+// not need even an erased import back into the module that renders Marker.
+import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { cn } from "@/lib/utils";
 
 // The hollow disc a shelter with nothing listed draws: just over half the
@@ -79,10 +78,10 @@ const COIN_SHADOW =
   "[filter:drop-shadow(0_0.4px_0.5px_rgba(0,0,0,0.25))] dark:[filter:none]";
 
 // One timing for everything the species tabs redraw: the region density fills
-// over in shelter-map, the marker radii here, and the cluster discs inside
-// them. The map has to move as one object, so the number lives in one place and
-// both files spend it. 300ms is long enough to read as the same country under a
-// different question and short enough that running down the four tabs never
+// in shelter-map-region.tsx, the marker radii here, and the cluster discs
+// inside them. The map has to move as one object, so the number lives in one
+// place and both files spend it. 300ms is long enough to read as the same
+// country under a different question and short enough that running down the four tabs never
 // queues up a backlog of half-finished morphs. ease-out because the new shape
 // is the answer: leave the old one quickly, settle into the new one.
 //
@@ -153,8 +152,8 @@ export const PLATE_TOO_SMALL = "@max-[512px]/map-stage:hidden";
 /** The same threshold as a plate scale, in pixels to the user unit: the 1.5
  *  the arithmetic above arrives at. A Tailwind class has to be a literal for
  *  the scanner to find it, so the one gate that cannot be made in CSS (see
- *  plateWide in shelter-map.tsx) reads the measured scale against this instead
- *  of guessing the stage's padding back off a measured width. */
+ *  markersVisible in shelter-map.tsx) reads the measured scale against this
+ *  instead of guessing the stage's padding back off a measured width. */
 export const PLATE_MIN_SCALE = 1.5;
 
 const GLYPH_TOO_SMALL = PLATE_TOO_SMALL;

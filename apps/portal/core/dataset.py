@@ -113,14 +113,23 @@ def animal_index() -> dict[tuple[str, str], Animal]:
 
 
 def thumbnail_url(animal: Animal) -> str | None:
+    """The first photo the portal may draw, respecting display/cache rights."""
     images = animal.get("images")
     if not isinstance(images, list):
         return None
     for image in images:
         if not isinstance(image, dict):
             continue
-        url = image.get("cachedUrl") or image.get("sourceUrl")
-        if url:
+        rights = image.get("rights")
+        if rights == "cache-permitted":
+            url = image.get("cachedUrl") or image.get("sourceUrl")
+        elif rights == "display-permitted":
+            # Permission to hotlink is not permission to serve a cached copy,
+            # even if malformed or stale input happens to carry cachedUrl.
+            url = image.get("sourceUrl")
+        else:
+            continue
+        if isinstance(url, str) and url:
             return url
     return None
 

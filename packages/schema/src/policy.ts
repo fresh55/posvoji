@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HttpUrl } from "./url";
 
 export const IngestionMode = z.enum(["scrape", "api", "rss", "manual"]);
 export type IngestionMode = z.infer<typeof IngestionMode>;
@@ -22,7 +23,7 @@ export const LogoPolicy = z.strictObject({
   use: LogoUse.default("none"),
   // The logo file itself. Left out, the fetcher looks for one on the
   // shelter's home page and pins what it found back here.
-  url: z.url().optional(),
+  url: HttpUrl.optional(),
   // A mark the shelter handed us rather than published, as a path from the
   // repository root. Some shelters have no site to fetch from, or publish
   // only a banner with a phone number burnt into it, and send the artwork
@@ -51,11 +52,50 @@ export const PermissionStatus = z.enum([
 ]);
 export type PermissionStatus = z.infer<typeof PermissionStatus>;
 
+// These prefixes are a permission boundary: private-owner sections are kept
+// out of the crawl with them. Accept one unambiguous, already-decoded pathname
+// representation so a typo cannot validate but fail to match at runtime.
+export const CrawlExcludePath = z.string().min(1).superRefine((path, ctx) => {
+  let problem: string | undefined;
+
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    problem = "must be an absolute path starting with one slash";
+  } else if (path.trim() !== path || /[\\?#\u0000-\u001f\u007f]/.test(path)) {
+    problem =
+      "must not contain surrounding whitespace, a query, fragment, or backslash";
+  } else {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(path);
+    } catch {
+      problem = "must contain valid percent encoding";
+      decoded = path;
+    }
+    if (problem === undefined && decoded !== path) {
+      problem = "must be written in decoded canonical form";
+    }
+    if (
+      problem === undefined &&
+      (path.includes("//") ||
+        path.split("/").some((segment) => segment === "." || segment === ".."))
+    ) {
+      problem = "must not contain repeated slashes or traversal segments";
+    }
+  }
+
+  if (problem !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      message: `crawl.excludePaths entry ${problem}`,
+    });
+  }
+});
+
 const ProviderPolicyShape = z.strictObject({
   providerId: z
     .string()
     .regex(/^[a-z0-9-]+$/, "providerId must be a kebab-case slug"),
-  source: z.url(),
+  source: HttpUrl,
   enabled: z.boolean(),
 
   ingestion: IngestionMode,
@@ -77,12 +117,14 @@ const ProviderPolicyShape = z.strictObject({
 
   crawl: z.strictObject({
     intervalHours: z.number().positive(),
-    excludePaths: z.array(z.string()).default([]),
+    excludePaths: z.array(CrawlExcludePath).default([]),
   }),
 });
 
-// Without granted permission a provider stays off, shows no images and carries
-// nothing beyond bare facts.
+// Without granted catalogue permission a provider stays off, shows no animal
+// images and carries nothing beyond bare facts. A shelter logo has its own
+// dated grant in LogoPolicy and must not turn a logo-only approval into
+// permission to ingest the shelter's catalogue.
 export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
   const granted = p.permission.status === "granted";
 
@@ -98,13 +140,6 @@ export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
       code: "custom",
       path: ["images"],
       message: `provider "${p.providerId}" has no granted permission: images must be "none"`,
-    });
-  }
-  if (!granted && p.logo.use !== "none") {
-    ctx.addIssue({
-      code: "custom",
-      path: ["logo", "use"],
-      message: `provider "${p.providerId}" has no granted permission: logo.use must be "none"`,
     });
   }
   if (!granted && p.descriptions !== "facts-only") {

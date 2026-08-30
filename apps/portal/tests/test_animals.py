@@ -1,4 +1,5 @@
 import json
+from urllib.parse import quote
 
 import pytest
 
@@ -110,6 +111,59 @@ def test_thumbnail_falls_back_to_the_source_url(member_client, shelter, dataset_
 
     assert body[0]["thumbnailUrl"] == "https://example.si/oddaljena.jpg"
     assert body[0]["overrides"] == {}
+
+
+@pytest.mark.django_db
+def test_display_only_thumbnail_never_uses_a_cached_copy(
+    member_client, shelter, dataset_file
+):
+    animal = make_animal("testno:2", shelter)
+    animal["images"] = [
+        {
+            "sourceUrl": "https://example.si/oddaljena.jpg",
+            "cachedUrl": "/media/animals/nedovoljena-kopija.jpg",
+            "rights": "display-permitted",
+        }
+    ]
+    dataset_file([animal])
+
+    body = member_client.get(animals_url(shelter.slug)).json()
+
+    assert body[0]["thumbnailUrl"] == "https://example.si/oddaljena.jpg"
+
+
+@pytest.mark.django_db
+def test_thumbnail_skips_an_image_without_display_rights(
+    member_client, shelter, dataset_file
+):
+    animal = make_animal("testno:2", shelter)
+    animal["images"] = [
+        {"sourceUrl": "https://example.si/zasebna.jpg", "rights": "unknown"},
+        {
+            "sourceUrl": "https://example.si/dovoljena.jpg",
+            "rights": "display-permitted",
+        },
+    ]
+    dataset_file([animal])
+
+    body = member_client.get(animals_url(shelter.slug)).json()
+
+    assert body[0]["thumbnailUrl"] == "https://example.si/dovoljena.jpg"
+
+
+@pytest.mark.django_db
+def test_thumbnail_is_absent_when_no_image_has_display_rights(
+    member_client, shelter, dataset_file
+):
+    animal = make_animal("testno:2", shelter)
+    animal["images"] = [
+        {"sourceUrl": "https://example.si/zasebna.jpg", "rights": "unknown"}
+    ]
+    dataset_file([animal])
+
+    body = member_client.get(animals_url(shelter.slug)).json()
+
+    assert body[0]["thumbnailUrl"] is None
 
 
 @pytest.mark.django_db
@@ -361,6 +415,95 @@ def test_put_rejects_unknown_fields(member_client, shelter, dataset_file):
     dataset_file([make_animal("testno:1", shelter)])
 
     response = put(member_client, shelter.slug, "testno:1", {"microchip": "123"})
+
+    assert response.status_code == 422
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", ["name", "breed"])
+def test_put_rejects_text_longer_than_the_model_column(
+    member_client, shelter, dataset_file, field
+):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(member_client, shelter.slug, "testno:1", {field: "x" * 201})
+
+    assert response.status_code == 422
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_accepts_a_short_description_at_the_api_limit(
+    member_client, shelter, dataset_file
+):
+    dataset_file([make_animal("testno:1", shelter)])
+    description = "x" * 2000
+
+    response = put(
+        member_client,
+        shelter.slug,
+        "testno:1",
+        {"shortDescription": description},
+    )
+
+    assert response.status_code == 200
+    assert AnimalOverride.objects.get().short_description == description
+
+
+@pytest.mark.django_db
+def test_put_rejects_a_short_description_beyond_the_api_limit(
+    member_client, shelter, dataset_file
+):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(
+        member_client,
+        shelter.slug,
+        "testno:1",
+        {"shortDescription": "x" * 2001},
+    )
+
+    assert response.status_code == 422
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_accepts_an_animal_id_at_the_model_limit(
+    member_client, shelter, dataset_file
+):
+    dataset_file([])
+    animal_id = f"{shelter.slug}:{'x' * (199 - len(shelter.slug))}"
+    assert len(animal_id) == 200
+
+    response = put(member_client, shelter.slug, animal_id, {"name": "Novinec"})
+
+    assert response.status_code == 200
+    assert AnimalOverride.objects.get().animal_id == animal_id
+
+
+@pytest.mark.django_db
+def test_put_rejects_an_animal_id_containing_a_slash(
+    member_client, shelter, dataset_file
+):
+    dataset_file([])
+    animal_id = "testno:Žival 1/2026"
+    encoded_id = quote(animal_id, safe="")
+
+    response = put(member_client, shelter.slug, encoded_id, {"name": "Novinec"})
+
+    assert response.status_code == 404
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_rejects_an_animal_id_beyond_the_model_limit(
+    member_client, shelter, dataset_file
+):
+    dataset_file([])
+    animal_id = "x" * 201
+
+    response = put(member_client, shelter.slug, animal_id, {"name": "Novinec"})
 
     assert response.status_code == 422
     assert AnimalOverride.objects.count() == 0

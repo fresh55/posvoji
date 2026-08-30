@@ -35,6 +35,10 @@ class MeOut(Schema):
     shelters: list[ShelterOut]
 
 
+class CsrfOut(Schema):
+    csrfToken: str
+
+
 class RequestLinkIn(Schema):
     model_config = ConfigDict(extra="forbid")
 
@@ -59,10 +63,6 @@ class DevShelterOut(ShelterOut):
 
 
 class DevLoginIn(Schema):
-    # extra="forbid" is the CSRF guard here, not tidiness. django-ninja parses
-    # any content type as JSON, so a cross site HTML form could post to this
-    # route as text/plain; such a body always carries an extra key, which
-    # forbid rejects with 422 before anyone is signed in.
     model_config = ConfigDict(extra="forbid")
 
     slug: str = Field(max_length=64)
@@ -104,11 +104,11 @@ class AnimalOverrideIn(Schema):
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
-    name: str | None = None
-    shortDescription: str | None = None
+    name: str | None = Field(default=None, max_length=200)
+    shortDescription: str | None = Field(default=None, max_length=2000)
     status: OverrideStatus | None = None
     sex: OverrideSex | None = None
-    breed: str | None = None
+    breed: str | None = Field(default=None, max_length=200)
     birthDate: date | None = None
     approximateAgeMonths: int | None = Field(default=None, ge=0)
     size: OverrideSize | None = None

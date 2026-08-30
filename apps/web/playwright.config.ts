@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // Its own port, so a dev server already running on 3000 keeps running.
 const PORT = 3210;
-const baseURL = `http://localhost:${PORT}`;
+export const PLAYWRIGHT_BASE_URL = `http://localhost:${PORT}`;
 
 // The regression specs that need a real mobile context (isMobile, hasTouch,
 // a touch-capable engine) rather than a desktop browser with a narrow
@@ -11,10 +11,18 @@ const baseURL = `http://localhost:${PORT}`;
 // going out of step.
 const MOBILE_SPECS = [
   "shelter-picker-landscape.spec.ts",
+  // The map's two-tap contract needs a device that cannot hover and a tap
+  // that arrives as a tap; a desktop browser at a phone's width has neither.
+  "shelter-picker-touch.spec.ts",
   "filter-drawer-mobile.spec.ts",
   "deep-link-filters.spec.ts",
   "incremental-grid.spec.ts",
 ];
+
+// Screenshot baselines have a deliberately smaller, dataset-free Chromium
+// matrix in playwright.visual.config.ts. Keep them out of the broader browser
+// suite so `test:e2e` retains its existing scope and setup requirements.
+const VISUAL_SPECS = ["shelter-map.visual.spec.ts"];
 
 export default defineConfig({
   testDir: "./e2e",
@@ -28,7 +36,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL,
+    baseURL: PLAYWRIGHT_BASE_URL,
     trace: "retain-on-failure",
   },
   projects: [
@@ -39,7 +47,7 @@ export default defineConfig({
       // MOBILE_SPECS below) and assert on mobile-only markup, such as the
       // dock that is display:none from lg up. Desktop Chrome never renders
       // it, so those files are this project's business only by exclusion.
-      testIgnore: MOBILE_SPECS,
+      testIgnore: [...MOBILE_SPECS, ...VISUAL_SPECS],
     },
     {
       name: "mobile-chromium",
@@ -61,7 +69,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm run dev --port ${PORT}`,
-    url: baseURL,
+    url: PLAYWRIGHT_BASE_URL,
     reuseExistingServer: !process.env.CI,
     // A cold Windows start has to boot next dev and compile the home route.
     timeout: 120_000,

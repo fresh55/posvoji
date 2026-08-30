@@ -15,11 +15,18 @@ import {
   type LatLon,
 } from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
-import { DENSITY_STEPS, layoutTowns, type ShelterPin } from "@/lib/map-layout";
+import {
+  DENSITY_STEPS,
+  groupTownsByRegion,
+  layoutTowns,
+  regionStatsByRegion,
+  type ShelterPin,
+} from "@/lib/map-layout";
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { Marker } from "./map-marker";
 import {
+  ARMED_TTL_MS,
   NO_HOVER,
   Region,
   REGION_DWELL_MS,
@@ -73,6 +80,12 @@ function renderMap(
       />
     </I18nProvider>,
   );
+}
+
+function factsFor(pins: ShelterPin[], selected: string[]) {
+  const towns = layoutTowns(pins);
+  const { byRegion } = groupTownsByRegion(towns);
+  return mapFacts(towns, regionStatsByRegion(byRegion, selected), selected);
 }
 
 // The one <g> a marker draws, found by the key its town carries.
@@ -240,12 +253,18 @@ describe("ShelterMap marker states", () => {
     expect(marker).not.toContain("aria-pressed");
   });
 
-  it("hides pointer markers below the md breakpoint", () => {
+  it("leaves the marker layer to the measured plate, not to a breakpoint", () => {
     const html = renderMap([
       pin("brezice", "Zavetišče Brežice", "Brežice", 5),
     ]);
 
-    expect(html).toContain("hidden md:block");
+    // Nothing on this plate hides itself at md any more. What a marker needs
+    // is pixels to the user unit, which is a fact about the stage and not
+    // about the viewport, so the layer is mounted or not by the measurement
+    // (markersVisible in shelter-map.tsx) and by nothing else. Server markup,
+    // where nothing has measured yet, so the layer is here and bare.
+    expect(html).not.toContain("md:block");
+    expect(html).toContain("data-marker-key");
   });
 });
 
@@ -1348,19 +1367,19 @@ describe("mapFacts: hasMixed", () => {
   ];
 
   it("is false with nothing picked and false with a region picked whole", () => {
-    expect(mapFacts(celje, []).hasMixed).toBe(false);
-    expect(mapFacts(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
+    expect(factsFor(celje, []).hasMixed).toBe(false);
+    expect(factsFor(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
       false,
     );
   });
 
   it("is true once one shelter of a region is picked and another is not", () => {
-    expect(mapFacts(celje, ["macja-hisa"]).hasMixed).toBe(true);
+    expect(factsFor(celje, ["macja-hisa"]).hasMixed).toBe(true);
   });
 
   it("says the region is picked whole only when it is", () => {
-    expect(mapFacts(celje, ["macja-hisa"]).hasSelected).toBe(false);
-    expect(mapFacts(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
+    expect(factsFor(celje, ["macja-hisa"]).hasSelected).toBe(false);
+    expect(factsFor(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
       true,
     );
   });
@@ -1380,14 +1399,14 @@ describe("mapFacts: hasMixed", () => {
       { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
     ];
 
-    expect(mapFacts(pins, ["ljubljana"]).hasMixed).toBe(false);
+    expect(factsFor(pins, ["ljubljana"]).hasMixed).toBe(false);
   });
 });
 
 describe("mapFacts: hasEmpty", () => {
   it("is false while every shelter on the map lists animals", () => {
     expect(
-      mapFacts(
+      factsFor(
         [
           pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
           pin("maribor", "Zavetišče Maribor", "Maribor", 40),
@@ -1403,7 +1422,7 @@ describe("mapFacts: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(mapFacts(pins, []).hasEmpty).toBe(true);
+    expect(factsFor(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 
@@ -1413,7 +1432,7 @@ describe("mapFacts: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(mapFacts(pins, ["horjul"]).hasEmpty).toBe(false);
+    expect(factsFor(pins, ["horjul"]).hasEmpty).toBe(false);
     expect(renderMap(pins, ["horjul"])).not.toContain("data-marker-empty");
   });
 
@@ -1423,7 +1442,7 @@ describe("mapFacts: hasEmpty", () => {
       { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
     ];
 
-    expect(mapFacts(pins, []).hasEmpty).toBe(true);
+    expect(factsFor(pins, []).hasEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 });
@@ -1553,18 +1572,21 @@ describe("ShelterMap plate furniture", () => {
     // A dot would be a fourth kind of mark on a plate that already has
     // markers, and would read as a shelter that is not there.
     const group =
-      html.match(/<g class="hidden md:block">[\s\S]*?<\/g>/)?.[0] ?? "";
+      html.match(/<g><text[^>]*data-map-city[\s\S]*?<\/g>/)?.[0] ?? "";
     expect(group).toContain("data-map-city");
     expect(group).not.toContain("<circle");
   });
 
-  it("hides the town anchors below md, where the markers are hidden too", () => {
-    expect(html).toMatch(/<g class="hidden md:block"><text[^>]*data-map-city/);
+  it("takes the town anchors away where the markers go, and only there", () => {
+    // Their own group inside the furniture, mounted by the same measured
+    // answer the markers are (see PlateFurniture's `wide`), with no
+    // breakpoint class of its own left to disagree with it.
+    expect(html).toMatch(/<g><text[^>]*data-map-city/);
     // The neighbours and the water are drawn first, outside that group: they
     // name the ground rather than the roster, and they leave at their own
     // width rather than at the markers'.
     expect(html.indexOf("data-map-neighbor")).toBeLessThan(
-      html.indexOf('<g class="hidden md:block"><text'),
+      html.indexOf("<g><text"),
     );
   });
 
@@ -2202,13 +2224,21 @@ describe("ShelterMap marker keyboard", () => {
     expect(html).toContain("focus-visible:[stroke-width:2.1]");
   });
 
-  it("keeps the coins' keyboard out of reach below md, with the coins", () => {
-    // display:none takes the whole marker group out of the tab order and out
-    // of the accessibility tree alike, which is the right answer: phones get
-    // the regions and the list.
-    expect(
-      renderMap([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)]),
-    ).toMatch(/<g class="hidden md:block"><g[^>]*role="button"/);
+  it("keeps the coins' keyboard out of reach wherever the coins are", () => {
+    // The marker layer is one gate now, the measured plate (markersVisible in
+    // shelter-map.tsx), and the keyboard is inside it: no coins means no tab
+    // stops and nothing in the accessibility tree, which is the right answer
+    // on a plate too small to aim at. It used to be two gates, a class hiding
+    // the layer below md and the measurement taking it off the tree, and they
+    // disagreed at every width where a breakpoint and a plate size part ways.
+    //
+    // Server-rendered markup, so this is the layer as it stands before
+    // anything has measured: mounted, and no class deciding for it.
+    const html = renderMap([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    ]);
+    expect(html).toMatch(/<g><g[^>]*role="button"/);
+    expect(html).not.toContain('class="hidden md:block"');
   });
 });
 
@@ -2741,6 +2771,130 @@ describe("ShelterMap without hover", () => {
     });
   });
 
+  // The arming names the shape. It has to name the press as well, or the
+  // second tap is still a leap: "Osrednjeslovenska · 4 zavetišča · 31 živali"
+  // describes a region, it does not warn that pressing it again takes all four
+  // into the filter. What follows pins the sentence that closes that gap, in
+  // both directions and through the whole of Slovenian's count ladder.
+  describe("armed callout consequence", () => {
+    /** The plate, with a selection of its own, since which way the commit goes
+     *  is a fact about what is already picked. Every pin sits in Ljubljana, so
+     *  one region carries the whole roster and the count under test is the
+     *  count in the sentence. */
+    function armLjubljana(count: number, selected: string[] = []) {
+      const many = Array.from({ length: count }, (_, index) =>
+        pin(`lj${index}`, `Zavetišče ${index}`, "Ljubljana", 3),
+      );
+      const { container } = render(
+        <I18nProvider locale="sl">
+          <ShelterMap pins={many} selected={selected} onPick={vi.fn()} />
+        </I18nProvider>,
+      );
+      const region = container.querySelector<SVGPathElement>(
+        '[aria-label^="Osrednjeslovenska"]',
+      )!;
+      tap(region);
+      return { container, region };
+    }
+
+    /** The callout's second metadata line, which is where the consequence is
+     *  drawn. */
+    const note = (container: HTMLElement) =>
+      container.querySelector("[data-callout-note]")?.textContent;
+
+    it("says what the second tap will select, in the right form for the count", () => {
+      onATouchscreen();
+
+      // Slovenian counts a dual, so one, two, three-to-four and five-and-up
+      // each take their own noun. The verb is the same in all four: the
+      // accusative "izbere" puts its object in matches the nominative
+      // shelterCount returns for this neuter noun.
+      expect(note(armLjubljana(1).container)).toBe("Izbere 1 zavetišče");
+      cleanup();
+      expect(note(armLjubljana(2).container)).toBe("Izbere 2 zavetišči");
+      cleanup();
+      expect(note(armLjubljana(3).container)).toBe("Izbere 3 zavetišča");
+      cleanup();
+      expect(note(armLjubljana(4).container)).toBe("Izbere 4 zavetišča");
+      cleanup();
+      expect(note(armLjubljana(5).container)).toBe("Izbere 5 zavetišč");
+    });
+
+    it("says the drop instead, when the region is already wholly picked", () => {
+      onATouchscreen();
+
+      // The commit is a toggle and stays one. A callout promising to select
+      // four shelters that are all selected already would be describing the
+      // opposite of what the press does.
+      const { container } = armLjubljana(2, ["lj0", "lj1"]);
+
+      expect(note(container)).toBe("Odstrani 2 zavetišči");
+    });
+
+    it("still promises the pick while only some of the region is picked", () => {
+      onATouchscreen();
+
+      // A partly picked region is not a drop: toggleValues adds the rest.
+      const { container } = armLjubljana(3, ["lj0"]);
+
+      expect(note(container)).toBe("Izbere 3 zavetišča");
+    });
+
+    it("announces a single-shelter region too", () => {
+      onATouchscreen();
+
+      // Every armed region, not only the ones holding a crowd. One shelter is
+      // still a consequence, and a rule with a threshold in it would leave the
+      // visitor guessing which taps were the explained kind.
+      expect(note(armLjubljana(1).container)).toBe("Izbere 1 zavetišče");
+    });
+
+    it("puts the same sentence in the region's own label", () => {
+      onATouchscreen();
+
+      // Every annotation on this plate is aria-hidden, so the label is the
+      // only channel the sentence has to a screen reader. Same words, so the
+      // eye and the ear are told the same thing.
+      const { region } = armLjubljana(2);
+
+      expect(region.getAttribute("aria-label")).toBe(
+        "Osrednjeslovenska: 2 zavetišči, 6 živali. Izbere 2 zavetišči.",
+      );
+    });
+
+    it("leaves the label alone on a region nothing has armed", () => {
+      onATouchscreen();
+
+      const { container } = armLjubljana(2);
+      const other = container.querySelector<SVGPathElement>(
+        '[aria-label^="Podravska"]',
+      )!;
+
+      // The consequence belongs to the press half made, and no press is half
+      // made anywhere else on the plate.
+      expect(other.getAttribute("aria-label")).not.toContain("Izbere");
+    });
+
+    it("says nothing about a press a hover has not made", () => {
+      // A pointer that can hover has committed to nothing by arriving, so the
+      // callout it raises is a description and stays one. This is the ordinary
+      // desktop stub, where no arming exists at all.
+      const { container } = render(
+        <I18nProvider locale="sl">
+          <ShelterMap pins={pins} selected={[]} onPick={vi.fn()} />
+        </I18nProvider>,
+      );
+      const region = container.querySelector<SVGPathElement>(
+        '[aria-label^="Osrednjeslovenska"]',
+      )!;
+
+      hoverRegion(region);
+
+      expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+      expect(note(container)).toBeUndefined();
+    });
+  });
+
   it("moves the naming to another region rather than picking the first", () => {
     onATouchscreen();
     const map = renderPlate();
@@ -2844,6 +2998,130 @@ describe("ShelterMap without hover", () => {
     tap(inert);
 
     expect(map.onPick).not.toHaveBeenCalled();
+  });
+
+  // An arming is a hover a finger cannot end by leaving, so the three things
+  // that end it instead are the clock, a scroll and a drag. Each of them is a
+  // way the mark under the finger stops being the mark the tap was about, and
+  // a tap that lands after any of them is a fresh question.
+  it("forgets an arming that has stood for its whole life", () => {
+    onATouchscreen();
+    // Installed before the tap, because the tap is what schedules the timer
+    // this test is about: a clock swapped in afterwards has nothing pending on
+    // it to advance.
+    vi.useFakeTimers();
+    const map = renderPlate();
+
+    tap(map.region("Osrednjeslovenska"));
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(ARMED_TTL_MS);
+    });
+    vi.useRealTimers();
+
+    // The annotation goes with the arming: nothing is left on the plate
+    // implying a press is still half made.
+    expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
+    // And the tap that follows is the naming tap again, not the commit.
+    tap(map.region("Osrednjeslovenska"));
+    expect(map.onPick).not.toHaveBeenCalled();
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+  });
+
+  it("forgets an arming when a scroll moves the plate out from under it", () => {
+    onATouchscreen();
+    const onPick = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={[]} onPick={onPick} />
+      </I18nProvider>,
+    );
+    const region = container.querySelector<SVGPathElement>(
+      '[aria-label^="Osrednjeslovenska"]',
+    )!;
+    // jsdom lays nothing out, so the plate's corner is supplied. It is read
+    // once when the arming is made and again on every scroll, and only a
+    // difference between the two withdraws it.
+    let top = 0;
+    container.querySelector("svg")!.getBoundingClientRect = () =>
+      ({ x: 0, y: top }) as DOMRect;
+
+    tap(region);
+    top = -120;
+    // A scroll anywhere in the document, because a scroll event does not
+    // bubble and the plate hears them all in the capture phase instead.
+    fireEvent.scroll(document.body);
+
+    tap(region);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it("keeps an arming through the scroll the arming itself caused", () => {
+    onATouchscreen();
+    const onPick = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={[]} onPick={onPick} />
+      </I18nProvider>,
+    );
+    const region = container.querySelector<SVGPathElement>(
+      '[aria-label^="Osrednjeslovenska"]',
+    )!;
+    container.querySelector("svg")!.getBoundingClientRect = () =>
+      ({ x: 0, y: 0 }) as DOMRect;
+
+    // Naming a region tints its rows in the list beside the map and brings
+    // the first of them into view, so the tap that arms a mark scrolls a
+    // scroller of its own accord. That scroll leaves the plate exactly where
+    // it was, and a rule that disarmed on any scroll at all withdrew every
+    // arming the moment it was made: the second tap then found nothing to
+    // commit and the map could not be picked from at all on a phone.
+    tap(region);
+    fireEvent.scroll(document.body);
+
+    tap(region);
+    expect(onPick).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets an arming when the finger drags across the plate", () => {
+    onATouchscreen();
+    const onHoverShelters = vi.fn();
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={pins}
+          selected={[]}
+          onPick={vi.fn()}
+          onHoverShelters={onHoverShelters}
+        />
+      </I18nProvider>,
+    );
+    const plate = container.querySelector("svg")!;
+    const region = container.querySelector<SVGPathElement>(
+      '[aria-label^="Osrednjeslovenska"]',
+    )!;
+
+    tap(region);
+    fireEvent.touchMove(plate);
+
+    expect(screen.queryByText("1 zavetišče · 5 živali")).toBeNull();
+    expect(onHoverShelters).toHaveBeenLastCalledWith(null);
+  });
+
+  it("takes the tap delay off the plate", () => {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={[]} onPick={vi.fn()} />
+      </I18nProvider>,
+    );
+
+    // touch-action: manipulation. Two taps that have to be told apart cannot
+    // afford the browser holding each one back to see whether a double tap is
+    // coming, and this plate has nothing to zoom into anyway.
+    expect(container.querySelector("svg")?.getAttribute("class")).toContain(
+      "touch-manipulation",
+    );
   });
 });
 

@@ -627,6 +627,7 @@ export async function cacheLogos(
     try {
       res = await client.getBytes(sourceUrl, {
         accept: ACCEPT_IMAGES,
+        maxBytes: MAX_SOURCE_BYTES,
         validators:
           prevUsable && prev.sourceUrl === sourceUrl
             ? { etag: prev.etag, lastModified: prev.lastModified }
@@ -638,7 +639,19 @@ export async function cacheLogos(
     }
 
     if (res.notModified && prevUsable) {
-      return { entry: prev, counted: "reused", discovered: discoveredUrl };
+      return {
+        entry: {
+          ...prev,
+          etag: headerValue(res.headers["etag"]) ?? prev.etag,
+          lastModified:
+            headerValue(res.headers["last-modified"]) ?? prev.lastModified,
+          // A 304 is a successful freshness check. Without this update, an
+          // expired entry is conditionally fetched again on every export.
+          fetchedAt: new Date().toISOString(),
+        },
+        counted: "reused",
+        discovered: discoveredUrl,
+      };
     }
 
     if (res.status === 404 || res.status === 410) {
@@ -649,11 +662,6 @@ export async function cacheLogos(
 
     if (res.status !== 200 || res.body === null) {
       console.warn(`logo ${target.providerId}: HTTP ${res.status}, not cached`);
-      return { ...keepPrevious, discovered: discoveredUrl };
-    }
-
-    if (res.body.length > MAX_SOURCE_BYTES) {
-      console.warn(`logo ${target.providerId}: ${res.body.length} bytes exceeds cap`);
       return { ...keepPrevious, discovered: discoveredUrl };
     }
 

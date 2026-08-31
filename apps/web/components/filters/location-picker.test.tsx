@@ -13,6 +13,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toggleValues } from "@/lib/filters";
+import { FINE_POINTER } from "./location-picker/motion";
 import { cityAt } from "@/lib/geo";
 import { shelterCount, sheltersDropped } from "@/lib/labels";
 import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
@@ -444,6 +445,55 @@ describe("LocationPicker keyboard", () => {
   });
 });
 
+// Where focus lands when the dialog opens on a fine pointer. The stub at the
+// top of this file answers every query with false, which is the touch path
+// where radix keeps its default; these tests answer the pointer query alone
+// so the open reaches the branch that has to choose. A text input draws its
+// focus ring however focus arrived, so a mouse open must not land in the box,
+// and a keyboard open must: the ring is noise over one and the point of the
+// other.
+describe("LocationPicker open focus", () => {
+  const onAFinePointer = (fine: boolean) => {
+    (
+      window.matchMedia as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementation((media: string) => ({
+      matches: fine && media === FINE_POINTER,
+      media,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  };
+
+  afterEach(() => onAFinePointer(false));
+
+  it("lands a mouse open on the dialog itself, not in the box", async () => {
+    onAFinePointer(true);
+    const input = await openPicker();
+
+    // openPicker opens with a click, and a jsdom click moves no focus, so the
+    // body is still what activeElement holds. A body is never focus-visible,
+    // which is the same answer a real mouse gives.
+    expect(document.activeElement).not.toBe(input);
+    expect(document.activeElement).toBe(screen.getByRole("dialog"));
+  });
+
+  it("lands a keyboard open in the box", async () => {
+    onAFinePointer(true);
+    await openPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Zapri" }));
+
+    // jsdom has no keyboard, but it does answer :focus-visible for anything
+    // focused, so focusing the trigger is the whole of what a keyboard open
+    // looks like from openedWithKeyboard's side.
+    const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const input = await screen.findByLabelText("Kraj, pošta ali zavetišče");
+    expect(document.activeElement).toBe(input);
+  });
+});
+
 // The two boxes this dialog used to carry are one box. What the text is
 // decides what the box does with it: the postal table either recognises it, in
 // which case it is a place and the list sorts to it, or it does not, in which
@@ -713,7 +763,7 @@ describe("LocationPicker sheet height", () => {
     // under it. It used to be a flat 9rem, which paid for the caption alone
     // and left the plate 69px on a 320x568 screen.
     expect(declared(ground, "--sheet-reserve")).toBe(
-      "min(calc(var(--plate-h)_+_4rem),50%)",
+      "min(calc(var(--plate-h)_+_2.5rem),50%)",
     );
     expect(declared(ground, "--plate-h")).toBe("calc(0.65625*var(--picker-w))");
     // --picker-w is the dialog's own width, declared where it is worn so the
@@ -1779,12 +1829,12 @@ describe("LocationPicker floating panel", () => {
     await openPicker();
 
     const legend = dialog().querySelector<HTMLElement>("[data-map-legend]")!;
-    // Two levels up: the legend's own pointer-events wrapper, then the caption
-    // block this test means to find. It was three while a fold sat between
-    // them, taking the legend off a phone and leaving the CC BY credit behind
-    // as its sibling; nothing folds any more, so the two are siblings inside
-    // the caption itself.
-    const block = legend.parentElement!.parentElement!;
+    // One level up. It was three while a fold sat between them, taking the
+    // legend off a phone and leaving the CC BY credit behind as its sibling,
+    // and two while the credit shared the caption and needed its own
+    // pointer-events wrapper to sit beside. The credit floats on the plate now
+    // and the legend is the caption's only child, so the caption is its parent.
+    const block = legend.parentElement!;
 
     // The stage's own last row at every width, so it moves with the plate's
     // bottom edge instead of being anchored to a frame the plate may not

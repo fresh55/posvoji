@@ -33,6 +33,25 @@ export function visibleTrigger(): HTMLElement | null {
   return null;
 }
 
+// Whether the control about to hand focus into the dialog was itself focused
+// by a keyboard. Asked at open time, while the trigger still holds focus:
+// :focus-visible is the browser's own record of how that focus arrived, drawn
+// as a ring after a keypress and withheld after a click.
+//
+// A mouse open reaches false by one of two roads. Chrome and Firefox focus the
+// button they were clicked on and withhold focus-visible from it; Safari does
+// not focus it at all, which leaves activeElement on the body.
+export function openedWithKeyboard(): boolean {
+  if (typeof document === "undefined") return false;
+  const active = document.activeElement;
+  // The body is named rather than left to the selector because the engines
+  // disagree about it: jsdom answers :focus-visible for an unfocused body and
+  // a browser does not. Excluding it makes both say what is true either way,
+  // that nobody opened a dialog with a keyboard from there.
+  if (!active || active === document.body) return false;
+  return active.matches(":focus-visible");
+}
+
 export function bringIntoList(
   scroller: HTMLElement | null,
   cell: Element | null,

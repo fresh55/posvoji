@@ -132,7 +132,7 @@ describe("LocationPicker sheet on a short viewport", () => {
     // map cannot bid for a screen the list also has to live on. It used to be
     // a flat 9rem, which paid for the caption alone and left the plate 69px
     // on a 320x568 screen.
-    expect(reserves.get("")).toBe("min(calc(var(--plate-h)_+_4rem),50%)");
+    expect(reserves.get("")).toBe("min(calc(var(--plate-h)_+_2.5rem),50%)");
     expect(declarations(ground(), "--plate-h").get("")).toBe(
       "calc(0.65625*var(--picker-w))",
     );

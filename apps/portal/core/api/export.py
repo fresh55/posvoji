@@ -33,6 +33,12 @@ def export_overrides(request):
     if not settings.PORTAL_EXPORT_TOKEN:
         raise HttpError(503, "export is not configured")
 
+    # Stamped before the rows are read, never after. An override saved while
+    # this loop runs misses the payload, and a watermark taken afterwards
+    # would sit above its updated_at and tell the pipeline it was included.
+    # Stamping first can only understate what is here, which is safe.
+    generated_at = datetime.now(UTC)
+
     overrides = []
     for override in AnimalOverride.objects.select_related("shelter").all():
         fields = override.overridden_fields()
@@ -55,4 +61,4 @@ def export_overrides(request):
             if override.baseline_at is not None:
                 entry["recordedAt"] = iso_utc(override.baseline_at)
         overrides.append(entry)
-    return {"generatedAt": iso_utc(datetime.now(UTC)), "overrides": overrides}
+    return {"generatedAt": iso_utc(generated_at), "overrides": overrides}

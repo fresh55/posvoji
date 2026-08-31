@@ -87,10 +87,20 @@ nothing at all and leaving every shelter a day stale.
 
 `1` is every throw in the pipeline: invalid provider policies, a mass-removal
 guard trip, an animal whose shelter id and provider id disagree, an unreadable
-previous dataset. Node exits `1` on an uncaught throw by itself, so nothing in
-the exporter has to set it. These are the cases where the dataset either does
-not exist or should not be believed, and deploying either one would push a
-broken site over a working one.
+previous dataset, two previous datasets from different runs. Node exits `1` on
+an uncaught throw by itself, so nothing in the exporter has to set it. These
+are the cases where the dataset either does not exist or should not be
+believed, and deploying either one would push a broken site over a working
+one.
+
+One kind of run has no `2` at all: the run that bootstraps
+`data/dist/animals.crawled.json` with the portal integration on, which is a
+`--refresh-all` over every provider done by hand. `2` means a provider's
+previous records were carried forward, and on that one run they would come
+from the merged dataset and be written into the new snapshot as if the crawl
+had said them. So it checks after the crawl that every enabled provider
+finished and refreshed in full, and exits `1` before writing anything if not.
+See `apps/ingest/src/crawled-snapshot.ts`.
 
 When the export is blocked or the deploy fails, the site keeps serving the
 previous release. Nothing is torn down first.
@@ -244,7 +254,14 @@ job running on the host does not SSH into it.
 `deploy.sh` refuses to run without `data/dist/animals.json` and a non-empty
 `apps/web/public/media/animals`, which is why the setup script can seed both.
 A first run against an unseeded clone works but crawls and re-fetches
-everything, which takes hours.
+everything, which takes hours. Once the host is on release layout v2 it also
+needs `data/dist/animals.crawled.json`, which every export writes; see
+"Release layout" in [DEPLOY-MEDIA.md](DEPLOY-MEDIA.md). Until the host's
+marker file exists, an unattended deploy ships today's layout, withholds the
+private artifacts and prints the three steps that move the host onto the new
+layout. Pause this task for those three steps, as for any hand change to
+production: a release shipped in the middle of them has no `public/` of its
+own, and the docroot is about to be moved onto that path.
 
 **One clone, one machine.** Nothing coordinates between the scheduled clone
 and a working copy. Do not point the task at a directory anybody edits: the

@@ -45,11 +45,17 @@ Each directory's cache-control needs follow directly from this: hash-named
 files are safe to cache forever, id-named ones are not. See
 [DEPLOY-HEADERS.md](DEPLOY-HEADERS.md) for the actual headers.
 
-`data/dist/*.json` sits next to these: `animals.json` is the dataset the site
-reads, and `image-cache.json`, `shelter-logos.json`, `share-cards.json` are
-the manifests that record what has already been fetched or drawn. The
-manifests are what let a re-run skip work that is still valid; they are not
-themselves served to visitors.
+`data/dist/*.json` sits next to these. `animals.json` is the dataset the site
+reads: the crawl with the portal's shelter corrections merged in.
+`animals.crawled.json` is the same run's records before any correction was
+merged, and it is what the next run reuses, carries `firstSeenAt` from and
+guards removals against; the site never reads it. Keeping the two apart is
+what stops a correction from being read back on the next run as something the
+shelter's own page said (`apps/ingest/src/crawled-snapshot.ts`).
+`image-cache.json`, `shelter-logos.json`, `share-cards.json` are the manifests
+that record what has already been fetched or drawn, and `overrides.json` is
+the audit trail of the corrections. The manifests are what let a re-run skip
+work that is still valid; none of these are served to visitors.
 
 ## Deploying
 
@@ -102,18 +108,22 @@ directive to read them with anyway.
 3. `scripts/verify-media.mjs` shipped to a throwaway directory on the host and
    run there against `/srv/posvoji/media`, aborting before the flip on a
    nonzero exit. See "Verify before flipping the symlink" below.
-4. A new `/srv/posvoji/releases/<sha12>-<UTC stamp>/`, the artifact unpacked
-   into it, same ownership and modes.
-5. A health check of the new directory while nothing points at it yet:
+4. The layout gate: the host is asked for `/srv/posvoji/.layout-v2`. See
+   "Release layout" below.
+5. A new `/srv/posvoji/releases/<sha12>-<UTC stamp>/`, the artifact unpacked
+   into it, same ownership and modes. Under layout v2 the artifact goes to
+   `public/` and the two datasets plus `publication.json` go to `private/`.
+6. A health check of the new directory while nothing points at it yet:
    `index.html` exists and is nonempty, and so does one hashed asset taken
-   from the artifact listing.
-6. `ln -sfn` onto `/srv/posvoji/current`. One operation, so no request sees a
+   from the artifact listing. Under layout v2 the three private files are
+   checked too, and so is the absence of `private/` inside `public/`.
+7. `ln -sfn` onto `/srv/posvoji/current`. One operation, so no request sees a
    missing `current/`.
-7. `curl -skI --resolve posvoji.si:443:127.0.0.1` from the host, expecting 200
+8. `curl -skI --resolve posvoji.si:443:127.0.0.1` from the host, expecting 200
    or 401, printed.
-8. Prune to the newest three releases, sorted by mtime and skipping whatever
+9. Prune to the newest three releases, sorted by mtime and skipping whatever
    `current` resolves to, so a rollback cannot delete the release it points
-   at.
+   at. A release directory is pruned whole, `private/` included.
 
 Everything under `/srv/posvoji` ends up owned `posvoji:caddy`, directories
 `750`, files `640`.
@@ -142,6 +152,141 @@ Keep media in one shared directory on the host, outside every release:
 
 The release name is the commit sha and the UTC time of the deploy, so a
 directory on the host says which commit it is without looking anything up.
+
+## Release layout: the .layout-v2 gate
+
+A release directory has two shapes, and the host picks which one it gets:
+
+```
+releases/<name>/            today: the release directory is the docroot
+  index.html
+  _next/...
+
+releases/<name>/            layout v2
+  public/                   the same export, and what the docroot points at
+    index.html
+  private/                  outside the docroot, never served
+    dataset.crawled.json    animals.crawled.json, what the crawl said
+    dataset.published.json  animals.json, what the site shipped
+    publication.json        releaseId, datasetGeneratedAt, overridesEnabled,
+                            and portalGeneratedAt when the portal was on
+```
+
+`publication.json` is written by `scripts/publication.cjs`, which `deploy.sh`
+runs before it uploads anything, rather than by the ingest: the release id only
+exists at deploy time. With the portal off, `portalGeneratedAt` is left out
+rather than filled with the run's own clock. That script is also where the
+generation check lives, below.
+
+The gate is the marker file `/srv/posvoji/.layout-v2`. `deploy.sh` reads it
+over SSH on every deploy and needs no flag. This is not ceremony: the scheduled
+crawl runs `deploy.sh` unattended every 12 hours from a clone it hard-resets to
+`origin/main`, so whichever half of the migration lands first has to be
+survivable. Layout v2 under the old docroot 404s the whole site; private files
+under the old docroot are downloadable. With the marker absent the script ships
+today's layout, withholds the private artifacts entirely, and prints the
+migration steps below.
+
+### Moving the host onto layout v2
+
+Three steps, in this order. The site answers normally between every pair of
+them and each step is reversible on its own.
+
+Pause the scheduled crawl first and resume it after step 3
+([CRAWL-SCHEDULING.md](CRAWL-SCHEDULING.md) asks for that before any hand
+change to production anyway). A deploy that lands between steps 1 and 3 ships
+today's layout, and that release has no `public/` of its own: step 1 links the
+releases that exist when it runs, and nothing links the ones made after it.
+Step 2's first check is what catches it, and re-running step 1's block fixes
+it.
+
+**1. Give every existing release a self-symlink.** On the host:
+
+```bash
+(
+  set -e
+  for r in /srv/posvoji/releases/*/; do
+    if [ -e "${r}public" ] && [ ! -L "${r}public" ]; then
+      echo "abort: ${r}public is a real directory" >&2
+      exit 1
+    fi
+  done
+  for r in /srv/posvoji/releases/*/; do
+    ln -sfn . "${r}public"
+    chown -h posvoji:caddy "${r}public"
+  done
+)
+```
+
+The first pass checks every release before the second links anything. A real
+`public/` directory is a layout v2 release that is already there, and it must
+not be linked over; the run stops with nothing changed. The subshell keeps the
+abort out of your login shell.
+
+Each v1 release is now serveable at both `<release>` and `<release>/public`,
+because the link resolves back to the release root and Caddy's `file_server`
+follows symlinks. Nothing points at the new path yet, so no request changes.
+The block is idempotent, and undoing it is deleting the links.
+
+**2. Move Caddy's docroot to `/srv/posvoji/current/public`, validate the config,
+then reload.** The release `current` points at is still the one being served,
+now through its own self-symlink. Before the reload, on the host:
+
+```bash
+test -s /srv/posvoji/current/public/index.html
+caddy validate --config /etc/caddy/Caddyfile
+```
+
+The config path differs per install; `/etc/caddy/Caddyfile` is the common
+default. Reload only after validate passes. The first check says the path
+resolves, which is also what confirms `file_server` follows the link rather
+than refusing it, and it is what catches a release shipped after step 1.
+After the reload:
+
+```bash
+test -s /srv/posvoji/current/public/index.html
+curl -skI --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/
+```
+
+The curl says the site answers through the new docroot. Undo by putting the old
+docroot back and reloading.
+
+**3. `touch /srv/posvoji/.layout-v2`.** From here every deploy ships a real
+`public/` with a `private/` beside it. The prune retires the self-linked
+releases as they age out, and a rollback onto one of them keeps serving,
+because of step 1. A release carrying the self-symlink prunes like any other:
+`readlink -f` on the release directory is the directory itself, and `rm -rf`
+unlinks a symlink it meets rather than following it.
+
+The order is what avoids an outage. Creating the marker first ships layout v2
+into a docroot that has no `public/`, and moving the docroot first points it
+at a path no existing release has: either one 404s the whole site until the
+other half lands. Step 1 makes the new path valid for the releases that
+already exist, which is what lets the two halves be done separately.
+
+`deploy.sh`'s own pre-flip check asserts that the release it just built has a
+real `public/` directory rather than a symlink, so a self-linked v1 release
+can never be mistaken for a v2 one. It only ever inspects the release of the
+run it is in, so the self-links from step 1 are never in its way.
+
+### One export run, three files
+
+A layout v2 release is packaged only when `animals.json`,
+`animals.crawled.json` and `overrides.json` all carry the same run's
+`generatedAt`. The export writes them one after another, so a run that stopped
+partway leaves a set that disagrees, and the disagreement is the only thing
+that says so: each file is valid on its own. `scripts/publication.cjs` refuses
+to write the receipt for such a set, before the release is uploaded, and the
+deploy stops.
+
+The ingest enforces the same invariant at the other end
+(`apps/ingest/src/crawled-snapshot.ts`): a run that finds `animals.json` and
+`animals.crawled.json` from different runs aborts without reading either. The
+recovery in both places is a fresh export, and with the portal integration on
+that means one full clean `pnpm dataset:export --refresh-all` over every
+provider, which is the only run that may re-derive the crawled snapshot.
+
+## Deleting withdrawn media
 
 The sync the script runs is a `tar` stream, which adds and overwrites but
 never removes. `rsync -a --delete` would be the natural way to mirror the
@@ -172,6 +317,8 @@ that sits a backstop on the size of the deletion itself, a share of what the
 host holds, which refuses and prints the first of the candidate files instead
 of acting. The constants are in the script and carry their reasoning there.
 `--dry-run` computes nothing on either side and only prints the intent.
+
+## Serving media from the shared root
 
 With media outside the release tree, the release artifact should exclude
 `public/media/` entirely, and the web server serves `/media/` from the shared

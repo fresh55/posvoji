@@ -273,24 +273,27 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   /* The focus ring, and the one token here with a number it has to hit: SC
-     1.4.11 asks a focus indicator for 3:1 against what it sits on. At
-     oklch(0.708 0 0) the solid ring measures 2.59:1 on --background and on
-     --card, which are both white, and the controls did not even draw it solid:
-     ring-ring/50 composites to 1.54:1. Nothing in the light stack reached 3.
-     Both halves are fixed. The call sites draw the ring at full opacity, and
-     lightness comes down to where full opacity is enough on its own. 0.669 is
-     the last lightness that still clears 3:1 on white, so 0.62 (3.64:1) takes
-     the value rather than the boundary and leaves room for a panel that is not
-     what the arithmetic assumed.
-     Dark keeps oklch(0.556 0 0) below: solid, that is already 3.79:1 on --card,
-     4.18:1 on --background and 3.19:1 on --muted. Only the opacity was wrong
-     there.
+     1.4.11 asks a focus indicator for 3:1 against what it sits on. Measured
+     against the worst surface it can actually land on rather than against
+     white: the light stack bottoms out on --muted, --secondary and --accent,
+     all three at 0.97, and the dark stack on those same three at 0.269.
+     The hue is the brand's, 151, the family --filter-accent-strong is drawn
+     from. Neutral grey cleared the bar and nothing more: oklch(0.62 0 0)
+     measured 3.34:1 on 0.97, and oklch(0.556 0 0) below it 3.19:1 on 0.269.
+     Both sat close enough to the line that a panel the arithmetic had not
+     seen would have taken them under it. Green at these lightnesses measures
+     4.79:1 light and 7.09:1 dark on those same worst cases, which is margin
+     rather than a pass, and it says the focus is this site's own rather than
+     the framework's default grey.
+     Solid, never ring-ring/50. Half opacity is what shadcn ships, and it
+     composites to 1.54:1 on their token and 1.77:1 on this one: at half
+     strength no value that is still a ring can reach 3.
      Method: OKLCH to linear sRGB to WCAG relative luminance, alpha composited
      in gamma space, the same as the map tokens above.
      Focus only. Nothing on the site draws --ring as a resting border; every
      call site is behind focus-visible, aria-invalid or the base outline
-     colour, so a darker value has nothing decorative to spoil. */
-  --ring: oklch(0.62 0 0);
+     colour, so a saturated value has nothing decorative to spoil. */
+  --ring: oklch(0.52 0.115 151);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -365,7 +368,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.75 0.105 151);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -419,7 +422,7 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --ring: oklch(0.75 0.105 151);
   }
 }
 
@@ -606,10 +609,10 @@
 
 @layer base {
   * {
-    /* Solid, not /50. This is the colour any outline the site draws falls back
-       to, and a focus indicator has to clear 3:1 (SC 1.4.11). Halved, --ring
-       composited to 1.54:1 on the light page and 1.87:1 on the dark card; at
-       full opacity it is 3.64:1 and 3.79:1. See --ring in :root. */
+    /* Solid, not /50. This is the colour any outline the site draws falls
+       back to, and a focus indicator has to clear 3:1 (SC 1.4.11), which
+       halving it takes it under whatever the token is worth. The measurements
+       live once, on --ring in :root. */
     @apply border-border outline-ring;
   }
   body {

@@ -43,11 +43,13 @@ import type { LatLon } from "@/lib/geo";
 import type { LocationPickerController } from "./controller";
 import {
   MUNICIPALITY_AT,
+  openedWithKeyboard,
   pickerText,
   sameValues,
   visibleTrigger,
 } from "./model";
 import {
+  hasFinePointer,
   MAP_STAGE_TRANSITION_CLASS,
   PANEL_TRANSITION_CLASS,
 } from "./motion";
@@ -527,13 +529,29 @@ export function LocationPickerView({
           }
         }}
         onOpenAutoFocus={(event) => {
-          // Keyboards land in search, ready to type a shelter name. Touch
-          // devices keep radix's default so the soft keyboard stays down
-          // until the search box is asked for.
-          if (window.matchMedia?.("(pointer: fine)").matches) {
-            event.preventDefault();
-            searchRef.current?.focus();
+          // Where focus lands depends on who opened the dialog. A keyboard
+          // opener lands in the field, ready to type a place or a name,
+          // which is what a keyboard came here to do. A mouse opener came
+          // to click the map, and a text input wears its focus ring however
+          // focus arrived, so landing there would open every visit with a
+          // ring around an untouched box; the dialog's own container takes
+          // the focus instead, ringless, with the field one Tab away. The
+          // trigger still holds focus when this runs, so its :focus-visible
+          // is what says which of the two just happened; see
+          // openedWithKeyboard. Touch devices keep radix's default so the
+          // soft keyboard stays down until the box is asked for.
+          //
+          // preventScroll on both, which is what radix's own FocusScope passes
+          // and what this handler takes over from. The column below scrolls,
+          // and focusing a control inside a scroller is enough to scroll it:
+          // the same move bringIntoList exists to keep off the outer panel.
+          if (!hasFinePointer()) return;
+          event.preventDefault();
+          if (openedWithKeyboard()) {
+            searchRef.current?.focus({ preventScroll: true });
+            return;
           }
+          (event.currentTarget as HTMLElement).focus({ preventScroll: true });
         }}
         onCloseAutoFocus={(event) => {
           // Focus goes back to the trigger that is on screen, which is not
@@ -614,7 +632,7 @@ export function LocationPickerView({
             wide viewport reserves a flat 6rem instead. */}
         <div
           data-picker-stage
-          className="relative h-full w-full overflow-hidden bg-muted/40 [--plate-h:calc(0.65625*var(--picker-w))] [--sheet-reserve:min(calc(var(--plate-h)_+_4rem),50%)] [--sheet-h:min(max(55dvh,27.5rem),calc(100%_-_var(--sheet-reserve)))] max-lg:sm:short:[--sheet-reserve:6rem]"
+          className="relative h-full w-full overflow-hidden bg-muted/40 [--plate-h:calc(0.65625*var(--picker-w))] [--sheet-reserve:min(calc(var(--plate-h)_+_2.5rem),50%)] [--sheet-h:min(max(55dvh,27.5rem),calc(100%_-_var(--sheet-reserve)))] max-lg:sm:short:[--sheet-reserve:6rem]"
         >
           {/* The recenter container, and the whole of the recentering. The map
               is given only the space the panel leaves, and the SVG letterboxes
@@ -652,6 +670,16 @@ export function LocationPickerView({
               // is given what the caption does not take, so an overlap is not
               // something to tune away, it is something that cannot be
               // expressed.
+              //
+              // The credit is the one exemption, and it floats in that corner
+              // now. The legend is what made the rule: a key is read against
+              // the map it explains, so a key drawn on the country is a key
+              // that cannot be read. The credit is read against itself. It
+              // carries its own opaque plate, it takes no pointer, and below
+              // lg it is one line where the caption was three rows, so the
+              // worst corner the letterbox can hand it costs legibility
+              // nothing and costs a tap nothing. See the paragraph on the
+              // plate for the rest.
               "absolute inset-x-0 top-0 flex flex-col gap-2 p-2 sm:p-3",
               // Named, so the paw layer in map-marker.tsx can ask how wide the
               // plate is actually drawn rather than guessing from the viewport.
@@ -686,7 +714,7 @@ export function LocationPickerView({
                 what lets a flex item give way at all, and the SVG letterboxes
                 inside whatever height it ends up with, so the map shrinks
                 rather than the caption being pushed off the stage. */}
-            <div className="flex min-h-0 flex-1 items-center justify-center">
+            <div className="relative flex min-h-0 flex-1 items-center justify-center">
               <ShelterMap
                 pins={pins}
                 selected={selected}
@@ -760,11 +788,73 @@ export function LocationPickerView({
                 // pushing it out of the frame.
                 className="max-h-full lg:h-full"
               />
+
+              {/* The credit, floated on the plate rather than set under it. CC
+                  BY 4.0 still requires it visible and it still is: it left the
+                  caption's flow, not the dialog, and nothing on the path from
+                  it up to the dialog hides it. What it stopped doing is
+                  charging the caption 36px for three lines of prose, which on
+                  a 320px phone is a fifth of the plate standing above it.
+
+                  Opaque, unlike the /80 the title chip and the close button
+                  wear. Those are chrome and can afford to let the map through.
+                  This is 10px type that has to clear 4.5:1, and the ratio the
+                  size was chosen against was measured on the paper; over a
+                  hillshade that varies underneath it the ratio would vary with
+                  it, so the paper travels with the text.
+
+                  pointer-events-none on the paragraph and auto on the links
+                  alone: the box sits over a corner of the country that can be
+                  picked, and a credit is not allowed to eat a region's taps.
+
+                  Bottom-left because that is the emptiest corner the plate
+                  has, sea and the Italian border, and because it is where the
+                  letterbox leaves bare paper when the viewBox does not fill
+                  the row. */}
+              <p
+                // Named, because the licence depends on it staying visible: a
+                // test finds this paragraph and walks its ancestors rather
+                // than matching on the classes it happens to wear.
+                data-slot="map-attribution"
+                className="pointer-events-none absolute bottom-0 left-0 max-w-[26rem] rounded-ui bg-background px-1.5 py-0.5 text-3xs leading-tight text-muted-foreground"
+              >
+                {/* The prose halves are description, not licence. CC BY 4.0
+                    asks for the creator, the licence and a link, and those
+                    three stay at every width; the sentence they sit in is what
+                    a phone can do without. Hidden by CSS rather than dropped
+                    from the tree, so the markup is one paragraph and the
+                    licence has one home. */}
+                <span className="max-lg:hidden">
+                  {messages.regionBoundaries}:{" "}
+                </span>
+                <a
+                  href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
+                  className="pointer-events-auto underline underline-offset-2 hover:text-foreground"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GURS
+                </a>
+                , CC BY 4.0.{" "}
+                <span className="max-lg:hidden">
+                  {messages.reliefSource}:{" "}
+                </span>
+                <a
+                  href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
+                  className="pointer-events-auto underline underline-offset-2 hover:text-foreground"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Terrain Tiles
+                </a>
+                <span className="max-lg:hidden"> (AWS Open Data)</span>, SRTM /
+                NASA.
+              </p>
             </div>
 
-            {/* The caption: the legend and the credits, under the plate, which
-                is where a printed sheet puts them and the one place they can
-                be that no aspect ratio can turn into an overlap. It is the
+            {/* The caption: the legend, under the plate, which is where a
+                printed sheet puts a key and the one place it can be that no
+                aspect ratio can turn into an overlap. It is the
                 stage's last row, so the plate's bottom edge is always above
                 it, whatever the sheet is doing to the height they share.
 
@@ -781,14 +871,14 @@ export function LocationPickerView({
                 ring are all still drawn on it. What a phone gets is the
                 compact register MapLegend writes for itself, not a smaller
                 share of the same rows. The stage's floor pays for it: see the
-                sheet's ceiling term below, which reserves the room this whole
-                caption needs rather than the room the credit alone needs.
+                sheet's ceiling term below.
 
-                CC BY 4.0 requires the attribution paragraph to stay visible,
-                which with nothing folding is now a property of the caption as
-                a whole rather than of where inside it the paragraph sits. */}
-            <div className="pointer-events-none z-10 flex w-full shrink-0 flex-col gap-1">
-              <div className="pointer-events-auto">
+                The credit used to sit under the legend here and floats on the
+                plate now, so this row holds one item: nothing to space it
+                against, and no pointer-events pair, the legend being the only
+                thing in the band that can be reached. 10px, where the two of
+                them together took 49. */}
+            <div className="z-10 w-full shrink-0">
                 <MapLegend
                   highlightedDensity={highlightedDensity}
                   onHoverDensity={setHighlightedDensity}
@@ -802,49 +892,6 @@ export function LocationPickerView({
                   origin={origin}
                   messages={messages}
                 />
-              </div>
-
-              {/* CC BY 4.0 requires attribution, so this stays visible even
-                  when the sheet is open on a phone. It reads quieter than the
-                  legend it sits under through size alone: at 10px the token
-                  was carrying a /70 as well, which measured 2.71:1 against
-                  the paper and put the one line the licence requires below
-                  the 4.5:1 that normal-size text has to clear. Full strength
-                  is the smallest change that clears it. */}
-              <p
-                // Named, because the licence depends on it staying visible:
-                // a test can then find this paragraph and walk its ancestors
-                // rather than matching on the classes it happens to wear.
-                data-slot="map-attribution"
-                // The measure is capped here rather than on the caption as a
-                // whole: this is prose and wants a line length, while the
-                // legend beside it is a key and wants the plate's own width.
-                className="pointer-events-auto max-w-[26rem] text-3xs leading-tight text-muted-foreground"
-              >
-                {messages.regionBoundaries}:{" "}
-                <a
-                  href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
-                  className="underline underline-offset-2 hover:text-foreground"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GURS
-                </a>
-                , CC BY 4.0.{" "}
-                {/* Second sentence in the same paragraph, not a second line:
-                    the relief is one more thing this map is drawn from, and it
-                    does not deserve a block of its own under the legend. */}
-                {messages.reliefSource}:{" "}
-                <a
-                  href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
-                  className="underline underline-offset-2 hover:text-foreground"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Terrain Tiles
-                </a>{" "}
-                (AWS Open Data), SRTM / NASA.
-              </p>
             </div>
           </div>
 
@@ -975,13 +1022,16 @@ export function LocationPickerView({
               //              MAP_HEIGHT in lib/geo.ts). It reads --picker-w,
               //              declared once on DialogContent and worn there, so
               //              the width is not written twice.
-              //   + 4rem     the caption under the plate and the stage's own
-              //              gap: the legend row, the CC BY paragraph and the
-              //              padding come to 63px at 375 wide, 76px at 320
-              //              where the credit takes a third line, and 75px
-              //              from sm up. Measuring the plate against the whole
-              //              dialog rather than the padded stage already
-              //              covers the edges, so 4rem is the rest.
+              //   + 2.5rem   the caption under the plate and the stage's own
+              //              gap. It was 4rem while the CC BY paragraph shared
+              //              that row and ran to two or three lines: 63px at
+              //              375 wide, 76px at 320. The credit floats on the
+              //              plate now and the row is the legend by itself,
+              //              measured at 10px, so the term is the legend and
+              //              the gap and nothing else. Measuring the plate
+              //              against the whole dialog rather than the padded
+              //              stage already covers the edges, so 2.5rem is the
+              //              rest.
               //   min(…,50%) and never more than half the stage. Past about
               //              730px of width a whole plate wants more height
               //              than the dialog has, and an uncapped reserve
@@ -1173,10 +1223,16 @@ export function LocationPickerView({
             {(panelOpen || sheetOpen) && (
               <div
                 className={cn(
-                  // No top padding of its own at any width: the tab row above
-                  // already ends with pb-2, and adding to it below lg made the
-                  // gap under the tabs two different gaps. Nothing reserved at
-                  // the bottom either: every child of this column, the footer
+                  // pt-1 and no more. The tab row above already ends with
+                  // pb-2, and anything larger here made the gap under the tabs
+                  // two different gaps, so this 4px is not spacing: it is
+                  // clearance. A scroller clips at its padding box, and a
+                  // control flush against the top edge loses the outer 3px of
+                  // its focus ring to that clip. Both branches below open with
+                  // an Input, the search box and MunicipalityFinder's own, so
+                  // it is paid once here rather than on whichever field the
+                  // mode happens to draw. Nothing reserved at the bottom
+                  // either: every child of this column, the footer
                   // included, takes its own height in flow.
                   //
                   // overflow-y-auto is the floor under all of that. Everything
@@ -1196,7 +1252,7 @@ export function LocationPickerView({
                   // Plain, not fade-scroll: that utility takes the scrollbar
                   // away and puts a mask in its place, and this is a last
                   // resort that should say so in the platform's own hand.
-                  "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4",
+                  "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-1 pb-4",
                   // And below lg, whatever the home indicator asks for on top
                   // of that. The sheet is the bottom edge of the dialog and
                   // the dialog is nearly the bottom edge of the screen, so on

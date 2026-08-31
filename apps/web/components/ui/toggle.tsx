@@ -29,9 +29,9 @@ import { cn } from "@/lib/utils"
 // on: the default variant draws no border, and with border-box sizing the
 // reserved pixel costs the fixed heights nothing.
 //
-// focus-visible:ring-ring, not ring-ring/50: halved, the ring composited to
-// 1.54:1 on the light page against the 3:1 SC 1.4.11 asks of a focus
-// indicator. See --ring in globals.css.
+// focus-visible:ring-ring, not ring-ring/50: halving the ring takes it under
+// the 3:1 SC 1.4.11 asks of a focus indicator. The measurements live once, on
+// --ring in globals.css.
 const toggleVariants = cva(
   "group/toggle inline-flex items-center justify-center gap-1 rounded-ui border border-transparent text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow] outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:border-[var(--filter-accent-border)] aria-pressed:bg-[var(--filter-accent)] aria-pressed:text-[var(--filter-accent-foreground)] aria-pressed:shadow-xs aria-pressed:hover:bg-[var(--filter-accent)] aria-pressed:hover:text-[var(--filter-accent-foreground)] data-[state=on]:border-[var(--filter-accent-border)] data-[state=on]:bg-[var(--filter-accent)] data-[state=on]:text-[var(--filter-accent-foreground)] data-[state=on]:shadow-xs data-[state=on]:hover:bg-[var(--filter-accent)] data-[state=on]:hover:text-[var(--filter-accent-foreground)] dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {

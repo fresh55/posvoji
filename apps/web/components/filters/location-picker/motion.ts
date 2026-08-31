@@ -3,6 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** The same cutoff as globals.css's `short` variant. */
 export const SHORT_VIEWPORT_QUERY = "(max-height: 32rem)";
 
+/** A pointer that can aim and hover, which is what decides where an open puts
+ *  focus. Named rather than written out at the call site, the same as NO_HOVER
+ *  in shelter-map.tsx: the test stubs matchMedia and has to answer the exact
+ *  string the component asks for, and a literal in both files drifts silently.
+ */
+export const FINE_POINTER = "(pointer: fine)";
+
 /** The map and dock transition together; keeping both timings here prevents
  * one half of the recentering animation from drifting away from the other. */
 export const MAP_STAGE_TRANSITION_CLASS =
@@ -13,6 +20,11 @@ export const PANEL_TRANSITION_CLASS =
 export function hasHeightToSpare(): boolean {
   if (typeof window === "undefined") return true;
   return !window.matchMedia?.(SHORT_VIEWPORT_QUERY).matches;
+}
+
+export function hasFinePointer(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.(FINE_POINTER).matches ?? false;
 }
 
 /** Owns the two responsive docks and the once-per-open landing decision. */

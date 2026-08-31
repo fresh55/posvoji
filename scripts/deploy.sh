@@ -13,6 +13,26 @@
 # below is the order it is: a release that goes live before its photos land
 # renders blank heroes, and nothing in the build or the test suite catches it.
 #
+# Release layout. There are two, and the host decides which one it gets:
+#
+#   today          the release directory is the site: index.html at its root,
+#                  which is what Caddy's docroot points at.
+#   layout v2      the release directory holds public/ (the same site) and
+#                  private/ (dataset.crawled.json, dataset.published.json and
+#                  publication.json). The docroot points at current/public, so
+#                  private/ sits outside the file server's root and nothing in
+#                  it is reachable over HTTP.
+#
+# The gate between them is the marker file /srv/posvoji/.layout-v2, which the
+# operator creates on the host as the last step of the migration, after the
+# docroot has moved and the site has been seen to answer from the new path. It
+# is a marker rather than a flag here because this script runs unattended from
+# the scheduled crawl every 12 hours (docs/CRAWL-SCHEDULING.md): shipping the
+# new layout before the docroot moves would 404 the whole site, and shipping
+# private files under today's docroot would publish the datasets. With the
+# marker absent this deploys exactly today's layout and ships no private
+# artifacts at all, printing the migration steps as it goes.
+#
 # Runs from Git Bash on Windows and from a POSIX shell on Linux or macOS. It
 # needs git, tar, ssh and pnpm on PATH, plus cmd.exe on Windows for the media
 # junction.
@@ -37,6 +57,14 @@ BASE_DIR="/srv/posvoji"
 MEDIA_DIR="${BASE_DIR}/media"
 RELEASES_DIR="${BASE_DIR}/releases"
 CURRENT_LINK="${BASE_DIR}/current"
+
+# Created by the operator once the Caddy docroot already points at
+# current/public and the site has been checked from there. Present means the
+# host serves current/public and this script may ship private artifacts;
+# absent means it still serves current/ and must not. See the release layout
+# note in the header, and the migration steps this script prints while the
+# marker is absent.
+LAYOUT_MARKER="${BASE_DIR}/.layout-v2"
 
 # Everything under /srv/posvoji: owned by the service user, readable by the
 # web server's group, nothing readable by anyone else.
@@ -72,6 +100,12 @@ LOCAL_DIST="${REPO_ROOT}/data/dist"
 
 DRY_RUN=false
 ALLOW_DIRTY=false
+ASSUME_LAYOUT_V2=false
+
+# Which layout this deploy ships, decided in stage 4 by asking the host for
+# the marker. False until then, so nothing before that point can ship a
+# private file by accident.
+LAYOUT_V2=false
 
 # Set by the build stage, read by the cleanup trap.
 TMP_ROOT=""
@@ -80,7 +114,7 @@ MEDIA_LINK_KIND="none" # none, junction, symlink or copy
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/deploy.sh [--dry-run] [--allow-dirty] [-h]
+Usage: scripts/deploy.sh [--dry-run] [--allow-dirty] [--assume-layout-v2] [-h]
 
 Builds apps/web at HEAD in a temporary git worktree and deploys the static
 export to the production host as a new release.
@@ -91,14 +125,28 @@ export to the production host as a new release.
   --allow-dirty   Deploy with uncommitted changes in the working tree. The
                   build still happens at HEAD, so those changes do not reach
                   production; this only silences the abort.
+  --assume-layout-v2
+                  Dry runs only. A dry run opens no connection, so it cannot
+                  read the host's layout marker; this prints the layout v2
+                  commands instead of today's. A real deploy always asks the
+                  host and refuses this flag.
   -h, --help      This text.
 
 Stages:
   1. Preflight     clean tree, dataset present, media present, pnpm media:verify
   2. Build         git worktree at HEAD, pnpm install, pnpm --filter web build
   3. Artifact      tar of apps/web/out without media/ and without .br/.gz
-  4. Deploy        media sync, orphan cleanup, host media verify, release
-                   upload, health check, symlink flip, prune
+  4. Deploy        media sync, orphan cleanup, host media verify, layout gate,
+                   release upload, health check, symlink flip, prune
+
+The layout gate reads /srv/posvoji/.layout-v2 on the host. Present, the
+release ships public/ and private/ (both datasets plus publication.json);
+absent, it ships today's layout and no private artifacts, and prints the
+three steps that move the host onto the new one.
+
+A layout v2 release is packaged only when animals.json, animals.crawled.json
+and overrides.json all carry the same export run's generatedAt. The check
+runs before anything is uploaded.
 
 Docs: docs/DEPLOY-MEDIA.md
 USAGE
@@ -203,6 +251,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=true ;;
     --allow-dirty) ALLOW_DIRTY=true ;;
+    --assume-layout-v2) ASSUME_LAYOUT_V2=true ;;
     -h | --help)
       usage
       exit 0
@@ -214,6 +263,13 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+# A real deploy reads the marker off the host. Letting this flag through would
+# be a hand-typed claim that the docroot has moved, and if it has not, the
+# private datasets land inside what Caddy serves.
+if "${ASSUME_LAYOUT_V2}" && ! "${DRY_RUN}"; then
+  fail "--assume-layout-v2 is for dry runs. A real deploy asks the host."
+fi
 
 cd "${REPO_ROOT}"
 
@@ -453,20 +509,170 @@ verify_status=\$?
 rm -rf ${HOST_VERIFY_DIR}
 exit \${verify_status}"
 
-# (b) The release directory.
-remote_stream "uploading the release to ${RELEASE_DIR}" \
-  "cat '${ARTIFACT}'" \
-  "mkdir -p ${RELEASE_DIR} && tar -C ${RELEASE_DIR} -xzf - --no-same-owner"
+# (a4) The layout gate. Asked once, here, because everything below it changes
+#      shape with the answer, and because a wrong answer in either direction
+#      is a production incident: the new layout under the old docroot 404s the
+#      site, the private datasets under the old docroot are downloadable.
+#
+#      The host answers with a word rather than an exit status, so a
+#      connection that fails reads as a failure instead of as "no marker".
+if "${DRY_RUN}"; then
+  if "${ASSUME_LAYOUT_V2}"; then
+    LAYOUT_V2=true
+    info "--assume-layout-v2: printing the layout v2 commands"
+  else
+    info "not asking the host about ${LAYOUT_MARKER}; assuming today's layout"
+  fi
+else
+  info "asking the host for ${LAYOUT_MARKER}"
+  LAYOUT_ANSWER="$(ssh_exec "if [ -f ${LAYOUT_MARKER} ]; then echo v2; else echo v1; fi")" ||
+    fail "could not ask the host about ${LAYOUT_MARKER}"
+  case "${LAYOUT_ANSWER}" in
+    *v2*) LAYOUT_V2=true ;;
+    *v1*) LAYOUT_V2=false ;;
+    *) fail "unexpected answer about ${LAYOUT_MARKER}: ${LAYOUT_ANSWER}" ;;
+  esac
+fi
 
+# Where index.html goes inside the release, which is what the docroot points
+# at. The two layouts differ in exactly this.
+if "${LAYOUT_V2}"; then
+  RELEASE_SITE_DIR="${RELEASE_DIR}/public"
+  RELEASE_PRIVATE_DIR="${RELEASE_DIR}/private"
+  info "layout v2: the release ships public/ and private/"
+  # Checked before a byte is uploaded, so a release directory is never left
+  # half built by a dataset that is not there.
+  [ -f "${LOCAL_DIST}/animals.crawled.json" ] ||
+    fail "no data/dist/animals.crawled.json. The host is on layout v2, which ships it. Run \`pnpm dataset:export\` first."
+
+  # The private half is staged and checked here, before the release upload
+  # below, rather than after it. animals.json, animals.crawled.json and
+  # overrides.json carry one export run's generatedAt; a set that disagrees is
+  # a run that stopped between its writes, and a release built out of it would
+  # pair one run's site with another run's datasets. scripts/publication.cjs
+  # refuses to write the receipt in that case and this deploy stops with
+  # nothing uploaded. It carries the whole rule and its reasoning.
+  PRIVATE_STAGE="${TMP_ROOT}/private"
+  mkdir -p "${PRIVATE_STAGE}"
+  cp "${LOCAL_DIST}/animals.crawled.json" "${PRIVATE_STAGE}/dataset.crawled.json" ||
+    fail "could not stage dataset.crawled.json"
+  cp "${LOCAL_DIST}/animals.json" "${PRIVATE_STAGE}/dataset.published.json" ||
+    fail "could not stage dataset.published.json"
+
+  info "checking the dataset generation and writing publication.json"
+  node "${REPO_ROOT}/scripts/publication.cjs" \
+    "${LOCAL_DIST}" "${RELEASE_NAME}" "${PRIVATE_STAGE}/publication.json" ||
+    fail "the release was not packaged; nothing was uploaded"
+  info "publication.json: $(tr -d '\n ' <"${PRIVATE_STAGE}/publication.json")"
+else
+  RELEASE_SITE_DIR="${RELEASE_DIR}"
+  RELEASE_PRIVATE_DIR=""
+  echo
+  echo "  !! The host has no ${LAYOUT_MARKER}, so this deploy ships today's"
+  echo "  !! layout and NO private artifacts. The datasets and the release"
+  echo "  !! receipt are withheld: under the current docroot every file in"
+  echo "  !! the release directory is downloadable, and private/ would be"
+  echo "  !! too."
+  echo "  !!"
+  echo "  !! Migrating the host is three steps in this order, with the"
+  echo "  !! scheduled crawl paused for all three (it deploys unattended, and"
+  echo "  !! a release shipped between steps 1 and 3 has no public/ of its"
+  echo "  !! own). The site answers normally between every pair of them, and"
+  echo "  !! each step is reversible on its own:"
+  echo "  !!"
+  echo "  !!   1. Give every release that already exists a self-symlink, so"
+  echo "  !!      each one is serveable at both <release> and <release>/public."
+  echo "  !!      The block checks every release before it links anything, and"
+  echo "  !!      stops if a real public/ directory is already there:"
+  echo "  !!"
+  echo "  !!        ("
+  echo "  !!          set -e"
+  echo "  !!          for r in ${RELEASES_DIR}/*/; do"
+  echo "  !!            if [ -e \"\${r}public\" ] && [ ! -L \"\${r}public\" ]; then"
+  echo "  !!              echo \"abort: \${r}public is a real directory\" >&2"
+  echo "  !!              exit 1"
+  echo "  !!            fi"
+  echo "  !!          done"
+  echo "  !!          for r in ${RELEASES_DIR}/*/; do"
+  echo "  !!            ln -sfn . \"\${r}public\""
+  echo "  !!            chown -h ${OWNERSHIP} \"\${r}public\""
+  echo "  !!          done"
+  echo "  !!        )"
+  echo "  !!"
+  echo "  !!      A real public/ directory is a layout v2 release that is"
+  echo "  !!      already there, and it must not be linked over. The subshell"
+  echo "  !!      keeps the abort out of your login shell. Nothing points at"
+  echo "  !!      the new path yet, so no request changes. The block is"
+  echo "  !!      idempotent; undo by deleting the links."
+  echo "  !!   2. Move Caddy's docroot to ${CURRENT_LINK}/public, validate the"
+  echo "  !!      config, then reload. The release current points at is still"
+  echo "  !!      the one being served, now through its own self-symlink."
+  echo "  !!      Before the reload:"
+  echo "  !!"
+  echo "  !!        test -s ${CURRENT_LINK}/public/index.html"
+  echo "  !!        caddy validate --config /etc/caddy/Caddyfile"
+  echo "  !!"
+  echo "  !!      The config path differs per install; /etc/caddy/Caddyfile is"
+  echo "  !!      the common default. Reload only after validate passes. The"
+  echo "  !!      first check fails when a deploy landed after step 1, and"
+  echo "  !!      re-running step 1's block fixes that. After the reload:"
+  echo "  !!"
+  echo "  !!        test -s ${CURRENT_LINK}/public/index.html"
+  echo "  !!        curl -skI --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/"
+  echo "  !!"
+  echo "  !!      Undo by putting the old docroot back."
+  echo "  !!   3. touch ${LAYOUT_MARKER}. From here every deploy ships a real"
+  echo "  !!      public/ and a private/ beside it, and the prune retires the"
+  echo "  !!      self-linked releases as they age out. A rollback onto one of"
+  echo "  !!      them keeps serving, because of step 1."
+  echo
+fi
+
+# (b) The release directory.
+remote_stream "uploading the release to ${RELEASE_SITE_DIR}" \
+  "cat '${ARTIFACT}'" \
+  "mkdir -p ${RELEASE_SITE_DIR} && tar -C ${RELEASE_SITE_DIR} -xzf - --no-same-owner"
+
+# (b2) The private half of a layout v2 release: the two datasets and the
+#      receipt that says which run produced them, all three staged and checked
+#      at the layout gate above. Never uploaded under the old layout, and never
+#      inside public/, because Caddy serves that directory and serves it whole.
+if "${LAYOUT_V2}"; then
+  remote_stream "uploading the private artifacts to ${RELEASE_PRIVATE_DIR}" \
+    "tar -C '${PRIVATE_STAGE}' -cf - ." \
+    "mkdir -p ${RELEASE_PRIVATE_DIR} && tar -C ${RELEASE_PRIVATE_DIR} -xf - --no-same-owner"
+fi
+
+# Recursive over the release root, so public/ and private/ are both covered by
+# one pass in either layout: 750 on directories, 640 on files, owned by the
+# service user and readable by Caddy's group. private/ is kept out of reach by
+# where it sits, not by its mode.
 remote "fixing ownership and modes on the release" \
   "chown ${OWNERSHIP} ${RELEASES_DIR} && chmod ${DIR_MODE} ${RELEASES_DIR} && $(own_and_mode_cmd "${RELEASE_DIR}")"
 
 # (c) Check the new directory before anything points at it. A release that
 #     unpacked short is still invisible at this point; after the flip it is the
 #     site.
+RELEASE_CHECK_CMD="test -s ${RELEASE_SITE_DIR}/index.html || { echo 'index.html missing or empty' >&2; exit 1; }
+test -s ${RELEASE_SITE_DIR}/${SAMPLE_ASSET} || { echo '${SAMPLE_ASSET} missing or empty' >&2; exit 1; }"
+if "${LAYOUT_V2}"; then
+  # public/ has to be a real directory in a release this script just built.
+  # The migration ritual printed under the old layout gives every pre-existing
+  # release a `public -> .` self-symlink so it can be served from the moved
+  # docroot, and those releases are legitimate rollback targets; this check
+  # never looks at one, because it only ever inspects the release of this run,
+  # whose public/ was made by the mkdir above. Asserting it is a directory and
+  # not a link is what keeps the two cases apart: `test -s public/index.html`
+  # alone follows a self-symlink and would pass on a v1 release.
+  RELEASE_CHECK_CMD="test -d ${RELEASE_SITE_DIR} && test ! -L ${RELEASE_SITE_DIR} || { echo 'public/ is not a real directory in this release' >&2; exit 1; }
+${RELEASE_CHECK_CMD}
+for f in dataset.crawled.json dataset.published.json publication.json; do
+  test -s ${RELEASE_PRIVATE_DIR}/\$f || { echo \"private/\$f missing or empty\" >&2; exit 1; }
+done
+test ! -e ${RELEASE_SITE_DIR}/private || { echo 'private/ ended up inside the docroot' >&2; exit 1; }"
+fi
 remote "checking the new release before the flip" \
-  "test -s ${RELEASE_DIR}/index.html || { echo 'index.html missing or empty' >&2; exit 1; }
-test -s ${RELEASE_DIR}/${SAMPLE_ASSET} || { echo '${SAMPLE_ASSET} missing or empty' >&2; exit 1; }
+  "${RELEASE_CHECK_CMD}
 echo 'release contents look complete'"
 
 # (d) The flip. ln -sfn replaces the link in one operation, so no request ever
@@ -486,6 +692,10 @@ case \"\$status\" in *' 200'*|*' 401'*) : ;; *) echo 'unexpected status after th
 #     commit sha, so sorting by name is sorting by nothing. The symlink target
 #     is resolved first and skipped, so a rollback that points current at an
 #     older release cannot delete the release it points at.
+#
+#     A release carrying the migration's `public -> .` self-symlink prunes
+#     like any other: readlink -f on the release directory is the directory
+#     itself, and rm -rf unlinks a symlink it meets rather than following it.
 remote "pruning releases to the newest ${KEEP_RELEASES}" \
   "cur=\$(readlink -f ${CURRENT_LINK} || true)
 cd ${RELEASES_DIR} || exit 0
@@ -505,6 +715,11 @@ stage "Summary"
 info "commit:   ${HEAD_SHA12} (${HEAD_BRANCH})"
 info "release:  ${RELEASE_NAME}"
 info "artifact: ${ARTIFACT_SIZE}, ${ARTIFACT_FILES} files, media excluded"
+if "${LAYOUT_V2}"; then
+  info "layout:   v2, public/ plus private/ (both datasets and the receipt)"
+else
+  info "layout:   today's, no private artifacts (no ${LAYOUT_MARKER} on the host)"
+fi
 
 if "${DRY_RUN}"; then
   info "dry run: no connection was opened to ${REMOTE_HOST}"

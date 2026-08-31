@@ -192,8 +192,8 @@ migration steps below.
 Three steps, in this order. The site answers normally between every pair of
 them and each step is reversible on its own.
 
-Pause the scheduled crawl first and resume it after step 3
-([CRAWL-SCHEDULING.md](CRAWL-SCHEDULING.md) asks for that before any hand
+Pause the scheduled crawl first and resume it only once the verification below
+passes ([CRAWL-SCHEDULING.md](CRAWL-SCHEDULING.md) asks for that before any hand
 change to production anyway). A deploy that lands between steps 1 and 3 ships
 today's layout, and that release has no `public/` of its own: step 1 links the
 releases that exist when it runs, and nothing links the ones made after it.
@@ -268,6 +268,132 @@ already exist, which is what lets the two halves be done separately.
 real `public/` directory rather than a symlink, so a self-linked v1 release
 can never be mistaken for a v2 one. It only ever inspects the release of the
 run it is in, so the self-links from step 1 are never in its way.
+
+#### Verifying the migration
+
+Run one deploy by hand once the marker exists, then verify. That deploy is the
+first release with a real `public/` and a `private/` beside it, and until it is
+there the checks below describe nothing. The scheduled task stays disabled for
+all of this.
+
+Production is behind HTTP Basic Auth, so every unauthenticated request gets a
+401, including a request for a path that does not exist. Fetching
+`/private/dataset.published.json` without credentials and seeing a 401 says
+nothing about whether the file is reachable: 401 comes back either way, and a
+404 is never reached to be seen. This is also why `deploy.sh`'s own post-flip
+check accepts 200 or 401. The structural checks below need no credentials and
+are exact; the HTTP checks need credentials to mean anything.
+
+**Structural checks.** On the host:
+
+```bash
+(
+  cur=/srv/posvoji/current
+  test -d "$cur/public" && test ! -L "$cur/public" ||
+    echo "public/ is not a real directory"
+  for f in dataset.crawled.json dataset.published.json publication.json; do
+    test -s "$cur/private/$f" || echo "missing: private/$f"
+  done
+  test ! -e "$cur/public/private" || echo "private/ is inside the docroot"
+)
+```
+
+Silence is the pass. The first check is what separates a real v2 release from
+a self-linked v1 one: `test -s public/index.html` alone follows the
+self-symlink and passes on both. It is the same assertion `deploy.sh` makes
+before every flip.
+
+The receipt names the release it was written for, so it has to agree with what
+`current` points at:
+
+```bash
+(
+  receipt=/srv/posvoji/current/private/publication.json
+  cur="$(basename "$(readlink /srv/posvoji/current)")"
+  rid="$(sed -n 's/.*"releaseId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$receipt")"
+  echo "current:   $cur"
+  echo "releaseId: $rid"
+  [ "$cur" = "$rid" ] && echo match || echo MISMATCH
+)
+```
+
+A mismatch means the release directory and the receipt inside it disagree, so
+the private half is not the one that deploy built.
+
+**Authenticated HTTP checks.** Through Caddy, from the host. The credentials go
+into a temporary `.netrc` that curl reads, so they stay off the command line,
+out of the process list and out of curl's own output:
+
+```bash
+(
+  umask 077
+  netrc="$(mktemp)"
+  cat >"$netrc" <<'NETRC'
+machine posvoji.si login BASIC_AUTH_USER password BASIC_AUTH_PASSWORD
+NETRC
+  for p in / /private/dataset.published.json /publication.json; do
+    code="$(curl -s -o /dev/null -w '%{http_code}' --netrc-file "$netrc" \
+      -k --resolve posvoji.si:443:127.0.0.1 "https://posvoji.si$p")"
+    echo "$code $p"
+  done
+  rm -f "$netrc"
+)
+```
+
+`BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are placeholders for the real pair.
+`umask 077` is what keeps the file unreadable to anyone else while it exists,
+and `rm -f` is what keeps it from outliving the check. A heredoc typed at the
+prompt still reaches the shell history, so either put the line in the file with
+an editor or paste the block with a leading space on a shell that has
+`HISTCONTROL=ignorespace`.
+
+Expected: `200 /`, then `404 /private/dataset.published.json` and
+`404 /publication.json`. A 401 on any of the three means the credentials did
+not apply, and then the run proves nothing: it is inconclusive, not a pass.
+Fix the credentials and run it again.
+
+**The rollback drill.** Once, at migration time. A rollback onto a self-linked
+v1 release is what step 1 exists for, and doing it is the only way to know it
+works. The scheduled task has to stay disabled for the drill: a crawl deploy
+landing in the middle of it flips `current` underneath you.
+
+```bash
+ls -ld /srv/posvoji/releases/*/public   # the v1 ones are symlinks
+```
+
+```bash
+(
+  set -e
+  v1=/srv/posvoji/releases/PICK-A-V1-RELEASE
+  test -L "$v1/public"
+  v2="$(readlink /srv/posvoji/current)"
+  echo "current: $v2"
+  ln -sfn "$v1" /srv/posvoji/current
+  chown -h posvoji:caddy /srv/posvoji/current
+  test -s /srv/posvoji/current/public/index.html
+  curl -skI --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/ | head -1
+  ln -sfn "$v2" /srv/posvoji/current
+  chown -h posvoji:caddy /srv/posvoji/current
+  test -s /srv/posvoji/current/public/index.html
+  curl -skI --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/ | head -1
+)
+```
+
+`PICK-A-V1-RELEASE` is a placeholder, and `test -L "$v1/public"` is what stops
+the block before it flips anything if the name was not replaced: `ln -sfn` onto
+a name that does not exist would leave `current` dangling and the site down.
+
+Both `test -s` checks pass and both curls answer 200 or 401, the v1 release
+through its self-symlink and the v2 one through its real `public/`. `ln -sfn`
+here is the same single operation `deploy.sh` uses for its own flip, so the
+drill runs the ordinary path rather than a special one.
+
+Re-enable the scheduled task only after the structural checks, the
+authenticated checks and the drill have all passed:
+
+```powershell
+Enable-ScheduledTask -TaskName PosvojiCrawlDeploy -TaskPath \Posvoji\
+```
 
 ### One export run, three files
 

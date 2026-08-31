@@ -6,7 +6,6 @@
 // Nothing here touches the network. It reads the dataset and the manifest,
 // cuts what is missing from our own cached files and writes both back.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { Dataset } from "@posvoji/schema";
 import {
   deriveVariants,
@@ -14,9 +13,15 @@ import {
   readImageCacheManifest,
   withCachedUrls,
 } from "./cache-images";
-import { cachedImagesDir, datasetDir, imageCacheManifestPath } from "./paths";
+import {
+  cachedImagesDir,
+  datasetDir,
+  datasetPath,
+  imageCacheManifestPath,
+} from "./paths";
 
-const datasetPath = join(datasetDir, "animals.json");
+// Only the published dataset. animals.crawled.json deliberately carries no
+// cached image fields: they are stripped again the moment a record is reused.
 if (!existsSync(datasetPath)) {
   throw new Error(`no dataset at ${datasetPath}; run the export first`);
 }

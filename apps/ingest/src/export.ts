@@ -8,6 +8,11 @@ import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
 import { buildChangeSet } from "./changes";
 import { flagList, flagValue, hasFlag } from "./cli";
+import {
+  assertBootstrapCrawlIsComplete,
+  captureCrawledSnapshot,
+  readPreviousCrawledDataset,
+} from "./crawled-snapshot";
 import { guardProviderRequests, type CrawlClient } from "./crawl-guard";
 import { exitCodeForRun } from "./exit-codes";
 import {
@@ -25,6 +30,7 @@ import {
   applyOverrides,
   buildOverrideReport,
   fetchPortalOverrides,
+  portalIntegrationEnabled,
 } from "./portal-overrides";
 import { providers } from "./registry";
 import {
@@ -35,7 +41,12 @@ import {
   retainableAnimals,
 } from "./run-guards";
 import { writeShareCards } from "./share-cards";
-import { datasetDir, overrideReportPath } from "./paths";
+import {
+  crawledDatasetPath,
+  datasetDir,
+  datasetPath,
+  overrideReportPath,
+} from "./paths";
 import { writeFileAtomic } from "./write-atomic";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
@@ -56,8 +67,6 @@ const discardPrevious = hasFlag(argv, "--discard-previous");
 // every record at once; CRAWL_GENERATION in incremental-crawl.ts is the
 // version of this that does not need anybody to remember the flag.
 const refreshAll = hasFlag(argv, "--refresh-all");
-
-const datasetPath = join(datasetDir, "animals.json");
 
 function loadValidPolicies(): LoadedPolicy[] {
   const { policies, errors } = loadPolicies();
@@ -163,7 +172,30 @@ async function crawl(
   return { animals, crawled, failed, fullyRefreshed, fetched, reused };
 }
 
-const previous = readPreviousDataset(datasetPath, { discardPrevious });
+// Two previous datasets, and which one a step reads is the whole point of the
+// split. animals.json is what the last run published, corrections merged in;
+// animals.crawled.json is what its crawl produced, before any of them.
+//
+// Everything below that means "what did the crawl say last time" reads the
+// crawled one: the reuse input, firstSeenAt, the carried-over records, the
+// removal guard. Only the change set reads the published one, and deliberately
+// so: it answers "what changed on the site", and a correction that is still
+// standing is not a change. See crawled-snapshot.ts for the feedback loop this
+// closes.
+//
+// The two files are also checked against each other there: they carry one
+// run's generatedAt, so a pair that disagrees is a run that stopped between
+// the two writes and neither file can be trusted as last run's other half.
+const previousPublished = readPreviousDataset(datasetPath, { discardPrevious });
+const { dataset: previousCrawled, bootstrapping: bootstrappingSnapshot } =
+  readPreviousCrawledDataset(crawledDatasetPath, {
+    discardPrevious,
+    portalEnabled: portalIntegrationEnabled(),
+    refreshAll,
+    targetedProviderId: requestedProviderId,
+    published: previousPublished,
+    publishedPath: datasetPath,
+  });
 // Which generation of the parsers, and which policy, produced the records we
 // are about to reuse. A missing or unreadable file forces a full crawl, which
 // is the safe direction.
@@ -212,22 +244,47 @@ const {
   fullyRefreshed,
   fetched: detailsFetched,
   reused: detailsReused,
-} = await crawl(client, crawlPolicies, previous?.animals ?? [], crawlState);
+} = await crawl(
+  client,
+  crawlPolicies,
+  previousCrawled?.animals ?? [],
+  crawlState,
+);
 console.log(
   `detail pages: ${detailsFetched} fetched, ${detailsReused} reused`,
 );
 
+// The second half of the bootstrap check, and the first point at which it can
+// be made: whether every enabled provider finished and refreshed in full is a
+// fact about the crawl that just returned. It runs here, before firstSeenAt is
+// carried, before a photo is fetched and before any file is written, so a
+// bootstrap run that would have to carry a provider over from the merged
+// dataset stops with nothing on disk to undo. See crawled-snapshot.ts.
+if (bootstrappingSnapshot) {
+  assertBootstrapCrawlIsComplete({
+    failed,
+    fullyRefreshedProviderIds: fullyRefreshed.map((p) => p.providerId),
+    enabledProviderIds: policies
+      .filter(({ policy }) => policy.enabled)
+      .map(({ policy }) => policy.providerId),
+  });
+  console.log(
+    `bootstrap: every enabled provider crawled and fully refreshed, so ` +
+      `${crawledDatasetPath} is the crawl's own answer`,
+  );
+}
+
 // A re-crawled animal is not a new one, so keep the date we first saw it.
 // Matched by id first and by the page it came from second, so a provider that
 // changes how it derives ids does not reset every date it has.
-const refreshed = carryFirstSeenAt(previous?.animals ?? [], crawled);
+const refreshed = carryFirstSeenAt(previousCrawled?.animals ?? [], crawled);
 
 // Everything this run did not re-crawl: the other shelters on a targeted run,
 // and any provider whose crawl failed above. Their records come back from the
 // previous dataset rather than being dropped, but only while their policy
 // still lets us publish them, so a shelter that switched off or withdrew its
 // permission leaves the dataset even on a run that never crawled it.
-const carried = (previous?.animals ?? []).filter(
+const carried = (previousCrawled?.animals ?? []).filter(
   (animal) => !crawledProviderIds.has(animal.source.providerId),
 );
 const { animals: preserved, dropped } = retainableAnimals(carried, policyById);
@@ -285,6 +342,12 @@ for (const { providerId, field, count } of restricted.stripped) {
   );
 }
 
+// The crawl's own answer for this run, taken here because this is the last
+// point at which nothing has been merged into it, and copied out so no later
+// phase can reach it. Written at the end as animals.crawled.json, and read
+// back by the next run as previousCrawled.
+const crawledSnapshot = captureCrawledSnapshot(restricted.animals);
+
 // Shelter corrections from the portal are merged in after the crawl (and
 // after firstSeenAt is carried over) so a re-crawl can never silently
 // clobber them, and before image caching and the change-set diff so an
@@ -317,7 +380,12 @@ if (overrideResult) {
 // matching returns an empty list without an error, and every step below this
 // line reads that as "the shelter emptied": the photos, the cards and the
 // records go, and firstSeenAt is reset for whatever comes back.
-guardMassRemoval(previous?.animals ?? [], overridden, {
+// Against the crawled snapshot, because this guard is about the crawl: a
+// shelter emptying out is a fact about its site, not about our corrections.
+// The current side stays the merged list, which is the same length and the
+// same providers as crawledSnapshot: applyOverrides edits fields, never adds
+// or drops an animal.
+guardMassRemoval(previousCrawled?.animals ?? [], overridden, {
   accepted: acceptRemovals,
   crawledProviderIds,
 });
@@ -396,13 +464,37 @@ console.log(
 // fields appended, and JSON.stringify follows insertion order, so every cached
 // animal showed up as updated on every run.
 const dataset: Dataset = Dataset.parse({ generatedAt, animals });
+
+// The same run's crawl, stamped with the same generatedAt even though it was
+// captured several phases earlier: the two files describe one run, and a
+// second clock reading would only invite somebody to compare them. It goes
+// through the same schema, so a snapshot that could not be published is not
+// written either.
+//
+// It carries no cachedUrl and none of the derived image fields for anything
+// this run crawled, because cacheImages runs after the capture; a record
+// carried over from a file that had them keeps them until its provider is
+// crawled again. Either way their state here says nothing: reuseAnimal in
+// incremental-crawl.ts strips exactly those fields off a reused record before
+// republishing it, and cacheImages grafts them back from the manifest as it
+// stands now. The snapshot is only ever read as crawl input.
+const crawledDataset: Dataset = Dataset.parse({
+  generatedAt,
+  animals: crawledSnapshot,
+});
+
+// The published dataset against the last published one. This is the only
+// comparison in the run that uses the merged files on both sides, so a
+// correction that has been standing for weeks stays out of changes.json
+// instead of being reported again on every run.
 const changes = buildChangeSet({
   generatedAt,
-  previous: previous?.animals ?? [],
+  previous: previousPublished?.animals ?? [],
   current: dataset.animals,
 });
 
 writeFileAtomic(datasetPath, JSON.stringify(dataset, null, 2));
+writeFileAtomic(crawledDatasetPath, JSON.stringify(crawledDataset, null, 2));
 writeFileAtomic(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),

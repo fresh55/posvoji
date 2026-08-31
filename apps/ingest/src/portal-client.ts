@@ -65,6 +65,19 @@ async function readBoundedBody(response: Response, url: string): Promise<string>
   return Buffer.concat(chunks, total).toString("utf8");
 }
 
+// Whether this run has the portal integration configured at all, decided from
+// the same three variables fetchPortalOverrides reads below. It is a separate
+// predicate because the pipeline has to know before the payload is fetched:
+// the crawled-snapshot bootstrap in crawled-snapshot.ts is strict when
+// corrections can reach the dataset and forgiving when they cannot. Keep the
+// two in step.
+export function portalIntegrationEnabled(): boolean {
+  return Boolean(
+    process.env["PORTAL_EXPORT_FIXTURE"] ||
+      (process.env["PORTAL_EXPORT_URL"] && process.env["PORTAL_EXPORT_TOKEN"]),
+  );
+}
+
 // Fetches the portal's current export, or returns null when the integration
 // is not configured. Shape or HTTP failures abort the export so the pipeline
 // never writes a dataset with only some corrections applied.

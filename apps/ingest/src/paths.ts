@@ -7,6 +7,17 @@ export const repoRoot = join(here, "..", "..", "..");
 export const providersDir = join(repoRoot, "providers");
 export const datasetDir = join(repoRoot, "data", "dist");
 
+// What the site reads: the crawl with the portal's shelter corrections merged
+// in. This is the published dataset, and the only one a release serves.
+export const datasetPath = join(datasetDir, "animals.json");
+
+// The same run's dataset as the crawl produced it, before a single override
+// was merged. Every step that means "what did the crawl say last time" reads
+// this one: the incremental reuse input, firstSeenAt, the carried-over
+// records and the removal guard. Never served, and never compared for the
+// change set. See the two-snapshot comment in export.ts for why.
+export const crawledDatasetPath = join(datasetDir, "animals.crawled.json");
+
 // Cached shelter photos land inside the web app's public dir (gitignored:
 // shelter content is not repository content) so both `next dev` and the
 // static export serve them without a copy step.

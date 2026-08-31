@@ -75,7 +75,10 @@ describe("status provenance", () => {
       />,
     );
 
-    expect(screen.getByText(portalText.statusFromSite)).toBeTruthy();
+    // A sentence under the buttons, not a corner mark with a hover title: it
+    // is the only form of this a touch user can read.
+    expect(screen.getByText(portalText.statusFromSiteLine)).toBeTruthy();
+    expect(screen.queryByText(portalText.statusOwnLine)).toBeNull();
     // Still the effective value, so the control reports what is true now.
     expect(statusButton("Na voljo").getAttribute("aria-pressed")).toBe("true");
     // But drawn as inherited, not as an answer the shelter gave.
@@ -101,15 +104,21 @@ describe("status provenance", () => {
   it("drops the inherited mark once the shelter has set the status", () => {
     render(
       <PortalAnimalCard
-        animal={animal({ status: "reserved", overrides: { status: "reserved" } })}
+        animal={animal({
+          status: "reserved",
+          overrides: { status: "reserved" },
+        })}
         shelter={SHELTER}
         saveState={IDLE}
         onSave={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText(portalText.statusFromSite)).toBeNull();
+    expect(screen.queryByText(portalText.statusFromSiteLine)).toBeNull();
     expect(statusButton("Rezerviran").className).not.toContain("border-dashed");
+    // The same row now says the value is theirs and that a later crawl will
+    // not move it.
+    expect(screen.getByText(portalText.statusOwnLine)).toBeTruthy();
     // A value the shelter set can be given back to the crawl.
     expect(screen.getByRole("button", { name: /Povrni/ })).toBeTruthy();
   });
@@ -125,7 +134,8 @@ describe("status provenance", () => {
     );
 
     expect(screen.getByText(portalText.statusUnknown)).toBeTruthy();
-    expect(screen.queryByText(portalText.statusFromSite)).toBeNull();
+    expect(screen.queryByText(portalText.statusFromSiteLine)).toBeNull();
+    expect(screen.queryByText(portalText.statusOwnLine)).toBeNull();
   });
 });
 
@@ -232,7 +242,9 @@ describe("fields the public filters need", () => {
 
 describe("confirming an inherited status", () => {
   function confirmButton(): HTMLElement | null {
-    return screen.queryByRole("button", { name: portalText.statusConfirmHint });
+    return screen.queryByRole("button", {
+      name: portalText.statusConfirmLabel,
+    });
   }
 
   it("pins the value the site states as the shelter's own", () => {
@@ -248,6 +260,12 @@ describe("confirming an inherited status", () => {
 
     const confirm = confirmButton();
     expect(confirm?.textContent).toContain(portalText.statusConfirm);
+    // WCAG 2.5.3: the label starts with the word on the button, so voice
+    // control can say it. And it is drawn at 24px, so touch gets the layer.
+    expect(
+      portalText.statusConfirmLabel.startsWith(portalText.statusConfirm),
+    ).toBe(true);
+    expect(confirm?.className).toContain("max-lg:tap-target");
     confirm?.click();
 
     expect(onSave).toHaveBeenCalledWith({ status: "available" });
@@ -256,7 +274,10 @@ describe("confirming an inherited status", () => {
   it("is not offered once the shelter has answered", () => {
     render(
       <PortalAnimalCard
-        animal={animal({ status: "reserved", overrides: { status: "reserved" } })}
+        animal={animal({
+          status: "reserved",
+          overrides: { status: "reserved" },
+        })}
         shelter={SHELTER}
         saveState={IDLE}
         onSave={vi.fn()}

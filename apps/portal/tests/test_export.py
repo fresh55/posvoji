@@ -2,10 +2,22 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from core.api import export
 from core.models import AnimalOverride
 
 EXPORT = "/api/export"
 TOKEN = "ingest-token"
+
+
+class SteppedClock:
+    """A now() that moves one whole second per reading."""
+
+    def __init__(self) -> None:
+        self.readings = 0
+
+    def now(self, tz) -> datetime:
+        self.readings += 1
+        return datetime(2026, 8, 18, 12, 0, self.readings, tzinfo=tz)
 
 
 @pytest.fixture
@@ -81,6 +93,46 @@ def test_export_returns_only_overridden_fields(
             },
         },
     ]
+
+
+@pytest.mark.django_db
+def test_export_stamps_generated_at_before_it_reads_the_rows(
+    client, export_token, shelter, other_shelter, monkeypatch
+):
+    AnimalOverride.objects.create(
+        shelter=shelter, animal_id="testno:1", status="reserved"
+    )
+    clock = SteppedClock()
+    monkeypatch.setattr(export, "datetime", clock)
+
+    read_fields = AnimalOverride.overridden_fields
+    late = []
+
+    def save_a_late_override(self):
+        # An override that lands while the feed is being built. It reads the
+        # same clock the endpoint does, so its updated_at falls between the
+        # readings the endpoint takes.
+        if not late:
+            row = AnimalOverride.objects.create(
+                shelter=other_shelter, animal_id="drugo:7", status="reserved"
+            )
+            # auto_now would stamp the wall clock, so set the reading directly.
+            AnimalOverride.objects.filter(pk=row.pk).update(updated_at=clock.now(UTC))
+            row.refresh_from_db()
+            late.append(row)
+        return read_fields(self)
+
+    monkeypatch.setattr(AnimalOverride, "overridden_fields", save_a_late_override)
+
+    body = client.get(EXPORT, **bearer(TOKEN)).json()
+
+    generated_at = datetime.fromisoformat(body["generatedAt"].replace("Z", "+00:00"))
+
+    # The late row missed this payload, so the watermark has to predate it. A
+    # stamp taken after the read would sit above its updated_at and tell a
+    # consumer the row was included.
+    assert [entry["animalId"] for entry in body["overrides"]] == ["testno:1"]
+    assert generated_at < late[0].updated_at
 
 
 @pytest.mark.django_db

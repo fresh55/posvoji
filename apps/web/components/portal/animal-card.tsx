@@ -229,44 +229,9 @@ export function PortalAnimalCard({
           <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {portalText.statusLegend}
           </h4>
-          {statusOverridden ? (
-            <RevertButton
-              field={portalText.statusLegend}
-              disabled={saving}
-              onRevert={() => void onSave({ status: null })}
-            />
-          ) : status === null ? (
+          {!statusOverridden && status === null && (
             <span className="text-2xs text-muted-foreground">
               {portalText.statusUnknown}
-            </span>
-          ) : (
-            // Almost every animal lands here: the value is the crawl's
-            // reading of the shelter's own page, and saying so is what keeps
-            // the row from looking like a question already answered.
-            <span className="flex items-center gap-1">
-              <span
-                title={portalText.statusFromSiteHint}
-                className="text-2xs text-muted-foreground"
-              >
-                {portalText.statusFromSite}
-              </span>
-              {/* Tapping the already-pressed status card pins the value too,
-                  but nothing about a pressed card offers that. This is the
-                  same save with a name on it, and it is the only one a touch
-                  user can find: the hint above is a hover title. */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={saving}
-                title={portalText.statusConfirmHint}
-                aria-label={portalText.statusConfirmHint}
-                onClick={() => void onSave({ status })}
-                className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground hover:text-foreground"
-              >
-                <Check aria-hidden />
-                {portalText.statusConfirm}
-              </Button>
             </span>
           )}
         </div>
@@ -276,6 +241,50 @@ export function PortalAnimalCard({
           busy={saving}
           onSelect={(next) => void onSave({ status: next })}
         />
+        {/* Under the buttons, not in the header's corner: the sentence is
+            about the row it sits below, and it is read after the shelter has
+            seen the highlighted button rather than before.
+            One flex line, never two. The sentence is flex-1 and wraps inside
+            its own column, so the control stays beside it at 375px instead of
+            being orphaned onto a line of its own.
+            mt-3, not mt-2: the control below carries max-lg:tap-target, whose
+            layer overhangs its 24px drawing by 10px per side, and the status
+            buttons above are the neighbour that 12px keeps clear of it. See
+            the utility's note in globals.css. */}
+        {(statusOverridden || status !== null) && (
+          <div className="mt-3 flex items-center gap-2">
+            <p className="min-w-0 flex-1 text-2xs leading-relaxed text-muted-foreground">
+              {statusOverridden
+                ? portalText.statusOwnLine
+                : portalText.statusFromSiteLine}
+            </p>
+            {statusOverridden ? (
+              <RevertButton
+                className="max-lg:tap-target"
+                field={portalText.statusLegend}
+                disabled={saving}
+                onRevert={() => void onSave({ status: null })}
+              />
+            ) : (
+              // Tapping the already-pressed status card pins the value too,
+              // but nothing about a pressed card offers that. This is the
+              // same save with a name on it, and the sentence to its left is
+              // what makes it findable without a hover title.
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={saving}
+                aria-label={portalText.statusConfirmLabel}
+                onClick={() => void onSave({ status })}
+                className="h-6 shrink-0 gap-1 px-1.5 text-2xs font-normal text-muted-foreground max-lg:tap-target hover:text-foreground"
+              >
+                <Check aria-hidden />
+                {portalText.statusConfirm}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {missing.length > 0 && (

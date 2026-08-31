@@ -41,12 +41,7 @@ export const portalText = {
     "Prijava je uspela, dostopa do zavetišča pa ta naslov še nima. Pišite nam in uredimo.",
   animalsTitle: "Vaše živali",
   animalsLead:
-    "Popravki se shranijo takoj in prekrijejo podatek z vaše spletne strani. Na javni strani so vidni po naslednji osvežitvi, najpozneje v 12 urah. Kar ne popravite, ostane tako, kot ga zajamemo.",
-  // Shown once under the lead instead of a per-card hover, so touch users
-  // read it too. It also answers "kaj se zgodi ob naslednjem zajemu": the
-  // shelter's choice stays until the shelter reverts it.
-  statusInheritedLead:
-    "Stanje z oznako »z vaše strani« je naše branje vaše spletne strani. Ko ga izberete ali potrdite sami, obvelja vaš podatek, tudi če se vaša stran kasneje spremeni.",
+    "Popravki se shranijo takoj, na javni strani pa so vidni najpozneje v 12 urah.",
   // List tools. The counts double as filters; "Vse" turns them off.
   searchLabel: "Išči po imenu",
   searchPlaceholder: "Išči po imenu …",
@@ -68,16 +63,23 @@ export const portalText = {
   // Card and editor
   statusLegend: "Stanje",
   statusUnknown: "Ni podatka",
-  // Status arrives from the crawl for almost every animal, so the card has to
-  // say where it came from. Without this the shelter opens the workspace to a
-  // grid that already looks answered and has nothing left to confirm.
-  statusFromSite: "z vaše strani",
-  statusFromSiteHint:
-    "Tako smo prebrali z vaše spletne strani. Ko izberete sami, obvelja vaš podatek.",
+  // Status arrives from the crawl for almost every animal, so the row under
+  // the four buttons has to say so in a full sentence and ask for the one
+  // action that settles it. Without this the shelter opens the workspace to a
+  // grid that already looks answered and has nothing left to confirm. It is a
+  // sentence and not a hover title on purpose: a touch user never opens one.
+  statusFromSiteLine:
+    "Stanje smo prebrali z vaše spletne strani. Če drži, ga potrdite.",
   // Confirms the inherited value as the shelter's own answer. Pinning is what
   // a tap on the highlighted card already did; this makes it discoverable.
   statusConfirm: "Potrdi",
-  statusConfirmHint: "Potrdi trenutno stanje, da obvelja vaš podatek.",
+  // The visible word is the start of the label, so voice control can say it
+  // (WCAG 2.5.3) and a screen reader still hears which value is meant.
+  statusConfirmLabel: "Potrdi stanje, ki smo ga prebrali z vaše strani",
+  // The other half of the pair: once the shelter has picked or confirmed, the
+  // same row says the value is theirs and that our next crawl will not move it.
+  statusOwnLine:
+    "Stanje ste določili sami. Velja, tudi če se vaša stran spremeni.",
   // Named for what the shelter gets out of filling them in, not for what we
   // are missing: these five are the filters an adopter narrows the grid with.
   missingTitle: "Manjka za iskalnik:",

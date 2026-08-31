@@ -96,7 +96,8 @@ export function PortalWorkspace() {
   // The guard: no session, no workspace. replace() so the back button does
   // not walk into a page that will only bounce again.
   useEffect(() => {
-    if (state.status === "anonymous") window.location.replace(PORTAL_LOGIN_PATH);
+    if (state.status === "anonymous")
+      window.location.replace(PORTAL_LOGIN_PATH);
   }, [state.status]);
 
   const onUnauthorized = useCallback(() => {
@@ -206,7 +207,7 @@ export function PortalWorkspace() {
           )}
 
           <section className="space-y-4">
-            <div className="space-y-1 border-b pb-3">
+            <div className="space-y-2 border-b pb-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
                   {portalText.animalsTitle}
@@ -217,13 +218,12 @@ export function PortalWorkspace() {
                   </p>
                 )}
               </div>
-              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+              {/* The only line up here. What the marks on the cards mean is
+                  said on the card that draws them, at the moment the shelter
+                  meets one; a key up here explains three things nobody has
+                  seen yet and says nothing about where they live. */}
+              <p className="text-sm text-muted-foreground">
                 {portalText.animalsLead}
-              </p>
-              {/* Said once here rather than in a per-card tooltip, which a
-                  touch user never opens. */}
-              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-                {portalText.statusInheritedLead}
               </p>
             </div>
 
@@ -288,7 +288,9 @@ export function PortalWorkspace() {
                   {visible.map((animal, index) => (
                     <m.div
                       key={animal.id}
-                      initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+                      initial={
+                        shouldReduceMotion ? false : { opacity: 0, y: 8 }
+                      }
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
                         duration: 0.22,

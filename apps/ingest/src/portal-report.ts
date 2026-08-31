@@ -11,8 +11,13 @@ export interface OverrideReportEntry {
 // This sidecar keeps correction provenance out of the public Animal schema
 // while making applied, unmatched, and conflicting overrides auditable.
 export interface OverrideReport {
+  // The run's own dataset generatedAt, the same string animals.json and
+  // animals.crawled.json carry, not a second clock reading. It is what ties
+  // this report to the pair of datasets it describes, and scripts/deploy.sh
+  // refuses to package a release where the three disagree.
   generatedAt: string;
   enabled: boolean;
+  // The portal export's own timestamp, present exactly when enabled is true.
   portalGeneratedAt?: string;
   applied: OverrideReportEntry[];
   unmatched: OverrideReportEntry[];
@@ -28,6 +33,8 @@ function toEntry(override: PortalOverride): OverrideReportEntry {
   };
 }
 
+// generatedAt is the run's dataset timestamp, handed in by export.ts from the
+// same variable both datasets are stamped with. Nothing here reads a clock.
 export function buildOverrideReport(
   generatedAt: string,
   payload: PortalExportPayload | null,

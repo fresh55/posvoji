@@ -92,7 +92,15 @@ export const portalText = {
   missingBadge: "Manjka za iskalnik",
   edit: "Uredi podatke",
   editTitle: "Uredi {name}",
-  editLead: "Prazno polje pomeni, da velja podatek z vaše spletne strani.",
+  // True of every row, which "Prazno polje pomeni …" was not: a row the
+  // shelter has already changed holds their own value, not a blank.
+  editLead: "Kar vpišete tukaj, obvelja namesto podatka z vaše spletne strani.",
+  // The other half, under the control of a row the shelter has changed. The
+  // pair matches statusOwnLine and statusFromSiteLine on the card: a sentence
+  // at the point of use, because the revert button's hover title is something
+  // a touch user never opens.
+  fieldOwnLine:
+    "Velja to, kar ste vpisali sami; s Povrni se vrne podatek z vaše spletne strani.",
   publicListing: "Javna objava",
   fieldName: "Ime",
   nameHint: "Samo ime, brez pasme in starosti.",
@@ -134,4 +142,58 @@ export const portalText = {
   revert: "Povrni",
   revertField: "Povrni {field} na podatek z vaše strani",
   revertHint: "Povrne podatek, kot je zapisan na vaši spletni strani.",
+
+  // Listings
+  //
+  // A shelter with no catalogue of its own writes its animals here, so for
+  // these there is no crawled record underneath and nothing in this block may
+  // mention "vaša spletna stran": the form is the listing. What replaces the
+  // crawl as the thing to explain is the delay, because Posvoji.si is the
+  // only place the animal appears at all.
+  listingAdd: "Dodaj žival",
+  listingsEmptyLead:
+    "Vaše zavetišče živali objavlja tukaj. Dodajte prvo in v nekaj urah bo na Posvoji.si.",
+  listingNewTitle: "Nova žival",
+  listingNewLead:
+    "Objava se shrani takoj, na javni strani je vidna najpozneje v 12 urah.",
+  listingEditLead:
+    "Popravki se shranijo takoj, na javni strani so vidni najpozneje v 12 urah.",
+  fieldSpecies: "Vrsta",
+  speciesRequired: "Izberite vrsto živali.",
+  nameRequired: "Vpišite ime živali.",
+  // energyHint's second sentence is about the crawl, which a listing has
+  // none of, so the listing form carries the first sentence alone.
+  listingEnergyHint: "Koliko gibanja in dela žival potrebuje čez dan.",
+
+  // Photos. The upload is the one place a shelter can wait on us, so every
+  // state of it says what is happening in a full sentence.
+  fieldPhotos: "Fotografije",
+  photosHint: "Prva fotografija je tista, ki jo posvojitelj vidi prvo.",
+  photoAdd: "Dodaj fotografijo",
+  photoLimits: "JPG, PNG ali WebP, do 15 MB.",
+  photoPending: "Čaka na nalaganje",
+  photoRemove: "Odstrani",
+  // The second tap is the confirm. A photo is one file and gets a question on
+  // the button itself, not a dialog over the form the shelter is filling in.
+  photoRemoveConfirm: "Res odstrani?",
+  photoRemoveLabel: "Odstrani {index}. fotografijo",
+  photoTypeRejected:
+    "Datoteka {name} ni JPG, PNG ali WebP. Izberite fotografijo v eni od teh oblik.",
+  photoTooLarge: "Datoteka {name} je večja od 15 MB. Izberite manjšo.",
+  photoUploading: "Nalagam fotografijo {index} od {total} …",
+  photoUploadFailed: "Fotografije {name} ni bilo mogoče naložiti.",
+  photoRetry: "Naloži znova",
+  photoUploadError:
+    "Fotografije ni bilo mogoče naložiti. Poskusite znova ali izberite drugo.",
+  photoRemoveError: "Fotografije ni bilo mogoče odstraniti. Poskusite znova.",
+
+  // Archiving is the shelter's delete, and the only thing that takes an
+  // animal off the public site. The pair says both halves of what it does:
+  // when it takes effect, and that the portal has no way back.
+  listingArchive: "Odstrani objavo",
+  listingArchiveTitle: "Odstrani {name} s Posvoji.si?",
+  listingArchiveLead:
+    "Objava bo z javne strani izginila ob naslednji osvežitvi, najpozneje v 12 urah. Tukaj tega ne morete razveljaviti.",
+  listingArchiveCancel: "Obdrži objavo",
+  listingArchiveError: "Objave ni bilo mogoče odstraniti. Poskusite znova.",
 } as const;

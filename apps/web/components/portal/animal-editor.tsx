@@ -22,6 +22,15 @@ import {
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -277,6 +286,10 @@ function Field({
     </>
   );
 
+  // The row holds the shelter's own answer as long as they are not giving it
+  // back, which is the same condition the way back out is offered under.
+  const own = overridden && !reverting;
+
   return (
     <div data-field={field} className="space-y-1.5">
       <div className="flex min-h-6 items-center justify-between gap-2">
@@ -287,13 +300,32 @@ function Field({
             {heading}
           </span>
         )}
-        {overridden && !reverting && (
-          <RevertButton field={label} onRevert={onRevert} disabled={disabled} />
+        {own && (
+          <RevertButton
+            className="max-lg:tap-target"
+            field={label}
+            onRevert={onRevert}
+            disabled={disabled}
+          />
         )}
       </div>
       {/* Marked off from the label row so the field can be focused without
-          landing on its revert button. */}
-      <div data-field-control>{children}</div>
+          landing on its revert button.
+          The padding is for that button's tap-target overlay, which overhangs
+          its 24px drawing by 10px per side and would otherwise reach into this
+          control and take presses meant for it. space-y-1.5 leaves 6px, and
+          padding is what can add to that: the space-y rule outranks a margin
+          utility. Same 12px the card keeps. See globals.css. */}
+      <div data-field-control className={own ? "max-lg:pt-1.5" : undefined}>
+        {children}
+      </div>
+      {/* Under the control, not in a legend at the top: this is the one place
+          the shelter is looking when they wonder what Povrni would do. */}
+      {own && (
+        <p className="text-xs text-muted-foreground">
+          {portalText.fieldOwnLine}
+        </p>
+      )}
       {hint && (
         <p id={hintId(uid, field)} className="text-xs text-muted-foreground">
           {hint}
@@ -322,14 +354,26 @@ export function AnimalEditor({
   const [draft, setDraft] = useState<Draft>(() => draftFrom(animal));
   const [ageError, setAgeError] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // saveState is one slot per animal, shared with the status buttons on the
+  // card, and an error in it never expires. Without this a failed status tap
+  // greets the shelter with "Shranjevanje ni uspelo" under a form they have
+  // not touched, so the editor only reads that slot once it has sent a save
+  // of its own.
+  const [attempted, setAttempted] = useState(false);
   const [source, setSource] = useState({ animal, open });
   const formRef = useRef<HTMLFormElement>(null);
+  // The editor is opened programmatically, so Radix has no trigger to give
+  // the focus back to and would leave it on <body>. Both dialogs capture what
+  // was focused before they opened and put it back themselves.
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const confirmReturnFocus = useRef<HTMLElement | null>(null);
 
   // One prefix per mounted editor, so a hint and the error summary can be
   // named by the controls they belong to without colliding across dialogs.
   const uid = useId();
   const compatibilityHintId = `${uid}-compatibility-hint`;
   const errorId = `${uid}-error`;
+  const ageErrorId = `${uid}-age-error`;
 
   // The dialog opens on whatever the server last confirmed, so a cancelled
   // edit leaves nothing behind. Adjusted during render rather than in an
@@ -341,6 +385,7 @@ export function AnimalEditor({
       setDraft(draftFrom(animal));
       setAgeError(false);
       setConfirming(false);
+      setAttempted(false);
     }
   }
 
@@ -379,11 +424,10 @@ export function AnimalEditor({
   // and the dialog must not throw it away silently.
   const unsaved = dirty || badAgeBox !== null;
   const name = animal.name ?? portalText.unnamed;
-  const errorText = ageError
-    ? portalText.invalidError
-    : saveState.status === "error"
-      ? saveState.message
-      : null;
+  // The age has its own message, beside the boxes it is about. What is left
+  // for the foot of the form is the save that did not go through.
+  const errorText =
+    attempted && saveState.status === "error" ? saveState.message : null;
 
   // Which of the adopter's filters this animal still leaves blank. Read off
   // the saved animal, not the draft, so the row keeps saying what the public
@@ -395,6 +439,15 @@ export function AnimalEditor({
   );
 
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  /**
+   * The age's own setter. Typing in either box retires its error; nothing
+   * else in the form can, or picking a size would clear a message about a
+   * number the shelter has not corrected.
+   */
+  function setAge(key: "ageYears" | "ageMonths", value: string) {
     setDraft((current) => ({ ...current, [key]: value }));
     setAgeError(false);
   }
@@ -428,6 +481,9 @@ export function AnimalEditor({
   }
 
   function discard() {
+    // The form the focus would go back to is about to unmount with the
+    // editor, which then puts the focus back where it opened from.
+    confirmReturnFocus.current = null;
     setConfirming(false);
     onOpenChange(false);
   }
@@ -445,16 +501,30 @@ export function AnimalEditor({
       box?.focus({ preventScroll: true });
       return;
     }
-    if (!dirty) {
-      onOpenChange(false);
-      return;
-    }
+    // From here the editor owns whatever the shared save slot says next.
+    setAttempted(true);
     if (await onSave(patch)) onOpenChange(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={requestClose}>
-      <DialogContent closeLabel="Zapri" className="gap-0">
+      <DialogContent
+        closeLabel="Zapri"
+        className="gap-0"
+        // Radix hands the focus back to the trigger it was opened from, and
+        // there is no trigger here: the card opens the editor in code, so the
+        // focus would land on <body> and the shelter would be back at the top
+        // of the page. Captured on open and put back on close, as
+        // animal-dialog.tsx does.
+        onOpenAutoFocus={() => {
+          returnFocus.current = document.activeElement as HTMLElement | null;
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocus.current?.focus();
+          returnFocus.current = null;
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-base">
             {fill(portalText.editTitle, { name })}
@@ -649,8 +719,9 @@ export function AnimalEditor({
                 className="grid grid-cols-2 gap-1.5"
               >
                 <div className="flex items-center gap-1.5">
-                  {/* The summary below the form is the age's error message
-                      too, so the box at fault points at it. */}
+                  {/* The age's message is its own and sits right below these
+                      two boxes, so the box at fault points at that. The
+                      summary at the foot of the form is a phone screen away. */}
                   <Input
                     id="portal-age-years"
                     type="number"
@@ -660,9 +731,9 @@ export function AnimalEditor({
                     value={draft.ageYears}
                     disabled={saving}
                     aria-invalid={ageError || undefined}
-                    aria-errormessage={ageError ? errorId : undefined}
+                    aria-errormessage={ageError ? ageErrorId : undefined}
                     aria-describedby={hintId(uid, "approximateAgeMonths")}
-                    onChange={(event) => set("ageYears", event.target.value)}
+                    onChange={(event) => setAge("ageYears", event.target.value)}
                   />
                   <Label
                     htmlFor="portal-age-years"
@@ -681,9 +752,11 @@ export function AnimalEditor({
                     value={draft.ageMonths}
                     disabled={saving}
                     aria-invalid={ageError || undefined}
-                    aria-errormessage={ageError ? errorId : undefined}
+                    aria-errormessage={ageError ? ageErrorId : undefined}
                     aria-describedby={hintId(uid, "approximateAgeMonths")}
-                    onChange={(event) => set("ageMonths", event.target.value)}
+                    onChange={(event) =>
+                      setAge("ageMonths", event.target.value)
+                    }
                   />
                   <Label
                     htmlFor="portal-age-months"
@@ -693,6 +766,19 @@ export function AnimalEditor({
                   </Label>
                 </div>
               </div>
+              {ageError && (
+                <p
+                  id={ageErrorId}
+                  role="alert"
+                  className="mt-1.5 flex items-start gap-1.5 text-sm text-destructive"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-3.5 shrink-0"
+                    aria-hidden
+                  />
+                  {portalText.invalidError}
+                </p>
+              )}
             </Field>
           </div>
 
@@ -789,27 +875,44 @@ export function AnimalEditor({
         </form>
 
         {/* Nested on purpose: it opens over the editor, so the form the
-            shelter is deciding about stays behind it. */}
-        <Dialog open={confirming} onOpenChange={setConfirming}>
-          <DialogContent showCloseButton={false} className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-base">
+            shelter is deciding about stays behind it. An alert dialog and not
+            a second Dialog: this asks a question with a destructive answer,
+            so it is announced as one, it cannot be dismissed by a stray tap
+            outside, and Radix opens it focused on the cancel. */}
+        <AlertDialog open={confirming} onOpenChange={setConfirming}>
+          <AlertDialogContent
+            className="max-w-sm"
+            // Whatever in the form asked the question gets the focus back.
+            onOpenAutoFocus={() => {
+              confirmReturnFocus.current =
+                document.activeElement as HTMLElement | null;
+            }}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              confirmReturnFocus.current?.focus();
+              confirmReturnFocus.current = null;
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base">
                 {portalText.discardTitle}
-              </DialogTitle>
-              <DialogDescription>{portalText.discardLead}</DialogDescription>
-            </DialogHeader>
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {portalText.discardLead}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
             {/* Reversed, so the safe answer is both the rightmost button and
                 the one the dialog opens focused on. */}
             <div className="flex flex-row-reverse gap-2">
-              <Button type="button" onClick={() => setConfirming(false)}>
+              <AlertDialogCancel variant="default">
                 {portalText.keepEditing}
-              </Button>
-              <Button type="button" variant="destructive" onClick={discard}>
+              </AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={discard}>
                 {portalText.discardChanges}
-              </Button>
+              </AlertDialogAction>
             </div>
-          </DialogContent>
-        </Dialog>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

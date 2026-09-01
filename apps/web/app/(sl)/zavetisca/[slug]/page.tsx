@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ShelterDetailPage } from "@/components/shelter-detail-page";
+import { loadDataset } from "@/lib/dataset";
 import { shelterMetadata } from "@/lib/shelter-share";
 import { getShelterBySlug, loadShelters } from "@/lib/shelters";
 
@@ -18,7 +19,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const shelter = getShelterBySlug(slug);
   if (!shelter) return {};
-  return shelterMetadata(shelter, "sl");
+  // The same question the page body answers before it draws the animals
+  // section, asked here so the description does not promise a list the page
+  // does not have. loadDataset caches, so this costs one read for the build.
+  const hasAnimals = (loadDataset()?.animals ?? []).some(
+    (animal) => animal.shelter.id === shelter.id,
+  );
+  return shelterMetadata(shelter, "sl", hasAnimals);
 }
 
 export default async function ZavetiscePage({

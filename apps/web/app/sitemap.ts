@@ -19,10 +19,11 @@ import { RESOURCES_PATHS } from "@/lib/site-links";
  *
  * What is not here: /portal and /portal/prijava, which already carry
  * robots: { index: false } because they are a shelter's own workspace behind
- * a magic link, and /dev/map, which is a drawing tool. /viri is here despite
- * being hidden from the site's own navigation, because hidden from a menu is
- * not the same as hidden from search, and it was written for the search that
- * lands on it.
+ * a magic link, and /dev/map, which is a drawing tool. The portal pages are
+ * fetchable on purpose, so that noindex is read; see app/robots.ts. /viri is
+ * here despite being hidden from the site's own navigation, because hidden
+ * from a menu is not the same as hidden from search, and it was written for
+ * the search that lands on it.
  *
  * No priority field. It is advisory, Google says it ignores it, and a number
  * invented per route reads as a claim the site cannot support. lastModified

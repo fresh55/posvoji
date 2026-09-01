@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
 } from "react";
@@ -146,6 +147,16 @@ export function PhotoGallery({
   const image = images[imageIndex];
   const hasGallery = images.length > 1;
   const dots = photoDotWindow(images.length, imageIndex);
+  // Without an href there is no card link for the arrows to live on, and the
+  // chevrons' way out of the tab order (see the comment on them below) was
+  // written for that link. The animal's own page has no such link, so on a
+  // plain surface the frame itself takes the focus and the keys, and the
+  // chevrons stay in the tab order and in the accessibility tree.
+  //
+  // The dialog handles its own arrows in photo-spread.tsx, and mounts this
+  // component only for an animal with no photo at all, where hasGallery is
+  // false. So the two can never answer the same key press.
+  const keyboardGallery = hasGallery && href === undefined;
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -184,11 +195,27 @@ export function PhotoGallery({
     }
   }
 
-  function changeImage(direction: -1 | 1) {
+  function goToImage(nextIndex: number) {
     if (!hasGallery) return;
-    const nextIndex = (imageIndex + direction + images.length) % images.length;
     preloadAdjacent(nextIndex);
     setImageIndex(nextIndex);
+  }
+
+  function changeImage(direction: -1 | 1) {
+    goToImage((imageIndex + direction + images.length) % images.length);
+  }
+
+  // Home and End as well as the arrows: the longest gallery in the register
+  // runs to fourteen photos, which is a long walk one key at a time.
+  function stepPhoto(event: KeyboardEvent<HTMLDivElement>) {
+    if (!keyboardGallery) return;
+    if (event.key === "ArrowLeft") changeImage(-1);
+    else if (event.key === "ArrowRight") changeImage(1);
+    else if (event.key === "Home") goToImage(0);
+    else if (event.key === "End") goToImage(images.length - 1);
+    else return;
+    // The page must not scroll out from under the visitor stepping photos.
+    event.preventDefault();
   }
 
   function endGesture() {
@@ -313,6 +340,18 @@ export function PhotoGallery({
   // excludes pinch-zoom, so declaring it alone turned off zoom on the one
   // element a low-vision visitor most wants to zoom. Composing the two keeps
   // the horizontal capture the swipe needs and gives the pinch back.
+  // tone lands here and not on the wrapper. On the wrapper every child
+  // inherited it, so a settled animal's chevrons and its position dots were
+  // dimmed and desaturated along with the photograph. Here it reaches the
+  // picture and the "no photo yet" note and stops.
+  //
+  // A plain string of its own, because the keyboard surface below adds its
+  // focus ring to it, and reading it back off `surface` is reading an object
+  // that also carries the pointer handlers and their refs.
+  const surfaceClassName = cn(
+    "absolute inset-0 touch-pan-y touch-pinch-zoom",
+    tone,
+  );
   const surface = {
     onPointerDown: startSwipe,
     onPointerMove: moveSwipe,
@@ -321,11 +360,7 @@ export function PhotoGallery({
     onPointerUp: finishSwipe,
     onPointerCancel: handleSwipeCancel,
     onLostPointerCapture: handleSwipeCancel,
-    // tone lands here and not on the wrapper. On the wrapper every child
-    // inherited it, so a settled animal's chevrons and its position dots were
-    // dimmed and desaturated along with the photograph. Here it reaches the
-    // picture and the "no photo yet" note and stops.
-    className: cn("absolute inset-0 touch-pan-y touch-pinch-zoom", tone),
+    className: surfaceClassName,
     style: {
       transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
       transition:
@@ -402,6 +437,29 @@ export function PhotoGallery({
         >
           {imageContent}
         </a>
+      ) : keyboardGallery ? (
+        // A group, not a listbox or a tablist: nothing here is chosen or
+        // selected, the visitor is walking one picture at a time. The label
+        // names whose photos these are; which one is showing is the picture's
+        // own alt text and the live line at the bottom of this component.
+        <div
+          role="group"
+          aria-label={translate(locale, "photoAltSingle", {
+            name: name ?? messages.unnamed,
+          })}
+          aria-keyshortcuts="ArrowLeft ArrowRight"
+          tabIndex={0}
+          onKeyDown={stepPhoto}
+          {...surface}
+          // Inside the frame's own rounded, clipping box, so the ring is drawn
+          // as an inset outline the way the grid card draws it.
+          className={cn(
+            surfaceClassName,
+            "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background",
+          )}
+        >
+          {imageContent}
+        </div>
       ) : (
         <div {...surface}>{imageContent}</div>
       )}
@@ -412,11 +470,13 @@ export function PhotoGallery({
             type="button"
             variant="outline"
             size="icon-sm"
-            // Out of the tab order: two chevrons on every card came to 850 of
-            // the grid's tab stops. The keyboard route through a gallery is
-            // the arrow keys on the card's own link, which is one stop instead
-            // of two and faster than pressing Enter on a disc.
-            tabIndex={-1}
+            // Out of the tab order on a card: two chevrons on every card came
+            // to 850 of the grid's tab stops. The keyboard route through a
+            // card's gallery is the arrow keys on the card's own link, which
+            // is one stop instead of two and faster than pressing Enter on a
+            // disc. A surface with no link has no such route, so there these
+            // are ordinary buttons.
+            tabIndex={keyboardGallery ? undefined : -1}
             // Read by the grid card, whose press feedback squeezes the whole
             // card. These turn the picture and open nothing, so they are held
             // out of it. Surfaces that do not squeeze ignore the attribute.
@@ -429,8 +489,10 @@ export function PhotoGallery({
             // DOM position, not by tab order, so it still landed on both
             // chevrons on every multi-photo card - about 850 of them across
             // the grid. The keyboard route is the arrow keys on the card
-            // link, and the sr-only line below announces the position.
-            aria-hidden="true"
+            // link, and the sr-only line below announces the position. Again
+            // the card's case only: where there is no link these are the
+            // announced way through the gallery.
+            aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${OWN_BUTTON_CLASS} left-1.5`}
           >
             <ChevronLeft className="size-4" aria-hidden />
@@ -439,11 +501,11 @@ export function PhotoGallery({
             type="button"
             variant="outline"
             size="icon-sm"
-            tabIndex={-1}
+            tabIndex={keyboardGallery ? undefined : -1}
             data-press-exempt
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
-            aria-hidden="true"
+            aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${OWN_BUTTON_CLASS} right-1.5`}
           >
             <ChevronRight className="size-4" aria-hidden />

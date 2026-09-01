@@ -26,6 +26,25 @@ describe("translations", () => {
       "Photo 2 of 7",
     );
   });
+
+  it("agrees the shelter-absence sentence with the Slovenian dual", () => {
+    // One zavetišče nima, two zavetišči nimata, three or more zavetišča
+    // nimajo. Two is the count a singular/plural pair gets wrong.
+    expect(
+      translate("sl", "noResultsShelterSingular", { species: "psov" }),
+    ).toBe("Izbrano zavetišče trenutno nima psov.");
+    expect(translate("sl", "noResultsShelterDual", { species: "psov" })).toBe(
+      "Izbrani zavetišči trenutno nimata psov.",
+    );
+    expect(translate("sl", "noResultsShelterPlural", { species: "psov" })).toBe(
+      "Izbrana zavetišča trenutno nimajo psov.",
+    );
+    // English inflects nothing past one, so the dual reads as the plural
+    // rather than as a form of its own.
+    expect(translate("en", "noResultsShelterDual", { species: "dogs" })).toBe(
+      translate("en", "noResultsShelterPlural", { species: "dogs" }),
+    );
+  });
 });
 
 describe("localized labels", () => {

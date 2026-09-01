@@ -1131,6 +1131,38 @@ describe("animal dialog", () => {
     expect(cta.className).toContain("max-sm:h-11");
   });
 
+  // The shelter block replaces the CTA with the good news and a quiet text
+  // link for an animal that has left, and the bar was still giving the phone
+  // a full-width primary "open the listing" over the top of it.
+  it("hides the sticky bar for an animal that has already found a home", async () => {
+    window.history.replaceState(null, "", "/?zival=lucky");
+    renderGrid([ADOPTED]);
+    const dialog = await screen.findByRole("dialog");
+
+    expect(dialog.querySelector('[data-slot="sticky-cta"]')).toBeNull();
+    // With no bar to mirror, the block's own way to the listing is the one
+    // the phone gets, and it stays visible.
+    const link = region(dialog, "shelter-block").getByRole("link", {
+      name: /Odpri objavo pri zavetišču/,
+    });
+    expect(link.className).not.toContain("max-sm:hidden");
+    expect(within(dialog).getByText("Ta žival je že našla nov dom.")).toBeTruthy();
+  });
+
+  // The line is the provider's own Slovenian, printed verbatim, so on an
+  // English page it has to say which language it is in.
+  it("marks the attribution Slovenian away from the Slovenian pages", () => {
+    render(
+      <I18nProvider locale="en">
+        <ShelterBlock animal={REX} logos={{}} reference={new Date(REFERENCE)} />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getByText("Foto in opis: Zavetišče Test").getAttribute("lang"),
+    ).toBe("sl");
+  });
+
   it("hides the sticky bar when there is no listing to send anyone to", async () => {
     const noListing = animal("brez", "Brez", {
       source: {

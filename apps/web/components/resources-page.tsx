@@ -14,6 +14,12 @@ type Resource = {
   organization: string;
   kind: LocalizedText;
   href: string;
+  /** The language the title and the organization are written in. Both are
+   *  quoted from the source rather than translated, so most of them stay
+   *  English on the Slovenian page and two of them stay Slovenian on the
+   *  English one. Marked up per card, or a screen reader voices every one of
+   *  them with the page's phonemes. */
+  lang: Locale;
 };
 
 type ResourceSection = {
@@ -36,6 +42,7 @@ const sections: ResourceSection[] = [
         organization: "UL Veterinarska fakulteta",
         kind: { sl: "Veterinarska fakulteta", en: "Veterinary faculty" },
         href: "https://www.vf.uni-lj.si/novice/10-mitov-o-surovi-hrani-za-pse-macke",
+        lang: "sl",
       },
       {
         title:
@@ -47,6 +54,7 @@ const sections: ResourceSection[] = [
         organization: "Animals",
         kind: { sl: "Recenzirani pregled", en: "Peer-reviewed review" },
         href: "https://www.mdpi.com/2076-2615/15/3/293",
+        lang: "en",
       },
       {
         title: "WSAVA Global Nutrition Guidelines",
@@ -57,6 +65,7 @@ const sections: ResourceSection[] = [
         organization: "WSAVA",
         kind: { sl: "Veterinarske smernice", en: "Veterinary guidelines" },
         href: "https://wsava.org/global-guidelines/global-nutrition-guidelines/",
+        lang: "en",
       },
       {
         title:
@@ -71,6 +80,7 @@ const sections: ResourceSection[] = [
           en: "Pet food industry standard",
         },
         href: "https://www.fediaf.org/self-regulation/nutritional-guidelines/",
+        lang: "en",
       },
       {
         title: "WSAVA 2024 Guidelines for the Vaccination of Dogs and Cats",
@@ -81,6 +91,7 @@ const sections: ResourceSection[] = [
         organization: "WSAVA",
         kind: { sl: "Veterinarske smernice", en: "Veterinary guidelines" },
         href: "https://wsava.org/global-guidelines/vaccination-guidelines/",
+        lang: "en",
       },
       {
         title: "2019 AAHA Canine Life Stage Guidelines",
@@ -91,6 +102,7 @@ const sections: ResourceSection[] = [
         organization: "AAHA",
         kind: { sl: "Veterinarske smernice", en: "Veterinary guidelines" },
         href: "https://www.aaha.org/resources/life-stage-canine-2019/life-stage-canine-2019-2/",
+        lang: "en",
       },
       {
         title: "2021 AAHA/AAFP Feline Life Stage Guidelines",
@@ -101,6 +113,7 @@ const sections: ResourceSection[] = [
         organization: "AAHA / FelineVMA",
         kind: { sl: "Veterinarske smernice", en: "Veterinary guidelines" },
         href: "https://catvets.com/resource/aaha-aafp-feline-life-stage-guidelines/",
+        lang: "en",
       },
       {
         title:
@@ -112,6 +125,7 @@ const sections: ResourceSection[] = [
         organization: "FelineVMA",
         kind: { sl: "Veterinarske smernice", en: "Veterinary guidelines" },
         href: "https://catvets.com/resource/2024-intercat-tension-guidelines/",
+        lang: "en",
       },
       {
         title: "AAHA Canine and Feline Behavior Management Guidelines",
@@ -122,6 +136,7 @@ const sections: ResourceSection[] = [
         organization: "AAHA",
         kind: { sl: "Veterinarske smernice", en: "Veterinary guidelines" },
         href: "https://www.aaha.org/resources/2015-aaha-canine-and-feline-behavior-management-guidelines/",
+        lang: "en",
       },
       {
         title: "Nekaj praktičnih nasvetov za ustno zdravje vašega psa in mačka",
@@ -132,6 +147,7 @@ const sections: ResourceSection[] = [
         organization: "UL Veterinarska fakulteta",
         kind: { sl: "Veterinarska fakulteta", en: "Veterinary faculty" },
         href: "https://www.vf.uni-lj.si/novice/nekaj-prakticnih-nasvetov-za-ustno-zdravje-vasega-psa-macka",
+        lang: "sl",
       },
     ],
   },
@@ -148,6 +164,7 @@ const sections: ResourceSection[] = [
         organization: "Rabbit Welfare Association & Fund",
         kind: { sl: "Organizacija za dobrobit", en: "Welfare organisation" },
         href: "https://rabbitwelfare.co.uk/welfare-need/how-to-feed-rabbits/",
+        lang: "en",
       },
       {
         title: "FEDIAF Nutritional Guidelines for Feeding Pet Rabbits",
@@ -161,6 +178,7 @@ const sections: ResourceSection[] = [
           en: "Pet food industry standard",
         },
         href: "https://www.fediaf.org/self-regulation/nutritional-guidelines/",
+        lang: "en",
       },
       {
         title:
@@ -172,6 +190,7 @@ const sections: ResourceSection[] = [
         organization: "Veterinary Record Open",
         kind: { sl: "Recenzirana raziskava", en: "Peer-reviewed research" },
         href: "https://doi.org/10.1136/vetreco-2019-000363",
+        lang: "en",
       },
       {
         title:
@@ -183,6 +202,7 @@ const sections: ResourceSection[] = [
         organization: "Frontiers in Veterinary Science",
         kind: { sl: "Recenzirana raziskava", en: "Peer-reviewed research" },
         href: "https://www.frontiersin.org/journals/veterinary-science/articles/10.3389/fvets.2026.1793812/full",
+        lang: "en",
       },
     ],
   },
@@ -199,6 +219,7 @@ const sections: ResourceSection[] = [
         organization: "RSPCA",
         kind: { sl: "Organizacija za dobrobit", en: "Welfare organisation" },
         href: "https://www.rspca.org.uk/adviceandwelfare/pets/rodents/guineapigs/diet",
+        lang: "en",
       },
       {
         title: "Hamster health",
@@ -209,6 +230,7 @@ const sections: ResourceSection[] = [
         organization: "RSPCA",
         kind: { sl: "Organizacija za dobrobit", en: "Welfare organisation" },
         href: "https://www.rspca.org.uk/adviceandwelfare/pets/rodents/hamsters/health",
+        lang: "en",
       },
       {
         title: "Bird Owner Resource Series",
@@ -219,6 +241,7 @@ const sections: ResourceSection[] = [
         organization: "Association of Avian Veterinarians",
         kind: { sl: "Veterinarsko združenje", en: "Veterinary association" },
         href: "https://www.aav.org/page/birdownerbrochures",
+        lang: "en",
       },
       {
         title: "Salmonella Bacteria and Reptiles",
@@ -229,6 +252,7 @@ const sections: ResourceSection[] = [
         organization: "ARAV",
         kind: { sl: "Veterinarsko združenje", en: "Veterinary association" },
         href: "https://arav.org/salmonella-bacteria-and-reptiles/",
+        lang: "en",
       },
       {
         title: "Ferret health",
@@ -239,6 +263,7 @@ const sections: ResourceSection[] = [
         organization: "RSPCA",
         kind: { sl: "Organizacija za dobrobit", en: "Welfare organisation" },
         href: "https://www.rspca.org.uk/adviceandwelfare/pets/ferrets/health",
+        lang: "en",
       },
     ],
   },
@@ -298,33 +323,57 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                 {section.title[locale]}
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
-                {section.resources.map((resource) => (
-                  <Card asChild key={`${section.id}-${resource.title}`}>
-                    <article className="flex flex-col p-5">
-                      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span className="rounded-full border bg-muted/50 px-2.5 py-1">
-                          {resource.kind[locale]}
-                        </span>
-                        <span>{resource.organization}</span>
-                      </div>
-                      <h3 className="text-base font-medium leading-snug">
-                        {resource.title}
-                      </h3>
-                      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                        {resource.description[locale]}
-                      </p>
-                      <a
-                        href={resource.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
-                      >
-                        {text.open}
-                        <span aria-hidden>↗</span>
-                      </a>
-                    </article>
-                  </Card>
-                ))}
+                {section.resources.map((resource, index) => {
+                  // Marked only where it says something. lang on every title
+                  // would repeat what <html lang> already says for the two
+                  // Slovenian ones on this page, and an attribute that is
+                  // always there is one nobody notices is wrong.
+                  const quoted =
+                    resource.lang === locale ? undefined : resource.lang;
+                  // Stable across builds: the section and the resource's place
+                  // in it, not the title, which carries spaces and accents.
+                  const titleId = `${section.id}-${index}-title`;
+                  const linkId = `${section.id}-${index}-open`;
+                  return (
+                    <Card asChild key={`${section.id}-${resource.title}`}>
+                      <article className="flex flex-col p-5">
+                        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span className="rounded-full border bg-muted/50 px-2.5 py-1">
+                            {resource.kind[locale]}
+                          </span>
+                          <span lang={quoted}>{resource.organization}</span>
+                        </div>
+                        <h3
+                          className="text-base font-medium leading-snug"
+                          id={titleId}
+                          lang={quoted}
+                        >
+                          {resource.title}
+                        </h3>
+                        <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                          {resource.description[locale]}
+                        </p>
+                        {/* Nineteen links all named "Odpri vir" are nineteen
+                            links a reader listing them cannot tell apart. The
+                            name is the link's own words and then the heading
+                            above it, so what is printed stays two words and
+                            the title finishes the name from where it already
+                            stands, with the lang it already carries. */}
+                        <a
+                          href={resource.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          id={linkId}
+                          aria-labelledby={`${linkId} ${titleId}`}
+                          className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+                        >
+                          {text.open}
+                          <span aria-hidden>↗</span>
+                        </a>
+                      </article>
+                    </Card>
+                  );
+                })}
               </div>
             </section>
           ))}

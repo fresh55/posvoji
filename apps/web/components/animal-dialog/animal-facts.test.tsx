@@ -5,6 +5,7 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { I18nProvider } from "@/components/i18n-provider";
+import type { Locale } from "@/lib/i18n";
 
 afterEach(cleanup);
 
@@ -30,9 +31,9 @@ function animal(extra: Partial<Animal> = {}): Animal {
   };
 }
 
-function renderFacts(extra: Partial<Animal> = {}) {
+function renderFacts(extra: Partial<Animal> = {}, locale: Locale = "sl") {
   render(
-    <I18nProvider locale="sl">
+    <I18nProvider locale={locale}>
       <AnimalFacts animal={animal(extra)} reference={REFERENCE} />
     </I18nProvider>,
   );
@@ -126,6 +127,27 @@ describe("the housing row", () => {
       within(row).getByText("Potrebuje več prostora kot stanovanje"),
     ).toBeTruthy();
     expect(within(row).queryByRole("button")).toBeNull();
+  });
+});
+
+describe("the shelter's own description", () => {
+  const DESCRIPTION = "Muri je prijazna muca, ki obožuje crkljanje.";
+
+  // 466 of the 503 animals carry one, and it is the shelter's Slovenian
+  // whichever language the visitor is reading in. Under <html lang="en"> a
+  // screen reader voiced it with English phonemes.
+  it("is marked Slovenian on an English page", () => {
+    renderFacts({ shortDescription: DESCRIPTION }, "en");
+
+    expect(screen.getByText(DESCRIPTION).getAttribute("lang")).toBe("sl");
+  });
+
+  it("says nothing about the language on a Slovenian page", () => {
+    renderFacts({ shortDescription: DESCRIPTION });
+
+    // The document already declares it, and repeating it here would be one
+    // more attribute on 466 pages saying what the html element says.
+    expect(screen.getByText(DESCRIPTION).getAttribute("lang")).toBeNull();
   });
 });
 

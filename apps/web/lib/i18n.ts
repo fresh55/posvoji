@@ -127,9 +127,14 @@ const sl = {
   clearFilters: "Počisti filtre",
   // The zero state gets specific when a shelter selection is the whole
   // reason for it: dropping only the shelter filter would show results.
-  // Singular/plural picks the verb form for one vs. several zavetišča.
   // {species} takes one of the speciesAbsence* forms below.
+  //
+  // Three forms, because the noun and the verb agree with how many shelters
+  // are selected and Slovenian's dual is not optional: one zavetišče nima, two
+  // zavetišči nimata, three or more zavetišča nimajo. English inflects nothing
+  // past one, so its dual and its plural read alike.
   noResultsShelterSingular: "Izbrano zavetišče trenutno nima {species}.",
+  noResultsShelterDual: "Izbrani zavetišči trenutno nimata {species}.",
   noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
   clear: "Počisti",
@@ -275,7 +280,9 @@ const sl = {
   muniUnverified: "ni preverjenega podatka",
   muniUnverifiedAdvice:
     "Za to občino nimamo preverjenega podatka o pristojnem zavetišču. Preveri pri svoji občini ali v javnem registru zavetišč.",
-  muniRegister: "Register zavetišč — UVHVVR (gov.si)",
+  // Names the office, not a register: gov.si no longer publishes the list of
+  // shelters at any address, so the link goes to UVHVVR itself.
+  muniRegister: "Uprava za varno hrano, veterinarstvo in varstvo rastlin (gov.si)",
   muniSource: "Vir:",
   muniDatedSource:
     "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
@@ -472,6 +479,7 @@ const en: Messages = {
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
   noResultsShelterSingular: "The selected shelter currently has no {species}.",
+  noResultsShelterDual: "The selected shelters currently have no {species}.",
   noResultsShelterPlural: "The selected shelters currently have no {species}.",
   showFromAllShelters: "Show from all shelters",
   clear: "Clear",
@@ -566,7 +574,7 @@ const en: Messages = {
   muniUnverified: "no verified data",
   muniUnverifiedAdvice:
     "We have no verified data on the responsible shelter for this municipality. Check with your municipality or the public shelter register.",
-  muniRegister: "Shelter register — UVHVVR (gov.si)",
+  muniRegister: "Food Safety, Veterinary and Plant Protection Administration (gov.si)",
   muniSource: "Source:",
   muniDatedSource:
     "This comes from an older source; confirm with the shelter or municipality before visiting.",

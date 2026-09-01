@@ -22,14 +22,16 @@ Object.defineProperty(window, "matchMedia", {
 // vi.hoisted, because vi.mock below is itself hoisted above every import in
 // this file: by the time "@/lib/dataset" is first resolved (as soon as
 // animal-page.tsx above is loaded), these two fixtures have to already exist.
-const { ANIMAL_NO_PHOTO, ANIMAL_WITH_PHOTO } = vi.hoisted(() => {
+const { ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO } = vi.hoisted(() => {
   // Named parameters rather than a partial-override merge: merging a literal
   // base with a loosely typed override widens every field the override could
   // touch (id, name, images) back to a bare string/array, and AnimalFields
   // wants species and status to stay their own literal unions.
   function animal(
     id: string,
-    name: string,
+    // Undefined for an animal the shelter never named. The register carries a
+    // few, and the page has to say something in place of a name.
+    name: string | undefined,
     images: { sourceUrl: string; cachedUrl: string; width: number; height: number; rights: "display-permitted" }[],
   ) {
     return {
@@ -54,6 +56,7 @@ const { ANIMAL_NO_PHOTO, ANIMAL_WITH_PHOTO } = vi.hoisted(() => {
 
   return {
     ANIMAL_NO_PHOTO: animal("zonzani:1", "Muri", []),
+    ANIMAL_UNNAMED: animal("zonzani:3", undefined, []),
     ANIMAL_WITH_PHOTO: animal("zonzani:2", "Fant", [
       {
         sourceUrl: "https://example.test/fant.jpg",
@@ -71,7 +74,7 @@ const { ANIMAL_NO_PHOTO, ANIMAL_WITH_PHOTO } = vi.hoisted(() => {
 // depending on whatever happens to be checked out in data/dist.
 vi.mock("@/lib/dataset", () => ({
   loadDataset: () => ({
-    animals: [ANIMAL_NO_PHOTO, ANIMAL_WITH_PHOTO],
+    animals: [ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO],
     generatedAt: "2026-01-01T00:00:00.000Z",
   }),
 }));
@@ -79,7 +82,44 @@ vi.mock("@/lib/shelter-logos", () => ({
   getShelterLogos: () => ({}),
 }));
 
-afterEach(cleanup);
+// Every animal the two client components were handed. What a client component
+// is given is what the page serializes into its flight payload, whether or not
+// anything is rendered from it, so this is the only place the cost is visible:
+// the rendered page looks the same either way.
+const handedOver = vi.hoisted(
+  () => [] as { to: string; animal: Record<string, unknown> }[],
+);
+
+vi.mock("@/components/animal-dialog/animal-facts", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/components/animal-dialog/animal-facts")
+    >();
+  return {
+    AnimalFacts: (props: Parameters<typeof actual.AnimalFacts>[0]) => {
+      handedOver.push({ to: "AnimalFacts", animal: props.animal });
+      return <actual.AnimalFacts {...props} />;
+    },
+  };
+});
+
+vi.mock("@/components/animal-dialog/shelter-block", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/components/animal-dialog/shelter-block")
+    >();
+  return {
+    ShelterBlock: (props: Parameters<typeof actual.ShelterBlock>[0]) => {
+      handedOver.push({ to: "ShelterBlock", animal: props.animal });
+      return <actual.ShelterBlock {...props} />;
+    },
+  };
+});
+
+afterEach(() => {
+  cleanup();
+  handedOver.length = 0;
+});
 
 // The hero grid: `<div class="grid gap-8 ...">` wrapping the gallery (when
 // there is one) and the facts column.
@@ -117,5 +157,69 @@ describe("the animal page's hero", () => {
 
     const grid = heroGrid(container);
     expect(grid.className).toContain("sm:grid-cols-2");
+  });
+});
+
+describe("the animal page's breadcrumb", () => {
+  it("names an unnamed animal the way the heading does", () => {
+    const { container } = render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_UNNAMED).animal} />,
+    );
+
+    // The fallback used to be the page's own "Vse živali", which is the root
+    // crumb's label word for word, so the trail read "Vse živali > Vse
+    // živali" on the page and in the JSON-LD with it.
+    const page = container.querySelector('[data-slot="breadcrumb-page"]');
+    expect(page?.textContent).toBe("Brez imena");
+    expect(container.querySelector("h1")?.textContent).toBe("Brez imena");
+
+    const jsonLd = container.querySelector(
+      'script[type="application/ld+json"]',
+    );
+    expect(jsonLd?.textContent).toContain("Brez imena");
+  });
+
+  it("still uses the animal's own name when it has one", () => {
+    const { container } = render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+
+    expect(
+      container.querySelector('[data-slot="breadcrumb-page"]')?.textContent,
+    ).toBe("Muri");
+  });
+});
+
+describe("what the animal page hands its client components", () => {
+  it("keeps the animal's photos on the server side of the boundary", () => {
+    const { container } = render(
+      <AnimalPage
+        locale="sl"
+        slug={animalPathParts(ANIMAL_WITH_PHOTO).animal}
+      />,
+    );
+
+    expect(handedOver.map(({ to }) => to).sort()).toEqual([
+      "AnimalFacts",
+      "ShelterBlock",
+    ]);
+    for (const { to, animal } of handedOver) {
+      // Neither component reads a photo: both are typed against AnimalFields,
+      // which is the animal without them. Handed the whole animal they
+      // serialized every image into this page's payload, source URL, rights
+      // and base64 placeholder included, about 3KB a page over 1006 pages.
+      expect({ to, images: "images" in animal }).toEqual({
+        to,
+        images: false,
+      });
+      // Everything they do read is still there.
+      expect(animal.name).toBe("Fant");
+      expect(animal.attribution).toBe("Test fixture");
+    }
+
+    // And the gallery, which is server-rendered here, still has its photo.
+    expect(
+      container.querySelector('[data-slot="photo-frame"] img'),
+    ).toBeTruthy();
   });
 });

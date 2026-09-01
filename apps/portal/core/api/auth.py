@@ -40,7 +40,14 @@ def me_payload(user) -> dict:
     return {
         "email": user.email,
         "shelters": [
-            {"slug": s.slug, "name": s.name, "city": s.city} for s in shelters
+            {
+                "slug": s.slug,
+                "name": s.name,
+                "city": s.city,
+                # Which editor the workspace opens for this shelter.
+                "ingestion": s.ingestion,
+            }
+            for s in shelters
         ],
     }
 

@@ -13,6 +13,12 @@ def seed(path=REGISTRY):
     call_command("seed_shelters", "--path", str(path))
 
 
+def write_policy(providers, slug: str, body: str) -> None:
+    directory = providers / slug
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "policy.yaml").write_text(body, encoding="utf-8")
+
+
 @pytest.mark.django_db
 def test_seed_creates_shelters_logins_and_memberships():
     seed()
@@ -67,6 +73,42 @@ def test_seed_updates_a_renamed_shelter(tmp_path):
     assert shelter.name == "Zavetisce Testno (novo)"
     assert shelter.city == "Drugam"
     assert Shelter.objects.count() == 3
+
+
+@pytest.mark.django_db
+def test_seed_reads_the_ingestion_mode_from_the_provider_policy(providers_dir):
+    write_policy(providers_dir, "testno", "providerId: testno\ningestion: manual\n")
+    write_policy(providers_dir, "drugo", "providerId: drugo\ningestion: api\n")
+
+    seed()
+
+    assert Shelter.objects.get(slug="testno").ingestion == "manual"
+    assert Shelter.objects.get(slug="drugo").ingestion == "api"
+    # No policy file, so no adapter either: the shelter stays on the default
+    # rather than becoming a manual one by accident.
+    assert Shelter.objects.get(slug="brez-poste").ingestion == "scrape"
+
+
+@pytest.mark.django_db
+def test_seed_follows_a_policy_that_changes(providers_dir):
+    write_policy(providers_dir, "testno", "providerId: testno\ningestion: manual\n")
+    seed()
+
+    write_policy(providers_dir, "testno", "providerId: testno\ningestion: scrape\n")
+    seed()
+
+    assert Shelter.objects.get(slug="testno").ingestion == "scrape"
+
+
+@pytest.mark.django_db
+def test_seed_falls_back_when_the_policy_states_no_usable_mode(providers_dir):
+    write_policy(providers_dir, "testno", "providerId: testno\ningestion: telepathy\n")
+    write_policy(providers_dir, "drugo", "providerId: drugo\n")
+
+    seed()
+
+    assert Shelter.objects.get(slug="testno").ingestion == "scrape"
+    assert Shelter.objects.get(slug="drugo").ingestion == "scrape"
 
 
 @pytest.mark.django_db

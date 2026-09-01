@@ -9,9 +9,10 @@ from datetime import date
 from typing import Any
 
 from ninja import Schema
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from .models import (
+    ListingSpecies,
     OverrideCompatibility,
     OverrideEnergy,
     OverrideSex,
@@ -28,6 +29,9 @@ class ShelterOut(Schema):
     slug: str
     name: str
     city: str = ""
+    # Which editor the workspace opens: a manual shelter writes listings, a
+    # crawled one corrects what the crawl found.
+    ingestion: str
 
 
 class MeOut(Schema):
@@ -118,6 +122,131 @@ class AnimalOverrideIn(Schema):
     goodWithCats: OverrideCompatibility | None = None
     apartmentOk: OverrideCompatibility | None = None
     specialNeeds: bool | None = None
+
+
+class ListingIn(Schema):
+    """One whole manual listing.
+
+    There is no crawled record underneath, so this is not a partial update:
+    every editable field is sent every time and an absent optional field means
+    the shelter is not stating it. species and name are the only ones a
+    listing cannot exist without.
+
+    The vocabularies are the model's own TextChoices, and use_enum_values with
+    validate_default keeps what comes out of validation a plain string, which
+    is what the columns and the export payload carry.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        use_enum_values=True,
+        validate_default=True,
+    )
+
+    species: ListingSpecies
+    name: str = Field(max_length=200)
+    status: OverrideStatus = OverrideStatus.AVAILABLE
+    sex: OverrideSex | None = None
+    breed: str | None = Field(default=None, max_length=200)
+    birthDate: date | None = None
+    approximateAgeMonths: int | None = Field(default=None, ge=0)
+    size: OverrideSize | None = None
+    energy: OverrideEnergy | None = None
+    goodWithKids: OverrideCompatibility | None = None
+    goodWithDogs: OverrideCompatibility | None = None
+    goodWithCats: OverrideCompatibility | None = None
+    apartmentOk: OverrideCompatibility | None = None
+    specialNeeds: bool | None = None
+    shortDescription: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("name")
+    @classmethod
+    def name_is_not_blank(cls, value: str) -> str:
+        # A listing is the whole record, so it cannot be nameless the way an
+        # override can simply leave the crawled name alone.
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("name must not be blank")
+        return stripped
+
+
+class ListingPhotoOut(Schema):
+    id: int
+    url: str
+    width: int
+    height: int
+
+
+class ListingOut(Schema):
+    """The export shape plus archivedAt, with each photo carrying its id.
+
+    Unlike the export this keeps its nulls: the editor has to be able to tell
+    a field the shelter cleared from one it never filled in.
+    """
+
+    providerId: str
+    id: str
+    species: str
+    status: str
+    name: str
+    sex: str | None = None
+    breed: str | None = None
+    birthDate: str | None = None
+    approximateAgeMonths: int | None = None
+    size: str | None = None
+    energy: str | None = None
+    goodWithKids: str | None = None
+    goodWithDogs: str | None = None
+    goodWithCats: str | None = None
+    apartmentOk: str | None = None
+    specialNeeds: bool | None = None
+    shortDescription: str | None = None
+    photos: list[ListingPhotoOut] = []
+    createdAt: str
+    updatedAt: str
+    archivedAt: str | None = None
+
+
+class ExportListingPhotoOut(Schema):
+    """A photo as the ingest pipeline reads it: no id, url absolute."""
+
+    url: str
+    width: int
+    height: int
+
+
+class ExportListingOut(Schema):
+    """One manual listing as the ingest pipeline reads it.
+
+    The route serializes with exclude_none, so an optional field the shelter
+    has not stated is absent from the payload rather than null.
+    """
+
+    providerId: str
+    id: str
+    species: str
+    status: str
+    name: str
+    sex: str | None = None
+    breed: str | None = None
+    birthDate: str | None = None
+    approximateAgeMonths: int | None = None
+    size: str | None = None
+    energy: str | None = None
+    goodWithKids: str | None = None
+    goodWithDogs: str | None = None
+    goodWithCats: str | None = None
+    apartmentOk: str | None = None
+    specialNeeds: bool | None = None
+    shortDescription: str | None = None
+    photos: list[ExportListingPhotoOut]
+    createdAt: str
+    updatedAt: str
+
+
+class ExportListingsOut(Schema):
+    generatedAt: str
+    listings: list[ExportListingOut]
 
 
 class ExportOverrideOut(Schema):

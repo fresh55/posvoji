@@ -41,6 +41,7 @@ def test_shelters_lists_the_registry_login(
             "slug": "drugo",
             "name": "Zavetisce Drugo",
             "city": "Drugo",
+            "ingestion": "scrape",
             "email": "drugo@dev.invalid",
             "registered": False,
         },
@@ -48,6 +49,7 @@ def test_shelters_lists_the_registry_login(
             "slug": "testno",
             "name": "Zavetisce Testno",
             "city": "Testno",
+            "ingestion": "scrape",
             "email": member.email,
             "registered": True,
         },
@@ -64,7 +66,12 @@ def test_login_opens_a_session_as_the_registry_login(
     assert response.json() == {
         "email": member.email,
         "shelters": [
-            {"slug": shelter.slug, "name": shelter.name, "city": shelter.city}
+            {
+                "slug": shelter.slug,
+                "name": shelter.name,
+                "city": shelter.city,
+                "ingestion": "scrape",
+            }
         ],
     }
     assert client.get(ME).json()["email"] == member.email

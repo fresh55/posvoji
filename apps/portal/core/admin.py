@@ -4,7 +4,14 @@ from django.utils import timezone
 
 from .conflicts import CAUGHT_UP, MOVED, Conflict, conflicts_for
 from .dataset import animal_index, crawled_values
-from .models import COLUMN_BY_JSON_KEY, AnimalOverride, Shelter, ShelterMembership
+from .models import (
+    COLUMN_BY_JSON_KEY,
+    AnimalOverride,
+    Listing,
+    ListingPhoto,
+    Shelter,
+    ShelterMembership,
+)
 
 # The state of one override against the current crawl. Only the first three
 # need a human to look at them.
@@ -47,7 +54,16 @@ def describe(conflict: Conflict) -> str:
 
 @admin.register(Shelter)
 class ShelterAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "city", "member_count", "override_count")
+    list_display = (
+        "name",
+        "slug",
+        "city",
+        "ingestion",
+        "member_count",
+        "override_count",
+        "listing_count",
+    )
+    list_filter = ("ingestion",)
     search_fields = ("name", "slug", "city")
     ordering = ("name",)
 
@@ -58,6 +74,7 @@ class ShelterAdmin(admin.ModelAdmin):
             .annotate(
                 _members=Count("memberships", distinct=True),
                 _overrides=Count("animal_overrides", distinct=True),
+                _listings=Count("listings", distinct=True),
             )
         )
 
@@ -68,6 +85,10 @@ class ShelterAdmin(admin.ModelAdmin):
     @admin.display(description="overrides", ordering="_overrides")
     def override_count(self, obj: Shelter) -> int:
         return obj._overrides
+
+    @admin.display(description="listings", ordering="_listings")
+    def listing_count(self, obj: Shelter) -> int:
+        return obj._listings
 
 
 @admin.register(ShelterMembership)
@@ -85,6 +106,57 @@ class ShelterMembershipAdmin(admin.ModelAdmin):
     @admin.display(description="email", ordering="user__email")
     def user_email(self, obj: ShelterMembership) -> str:
         return obj.user.email
+
+
+@admin.register(Listing)
+class ListingAdmin(admin.ModelAdmin):
+    """Listings a manual shelter wrote here. There is no crawl to compare to.
+
+    Archived rows stay in the changelist on purpose. They are out of the
+    export and out of the API, and this is the one place left to see that a
+    shelter took a listing down and when.
+    """
+
+    list_display = (
+        "name",
+        "shelter",
+        "species",
+        "status",
+        "photo_count",
+        "archived_at",
+        "updated_at",
+        "updated_by",
+    )
+    list_filter = ("shelter", "species", "status", "size", "energy", "sex")
+    search_fields = ("id", "name", "breed", "shelter__name", "shelter__slug")
+    autocomplete_fields = ("shelter", "created_by", "updated_by")
+    readonly_fields = ("id", "created_at", "updated_at")
+    date_hierarchy = "updated_at"
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("shelter")
+            .annotate(_photos=Count("photos", distinct=True))
+        )
+
+    @admin.display(description="photos", ordering="_photos")
+    def photo_count(self, obj: Listing) -> int:
+        return obj._photos
+
+
+@admin.register(ListingPhoto)
+class ListingPhotoAdmin(admin.ModelAdmin):
+    list_display = ("listing", "position", "width", "height", "created_at")
+    list_filter = ("listing__shelter",)
+    search_fields = (
+        "listing__name",
+        "listing__shelter__name",
+        "listing__shelter__slug",
+    )
+    autocomplete_fields = ("listing",)
+    readonly_fields = ("width", "height", "created_at")
 
 
 class CrawlStateFilter(admin.SimpleListFilter):

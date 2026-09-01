@@ -6,6 +6,12 @@ crawled data, never as a replacement for it: the crawler keeps writing
 `data/dist/animals.json`, and the ingest pipeline pulls the overrides from
 this service and applies them on export.
 
+A few shelters publish no animal list at all. For them the portal is not a
+place to correct a crawled record, it is the place the record is written, and
+they get [manual listings](#manual-listings) instead of overrides.
+[docs/MANUAL-LISTINGS.md](../../docs/MANUAL-LISTINGS.md) is the contract
+between the three workspaces that carry such a listing to the public site.
+
 Django 5 with django-ninja, SQLite, no Node involved. The rest of the
 repository does not depend on it at build time.
 
@@ -30,6 +36,11 @@ plus a login and a membership for every entry that carries an institutional
 address. It is safe to run again after the registry changes: nothing is
 duplicated and nothing is deleted. Pass `--path` to read another file.
 
+It also reads `ingestion` out of `providers/<slug>/policy.yaml`, which is what
+decides whether a shelter writes its own listings. A shelter with no policy
+file has no adapter either, so it stays on `scrape`. Pass `--providers` to
+read another directory.
+
 For the admin you also need a superuser:
 
 ```bash
@@ -44,8 +55,10 @@ uv run ruff format .
 uv run ruff check .
 ```
 
-The tests run offline. They never read the real registry or the real dataset:
-`tests/fixtures/shelters.yaml` and a temporary dataset file stand in for both.
+The tests run offline. They never read the real registry, the real dataset or
+the real provider policies, and they never write into the checkout:
+`tests/fixtures/shelters.yaml` stands in for the registry, and a temporary
+directory stands in for the dataset file, `providers/` and `MEDIA_ROOT`.
 
 ## How login works
 
@@ -128,7 +141,14 @@ component from the bundle.
 | GET | `/api/me` | session |
 | GET | `/api/shelters/{slug}/animals` | session and membership |
 | PUT | `/api/shelters/{slug}/animals/{animal_id}` | session, CSRF and membership |
+| GET | `/api/shelters/{slug}/listings` | session and membership, manual shelters only |
+| POST | `/api/shelters/{slug}/listings` | session, CSRF and membership, manual shelters only |
+| PUT | `/api/shelters/{slug}/listings/{id}` | session, CSRF and membership, manual shelters only |
+| DELETE | `/api/shelters/{slug}/listings/{id}` | session, CSRF and membership, manual shelters only |
+| POST | `/api/shelters/{slug}/listings/{id}/photos` | session, CSRF and membership, manual shelters only |
+| DELETE | `/api/shelters/{slug}/listings/{id}/photos/{photoId}` | session, CSRF and membership, manual shelters only |
 | GET | `/api/export` | `Authorization: Bearer $PORTAL_EXPORT_TOKEN` |
+| GET | `/api/export/listings` | `Authorization: Bearer $PORTAL_EXPORT_TOKEN` |
 | GET | `/api/docs` | none |
 | any | `/admin/` | Django admin login |
 
@@ -273,6 +293,96 @@ visible. Nothing about this goes into `animals.json` itself: that file is
 what the site reads, and per-field provenance would be a schema change
 nothing on the site renders.
 
+## Manual listings
+
+A shelter is manual when its `providers/<slug>/policy.yaml` says
+`ingestion: manual`. Such a shelter publishes no catalogue for the crawler to
+read, so it writes the animal here instead. A manual listing is not an
+override: there is no crawled record underneath it, the row holds the whole
+animal, and ingest reads it at the crawl phase as if a provider had returned
+it. `GET /api/me` reports `ingestion` on every shelter, which is how the
+workspace knows which editor to open.
+
+The listing routes answer 404 for a crawled shelter, even to one of its own
+members. They are not a permission that shelter is missing: the crawl is the
+origin of its animals and a listing would duplicate one on the next run.
+
+`POST` and `PUT` take the whole listing. `species` and `name` are required,
+`status` defaults to `available`, and every other field is optional with the
+same limits as an override. `PUT` is a full replace, so a field left out of
+the body is cleared. `DELETE` archives: the listing leaves the API and the
+export, its uuid is never handed out again, and the next ingest run removes
+the animal through the same path a crawled animal leaves by.
+
+### Photos
+
+`POST /api/shelters/{slug}/listings/{id}/photos` takes one multipart `file`.
+JPEG, PNG and WebP are accepted, up to 15 MB, and the format is decided by
+opening the file rather than by the client's content-type.
+
+Nothing arrives and is stored as it is. The portal puts the image the right
+way up from its EXIF orientation, caps the longest side at 2048 px, and
+re-encodes it as a progressive JPEG from a blank canvas. That last step is
+what drops the EXIF block and with it the GPS position of the phone that took
+the photograph. The file is named after the SHA-256 of the bytes written and
+stored at `MEDIA_ROOT/listings/<listing id>/<hash>.jpg`; the recorded width
+and height are the stored copy's.
+
+Because the name is a function of the listing and the bytes, sending the same
+photograph twice is recognised before the second copy reaches the disk: the
+response is the photo that is already there, with 200 rather than 201.
+
+Django serves `MEDIA_URL` itself while `PORTAL_DEBUG` is on. **In production
+nginx serves `PORTAL_MEDIA_ROOT` at `/media/` on `api.posvoji.si` and Django
+never sees those requests**, so the directory has to be readable by the web
+server and has to survive a redeploy. `PORTAL_PUBLIC_URL` is prefixed onto
+every photo URL in the export, because the ingest pipeline fetches them from
+another host.
+
+### Export for the ingest pipeline
+
+```bash
+curl -H "Authorization: Bearer $PORTAL_EXPORT_TOKEN" \
+  http://localhost:8000/api/export/listings
+```
+
+```json
+{
+  "generatedAt": "2026-09-01T12:00:00Z",
+  "listings": [
+    {
+      "providerId": "johanca",
+      "id": "6d1c0f6a-3c0e-4a7e-9f7b-2f4a9d1e8b10",
+      "species": "cat",
+      "status": "available",
+      "name": "Luna",
+      "sex": "female",
+      "photos": [
+        {
+          "url": "https://api.posvoji.si/media/listings/6d1c0f6a-3c0e-4a7e-9f7b-2f4a9d1e8b10/3f2a9c1d.jpg",
+          "width": 1600,
+          "height": 1200
+        }
+      ],
+      "createdAt": "2026-09-01T10:00:00Z",
+      "updatedAt": "2026-09-01T11:30:00Z"
+    }
+  ]
+}
+```
+
+`providerId`, `id`, `species`, `status`, `name`, `photos`, `createdAt` and
+`updatedAt` are always present. Every other field is present when set and
+absent when not, never `null`, which maps one to one onto the `Animal`
+schema's optional fields. Archived listings are not exported, and neither are
+the listings of a shelter that is no longer manual: the crawl provides its
+animals again, so both sources would produce the same animal twice.
+
+`apps/ingest/fixtures/portal-listings.contract.json` is the authoritative
+shape. `tests/test_export_listings.py` asserts this side against it and the
+ingest's zod schema parses the same file, so changing one side means changing
+the other in the same commit.
+
 ## Environment
 
 Defaults are meant for local development. `.env.example` lists the same
@@ -288,7 +398,10 @@ variables.
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma separated origins allowed to send credentials. |
 | `DATASET_PATH` | `data/dist/animals.json` | Crawled dataset, read only. |
 | `SHELTERS_YAML` | `data/shelters.yaml` | Registry read by `seed_shelters`. |
-| `PORTAL_EXPORT_TOKEN` | unset | Bearer token for `/api/export`. Unset disables the endpoint. |
+| `PROVIDERS_DIR` | `providers/` | Where `seed_shelters` reads each `<slug>/policy.yaml` for its `ingestion` mode. |
+| `PORTAL_MEDIA_ROOT` | `apps/portal/media` | Uploaded listing photographs. Served by nginx in production. |
+| `PORTAL_PUBLIC_URL` | `http://localhost:8000` | Where this service answers from. Prefixed onto every photo URL in the export. |
+| `PORTAL_EXPORT_TOKEN` | unset | Bearer token for `/api/export` and `/api/export/listings`. Unset disables both. |
 | `PORTAL_DEV_LOGIN` | `false`, and forced off whenever `PORTAL_DEBUG` is off | Enables the development shelter picker. |
 | `PORTAL_SECURE_COOKIES` | `false` when `PORTAL_DEBUG` is on | Marks the session cookie secure. |
 | `PORTAL_SESSION_COOKIE_DOMAIN` | unset | Set only if the cookie has to span subdomains. |
@@ -304,9 +417,11 @@ variables.
 | `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. |
 
 In production set at least `PORTAL_SECRET_KEY`, `PORTAL_DEBUG=false`,
-`PORTAL_ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ORIGINS`, `PORTAL_EXPORT_TOKEN`
-and the SMTP variables, then run `manage.py migrate`, `manage.py
-seed_shelters` and `manage.py collectstatic`.
+`PORTAL_ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ORIGINS`, `PORTAL_EXPORT_TOKEN`,
+`PORTAL_PUBLIC_URL` and the SMTP variables, then run `manage.py migrate`,
+`manage.py seed_shelters` and `manage.py collectstatic`. Point nginx at
+`PORTAL_MEDIA_ROOT` for `/media/`: Django only serves it while `PORTAL_DEBUG`
+is on.
 
 ## Data rules
 

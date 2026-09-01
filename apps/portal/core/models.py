@@ -1,5 +1,14 @@
+import uuid
+from datetime import UTC, datetime
+
 from django.conf import settings
 from django.db import models
+
+
+def iso_utc(value: datetime) -> str:
+    """A timestamp in the one format the ingest contract accepts."""
+    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
 
 # Override column -> key used in the JSON API and in the ingest export. The
 # dataset is written by TypeScript, so the wire format stays camelCase.
@@ -21,6 +30,54 @@ OVERRIDE_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 COLUMN_BY_JSON_KEY: dict[str, str] = {key: column for column, key in OVERRIDE_FIELDS}
+
+
+# Listing column -> key on the wire, in the order the export contract lists
+# the optional fields. species, status and name are always present and are
+# handled apart from these.
+LISTING_OPTIONAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("sex", "sex"),
+    ("breed", "breed"),
+    ("birth_date", "birthDate"),
+    ("approximate_age_months", "approximateAgeMonths"),
+    ("size", "size"),
+    ("energy", "energy"),
+    ("good_with_kids", "goodWithKids"),
+    ("good_with_dogs", "goodWithDogs"),
+    ("good_with_cats", "goodWithCats"),
+    ("apartment_ok", "apartmentOk"),
+    ("special_needs", "specialNeeds"),
+    ("short_description", "shortDescription"),
+)
+
+LISTING_COLUMN_BY_JSON_KEY: dict[str, str] = {
+    "species": "species",
+    "status": "status",
+    "name": "name",
+    **{key: column for column, key in LISTING_OPTIONAL_FIELDS},
+}
+
+
+class IngestionMode(models.TextChoices):
+    """How a shelter's animals reach the pipeline.
+
+    The same vocabulary as `ingestion` in providers/<slug>/policy.yaml, which
+    is where seed_shelters reads it from. Only a manual shelter may write
+    listings here: for any other mode the crawl is the origin of the record,
+    and a listing would duplicate the animal on the next run.
+    """
+
+    SCRAPE = "scrape", "scrape"
+    API = "api", "api"
+    RSS = "rss", "rss"
+    MANUAL = "manual", "manual"
+
+
+class ListingSpecies(models.TextChoices):
+    DOG = "dog", "dog"
+    CAT = "cat", "cat"
+    RABBIT = "rabbit", "rabbit"
+    OTHER = "other", "other"
 
 
 class OverrideStatus(models.TextChoices):
@@ -72,12 +129,23 @@ class Shelter(models.Model):
     slug = models.SlugField(max_length=64, unique=True)
     name = models.CharField(max_length=200)
     city = models.CharField(max_length=100, blank=True)
+    # Mirrors providers/<slug>/policy.yaml. A shelter with no policy file has
+    # no adapter either, so the default is the ordinary crawled case.
+    ingestion = models.CharField(
+        max_length=16,
+        choices=IngestionMode.choices,
+        default=IngestionMode.SCRAPE,
+    )
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.slug})"
+
+    @property
+    def is_manual(self) -> bool:
+        return self.ingestion == IngestionMode.MANUAL
 
 
 class ShelterMembership(models.Model):
@@ -219,3 +287,187 @@ class AnimalOverride(models.Model):
                 continue
             result[key] = value.isoformat() if column == "birth_date" else value
         return result
+
+
+def listing_photo_name(listing_id, filename: str) -> str:
+    """listings/<listing id>/<content hash>.jpg, one directory per listing.
+
+    Where a photo lands is a function of the listing and the bytes, so an
+    upload of bytes already on this listing resolves to the name already
+    stored. That is what lets the route recognise a duplicate before it
+    writes anything.
+    """
+    return f"listings/{listing_id}/{filename}"
+
+
+def listing_photo_path(instance: "ListingPhoto", filename: str) -> str:
+    return listing_photo_name(instance.listing_id, filename)
+
+
+class Listing(models.Model):
+    """An animal a manual shelter writes here rather than publishing itself.
+
+    This is not an override. There is no crawled record underneath, so the row
+    holds the whole animal and a NULL column means the shelter has not stated
+    that field, not that the crawl's value stands.
+
+    The primary key is minted here and never reused: ingest builds the animal
+    id as <providerId>:<uuid>, and a manual shelter has no crawled animals for
+    that namespace to collide with.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shelter = models.ForeignKey(
+        Shelter,
+        on_delete=models.CASCADE,
+        related_name="listings",
+    )
+
+    species = models.CharField(max_length=16, choices=ListingSpecies.choices)
+    status = models.CharField(
+        max_length=16,
+        choices=OverrideStatus.choices,
+        default=OverrideStatus.AVAILABLE,
+    )
+    name = models.CharField(max_length=200)
+
+    sex = models.CharField(
+        max_length=16,
+        choices=OverrideSex.choices,
+        null=True,
+        blank=True,
+    )
+    breed = models.CharField(max_length=200, null=True, blank=True)
+    birth_date = models.DateField(null=True, blank=True)
+    approximate_age_months = models.PositiveIntegerField(null=True, blank=True)
+    size = models.CharField(
+        max_length=16,
+        choices=OverrideSize.choices,
+        null=True,
+        blank=True,
+    )
+    energy = models.CharField(
+        max_length=16,
+        choices=OverrideEnergy.choices,
+        null=True,
+        blank=True,
+    )
+    good_with_kids = models.CharField(
+        max_length=16,
+        choices=OverrideCompatibility.choices,
+        null=True,
+        blank=True,
+    )
+    good_with_dogs = models.CharField(
+        max_length=16,
+        choices=OverrideCompatibility.choices,
+        null=True,
+        blank=True,
+    )
+    good_with_cats = models.CharField(
+        max_length=16,
+        choices=OverrideCompatibility.choices,
+        null=True,
+        blank=True,
+    )
+    apartment_ok = models.CharField(
+        max_length=16,
+        choices=OverrideCompatibility.choices,
+        null=True,
+        blank=True,
+    )
+    special_needs = models.BooleanField(null=True, blank=True)
+    short_description = models.TextField(null=True, blank=True)
+
+    # The shelter's delete. The row stays so its uuid is never handed out
+    # again, leaves the export, and the next run removes the animal through
+    # the same path a crawled animal leaves by.
+    archived_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="listings_created",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="listings_updated",
+    )
+
+    class Meta:
+        ordering = ["name", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.shelter.slug})"
+
+    def payload(self) -> dict[str, object]:
+        """The listing in the export's shape.
+
+        An optional field the shelter has not stated is absent, never null.
+        That maps one to one onto the Animal schema's optional fields.
+        """
+        data: dict[str, object] = {
+            "providerId": self.shelter.slug,
+            "id": str(self.id),
+            "species": self.species,
+            "status": self.status,
+            "name": self.name,
+        }
+        for column, key in LISTING_OPTIONAL_FIELDS:
+            value = getattr(self, column)
+            if value is None:
+                continue
+            data[key] = value.isoformat() if column == "birth_date" else value
+        data["photos"] = [photo.payload() for photo in self.photos.all()]
+        data["createdAt"] = iso_utc(self.created_at)
+        data["updatedAt"] = iso_utc(self.updated_at)
+        return data
+
+
+class ListingPhoto(models.Model):
+    """One re-encoded photograph of a listing.
+
+    Nothing the shelter uploaded is stored. The portal writes its own JPEG,
+    which is what drops the EXIF block and the GPS position in it, and names
+    the file after the hash of the bytes it wrote.
+    """
+
+    listing = models.ForeignKey(
+        Listing,
+        on_delete=models.CASCADE,
+        related_name="photos",
+    )
+    image = models.FileField(upload_to=listing_photo_path)
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    # Upload order, which is display order. Deleting a photo leaves a gap
+    # rather than renumbering the rest.
+    position = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["listing", "position"],
+                name="unique_listing_photo_position",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.listing_id}#{self.position}"
+
+    def payload(self) -> dict[str, object]:
+        """The photo in the export's shape, with an absolute url."""
+        return {
+            "url": f"{settings.PORTAL_PUBLIC_URL}{self.image.url}",
+            "width": self.width,
+            "height": self.height,
+        }

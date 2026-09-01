@@ -59,6 +59,7 @@ def dev_shelters(request):
                 "slug": shelter.slug,
                 "name": shelter.name,
                 "city": shelter.city,
+                "ingestion": shelter.ingestion,
                 "email": user.email if user is not None else dev_email(shelter.slug),
                 "registered": user is not None,
             }

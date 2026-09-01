@@ -5,7 +5,13 @@ from django.contrib.admin.sites import site
 from django.contrib.messages.storage.fallback import FallbackStorage
 
 from core.admin import AnimalOverrideAdmin
-from core.models import AnimalOverride
+from core.models import (
+    AnimalOverride,
+    Listing,
+    ListingPhoto,
+    Shelter,
+    ShelterMembership,
+)
 
 from .conftest import make_animal
 
@@ -167,3 +173,21 @@ def test_keeping_the_correction_clears_the_review_queue(
     body = admin_client.get(CHANGELIST, {"crawl": "moved"}).content.decode()
 
     assert moved.animal_id not in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "model", [Shelter, ShelterMembership, AnimalOverride, Listing, ListingPhoto]
+)
+def test_every_model_has_an_admin(model):
+    assert model in site._registry
+
+
+@pytest.mark.django_db
+def test_the_listing_changelists_render(admin_client, manual_shelter):
+    # A changelist that renders is the cheapest proof that the list_display,
+    # list_filter and autocomplete declarations line up with the models.
+    Listing.objects.create(shelter=manual_shelter, species="cat", name="Luna")
+
+    assert admin_client.get("/admin/core/listing/").status_code == 200
+    assert admin_client.get("/admin/core/listingphoto/").status_code == 200

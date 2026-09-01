@@ -74,6 +74,42 @@ describe("lookupPostal name collisions", () => {
   });
 });
 
+// Every "X - Y" district name used to be split into two keys. That is right
+// for a bilingual name and wrong for a Slovene one, where half a name is not a
+// name for the place.
+describe("lookupPostal compound district names", () => {
+  it("does not answer Videm with 1312 Videm - Dobrepolje", () => {
+    // 1312 is Videm in Občina Dobrepolje. Občina Videm is 80 km east, at
+    // Videm pri Ptuju, and this used to hand a found animal in one of them to
+    // the other one's shelter.
+    expect(lookupPostal("videm")?.code).not.toBe("1312");
+    // Two districts start with it and neither is named it, so the honest
+    // answer is none: the picker falls back to matching občina names.
+    expect(lookupPostal("videm")).toBeUndefined();
+  });
+
+  it("does not answer half of any other Slovene compound name", () => {
+    // 1210 Ljubljana - Šentvid over 1296 Šentvid pri Stični, and 1260
+    // Ljubljana - Polje over nothing at all.
+    expect(lookupPostal("sentvid")?.code).not.toBe("1210");
+    expect(lookupPostal("polje")).toBeUndefined();
+  });
+
+  it("still resolves a compound name typed in full", () => {
+    expect(lookupPostal("Videm - Dobrepolje")?.code).toBe("1312");
+    expect(lookupPostal("smarje - sap")?.code).toBe("1293");
+  });
+
+  it("still splits the genuinely bilingual names", () => {
+    // Italian on the coast, Hungarian in Prekmurje.
+    expect(lookupPostal("ancarano")?.label).toBe("Ankaran - Ancarano");
+    expect(lookupPostal("pirano")?.label).toBe("Piran - Pirano");
+    expect(lookupPostal("isola")?.label).toBe("Izola - Isola");
+    expect(lookupPostal("lendva")?.label).toBe("Lendava - Lendva");
+    expect(lookupPostal("dobronak")?.label).toBe("Dobrovnik - Dobronak");
+  });
+});
+
 describe("lookupPostal pasted formats", () => {
   it("reads a postcode pasted in front of its town", () => {
     expect(lookupPostal("1000 Ljubljana")?.label).toBe("Ljubljana");

@@ -82,15 +82,38 @@ function sourceKey(animal: Animal): string {
 // Two previous animals sharing one sourceUrl is a parser fault, not something
 // to resolve here: the last one wins and the id match, which is exact, is
 // still tried first.
+export interface CarryFirstSeenAtOptions {
+  // Providers whose sourceUrl names the shelter rather than the animal, so
+  // the fallback above cannot identify one of their animals with it.
+  //
+  // A manual shelter's listings all carry one sourceUrl by design: the
+  // original of a manual listing is the listing on Posvoji.si, so every one of
+  // them links to that shelter's own page on this site. Without this the
+  // fallback would hand each newly created listing the firstSeenAt of an older
+  // one and every new animal at those shelters would arrive backdated. Their
+  // ids are minted once and never change, so the exact id match above is the
+  // only matching they need. See docs/MANUAL-LISTINGS.md.
+  sharedSourceUrlProviderIds?: ReadonlySet<string>;
+}
+
 export function carryFirstSeenAt(
   previous: readonly Animal[],
   current: readonly Animal[],
+  options: CarryFirstSeenAtOptions = {},
 ): Animal[] {
+  const shared = options.sharedSourceUrlProviderIds;
   const byId = new Map(previous.map((a) => [a.id, a] as const));
-  const bySource = new Map(previous.map((a) => [sourceKey(a), a] as const));
+  const bySource = new Map(
+    previous
+      .filter((a) => !shared?.has(a.source.providerId))
+      .map((a) => [sourceKey(a), a] as const),
+  );
 
   return current.map((animal) => {
-    const before = byId.get(animal.id) ?? bySource.get(sourceKey(animal));
+    const fallback = shared?.has(animal.source.providerId)
+      ? undefined
+      : bySource.get(sourceKey(animal));
+    const before = byId.get(animal.id) ?? fallback;
     if (!before) return animal;
     if (before.source.firstSeenAt === animal.source.firstSeenAt) return animal;
     return {

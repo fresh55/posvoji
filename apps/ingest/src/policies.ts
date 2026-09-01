@@ -15,6 +15,33 @@ export interface PolicyError {
   message: string;
 }
 
+// A manual provider is crawled by our own portal rather than by an adapter:
+// it has no entry in registry.ts, no crawl state and no detail pages, and its
+// animals arrive on the listings feed. Several loops in the pipeline turn on
+// that distinction, so the two halves of it are named once here rather than
+// spelled out at each of them. See docs/MANUAL-LISTINGS.md.
+export function isManualPolicy(policy: ProviderPolicy): boolean {
+  return policy.ingestion === "manual";
+}
+
+// The providers the crawl loop runs over: enabled, and with a site to read.
+export function crawlablePolicies(
+  policies: readonly LoadedPolicy[],
+): LoadedPolicy[] {
+  return policies.filter(
+    ({ policy }) => policy.enabled && !isManualPolicy(policy),
+  );
+}
+
+// The providers whose animals come from the listings feed instead.
+export function manualPolicies(
+  policies: readonly LoadedPolicy[],
+): LoadedPolicy[] {
+  return policies.filter(
+    ({ policy }) => policy.enabled && isManualPolicy(policy),
+  );
+}
+
 // The directory is a parameter so the loader can be exercised over a fixture
 // tree; every entry point takes the repo's own providers/.
 export function loadPolicies(root: string = providersDir): {

@@ -24,15 +24,26 @@ import {
   type CrawlState,
   type ProviderCrawlResult,
 } from "./incremental-crawl";
-import { loadPolicies, type LoadedPolicy } from "./policies";
+import {
+  crawlablePolicies,
+  isManualPolicy,
+  loadPolicies,
+  manualPolicies,
+  type LoadedPolicy,
+} from "./policies";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import {
   applyOverrides,
   buildOverrideReport,
+  fetchPortalListings,
   fetchPortalOverrides,
   portalIntegrationEnabled,
+  type ListingsReport,
+  type PortalListingsPayload,
 } from "./portal-overrides";
+import { buildListingAnimals } from "./portal-listings";
 import { providers } from "./registry";
+import { loadShelters } from "./shelters";
 import {
   carryFirstSeenAt,
   guardMassRemoval,
@@ -138,7 +149,12 @@ async function crawl(
   previousAnimals: readonly Animal[],
   state: CrawlState,
 ): Promise<CrawlOutcome> {
-  const enabled = policies.filter(({ policy }) => policy.enabled);
+  // A manual provider has no site to read and no adapter in registry.ts: its
+  // animals are written into our own portal and arrive on the listings feed
+  // instead. Skipping it here is what keeps crawlProvider from throwing
+  // "enabled but no provider is registered" for it on every run. Everything
+  // after the crawl treats its listings exactly like these animals.
+  const enabled = crawlablePolicies(policies);
   const settled = await Promise.allSettled(
     enabled.map(({ policy }) =>
       crawlProvider(client, policy, previousAnimals, state),
@@ -237,6 +253,23 @@ const client = new PoliteClient({ userAgent: USER_AGENT });
 // The request is milliseconds, so there is nothing to gain by overlapping it.
 const portalPayload = await fetchPortalOverrides();
 
+// The manual shelters' animals, fetched here for the same reason and from the
+// same portal. It does not abort the run when it fails, though, and that is
+// the one way it differs from the overrides above: a manual shelter has no
+// listing of its animals anywhere but here, so a portal outage has to leave
+// its records where they are rather than empty its page. A throw is turned
+// into the same carry-forward a failed crawl gets, below.
+let listingsPayload: PortalListingsPayload | null = null;
+let listingsFetchFailed = false;
+try {
+  listingsPayload = await fetchPortalListings();
+} catch (error) {
+  listingsFetchFailed = true;
+  const reason =
+    error instanceof Error ? (error.stack ?? error.message) : String(error);
+  console.error(`portal listings FAILED: ${reason}`);
+}
+
 const {
   animals: crawled,
   crawled: crawledProviderIds,
@@ -254,19 +287,72 @@ console.log(
   `detail pages: ${detailsFetched} fetched, ${detailsReused} reused`,
 );
 
+// The manual providers this run is responsible for: enabled, ingestion:
+// manual, and inside the --provider filter when there is one. crawlPolicies
+// is already narrowed to the target, so a targeted run over a manual shelter
+// builds only its listings and carries everybody else forward, the same as a
+// targeted crawl does.
+const manualProviderIds = manualPolicies(crawlPolicies).map(
+  ({ policy }) => policy.providerId,
+);
+
+// The feed is the whole listing of every manual shelter, so a payload that
+// arrived answers for all of them at once, including a shelter that now has
+// nothing: its animals leave the dataset the same way a crawled shelter's do
+// when they leave its list page, and guardMassRemoval below still stands
+// between an emptied feed and a deletion.
+const listingsResult = listingsPayload
+  ? buildListingAnimals(
+      listingsPayload,
+      policyById,
+      loadShelters(),
+      new Date().toISOString(),
+      { providerIds: new Set(manualProviderIds) },
+    )
+  : null;
+if (listingsResult) {
+  for (const providerId of manualProviderIds) crawledProviderIds.add(providerId);
+  console.log(
+    `portal listings: ${listingsResult.animals.length} listed, ` +
+      `${listingsResult.skipped.length} skipped`,
+  );
+  for (const skip of listingsResult.skipped) {
+    console.warn(
+      `portal listings: skipped ${skip.providerId}/${skip.listingId}: ${skip.reason}`,
+    );
+  }
+} else if (listingsFetchFailed) {
+  // Exactly what a failed crawl does: the provider is not in crawledProviderIds,
+  // so its previous animals are carried forward below, and it is in failed, so
+  // the run exits 2 and the scheduler sees a run that was not clean.
+  failed.push(...manualProviderIds);
+} else if (manualProviderIds.length > 0) {
+  console.log(
+    `portal listings: no feed this run, ${manualProviderIds.length} manual ` +
+      `provider(s) carried forward: ${manualProviderIds.join(", ")}`,
+  );
+}
+
 // The second half of the bootstrap check, and the first point at which it can
 // be made: whether every enabled provider finished and refreshed in full is a
 // fact about the crawl that just returned. It runs here, before firstSeenAt is
 // carried, before a photo is fetched and before any file is written, so a
 // bootstrap run that would have to carry a provider over from the merged
 // dataset stops with nothing on disk to undo. See crawled-snapshot.ts.
+//
+// Manual providers are left out of the enabled set it checks. "Fully
+// refreshed" is a fact about a detail crawl and they have none: the listings
+// feed is every listing the shelter has, every run, so nothing of theirs is
+// ever carried over from the merged dataset. A feed that did not arrive is
+// the case that would carry them over, and that already puts them in failed,
+// which this check refuses.
 if (bootstrappingSnapshot) {
   assertBootstrapCrawlIsComplete({
     failed,
     fullyRefreshedProviderIds: fullyRefreshed.map((p) => p.providerId),
-    enabledProviderIds: policies
-      .filter(({ policy }) => policy.enabled)
-      .map(({ policy }) => policy.providerId),
+    enabledProviderIds: crawlablePolicies(policies).map(
+      ({ policy }) => policy.providerId,
+    ),
   });
   console.log(
     `bootstrap: every enabled provider crawled and fully refreshed, so ` +
@@ -274,14 +360,34 @@ if (bootstrappingSnapshot) {
   );
 }
 
+// This run's origin for animal records: what the crawl returned, plus what the
+// manual shelters wrote into the portal. The listings join here, before a
+// single guard has run, because a manual listing is a crawled animal whose
+// crawler is the portal: from this line down nothing distinguishes them, so
+// they take the same firstSeenAt carry, the same uniqueness and removal
+// guards, the same allowedFields backstop, the same image cache, and they land
+// in animals.crawled.json like everything else. See docs/MANUAL-LISTINGS.md.
+const produced = [...crawled, ...(listingsResult?.animals ?? [])];
+
 // A re-crawled animal is not a new one, so keep the date we first saw it.
 // Matched by id first and by the page it came from second, so a provider that
-// changes how it derives ids does not reset every date it has.
-const refreshed = carryFirstSeenAt(previousCrawled?.animals ?? [], crawled);
+// changes how it derives ids does not reset every date it has. The manual
+// shelters are named because that second match cannot work for them: every one
+// of their listings links to the same shelter page, so the page identifies the
+// shelter and not the animal. Their ids never change, so the first match is
+// all they need.
+const refreshed = carryFirstSeenAt(previousCrawled?.animals ?? [], produced, {
+  sharedSourceUrlProviderIds: new Set(
+    policies
+      .filter(({ policy }) => isManualPolicy(policy))
+      .map(({ policy }) => policy.providerId),
+  ),
+});
 
-// Everything this run did not re-crawl: the other shelters on a targeted run,
-// and any provider whose crawl failed above. Their records come back from the
-// previous dataset rather than being dropped, but only while their policy
+// Everything this run has no fresh answer for: the other shelters on a
+// targeted run, any provider whose crawl failed above, and every manual
+// provider when the listings feed did not arrive. Their records come back from
+// the previous dataset rather than being dropped, but only while their policy
 // still lets us publish them, so a shelter that switched off or withdrew its
 // permission leaves the dataset even on a run that never crawled it.
 const carried = (previousCrawled?.animals ?? []).filter(
@@ -307,6 +413,9 @@ guardUniqueAnimalIds(seeded);
 // stopping one shelter from correcting another shelter's animal, and it holds
 // only while an animal's shelter id and its provider id are the same string.
 // Nothing else in the schema enforces it, so it is checked here on every run.
+// A manual listing is built with both read off the same providerId, and its
+// sourceUrl is the shelter page that slug routes to, so the check covers the
+// listings feed for free.
 const misattributed = seeded.filter(
   (a) => a.shelter.id !== a.source.providerId,
 );
@@ -345,7 +454,9 @@ for (const { providerId, field, count } of restricted.stripped) {
 // The crawl's own answer for this run, taken here because this is the last
 // point at which nothing has been merged into it, and copied out so no later
 // phase can reach it. Written at the end as animals.crawled.json, and read
-// back by the next run as previousCrawled.
+// back by the next run as previousCrawled. The manual shelters' listings are
+// in it: the portal is their crawler, and what it said is exactly what this
+// file is for.
 const crawledSnapshot = captureCrawledSnapshot(restricted.animals);
 
 // Shelter corrections from the portal are merged in after the crawl (and
@@ -385,6 +496,13 @@ if (overrideResult) {
 // The current side stays the merged list, which is the same length and the
 // same providers as crawledSnapshot: applyOverrides edits fields, never adds
 // or drops an animal.
+// A manual shelter is counted like any other, because it is in
+// crawledProviderIds exactly when the listings feed answered for it. Archiving
+// is that shelter's delete, so a feed that suddenly names three of its
+// nineteen animals is the same event as a parser that stopped matching, and it
+// stops here until an operator passes --accept-removals. A feed that did not
+// arrive at all leaves the provider out of crawledProviderIds, so the guard
+// does not read a portal outage as a removal.
 guardMassRemoval(previousCrawled?.animals ?? [], overridden, {
   accepted: acceptRemovals,
   crawledProviderIds,
@@ -502,10 +620,22 @@ writeFileAtomic(
 // Written on every run, including runs with no portal configured, so the
 // file never goes stale and an empty report cannot be mistaken for "the
 // shelters have corrected nothing".
+const listingsReport: ListingsReport = {
+  enabled: listingsPayload !== null,
+  failed: listingsFetchFailed,
+  ...(listingsPayload ? { portalGeneratedAt: listingsPayload.generatedAt } : {}),
+  applied: listingsResult?.applied ?? [],
+  skipped: listingsResult?.skipped ?? [],
+};
 writeFileAtomic(
   overrideReportPath,
   JSON.stringify(
-    buildOverrideReport(generatedAt, portalPayload, overrideResult),
+    buildOverrideReport(
+      generatedAt,
+      portalPayload,
+      overrideResult,
+      listingsReport,
+    ),
     null,
     2,
   ),
@@ -513,7 +643,9 @@ writeFileAtomic(
 // Written with the dataset rather than at the end of the crawl: it says which
 // providers' records on disk were produced by the current parsers, so it may
 // only advance once those records are the ones on disk. A provider that failed,
-// or that only refreshed the animals that were due, keeps its old entry.
+// or that only refreshed the animals that were due, keeps its old entry. A
+// manual provider never gets one: it has no parser generation and no detail
+// pages to schedule, so nothing in incremental-crawl.ts ever asks about it.
 writeFileAtomic(
   crawlStatePath,
   JSON.stringify(
@@ -531,9 +663,12 @@ console.log(
 // See exit-codes.ts for what the codes mean. In short: a run that got this
 // far wrote a dataset, so it exits 0 or 2, never 1. The scheduled crawl
 // deploys on both and refuses on anything else.
+// failed holds providers whose crawl threw and, when the listings feed did
+// not come back, every enabled manual provider: the same outcome by the same
+// route, so one list and one exit code cover both.
 if (failed.length > 0) {
   console.error(
-    `crawl failed for ${failed.length} provider(s): ${failed.join(", ")}. ` +
+    `no fresh records for ${failed.length} provider(s): ${failed.join(", ")}. ` +
       `Their previous records were carried forward and the dataset was ` +
       `written, but this run is not a clean one.`,
   );

@@ -711,14 +711,39 @@ describe("buildOverrideReport", () => {
     const report = buildOverrideReport(generatedAt, null, null);
 
     // An empty report with enabled false cannot be read as "the shelters
-    // have corrected nothing".
+    // have corrected nothing". The listings section says the same thing for
+    // the manual shelters, and for the same reason.
     expect(report).toEqual({
       generatedAt,
       enabled: false,
       applied: [],
       unmatched: [],
       conflicts: [],
+      listings: { enabled: false, failed: false, applied: [], skipped: [] },
     });
+  });
+
+  it("carries the listings section it is handed", () => {
+    const report = buildOverrideReport(generatedAt, null, null, {
+      enabled: true,
+      failed: false,
+      portalGeneratedAt: "2026-09-01T12:00:00Z",
+      applied: [
+        {
+          providerId: "johanca",
+          listingId: "6d1c0f6a",
+          animalId: "johanca:6d1c0f6a",
+          updatedAt: "2026-09-01T11:30:00Z",
+        },
+      ],
+      skipped: [
+        { providerId: "muri", listingId: "x", reason: "provider-not-manual" },
+      ],
+    });
+
+    expect(report.listings.applied).toHaveLength(1);
+    expect(report.listings.skipped[0]?.reason).toBe("provider-not-manual");
+    expect(report.listings.portalGeneratedAt).toBe("2026-09-01T12:00:00Z");
   });
 
   it("separates what landed from what matched no animal", () => {

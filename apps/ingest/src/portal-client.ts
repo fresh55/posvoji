@@ -3,6 +3,10 @@ import {
   PortalExportPayload,
   type PortalExportPayload as PortalExportPayloadType,
 } from "./portal-contract";
+import {
+  PortalListingsPayload,
+  type PortalListingsPayload as PortalListingsPayloadType,
+} from "./portal-listings-contract";
 
 const PORTAL_EXPORT_TIMEOUT_MS = 30_000;
 const PORTAL_EXPORT_MAX_BYTES = 5 * 1024 * 1024;
@@ -17,7 +21,19 @@ function parsePortalExport(body: unknown): PortalExportPayloadType {
   return result.data;
 }
 
-function exportEndpoint(baseUrl: string): string {
+function parsePortalListings(body: unknown): PortalListingsPayloadType {
+  const result = PortalListingsPayload.safeParse(body);
+  if (!result.success) {
+    throw new Error(
+      `portal listings payload failed validation: ${result.error.message}`,
+    );
+  }
+  return result.data;
+}
+
+// Both feeds hang off one base URL and one token, so the path is a parameter
+// rather than two copies of the same validation.
+function portalEndpoint(baseUrl: string, path: string): string {
   let base: URL;
   try {
     base = new URL(baseUrl);
@@ -32,8 +48,16 @@ function exportEndpoint(baseUrl: string): string {
       "PORTAL_EXPORT_URL must not contain credentials, a query, or a fragment",
     );
   }
-  base.pathname = `${base.pathname.replace(/\/+$/, "")}/api/export`;
+  base.pathname = `${base.pathname.replace(/\/+$/, "")}${path}`;
   return base.href;
+}
+
+function exportEndpoint(baseUrl: string): string {
+  return portalEndpoint(baseUrl, "/api/export");
+}
+
+function listingsEndpoint(baseUrl: string): string {
+  return portalEndpoint(baseUrl, "/api/export/listings");
 }
 
 async function readBoundedBody(response: Response, url: string): Promise<string> {
@@ -125,4 +149,70 @@ export async function fetchPortalOverrides(): Promise<PortalExportPayloadType | 
     });
   }
   return parsePortalExport(body);
+}
+
+// The manual shelters' animals, from the same portal, the same base URL and
+// the same token as the overrides above. See docs/MANUAL-LISTINGS.md.
+//
+// Null means "no listings this run" and is not an error: the integration is
+// not configured, or the portal is an older deployment that has no listings
+// route yet and answers 404. Every other failure throws, the same as the
+// override fetch. What export.ts does with a throw is different, though: a
+// manual shelter has no listing of its animals anywhere else, so it carries
+// its previous records forward the way a failed crawl does rather than
+// emptying its page.
+export async function fetchPortalListings(): Promise<PortalListingsPayloadType | null> {
+  const fixturePath = process.env["PORTAL_LISTINGS_FIXTURE"];
+  if (fixturePath) {
+    console.log(`portal: reading listings from fixture ${fixturePath}`);
+    return parsePortalListings(JSON.parse(readFileSync(fixturePath, "utf8")));
+  }
+
+  const baseUrl = process.env["PORTAL_EXPORT_URL"];
+  const token = process.env["PORTAL_EXPORT_TOKEN"];
+  if (!baseUrl || !token) {
+    console.log(
+      "portal: listings disabled (PORTAL_EXPORT_URL/PORTAL_EXPORT_TOKEN not set)",
+    );
+    return null;
+  }
+
+  const url = listingsEndpoint(baseUrl);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(PORTAL_EXPORT_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new Error(`portal listings request failed: ${url}`, { cause: error });
+  }
+  // A portal deployed before the listings route existed. Treated as an empty
+  // feed rather than a failure so this pipeline can ship ahead of the portal:
+  // manual providers keep the records they already have and the run stays a
+  // clean one.
+  if (response.status === 404) {
+    console.log(
+      `portal: no listings feed at ${url} (HTTP 404). Manual shelters keep ` +
+        `their previous animals; this is expected until the portal ships the ` +
+        `route.`,
+    );
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      `portal listings request failed: HTTP ${response.status} ${url}`,
+    );
+  }
+
+  const text = await readBoundedBody(response, url);
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`portal listings response is not valid JSON: ${url}`, {
+      cause: error,
+    });
+  }
+  return parsePortalListings(body);
 }

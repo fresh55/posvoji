@@ -1,0 +1,121 @@
+{
+  "requiredFields": [
+    "providerId",
+    "id",
+    "species",
+    "status",
+    "name",
+    "photos",
+    "createdAt",
+    "updatedAt"
+  ],
+  "optionalFields": [
+    "sex",
+    "breed",
+    "birthDate",
+    "approximateAgeMonths",
+    "size",
+    "energy",
+    "goodWithKids",
+    "goodWithDogs",
+    "goodWithCats",
+    "apartmentOk",
+    "specialNeeds",
+    "shortDescription"
+  ],
+  "photoFields": ["url", "width", "height"],
+  "enumValues": {
+    "species": ["dog", "cat", "rabbit", "other"],
+    "status": ["available", "reserved", "adopted", "hold"],
+    "sex": ["male", "female", "unknown"],
+    "size": ["small", "medium", "large"],
+    "energy": ["calm", "balanced", "lively"],
+    "goodWithKids": ["yes", "no", "unknown"],
+    "goodWithDogs": ["yes", "no", "unknown"],
+    "goodWithCats": ["yes", "no", "unknown"],
+    "apartmentOk": ["yes", "no", "unknown"]
+  },
+  "export": {
+    "generatedAt": "2026-09-01T12:00:00Z",
+    "listings": [
+      {
+        "providerId": "contract-shelter",
+        "id": "6d1c0f6a-3c0e-4a7e-9f7b-2f4a9d1e8b10",
+        "species": "cat",
+        "status": "available",
+        "name": "Luna",
+        "sex": "female",
+        "breed": "mesanec",
+        "birthDate": "2026-01-15",
+        "approximateAgeMonths": 8,
+        "size": "small",
+        "energy": "lively",
+        "goodWithKids": "yes",
+        "goodWithDogs": "unknown",
+        "goodWithCats": "yes",
+        "apartmentOk": "yes",
+        "specialNeeds": false,
+        "shortDescription": "Radovedna in prijazna.",
+        "photos": [
+          {
+            "url": "https://api.posvoji.si/media/listings/6d1c0f6a-3c0e-4a7e-9f7b-2f4a9d1e8b10/3f2a9c1d.jpg",
+            "width": 1600,
+            "height": 1200
+          },
+          {
+            "url": "https://api.posvoji.si/media/listings/6d1c0f6a-3c0e-4a7e-9f7b-2f4a9d1e8b10/8b7e2f04.jpg",
+            "width": 1200,
+            "height": 1600
+          }
+        ],
+        "createdAt": "2026-09-01T10:00:00Z",
+        "updatedAt": "2026-09-01T11:30:00Z"
+      },
+      {
+        "providerId": "contract-shelter",
+        "id": "a2f5c8e1-7b3d-4e9a-8c6f-1d0e4b7a9c23",
+        "species": "dog",
+        "status": "reserved",
+        "name": "Rex",
+        "sex": "male",
+        "size": "large",
+        "energy": "balanced",
+        "goodWithKids": "no",
+        "goodWithDogs": "no",
+        "goodWithCats": "no",
+        "apartmentOk": "no",
+        "specialNeeds": true,
+        "photos": [],
+        "createdAt": "2026-08-30T08:00:00Z",
+        "updatedAt": "2026-08-30T08:00:00Z"
+      },
+      {
+        "providerId": "contract-shelter",
+        "id": "c9e3b1a7-2d6f-4c8e-b5a1-7f2d9e4c6b38",
+        "species": "rabbit",
+        "status": "hold",
+        "name": "Pika",
+        "sex": "unknown",
+        "size": "medium",
+        "energy": "calm",
+        "goodWithKids": "unknown",
+        "goodWithDogs": "unknown",
+        "goodWithCats": "unknown",
+        "apartmentOk": "unknown",
+        "photos": [],
+        "createdAt": "2026-08-29T08:00:00Z",
+        "updatedAt": "2026-08-31T09:15:00Z"
+      },
+      {
+        "providerId": "contract-shelter",
+        "id": "e4a8d2c6-9f1b-4a3e-8d7c-3b5e1f9a2d47",
+        "species": "other",
+        "status": "adopted",
+        "name": "Miki",
+        "photos": [],
+        "createdAt": "2026-08-20T08:00:00Z",
+        "updatedAt": "2026-08-31T18:00:00Z"
+      }
+    ]
+  }
+}

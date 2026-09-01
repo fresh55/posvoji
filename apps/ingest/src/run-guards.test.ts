@@ -224,6 +224,51 @@ describe("carryFirstSeenAt", () => {
 
     expect(result).toBe(now);
   });
+
+  // A manual shelter's listings all link to one page, its own page on this
+  // site, so the sourceUrl fallback would otherwise hand a brand new listing
+  // the date of an older one and backdate every animal the shelter adds.
+  describe("a provider whose sourceUrl names the shelter", () => {
+    const page = "https://posvoji.si/zavetisca/johanca";
+    const shared = (id: string, firstSeenAt: string): Animal => {
+      const base = animal(id, "johanca");
+      return { ...base, source: { ...base.source, sourceUrl: page, firstSeenAt } };
+    };
+    const options = { sharedSourceUrlProviderIds: new Set(["johanca"]) };
+
+    it("leaves a new listing on its own date", () => {
+      const now = shared("nova", "2026-08-25T06:00:00Z");
+
+      const [result] = carryFirstSeenAt(
+        [shared("luna", "2026-01-04T06:00:00Z")],
+        [now],
+        options,
+      );
+
+      expect(result?.source.firstSeenAt).toBe("2026-08-25T06:00:00Z");
+    });
+
+    it("still carries the date over an exact id match", () => {
+      const now = shared("luna", "2026-08-25T06:00:00Z");
+
+      const [result] = carryFirstSeenAt(
+        [shared("luna", "2026-01-04T06:00:00Z")],
+        [now],
+        options,
+      );
+
+      expect(result?.source.firstSeenAt).toBe("2026-01-04T06:00:00Z");
+    });
+
+    it("leaves every other provider's url fallback alone", () => {
+      const before = seen(animal("luna"), "2026-01-04T06:00:00Z");
+      const now = { ...animal("luna"), id: "macja-hisa:4812" };
+
+      const [result] = carryFirstSeenAt([before], [now], options);
+
+      expect(result?.source.firstSeenAt).toBe("2026-01-04T06:00:00Z");
+    });
+  });
 });
 
 describe("guardUniqueAnimalIds", () => {

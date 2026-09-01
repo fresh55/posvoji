@@ -40,6 +40,22 @@ describe("postcode to municipality", () => {
     expect(municipalitiesForInput("Šenčur")?.municipalities[0]).toBe("Šenčur");
   });
 
+  it("does not answer Videm with the občine of Videm - Dobrepolje", () => {
+    // Postal district 1312 covers Dobrepolje and Grosuplje. Občina Videm is
+    // neither, and its shelter is not theirs.
+    const guess = municipalitiesForInput("Videm");
+    expect(guess?.municipalities ?? []).not.toContain("Dobrepolje");
+  });
+
+  it("names an občina the postal table cannot reach by that name", () => {
+    // 9206 Križevci in Goričko is not Občina Križevci near Ljutomer, and no
+    // district is named Kungota at all. Both are why the finder keeps the
+    // občina-name search alongside the postal guess.
+    const krizevci = municipalitiesForInput("Križevci");
+    expect(krizevci?.municipalities ?? []).not.toContain("Križevci");
+    expect(municipalitiesForInput("Kungota")).toBeUndefined();
+  });
+
   it("returns nothing for input it cannot place", () => {
     expect(municipalitiesForInput("9999")).toBeUndefined();
     expect(municipalitiesForInput("")).toBeUndefined();

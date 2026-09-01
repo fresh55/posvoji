@@ -4,6 +4,7 @@ import { ExternalLink, Heart, Hourglass } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
+import { quotedLang } from "@/lib/i18n";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { ageLabel, longStayMonths } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -108,7 +109,9 @@ export function ShelterBlock({
           // The mirror only exists where there is a listing to open, so this
           // reads the same condition the sticky bar is gated on. Without it an
           // animal with no source URL would lose its button on the phone
-          // rather than have it repeated.
+          // rather than have it repeated. The bar's other condition is the
+          // branch above: an adopted animal never reaches this button, and the
+          // bar does not draw one for it either.
           <Button
             asChild
             size="sm"
@@ -130,8 +133,17 @@ export function ShelterBlock({
 
       {/* The attribution stays a footnote under the box. In practice it
           repeats the shelter's name, and inside the box that read as the
-          same line printed twice. */}
-      <p className="text-xs text-muted-foreground">{animal.attribution}</p>
+          same line printed twice.
+
+          lang, for the same reason the description carries one: the sentence
+          is the provider's own Slovenian ("Foto in opis: Zavetišče Test"),
+          printed verbatim. See quotedLang in lib/i18n.ts. */}
+      <p
+        lang={quotedLang("sl", locale)}
+        className="text-xs text-muted-foreground"
+      >
+        {animal.attribution}
+      </p>
     </div>
   );
 }

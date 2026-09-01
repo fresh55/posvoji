@@ -3,8 +3,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
-import { shelterPath, sheltersIndexPath } from "@/lib/shelter-path";
+import { shelterPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
+import {
+  localeAlternates,
+  openGraphLocale,
+  SITE_NAME,
+} from "@/lib/site-metadata";
 
 const CARD_WIDTH = 1200;
 const CARD_HEIGHT = 630;
@@ -47,53 +52,21 @@ export function shelterPlateUrl(id: string): string | undefined {
 // imported from the browser (see the note there).
 export { shelterPath };
 
-/**
- * One page's address in both languages, as the head's canonical and its pair
- * of hreflangs.
- *
- * Both callers below build the same three-line shape off a locale-keyed pair
- * of paths, and the shape is the part worth writing once: which of the two is
- * canonical follows from the locale being rendered, and the languages map
- * always names both, including the page itself.
- */
-function localeAlternates(
-  paths: Record<Locale, string>,
-  locale: Locale,
-): NonNullable<Metadata["alternates"]> {
-  return { canonical: paths[locale], languages: paths };
-}
-
-/**
- * The shelters index's own address, and the other language's copy of it.
- *
- * Every shelter detail page has carried these since shelterMetadata was
- * written, and the index they all hang off carried neither: /zavetisca and
- * /en/shelters are the same document in two languages with nothing in either
- * head to say so, while /zavetisca/muri names both. That is the pair most
- * likely to be searched for, in the language the searcher is not using.
- *
- * A helper rather than the object written twice, because the two routes are
- * separate files that nothing else keeps in step.
- */
-export function sheltersIndexAlternates(
-  locale: Locale,
-): NonNullable<Metadata["alternates"]> {
-  return localeAlternates(
-    { sl: sheltersIndexPath("sl"), en: sheltersIndexPath("en") },
-    locale,
-  );
-}
-
 const text = {
   sl: {
     description: (name: string, city: string) =>
       `${name}, ${city}. Kontaktni podatki in živali za posvojitev na Posvoji.si.`,
+    // The same sentence with the promise taken out. See hasAnimals below.
+    contactOnly: (name: string, city: string) =>
+      `${name}, ${city}. Kontaktni podatki zavetišča na Posvoji.si.`,
     alt: (name: string, city: string) =>
       `Zemljevid Slovenije z označeno lokacijo: ${name}, ${city}.`,
   },
   en: {
     description: (name: string, city: string) =>
       `${name}, ${city}. Contact details and animals for adoption on Posvoji.si.`,
+    contactOnly: (name: string, city: string) =>
+      `${name}, ${city}. Shelter contact details on Posvoji.si.`,
     alt: (name: string, city: string) =>
       `Map of Slovenia marking the location of ${name}, ${city}.`,
   },
@@ -104,13 +77,23 @@ const text = {
  * builds an animal's: a title, a description templated from the registry's own
  * fields, the image drawn at build time, and the other language's copy of the
  * same page.
+ *
+ * hasAnimals is the dataset's answer, which the register cannot give: a
+ * shelter is listed because it exists, not because it shares a list. Six of
+ * the seventeen have no animals in the dataset today, their pages say so in
+ * the body, and every one of them was promising "živali za posvojitev" in the
+ * search result that led there. The caller passes it because it is the one
+ * that has the dataset open; this module reads the register only.
  */
 export function shelterMetadata(
   shelter: ShelterRegistryEntry,
   locale: Locale,
+  hasAnimals: boolean,
 ): Metadata {
   const t = text[locale];
-  const description = t.description(shelter.name, shelter.city);
+  const description = hasAnimals
+    ? t.description(shelter.name, shelter.city)
+    : t.contactOnly(shelter.name, shelter.city);
   const path = shelterPath(shelter.id, locale);
   const plate = shelterPlateUrl(shelter.id);
   const images = plate
@@ -125,7 +108,7 @@ export function shelterMetadata(
     : undefined;
 
   return {
-    title: `${shelter.name} | Posvoji.si`,
+    title: `${shelter.name} | ${SITE_NAME}`,
     description,
     alternates: localeAlternates(
       { sl: shelterPath(shelter.id, "sl"), en: shelterPath(shelter.id, "en") },
@@ -133,8 +116,8 @@ export function shelterMetadata(
     ),
     openGraph: {
       type: "website",
-      siteName: "Posvoji.si",
-      locale: locale === "sl" ? "sl_SI" : "en_GB",
+      siteName: SITE_NAME,
+      locale: openGraphLocale(locale),
       title: shelter.name,
       description,
       url: path,

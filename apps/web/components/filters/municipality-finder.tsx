@@ -35,7 +35,17 @@ function fold(text: string): string {
     .toLowerCase();
 }
 
-const REGISTER_URL = "https://www.gov.si/teme/zascita-zivali/#e69068";
+// The authority that keeps the register of shelters. It used to point at
+// gov.si/teme/zascita-zivali/, which returns 404 and has no snapshot in the
+// Wayback Machine, so it is unlikely to have ever resolved: the one piece of
+// help offered to the 50 občine with no verified coverage was a dead link.
+//
+// gov.si no longer publishes the register itself at a findable address. The
+// PDF it used to sit in (assets/.../REG-zavetisc-*.pdf) is gone too, and the
+// site search finds no replacement, so this points at UVHVVR's own page, which
+// resolves and is the office to ask. Checked 2026-09-01.
+const REGISTER_URL =
+  "https://www.gov.si/drzavni-organi/organi-v-sestavi/uprava-za-varno-hrano-veterinarstvo-in-varstvo-rastlin/";
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2021-01-2993";
 // Enough to disambiguate any prefix without becoming a directory. The page
@@ -85,12 +95,29 @@ export function MunicipalityFinder({
     [entries],
   );
 
+  // Every občina name folded once, rather than all 212 of them folded again on
+  // each keystroke by the search, the exact-name check and the Enter handler in
+  // turn. fold normalizes, strips diacritics and lowercases, so it is three
+  // string allocations a name; the names themselves never change, and entries
+  // is a stable reference at both call sites.
+  const folded = useMemo(
+    () => entries.map((entry) => ({ entry, key: fold(entry.name) })),
+    [entries],
+  );
+
   // A postcode or town in the box, and the device's position, both answer
   // "which občina" through the same postal table. What was typed wins: it is
   // the newer statement of where the animal was found.
+  //
+  // It wins even when the postal table cannot place it. Falling through to the
+  // fix in that case is how someone who had pressed "use my location" in
+  // Ljubljana and then typed "Kungota" was shown Ljubljana's shelter: no
+  // postal district is named Kungota, so the typed lookup came back empty and
+  // the device answered a question it had not been asked. Twenty-six občine
+  // have no postal district of their own name, and every one of them was
+  // answered with wherever the reader happened to be standing.
   const guess: MunicipalityGuess | undefined = useMemo(() => {
-    const typed = query.trim() ? municipalitiesForInput(query) : undefined;
-    if (typed) return typed;
+    if (query.trim()) return municipalitiesForInput(query);
     if (state.status === "on") return municipalitiesNear(state.at);
     return undefined;
   }, [query, state]);
@@ -100,19 +127,39 @@ export function MunicipalityFinder({
     const trimmed = query.trim();
     if (!trimmed) return [];
     const needle = fold(trimmed);
-    return entries.filter((entry) => fold(entry.name).includes(needle));
-  }, [entries, query]);
+    return folded
+      .filter(({ key }) => key.includes(needle))
+      .map(({ entry }) => entry);
+  }, [folded, query]);
 
-  // A guess narrows to what it resolved; otherwise the name search decides.
+  // With no guess the name search decides on its own. With one, the občine the
+  // guess resolved to are offered together with the občina whose name was
+  // typed out in full, deduped by name.
+  //
+  // Both halves are needed because a postal district and an občina can carry
+  // the same name in different corners of the country. "Križevci" is postal
+  // district 9206 in Goričko, whose občine are Gornji Petrovci, Šalovci and
+  // Moravske Toplice, and it is also Občina Križevci near Ljutomer, 30 km
+  // south. Taking the guess alone asked the reader "which of these three" and
+  // left the one they had spelled out off the list entirely.
+  //
+  // The exact name comes first: spelling an občina in full is the most
+  // deliberate thing the box takes. Where the guess and the name agree, which
+  // is the ordinary case, the dedupe leaves a single entry and the answer
+  // still resolves without a pick.
   const matches = useMemo(() => {
-    if (guess) {
-      return guess.municipalities.flatMap((name) => {
-        const entry = byName.get(name);
-        return entry ? [entry] : [];
-      });
-    }
-    return nameMatches;
-  }, [byName, guess, nameMatches]);
+    if (!guess) return nameMatches;
+    const typed = fold(query.trim());
+    // Names are unique, so at most one entry is spelled out in full and the
+    // guess cannot repeat itself: the only possible duplicate is that one
+    // entry already sitting in the guess.
+    const exact = nameMatches.find((entry) => fold(entry.name) === typed);
+    const guessed = guess.municipalities.flatMap((name) => {
+      const entry = byName.get(name);
+      return entry ? [entry] : [];
+    });
+    return exact && !guessed.includes(exact) ? [exact, ...guessed] : guessed;
+  }, [byName, guess, nameMatches, query]);
 
   const active =
     (picked ? byName.get(picked) : undefined) ??

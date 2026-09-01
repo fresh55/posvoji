@@ -23,3 +23,24 @@ export type AnimalFields = Omit<Animal, "images">;
  *  dropped, and nothing on the wire that only the server needed. See
  *  animalsForClient in lib/dataset.ts. */
 export type ClientAnimal = AnimalFields & { images: PermittedPhoto[] };
+
+/**
+ * The same animal with its photos left behind, for a client component that
+ * reads none of them.
+ *
+ * The other half of what animalsForClient does. A server component handing a
+ * dataset `Animal` to a client one serializes every field of it into the
+ * page's flight payload, photos included: each image carries the shelter's
+ * own URL, its rights and, where ingest derived one, a base64 placeholder.
+ * AnimalFacts and ShelterBlock are typed against AnimalFields precisely
+ * because they never look at a photo, so on the animal page that was about
+ * 3KB of unread payload per page across a thousand pages.
+ *
+ * Photos that are drawn go to the component that draws them (the gallery),
+ * already resolved by permittedPhotos.
+ */
+export function animalFields(animal: Animal): AnimalFields {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
+  const { images, ...fields } = animal;
+  return fields;
+}

@@ -184,13 +184,31 @@ describe("animal grid empty state", () => {
     expect(screen.getByRole("link", { name: /Shelter druga/ })).toBeTruthy();
   });
 
-  it("uses the plural shelter form for more than one selected shelter", () => {
+  it("uses the dual shelter form for exactly two selected shelters", () => {
+    // Slovenian counts a dual, and two is the count a singular/plural pair
+    // gets wrong: "izbrana zavetišča nimajo" is three or more shelters.
     window.history.replaceState(
       null,
       "",
       "/?vrsta=zajcek&zavetisce=muri,tretje",
     );
     renderGrid(ANIMALS);
+
+    expect(
+      screen.getByText("Izbrani zavetišči trenutno nimata drugih živali."),
+    ).toBeTruthy();
+  });
+
+  it("uses the plural shelter form from three selected shelters up", () => {
+    // A fourth shelter with no rabbit, so three can be selected while druga,
+    // which has the only one, stays out of the selection: the state is still
+    // the shelter-only empty one, and only the count has moved past the dual.
+    window.history.replaceState(
+      null,
+      "",
+      "/?vrsta=zajcek&zavetisce=muri,tretje,cetrto",
+    );
+    renderGrid([...ANIMALS, animal("dog-cetrto", "dog", "cetrto")]);
 
     expect(
       screen.getByText("Izbrana zavetišča trenutno nimajo drugih živali."),
@@ -418,7 +436,18 @@ describe("how much of the grid is drawn", () => {
     expect(screen.getAllByRole("article")).toHaveLength(beyond.length);
     expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
     const firstAdded = screen.getAllByRole("article")[drawn];
-    expect(document.activeElement).toBe(firstAdded.querySelector("a"));
+    // The card's own name link, and not simply its first anchor. The photo
+    // block comes first in every card and its anchor is decorative: it is
+    // aria-hidden and out of the tab order (photo-gallery.tsx), so focus
+    // landing there hands the reading position to an element a screen reader
+    // cannot see at all.
+    const decorative = firstAdded.querySelector('a[aria-hidden="true"]');
+    expect(decorative).toBeTruthy();
+    expect(decorative).toBe(firstAdded.querySelector("a"));
+    expect(document.activeElement).not.toBe(decorative);
+    expect(document.activeElement).toBe(
+      firstAdded.querySelector('a:not([aria-hidden="true"])'),
+    );
   });
 
   // Where two columns spend the whole budget in one step, three and four take

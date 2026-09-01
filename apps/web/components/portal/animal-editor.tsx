@@ -322,6 +322,16 @@ export function AnimalEditor({
   const [draft, setDraft] = useState<Draft>(() => draftFrom(animal));
   const [ageError, setAgeError] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // A save that failed on the card keeps its message until the next attempt,
+  // which is what the card needs: the shelter has to be able to look away and
+  // still find out that the tap did not take. Opening this dialog is not that
+  // attempt, though, so the failure the dialog opens on is remembered here and
+  // stays out of the form. Every later save produces a new state object, so
+  // identity is enough to tell the two apart.
+  // Null at mount: the card renders this closed and opens it on a tap, so
+  // there is never a first render to inherit a failure from. The reset below
+  // is the one place the rule is stated.
+  const [openedOn, setOpenedOn] = useState<PortalSaveState | null>(null);
   const [source, setSource] = useState({ animal, open });
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -341,6 +351,7 @@ export function AnimalEditor({
       setDraft(draftFrom(animal));
       setAgeError(false);
       setConfirming(false);
+      setOpenedOn(saveState.status === "error" ? saveState : null);
     }
   }
 
@@ -381,7 +392,7 @@ export function AnimalEditor({
   const name = animal.name ?? portalText.unnamed;
   const errorText = ageError
     ? portalText.invalidError
-    : saveState.status === "error"
+    : saveState.status === "error" && saveState !== openedOn
       ? saveState.message
       : null;
 
@@ -399,16 +410,19 @@ export function AnimalEditor({
     setAgeError(false);
   }
 
-  /** Empty is what "give it back to the crawler" looks like in the form. */
-  function reverting(field: PortalField, value: string | null): boolean {
-    return isOverridden(animal, field) && (value === null || value === "");
+  /**
+   * Whether saving would give this field back to the crawler.
+   *
+   * Read off the patch rather than off the control, because "empty" is not
+   * the only way to ask for it: an emptied box, a cleared choice row, two
+   * empty age boxes and "Ni znano" on Posebne potrebe all reach the wire as
+   * the same explicit null. buildPatch is what decides that, and it only
+   * writes a null for a field the shelter has actually overridden, so this is
+   * also where the "you changed this" mark turns into "this is going back".
+   */
+  function reverting(field: PortalField): boolean {
+    return patch[field] === null;
   }
-
-  /** The age is one field over two inputs, so reverting it empties both. */
-  const ageReverting =
-    isOverridden(animal, "approximateAgeMonths") &&
-    draft.ageYears.trim() === "" &&
-    draft.ageMonths.trim() === "";
 
   function revertAge() {
     setDraft((current) => ({ ...current, ageYears: "", ageMonths: "" }));
@@ -477,7 +491,7 @@ export function AnimalEditor({
             label={portalText.fieldName}
             htmlFor="portal-name"
             overridden={isOverridden(animal, "name")}
-            reverting={reverting("name", draft.name)}
+            reverting={reverting("name")}
             onRevert={() => set("name", "")}
             disabled={saving}
             hint={portalText.nameHint}
@@ -496,7 +510,7 @@ export function AnimalEditor({
             field="energy"
             label={portalText.fieldEnergy}
             overridden={isOverridden(animal, "energy")}
-            reverting={reverting("energy", draft.energy)}
+            reverting={reverting("energy")}
             missing={missing.has("energy")}
             onRevert={() => set("energy", null)}
             disabled={saving}
@@ -527,7 +541,7 @@ export function AnimalEditor({
                 field={field}
                 label={label}
                 overridden={isOverridden(animal, field)}
-                reverting={reverting(field, draft[field])}
+                reverting={reverting(field)}
                 missing={missing.has(field)}
                 onRevert={() => set(field, null)}
                 disabled={saving}
@@ -557,7 +571,7 @@ export function AnimalEditor({
             field="apartmentOk"
             label={portalText.fieldApartmentOk}
             overridden={isOverridden(animal, "apartmentOk")}
-            reverting={reverting("apartmentOk", draft.apartmentOk)}
+            reverting={reverting("apartmentOk")}
             missing={missing.has("apartmentOk")}
             onRevert={() => set("apartmentOk", null)}
             disabled={saving}
@@ -577,7 +591,7 @@ export function AnimalEditor({
             field="sex"
             label={portalText.fieldSex}
             overridden={isOverridden(animal, "sex")}
-            reverting={reverting("sex", draft.sex)}
+            reverting={reverting("sex")}
             onRevert={() => set("sex", null)}
             disabled={saving}
           >
@@ -597,7 +611,7 @@ export function AnimalEditor({
             label={portalText.fieldBreed}
             htmlFor="portal-breed"
             overridden={isOverridden(animal, "breed")}
-            reverting={reverting("breed", draft.breed)}
+            reverting={reverting("breed")}
             onRevert={() => set("breed", "")}
             disabled={saving}
           >
@@ -616,7 +630,7 @@ export function AnimalEditor({
               label={portalText.fieldBirthDate}
               htmlFor="portal-birth-date"
               overridden={isOverridden(animal, "birthDate")}
-              reverting={reverting("birthDate", draft.birthDate)}
+              reverting={reverting("birthDate")}
               onRevert={() => set("birthDate", "")}
               disabled={saving}
             >
@@ -637,7 +651,7 @@ export function AnimalEditor({
               field="approximateAgeMonths"
               label={portalText.fieldAgeMonths}
               overridden={isOverridden(animal, "approximateAgeMonths")}
-              reverting={ageReverting}
+              reverting={reverting("approximateAgeMonths")}
               onRevert={revertAge}
               disabled={saving}
               hint={portalText.ageHint}
@@ -701,7 +715,7 @@ export function AnimalEditor({
             field="size"
             label={portalText.fieldSize}
             overridden={isOverridden(animal, "size")}
-            reverting={reverting("size", draft.size)}
+            reverting={reverting("size")}
             onRevert={() => set("size", null)}
             disabled={saving}
           >
@@ -720,7 +734,7 @@ export function AnimalEditor({
             field="specialNeeds"
             label={portalText.fieldSpecialNeeds}
             overridden={isOverridden(animal, "specialNeeds")}
-            reverting={reverting("specialNeeds", draft.specialNeeds)}
+            reverting={reverting("specialNeeds")}
             onRevert={() => set("specialNeeds", null)}
             disabled={saving}
             hint={portalText.specialNeedsHint}
@@ -742,7 +756,7 @@ export function AnimalEditor({
             label={portalText.fieldDescription}
             htmlFor="portal-description"
             overridden={isOverridden(animal, "shortDescription")}
-            reverting={reverting("shortDescription", draft.shortDescription)}
+            reverting={reverting("shortDescription")}
             onRevert={() => set("shortDescription", "")}
             disabled={saving}
             hint={portalText.descriptionHint}

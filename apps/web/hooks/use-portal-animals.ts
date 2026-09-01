@@ -57,9 +57,15 @@ export function usePortalAnimals(
   saveStates: Record<string, PortalSaveState>;
   reload: () => void;
   save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
+  publicName: (animal: PortalAnimal) => string | null;
 } {
   const [animals, setAnimals] = useState<PortalAnimal[]>([]);
   const [state, setState] = useState<PortalListState>({ status: "loading" });
+  // The name every animal carried when this list arrived. A save replaces the
+  // animal but never this, so it stays the name from before the edit.
+  const [listedNames, setListedNames] = useState<
+    ReadonlyMap<string, string | null>
+  >(new Map());
   const [saveStates, setSaveStates] = useState<Record<string, PortalSaveState>>(
     {},
   );
@@ -88,6 +94,7 @@ export function usePortalAnimals(
       (list) => {
         if (!live) return;
         setAnimals(list);
+        setListedNames(new Map(list.map((animal) => [animal.id, animal.name])));
         setState({ status: "ready" });
       },
       (error: unknown) => {
@@ -162,5 +169,24 @@ export function usePortalAnimals(
     [flashSaved, slug],
   );
 
-  return { animals, state, saveStates, reload, save };
+  /**
+   * The name to build this animal's public address from.
+   *
+   * The public site is a static export rebuilt about every twelve hours, and
+   * its animal pages exist only for the slugs that build read, so the address
+   * an animal has right now is the one its name had then. The API sends one
+   * merged name and no published one, so the closest reading we have is the
+   * name the list loaded with: it is never ahead of a rename saved here, which
+   * is the case that would otherwise link to a page that does not exist yet.
+   * An animal the list has not seen falls back to its own name.
+   */
+  const publicName = useCallback(
+    (animal: PortalAnimal): string | null => {
+      const listed = listedNames.get(animal.id);
+      return listed === undefined ? animal.name : listed;
+    },
+    [listedNames],
+  );
+
+  return { animals, state, saveStates, reload, save, publicName };
 }

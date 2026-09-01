@@ -32,7 +32,7 @@ import {
   type GoodWithKey,
   type ToggleKey,
 } from "@/lib/filters";
-import type { TranslationKey } from "@/lib/i18n";
+import { quotedLang, type TranslationKey } from "@/lib/i18n";
 import {
   ageLabel,
   longStayMonths,
@@ -537,6 +537,9 @@ export function AnimalFacts({
       {animal.shortDescription && (
         <div className="space-y-1">
           <p
+            // The shelter wrote this and we print it verbatim, so it is
+            // Slovenian on an English page too. See quotedLang in lib/i18n.ts.
+            lang={quotedLang("sl", locale)}
             // max-w-prose: at the dialog's full width these lines run past
             // ninety characters, which is more than an eye tracks comfortably.
             // The pills and boxes around it keep the full width; only the

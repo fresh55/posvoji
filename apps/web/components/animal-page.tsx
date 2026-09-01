@@ -11,6 +11,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { animalFields } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
@@ -21,11 +22,9 @@ import { cn } from "@/lib/utils";
 
 const pageText = {
   sl: {
-    back: "Vse živali",
     openInFinder: "Odpri med vsemi živalmi",
   },
   en: {
-    back: "All animals",
     openInFinder: "Open in the full list",
   },
 } satisfies Record<Locale, Record<string, string>>;
@@ -46,6 +45,11 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
   const reference = new Date(dataset.generatedAt);
   const indexHref = locale === "sl" ? "/" : "/en";
   const hasPhoto = animal.images.length > 0;
+  // What crosses into the two client components below, which read no photo of
+  // it. Handed the whole animal they serialized every image, its source URL,
+  // its rights and its placeholder into this page's flight payload. See
+  // animalFields in lib/animal.ts.
+  const fields = animalFields(animal);
 
   return (
     <I18nProvider locale={locale}>
@@ -70,7 +74,15 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
               page. A breadcrumb is the same distance from its page whatever
               the page turns out to be. */}
           <div className="space-y-5">
-            <PageBreadcrumb locale={locale} current={animal.name ?? text.back} />
+            {/* messages.unnamed and not text.back: the fallback used to be
+                "Vse živali", which is the root crumb's own label word for
+                word, so an animal the shelter left unnamed wore the trail
+                "Vse živali > Vse živali", in the JSON-LD as well as on the
+                page. The h1 below already calls it what this calls it. */}
+            <PageBreadcrumb
+              locale={locale}
+              current={animal.name ?? messages.unnamed}
+            />
 
             {/* Two columns only when there is a photo to fill the first one.
                 Without one the facts column sat alone beside an empty half. */}
@@ -119,14 +131,14 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 </div>
               </div>
 
-              <AnimalFacts animal={animal} reference={reference} />
+              <AnimalFacts animal={fields} reference={reference} />
             </div>
             </div>
           </div>
 
           <div className="space-y-4">
             <ShelterBlock
-              animal={animal}
+              animal={fields}
               logos={getShelterLogos()}
               reference={reference}
             />

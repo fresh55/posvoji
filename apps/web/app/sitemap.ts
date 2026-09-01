@@ -3,7 +3,11 @@ import { animalPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import type { Locale } from "@/lib/i18n";
-import { homePath, sheltersIndexPath, shelterPath } from "@/lib/shelter-path";
+import {
+  HOME_PATHS,
+  SHELTER_INDEX_PATHS,
+  shelterPath,
+} from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
 import { RESOURCES_PATHS } from "@/lib/site-links";
@@ -19,10 +23,11 @@ import { RESOURCES_PATHS } from "@/lib/site-links";
  *
  * What is not here: /portal and /portal/prijava, which already carry
  * robots: { index: false } because they are a shelter's own workspace behind
- * a magic link, and /dev/map, which is a drawing tool. /viri is here despite
- * being hidden from the site's own navigation, because hidden from a menu is
- * not the same as hidden from search, and it was written for the search that
- * lands on it.
+ * a magic link, and /dev/map, which is a drawing tool. The portal pages are
+ * fetchable on purpose, so that noindex is read; see app/robots.ts. /viri is
+ * here despite being hidden from the site's own navigation, because hidden
+ * from a menu is not the same as hidden from search, and it was written for
+ * the search that lands on it.
  *
  * No priority field. It is advisory, Google says it ignores it, and a number
  * invented per route reads as a claim the site cannot support. lastModified
@@ -81,14 +86,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // The grid, which is the site's front door in both languages. It changes
     // whenever an animal is listed or adopted, which is every crawl.
     {
-      paths: { sl: homePath("sl"), en: homePath("en") },
+      paths: HOME_PATHS,
       changeFrequency: "daily",
     },
     {
-      paths: {
-        sl: sheltersIndexPath("sl"),
-        en: sheltersIndexPath("en"),
-      },
+      paths: SHELTER_INDEX_PATHS,
       changeFrequency: "weekly",
     },
     {

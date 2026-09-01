@@ -39,6 +39,13 @@ export const portalText = {
   noSheltersTitle: "Račun še ni povezan z zavetiščem",
   noSheltersLead:
     "Prijava je uspela, dostopa do zavetišča pa ta naslov še nima. Pišite nam in uredimo.",
+  // The workspace draws a failure as a notice with a title and a body. The
+  // title names what did not work, the body says what to do about it. They
+  // are never the same sentence, or the notice prints it twice.
+  sessionErrorTitle: "Prijave ni bilo mogoče preveriti",
+  sessionErrorLead:
+    "Poskusite znova. Če se ponovi, osvežite stran ali se prijavite še enkrat.",
+  listErrorTitle: "Seznama živali ni bilo mogoče naložiti",
   animalsTitle: "Vaše živali",
   animalsLead:
     "Popravki se shranijo takoj, na javni strani pa so vidni najpozneje v 12 urah.",
@@ -55,7 +62,8 @@ export const portalText = {
   emptyTitle: "Tu še ni živali",
   emptyLead:
     "Ko z vaše strani zajamemo prvo žival, se bo pojavila tukaj. Če menite, da bi morala biti že zdaj, nam pišite.",
-  listError: "Seznama živali ni bilo mogoče naložiti.",
+  // The body under listErrorTitle when the failure has no message of its own.
+  listError: "Poskusite znova. Če se ponovi, poskusite čez nekaj minut.",
   forbidden: "Za to zavetišče nimate dovoljenja.",
   retry: "Poskusi znova",
   unnamed: "Brez imena",
@@ -94,6 +102,11 @@ export const portalText = {
   editTitle: "Uredi {name}",
   editLead: "Prazno polje pomeni, da velja podatek z vaše spletne strani.",
   publicListing: "Javna objava",
+  // Said next to the link, and only after the name has been changed here: the
+  // public page still carries the old name and so does its address, so a link
+  // built from the new one would land nowhere.
+  publicRenamed:
+    "Povezava vodi na staro ime. Novo ime bo na javni strani najpozneje v 12 urah.",
   fieldName: "Ime",
   nameHint: "Samo ime, brez pasme in starosti.",
   fieldBreed: "Pasma",

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ShelterDetailPage } from "@/components/shelter-detail-page";
+import { shelterAnimals } from "@/lib/dataset";
 import { shelterMetadata } from "@/lib/shelter-share";
 import { getShelterBySlug, loadShelters } from "@/lib/shelters";
 
@@ -18,7 +19,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const shelter = getShelterBySlug(slug);
   if (!shelter) return {};
-  return shelterMetadata(shelter, "sl");
+  // The same question the page body answers before it draws the animals
+  // section, and the same helper it asks, so the head cannot promise a list
+  // the page does not have.
+  return shelterMetadata(shelter, "sl", shelterAnimals(shelter.id).length > 0);
 }
 
 export default async function ZavetiscePage({

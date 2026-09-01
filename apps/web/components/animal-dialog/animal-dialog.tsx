@@ -250,6 +250,16 @@ export function AnimalDialog({
     .join(" · ");
   const transition = shouldReduceMotion ? { duration: 0 } : undefined;
 
+  // Whether the phone gets the sticky bar at the bottom of the dialog. There
+  // has to be a button in the card for it to be a mirror of, and an adopted
+  // animal has none: the shelter block replaces the call to action with the
+  // good news and a quiet text link, while this bar went on giving a settled
+  // animal a full-width primary "open the listing" the phone could not miss.
+  // The two conditions are shelter-block.tsx's own, so the pair agree: when
+  // the bar is absent the box keeps its own element.
+  const stickyCta =
+    lastAnimal.status !== "adopted" && Boolean(lastAnimal.source.sourceUrl);
+
   // An animal the current filters hide is still reachable by link, and then
   // there is no list to step through, so the arrows stay away. Closing counts
   // as nothing open, so they leave with the dialog.
@@ -496,8 +506,10 @@ export function AnimalDialog({
                   phone. This mirrors it at the bottom of the screen instead,
                   so the one action that matters is always a thumb-reach away.
                   Hidden from sm up, where the card's own button is already in
-                  view without scrolling far. */}
-              {lastAnimal.source.sourceUrl && (
+                  view without scrolling far.
+
+                  What it is gated on is above; see stickyCta. */}
+              {stickyCta && (
                 <div
                   data-slot="sticky-cta"
                   className="sticky inset-x-0 bottom-0 z-30 mt-auto border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:hidden"

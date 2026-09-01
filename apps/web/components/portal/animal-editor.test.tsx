@@ -7,10 +7,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalEditor } from "@/components/portal/animal-editor";
+import { SPECIAL_NEEDS_META } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
+import type { PortalSaveState } from "@/hooks/use-portal-animals";
 import type { PortalAnimal } from "@/lib/portal-api";
 
 afterEach(cleanup);
@@ -23,7 +26,7 @@ Element.prototype.scrollIntoView = vi.fn();
 
 const IDLE = { status: "idle" } as const;
 
-function animal(): PortalAnimal {
+function animal(overrides: Partial<PortalAnimal> = {}): PortalAnimal {
   return {
     id: "testno:1",
     species: "cat",
@@ -43,6 +46,7 @@ function animal(): PortalAnimal {
     shortDescription: null,
     thumbnailUrl: null,
     overrides: {},
+    ...overrides,
   };
 }
 
@@ -223,5 +227,119 @@ describe("what a field tells a screen reader", () => {
     fireEvent.click(screen.getByRole("button", { name: portalText.save }));
 
     expect(document.activeElement).toBe(field("portal-age-months"));
+  });
+});
+
+describe("a save that failed before the editor was opened", () => {
+  // Same message, two attempts: the hook writes a fresh state object for each
+  // one, which is how the dialog tells the failure it inherited from the one
+  // its own save produced.
+  function failure(): PortalSaveState {
+    return { status: "error", message: portalText.saveError };
+  }
+
+  const subject = animal();
+
+  function editor(open: boolean, saveState: PortalSaveState) {
+    return (
+      <AnimalEditor
+        animal={subject}
+        open={open}
+        onOpenChange={vi.fn()}
+        saveState={saveState}
+        onSave={vi.fn()}
+      />
+    );
+  }
+
+  it("is not reported as this form's own", () => {
+    // A status tap on the card failed, and the shelter opens the editor after
+    // it. Nothing here has been submitted, so nothing here has failed.
+    const { rerender } = render(editor(false, failure()));
+
+    rerender(editor(true, failure()));
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("does not swallow what the next save says", () => {
+    const { rerender } = render(editor(false, failure()));
+    rerender(editor(true, failure()));
+
+    rerender(editor(true, failure()));
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      portalText.saveError,
+    );
+  });
+});
+
+describe("a choice that gives the field back to the crawler", () => {
+  function row(field: string): HTMLElement {
+    const found = document.querySelector<HTMLElement>(`[data-field="${field}"]`);
+    if (!found) throw new Error(`no row for ${field}`);
+    return found;
+  }
+
+  function revertButton(field: string): HTMLElement | null {
+    return within(row(field)).queryByRole("button", { name: /^Povrni/ });
+  }
+
+  function edit(subject: PortalAnimal) {
+    render(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+  }
+
+  it('reads "Ni znano" on an overridden Posebne potrebe as a revert', () => {
+    // specialNeeds is a boolean on the wire, so "Ni znano" is not a third
+    // value: it is the null that clears the override, the same as an emptied
+    // box elsewhere in the form.
+    edit(animal({ specialNeeds: true, overrides: { specialNeeds: true } }));
+    expect(
+      within(row("specialNeeds")).getByText(portalText.edited),
+    ).toBeTruthy();
+
+    fireEvent.click(
+      within(row("specialNeeds")).getByRole("button", {
+        name: SPECIAL_NEEDS_META.unknown.label,
+      }),
+    );
+
+    expect(
+      within(row("specialNeeds")).getByText(portalText.willRevert),
+    ).toBeTruthy();
+    // And the button is gone: it offers an action already queued.
+    expect(revertButton("specialNeeds")).toBeNull();
+  });
+
+  it("leaves an unoverridden Posebne potrebe alone", () => {
+    // Nothing to give back, so "Ni znano" is only an answer to be saved.
+    edit(animal({ specialNeeds: true }));
+
+    fireEvent.click(
+      within(row("specialNeeds")).getByRole("button", {
+        name: SPECIAL_NEEDS_META.unknown.label,
+      }),
+    );
+
+    expect(
+      within(row("specialNeeds")).queryByText(portalText.willRevert),
+    ).toBeNull();
+  });
+
+  it("still reads an emptied box as a revert", () => {
+    edit(animal({ name: "Muri", overrides: { name: "Muri" } }));
+
+    fireEvent.change(field("portal-name"), { target: { value: "" } });
+
+    expect(within(row("name")).getByText(portalText.willRevert)).toBeTruthy();
+    expect(revertButton("name")).toBeNull();
   });
 });

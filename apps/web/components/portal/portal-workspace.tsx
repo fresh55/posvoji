@@ -110,6 +110,7 @@ export function PortalWorkspace() {
     saveStates,
     reload: reloadAnimals,
     save,
+    publicName,
   } = usePortalAnimals(active, onUnauthorized);
 
   const visible = useMemo(
@@ -157,8 +158,20 @@ export function PortalWorkspace() {
       </div>
     ) : null;
 
+  // The workspace names itself "Vaše živali" below, and that is the page's
+  // heading once there is a list to name. Every state before it is the same
+  // page with nothing to name yet, and the header's brand line is a link, not
+  // a heading, so without this the page would have no h1 at all.
+  const hasOwnHeading = state.status === "ready" && shelters.length > 0;
+
   return (
     <PortalShell actions={actions}>
+      {!hasOwnHeading && (
+        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
+          {portalText.brand}
+        </h1>
+      )}
+
       {(state.status === "loading" || state.status === "anonymous") && (
         <p
           aria-live="polite"
@@ -174,14 +187,19 @@ export function PortalWorkspace() {
       {state.status === "error" && (
         <Notice
           icon={TriangleAlert}
-          title={portalText.unknownError}
+          title={portalText.sessionErrorTitle}
           action={
             <Button variant="outline" size="sm" onClick={reloadSession}>
               {portalText.retry}
             </Button>
           }
         >
-          {state.offline ? portalText.networkError : portalText.unknownError}
+          {/* The title says what failed, so the body is left to say what to
+              do about it. Offline is the one cause the shelter can act on
+              themselves, and it names its own next step. */}
+          {state.offline
+            ? portalText.networkError
+            : portalText.sessionErrorLead}
         </Notice>
       )}
 
@@ -238,7 +256,7 @@ export function PortalWorkspace() {
             {listState.status === "error" && (
               <Notice
                 icon={TriangleAlert}
-                title={portalText.listError}
+                title={portalText.listErrorTitle}
                 action={
                   <Button variant="outline" size="sm" onClick={reloadAnimals}>
                     {portalText.retry}
@@ -304,6 +322,7 @@ export function PortalWorkspace() {
                       <PortalAnimalCard
                         animal={animal}
                         shelter={activeShelter}
+                        publicName={publicName(animal)}
                         saveState={saveStates[animal.id] ?? { status: "idle" }}
                         onSave={(patch) => save(animal.id, patch)}
                       />

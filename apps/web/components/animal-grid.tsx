@@ -150,8 +150,8 @@ function gridColumns(grid: HTMLElement | null): number {
   return tracks.trim().split(/\s+/).length;
 }
 
-// Which species-absence message key fills the {species} slot of
-// noResultsShelterSingular/Plural. Keyed by the species tab rather than
+// Which species-absence message key fills the {species} slot of the
+// shelter-absence sentences below. Keyed by the species tab rather than
 // spelled out inline, so a new species fails to compile here instead of
 // silently falling back to the wrong noun form.
 const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
@@ -160,6 +160,33 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
   cat: "speciesAbsenceCats",
   other: "speciesAbsenceOther",
 };
+
+// Which of the three shelter-absence sentences a selection takes. The verb
+// agrees with how many shelters are selected and Slovenian counts a dual, so
+// it is nima for one, nimata for two and nimajo from three up. Picked here
+// rather than interpolated into one form that would be wrong for two of the
+// three cases, the same way the region coverage line picks its own
+// (coveredByLine in filters/shelter-map-region.tsx).
+function shelterAbsenceKey(count: number): TranslationKey {
+  if (count === 1) return "noResultsShelterSingular";
+  if (count === 2) return "noResultsShelterDual";
+  return "noResultsShelterPlural";
+}
+
+// The card's own link, which is the name link and not simply the first anchor
+// in the article. The photo block comes first and its anchor is decorative,
+// aria-hidden and out of the tab order (photo-gallery.tsx), so focus moved
+// there lands on an element the accessibility tree does not have and the
+// reading position a screen reader should resume from is lost.
+//
+// Found by the marker animal-card.tsx puts on it, the same way the card finds
+// the photo frame it hands the dialog. Asking instead for the first anchor
+// that is neither aria-hidden nor out of the tab order would describe the
+// three anchors a card has today and quietly pick the wrong one the day a
+// card grows a fourth above the name.
+function cardLink(card: Element | undefined): HTMLAnchorElement | null {
+  return card?.querySelector<HTMLAnchorElement>('[data-slot="card-link"]') ?? null;
+}
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
@@ -376,8 +403,7 @@ export function AnimalGrid({
     const ordinal = focusOrdinal.current;
     if (ordinal === null) return;
     focusOrdinal.current = null;
-    const card = gridRef.current?.querySelectorAll("article")[ordinal];
-    card?.querySelector("a")?.focus();
+    cardLink(gridRef.current?.querySelectorAll("article")[ordinal])?.focus();
   }, [drawn]);
 
   // A static export has no server to read the query with, so the prerendered
@@ -818,12 +844,9 @@ export function AnimalGrid({
             <div className="space-y-1">
               <p className="text-sm font-medium">
                 {shelterOnlyEmpty
-                  ? t(
-                      filters.shelter.length === 1
-                        ? "noResultsShelterSingular"
-                        : "noResultsShelterPlural",
-                      { species: t(SPECIES_ABSENCE_KEY[filters.species]) },
-                    )
+                  ? t(shelterAbsenceKey(filters.shelter.length), {
+                      species: t(SPECIES_ABSENCE_KEY[filters.species]),
+                    })
                   : messages.noResults}
               </p>
               {!shelterOnlyEmpty && (

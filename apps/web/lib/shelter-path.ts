@@ -24,3 +24,23 @@ export function sheltersIndexPath(locale: Locale): string {
 export function homePath(locale: Locale): string {
   return locale === "sl" ? "/" : "/en";
 }
+
+/**
+ * The two routes as locale-keyed pairs, for the callers that need both halves
+ * at once: the head's hreflang alternates, the sitemap's entries, and the
+ * language switcher.
+ *
+ * Constants rather than the pair written out at each site, which is the shape
+ * FOUND_ANIMAL_PATHS and RESOURCES_PATHS already take, and for the reason
+ * RESOURCES_PATHS gives: written by hand in three places is two more than can
+ * be kept in step.
+ */
+export const HOME_PATHS = {
+  sl: homePath("sl"),
+  en: homePath("en"),
+} as const;
+
+export const SHELTER_INDEX_PATHS = {
+  sl: sheltersIndexPath("sl"),
+  en: sheltersIndexPath("en"),
+} as const;

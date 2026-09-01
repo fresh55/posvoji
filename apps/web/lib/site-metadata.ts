@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
 
-const SITE_NAME = "Posvoji.si";
+/**
+ * The site's name, as og:site_name states it and as every title ends.
+ *
+ * Exported because the other two metadata builders, animalMetadata and
+ * shelterMetadata, end their titles the same way and name the same site.
+ */
+export const SITE_NAME = "Posvoji.si";
 
 /**
  * One page's address in both languages, as the head's canonical and its pair
@@ -24,7 +30,7 @@ export function localeAlternates(
 }
 
 /** The one spelling OpenGraph accepts for each of the two languages. */
-function openGraphLocale(locale: Locale): string {
+export function openGraphLocale(locale: Locale): string {
   return locale === "sl" ? "sl_SI" : "en_GB";
 }
 

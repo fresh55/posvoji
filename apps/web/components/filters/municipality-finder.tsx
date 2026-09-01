@@ -95,6 +95,16 @@ export function MunicipalityFinder({
     [entries],
   );
 
+  // Every občina name folded once, rather than all 212 of them folded again on
+  // each keystroke by the search, the exact-name check and the Enter handler in
+  // turn. fold normalizes, strips diacritics and lowercases, so it is three
+  // string allocations a name; the names themselves never change, and entries
+  // is a stable reference at both call sites.
+  const folded = useMemo(
+    () => entries.map((entry) => ({ entry, key: fold(entry.name) })),
+    [entries],
+  );
+
   // A postcode or town in the box, and the device's position, both answer
   // "which občina" through the same postal table. What was typed wins: it is
   // the newer statement of where the animal was found.
@@ -117,8 +127,10 @@ export function MunicipalityFinder({
     const trimmed = query.trim();
     if (!trimmed) return [];
     const needle = fold(trimmed);
-    return entries.filter((entry) => fold(entry.name).includes(needle));
-  }, [entries, query]);
+    return folded
+      .filter(({ key }) => key.includes(needle))
+      .map(({ entry }) => entry);
+  }, [folded, query]);
 
   // With no guess the name search decides on its own. With one, the občine the
   // guess resolved to are offered together with the občina whose name was
@@ -138,17 +150,15 @@ export function MunicipalityFinder({
   const matches = useMemo(() => {
     if (!guess) return nameMatches;
     const typed = fold(query.trim());
-    const exact = nameMatches.filter((entry) => fold(entry.name) === typed);
+    // Names are unique, so at most one entry is spelled out in full and the
+    // guess cannot repeat itself: the only possible duplicate is that one
+    // entry already sitting in the guess.
+    const exact = nameMatches.find((entry) => fold(entry.name) === typed);
     const guessed = guess.municipalities.flatMap((name) => {
       const entry = byName.get(name);
       return entry ? [entry] : [];
     });
-    const seen = new Set<string>();
-    return [...exact, ...guessed].filter((entry) => {
-      if (seen.has(entry.name)) return false;
-      seen.add(entry.name);
-      return true;
-    });
+    return exact && !guessed.includes(exact) ? [exact, ...guessed] : guessed;
   }, [byName, guess, nameMatches, query]);
 
   const active =

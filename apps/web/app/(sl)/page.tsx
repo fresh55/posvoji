@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SitePage } from "@/components/site-page";
 import { getMessages } from "@/lib/i18n";
-import { homePath } from "@/lib/shelter-path";
+import { HOME_PATHS } from "@/lib/shelter-path";
 import { staticPageMetadata } from "@/lib/site-metadata";
 
 // The grid had nothing of its own in its head: the layout's bare "Posvoji.si",
@@ -14,7 +14,7 @@ import { staticPageMetadata } from "@/lib/site-metadata";
 // the description is the one the layout already wrote for the site as a whole.
 export const metadata: Metadata = staticPageMetadata({
   locale: "sl",
-  paths: { sl: homePath("sl"), en: homePath("en") },
+  paths: HOME_PATHS,
   title: "Živali iz slovenskih zavetišč, ki iščejo dom",
   description: getMessages("sl").metadataDescription,
 });

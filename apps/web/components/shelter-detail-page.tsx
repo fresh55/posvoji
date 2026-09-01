@@ -11,7 +11,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { mailtoHref, telHref } from "@/lib/contact-links";
-import { animalsForClient, loadDataset } from "@/lib/dataset";
+import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
@@ -123,9 +123,7 @@ export function ShelterDetailPage({
   if (!shelter) notFound();
 
   const dataset = loadDataset();
-  const animals = (dataset?.animals ?? []).filter(
-    (animal) => animal.shelter.id === shelter.id,
-  );
+  const animals = shelterAnimals(shelter.id);
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
   const text = pageText[locale];

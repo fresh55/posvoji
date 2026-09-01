@@ -61,12 +61,17 @@ vi.mock("@/lib/shelters", async (importOriginal) => ({
     slug === SHELTER.id ? SHELTER : undefined,
   shelterRegisterDate: () => "2026-01-01",
 }));
+// shelterAnimals is mocked beside loadDataset rather than left to derive
+// itself from it: it calls loadDataset within its own module, where this mock
+// does not reach.
 vi.mock("@/lib/dataset", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dataset")>()),
   loadDataset: () => ({
     animals: ANIMALS,
     generatedAt: "2026-01-01T00:00:00.000Z",
   }),
+  shelterAnimals: (shelterId: string) =>
+    ANIMALS.filter((animal) => animal.shelter.id === shelterId),
 }));
 vi.mock("@/lib/shelter-logos", () => ({
   getShelterLogos: () => ({}),

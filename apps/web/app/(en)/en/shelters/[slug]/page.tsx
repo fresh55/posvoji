@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ShelterDetailPage } from "@/components/shelter-detail-page";
-import { loadDataset } from "@/lib/dataset";
+import { shelterAnimals } from "@/lib/dataset";
 import { shelterMetadata } from "@/lib/shelter-share";
 import { getShelterBySlug, loadShelters } from "@/lib/shelters";
 
@@ -20,10 +20,7 @@ export async function generateMetadata({
   const shelter = getShelterBySlug(slug);
   if (!shelter) return {};
   // The Slovenian half of the pair. See the note on the /zavetisca route.
-  const hasAnimals = (loadDataset()?.animals ?? []).some(
-    (animal) => animal.shelter.id === shelter.id,
-  );
-  return shelterMetadata(shelter, "en", hasAnimals);
+  return shelterMetadata(shelter, "en", shelterAnimals(shelter.id).length > 0);
 }
 
 export default async function ShelterPage({

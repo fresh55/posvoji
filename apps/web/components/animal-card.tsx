@@ -232,6 +232,10 @@ export function AnimalCard({
           )}
         </div>
         <a
+          // The card's own link, and the one thing in the article that names
+          // the animal. animal-grid.tsx looks for this after "show more" so
+          // the keyboard lands here and not on the photo's decorative anchor.
+          data-slot="card-link"
           href={href}
           onClick={openDialog}
           onKeyDown={stepPhoto}

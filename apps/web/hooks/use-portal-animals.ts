@@ -181,10 +181,10 @@ export function usePortalAnimals(
    * An animal the list has not seen falls back to its own name.
    */
   const publicName = useCallback(
-    (animal: PortalAnimal): string | null =>
-      listedNames.has(animal.id)
-        ? (listedNames.get(animal.id) ?? null)
-        : animal.name,
+    (animal: PortalAnimal): string | null => {
+      const listed = listedNames.get(animal.id);
+      return listed === undefined ? animal.name : listed;
+    },
     [listedNames],
   );
 

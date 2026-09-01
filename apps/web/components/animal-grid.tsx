@@ -174,18 +174,18 @@ function shelterAbsenceKey(count: number): TranslationKey {
 }
 
 // The card's own link, which is the name link and not simply the first anchor
-// in the article. The photo block comes first and its anchor is decorative: it
-// is aria-hidden and out of the tab order (photo-gallery.tsx), so focus moved
-// there lands on an element the accessibility tree does not have, and the
-// reading position a screen reader should resume from is lost. Found by those
-// two properties rather than by position, so a card that grows another link
-// above the name does not silently take this with it.
-function cardLink(card: Element | undefined): HTMLAnchorElement | undefined {
-  if (!card) return undefined;
-  const links = Array.from(card.querySelectorAll<HTMLAnchorElement>("a[href]"));
-  return links.find(
-    (link) => link.getAttribute("aria-hidden") !== "true" && link.tabIndex >= 0,
-  );
+// in the article. The photo block comes first and its anchor is decorative,
+// aria-hidden and out of the tab order (photo-gallery.tsx), so focus moved
+// there lands on an element the accessibility tree does not have and the
+// reading position a screen reader should resume from is lost.
+//
+// Found by the marker animal-card.tsx puts on it, the same way the card finds
+// the photo frame it hands the dialog. Asking instead for the first anchor
+// that is neither aria-hidden nor out of the tab order would describe the
+// three anchors a card has today and quietly pick the wrong one the day a
+// card grows a fourth above the name.
+function cardLink(card: Element | undefined): HTMLAnchorElement | null {
+  return card?.querySelector<HTMLAnchorElement>('[data-slot="card-link"]') ?? null;
 }
 
 // The two states that say there is nothing here: no dataset at all, and no

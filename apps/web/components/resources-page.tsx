@@ -2,7 +2,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getMessages, type Locale } from "@/lib/i18n";
+import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
 import { Card } from "@/components/ui/card";
 
@@ -324,12 +324,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {section.resources.map((resource, index) => {
-                  // Marked only where it says something. lang on every title
-                  // would repeat what <html lang> already says for the two
-                  // Slovenian ones on this page, and an attribute that is
-                  // always there is one nobody notices is wrong.
-                  const quoted =
-                    resource.lang === locale ? undefined : resource.lang;
+                  const quoted = quotedLang(resource.lang, locale);
                   // Stable across builds: the section and the resource's place
                   // in it, not the title, which carries spaces and accents.
                   const titleId = `${section.id}-${index}-title`;

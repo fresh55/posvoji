@@ -4,6 +4,7 @@ import { ExternalLink, Heart, Hourglass } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
+import { quotedLang } from "@/lib/i18n";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { ageLabel, longStayMonths } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -136,10 +137,9 @@ export function ShelterBlock({
 
           lang, for the same reason the description carries one: the sentence
           is the provider's own Slovenian ("Foto in opis: Zavetišče Test"),
-          printed verbatim, and on an English page it sits under
-          <html lang="en">. */}
+          printed verbatim. See quotedLang in lib/i18n.ts. */}
       <p
-        lang={locale === "sl" ? undefined : "sl"}
+        lang={quotedLang("sl", locale)}
         className="text-xs text-muted-foreground"
       >
         {animal.attribution}

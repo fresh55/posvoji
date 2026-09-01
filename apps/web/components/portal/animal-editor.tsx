@@ -328,9 +328,10 @@ export function AnimalEditor({
   // attempt, though, so the failure the dialog opens on is remembered here and
   // stays out of the form. Every later save produces a new state object, so
   // identity is enough to tell the two apart.
-  const [openedOn, setOpenedOn] = useState<PortalSaveState | null>(() =>
-    open && saveState.status === "error" ? saveState : null,
-  );
+  // Null at mount: the card renders this closed and opens it on a tap, so
+  // there is never a first render to inherit a failure from. The reset below
+  // is the one place the rule is stated.
+  const [openedOn, setOpenedOn] = useState<PortalSaveState | null>(null);
   const [source, setSource] = useState({ animal, open });
   const formRef = useRef<HTMLFormElement>(null);
 

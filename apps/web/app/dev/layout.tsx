@@ -1,23 +1,14 @@
 import type { CSSProperties } from "react";
-import type { Metadata, Viewport } from "next";
+import type { Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
-import { getMessages } from "@/lib/i18n";
 import "../globals.css";
 
 // The /dev tree sits outside the (sl) and (en) locale groups, so it needs its
 // own root layout to supply <html> and <body>. Kept minimal: nothing meant to
 // ship, since the pages under here 404 in production. What it does carry, it
-// carries for a reason, and each is noted below.
-
-// The exported file is the 404, so that is what its title says. not-found.tsx
-// cannot export metadata of its own, and the gallery only ever has a title on
-// a dev machine.
-export const metadata: Metadata = {
-  title:
-    process.env.NODE_ENV === "production"
-      ? `${getMessages("sl").notFoundTitle} | Posvoji.si`
-      : "Map states | Posvoji.si dev",
-};
+// carries for a reason, and each is noted below. No title: which of its two
+// faces the route is wearing is map/page.tsx's own branch to make, so the
+// title is stated there beside it.
 
 // Matches the locale layouts, so safe-area-aware spacing behaves the same
 // way under /dev as it does everywhere else.

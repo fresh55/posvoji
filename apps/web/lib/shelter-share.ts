@@ -5,7 +5,11 @@ import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
 import { shelterPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
-import { localeAlternates } from "@/lib/site-metadata";
+import {
+  localeAlternates,
+  openGraphLocale,
+  SITE_NAME,
+} from "@/lib/site-metadata";
 
 const CARD_WIDTH = 1200;
 const CARD_HEIGHT = 630;
@@ -104,7 +108,7 @@ export function shelterMetadata(
     : undefined;
 
   return {
-    title: `${shelter.name} | Posvoji.si`,
+    title: `${shelter.name} | ${SITE_NAME}`,
     description,
     alternates: localeAlternates(
       { sl: shelterPath(shelter.id, "sl"), en: shelterPath(shelter.id, "en") },
@@ -112,8 +116,8 @@ export function shelterMetadata(
     ),
     openGraph: {
       type: "website",
-      siteName: "Posvoji.si",
-      locale: locale === "sl" ? "sl_SI" : "en_GB",
+      siteName: SITE_NAME,
+      locale: openGraphLocale(locale),
       title: shelter.name,
       description,
       url: path,

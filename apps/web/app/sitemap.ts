@@ -3,7 +3,11 @@ import { animalPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import type { Locale } from "@/lib/i18n";
-import { homePath, sheltersIndexPath, shelterPath } from "@/lib/shelter-path";
+import {
+  HOME_PATHS,
+  SHELTER_INDEX_PATHS,
+  shelterPath,
+} from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
 import { RESOURCES_PATHS } from "@/lib/site-links";
@@ -82,14 +86,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // The grid, which is the site's front door in both languages. It changes
     // whenever an animal is listed or adopted, which is every crawl.
     {
-      paths: { sl: homePath("sl"), en: homePath("en") },
+      paths: HOME_PATHS,
       changeFrequency: "daily",
     },
     {
-      paths: {
-        sl: sheltersIndexPath("sl"),
-        en: sheltersIndexPath("en"),
-      },
+      paths: SHELTER_INDEX_PATHS,
       changeFrequency: "weekly",
     },
     {

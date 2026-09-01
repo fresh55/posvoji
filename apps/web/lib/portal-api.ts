@@ -41,10 +41,32 @@ export function portalUrl(path: string): string {
   return `${portalBaseUrl()}${path}`;
 }
 
+/**
+ * How this shelter's animals reach the site. "manual" is the shelter with no
+ * catalogue we can crawl: it writes its listings in the portal, so the
+ * workspace opens a different editor for it (see docs/MANUAL-LISTINGS.md).
+ */
+export const PORTAL_INGESTIONS = ["scrape", "api", "rss", "manual"] as const;
+export type PortalIngestion = (typeof PORTAL_INGESTIONS)[number];
+
 // city feeds the public animal address (see lib/animal-path.ts). Optional so
 // a session served by an older API still parses; the link falls back to the
 // path's own "slovenija" segment through an empty city.
-export type PortalShelter = { slug: string; name: string; city?: string };
+//
+// ingestion is optional for the same reason. An API that predates manual
+// listings reports no mode, and a shelter with no mode is a crawled one:
+// that is what every shelter was before this field existed.
+export type PortalShelter = {
+  slug: string;
+  name: string;
+  city?: string;
+  ingestion?: PortalIngestion;
+};
+
+/** Whether this shelter writes its own listings rather than being crawled. */
+export function isManualShelter(shelter: PortalShelter): boolean {
+  return shelter.ingestion === "manual";
+}
 
 export type PortalSession = { email: string; shelters: PortalShelter[] };
 
@@ -73,6 +95,15 @@ export type PortalEnergy = (typeof PORTAL_ENERGIES)[number];
 /** Answers to "does this animal get on with kids, dogs, cats". */
 export const PORTAL_COMPATIBILITIES = ["yes", "no", "unknown"] as const;
 export type PortalCompatibility = (typeof PORTAL_COMPATIBILITIES)[number];
+
+/**
+ * The species a manual listing can be. The same four the schema knows, spelt
+ * out here rather than imported so the API client stays free of zod; the
+ * editor's cards are built from SPECIES_ORDER and would fail to compile
+ * against this if the two ever drifted.
+ */
+export const PORTAL_SPECIES = ["dog", "cat", "rabbit", "other"] as const;
+export type PortalSpecies = (typeof PORTAL_SPECIES)[number];
 
 /** The fields a shelter may override. The editor orders them its own way. */
 export const PORTAL_FIELDS = [
@@ -136,6 +167,74 @@ export type PortalAnimalPatch = {
   apartmentOk?: PortalCompatibility | null;
   specialNeeds?: boolean | null;
   shortDescription?: string | null;
+};
+
+/** One stored photograph of a listing, as the portal re-encoded it. */
+export type PortalListingPhoto = {
+  id: number;
+  /** Absolute, served by the API host. */
+  url: string;
+  width: number;
+  height: number;
+};
+
+/**
+ * One manual listing, whole. There is no crawled record underneath, so unlike
+ * PortalAnimal nothing here is merged from two sources and there are no
+ * overrides: what the shelter typed is the animal.
+ *
+ * The optional fields keep their nulls. The export drops them, but the editor
+ * has to be able to tell a field the shelter cleared from one it never filled
+ * in, and both read as null here.
+ */
+export type PortalListing = {
+  providerId: string;
+  /** The UUID the portal minted. Ingest builds `<providerId>:<id>` from it. */
+  id: string;
+  species: string;
+  status: string;
+  name: string;
+  sex: string | null;
+  breed: string | null;
+  birthDate: string | null;
+  approximateAgeMonths: number | null;
+  size: string | null;
+  energy: string | null;
+  goodWithKids: string | null;
+  goodWithDogs: string | null;
+  goodWithCats: string | null;
+  apartmentOk: string | null;
+  specialNeeds: boolean | null;
+  shortDescription: string | null;
+  /** Ordered for display: the first is the one an adopter sees first. */
+  photos: PortalListingPhoto[];
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+
+/**
+ * What a create or an edit sends. Not a patch: the API replaces the whole
+ * listing every time, so every field travels and a null is the shelter not
+ * stating it. Photos are not in here; they have routes of their own.
+ */
+export type PortalListingInput = {
+  species: PortalSpecies;
+  name: string;
+  status: PortalStatus;
+  sex: PortalSex | null;
+  breed: string | null;
+  /** "YYYY-MM-DD". */
+  birthDate: string | null;
+  approximateAgeMonths: number | null;
+  size: PortalSize | null;
+  energy: PortalEnergy | null;
+  goodWithKids: PortalCompatibility | null;
+  goodWithDogs: PortalCompatibility | null;
+  goodWithCats: PortalCompatibility | null;
+  apartmentOk: PortalCompatibility | null;
+  specialNeeds: boolean | null;
+  shortDescription: string | null;
 };
 
 export type PortalErrorKind =
@@ -217,8 +316,15 @@ async function request<T>(
   path: string,
   init: PortalRequestInit = { method: "GET" },
 ): Promise<T> {
+  // A photo upload is multipart. Its content type carries the boundary that
+  // separates the parts, which only fetch can write, so the header is left
+  // off and the body goes out as it arrived. Everything else is JSON.
+  const form = init.body instanceof FormData ? init.body : null;
+
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (init.body !== undefined) headers["Content-Type"] = "application/json";
+  if (init.body !== undefined && form === null) {
+    headers["Content-Type"] = "application/json";
+  }
   if (init.csrf) headers["X-CSRFToken"] = await fetchCsrfToken();
 
   const send = async (): Promise<Response> => {
@@ -229,7 +335,12 @@ async function request<T>(
         // CSRF cookie/header proof on unsafe requests. Both cookies must travel.
         credentials: "include",
         headers: { ...headers },
-        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+        // FormData holds its parts in memory rather than streaming them, so
+        // the stale-token retry below can send the same body a second time.
+        body:
+          init.body === undefined
+            ? undefined
+            : (form ?? JSON.stringify(init.body)),
       });
     } catch {
       // An unreachable API and a rejected preflight both land here, with no
@@ -342,5 +453,92 @@ export function saveAnimal(
   return request<PortalAnimal>(
     `/api/shelters/${encodeURIComponent(slug)}/animals/${encodeURIComponent(animalId)}`,
     { method: "PUT", body: patch, csrf: true },
+  );
+}
+
+// Manual listings. Every route below answers 404 for a crawled shelter: the
+// routes are not a permission that shelter is missing, they are not there at
+// all. See docs/MANUAL-LISTINGS.md.
+
+function listingsPath(slug: string): string {
+  return `/api/shelters/${encodeURIComponent(slug)}/listings`;
+}
+
+function listingPath(slug: string, listingId: string): string {
+  return `${listingsPath(slug)}/${encodeURIComponent(listingId)}`;
+}
+
+/** The shelter's live listings, ordered by name. Archived ones are gone. */
+export function fetchListings(slug: string): Promise<PortalListing[]> {
+  return request<PortalListing[]>(listingsPath(slug), { method: "GET" });
+}
+
+/** Answers 201 with the listing, its minted id and an empty photo list. */
+export function createListing(
+  slug: string,
+  input: PortalListingInput,
+): Promise<PortalListing> {
+  return request<PortalListing>(listingsPath(slug), {
+    method: "POST",
+    body: input,
+    csrf: true,
+  });
+}
+
+/** A full replace, not a patch: what is not sent is what the shelter cleared. */
+export function updateListing(
+  slug: string,
+  listingId: string,
+  input: PortalListingInput,
+): Promise<PortalListing> {
+  return request<PortalListing>(listingPath(slug, listingId), {
+    method: "PUT",
+    body: input,
+    csrf: true,
+  });
+}
+
+/**
+ * The shelter's delete. The row stays so its uuid is never handed out again,
+ * and the listing leaves the export, which takes the animal off the public
+ * site on the next run.
+ */
+export function archiveListing(slug: string, listingId: string): Promise<void> {
+  return request<void>(listingPath(slug, listingId), {
+    method: "DELETE",
+    csrf: true,
+  });
+}
+
+/**
+ * Sends one photograph and answers with the stored copy.
+ *
+ * The portal re-encodes every upload and names the file after a hash of the
+ * bytes it would write, so the same photograph sent twice answers 200 with
+ * the photo that is already there instead of 201 with a second copy. Both
+ * carry the same shape, so a caller that keys on the id needs no branch.
+ */
+export function uploadListingPhoto(
+  slug: string,
+  listingId: string,
+  file: File,
+): Promise<PortalListingPhoto> {
+  const body = new FormData();
+  body.append("file", file);
+  return request<PortalListingPhoto>(`${listingPath(slug, listingId)}/photos`, {
+    method: "POST",
+    body,
+    csrf: true,
+  });
+}
+
+export function deleteListingPhoto(
+  slug: string,
+  listingId: string,
+  photoId: number,
+): Promise<void> {
+  return request<void>(
+    `${listingPath(slug, listingId)}/photos/${encodeURIComponent(photoId)}`,
+    { method: "DELETE", csrf: true },
   );
 }

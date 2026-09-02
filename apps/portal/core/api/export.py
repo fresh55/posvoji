@@ -10,7 +10,7 @@ from django.conf import settings
 from ninja import Router
 from ninja.errors import HttpError
 
-from ..models import AnimalOverride, IngestionMode, Listing, iso_utc
+from ..models import AnimalOverride, IngestionMode, Listing, Shelter, iso_utc
 from ..schemas import ExportListingsOut, ExportOut
 from ..security import export_token_auth
 
@@ -88,6 +88,21 @@ def export_listings(request):
     # mode stops exporting the ones it wrote, because the crawl provides its
     # animals again and both sources would produce the same animal twice. The
     # ingest side skips a non-manual provider as well, as a second line.
+    # Which shelters this payload is answering for, whether or not they have
+    # a listing. Shelter.ingestion is a mirror of ingestion in policy.yaml,
+    # copied by seed_shelters, and the two can drift. When the policy has been
+    # flipped to manual and the mirror has not, the filter below drops that
+    # shelter and the route answers 200 with an empty list, which reads
+    # exactly like a shelter that archived everything. Naming the shelters
+    # this portal considers manual is what lets ingest tell the two apart,
+    # rather than deleting the animals of a shelter this portal never
+    # answered for. See docs/MANUAL-LISTINGS.md.
+    providers = sorted(
+        Shelter.objects.filter(ingestion=IngestionMode.MANUAL).values_list(
+            "slug", flat=True
+        )
+    )
+
     listings = (
         Listing.objects.filter(
             archived_at__isnull=True,
@@ -98,5 +113,6 @@ def export_listings(request):
     )
     return {
         "generatedAt": iso_utc(generated_at),
+        "providers": providers,
         "listings": [listing.payload() for listing in listings],
     }

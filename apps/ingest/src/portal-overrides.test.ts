@@ -724,6 +724,7 @@ describe("buildOverrideReport", () => {
         failed: false,
         applied: [],
         skipped: [],
+        unanswered: [],
       },
     });
   });
@@ -744,11 +745,15 @@ describe("buildOverrideReport", () => {
       skipped: [
         { providerId: "muri", listingId: "x", reason: "provider-not-manual" },
       ],
+      unanswered: ["oskar"],
     });
 
     expect(report.listings.applied).toHaveLength(1);
     expect(report.listings.skipped[0]?.reason).toBe("provider-not-manual");
     expect(report.listings.portalGeneratedAt).toBe("2026-09-01T12:00:00Z");
+    // A provider the payload did not name. It carried its animals forward and
+    // is in failed; the report is where an operator reads why.
+    expect(report.listings.unanswered).toEqual(["oskar"]);
   });
 
   it("separates what landed from what matched no animal", () => {

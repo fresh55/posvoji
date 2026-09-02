@@ -26,6 +26,13 @@ export interface ListingsReport {
   portalGeneratedAt?: string;
   applied: ListingApplied[];
   skipped: ListingSkip[];
+  // Manual providers this run was responsible for that the payload did not
+  // name in its providers list. The portal's Shelter.ingestion has drifted
+  // from policy.yaml, so the feed answered for the others and said nothing
+  // about these. They carried their previous animals forward and are in
+  // failed, the same as a provider whose fetch threw. Re-running
+  // seed_shelters on the portal is what clears it.
+  unanswered: string[];
 }
 
 const NO_LISTINGS: ListingsReport = {
@@ -33,6 +40,7 @@ const NO_LISTINGS: ListingsReport = {
   failed: false,
   applied: [],
   skipped: [],
+  unanswered: [],
 };
 
 // This sidecar keeps correction provenance out of the public Animal schema

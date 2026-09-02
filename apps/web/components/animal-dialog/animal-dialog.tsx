@@ -37,6 +37,7 @@ import type { ClientAnimal } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
 import { speciesLabel } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+import type { ShelterPhones } from "@/lib/shelters";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
 export type DialogPhotoRect = {
@@ -131,6 +132,7 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
 export function AnimalDialog({
   animal,
   logos,
+  phones,
   origin,
   siblingIds,
   reference,
@@ -141,6 +143,8 @@ export function AnimalDialog({
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
   logos: ShelterLogos;
+  /** Registry phones for the shelter block's secondary call to action. */
+  phones: ShelterPhones;
   origin?: DialogOrigin;
   /** The ids on screen, in the order they are shown. */
   siblingIds: string[];
@@ -441,8 +445,32 @@ export function AnimalDialog({
               </m.div>
 
               <div className={CARD_CLASS}>
+                {/* The title line stays put while the card scrolls under it.
+
+                    The card is its own scrollport on sm and up, and the close
+                    button lives on this line, so on a short viewport the only
+                    visible way out scrolled away with the name: at 1440x700
+                    with the description expanded, both sat 54px above the
+                    card's top edge with the dialog scrolled to the bottom.
+                    That is the same failure the fixed close on the photo was
+                    written for on phones, one breakpoint up, and the note on
+                    that button says so in as many words.
+
+                    Sticky rather than a second fixed button, because the card
+                    already has the right control in the right place and only
+                    needed it to stay: one close button, where it has always
+                    been. z-20 clears the photo spread's z-10, so the bar
+                    passes over the fan's overhang instead of under it, and
+                    the negative inset plus matching padding lets the popover
+                    ground span the card's full width rather than leaving the
+                    text to scroll through a 24px gutter beside it.
+
+                    sm: only. The phone scrolls the whole dialog rather than
+                    this box, has no scrollport for a sticky child to hold
+                    itself against, and is already answered by the fixed
+                    button on the photo. */}
                 <m.div
-                  className="space-y-1"
+                  className="space-y-1 sm:sticky sm:-top-12 sm:z-20 sm:-mx-6 sm:-mt-6 sm:bg-popover sm:px-6 sm:pt-6 sm:pb-2"
                   variants={CONTENT_ITEM}
                   transition={transition}
                 >
@@ -493,6 +521,7 @@ export function AnimalDialog({
                   <ShelterBlock
                     animal={lastAnimal}
                     logos={logos}
+                    phones={phones}
                     reference={reference}
                     // The sticky bar below repeats this box's button on the
                     // phone, so the box keeps its own for sm and up only.

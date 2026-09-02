@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
   ExternalLink,
   LoaderCircle,
   Navigation,
@@ -49,7 +48,7 @@ const REGISTER_URL =
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2021-01-2993";
 // Enough to disambiguate any prefix without becoming a directory. The page
-// this replaced listed all 212 občine; the dialog answers one question.
+// this replaced listed all 212 občine; the finder answers one question.
 const MAX_MATCHES = 8;
 
 // Tap-to-try examples for the empty state, so the box teaches its own input
@@ -60,23 +59,23 @@ const MAX_MATCHES = 8;
 // exactly one entry with real coverage; see municipality-finder.test.tsx.
 const EXAMPLE_MUNICIPALITIES = ["Ljubljana", "Maribor", "Koper"];
 
-// The municipality mode of the shelter picker: say where the animal was found
-// and get the shelter responsible for it, what it costs (nothing), and what to
-// do next. The občina can be typed, but a postcode or the device's own position
-// is usually faster and is what someone standing in the street actually has.
+// The found-animal lookup: say where the animal was found and get the shelter
+// responsible for it, what it costs (nothing), and what to do next. The občina
+// can be typed, but a postcode or the device's own position is usually faster
+// and is what someone standing in the street actually has.
+//
+// It used to be a tab of the homepage's shelter picker and carried a "select
+// this shelter as a filter" button on every answer, which only meant anything
+// inside that dialog. The lookup has a page of its own now
+// (found-animal-atlas.tsx) and the dialog does not host it, so the finder
+// takes no selection and offers none: the coverage card links to the shelter's
+// own page, which is where its animals already are.
 export function MunicipalityFinder({
   entries,
-  selectableIds,
-  selected,
-  onToggle,
   onActiveShelters,
   onActiveMunicipality,
 }: {
   entries: LookupEntry[];
-  /** Shelter ids that exist as filter options, i.e. can be selected. */
-  selectableIds: Set<string>;
-  selected: string[];
-  onToggle: (value: string) => void;
   /** Shelter ids of the picked municipality, for the map to light up.
    *  Null when no municipality is picked. */
   onActiveShelters: (values: string[] | null) => void;
@@ -241,10 +240,11 @@ export function MunicipalityFinder({
             }}
             placeholder={messages.muniSearch}
             aria-label={messages.muniSearch}
-            // 44px tall below lg, the touch target the shelter tab's own
+            // 44px tall below lg, the touch target the shelter picker's own
             // fields keep. text-base and not text-sm at that size: iOS Safari
             // zooms the whole page when a focused input sets type under 16px,
-            // and this dialog is the map, so a zoom is a map nobody can aim at.
+            // and the map is beside this field, so a zoom is a map nobody can
+            // aim at.
             className="h-11 pl-8 text-base lg:h-8 lg:text-sm"
           />
           {query !== "" && (
@@ -267,7 +267,7 @@ export function MunicipalityFinder({
 
         {/* Quiet, and named for what it actually does: it asks the browser
             for a fix, which means a permission prompt. Same shape as the
-            shelter tab's own location button, one row below its field. */}
+            shelter picker's own location button, one row below its field. */}
         <button
           type="button"
           onClick={() => {
@@ -277,7 +277,7 @@ export function MunicipalityFinder({
           }}
           aria-pressed={state.status === "on"}
           className={cn(
-            // Same 44px-below-lg rule the rest of this tab keeps.
+            // Same 44px-below-lg rule the rest of this finder keeps.
             "mt-2 inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors max-lg:min-h-11",
             state.status === "on"
               ? "font-medium text-foreground"
@@ -293,9 +293,9 @@ export function MunicipalityFinder({
         </button>
       </div>
 
-      {/* Scrolls at every size now: the panel this sits in is a floating card
-          on md+ and a bottom sheet below it, and both have a fixed height. It
-          used to ride a scrolling dialog on phones, which no longer exists. */}
+      {/* Scrolls on its own, so a host that bounds this finder's height, the
+          found-animal page's column at lg, gets a scroller here rather than a
+          block that overruns it. */}
       <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {/* A denied or timed-out fix used to be a dead end: one sentence and
             nothing to press. Both ways out are here now, in the order they are
@@ -445,25 +445,6 @@ export function MunicipalityFinder({
                   coverage={coverage}
                   text={cardText}
                   locale={locale}
-                  action={
-                    selectableIds.has(coverage.shelterId) ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-pressed={selected.includes(coverage.shelterId)}
-                        onClick={() => onToggle(coverage.shelterId)}
-                        className="h-11 gap-1.5 text-xs lg:h-7"
-                      >
-                        {selected.includes(coverage.shelterId) && (
-                          <Check className="size-3" aria-hidden />
-                        )}
-                        {selected.includes(coverage.shelterId)
-                          ? messages.muniShelterSelected
-                          : messages.muniSelectShelter}
-                      </Button>
-                    ) : undefined
-                  }
                 />
               ))
             ) : (
@@ -523,42 +504,51 @@ export function MunicipalityFinder({
                 )}
               </div>
             )}
-
-            {/* The fact that stops people reporting a found animal: they
-                assume the vet bill is theirs. It is not. */}
-            <div className="space-y-1 rounded-ui border bg-muted/40 p-3">
-              <p className="text-xs leading-relaxed">{messages.muniCost}</p>
-              <a
-                href={LAW_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                {messages.muniCostSource}
-                <ExternalLink className="size-2.5" aria-hidden />
-              </a>
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium">{messages.muniStepsTitle}</p>
-              <ol className="space-y-1.5">
-                {[messages.muniStep1, messages.muniStep2, messages.muniStep3].map(
-                  (step, index) => (
-                    <li
-                      key={step}
-                      className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
-                    >
-                      <span className="shrink-0 font-medium text-foreground">
-                        {index + 1}.
-                      </span>
-                      {step}
-                    </li>
-                  ),
-                )}
-              </ol>
-            </div>
           </div>
         )}
+
+        {/* The fact that stops people reporting a found animal: they assume
+            the vet bill is theirs. It is not.
+
+            Under the search whether or not an občina has been named, and the
+            steps with it. Both used to be part of the answer block, so they
+            appeared only once the finder had a shelter to show; the person
+            this flow exists for is standing over the animal before they know
+            which municipality they are in, and step 3 ("do not move an
+            injured animal") is the one they need first. The answer block
+            still lands above them, so the order once there is an answer is
+            unchanged: shelter, then cost, then what to do. */}
+        <div className="space-y-1 rounded-ui border bg-muted/40 p-3">
+          <p className="text-xs leading-relaxed">{messages.muniCost}</p>
+          <a
+            href={LAW_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            {messages.muniCostSource}
+            <ExternalLink className="size-2.5" aria-hidden />
+          </a>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium">{messages.muniStepsTitle}</p>
+          <ol className="space-y-1.5">
+            {[messages.muniStep1, messages.muniStep2, messages.muniStep3].map(
+              (step, index) => (
+                <li
+                  key={step}
+                  className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
+                >
+                  <span className="shrink-0 font-medium text-foreground">
+                    {index + 1}.
+                  </span>
+                  {step}
+                </li>
+              ),
+            )}
+          </ol>
+        </div>
       </div>
     </div>
   );

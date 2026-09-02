@@ -13,12 +13,8 @@ import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { useNearby } from "@/hooks/use-nearby";
 import { usePublishNearbyOrigin } from "@/hooks/use-nearby-origin";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
-import {
-  FOUND_ANIMAL_PARAM,
-  OPEN_MUNICIPALITY_LOOKUP_EVENT,
-} from "@/lib/found-animal";
 import { isDrop } from "@/lib/filters";
-import { onMap, project } from "@/lib/geo";
+import { onMap } from "@/lib/geo";
 import {
   animalCount,
   shelterCount,
@@ -27,7 +23,6 @@ import {
   sheltersMissingFromMap,
 } from "@/lib/labels";
 import type { ShelterPin } from "@/lib/map-layout";
-import { regionAt } from "@/lib/map-regions";
 import { readTypedLocation, resolveOrigin } from "@/lib/origin";
 import { looksLikePostcode } from "@/lib/postal-lookup";
 import {
@@ -39,8 +34,8 @@ import {
   bringIntoList,
   fold,
   locateAndSort,
-  MUNICIPALITY_AT,
   pickerText,
+  shelterNamesByRegion,
   toPins,
   type LocatedRow,
 } from "./model";
@@ -65,11 +60,11 @@ export function useLocationPickerController({
   const [selfOpen, setSelfOpen] = useState(false);
   const open = controlledOpen ?? selfOpen;
   // Where an open goes, kept in a ref so the setter below can be stable. The
-  // deep-link and spotlight effects call it and hold no dependency on it: a
-  // setter whose identity moved with the open state would re-subscribe those
-  // effects on every close, and the ?najdena branch would reopen the dialog
-  // the visitor had just dismissed. Synced in an effect declared ahead of
-  // them, so it is fresh before anything else in here runs.
+  // spotlight effect calls it and holds no dependency on it: a setter whose
+  // identity moved with the open state would re-subscribe that effect on every
+  // close, and it would reopen the dialog the visitor had just dismissed.
+  // Synced in an effect declared ahead of it, so it is fresh before anything
+  // else in here runs.
   const openTarget = useRef({
     controlled: controlledOpen !== undefined,
     onOpenChange,
@@ -85,14 +80,6 @@ export function useLocationPickerController({
     openTarget.current.onOpenChange?.(next);
   }, []);
   const [query, setQuery] = useState("");
-  // The municipality mode: same dialog, same map, different question. Off by
-  // default and behind its own button, so the shelter picker stays what it
-  // was until someone arrives with a found animal instead of a filter.
-  const [muniMode, setMuniMode] = useState(false);
-  const [muniShelterIds, setMuniShelterIds] = useState<string[] | null>(null);
-  // The občina behind those shelters, by name, so the map can draw the line
-  // from where the animal was found to the shelter answering for it.
-  const [muniName, setMuniName] = useState<string | null>(null);
   // Which shelter's details are open in the list, by id. Null until an info
   // control is pressed and null again once one is collapsed. One at a time,
   // and that rule lives here because this is the only thing that sees the
@@ -158,50 +145,16 @@ export function useLocationPickerController({
     setPanelOpen,
     sheetOpen,
     setSheetOpen,
-    landSheet,
     landSpotlight,
     revealSelection,
     resetDocks,
   } = useLocationPickerMotion(open);
 
-
-  // The found-animal strip and the ?najdena URL both land here: open the
-  // dialog straight in municipality mode. Guarded by breakpoint because two
-  // instances of this picker are mounted at once and exactly one is visible.
-  const canDeepLink = Boolean(deepLink && municipalities?.length);
-  useEffect(() => {
-    if (!canDeepLink) return;
-    const isMine = () => {
-      const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
-      return deepLink === "desktop" ? isDesktop : !isDesktop;
-    };
-    const openLookup = () => {
-      if (!isMine()) return;
-      setMuniMode(true);
-      setOpen(true);
-      // The sheet, whatever the screen. This entry point was pressed by
-      // someone holding a found animal, and every part of the answer, the
-      // field to type an občina into and the shelter it returns, lives in the
-      // sheet; a landscape phone would otherwise land on a map with the
-      // question folded away under it. Marked as landed, so the effect that
-      // decides where an ordinary open puts the sheet stands aside for the one
-      // open that already knows.
-      landSheet();
-    };
-    if (new URLSearchParams(window.location.search).has(FOUND_ANIMAL_PARAM)) {
-      openLookup();
-    }
-    window.addEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
-    return () =>
-      window.removeEventListener(OPEN_MUNICIPALITY_LOOKUP_EVENT, openLookup);
-  }, [canDeepLink, deepLink, landSheet, setOpen]);
-
-  // An animal card asking for its shelter on the map. Its own effect and not a
-  // branch of the one above, because canDeepLink also demands the municipality
-  // table and this ask has nothing to do with it: folded together, a build
-  // without coverage data would have left every card's shelter name pressing
-  // nothing. The breakpoint arbitration is the same, for the same reason: two
-  // instances are mounted and exactly one of them is on screen.
+  // An animal card asking for its shelter on the map. Guarded by breakpoint
+  // because two instances of this picker are mounted at once and exactly one
+  // of them is on screen; the hidden one answering would put a second dialog
+  // behind the visible one. It asks nothing of the municipality table, so it
+  // works in a build with no coverage data.
   const canSpotlight = Boolean(deepLink);
   useEffect(() => {
     if (!canSpotlight) return;
@@ -214,15 +167,8 @@ export function useLocationPickerController({
       const { shelterId } = (event as CustomEvent<ShelterSpotlightDetail>)
         .detail;
       setSpotlitShelterId(shelterId);
-      // The shelter list is where this question is answered, whatever tab the
-      // dialog was last left on: the map reads muniMode first when it decides
-      // what to light up, so the found-animal tab would have swallowed the
-      // spotlight outright. A stale search is cleared for the same reason, one
-      // step further down: it would filter the named row out of the list this
-      // is about to scroll.
-      setMuniMode(false);
-      setMuniShelterIds(null);
-      setMuniName(null);
+      // A stale search is cleared: it would filter the named row out of the
+      // list this is about to scroll.
       setQuery("");
       setOpen(true);
       // Both docks, because the row below has to have somewhere to be brought
@@ -320,35 +266,12 @@ export function useLocationPickerController({
   // id. An empty region on this map is not an empty part of the country:
   // somebody is still responsible for a stray found there, and the coverage
   // table already knows who, so the map can say it instead of stopping at "no
-  // shelters here".
-  //
-  // Placed the same way a town is placed (see groupTownsByRegion in
-  // lib/map-layout.ts): the občina's GURS centroid through project(), then
-  // regionAt() on the result. A name therefore lands in the region the map
-  // would have drawn that municipality in, rather than in one a second lookup
-  // table might disagree about.
-  const regionShelterNames = useMemo(() => {
-    const byRegion = new Map<number, string[]>();
-    for (const entry of municipalities ?? []) {
-      // `nearest` is a shortlist of neighbours, not an answer about who is
-      // responsible, so a municipality with no coverage contributes nothing.
-      if (entry.coverage.length === 0) continue;
-      const at = MUNICIPALITY_AT.get(entry.name);
-      if (!at) continue;
-      const region = regionAt(project(at));
-      if (!region) continue;
-      const names = byRegion.get(region.id) ?? [];
-      // Deduped, in the order the table lists them: one shelter answers for
-      // many občine and would otherwise be named once per municipality.
-      for (const covered of entry.coverage) {
-        if (!names.includes(covered.shelterName)) {
-          names.push(covered.shelterName);
-        }
-      }
-      byRegion.set(region.id, names);
-    }
-    return byRegion;
-  }, [municipalities]);
+  // shelters here". How a municipality is placed in a region is with the
+  // helper, in model.ts, which the found-animal page shares.
+  const regionShelterNames = useMemo(
+    () => shelterNamesByRegion(municipalities ?? []),
+    [municipalities],
+  );
 
   // Whether the map is drawing markers right now, as the map itself answers
   // it. Two things in this dialog talk about markers, the instruction under
@@ -368,13 +291,6 @@ export function useLocationPickerController({
       hasMixed: false,
       hasEmpty: false,
     });
-
-  // What the municipality cards may offer to select: only shelters that
-  // exist as filter options, i.e. currently have animals to show.
-  const selectableIds = useMemo(
-    () => new Set(options.map((option) => option.value)),
-    [options],
-  );
 
   const pins: ShelterPin[] = useMemo(
     () => [
@@ -445,12 +361,6 @@ export function useLocationPickerController({
       // the visitor is still picking from in order to repeat a sentence they
       // can already read. Every tap after the first would have cost a fold.
       revealSelection();
-      // The shelter list is in the panel's other tab, so a click while the
-      // found-animal tab is open comes back to it. Same clearing the tab
-      // button does.
-      setMuniMode(false);
-      setMuniShelterIds(null);
-      setMuniName(null);
       // A click on the country is a newer question than the one an animal
       // card arrived with, and two rings at once would be two answers.
       setSpotlitShelterId(null);
@@ -702,12 +612,6 @@ export function useLocationPickerController({
     setOpen,
     query,
     setQuery,
-    muniMode,
-    setMuniMode,
-    muniShelterIds,
-    setMuniShelterIds,
-    muniName,
-    setMuniName,
     expandedShelter,
     setExpandedShelter,
     offGroupOpen,
@@ -743,7 +647,6 @@ export function useLocationPickerController({
     markersVisible,
     setMarkersVisible,
     setMapFacts,
-    selectableIds,
     pins,
     handlePick,
     hoverScrollTo,

@@ -113,7 +113,13 @@ export function SortPicker({
         // because this control is worth finding by either.
         aria-label={`${messages.sortBy}: ${labels[shown]}`}
         className={cn(
-          "text-xs max-lg:min-h-11",
+          // text-sm, the size the species tabs across the row from it are
+          // set at. At text-xs this was the smallest type on the page and the
+          // only control in the toolbar drawn below the row's own size, which
+          // read as a caption rather than as the other half of the bar. The
+          // trigger keeps its size="sm" height, so the row's geometry is
+          // unchanged; only the label grows the 2px.
+          "text-sm max-lg:min-h-11",
           quiet && cn(QUIET_TRIGGER_CLASS, "data-[state=open]:border-border"),
           className,
         )}

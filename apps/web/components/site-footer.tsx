@@ -12,11 +12,11 @@ export function SiteFooter({
   showSheltersLink?: boolean;
   /**
    * The way into the found-animal lookup, on every page rather than only the
-   * homepage. It did not exist anywhere else: the dialog is mounted by
-   * AnimalGrid, so on /zavetisca/[slug] and /viri and every animal page the
-   * flow was unreachable in any form. That matters because "zavetišče
-   * Ljubljana" is a likelier search for someone holding a stray than anything
-   * that lands on the homepage.
+   * homepage. Back when the lookup was a mode of the map dialog it existed
+   * nowhere else: the dialog is mounted by AnimalGrid, so on /zavetisca/[slug]
+   * and /viri and every animal page the flow was unreachable in any form. That
+   * matters because "zavetišče Ljubljana" is a likelier search for someone
+   * holding a stray than anything that lands on the homepage.
    *
    * Defaulted on. The coverage table is static repo data, so the page this
    * links to exists in every real build; an empty table leaves the finder

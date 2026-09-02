@@ -227,6 +227,23 @@ export function loadShelters(): ShelterRegistryEntry[] {
   return loadRegistry().shelters;
 }
 
+/** Shelter id to the phone the register holds for it. */
+export type ShelterPhones = Record<string, string>;
+
+// The same shape as getShelterLogos, and for the same reason: the grid, the
+// dialog and the shelter block are client components, so what they are given
+// is what the page serializes into its flight payload. A record of the one
+// field they need keeps this file, which opens node:fs and parses the whole
+// register, on the server where it belongs. Phones only. The register also
+// holds emails and websites, and neither is a call to action on an animal.
+export function getShelterPhones(): ShelterPhones {
+  const phones: ShelterPhones = {};
+  for (const shelter of loadShelters()) {
+    if (shelter.phone) phones[shelter.id] = shelter.phone;
+  }
+  return phones;
+}
+
 /** When the register this file was transcribed from was published, for the
  *  provenance line under the shelters index. */
 export function shelterRegisterDate(): string | undefined {

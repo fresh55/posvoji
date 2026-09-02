@@ -10,24 +10,37 @@ import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { animalFields } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
+import { getShelterPhones } from "@/lib/shelters";
 import { speciesLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
+/** The label names the destination, not the mechanism.
+ *
+ *  "Odpri med vsemi živalmi" described what the link does to the index (it
+ *  opens this animal there) rather than where the visitor arrives, and read as
+ *  a second call to action beside the shelter's. What the link is for is the
+ *  way on from a shared link: someone who followed this page from a post has
+ *  seen one animal and has no idea 502 others are behind it. Naming the list
+ *  and counting it says that in the words the visitor would use, and it stops
+ *  competing with "Odpri objavo pri zavetišču", which is the page's one real
+ *  call to action.
+ *
+ *  A count and not a bare "back": there is nothing to go back to on a first
+ *  visit from Facebook, and the number is the whole invitation. */
 const pageText = {
   sl: {
-    openInFinder: "Odpri med vsemi živalmi",
+    openInFinder: (count: number) => `Poglej vse živali (${count})`,
   },
   en: {
-    openInFinder: "Open in the full list",
+    openInFinder: (count: number) => `See all animals (${count})`,
   },
-} satisfies Record<Locale, Record<string, string>>;
+} satisfies Record<Locale, Record<string, (count: number) => string>>;
 
 /**
  * Where a shared link lands. The dialog on the index is the place to browse
@@ -140,6 +153,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             <ShelterBlock
               animal={fields}
               logos={getShelterLogos()}
+              phones={getShelterPhones()}
               reference={reference}
             />
 
@@ -148,12 +162,18 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 soon as it has read it, so the two agree on where the animal
                 lives, and old links written before that address existed keep
                 working. */}
-            <Button asChild variant="outline" size="sm">
-              <a href={`${indexHref}?zival=${encodeURIComponent(animal.id)}`}>
-                {text.openInFinder}
-                <ArrowRight aria-hidden />
-              </a>
-            </Button>
+            {/* A link, not an outline button. The page has one call to
+                action, on the shelter block above, and a second bordered
+                control under it asked the visitor to choose between leaving
+                for the shelter and staying on the site. This is the quiet way
+                on, so it is drawn as the quiet thing it is. */}
+            <a
+              href={`${indexHref}?zival=${encodeURIComponent(animal.id)}`}
+              className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+            >
+              {text.openInFinder(dataset.animals.length)}
+              <ArrowRight className="size-4 shrink-0" aria-hidden />
+            </a>
           </div>
         </main>
 

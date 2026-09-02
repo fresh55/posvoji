@@ -4,7 +4,7 @@
 // (motion/react), which reads window.matchMedia when it resolves the
 // reducedMotion="user" setting.
 
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { animalPathParts } from "@/lib/animal-path";
 import { AnimalPage } from "./animal-page";
@@ -81,6 +81,16 @@ vi.mock("@/lib/dataset", () => ({
 vi.mock("@/lib/shelter-logos", () => ({
   getShelterLogos: () => ({}),
 }));
+// The register is read off disk too, and the shelter block's second button is
+// drawn from it. Held in a box so one test can say what the register knows and
+// the next can say it knows nothing.
+const registryPhones = vi.hoisted(
+  () => ({ current: {} }) as { current: Record<string, string> },
+);
+vi.mock("@/lib/shelters", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/shelters")>()),
+  getShelterPhones: () => registryPhones.current,
+}));
 
 // Every animal the two client components were handed. What a client component
 // is given is what the page serializes into its flight payload, whether or not
@@ -119,6 +129,7 @@ vi.mock("@/components/animal-dialog/shelter-block", async (importOriginal) => {
 afterEach(() => {
   cleanup();
   handedOver.length = 0;
+  registryPhones.current = {};
 });
 
 // The hero grid: `<div class="grid gap-8 ...">` wrapping the gallery (when
@@ -187,6 +198,33 @@ describe("the animal page's breadcrumb", () => {
     expect(
       container.querySelector('[data-slot="breadcrumb-page"]')?.textContent,
     ).toBe("Muri");
+  });
+});
+
+describe("the animal page's way to the shelter", () => {
+  it("dials the register's number for the animal's shelter", () => {
+    registryPhones.current = { zonzani: "03 749 06 00" };
+    render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+
+    expect(
+      screen
+        .getByRole("link", { name: "Pokliči 03 749 06 00" })
+        .getAttribute("href"),
+    ).toBe("tel:+38637490600");
+  });
+
+  it("draws nothing to dial for a shelter with no number on file", () => {
+    const { container } = render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+
+    expect(container.querySelector('a[href^="tel:"]')).toBeNull();
+    // The listing is still the page's call to action, phone or no phone.
+    expect(
+      screen.getByRole("link", { name: /Odpri objavo pri zavetišču/ }),
+    ).toBeTruthy();
   });
 });
 

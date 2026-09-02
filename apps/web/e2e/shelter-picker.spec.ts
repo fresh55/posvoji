@@ -82,6 +82,22 @@ test.describe("desktop", () => {
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
+  test("does one job, and offers no found-animal tab", async ({ page }) => {
+    const dialog = await openPicker(page);
+
+    // This dialog used to carry a tab row, "Zavetišča" beside "Najdena žival",
+    // and answer both questions from one panel. The lookup is a page now
+    // (/najdena-zival), so there is no tab row and no lone tab standing where
+    // the row was.
+    await expect(dialog.locator("[data-picker-tab]")).toHaveCount(0);
+    await expect(
+      dialog.getByRole("button", { name: "Najdena žival" }),
+    ).toHaveCount(0);
+    // The way out of the panel is unconditional again: the tab that hid it is
+    // gone with the row.
+    await expect(donePill(page)).toBeVisible();
+  });
+
   test("fades the list's clipped edge, and only the clipped one", async ({
     page,
   }) => {

@@ -43,11 +43,6 @@ export function useLocationPickerMotion(open: boolean) {
     setSheetOpen(hasHeightToSpare());
   }, [open]);
 
-  const landSheet = useCallback(() => {
-    landedRef.current = true;
-    setSheetOpen(true);
-  }, []);
-
   const landSpotlight = useCallback(() => {
     landedRef.current = true;
     setPanelOpen(true);
@@ -69,7 +64,6 @@ export function useLocationPickerMotion(open: boolean) {
     setPanelOpen,
     sheetOpen,
     setSheetOpen,
-    landSheet,
     landSpotlight,
     revealSelection,
     resetDocks,

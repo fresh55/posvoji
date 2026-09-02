@@ -101,6 +101,10 @@ const ADOPTED = animal("lucky", "Lucky", { status: "adopted" });
 
 const ANIMALS = [REX, MURI];
 
+// The register holds a phone for fifteen of the seventeen shelters, so the
+// fixture shelter has one and the tests that check the other two pass {}.
+const PHONES = { "test-shelter": "03 749 06 00" };
+
 // Ages are measured from the dataset's build time, not the clock, so the
 // prerendered HTML and the hydrated page cannot disagree.
 const REFERENCE = "2026-08-18T00:00:00.000Z";
@@ -113,6 +117,7 @@ function renderGrid(animals: Animal[] = ANIMALS) {
         // and a placeholder only on the one a card and this dialog open on.
         animals={animalsForClient(animals)}
         logos={{}}
+        phones={PHONES}
         referenceDate={REFERENCE}
       />
     </I18nProvider>,
@@ -486,6 +491,7 @@ describe("animal dialog", () => {
         <AnimalDialog
           animal={longtimer}
           logos={{}}
+          phones={{}}
           siblingIds={[]}
           reference={new Date(REFERENCE)}
           onNavigate={() => {}}
@@ -1119,6 +1125,7 @@ describe("animal dialog", () => {
         <ShelterBlock
           animal={REX}
           logos={{}}
+          phones={PHONES}
           reference={new Date(REFERENCE)}
         />
       </I18nProvider>,
@@ -1129,6 +1136,108 @@ describe("animal dialog", () => {
     });
     expect(cta.className).not.toContain("max-sm:hidden");
     expect(cta.className).toContain("max-sm:h-11");
+  });
+
+  // The box named a shelter and offered one way to it, and that way left the
+  // site. The register holds a phone for fifteen of the seventeen and none of
+  // it reached the animal anyone was reading about.
+  it("offers the shelter's phone beside the listing", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={PHONES}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    // The visible label is the accessible name, channel word and all, which
+    // is why the button carries no aria-label of its own.
+    const call = screen.getByRole("link", { name: "Pokliči 03 749 06 00" });
+    // E.164 rather than the printed grouping, so the number dials from a
+    // foreign SIM as well. See telHref in lib/contact-links.ts.
+    expect(call.getAttribute("href")).toBe("tel:+38637490600");
+    // Secondary: the outline, beside the listing's filled button.
+    expect(call.className).toContain("border-border");
+    expect(call.className).not.toContain("bg-primary");
+    expect(
+      screen.getByRole("link", { name: /Odpri objavo pri zavetišču/ })
+        .className,
+    ).toContain("bg-primary");
+  });
+
+  it("draws no phone for a shelter the register holds none for", () => {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={{}}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(container.querySelector('a[href^="tel:"]')).toBeNull();
+    expect(
+      screen.getByRole("link", { name: /Odpri objavo pri zavetišču/ }),
+    ).toBeTruthy();
+  });
+
+  it("names the English button in English", () => {
+    render(
+      <I18nProvider locale="en">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={PHONES}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Call 03 749 06 00" }),
+    ).toBeTruthy();
+  });
+
+  // The shelter is named on every animal and, until the name became a link,
+  // nothing on the page went to the page about it.
+  it("sends the shelter's name to the shelter's own page", () => {
+    render(
+      <I18nProvider locale="en">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={PHONES}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen
+        .getByRole("link", { name: "Zavetišče Test" })
+        .getAttribute("href"),
+    ).toBe("/en/shelters/test-shelter");
+  });
+
+  // The bar is the one action a phone must never scroll for, so it stays one
+  // button. The number is in the box, which is where the two live together.
+  it("keeps the phone out of the sticky bar", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    const bar = region(dialog, "sticky-cta");
+    expect(bar.getAllByRole("link")).toHaveLength(1);
+    expect(
+      region(dialog, "shelter-block").getByRole("link", {
+        name: "Pokliči 03 749 06 00",
+      }),
+    ).toBeTruthy();
   });
 
   // The shelter block replaces the CTA with the good news and a quiet text
@@ -1154,7 +1263,12 @@ describe("animal dialog", () => {
   it("marks the attribution Slovenian away from the Slovenian pages", () => {
     render(
       <I18nProvider locale="en">
-        <ShelterBlock animal={REX} logos={{}} reference={new Date(REFERENCE)} />
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={PHONES}
+          reference={new Date(REFERENCE)}
+        />
       </I18nProvider>,
     );
 

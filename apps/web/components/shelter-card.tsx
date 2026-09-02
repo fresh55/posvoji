@@ -52,6 +52,18 @@ export type ShelterCardText = {
    *  and the card is a server component with no locale of its own: the page
    *  holds the locale and hands the card the one formatter it needs. */
   animals: (count: number) => string;
+  /** "Živali niso objavljene" / "No animals published", for a shelter the
+   *  register lists but whose list we do not publish.
+   *
+   *  The card used to print nothing at all in that slot, on the reasoning
+   *  next to `animals` below: a zero here would read as a shelter holding no
+   *  animals rather than as a shelter we publish nothing for. That reasoning
+   *  still holds and this is the same sentence finished. Printing nothing
+   *  makes the reader supply the missing half themselves, and six of the
+   *  seventeen cards are the count-less kind, so the page hands out six
+   *  blanks and no key to them. The census line above the grid says how many
+   *  shelters share a list; only the card can say which ones do not. */
+  noAnimals: string;
 };
 
 // Every contact sits under the name's stretched ::after, which covers the whole
@@ -194,6 +206,27 @@ export function ShelterCard({
               point where the card already points. The paw rather than the
               census line's shield: the pill's green is what says "shares its
               data", so the glyph is free to say what the number counts. */}
+          {/* The other half of the same statement, drawn in the same slot on
+              the same fixed row, so the column of counts the eye runs down
+              has no holes in it: every card answers "does this one share a
+              list", and the six that do not say so in words.
+
+              Muted text and no pill. The pill's green is the site's one
+              statement that a shelter shares its data, and a bordered chip
+              wearing the negative would answer the scan just as loudly as the
+              positive it is the absence of. This is the quiet fact under the
+              loud one, which is what it is. */}
+          {animals === undefined && (
+            // data-no-list and not data-animals="none": the browser suite
+            // adds every data-animals up against the census line, and a word
+            // in that column is a sum that is not a number.
+            <p
+              data-no-list
+              className="min-w-0 text-right text-xs text-muted-foreground"
+            >
+              {text.noAnimals}
+            </p>
+          )}
           {animals !== undefined && (
             // data-animals is a test contract, the same as data-contact on
             // the rows below: the census line above the grid states how many

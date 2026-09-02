@@ -15,6 +15,7 @@ const text = {
   // The page's own formatter, so the test reads the string a reader gets,
   // Slovenian agreement and all.
   animals: (count: number) => animalCount(count, "sl"),
+  noAnimals: "Živali niso objavljene",
 };
 
 function shelter(over: Partial<ShelterCardData> = {}): ShelterCardData {
@@ -246,17 +247,38 @@ describe("the shelter card", () => {
     // shelters, and with how many animals each, is only ever said here.
     //
     // Two, not five: the dual is the form a naive plural gets wrong.
-    expect(screen.getByText("2 živali")).toBeTruthy();
+    expect(screen.getByText("2 živali").getAttribute("data-animals")).toBe(
+      "2",
+    );
   });
 
-  it("prints nothing where a shelter shares no list", () => {
+  it("says why, rather than a zero, where a shelter shares no list", () => {
     render(<ShelterCard shelter={shelter({ animals: 0 })} text={text} />);
     render(<ShelterCard shelter={shelter()} text={text} />);
 
     // never-print-a-zero, the rule the whole page keeps: "0 živali" reads as a
     // shelter with no animals in it rather than as a shelter whose list we do
-    // not publish.
-    expect(screen.queryByText(/žival/)).toBeNull();
+    // not publish. Absent and zero are the same answer and both take the line.
+    expect(screen.queryByText(/\d+\s+živali/)).toBeNull();
+    const reasons = screen.getAllByText("Živali niso objavljene");
+    expect(reasons).toHaveLength(2);
+    expect(
+      // Marked, but never as a data-animals value: the browser suite adds
+      // those up against the census line.
+      reasons.every(
+        (reason) =>
+          reason.hasAttribute("data-no-list") &&
+          !reason.hasAttribute("data-animals"),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the count and the reason out of each other's way", () => {
+    render(<ShelterCard shelter={shelter({ animals: 2 })} text={text} />);
+
+    // A card states one or the other, never both: the slot they share is what
+    // makes the column of counts readable down the grid.
+    expect(screen.queryByText("Živali niso objavljene")).toBeNull();
   });
 
   it("carries an anchor a link can name", () => {

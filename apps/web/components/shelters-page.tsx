@@ -47,6 +47,7 @@ const pageText = {
     email: "E-pošta",
     phone: "Telefon",
     newWindow: "(odpre se v novem oknu)",
+    noAnimals: "Živali niso objavljene",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
     inviteTitle: "Ste zavetišče?",
@@ -67,6 +68,7 @@ const pageText = {
     email: "Email",
     phone: "Phone",
     newWindow: "(opens in a new window)",
+    noAnimals: "No animals published",
     heading: "Shelters",
     skip: "Skip the list of shelters",
     inviteTitle: "Are you a shelter?",
@@ -359,6 +361,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               phone: text.phone,
               newWindow: text.newWindow,
               animals: (count) => animalCount(count, locale),
+              noAnimals: text.noAnimals,
             }}
             text={{
               heading: text.heading,

@@ -16,7 +16,6 @@ import { toggleValues } from "@/lib/filters";
 import { FINE_POINTER } from "./location-picker/motion";
 import { cityAt } from "@/lib/geo";
 import { shelterCount, sheltersDropped } from "@/lib/labels";
-import { OPEN_MUNICIPALITY_LOOKUP_EVENT } from "@/lib/found-animal";
 import { SHELTER_SPOTLIGHT_EVENT } from "@/lib/shelter-spotlight";
 import { I18nProvider } from "@/components/i18n-provider";
 import { DENSITY_STEPS } from "@/lib/map-layout";
@@ -1605,23 +1604,6 @@ describe("LocationPicker map picking", () => {
     expect(expanded()).toBeNull();
   });
 
-  it("clears open details on a tab switch instead of replaying them on return", () => {
-    openMap({
-      municipalities: [{ name: "Maribor", nearest: [], coverage: [] }] as never,
-    });
-
-    fireEvent.click(info("Zavetišče Sever"));
-    expect(expanded()).toBe("sever");
-
-    fireEvent.click(screen.getByRole("button", { name: "Najdena žival" }));
-    fireEvent.click(screen.getByRole("button", { name: "Zavetišča" }));
-
-    // The panel answered a question asked before the tab switch, and coming
-    // back to the tab is not asking it again. This and the dialog closing are
-    // the only two things that collapse a panel nobody collapsed by hand.
-    expect(expanded()).toBeNull();
-  });
-
   it("stops the hovered marker repeating what the open details already say", () => {
     openMap();
 
@@ -1641,40 +1623,6 @@ describe("LocationPicker map picking", () => {
     expect(dialog().querySelector("[data-callout-metadata]")).toBeNull();
     expect(dialog().querySelector("[data-callout-species]")).toBeNull();
     expect(screen.getAllByText("Zavetišče Sever").length).toBeGreaterThan(0);
-  });
-
-  it("comes back to the shelter tab when the map is clicked from the other one", () => {
-    openMap({
-      municipalities: [
-        {
-          name: "Maribor",
-          nearest: [],
-          coverage: [
-            {
-              shelterId: "sever",
-              shelterName: "Zavetišče Sever",
-              city: "Maribor",
-              detailHref: "/zavetisca/sever",
-              animals: 4,
-              sourceLabel: "Test",
-              sourceDate: "2026-01-01",
-              confirmed: true,
-            },
-          ],
-        },
-      ],
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Najdena žival" }));
-    expect(screen.queryByLabelText("Kraj, pošta ali zavetišče")).toBeNull();
-
-    fireEvent.click(marker("maribor"));
-
-    expect(screen.getByLabelText("Kraj, pošta ali zavetišče")).toBeTruthy();
-    // The tab came back because the click needs a list to be visible in, not
-    // because it had a card to put there.
-    expect(row(/^Zavetišče Sever/)?.getAttribute("aria-pressed")).toBe("true");
-    expect(expanded()).toBeNull();
   });
 });
 
@@ -1875,10 +1823,11 @@ describe("LocationPicker floating panel", () => {
   });
 });
 
-// The other question this dialog answers, and the entry point that arrives
-// already asking it. On a phone the whole answer lives in the sheet, so what
-// the deep link does to the sheet is the feature.
-describe("LocationPicker found-animal entry", () => {
+// This dialog used to answer two questions from one panel, with a tab row to
+// switch between them. The found-animal lookup is a page now
+// (found-animal-page.tsx), so what is left to assert is the absence: no second
+// tab, and no lone first one standing where a row of two used to be.
+describe("LocationPicker one question", () => {
   const dialog = () => screen.getByRole("dialog");
 
   const municipalities = [
@@ -1900,149 +1849,35 @@ describe("LocationPicker found-animal entry", () => {
     },
   ];
 
-  // deepLink="mobile" answers below 64rem, and the matchMedia stub at the top
-  // of this file reports every query as unmatched, so this instance is the
-  // visible one and the one that must respond.
-  function openFromStrip() {
-    render(
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={options}
-          counts={counts}
-          selected={[]}
-          onToggle={vi.fn()}
-          onToggleMany={vi.fn()}
-          resultCount={11}
-          municipalities={municipalities}
-          deepLink="mobile"
-        />
-      </I18nProvider>,
-    );
-    act(() => {
-      window.dispatchEvent(new Event(OPEN_MUNICIPALITY_LOOKUP_EVENT));
-    });
-  }
-
-  it("brings the sheet up with it, so the občina field is the thing on screen", () => {
-    openFromStrip();
-
-    const panel = dialog().querySelector<HTMLElement>("[data-picker-panel]")!;
-    // Not "collapsed": a phone opening this from the map would show a
-    // shelter-density plate and no way to type an občina into it.
-    expect(panel.dataset.pickerSheet).toBe("open");
-    expect(screen.getByLabelText("Občina ali poštna številka …")).toBeTruthy();
-  });
-
-  it("titles the dialog with the question it was opened to ask", () => {
-    openFromStrip();
-
-    expect(screen.getByRole("dialog", { name: "Najdena žival" })).toBeTruthy();
-    expect(dialog().textContent).toContain(
-      "Zemljevid pokaže pristojno zavetišče",
-    );
-    // The shelter-picking instructions belong to the other tab.
-    expect(dialog().textContent).not.toContain("Klikni regijo ali zavetišče");
-  });
-
-  it("keeps the tabs in the sheet's fold, not behind the pointer breakpoint", async () => {
+  it("offers no found-animal tab, with the coverage table in hand", async () => {
+    // The table is what used to gate the tab row, so this is the case that
+    // would have drawn it.
     await openPicker({ municipalities });
 
-    const tabRow = () =>
-      dialog().querySelector<HTMLElement>("[data-picker-tab='municipality']")!
-        .parentElement!.parentElement!;
-    // The sheet opens expanded, so the tabs are on screen from the start.
-    expect(tabRow().className).not.toContain("max-lg:hidden");
-    // Never hidden by breakpoint alone: that is what made the second question
-    // unreachable on a phone.
-    expect(tabRow().className).not.toContain("lg:flex");
-
-    fireEvent.click(dialog().querySelector<HTMLElement>("[data-picker-peek]")!);
-
-    // Folded with the sheet below lg and with the panel above it, the same way
-    // the list below it folds.
-    expect(tabRow().className).toContain("max-lg:hidden");
+    expect(dialog().querySelector("[data-picker-tab]")).toBeNull();
+    expect(dialog().textContent).not.toContain("Najdena žival");
+    // Nor the finder's own field, which was the whole of that tab.
+    expect(screen.queryByLabelText("Občina ali poštna številka …")).toBeNull();
   });
 
-  // Two jobs in one dialog, and the adoption half may not lean on the other
-  // one's shoulder. Someone arriving with a stray gets one thing to press,
-  // the responsible shelter's phone number; a near-black "Prikaži 186 živali"
-  // beside it was a second primary about an adoption filter they never set,
-  // and it counted animals at an unrelated shelter.
-  describe("kept apart from the adoption filter", () => {
-    const tab = (which: "shelters" | "municipality") =>
-      dialog().querySelector<HTMLElement>(`[data-picker-tab='${which}']`)!;
+  it("titles itself with the one question it asks", async () => {
+    await openPicker({ municipalities });
 
-    it("does not render the adoption footer at all", async () => {
-      await openPicker({ municipalities, selected: ["sever"] });
-
-      const pill = () => screen.queryByRole("button", { name: /Pokaži|Končano/ });
-      expect(pill()).toBeTruthy();
-
-      fireEvent.click(tab("municipality"));
-
-      // Absent, not disabled and not restyled: there is nothing here for it
-      // to be the primary action of, and nothing for it to count either.
-      expect(pill()).toBeNull();
-
-      fireEvent.click(tab("shelters"));
-
-      expect(pill()).toBeTruthy();
-    });
-
-    it("stops the shelter selection riding along on the strip and in the live region", async () => {
-      await openPicker({ municipalities, selected: ["sever"] });
-
-      const peek = () =>
-        dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
-      const live = () =>
-        dialog().querySelector("p.sr-only[aria-live='polite']")!.textContent ??
-        "";
-
-      expect(peek().textContent).toContain("1 od 2 zavetišč");
-      expect(live()).toContain("1 od 2 zavetišč");
-
-      fireEvent.click(tab("municipality"));
-
-      // The strip names the question instead of summarising a filter that has
-      // nothing to do with the found animal, and the count badge goes with it.
-      expect(peek().textContent).toContain("Najdena žival");
-      expect(peek().textContent).not.toContain("zavetišč");
-      expect(live()).toBe("");
-
-      // The selection itself is untouched: switching back finds it whole. It
-      // is isolated, not cleared, because ?najdena opens this mode straight
-      // from a link and clearing would rewrite the visitor's URL for them.
-      fireEvent.click(tab("shelters"));
-      expect(peek().textContent).toContain("1 od 2 zavetišč");
-    });
-
-    it("keeps its own footer out of the answer", async () => {
-      await openPicker({ municipalities });
-
-      const body = () =>
-        dialog().querySelector<HTMLElement>("[data-picker-tab='shelters']")!
-          .parentElement!.parentElement!.nextElementSibling as HTMLElement;
-
-      // The way out is the last row of the shelter panel's own column now,
-      // rather than a button floating over the map with the sheet holding
-      // 64px of max-lg:pb-16 open underneath it. Nothing is reserved at any
-      // width, because nothing is drawn over this block any more.
-      expect(body().className).not.toContain("pb-16");
-      expect(
-        screen.getByRole("button", { name: /Pokaži|Končano/ }),
-      ).toBeTruthy();
-
-      fireEvent.click(tab("municipality"));
-
-      // And in found-animal mode there is no footer to keep out: somebody
-      // holding a stray is answered by one shelter's phone number, not by a
-      // second near-black button about an adoption filter they never set.
-      expect(
-        screen.queryByRole("button", { name: /Pokaži|Končano/ }),
-      ).toBeNull();
-      expect(body().className).not.toContain("pb-16");
-    });
+    expect(screen.getByRole("dialog", { name: "Kje iščeš?" })).toBeTruthy();
   });
+
+  it("keeps the way out and the selection news, which the tab used to hide", async () => {
+    await openPicker({ municipalities, selected: ["sever"] });
+
+    expect(screen.getByRole("button", { name: /Pokaži|Končano/ })).toBeTruthy();
+    const peek = dialog().querySelector("[data-picker-peek]")!;
+    expect(peek.textContent).toContain("1 od 2 zavetišč");
+  });
+
+  // The coverage table stays a prop of this dialog for one thing only: naming
+  // who answers for the občine inside a region the roster leaves empty. That
+  // is map furniture rather than a mode, and it is covered by its own
+  // describe, "LocationPicker region coverage", further down.
 });
 
 // What a shelter is, asked of the list and answered in the list. The floating
@@ -2449,8 +2284,8 @@ describe("LocationPicker details dismissal", () => {
   });
 });
 
-// The third way into this dialog, after the trigger and the found-animal
-// strip: an animal card's shelter name, asking where that shelter is.
+// The second way into this dialog, after the trigger: an animal card's
+// shelter name, asking where that shelter is.
 describe("LocationPicker shelter spotlight", () => {
   const dialog = () => screen.getByRole("dialog");
 
@@ -2524,18 +2359,18 @@ describe("LocationPicker shelter spotlight", () => {
   });
 
   it("answers without a municipality table, which it has nothing to do with", () => {
-    // The found-animal deep link needs the coverage data and refuses without
-    // it. This ask does not, and folding the two guards together would have
-    // made a card's shelter name inert wherever that table is missing.
+    // The coverage table is map furniture, not something this ask reads, and
+    // guarding on it would have made a card's shelter name inert wherever the
+    // table is missing.
     askForJug({ municipalities: undefined });
 
     expect(dialog().querySelectorAll("[data-map-spotlight]")).toHaveLength(1);
   });
 });
 
-// The map's own answer for a region it draws no shelters in. The coverage
-// table is already in this component for the found-animal mode, and it knows
-// who takes a stray found there.
+// The map's own answer for a region it draws no shelters in. Somebody is
+// still responsible for a stray found there, and the coverage table this
+// component takes already knows who.
 describe("LocationPicker region coverage", () => {
   const dialog = () => screen.getByRole("dialog");
 
@@ -3147,33 +2982,6 @@ describe("LocationPicker sheet landing", () => {
       .querySelector("[data-picker-peek]")!;
     expect(peek.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(peek);
-    expect(sheet()?.getAttribute("data-picker-sheet")).toBe("open");
-  });
-
-  it("keeps the sheet for a found animal, whatever the screen", async () => {
-    onAViewport(true);
-    // The found-animal entry opens straight into the municipality tab, and
-    // every part of that answer lives in the sheet.
-    render(
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={options}
-          counts={counts}
-          selected={[]}
-          onToggle={vi.fn()}
-          onToggleMany={vi.fn()}
-          resultCount={11}
-          municipalities={[{ name: "Ljubljana", coverage: [], nearest: [] }]}
-          deepLink="mobile"
-        />
-      </I18nProvider>,
-    );
-
-    await act(async () => {
-      window.dispatchEvent(new Event(OPEN_MUNICIPALITY_LOOKUP_EVENT));
-    });
-
-    await screen.findByRole("dialog");
     expect(sheet()?.getAttribute("data-picker-sheet")).toBe("open");
   });
 });

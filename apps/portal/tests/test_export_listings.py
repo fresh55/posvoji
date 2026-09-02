@@ -20,6 +20,12 @@ from core.models import (
     Listing,
     ListingPhoto,
 )
+from core.schemas import (
+    ExportListingOut,
+    ExportListingPhotoOut,
+    ListingOut,
+    ListingPhotoOut,
+)
 
 CONTRACT_PATH = (
     Path(__file__).parents[2] / "ingest" / "fixtures" / "portal-listings.contract.json"
@@ -192,6 +198,25 @@ def test_the_field_names_match_the_contract():
     assert set(contract["optionalFields"]) == {
         key for _, key in LISTING_OPTIONAL_FIELDS
     }
+
+
+def test_the_response_schemas_carry_every_contract_field():
+    """The other half of the check above, on the schemas rather than the table.
+
+    django-ninja answers with the fields the response schema declares and no
+    others, so a field added to the model, the migration and the fixture but
+    not to these would be absent from both routes with every other test in
+    this file still green.
+    """
+    contract = load_contract()
+    fields = set(contract["requiredFields"]) | set(contract["optionalFields"])
+    photo_fields = set(contract["photoFields"])
+
+    assert set(ExportListingOut.model_fields) == fields
+    assert set(ExportListingPhotoOut.model_fields) == photo_fields
+    # The API shape is the export plus what only an editor needs.
+    assert set(ListingOut.model_fields) == fields | {"archivedAt"}
+    assert set(ListingPhotoOut.model_fields) == photo_fields | {"id"}
 
 
 def test_the_vocabularies_match_the_contract():

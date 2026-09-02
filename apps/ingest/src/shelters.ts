@@ -8,6 +8,16 @@ import { repoRoot } from "./paths";
 // the shelter's own site to read the name off. A manual listing has no site,
 // so the register is where its name and city come from, and this is the only
 // reader of it in the pipeline.
+//
+// The site has the other one: loadShelters in apps/web/lib/shelters.ts reads
+// the same file with the same three failure branches, and also checks for a
+// duplicate id and for the contact fields this reader ignores. The strictness
+// differs on purpose. There, one malformed entry throws, because a register
+// that cannot be read builds a shelters index that is empty and looks
+// finished; here it is dropped, so one broken row cannot stop a crawl of
+// seventeen shelters that do not need it. A change to the file's shape has to
+// reach both. They are not shared because apps/ingest does not depend on
+// apps/web: a reader in packages/ is the real fix and needs an issue first.
 export const shelterRegistryPath = join(repoRoot, "data", "shelters.yaml");
 
 // The three fields Animal.shelter carries. The register holds more (website,

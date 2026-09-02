@@ -16,7 +16,7 @@ import {
   ENERGY_META,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalAnimal } from "@/lib/portal-api";
 
 afterEach(cleanup);

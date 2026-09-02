@@ -3,45 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { portalText } from "@/components/portal/portal-text";
 import {
-  PortalError,
+  IDLE,
+  SAVED_FLASH_MS,
+  message,
+  type PortalListState,
+  type PortalSaveState,
+} from "@/hooks/portal-list";
+import {
   fetchAnimals,
   isUnauthorized,
   saveAnimal,
   type PortalAnimal,
   type PortalAnimalPatch,
-  type PortalErrorKind,
 } from "@/lib/portal-api";
-
-const SAVED_FLASH_MS = 1800;
-
-export type PortalListState =
-  | { status: "loading" }
-  | { status: "ready" }
-  | { status: "error"; message: string };
-
-export type PortalSaveState =
-  | { status: "idle" }
-  | { status: "saving" }
-  | { status: "saved" }
-  | { status: "error"; message: string };
-
-const IDLE: PortalSaveState = { status: "idle" };
-
-// What each failure says to a shelter. A kind that is not here says only
-// what the caller was doing, which is all a server fault can honestly say.
-const MESSAGES: Partial<Record<PortalErrorKind, string>> = {
-  forbidden: portalText.forbidden,
-  network: portalText.networkError,
-  invalid: portalText.invalidError,
-};
-
-function message(error: unknown, fallback: string): string {
-  if (error instanceof PortalError) {
-    const known = MESSAGES[error.kind];
-    if (known) return known;
-  }
-  return fallback;
-}
 
 /**
  * The shelter's animals plus a per-animal save state. Saving is not

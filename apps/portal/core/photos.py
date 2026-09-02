@@ -17,6 +17,11 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 # Decided by opening the file, never by the client's content-type.
 ACCEPTED_FORMATS = frozenset({"JPEG", "PNG", "WEBP"})
 
+# Both rejections are reached two ways, from the header and from the decoder,
+# and the shelter is told the same thing whichever one caught it.
+NOT_AN_ACCEPTED_FORMAT = "only JPEG, PNG and WebP files are accepted"
+TOO_MANY_PIXELS = "the image has too many pixels"
+
 MAX_EDGE = 2048
 JPEG_QUALITY = 85
 NAME_LENGTH = 16
@@ -74,17 +79,17 @@ def encode(raw: bytes) -> EncodedPhoto:
     try:
         with Image.open(io.BytesIO(raw)) as opened:
             if opened.format not in ACCEPTED_FORMATS:
-                raise PhotoRejected("only JPEG, PNG and WebP files are accepted")
+                raise PhotoRejected(NOT_AN_ACCEPTED_FORMAT)
             width, height = opened.size
             if width * height > MAX_PIXELS:
-                raise PhotoRejected("the image has too many pixels")
+                raise PhotoRejected(TOO_MANY_PIXELS)
             # Bakes the orientation in before the metadata carrying it is
             # dropped, or a photograph taken sideways would stay sideways.
             oriented = ImageOps.exif_transpose(opened)
     except UnidentifiedImageError as error:
-        raise PhotoRejected("only JPEG, PNG and WebP files are accepted") from error
+        raise PhotoRejected(NOT_AN_ACCEPTED_FORMAT) from error
     except Image.DecompressionBombError as error:
-        raise PhotoRejected("the image has too many pixels") from error
+        raise PhotoRejected(TOO_MANY_PIXELS) from error
 
     # thumbnail only ever shrinks, so a photograph smaller than the cap is
     # left at its own size.
@@ -93,8 +98,9 @@ def encode(raw: bytes) -> EncodedPhoto:
     # A blank canvas, so nothing from the source's info block can be written
     # back out. White rather than black because a PNG or WebP with an alpha
     # channel has to be flattened for JPEG, and white is what a photograph on
-    # a page is seen against.
-    source = oriented if oriented.mode == "RGBA" else oriented.convert("RGBA")
+    # a page is seen against. convert to the mode the image already has
+    # returns a copy, so this one line covers both cases.
+    source = oriented.convert("RGBA")
     flat = Image.new("RGB", source.size, WHITE)
     flat.paste(source, mask=source.getchannel("A"))
 

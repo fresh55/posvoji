@@ -11,12 +11,20 @@ import { portalText } from "@/components/portal/portal-text";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { slugify } from "@/lib/animal-path";
-import {
-  PORTAL_STATUSES,
-  type PortalAnimal,
-  type PortalStatus,
-} from "@/lib/portal-api";
+import { PORTAL_STATUSES, type PortalStatus } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
+
+/**
+ * All the tools read of a record: what they search and what they count. A
+ * crawled animal and a manual listing both carry these four under the same
+ * names, so both go through here as they are.
+ */
+export type PortalListEntry = {
+  id: string;
+  name: string | null;
+  breed: string | null;
+  status: string | null;
+};
 
 /**
  * The name a search matches on. slugify folds the diacritics away, so "zan"
@@ -24,7 +32,7 @@ import { cn } from "@/lib/utils";
  * should not have to reach for č, š or ž. The breed rides along because it is
  * the other word staff actually remember an animal by.
  */
-function haystack(animal: PortalAnimal): string {
+function haystack(animal: PortalListEntry): string {
   return slugify(`${animal.name ?? ""} ${animal.breed ?? ""}`);
 }
 
@@ -32,11 +40,11 @@ function haystack(animal: PortalAnimal): string {
  * The list as the tools leave it. Both filters are ands: an empty query and a
  * null status each match everything, which is what "Vse" resets to.
  */
-export function filterPortalAnimals(
-  animals: PortalAnimal[],
+export function filterPortalAnimals<Entry extends PortalListEntry>(
+  animals: Entry[],
   query: string,
   status: PortalStatus | null,
-): PortalAnimal[] {
+): Entry[] {
   const needle = slugify(query);
   if (!needle && !status) return animals;
   return animals.filter((animal) => {
@@ -46,7 +54,7 @@ export function filterPortalAnimals(
 }
 
 /** How many animals carry each status, over the full list. */
-function statusCounts(animals: PortalAnimal[]): Record<PortalStatus, number> {
+function statusCounts(animals: PortalListEntry[]): Record<PortalStatus, number> {
   const counts = { available: 0, reserved: 0, adopted: 0, hold: 0 };
   for (const animal of animals) {
     if (isPortalStatus(animal.status)) counts[animal.status] += 1;
@@ -104,7 +112,7 @@ export function PortalListTools({
   onStatusChange,
 }: {
   /** The full list, not the filtered one. */
-  animals: PortalAnimal[];
+  animals: PortalListEntry[];
   query: string;
   onQueryChange: (query: string) => void;
   status: PortalStatus | null;

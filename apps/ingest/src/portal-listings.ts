@@ -24,7 +24,7 @@ import type { ShelterEntry } from "./shelters";
 // itself, so the link is the shelter's own page on this site. The slug is the
 // providerId, which is also the shelter id: the same string the shelter page
 // route and the override join already depend on.
-export const SITE_ORIGIN = "https://posvoji.si";
+const SITE_ORIGIN = "https://posvoji.si";
 
 export function listingSourceUrl(providerId: string): string {
   return `${SITE_ORIGIN}/zavetisca/${providerId}`;
@@ -100,14 +100,6 @@ export interface BuildListingsResult {
   skipped: ListingSkip[];
 }
 
-export interface BuildListingsOptions {
-  // The providers this run is allowed to build listings for, from --provider.
-  // Left unset, every enabled manual provider is in scope. A listing outside
-  // the set is skipped as "not-targeted", which is a different fact from a
-  // listing whose provider is not permitted to have one.
-  providerIds?: ReadonlySet<string>;
-}
-
 type ListingDecision =
   | { build: true; policy: ProviderPolicy; shelter: ShelterEntry }
   | { build: false; reason: ListingSkipReason };
@@ -118,7 +110,7 @@ function decide(
   listing: PortalListing,
   policy: ProviderPolicy | undefined,
   shelter: ShelterEntry | undefined,
-  options: BuildListingsOptions,
+  providerIds: ReadonlySet<string> | undefined,
 ): ListingDecision {
   if (policy === undefined) return { build: false, reason: "unknown-provider" };
   if (!policy.enabled) return { build: false, reason: "provider-disabled" };
@@ -128,7 +120,7 @@ function decide(
   if (policy.ingestion !== "manual") {
     return { build: false, reason: "provider-not-manual" };
   }
-  if (options.providerIds && !options.providerIds.has(listing.providerId)) {
+  if (providerIds && !providerIds.has(listing.providerId)) {
     return { build: false, reason: "not-targeted" };
   }
   // Animal.shelter needs a name and a city, and a manual shelter has no site
@@ -204,12 +196,17 @@ function buildAnimal(
 // unknown. shelters is data/shelters.yaml, which is where a manual shelter's
 // name and city come from. now is the run's timestamp, the same value for
 // every listing in one run.
+//
+// providerIds is the providers this run is allowed to build listings for,
+// from --provider. Left out, every enabled manual provider is in scope. A
+// listing outside the set is skipped as "not-targeted", which is a different
+// fact from a listing whose provider is not permitted to have one.
 export function buildListingAnimals(
   payload: PortalListingsPayload,
   policies: ReadonlyMap<string, ProviderPolicy>,
   shelters: ReadonlyMap<string, ShelterEntry>,
   now: string,
-  options: BuildListingsOptions = {},
+  providerIds?: ReadonlySet<string>,
 ): BuildListingsResult {
   const animals: Animal[] = [];
   const applied: ListingApplied[] = [];
@@ -220,7 +217,7 @@ export function buildListingAnimals(
       listing,
       policies.get(listing.providerId),
       shelters.get(listing.providerId),
-      options,
+      providerIds,
     );
     if (!decision.build) {
       skipped.push({

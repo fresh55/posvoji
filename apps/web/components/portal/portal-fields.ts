@@ -153,6 +153,52 @@ export function specialNeedsValue(
   return null;
 }
 
+/** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
+export function isoDate(value: string | null): string | null {
+  return value ? value.slice(0, 10) : null;
+}
+
+export function trimmed(value: string): string | null {
+  const text = value.trim();
+  return text === "" ? null : text;
+}
+
+/**
+ * The stored month count split over the two age inputs. A half that comes out
+ * zero stays empty rather than reading "0", except when the whole age is zero
+ * and the months box is the only place left to show it. In the crawled editor
+ * two empty boxes are also what reverting the field looks like.
+ */
+export function ageParts(total: number | null): {
+  years: string;
+  months: string;
+} {
+  if (total === null) return { years: "", months: "" };
+  const years = Math.floor(total / 12);
+  const months = total % 12;
+  return {
+    years: years === 0 ? "" : String(years),
+    months: months === 0 && years !== 0 ? "" : String(months),
+  };
+}
+
+/** Both halves of the age are whole counts, never a fraction or a minus. */
+export function isCount(value: number): boolean {
+  return Number.isInteger(value) && value >= 0;
+}
+
+/** Which of the two age inputs holds something that is not a count. */
+export type AgeBox = "years" | "months";
+
+/**
+ * The hint a field renders, named so its control can point aria at it. The
+ * field is a plain string: the listing form names two rows the crawled editor
+ * has no field for.
+ */
+export function hintId(uid: string, field: string): string {
+  return `${uid}-${field}-hint`;
+}
+
 type StatusMeta = {
   label: string;
   icon: LucideIcon;

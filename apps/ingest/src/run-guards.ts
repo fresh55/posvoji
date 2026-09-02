@@ -103,6 +103,11 @@ export function carryFirstSeenAt(
 ): Animal[] {
   const shared = options.sharedSourceUrlProviderIds;
   const byId = new Map(previous.map((a) => [a.id, a] as const));
+  // Those providers are left out as the map is built, and that is the whole
+  // guard: sourceKey starts with the providerId, so a lookup by one of their
+  // animals can only ever hit an entry of that same provider, and they have
+  // none in here. Filtering on the way in also keeps the map from holding
+  // entries nothing is able to read.
   const bySource = new Map(
     previous
       .filter((a) => !shared?.has(a.source.providerId))
@@ -110,10 +115,7 @@ export function carryFirstSeenAt(
   );
 
   return current.map((animal) => {
-    const fallback = shared?.has(animal.source.providerId)
-      ? undefined
-      : bySource.get(sourceKey(animal));
-    const before = byId.get(animal.id) ?? fallback;
+    const before = byId.get(animal.id) ?? bySource.get(sourceKey(animal));
     if (!before) return animal;
     if (before.source.firstSeenAt === animal.source.firstSeenAt) return animal;
     return {

@@ -12,10 +12,11 @@ import {
   ImagePlus,
   LoaderCircle,
   RefreshCw,
-  Search,
   TriangleAlert,
 } from "lucide-react";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
+import { ConfirmDialog } from "@/components/portal/confirm-dialog";
+import { MissingMark } from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
@@ -26,28 +27,26 @@ import {
   SPECIAL_NEEDS_META,
   SPECIES_META,
   STATUS_META,
+  ageParts,
   choiceCard,
+  hintId,
+  isCount,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
   isPortalStatus,
+  isoDate,
   specialNeedsAnswer,
   specialNeedsValue,
+  trimmed,
+  type AgeBox,
   type PortalSpecialNeedsAnswer,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -118,11 +117,14 @@ type Shape = Omit<PortalListingInput, "species" | "name"> & {
   name: string | null;
 };
 
-/** Which of the two age inputs holds something that is not a count. */
-type AgeBox = "years" | "months";
-
 /** The two fields a listing cannot exist without. */
 type Required = "species" | "name";
+
+/** What a submit can refuse: a required field left empty, or an unusable age. */
+type Refused = Required | "age";
+
+/** The two questions the form asks before work is thrown away. */
+type Asking = "discard" | "archive";
 
 /** A file picked for a listing and not stored yet. */
 type PendingPhoto = {
@@ -135,36 +137,6 @@ type PendingPhoto = {
 
 const isPortalSpecies = (value: string | null): value is PortalSpecies =>
   value !== null && (PORTAL_SPECIES as readonly string[]).includes(value);
-
-/** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
-function isoDate(value: string | null): string | null {
-  return value ? value.slice(0, 10) : null;
-}
-
-function trimmed(value: string): string | null {
-  const text = value.trim();
-  return text === "" ? null : text;
-}
-
-/**
- * The stored month count split over the two age inputs. A half that comes out
- * zero stays empty rather than reading "0", except when the whole age is zero
- * and the months box is the only place left to show it.
- */
-function ageParts(total: number | null): { years: string; months: string } {
-  if (total === null) return { years: "", months: "" };
-  const years = Math.floor(total / 12);
-  const months = total % 12;
-  return {
-    years: years === 0 ? "" : String(years),
-    months: months === 0 && years !== 0 ? "" : String(months),
-  };
-}
-
-/** Both halves of the age are whole counts, never a fraction or a minus. */
-function isCount(value: number): boolean {
-  return Number.isInteger(value) && value >= 0;
-}
 
 /**
  * The form a new listing opens on: nothing chosen but the status, which the
@@ -262,17 +234,30 @@ function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
   };
 }
 
+/**
+ * Both sides come out of the one object literal in shapeOf, so their keys are
+ * in the same order and every value is a primitive: comparing the encodings is
+ * comparing the shapes.
+ */
 function sameShape(left: Shape, right: Shape): boolean {
-  return (Object.keys(left) as (keyof Shape)[]).every(
-    (key) => left[key] === right[key],
-  );
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
-/** The first required field the shape leaves empty, in the form's order. */
-function missingRequired(shape: Shape): Required | null {
-  if (shape.species === null) return "species";
-  if (shape.name === null) return "name";
-  return null;
+/**
+ * The draft as the API would take it, or the first required field it leaves
+ * empty, in the form's order. One answer for both, so what the form refuses
+ * and what it would send cannot disagree.
+ */
+function inputOf(shape: Shape): {
+  input: PortalListingInput | null;
+  missing: Required | null;
+} {
+  if (shape.species === null) return { input: null, missing: "species" };
+  if (shape.name === null) return { input: null, missing: "name" };
+  return {
+    input: { ...shape, species: shape.species, name: shape.name },
+    missing: null,
+  };
 }
 
 /**
@@ -292,22 +277,21 @@ export function listingInput(listing: PortalListing): PortalListingInput {
   };
 }
 
-/**
- * A filter the adopter searches by that this listing still has no answer for.
- * Built to the same scale as the crawled editor's mark.
- */
-function MissingMark() {
-  return (
-    <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border border-amber-500/40 px-1.5 text-2xs font-medium text-amber-700 dark:text-amber-300">
-      <Search className="size-2.5" aria-hidden />
-      {portalText.missingBadge}
-    </span>
-  );
+/** The row a field draws in, which both the form's focus paths look up. */
+function fieldRow(
+  form: HTMLFormElement | null,
+  field: ListingField,
+): HTMLElement | null {
+  return form?.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? null;
 }
 
-/** The hint a field renders, named so its control can point aria at it. */
-function hintId(uid: string, field: ListingField): string {
-  return `${uid}-${field}-hint`;
+/** The controls inside one row, in the order they are read. */
+function fieldControls(row: HTMLElement): HTMLElement[] {
+  return Array.from(
+    row.querySelectorAll<HTMLElement>(
+      "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
+    ),
+  );
 }
 
 /**
@@ -415,10 +399,10 @@ export function ListingForm({
   // The listing the POST answered with, for a parent that does not switch
   // the prop over. Cleared on every fresh open.
   const [created, setCreated] = useState<PortalListing | null>(null);
-  const [ageError, setAgeError] = useState(false);
-  const [requiredError, setRequiredError] = useState<Required | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [archiving, setArchiving] = useState(false);
+  /** The field the submit refused. One at a time, so one message at a time. */
+  const [refused, setRefused] = useState<Refused | null>(null);
+  /** The question the form is asking, when it is asking one. */
+  const [asking, setAsking] = useState<Asking | null>(null);
   // The save slot is shared with the card's status buttons and an error in
   // it never expires, so the foot of the form only reads it once this form
   // has sent a save of its own.
@@ -436,20 +420,14 @@ export function ListingForm({
   const [removing, setRemoving] = useState<number | null>(null);
   const [source, setSource] = useState({ id: listing?.id ?? null, open });
   const formRef = useRef<HTMLFormElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-  const speciesRef = useRef<HTMLDivElement>(null);
-  const ageYearsRef = useRef<HTMLInputElement>(null);
-  const ageMonthsRef = useRef<HTMLInputElement>(null);
-  // The form is opened programmatically, so Radix has no trigger to give the
-  // focus back to and would leave it on <body>. Every dialog here captures
-  // what was focused before it opened and puts it back itself.
-  const returnFocus = useRef<HTMLElement | null>(null);
-  const confirmReturnFocus = useRef<HTMLElement | null>(null);
-  const archiveReturnFocus = useRef<HTMLElement | null>(null);
-  // Every object URL made for a preview, by the pending file's key. Object
-  // URLs are not garbage collected, so each is revoked when its file is
-  // stored or dropped, and the rest when the dialog closes or unmounts.
-  const previews = useRef(new Map<number, string>());
+  // Both dialogs are opened in code, so both put the focus back themselves.
+  // One pair for the two questions: only one of them can be open.
+  const formFocus = useReturnFocus();
+  const askFocus = useReturnFocus();
+  // Every preview URL still outstanding. Object URLs are not garbage
+  // collected, so each is revoked when its file is stored or dropped, and
+  // whatever is left when the dialog closes or unmounts.
+  const previews = useRef(new Set<string>());
   // Bumped on every close, so an upload loop the shelter walked away from
   // stops writing into the next opening's state.
   const sessionRef = useRef(0);
@@ -465,8 +443,8 @@ export function ListingForm({
   const fileId = `${uid}-file`;
   const compatibilityHintId = `${uid}-compatibility-hint`;
   const errorId = `${uid}-error`;
-  const ageErrorId = `${uid}-age-error`;
-  const requiredErrorId = `${uid}-required-error`;
+  /** One refusal at a time, so the three rows share the one message id. */
+  const refusedErrorId = `${uid}-refused-error`;
   const photoErrorId = `${uid}-photo-error`;
 
   const current = listing ?? created;
@@ -489,10 +467,8 @@ export function ListingForm({
     }
     if (open) {
       setDraft(draftFrom(listing));
-      setAgeError(false);
-      setRequiredError(null);
-      setConfirming(false);
-      setArchiving(false);
+      setRefused(null);
+      setAsking(null);
       setAttempted(false);
     }
   }
@@ -502,13 +478,13 @@ export function ListingForm({
   useEffect(() => {
     if (open) return;
     sessionRef.current += 1;
-    for (const url of previews.current.values()) URL.revokeObjectURL(url);
+    for (const url of previews.current) URL.revokeObjectURL(url);
     previews.current.clear();
   }, [open]);
   useEffect(() => {
     const held = previews.current;
     return () => {
-      for (const url of held.values()) URL.revokeObjectURL(url);
+      for (const url of held) URL.revokeObjectURL(url);
       held.clear();
     };
   }, []);
@@ -522,29 +498,21 @@ export function ListingForm({
     const frame = requestAnimationFrame(() => {
       const form = formRef.current;
       const panel = form?.parentElement;
-      const row = form?.querySelector<HTMLElement>(
-        `[data-field="${initialField}"]`,
-      );
+      const row = fieldRow(form, initialField);
       if (!panel || !row) return;
       const offset =
         row.getBoundingClientRect().top - panel.getBoundingClientRect().top;
       panel.scrollTo({ top: Math.max(panel.scrollTop + offset - 12, 0) });
-      row
-        .querySelector<HTMLElement>(
-          "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
-        )
-        ?.focus({ preventScroll: true });
+      fieldControls(row)[0]?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [open, initialField]);
 
   const editing = current !== null;
   const { shape, ageError: badAgeBox } = shapeOf(draft);
-  const missing = missingRequired(shape);
-  const input: PortalListingInput | null =
-    shape.species !== null && shape.name !== null && badAgeBox === null
-      ? { ...shape, species: shape.species, name: shape.name }
-      : null;
+  // The age is not tested here: submit() returns on an unusable one before it
+  // reads the input.
+  const { input, missing } = inputOf(shape);
   // What the form would change against what is saved, or against nothing.
   const baseline = shapeOf(draftFrom(current)).shape;
   const dirty = !sameShape(shape, baseline);
@@ -574,19 +542,36 @@ export function ListingForm({
     setDraft((draft) => ({ ...draft, [key]: value }));
   }
 
+  /** An answer given to the refused field retires its message, and only its. */
+  function answered(field: Refused) {
+    setRefused((current) => (current === field ? null : current));
+  }
+
+  /**
+   * Puts a refused field back on screen, with the message the submit left on
+   * it: a submit from the sticky footer leaves the reason off screen
+   * otherwise. `index` picks between the two age inputs, which share a row.
+   */
+  function showRefused(field: ListingField, index = 0) {
+    const row = fieldRow(formRef.current, field);
+    const target = row ? fieldControls(row)[index] : undefined;
+    target?.scrollIntoView({ block: "center" });
+    target?.focus({ preventScroll: true });
+  }
+
   /**
    * The age's own setter. Typing in either box retires its error; nothing
    * else in the form can.
    */
   function setAge(key: "ageYears" | "ageMonths", value: string) {
     setDraft((draft) => ({ ...draft, [key]: value }));
-    setAgeError(false);
+    answered("age");
   }
 
   /** Every way out but a finished save. Typed work is confirmed away, never dropped. */
   function requestClose() {
     if (unsaved) {
-      setConfirming(true);
+      setAsking("discard");
       return;
     }
     onOpenChange(false);
@@ -595,17 +580,20 @@ export function ListingForm({
   function discard() {
     // The form the focus would go back to is about to unmount with the
     // dialog, which then puts the focus back where it opened from.
-    confirmReturnFocus.current = null;
-    setConfirming(false);
+    askFocus.release();
+    setAsking(null);
     onOpenChange(false);
   }
 
+  /** Esc, a tap on the cancel, anything but an answer to the question. */
+  function closeAsk(open: boolean) {
+    if (!open) setAsking(null);
+  }
+
   /** Takes the preview of a file that is stored or dropped back from the browser. */
-  function releasePreview(key: number) {
-    const url = previews.current.get(key);
-    if (url === undefined) return;
-    URL.revokeObjectURL(url);
-    previews.current.delete(key);
+  function releasePreview(item: PendingPhoto) {
+    URL.revokeObjectURL(item.previewUrl);
+    previews.current.delete(item.previewUrl);
   }
 
   /**
@@ -624,7 +612,7 @@ export function ListingForm({
       const photo = await actions.uploadPhoto(listingId, item.file);
       if (sessionRef.current !== session) return failed;
       if (photo) {
-        releasePreview(item.key);
+        releasePreview(item);
         setPending((pending) =>
           pending.filter((candidate) => candidate.key !== item.key),
         );
@@ -663,7 +651,7 @@ export function ListingForm({
       }
       const key = nextKey.current++;
       const previewUrl = URL.createObjectURL(file);
-      previews.current.set(key, previewUrl);
+      previews.current.add(previewUrl);
       accepted.push({ key, file, previewUrl, failed: false });
     }
     if (refused) setPhotoError(refused);
@@ -685,7 +673,7 @@ export function ListingForm({
   }
 
   function dropPending(item: PendingPhoto) {
-    releasePreview(item.key);
+    releasePreview(item);
     setPending((pending) =>
       pending.filter((candidate) => candidate.key !== item.key),
     );
@@ -709,7 +697,7 @@ export function ListingForm({
   // whole dialog closes after it and moves the focus out again.
   async function archive() {
     if (!current) return;
-    setArchiving(false);
+    setAsking(null);
     setAttempted(true);
     setSubmitting(true);
     try {
@@ -721,24 +709,14 @@ export function ListingForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // A refused field takes the focus with it: a submit from the sticky
-    // footer leaves the reason off screen otherwise.
     if (missing) {
-      setRequiredError(missing);
-      const target =
-        missing === "species"
-          ? speciesRef.current?.querySelector<HTMLElement>("button")
-          : nameRef.current;
-      target?.scrollIntoView({ block: "center" });
-      target?.focus({ preventScroll: true });
+      setRefused(missing);
+      showRefused(missing);
       return;
     }
     if (badAgeBox) {
-      setAgeError(true);
-      const box =
-        badAgeBox === "years" ? ageYearsRef.current : ageMonthsRef.current;
-      box?.scrollIntoView({ block: "center" });
-      box?.focus({ preventScroll: true });
+      setRefused("age");
+      showRefused("approximateAgeMonths", badAgeBox === "months" ? 1 : 0);
       return;
     }
     if (!input) return;
@@ -771,18 +749,7 @@ export function ListingForm({
 
   return (
     <Dialog open={open} onOpenChange={requestClose}>
-      <DialogContent
-        closeLabel="Zapri"
-        className="gap-0"
-        onOpenAutoFocus={() => {
-          returnFocus.current = document.activeElement as HTMLElement | null;
-        }}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          returnFocus.current?.focus();
-          returnFocus.current = null;
-        }}
-      >
+      <DialogContent closeLabel="Zapri" className="gap-0" {...formFocus.props}>
         <DialogHeader>
           <DialogTitle className="text-base">
             {editing
@@ -807,25 +774,21 @@ export function ListingForm({
             uid={uid}
             field="species"
             label={portalText.fieldSpecies}
-            error={requiredError === "species" ? portalText.speciesRequired : null}
-            errorId={requiredErrorId}
+            error={refused === "species" ? portalText.speciesRequired : null}
+            errorId={refusedErrorId}
           >
-            <div ref={speciesRef}>
-              <ChoiceGrid
-                label={portalText.fieldSpecies}
-                options={SPECIES_ORDER}
-                meta={SPECIES_META}
-                value={draft.species}
-                onPick={(species) => {
-                  set("species", species);
-                  if (species) setRequiredError(null);
-                }}
-                disabled={submitting}
-                describedBy={
-                  requiredError === "species" ? requiredErrorId : undefined
-                }
-              />
-            </div>
+            <ChoiceGrid
+              label={portalText.fieldSpecies}
+              options={SPECIES_ORDER}
+              meta={SPECIES_META}
+              value={draft.species}
+              onPick={(species) => {
+                set("species", species);
+                if (species) answered("species");
+              }}
+              disabled={submitting}
+              describedBy={refused === "species" ? refusedErrorId : undefined}
+            />
           </Field>
 
           <Field
@@ -834,22 +797,21 @@ export function ListingForm({
             label={portalText.fieldName}
             htmlFor={nameId}
             hint={portalText.nameHint}
-            error={requiredError === "name" ? portalText.nameRequired : null}
-            errorId={requiredErrorId}
+            error={refused === "name" ? portalText.nameRequired : null}
+            errorId={refusedErrorId}
           >
             <Input
-              ref={nameRef}
               id={nameId}
               value={draft.name}
               disabled={submitting}
-              aria-invalid={requiredError === "name" || undefined}
+              aria-invalid={refused === "name" || undefined}
               aria-errormessage={
-                requiredError === "name" ? requiredErrorId : undefined
+                refused === "name" ? refusedErrorId : undefined
               }
               aria-describedby={hintId(uid, "name")}
               onChange={(event) => {
                 set("name", event.target.value);
-                if (event.target.value.trim()) setRequiredError(null);
+                if (event.target.value.trim()) answered("name");
               }}
             />
           </Field>
@@ -1150,8 +1112,8 @@ export function ListingForm({
               field="approximateAgeMonths"
               label={portalText.fieldAgeMonths}
               hint={portalText.ageHint}
-              error={ageError ? portalText.invalidError : null}
-              errorId={ageErrorId}
+              error={refused === "age" ? portalText.invalidError : null}
+              errorId={refusedErrorId}
             >
               <div
                 role="group"
@@ -1161,7 +1123,6 @@ export function ListingForm({
               >
                 <div className="flex items-center gap-1.5">
                   <Input
-                    ref={ageYearsRef}
                     id={ageYearsId}
                     type="number"
                     inputMode="numeric"
@@ -1169,8 +1130,10 @@ export function ListingForm({
                     step={1}
                     value={draft.ageYears}
                     disabled={submitting}
-                    aria-invalid={ageError || undefined}
-                    aria-errormessage={ageError ? ageErrorId : undefined}
+                    aria-invalid={refused === "age" || undefined}
+                    aria-errormessage={
+                      refused === "age" ? refusedErrorId : undefined
+                    }
                     aria-describedby={hintId(uid, "approximateAgeMonths")}
                     onChange={(event) => setAge("ageYears", event.target.value)}
                   />
@@ -1183,7 +1146,6 @@ export function ListingForm({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Input
-                    ref={ageMonthsRef}
                     id={ageMonthsId}
                     type="number"
                     inputMode="numeric"
@@ -1191,8 +1153,10 @@ export function ListingForm({
                     step={1}
                     value={draft.ageMonths}
                     disabled={submitting}
-                    aria-invalid={ageError || undefined}
-                    aria-errormessage={ageError ? ageErrorId : undefined}
+                    aria-invalid={refused === "age" || undefined}
+                    aria-errormessage={
+                      refused === "age" ? refusedErrorId : undefined
+                    }
                     aria-describedby={hintId(uid, "approximateAgeMonths")}
                     onChange={(event) =>
                       setAge("ageMonths", event.target.value)
@@ -1279,7 +1243,7 @@ export function ListingForm({
                 type="button"
                 variant="ghost"
                 disabled={busy}
-                onClick={() => setArchiving(true)}
+                onClick={() => setAsking("archive")}
                 className="text-destructive hover:text-destructive"
               >
                 {portalText.listingArchive}
@@ -1298,82 +1262,33 @@ export function ListingForm({
           </div>
         </form>
 
-        {/* Nested on purpose: it opens over the form, so what the shelter is
-            deciding about stays behind it. An alert dialog and not a second
-            Dialog: it asks a question with a destructive answer, so it is
-            announced as one, it cannot be dismissed by a stray tap outside,
-            and Radix opens it focused on the cancel. */}
-        <AlertDialog open={confirming} onOpenChange={setConfirming}>
-          <AlertDialogContent
-            className="max-w-sm"
-            onOpenAutoFocus={() => {
-              confirmReturnFocus.current =
-                document.activeElement as HTMLElement | null;
-            }}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              confirmReturnFocus.current?.focus();
-              confirmReturnFocus.current = null;
-            }}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-base">
-                {portalText.discardTitle}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {portalText.discardLead}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            {/* Reversed, so the safe answer is both the rightmost button and
-                the one the dialog opens focused on. */}
-            <div className="flex flex-row-reverse gap-2">
-              <AlertDialogCancel variant="default">
-                {portalText.keepEditing}
-              </AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={discard}>
-                {portalText.discardChanges}
-              </AlertDialogAction>
-            </div>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* The two questions, one state: only one of them can be open. Two
+            elements and not one parameterised block, so the words do not
+            change under the one that is closing. */}
+        <ConfirmDialog
+          open={asking === "discard"}
+          onOpenChange={closeAsk}
+          title={portalText.discardTitle}
+          lead={portalText.discardLead}
+          keepLabel={portalText.keepEditing}
+          confirmLabel={portalText.discardChanges}
+          onConfirm={discard}
+          {...askFocus.props}
+        />
 
-        {/* The shelter's delete. The same shape as the discard confirm, and
-            the lead says when the animal leaves the public site, because for
-            a manual shelter this form is the only listing there is. */}
-        <AlertDialog open={archiving} onOpenChange={setArchiving}>
-          <AlertDialogContent
-            className="max-w-sm"
-            onOpenAutoFocus={() => {
-              archiveReturnFocus.current =
-                document.activeElement as HTMLElement | null;
-            }}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              archiveReturnFocus.current?.focus();
-              archiveReturnFocus.current = null;
-            }}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-base">
-                {fill(portalText.listingArchiveTitle, { name })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {portalText.listingArchiveLead}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="flex flex-row-reverse gap-2">
-              <AlertDialogCancel variant="default">
-                {portalText.listingArchiveCancel}
-              </AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => void archive()}
-              >
-                {portalText.listingArchive}
-              </AlertDialogAction>
-            </div>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* The shelter's delete. The lead says when the animal leaves the
+            public site, because for a manual shelter this form is the only
+            listing there is. */}
+        <ConfirmDialog
+          open={asking === "archive"}
+          onOpenChange={closeAsk}
+          title={fill(portalText.listingArchiveTitle, { name })}
+          lead={portalText.listingArchiveLead}
+          keepLabel={portalText.listingArchiveCancel}
+          confirmLabel={portalText.listingArchive}
+          onConfirm={() => void archive()}
+          {...askFocus.props}
+        />
       </DialogContent>
     </Dialog>
   );

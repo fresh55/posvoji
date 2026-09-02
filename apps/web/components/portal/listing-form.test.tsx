@@ -18,7 +18,7 @@ import {
   STATUS_META,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
 import type {
   PortalListing,

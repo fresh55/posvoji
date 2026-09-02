@@ -15,6 +15,7 @@ import { PortalAnimalCard } from "@/components/portal/animal-card";
 import {
   PortalListTools,
   filterPortalAnimals,
+  type PortalListEntry,
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
 import { ListingForm } from "@/components/portal/listing-form";
@@ -33,25 +34,7 @@ import {
   usePortalSession,
 } from "@/hooks/use-portal-session";
 import { animalCount } from "@/lib/labels";
-import {
-  isManualShelter,
-  type PortalAnimal,
-  type PortalListing,
-  type PortalStatus,
-} from "@/lib/portal-api";
-
-/**
- * A listing in the shape the list tools read. They search the name and the
- * breed and count the statuses, and a listing carries all three under the
- * same names; the two fields they never read are filled in for the type.
- */
-function listingAsAnimal(listing: PortalListing): PortalAnimal {
-  return {
-    ...listing,
-    thumbnailUrl: listing.photos[0]?.url ?? null,
-    overrides: {},
-  };
-}
+import { isManualShelter, type PortalStatus } from "@/lib/portal-api";
 
 function CardSkeleton() {
   return (
@@ -157,20 +140,18 @@ export function PortalWorkspace() {
 
   const listState = manual ? listingState : animalState;
   const reloadList = manual ? reloadListings : reloadAnimals;
-  // The list tools read an animal; a listing is handed to them in that shape
-  // and the listings they keep are picked back out by id.
-  const all = useMemo(
-    () => (manual ? listings.map(listingAsAnimal) : animals),
-    [animals, listings, manual],
+  // The tools read the four fields a crawled animal and a manual listing both
+  // carry under the same names, so each list goes through them as it is.
+  const all: PortalListEntry[] = manual ? listings : animals;
+  const visibleAnimals = useMemo(
+    () => filterPortalAnimals(animals, query, status),
+    [animals, query, status],
   );
-  const visible = useMemo(
-    () => filterPortalAnimals(all, query, status),
-    [all, query, status],
+  const visibleListings = useMemo(
+    () => filterPortalAnimals(listings, query, status),
+    [listings, query, status],
   );
-  const visibleListings = useMemo(() => {
-    const kept = new Set(visible.map((animal) => animal.id));
-    return listings.filter((listing) => kept.has(listing.id));
-  }, [listings, visible]);
+  const visibleCount = manual ? visibleListings.length : visibleAnimals.length;
   const newListing =
     listings.find((listing) => listing.id === newListingId) ?? null;
 
@@ -361,7 +342,7 @@ export function PortalWorkspace() {
 
             {listState.status === "ready" &&
               all.length > 0 &&
-              visible.length === 0 && (
+              visibleCount === 0 && (
                 <Notice
                   icon={SearchX}
                   title={portalText.noMatchesTitle}
@@ -406,10 +387,10 @@ export function PortalWorkspace() {
 
             {listState.status === "ready" &&
               !manual &&
-              visible.length > 0 &&
+              visibleAnimals.length > 0 &&
               activeShelter && (
                 <div className="space-y-3">
-                  {visible.map((animal, index) => (
+                  {visibleAnimals.map((animal, index) => (
                     <m.div
                       key={animal.id}
                       initial={

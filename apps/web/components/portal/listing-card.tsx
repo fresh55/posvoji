@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import { ListingForm, listingInput } from "@/components/portal/listing-form";
+import { PORTAL_BADGE } from "@/components/portal/override-mark";
 import {
   SEARCHABLE_FIELDS,
   SEX_META,
@@ -21,7 +22,7 @@ import {
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
 import { Button } from "@/components/ui/button";
 import { ageInMonths } from "@/lib/filters";
@@ -140,12 +141,7 @@ export function PortalListingCard({
                 Where the crawled card puts its edit mark: on a listing every
                 value is the shelter's own, so the mark would say nothing. */}
             {status && (
-              <span
-                className={cn(
-                  "inline-flex h-5 shrink-0 items-center rounded-4xl border px-1.5 text-2xs font-medium",
-                  STATUS_META[status].badge,
-                )}
-              >
+              <span className={cn(PORTAL_BADGE, STATUS_META[status].badge)}>
                 {STATUS_META[status].label}
               </span>
             )}

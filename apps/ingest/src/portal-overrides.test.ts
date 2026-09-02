@@ -719,13 +719,18 @@ describe("buildOverrideReport", () => {
       applied: [],
       unmatched: [],
       conflicts: [],
-      listings: { enabled: false, failed: false, applied: [], skipped: [] },
+      listings: {
+        payloadArrived: false,
+        failed: false,
+        applied: [],
+        skipped: [],
+      },
     });
   });
 
   it("carries the listings section it is handed", () => {
     const report = buildOverrideReport(generatedAt, null, null, {
-      enabled: true,
+      payloadArrived: true,
       failed: false,
       portalGeneratedAt: "2026-09-01T12:00:00Z",
       applied: [

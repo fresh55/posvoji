@@ -380,7 +380,7 @@ describe("buildListingAnimals", () => {
         ["oskar", { id: "oskar", name: "Zavetišče Oskar", city: "Vitovlje" }],
       ]),
       NOW,
-      { providerIds: new Set(["johanca"]) },
+      new Set(["johanca"]),
     );
 
     expect(built.animals.map((a) => a.source.providerId)).toEqual(["johanca"]);

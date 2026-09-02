@@ -170,49 +170,18 @@ class ListingIn(Schema):
         return stripped
 
 
-class ListingPhotoOut(Schema):
-    id: int
-    url: str
-    width: int
-    height: int
-
-
-class ListingOut(Schema):
-    """The export shape plus archivedAt, with each photo carrying its id.
-
-    Unlike the export this keeps its nulls: the editor has to be able to tell
-    a field the shelter cleared from one it never filled in.
-    """
-
-    providerId: str
-    id: str
-    species: str
-    status: str
-    name: str
-    sex: str | None = None
-    breed: str | None = None
-    birthDate: str | None = None
-    approximateAgeMonths: int | None = None
-    size: str | None = None
-    energy: str | None = None
-    goodWithKids: str | None = None
-    goodWithDogs: str | None = None
-    goodWithCats: str | None = None
-    apartmentOk: str | None = None
-    specialNeeds: bool | None = None
-    shortDescription: str | None = None
-    photos: list[ListingPhotoOut] = []
-    createdAt: str
-    updatedAt: str
-    archivedAt: str | None = None
-
-
 class ExportListingPhotoOut(Schema):
     """A photo as the ingest pipeline reads it: no id, url absolute."""
 
     url: str
     width: int
     height: int
+
+
+class ListingPhotoOut(ExportListingPhotoOut):
+    """The same photo for the editor, which addresses it by id."""
+
+    id: int
 
 
 class ExportListingOut(Schema):
@@ -242,6 +211,19 @@ class ExportListingOut(Schema):
     photos: list[ExportListingPhotoOut]
     createdAt: str
     updatedAt: str
+
+
+class ListingOut(ExportListingOut):
+    """The export shape plus archivedAt, with each photo carrying its id.
+
+    The same fields as the export by inheritance, so the two cannot drift.
+    What differs is on the route, not here: this one is not serialized with
+    exclude_none, because the editor has to be able to tell a field the
+    shelter cleared from one it never filled in.
+    """
+
+    photos: list[ListingPhotoOut] = []
+    archivedAt: str | None = None
 
 
 class ExportListingsOut(Schema):

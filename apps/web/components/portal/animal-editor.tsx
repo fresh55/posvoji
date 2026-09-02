@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { LoaderCircle, Search, TriangleAlert } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
-import { OverrideMark, RevertButton } from "@/components/portal/override-mark";
+import { ConfirmDialog } from "@/components/portal/confirm-dialog";
+import {
+  MissingMark,
+  OverrideMark,
+  RevertButton,
+} from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
@@ -12,25 +17,23 @@ import {
   SEX_META,
   SIZE_META,
   SPECIAL_NEEDS_META,
+  ageParts,
+  hintId,
+  isCount,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
+  isoDate,
   specialNeedsAnswer,
   specialNeedsValue,
+  trimmed,
+  type AgeBox,
   type PortalSpecialNeedsAnswer,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import type { PortalSaveState } from "@/hooks/portal-list";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,40 +76,6 @@ type Draft = {
   apartmentOk: PortalCompatibility | null;
   specialNeeds: PortalSpecialNeedsAnswer | null;
 };
-
-/** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
-function isoDate(value: string | null): string | null {
-  return value ? value.slice(0, 10) : null;
-}
-
-function trimmed(value: string): string | null {
-  const text = value.trim();
-  return text === "" ? null : text;
-}
-
-/**
- * The stored month count split over the two age inputs. A half that comes out
- * zero stays empty rather than reading "0", except when the whole age is zero
- * and the months box is the only place left to show it: two empty boxes are
- * what reverting the field looks like.
- */
-function ageParts(total: number | null): { years: string; months: string } {
-  if (total === null) return { years: "", months: "" };
-  const years = Math.floor(total / 12);
-  const months = total % 12;
-  return {
-    years: years === 0 ? "" : String(years),
-    months: months === 0 && years !== 0 ? "" : String(months),
-  };
-}
-
-/** Both halves of the age are whole counts, never a fraction or a minus. */
-function isCount(value: number): boolean {
-  return Number.isInteger(value) && value >= 0;
-}
-
-/** Which of the two age inputs holds something that is not a count. */
-type AgeBox = "years" | "months";
 
 function draftFrom(animal: PortalAnimal): Draft {
   const age = ageParts(animal.approximateAgeMonths ?? null);
@@ -229,25 +198,6 @@ function buildPatch(
   return { patch, ageError };
 }
 
-/**
- * A filter the adopter searches by that this animal still has no answer for.
- * It sits where OverrideMark sits and is built to the same scale, but says the
- * opposite thing: not "you changed this", "nobody has answered this yet".
- */
-function MissingMark() {
-  return (
-    <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border border-amber-500/40 px-1.5 text-2xs font-medium text-amber-700 dark:text-amber-300">
-      <Search className="size-2.5" aria-hidden />
-      {portalText.missingBadge}
-    </span>
-  );
-}
-
-/** The hint a field renders, named so its control can point aria at it. */
-function hintId(uid: string, field: PortalField): string {
-  return `${uid}-${field}-hint`;
-}
-
 /** Label row shared by every field: the name, the edit mark, the way back. */
 function Field({
   uid,
@@ -362,11 +312,9 @@ export function AnimalEditor({
   const [attempted, setAttempted] = useState(false);
   const [source, setSource] = useState({ animal, open });
   const formRef = useRef<HTMLFormElement>(null);
-  // The editor is opened programmatically, so Radix has no trigger to give
-  // the focus back to and would leave it on <body>. Both dialogs capture what
-  // was focused before they opened and put it back themselves.
-  const returnFocus = useRef<HTMLElement | null>(null);
-  const confirmReturnFocus = useRef<HTMLElement | null>(null);
+  // Both dialogs are opened in code, so both put the focus back themselves.
+  const editorFocus = useReturnFocus();
+  const confirmFocus = useReturnFocus();
 
   // One prefix per mounted editor, so a hint and the error summary can be
   // named by the controls they belong to without colliding across dialogs.
@@ -483,7 +431,7 @@ export function AnimalEditor({
   function discard() {
     // The form the focus would go back to is about to unmount with the
     // editor, which then puts the focus back where it opened from.
-    confirmReturnFocus.current = null;
+    confirmFocus.release();
     setConfirming(false);
     onOpenChange(false);
   }
@@ -511,19 +459,7 @@ export function AnimalEditor({
       <DialogContent
         closeLabel="Zapri"
         className="gap-0"
-        // Radix hands the focus back to the trigger it was opened from, and
-        // there is no trigger here: the card opens the editor in code, so the
-        // focus would land on <body> and the shelter would be back at the top
-        // of the page. Captured on open and put back on close, as
-        // animal-dialog.tsx does.
-        onOpenAutoFocus={() => {
-          returnFocus.current = document.activeElement as HTMLElement | null;
-        }}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          returnFocus.current?.focus();
-          returnFocus.current = null;
-        }}
+        {...editorFocus.props}
       >
         <DialogHeader>
           <DialogTitle className="text-base">
@@ -874,45 +810,17 @@ export function AnimalEditor({
           </div>
         </form>
 
-        {/* Nested on purpose: it opens over the editor, so the form the
-            shelter is deciding about stays behind it. An alert dialog and not
-            a second Dialog: this asks a question with a destructive answer,
-            so it is announced as one, it cannot be dismissed by a stray tap
-            outside, and Radix opens it focused on the cancel. */}
-        <AlertDialog open={confirming} onOpenChange={setConfirming}>
-          <AlertDialogContent
-            className="max-w-sm"
-            // Whatever in the form asked the question gets the focus back.
-            onOpenAutoFocus={() => {
-              confirmReturnFocus.current =
-                document.activeElement as HTMLElement | null;
-            }}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              confirmReturnFocus.current?.focus();
-              confirmReturnFocus.current = null;
-            }}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-base">
-                {portalText.discardTitle}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {portalText.discardLead}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            {/* Reversed, so the safe answer is both the rightmost button and
-                the one the dialog opens focused on. */}
-            <div className="flex flex-row-reverse gap-2">
-              <AlertDialogCancel variant="default">
-                {portalText.keepEditing}
-              </AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={discard}>
-                {portalText.discardChanges}
-              </AlertDialogAction>
-            </div>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Whatever in the form asked the question gets the focus back. */}
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title={portalText.discardTitle}
+          lead={portalText.discardLead}
+          keepLabel={portalText.keepEditing}
+          confirmLabel={portalText.discardChanges}
+          onConfirm={discard}
+          {...confirmFocus.props}
+        />
       </DialogContent>
     </Dialog>
   );

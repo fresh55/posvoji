@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { ZodType } from "zod";
 import {
   PortalExportPayload,
   type PortalExportPayload as PortalExportPayloadType,
@@ -11,21 +12,13 @@ import {
 const PORTAL_EXPORT_TIMEOUT_MS = 30_000;
 const PORTAL_EXPORT_MAX_BYTES = 5 * 1024 * 1024;
 
-function parsePortalExport(body: unknown): PortalExportPayloadType {
-  const result = PortalExportPayload.safeParse(body);
+// Both feeds validate the same way. The label names the feed in the message,
+// so a payload that fails says which of them it came from.
+function parsePayload<T>(schema: ZodType<T>, label: string, body: unknown): T {
+  const result = schema.safeParse(body);
   if (!result.success) {
     throw new Error(
-      `portal export payload failed validation: ${result.error.message}`,
-    );
-  }
-  return result.data;
-}
-
-function parsePortalListings(body: unknown): PortalListingsPayloadType {
-  const result = PortalListingsPayload.safeParse(body);
-  if (!result.success) {
-    throw new Error(
-      `portal listings payload failed validation: ${result.error.message}`,
+      `portal ${label} payload failed validation: ${result.error.message}`,
     );
   }
   return result.data;
@@ -52,22 +45,20 @@ function portalEndpoint(baseUrl: string, path: string): string {
   return base.href;
 }
 
-function exportEndpoint(baseUrl: string): string {
-  return portalEndpoint(baseUrl, "/api/export");
-}
-
-function listingsEndpoint(baseUrl: string): string {
-  return portalEndpoint(baseUrl, "/api/export/listings");
-}
-
-async function readBoundedBody(response: Response, url: string): Promise<string> {
+async function readBoundedBody(
+  response: Response,
+  url: string,
+  label: string,
+): Promise<string> {
   const contentLength = response.headers.get("content-length");
   if (
     contentLength &&
     /^\d+$/.test(contentLength) &&
     BigInt(contentLength) > BigInt(PORTAL_EXPORT_MAX_BYTES)
   ) {
-    throw new Error(`portal export response exceeds ${PORTAL_EXPORT_MAX_BYTES} bytes: ${url}`);
+    throw new Error(
+      `portal ${label} response exceeds ${PORTAL_EXPORT_MAX_BYTES} bytes: ${url}`,
+    );
   }
 
   if (!response.body) return "";
@@ -81,7 +72,7 @@ async function readBoundedBody(response: Response, url: string): Promise<string>
     if (total > PORTAL_EXPORT_MAX_BYTES) {
       void reader.cancel().catch(() => undefined);
       throw new Error(
-        `portal export response exceeds ${PORTAL_EXPORT_MAX_BYTES} bytes: ${url}`,
+        `portal ${label} response exceeds ${PORTAL_EXPORT_MAX_BYTES} bytes: ${url}`,
       );
     }
     chunks.push(value);
@@ -90,7 +81,8 @@ async function readBoundedBody(response: Response, url: string): Promise<string>
 }
 
 // Whether this run has the portal integration configured at all, decided from
-// the same three variables fetchPortalOverrides reads below. It is a separate
+// the same three variables the override feed below reads: its fixture, the
+// base URL and the token. It is a separate
 // predicate because the pipeline has to know before the payload is fetched:
 // the crawled-snapshot bootstrap in crawled-snapshot.ts is strict when
 // corrections can reach the dataset and forgiving when they cannot. Keep the
@@ -102,28 +94,50 @@ export function portalIntegrationEnabled(): boolean {
   );
 }
 
-// Fetches the portal's current export, or returns null when the integration
-// is not configured. Shape or HTTP failures abort the export so the pipeline
-// never writes a dataset with only some corrections applied.
-export async function fetchPortalOverrides(): Promise<PortalExportPayloadType | null> {
-  const fixturePath = process.env["PORTAL_EXPORT_FIXTURE"];
+// What one feed is: the fixture variable that stands in for the network, the
+// path it reads, the nouns its messages use, what a 404 means for it, and the
+// schema its payload is parsed with. Everything else is one implementation
+// below, the byte cap, the timeout and the credential-free URL check
+// included, so a change to any of those cannot reach one feed and miss the
+// other.
+interface PortalFeed<T> {
+  // The noun this feed's console lines use.
+  label: string;
+  // The noun its errors use. The override feed says "export" there, after the
+  // route it reads, and "overrides" in its logs, after what the payload
+  // carries. Both wordings are kept as they were.
+  errorLabel: string;
+  fixtureVar: string;
+  path: string;
+  schema: ZodType<T>;
+  // What a 404 means for this feed. Unset, it is a failure like any other
+  // status. Set, it is an empty feed and the text says why that is expected.
+  emptyOn404?: string;
+}
+
+async function fetchPortalFeed<T>(feed: PortalFeed<T>): Promise<T | null> {
+  const fixturePath = process.env[feed.fixtureVar];
   if (fixturePath) {
-    console.log(`portal: reading overrides from fixture ${fixturePath}`);
-    return parsePortalExport(JSON.parse(readFileSync(fixturePath, "utf8")));
+    console.log(`portal: reading ${feed.label} from fixture ${fixturePath}`);
+    return parsePayload(
+      feed.schema,
+      feed.errorLabel,
+      JSON.parse(readFileSync(fixturePath, "utf8")),
+    );
   }
 
   const baseUrl = process.env["PORTAL_EXPORT_URL"];
   const token = process.env["PORTAL_EXPORT_TOKEN"];
   if (!baseUrl || !token) {
     console.log(
-      "portal: overrides disabled (PORTAL_EXPORT_URL/PORTAL_EXPORT_TOKEN not set)",
+      `portal: ${feed.label} disabled (PORTAL_EXPORT_URL/PORTAL_EXPORT_TOKEN not set)`,
     );
     return null;
   }
 
   // This calls our own portal service, not a shelter website. PoliteClient's
   // crawling etiquette therefore does not apply.
-  const url = exportEndpoint(baseUrl);
+  const url = portalEndpoint(baseUrl, feed.path);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -131,24 +145,46 @@ export async function fetchPortalOverrides(): Promise<PortalExportPayloadType | 
       signal: AbortSignal.timeout(PORTAL_EXPORT_TIMEOUT_MS),
     });
   } catch (error) {
-    throw new Error(`portal export request failed: ${url}`, { cause: error });
+    throw new Error(`portal ${feed.errorLabel} request failed: ${url}`, {
+      cause: error,
+    });
+  }
+  if (feed.emptyOn404 !== undefined && response.status === 404) {
+    console.log(
+      `portal: no ${feed.label} feed at ${url} (HTTP 404). ${feed.emptyOn404}`,
+    );
+    return null;
   }
   if (!response.ok) {
     throw new Error(
-      `portal export request failed: HTTP ${response.status} ${url}`,
+      `portal ${feed.errorLabel} request failed: HTTP ${response.status} ${url}`,
     );
   }
 
-  const text = await readBoundedBody(response, url);
+  const text = await readBoundedBody(response, url, feed.errorLabel);
   let body: unknown;
   try {
     body = JSON.parse(text);
   } catch (error) {
-    throw new Error(`portal export response is not valid JSON: ${url}`, {
-      cause: error,
-    });
+    throw new Error(
+      `portal ${feed.errorLabel} response is not valid JSON: ${url}`,
+      { cause: error },
+    );
   }
-  return parsePortalExport(body);
+  return parsePayload(feed.schema, feed.errorLabel, body);
+}
+
+// Fetches the portal's current export, or returns null when the integration
+// is not configured. Shape or HTTP failures abort the export so the pipeline
+// never writes a dataset with only some corrections applied.
+export async function fetchPortalOverrides(): Promise<PortalExportPayloadType | null> {
+  return fetchPortalFeed({
+    label: "overrides",
+    errorLabel: "export",
+    fixtureVar: "PORTAL_EXPORT_FIXTURE",
+    path: "/api/export",
+    schema: PortalExportPayload,
+  });
 }
 
 // The manual shelters' animals, from the same portal, the same base URL and
@@ -156,63 +192,22 @@ export async function fetchPortalOverrides(): Promise<PortalExportPayloadType | 
 //
 // Null means "no listings this run" and is not an error: the integration is
 // not configured, or the portal is an older deployment that has no listings
-// route yet and answers 404. Every other failure throws, the same as the
-// override fetch. What export.ts does with a throw is different, though: a
-// manual shelter has no listing of its animals anywhere else, so it carries
-// its previous records forward the way a failed crawl does rather than
-// emptying its page.
+// route yet and answers 404. That 404 is treated as an empty feed rather than
+// a failure so this pipeline can ship ahead of the portal: manual providers
+// keep the records they already have and the run stays a clean one. Every
+// other failure throws, the same as the override fetch. What export.ts does
+// with a throw is different, though: a manual shelter has no listing of its
+// animals anywhere else, so it carries its previous records forward the way a
+// failed crawl does rather than emptying its page.
 export async function fetchPortalListings(): Promise<PortalListingsPayloadType | null> {
-  const fixturePath = process.env["PORTAL_LISTINGS_FIXTURE"];
-  if (fixturePath) {
-    console.log(`portal: reading listings from fixture ${fixturePath}`);
-    return parsePortalListings(JSON.parse(readFileSync(fixturePath, "utf8")));
-  }
-
-  const baseUrl = process.env["PORTAL_EXPORT_URL"];
-  const token = process.env["PORTAL_EXPORT_TOKEN"];
-  if (!baseUrl || !token) {
-    console.log(
-      "portal: listings disabled (PORTAL_EXPORT_URL/PORTAL_EXPORT_TOKEN not set)",
-    );
-    return null;
-  }
-
-  const url = listingsEndpoint(baseUrl);
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(PORTAL_EXPORT_TIMEOUT_MS),
-    });
-  } catch (error) {
-    throw new Error(`portal listings request failed: ${url}`, { cause: error });
-  }
-  // A portal deployed before the listings route existed. Treated as an empty
-  // feed rather than a failure so this pipeline can ship ahead of the portal:
-  // manual providers keep the records they already have and the run stays a
-  // clean one.
-  if (response.status === 404) {
-    console.log(
-      `portal: no listings feed at ${url} (HTTP 404). Manual shelters keep ` +
-        `their previous animals; this is expected until the portal ships the ` +
-        `route.`,
-    );
-    return null;
-  }
-  if (!response.ok) {
-    throw new Error(
-      `portal listings request failed: HTTP ${response.status} ${url}`,
-    );
-  }
-
-  const text = await readBoundedBody(response, url);
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch (error) {
-    throw new Error(`portal listings response is not valid JSON: ${url}`, {
-      cause: error,
-    });
-  }
-  return parsePortalListings(body);
+  return fetchPortalFeed({
+    label: "listings",
+    errorLabel: "listings",
+    fixtureVar: "PORTAL_LISTINGS_FIXTURE",
+    path: "/api/export/listings",
+    schema: PortalListingsPayload,
+    emptyOn404:
+      "Manual shelters keep their previous animals; this is expected until " +
+      "the portal ships the route.",
+  });
 }

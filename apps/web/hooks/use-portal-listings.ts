@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { portalText } from "@/components/portal/portal-text";
-import type {
-  PortalListState,
-  PortalSaveState,
-} from "@/hooks/use-portal-animals";
 import {
-  PortalError,
+  IDLE,
+  SAVED_FLASH_MS,
+  message,
+  type PortalListState,
+  type PortalSaveState,
+} from "@/hooks/portal-list";
+import {
   archiveListing,
   createListing,
   deleteListingPhoto,
@@ -15,39 +17,16 @@ import {
   isUnauthorized,
   updateListing,
   uploadListingPhoto,
-  type PortalErrorKind,
   type PortalListing,
   type PortalListingInput,
   type PortalListingPhoto,
 } from "@/lib/portal-api";
-
-const SAVED_FLASH_MS = 1800;
 
 /**
  * The save slot a listing that does not exist yet writes to. A listing id is
  * a uuid, so nothing can collide with it.
  */
 export const NEW_LISTING = "new";
-
-const IDLE: PortalSaveState = { status: "idle" };
-
-// The same table usePortalAnimals keeps, and for the same reason: a kind that
-// is not here says only what the caller was doing, which is all a server
-// fault can honestly say. Copied rather than shared because that hook owns
-// its own and neither should have to change for the other.
-const MESSAGES: Partial<Record<PortalErrorKind, string>> = {
-  forbidden: portalText.forbidden,
-  network: portalText.networkError,
-  invalid: portalText.invalidError,
-};
-
-function message(error: unknown, fallback: string): string {
-  if (error instanceof PortalError) {
-    const known = MESSAGES[error.kind];
-    if (known) return known;
-  }
-  return fallback;
-}
 
 /**
  * Whether `listing` sorts after `added`, by the listing route's own key: the
@@ -72,17 +51,18 @@ function insertByName(
   return [...listings.slice(0, index), added, ...listings.slice(index)];
 }
 
-/** The stored photo merged into a listing, replacing the one it duplicates. */
+/** The stored photo appended to a listing, unless the listing already has it. */
 function withPhoto(
   listing: PortalListing,
   photo: PortalListingPhoto,
 ): PortalListing {
-  // A byte-identical upload answers 200 with the photo that is already on the
-  // listing, so keying on the id keeps one copy either way. Position is the
-  // API's, and it appends, so the new one goes last.
-  const kept = listing.photos.filter((existing) => existing.id !== photo.id);
-  if (kept.length !== listing.photos.length) return listing;
-  return { ...listing, photos: [...kept, photo] };
+  // A byte-identical upload answers 200 with the row that is already on the
+  // listing, so there is nothing to replace: the id is already there and the
+  // listing stands. Position is the API's, and it appends, so a photo that is
+  // new goes last.
+  if (listing.photos.some((existing) => existing.id === photo.id))
+    return listing;
+  return { ...listing, photos: [...listing.photos, photo] };
 }
 
 export type PortalListingActions = {

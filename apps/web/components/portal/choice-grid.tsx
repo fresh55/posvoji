@@ -10,12 +10,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * Tailwind needs the class whole, so the row widths a field can have are
- * listed rather than built from options.length.
+ * listed rather than built from options.length. Only the widths that differ
+ * from the three columns most fields take, which is the fallback below.
  */
 const COLUMNS: Record<number, string> = {
-  1: "grid-cols-1",
   2: "grid-cols-2",
-  3: "grid-cols-3",
   // Species and status both have four answers, and four across a dialog on a
   // phone leaves about 65px a card, which "Rezerviran" does not fit into at
   // any wrap. Two rows of two until there is room, the same shape the card's

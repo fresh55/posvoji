@@ -16,19 +16,20 @@ export interface ListingsReport {
   // A listings payload reached this run. False when the portal is not
   // configured, when it answered 404 because it has no listings route yet,
   // and when the fetch failed.
-  enabled: boolean;
+  payloadArrived: boolean;
   // The fetch was attempted and threw. Every enabled manual provider then
   // carried its previous animals forward and the run exits 2, the same as a
   // provider whose crawl failed.
   failed: boolean;
-  // The listings feed's own timestamp, present exactly when enabled is true.
+  // The listings feed's own timestamp, present exactly when a payload
+  // arrived.
   portalGeneratedAt?: string;
   applied: ListingApplied[];
   skipped: ListingSkip[];
 }
 
 const NO_LISTINGS: ListingsReport = {
-  enabled: false,
+  payloadArrived: false,
   failed: false,
   applied: [],
   skipped: [],
@@ -63,9 +64,9 @@ function toEntry(override: PortalOverride): OverrideReportEntry {
 // generatedAt is the run's dataset timestamp, handed in by export.ts from the
 // same variable both datasets are stamped with. Nothing here reads a clock.
 //
-// listings is the manual shelters' half. It defaults to the disabled report
-// so a caller that has no listings feed to describe, and every test that
-// predates one, keeps working.
+// listings is the manual shelters' half. It defaults to the report for a run
+// no payload reached, so a caller that has no listings feed to describe, and
+// every test that predates one, keeps working.
 export function buildOverrideReport(
   generatedAt: string,
   payload: PortalExportPayload | null,

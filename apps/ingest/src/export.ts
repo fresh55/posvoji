@@ -188,6 +188,30 @@ async function crawl(
   return { animals, crawled, failed, fullyRefreshed, fetched, reused };
 }
 
+// What the listings feed left this run with: a payload, a fetch that threw,
+// or an integration that is not configured. Three states in one value, so no
+// pair of flags can put the run in a state it cannot be in, and every reader
+// below decides from the same fact.
+type ListingsFeed =
+  | { kind: "ok"; payload: PortalListingsPayload }
+  | { kind: "failed" }
+  | { kind: "off" };
+
+// A throw is reported and turned into "failed" rather than aborting the run.
+// What that costs the manual shelters is decided further down, where the
+// three states are handled together.
+async function fetchListingsFeed(): Promise<ListingsFeed> {
+  try {
+    const payload = await fetchPortalListings();
+    return payload ? { kind: "ok", payload } : { kind: "off" };
+  } catch (error) {
+    const reason =
+      error instanceof Error ? (error.stack ?? error.message) : String(error);
+    console.error(`portal listings FAILED: ${reason}`);
+    return { kind: "failed" };
+  }
+}
+
 // Two previous datasets, and which one a step reads is the whole point of the
 // split. animals.json is what the last run published, corrections merged in;
 // animals.crawled.json is what its crawl produced, before any of them.
@@ -259,16 +283,7 @@ const portalPayload = await fetchPortalOverrides();
 // listing of its animals anywhere but here, so a portal outage has to leave
 // its records where they are rather than empty its page. A throw is turned
 // into the same carry-forward a failed crawl gets, below.
-let listingsPayload: PortalListingsPayload | null = null;
-let listingsFetchFailed = false;
-try {
-  listingsPayload = await fetchPortalListings();
-} catch (error) {
-  listingsFetchFailed = true;
-  const reason =
-    error instanceof Error ? (error.stack ?? error.message) : String(error);
-  console.error(`portal listings FAILED: ${reason}`);
-}
+const listingsFeed = await fetchListingsFeed();
 
 const {
   animals: crawled,
@@ -301,36 +316,54 @@ const manualProviderIds = manualPolicies(crawlPolicies).map(
 // nothing: its animals leave the dataset the same way a crawled shelter's do
 // when they leave its list page, and guardMassRemoval below still stands
 // between an emptied feed and a deletion.
-const listingsResult = listingsPayload
-  ? buildListingAnimals(
-      listingsPayload,
-      policyById,
-      loadShelters(),
-      new Date().toISOString(),
-      { providerIds: new Set(manualProviderIds) },
-    )
-  : null;
-if (listingsResult) {
-  for (const providerId of manualProviderIds) crawledProviderIds.add(providerId);
-  console.log(
-    `portal listings: ${listingsResult.animals.length} listed, ` +
-      `${listingsResult.skipped.length} skipped`,
-  );
-  for (const skip of listingsResult.skipped) {
-    console.warn(
-      `portal listings: skipped ${skip.providerId}/${skip.listingId}: ${skip.reason}`,
+//
+// The records ride along on the state that produced them, so nothing below
+// has to ask a second time whether a payload arrived before reading them.
+const listings =
+  listingsFeed.kind === "ok"
+    ? {
+        ...listingsFeed,
+        result: buildListingAnimals(
+          listingsFeed.payload,
+          policyById,
+          loadShelters(),
+          new Date().toISOString(),
+          new Set(manualProviderIds),
+        ),
+      }
+    : listingsFeed;
+
+switch (listings.kind) {
+  case "ok": {
+    for (const providerId of manualProviderIds) {
+      crawledProviderIds.add(providerId);
+    }
+    console.log(
+      `portal listings: ${listings.result.animals.length} listed, ` +
+        `${listings.result.skipped.length} skipped`,
     );
+    for (const skip of listings.result.skipped) {
+      console.warn(
+        `portal listings: skipped ${skip.providerId}/${skip.listingId}: ${skip.reason}`,
+      );
+    }
+    break;
   }
-} else if (listingsFetchFailed) {
-  // Exactly what a failed crawl does: the provider is not in crawledProviderIds,
-  // so its previous animals are carried forward below, and it is in failed, so
-  // the run exits 2 and the scheduler sees a run that was not clean.
-  failed.push(...manualProviderIds);
-} else if (manualProviderIds.length > 0) {
-  console.log(
-    `portal listings: no feed this run, ${manualProviderIds.length} manual ` +
-      `provider(s) carried forward: ${manualProviderIds.join(", ")}`,
-  );
+  case "failed":
+    // Exactly what a failed crawl does: the provider is not in
+    // crawledProviderIds, so its previous animals are carried forward below,
+    // and it is in failed, so the run exits 2 and the scheduler sees a run
+    // that was not clean.
+    failed.push(...manualProviderIds);
+    break;
+  case "off":
+    if (manualProviderIds.length > 0) {
+      console.log(
+        `portal listings: no feed this run, ${manualProviderIds.length} manual ` +
+          `provider(s) carried forward: ${manualProviderIds.join(", ")}`,
+      );
+    }
+    break;
 }
 
 // The second half of the bootstrap check, and the first point at which it can
@@ -367,7 +400,10 @@ if (bootstrappingSnapshot) {
 // they take the same firstSeenAt carry, the same uniqueness and removal
 // guards, the same allowedFields backstop, the same image cache, and they land
 // in animals.crawled.json like everything else. See docs/MANUAL-LISTINGS.md.
-const produced = [...crawled, ...(listingsResult?.animals ?? [])];
+const produced = [
+  ...crawled,
+  ...(listings.kind === "ok" ? listings.result.animals : []),
+];
 
 // A re-crawled animal is not a new one, so keep the date we first saw it.
 // Matched by id first and by the page it came from second, so a provider that
@@ -376,6 +412,12 @@ const produced = [...crawled, ...(listingsResult?.animals ?? [])];
 // of their listings links to the same shelter page, so the page identifies the
 // shelter and not the animal. Their ids never change, so the first match is
 // all they need.
+//
+// Every manual provider is named here, which is a wider set than
+// manualProviderIds above: not narrowed to the enabled ones and not narrowed
+// by --provider, because the side this matches against is the previous
+// dataset, and that can hold animals of a manual shelter this run is not
+// building listings for.
 const refreshed = carryFirstSeenAt(previousCrawled?.animals ?? [], produced, {
   sharedSourceUrlProviderIds: new Set(
     policies
@@ -620,13 +662,21 @@ writeFileAtomic(
 // Written on every run, including runs with no portal configured, so the
 // file never goes stale and an empty report cannot be mistaken for "the
 // shelters have corrected nothing".
-const listingsReport: ListingsReport = {
-  enabled: listingsPayload !== null,
-  failed: listingsFetchFailed,
-  ...(listingsPayload ? { portalGeneratedAt: listingsPayload.generatedAt } : {}),
-  applied: listingsResult?.applied ?? [],
-  skipped: listingsResult?.skipped ?? [],
-};
+const listingsReport: ListingsReport =
+  listings.kind === "ok"
+    ? {
+        payloadArrived: true,
+        failed: false,
+        portalGeneratedAt: listings.payload.generatedAt,
+        applied: listings.result.applied,
+        skipped: listings.result.skipped,
+      }
+    : {
+        payloadArrived: false,
+        failed: listings.kind === "failed",
+        applied: [],
+        skipped: [],
+      };
 writeFileAtomic(
   overrideReportPath,
   JSON.stringify(

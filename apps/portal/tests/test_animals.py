@@ -3,7 +3,8 @@ from urllib.parse import quote
 
 import pytest
 
-from core.models import AnimalOverride
+from core.dataset import animals_for_shelter
+from core.models import AnimalOverride, IngestionMode
 
 from .conftest import make_animal
 
@@ -49,6 +50,61 @@ def test_put_to_another_shelter_is_403(member_client, other_shelter, dataset_fil
 
     assert response.status_code == 403
     assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_manual_shelter_has_no_override_routes(
+    member_client, manual_shelter, dataset_file
+):
+    # The member is a member, and after an ingest run this shelter's own
+    # listings are in the dataset under <slug>:<uuid>. The routes are still
+    # not there: the listing is the record, and an override on top of one
+    # would give a single record two editing authorities. The mirror of the
+    # answer a crawled shelter gets on the listing routes.
+    animal_id = f"{manual_shelter.slug}:6d1c0f6a-3c0e-4a7e-9f7b-2f4a9d1e8b10"
+    dataset_file([make_animal(animal_id, manual_shelter)])
+    # There really is something to answer with, so the 404 below is the gate
+    # and not an empty dataset.
+    assert animals_for_shelter(manual_shelter.slug)
+
+    assert member_client.get(animals_url(manual_shelter.slug)).status_code == 404
+    response = put(member_client, manual_shelter.slug, animal_id, {"name": "Belka"})
+
+    assert response.status_code == 404
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "mode", [IngestionMode.SCRAPE, IngestionMode.API, IngestionMode.RSS]
+)
+def test_every_crawled_mode_still_gets_its_overrides(
+    member_client, shelter, dataset_file, mode
+):
+    # The gate is manual against the rest, not scrape against the rest: an
+    # api or rss shelter is crawled too and corrects what the crawl found.
+    shelter.ingestion = mode
+    shelter.save(update_fields=["ingestion"])
+    dataset_file([make_animal("testno:1", shelter)])
+
+    assert member_client.get(animals_url(shelter.slug)).status_code == 200
+    response = put(member_client, shelter.slug, "testno:1", {"name": "Belka"})
+
+    assert response.status_code == 200
+    assert AnimalOverride.objects.get().name == "Belka"
+
+
+@pytest.mark.django_db
+def test_another_shelters_mode_is_not_leaked(
+    member_client, other_shelter, dataset_file
+):
+    # Membership first, then the mode. A non-member gets the same 403 either
+    # way and cannot tell a manual shelter from a crawled one by the answer.
+    other_shelter.ingestion = IngestionMode.MANUAL
+    other_shelter.save(update_fields=["ingestion"])
+    dataset_file([])
+
+    assert member_client.get(animals_url(other_shelter.slug)).status_code == 403
 
 
 @pytest.mark.django_db

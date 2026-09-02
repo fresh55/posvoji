@@ -1,10 +1,18 @@
 "use client";
 
 import type * as React from "react";
-import { Pencil, Undo2 } from "lucide-react";
+import { Pencil, Search, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { cn } from "@/lib/utils";
+
+/**
+ * The pill every mark beside a field label is drawn on: the edit mark, the
+ * "nobody has answered this" mark and the listing card's status badge. Written
+ * once so the four of them cannot drift to different heights.
+ */
+export const PORTAL_BADGE =
+  "inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border px-1.5 text-2xs font-medium";
 
 /**
  * Marks a value the shelter has changed, so the crawled data and the shelter's
@@ -20,7 +28,7 @@ export function OverrideMark({
     <span
       {...props}
       className={cn(
-        "inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border px-1.5 text-2xs font-medium",
+        PORTAL_BADGE,
         pending
           ? "border-border bg-muted text-muted-foreground"
           : "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
@@ -29,6 +37,25 @@ export function OverrideMark({
     >
       <Pencil className="size-2.5" aria-hidden />
       {pending ? portalText.willRevert : portalText.edited}
+    </span>
+  );
+}
+
+/**
+ * A filter the adopter searches by that this animal still has no answer for.
+ * It sits where OverrideMark sits and is built to the same scale, but says the
+ * opposite thing: not "you changed this", "nobody has answered this yet".
+ */
+export function MissingMark() {
+  return (
+    <span
+      className={cn(
+        PORTAL_BADGE,
+        "border-amber-500/40 text-amber-700 dark:text-amber-300",
+      )}
+    >
+      <Search className="size-2.5" aria-hidden />
+      {portalText.missingBadge}
     </span>
   );
 }

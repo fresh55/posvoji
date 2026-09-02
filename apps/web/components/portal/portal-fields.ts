@@ -119,18 +119,21 @@ export const COMPATIBILITY_META: Record<PortalCompatibility, ChoiceMeta> = {
 };
 
 /**
- * specialNeeds is a boolean on the wire, but the editor offers the same
- * three-card shape as every other unknown-is-an-answer field. This is the
- * tri-state the cards drive; specialNeedsAnswer/specialNeedsValue convert it
- * to and from the boolean the API actually stores.
+ * specialNeeds is a boolean on the wire and a flag in the schema: the animal
+ * needs more time, knowledge or care than most, or the shelter has not said
+ * so. There is no third answer to offer, which is why this is two cards and
+ * not the three COMPATIBILITY_META carries. "No answer" is the row with
+ * nothing chosen, which a tap on the chosen card gives back.
  */
-export const PORTAL_SPECIAL_NEEDS_ANSWERS = ["yes", "no", "unknown"] as const;
+export const PORTAL_SPECIAL_NEEDS_ANSWERS = ["yes", "no"] as const;
 export type PortalSpecialNeedsAnswer =
   (typeof PORTAL_SPECIAL_NEEDS_ANSWERS)[number];
 
-/** Same labels and icons as COMPATIBILITY_META, so the two fields read alike. */
-export const SPECIAL_NEEDS_META: Record<PortalSpecialNeedsAnswer, ChoiceMeta> =
-  COMPATIBILITY_META;
+/** The Da and Ne of COMPATIBILITY_META, so the two fields read alike. */
+export const SPECIAL_NEEDS_META: Record<PortalSpecialNeedsAnswer, ChoiceMeta> = {
+  yes: COMPATIBILITY_META.yes,
+  no: COMPATIBILITY_META.no,
+};
 
 /** true/false/null, as the API and the draft state carry it, to the card answer. */
 export function specialNeedsAnswer(
@@ -141,13 +144,59 @@ export function specialNeedsAnswer(
   return null;
 }
 
-/** The card answer back to true/false/null. "unknown" clears the override. */
+/** The card answer back to true/false/null. No card clears the override. */
 export function specialNeedsValue(
   answer: PortalSpecialNeedsAnswer | null,
 ): boolean | null {
   if (answer === "yes") return true;
   if (answer === "no") return false;
   return null;
+}
+
+/** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
+export function isoDate(value: string | null): string | null {
+  return value ? value.slice(0, 10) : null;
+}
+
+export function trimmed(value: string): string | null {
+  const text = value.trim();
+  return text === "" ? null : text;
+}
+
+/**
+ * The stored month count split over the two age inputs. A half that comes out
+ * zero stays empty rather than reading "0", except when the whole age is zero
+ * and the months box is the only place left to show it. In the crawled editor
+ * two empty boxes are also what reverting the field looks like.
+ */
+export function ageParts(total: number | null): {
+  years: string;
+  months: string;
+} {
+  if (total === null) return { years: "", months: "" };
+  const years = Math.floor(total / 12);
+  const months = total % 12;
+  return {
+    years: years === 0 ? "" : String(years),
+    months: months === 0 && years !== 0 ? "" : String(months),
+  };
+}
+
+/** Both halves of the age are whole counts, never a fraction or a minus. */
+export function isCount(value: number): boolean {
+  return Number.isInteger(value) && value >= 0;
+}
+
+/** Which of the two age inputs holds something that is not a count. */
+export type AgeBox = "years" | "months";
+
+/**
+ * The hint a field renders, named so its control can point aria at it. The
+ * field is a plain string: the listing form names two rows the crawled editor
+ * has no field for.
+ */
+export function hintId(uid: string, field: string): string {
+  return `${uid}-${field}-hint`;
 }
 
 type StatusMeta = {
@@ -235,6 +284,31 @@ export const SEARCHABLE_FIELDS = [
  * Selected state for a deliberate "I don't know" answer. It is still a
  * choice, not a blank, so it stays marked selected, just without the green
  * accent that means "known and positive".
+ *
+ * The data-[state=on]: half is not a duplicate of the plain half. The cards
+ * are ToggleGroup items, and both toggleVariants and filterCardVariants spell
+ * their selected accent against data-[state=on], which outranks a bare
+ * border-, bg- or text- utility however late tailwind-merge puts it. Without
+ * the repeats the "Ni znano" card came out green-bordered and green-lettered
+ * over a muted fill.
  */
 export const CHOICE_CARD_MUTED =
-  "border-foreground/25 bg-muted text-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground";
+  "border-foreground/25 bg-muted text-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground data-[state=on]:border-foreground/25 data-[state=on]:bg-muted data-[state=on]:text-foreground data-[state=on]:hover:bg-muted data-[state=on]:hover:text-foreground";
+
+/**
+ * The species cards a manual listing opens with. The icons and the Slovenian
+ * are the public site's own, so the card a shelter picks is the tab an
+ * adopter later filters the grid by.
+ *
+ * Keyed off SPECIES_ORDER rather than listed, so a species added to the
+ * schema fails to compile here instead of quietly missing from the form.
+ */
+export const SPECIES_META: Record<
+  (typeof SPECIES_ORDER)[number],
+  ChoiceMeta
+> = {
+  dog: { label: speciesLabel("dog", "sl"), icon: SPECIES_ICONS.dog },
+  cat: { label: speciesLabel("cat", "sl"), icon: SPECIES_ICONS.cat },
+  rabbit: { label: speciesLabel("rabbit", "sl"), icon: SPECIES_ICONS.rabbit },
+  other: { label: speciesLabel("other", "sl"), icon: SPECIES_ICONS.other },
+};

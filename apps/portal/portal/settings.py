@@ -157,6 +157,23 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Photographs uploaded with manual listings. Django serves them itself while
+# DEBUG is on; a deployment serves MEDIA_ROOT from nginx, see README.md.
+MEDIA_ROOT = Path(os.environ.get("PORTAL_MEDIA_ROOT") or BASE_DIR / "media")
+MEDIA_URL = "/media/"
+
+# Where this service answers from, prefixed onto every photo URL in the
+# export. The ingest pipeline fetches those from another host, so a path
+# relative to MEDIA_URL is not enough.
+PORTAL_PUBLIC_URL = (
+    os.environ.get("PORTAL_PUBLIC_URL") or "http://localhost:8000"
+).rstrip("/")
+
+# Hard cap on one uploaded photograph, before it is decoded. The portal
+# re-encodes everything it accepts, so what a shelter sends is only ever an
+# input to that, never what is stored.
+PORTAL_MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+
 # The portal and the API are same site in both environments
 # (localhost:3000 -> localhost:8000, posvoji.si -> api.posvoji.si), so a Lax
 # session cookie is sent with the frontend's fetch calls. CORS controls which
@@ -196,6 +213,9 @@ DATASET_PATH = Path(
 SHELTERS_YAML_PATH = Path(
     os.environ.get("SHELTERS_YAML") or REPO_ROOT / "data" / "shelters.yaml"
 )
+# One providers/<slug>/policy.yaml per shelter. seed_shelters reads the
+# `ingestion` key out of it and nothing else.
+PROVIDERS_PATH = Path(os.environ.get("PROVIDERS_DIR") or REPO_ROOT / "providers")
 
 # Bearer token the ingest pipeline uses to pull the overrides. Unset means the
 # export endpoint is disabled.

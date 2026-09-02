@@ -6,6 +6,7 @@ import {
   Inbox,
   LoaderCircle,
   LogOut,
+  Plus,
   SearchX,
   TriangleAlert,
 } from "lucide-react";
@@ -14,7 +15,10 @@ import { PortalAnimalCard } from "@/components/portal/animal-card";
 import {
   PortalListTools,
   filterPortalAnimals,
+  type PortalListEntry,
 } from "@/components/portal/list-tools";
+import { PortalListingCard } from "@/components/portal/listing-card";
+import { ListingForm } from "@/components/portal/listing-form";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { portalText } from "@/components/portal/portal-text";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
@@ -22,11 +26,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalAnimals } from "@/hooks/use-portal-animals";
 import {
+  NEW_LISTING,
+  usePortalListings,
+} from "@/hooks/use-portal-listings";
+import {
   PORTAL_LOGIN_PATH,
   usePortalSession,
 } from "@/hooks/use-portal-session";
 import { animalCount } from "@/lib/labels";
-import type { PortalStatus } from "@/lib/portal-api";
+import { isManualShelter, type PortalStatus } from "@/lib/portal-api";
 
 function CardSkeleton() {
   return (
@@ -81,12 +89,21 @@ export function PortalWorkspace() {
   const [leaving, setLeaving] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PortalStatus | null>(null);
+  // The "Dodaj žival" dialog, and the listing it made once it has: the form
+  // keeps editing that one while its photos go up, so it is read back off
+  // the live list rather than off the answer to the POST.
+  const [adding, setAdding] = useState(false);
+  const [newListingId, setNewListingId] = useState<string | null>(null);
 
   const shelters = state.status === "ready" ? state.session.shelters : [];
   const active = chosen ?? shelters[0]?.slug ?? null;
   // The card needs the whole shelter, not its slug: the public link it draws
   // is built from the name and the town as well.
   const activeShelter = shelters.find((shelter) => shelter.slug === active);
+  // A shelter with no catalogue of its own writes its animals here, so it
+  // gets the listing form instead of the override editor. No mode means a
+  // crawled shelter, which is what every shelter was before the field.
+  const manual = activeShelter ? isManualShelter(activeShelter) : false;
 
   const clearFilters = useCallback(() => {
     setQuery("");
@@ -104,19 +121,45 @@ export function PortalWorkspace() {
     window.location.replace(PORTAL_LOGIN_PATH);
   }, []);
 
+  // Both hooks always run, as hooks must; the one the shelter does not use
+  // gets no slug and stays idle without a request.
   const {
     animals,
-    state: listState,
+    state: animalState,
     saveStates,
     reload: reloadAnimals,
     save,
     publicName,
-  } = usePortalAnimals(active, onUnauthorized);
+  } = usePortalAnimals(manual ? null : active, onUnauthorized);
+  const {
+    listings,
+    state: listingState,
+    saveStates: listingSaveStates,
+    reload: reloadListings,
+    actions: listingActions,
+  } = usePortalListings(manual ? active : null, onUnauthorized);
 
-  const visible = useMemo(
+  const listState = manual ? listingState : animalState;
+  const reloadList = manual ? reloadListings : reloadAnimals;
+  // The tools read the four fields a crawled animal and a manual listing both
+  // carry under the same names, so each list goes through them as it is.
+  const all: PortalListEntry[] = manual ? listings : animals;
+  const visibleAnimals = useMemo(
     () => filterPortalAnimals(animals, query, status),
     [animals, query, status],
   );
+  const visibleListings = useMemo(
+    () => filterPortalAnimals(listings, query, status),
+    [listings, query, status],
+  );
+  const visibleCount = manual ? visibleListings.length : visibleAnimals.length;
+  const newListing =
+    listings.find((listing) => listing.id === newListingId) ?? null;
+
+  const openAdd = useCallback(() => {
+    setNewListingId(null);
+    setAdding(true);
+  }, []);
 
   const actions =
     state.status === "ready" ? (
@@ -220,6 +263,8 @@ export function PortalWorkspace() {
                 // next one's, so switching starts from the whole list again.
                 setChosen(slug);
                 clearFilters();
+                setAdding(false);
+                setNewListingId(null);
               }}
             />
           )}
@@ -230,11 +275,26 @@ export function PortalWorkspace() {
                 <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
                   {portalText.animalsTitle}
                 </h1>
-                {listState.status === "ready" && animals.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {animalCount(animals.length, "sl")}
-                  </p>
-                )}
+                {listState.status === "ready" &&
+                  all.length > 0 &&
+                  (manual ? (
+                    // The count and the one action a manual shelter has up
+                    // here. While the list is empty the notice below carries
+                    // the same button, so it is never on screen twice.
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-sm text-muted-foreground">
+                        {animalCount(all.length, "sl")}
+                      </p>
+                      <Button size="sm" onClick={openAdd}>
+                        <Plus aria-hidden />
+                        {portalText.listingAdd}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {animalCount(all.length, "sl")}
+                    </p>
+                  ))}
               </div>
               {/* The only line up here. What the marks on the cards mean is
                   said on the card that draws them, at the moment the shelter
@@ -258,7 +318,7 @@ export function PortalWorkspace() {
                 icon={TriangleAlert}
                 title={portalText.listErrorTitle}
                 action={
-                  <Button variant="outline" size="sm" onClick={reloadAnimals}>
+                  <Button variant="outline" size="sm" onClick={reloadList}>
                     {portalText.retry}
                   </Button>
                 }
@@ -267,15 +327,30 @@ export function PortalWorkspace() {
               </Notice>
             )}
 
-            {listState.status === "ready" && animals.length === 0 && (
-              <Notice icon={Inbox} title={portalText.emptyTitle}>
-                {portalText.emptyLead}
-              </Notice>
-            )}
+            {listState.status === "ready" &&
+              all.length === 0 &&
+              (manual ? (
+                <Notice
+                  icon={Inbox}
+                  title={portalText.emptyTitle}
+                  action={
+                    <Button size="sm" onClick={openAdd}>
+                      <Plus aria-hidden />
+                      {portalText.listingAdd}
+                    </Button>
+                  }
+                >
+                  {portalText.listingsEmptyLead}
+                </Notice>
+              ) : (
+                <Notice icon={Inbox} title={portalText.emptyTitle}>
+                  {portalText.emptyLead}
+                </Notice>
+              ))}
 
-            {listState.status === "ready" && animals.length > 0 && (
+            {listState.status === "ready" && all.length > 0 && (
               <PortalListTools
-                animals={animals}
+                animals={all}
                 query={query}
                 onQueryChange={setQuery}
                 status={status}
@@ -284,8 +359,8 @@ export function PortalWorkspace() {
             )}
 
             {listState.status === "ready" &&
-              animals.length > 0 &&
-              visible.length === 0 && (
+              all.length > 0 &&
+              visibleCount === 0 && (
                 <Notice
                   icon={SearchX}
                   title={portalText.noMatchesTitle}
@@ -300,10 +375,40 @@ export function PortalWorkspace() {
               )}
 
             {listState.status === "ready" &&
-              visible.length > 0 &&
+              manual &&
+              visibleListings.length > 0 && (
+                <div className="space-y-3">
+                  {visibleListings.map((listing, index) => (
+                    <m.div
+                      key={listing.id}
+                      initial={
+                        shouldReduceMotion ? false : { opacity: 0, y: 8 }
+                      }
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.22,
+                        ease: "easeOut",
+                        delay: Math.min(index, 8) * 0.03,
+                      }}
+                    >
+                      <PortalListingCard
+                        listing={listing}
+                        saveState={
+                          listingSaveStates[listing.id] ?? { status: "idle" }
+                        }
+                        actions={listingActions}
+                      />
+                    </m.div>
+                  ))}
+                </div>
+              )}
+
+            {listState.status === "ready" &&
+              !manual &&
+              visibleAnimals.length > 0 &&
               activeShelter && (
                 <div className="space-y-3">
-                  {visible.map((animal, index) => (
+                  {visibleAnimals.map((animal, index) => (
                     <m.div
                       key={animal.id}
                       initial={
@@ -331,6 +436,28 @@ export function PortalWorkspace() {
                 </div>
               )}
           </section>
+
+          {/* One form for every new listing, kept mounted so its dialog can
+              close on its own terms. Once the POST has gone through it edits
+              what came back, read off the live list so the photos it uploads
+              next show up as they land. */}
+          {manual && (
+            <ListingForm
+              listing={newListing}
+              open={adding}
+              onOpenChange={(open) => {
+                setAdding(open);
+                if (!open) setNewListingId(null);
+              }}
+              actions={listingActions}
+              saveState={
+                listingSaveStates[newListingId ?? NEW_LISTING] ?? {
+                  status: "idle",
+                }
+              }
+              onCreated={(saved) => setNewListingId(saved.id)}
+            />
+          )}
         </>
       )}
     </PortalShell>

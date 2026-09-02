@@ -24,13 +24,26 @@ export function validateProviderRegistry(
   }
 
   for (const loaded of policies) {
-    if (
-      loaded.policy.enabled &&
-      !registeredCounts.has(loaded.policy.providerId)
-    ) {
+    const { providerId, enabled, ingestion } = loaded.policy;
+    const registered = registeredCounts.has(providerId);
+    // A manual provider is crawled by the portal, not by an adapter: its
+    // animals arrive on the listings feed and the crawl loop skips it. So it
+    // is exempt from the rule above, and held to the opposite one. An adapter
+    // for a manual provider is a contradiction that would crawl the shelter
+    // and duplicate every listing it has. See docs/MANUAL-LISTINGS.md.
+    if (ingestion === "manual") {
+      if (registered) {
+        errors.push({
+          dir: loaded.dir,
+          message: `provider "${providerId}" is ingestion: manual but has an adapter in apps/ingest/src/registry.ts`,
+        });
+      }
+      continue;
+    }
+    if (enabled && !registered) {
       errors.push({
         dir: loaded.dir,
-        message: `enabled provider "${loaded.policy.providerId}" is missing from apps/ingest/src/registry.ts`,
+        message: `enabled provider "${providerId}" is missing from apps/ingest/src/registry.ts`,
       });
     }
   }

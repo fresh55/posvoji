@@ -3,9 +3,13 @@ import {
   DEFAULT_PORTAL_API,
   PRODUCTION_PORTAL_API,
   PortalError,
+  archiveListing,
   clearCsrfToken,
+  createListing,
+  deleteListingPhoto,
   fetchAnimals,
   fetchCsrfToken,
+  fetchListings,
   fetchSession,
   isUnauthorized,
   logout,
@@ -13,7 +17,10 @@ import {
   portalUrl,
   requestLoginLink,
   saveAnimal,
+  updateListing,
+  uploadListingPhoto,
   verifyToken,
+  type PortalListingInput,
 } from "./portal-api";
 
 type FetchArgs = [input: string, init: RequestInit];
@@ -311,5 +318,154 @@ describe("errors", () => {
     expect(error).toBeInstanceOf(PortalError);
     expect(error.status).toBe(500);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("listings", () => {
+  const LISTINGS = `${DEFAULT_PORTAL_API}/api/shelters/johanca/listings`;
+
+  const input: PortalListingInput = {
+    species: "cat",
+    name: "Luna",
+    status: "available",
+    sex: null,
+    breed: null,
+    birthDate: null,
+    approximateAgeMonths: null,
+    size: null,
+    energy: null,
+    goodWithKids: null,
+    goodWithDogs: null,
+    goodWithCats: null,
+    apartmentOk: null,
+    specialNeeds: null,
+    shortDescription: null,
+  };
+
+  const photo = {
+    id: 7,
+    url: `${DEFAULT_PORTAL_API}/media/listings/6d1c/3f2a9c.jpg`,
+    width: 1600,
+    height: 1200,
+  };
+
+  it("reads the shelter's listings", async () => {
+    respond(200, []);
+    await expect(fetchListings("johanca")).resolves.toEqual([]);
+
+    const [url, init] = lastCall();
+    expect(url).toBe(LISTINGS);
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+  });
+
+  it("posts a new listing whole, with every unset field as null", async () => {
+    respondWithCsrf(201, { id: "6d1c", ...input, photos: [] });
+
+    await expect(createListing("johanca", input)).resolves.toMatchObject({
+      id: "6d1c",
+    });
+
+    const [url, init] = lastCall();
+    expect(url).toBe(LISTINGS);
+    expect(init.method).toBe("POST");
+    expect(init.headers).toMatchObject({
+      "Content-Type": "application/json",
+      "X-CSRFToken": "test-csrf-token",
+    });
+    expect(JSON.parse(init.body as string)).toEqual(input);
+  });
+
+  it("replaces a listing with PUT, id escaped", async () => {
+    respondWithCsrf(200, { id: "6d1c", ...input });
+
+    await updateListing("johanca", "6d 1c", { ...input, status: "reserved" });
+
+    const [url, init] = lastCall();
+    expect(url).toBe(`${LISTINGS}/6d%201c`);
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body as string)).toEqual({
+      ...input,
+      status: "reserved",
+    });
+  });
+
+  it("archives with DELETE and resolves the empty 204", async () => {
+    respondWithCsrf(204);
+
+    await expect(archiveListing("johanca", "6d1c")).resolves.toBeUndefined();
+
+    const [url, init] = lastCall();
+    expect(url).toBe(`${LISTINGS}/6d1c`);
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("sends a photo as multipart and leaves the content type to fetch", async () => {
+    respondWithCsrf(201, photo);
+    const file = new File(["jpeg bytes"], "luna.jpg", { type: "image/jpeg" });
+
+    await expect(
+      uploadListingPhoto("johanca", "6d1c", file),
+    ).resolves.toEqual(photo);
+
+    const [url, init] = lastCall();
+    expect(url).toBe(`${LISTINGS}/6d1c/photos`);
+    expect(init.method).toBe("POST");
+    expect(init.body).toBeInstanceOf(FormData);
+    const sent = (init.body as FormData).get("file");
+    expect(sent).toBeInstanceOf(File);
+    expect((sent as File).name).toBe("luna.jpg");
+    // No Content-Type: fetch writes the multipart boundary into its own.
+    expect(init.headers).toEqual({
+      Accept: "application/json",
+      "X-CSRFToken": "test-csrf-token",
+    });
+  });
+
+  it("answers a duplicate (200) with the same shape as a new photo (201)", async () => {
+    respondWithCsrf(200, photo);
+    const file = new File(["jpeg bytes"], "luna.jpg", { type: "image/jpeg" });
+
+    await expect(
+      uploadListingPhoto("johanca", "6d1c", file),
+    ).resolves.toEqual(photo);
+  });
+
+  it("resends the same multipart body after a stale-token 403", async () => {
+    respond(200, { csrfToken: "stale" });
+    respond(403, { detail: "CSRF failed" });
+    respond(200, { csrfToken: "fresh" });
+    respond(201, photo);
+    const file = new File(["jpeg bytes"], "luna.jpg", { type: "image/jpeg" });
+
+    await expect(
+      uploadListingPhoto("johanca", "6d1c", file),
+    ).resolves.toEqual(photo);
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const first = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    const second = fetchMock.mock.calls[3]?.[1] as RequestInit;
+    expect(second.body).toBe(first.body);
+    expect(second.headers).toMatchObject({ "X-CSRFToken": "fresh" });
+  });
+
+  it("removes a photo by its id", async () => {
+    respondWithCsrf(204);
+
+    await expect(
+      deleteListingPhoto("johanca", "6d1c", 7),
+    ).resolves.toBeUndefined();
+
+    const [url, init] = lastCall();
+    expect(url).toBe(`${LISTINGS}/6d1c/photos/7`);
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("reports the 404 a crawled shelter gets as not found, not as a permission", async () => {
+    respond(404, { detail: "not found" });
+
+    const error = await fetchListings("ljubljana").catch((reason) => reason);
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.kind).toBe("notFound");
   });
 });

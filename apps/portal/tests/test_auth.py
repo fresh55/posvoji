@@ -237,7 +237,12 @@ def test_verify_opens_a_session_and_me_returns_the_shelters(client, member, shel
     expected = {
         "email": member.email,
         "shelters": [
-            {"slug": shelter.slug, "name": shelter.name, "city": shelter.city}
+            {
+                "slug": shelter.slug,
+                "name": shelter.name,
+                "city": shelter.city,
+                "ingestion": "scrape",
+            }
         ],
     }
 

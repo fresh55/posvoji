@@ -2,16 +2,19 @@
 # the ProviderPolicy schema: a provider cannot be enabled, show images or carry
 # more than bare facts without granted, dated permission from the shelter.
 #
-# This one records a logo grant and nothing else. The shelter publishes no
-# animal list we ingest, so enabled stays false and no adapter is registered
-# for it: the crawl skips it entirely and only the logo sync reads this file.
+# The shelter has a site but no animal catalogue on it, so there is nothing to
+# crawl. It writes its animals straight into our portal instead: ingestion
+# stays manual, no adapter is registered for it and the crawl loop skips it;
+# the listings feed is where its animals come from and the removal guard, the
+# image cache and the crawled snapshot treat them like any other crawled
+# record. See docs/MANUAL-LISTINGS.md.
 providerId: oskar
 source: https://zavetisceoskar.si/
-enabled: false
+enabled: true
 
 ingestion: manual
-images: none
-descriptions: facts-only
+images: cache-permitted
+descriptions: full-permitted
 
 logo:
   use: permitted
@@ -25,10 +28,22 @@ logo:
   reference: project-owner-confirmation-logos-2026-08-30
 
 permission:
-  status: none
+  status: granted
+  date: 2026-09-01
+  reference: project-owner-confirmation-portal-listings-2026-09-01
   notes: >-
-    No animal-catalogue permission is recorded. The independently dated logo
-    grant above covers the mark only; no animal data is taken from this shelter.
+    The shelter lists its animals directly through the portal on Posvoji.si.
+    Typing a listing in is publishing it, which is a stronger grant than a
+    crawl permission: the photos are uploaded by the shelter for us to show,
+    so they may be cached, and the text is written for this site, so
+    descriptions carry in full. The project owner confirmed the listing
+    permission on 2026-09-01. Nothing is taken from the site above; it is
+    recorded as the shelter's home page, not as a catalogue.
+
+    DATA-POLICY.md principle 3 asks every animal to link to the listing it
+    came from. For a manual listing the original is the listing on Posvoji.si
+    itself, so source.sourceUrl is the shelter's own page on this site rather
+    than a page on the source above.
 
 attribution: "Vir: Zavetišče Oskar Vitovlje"
 

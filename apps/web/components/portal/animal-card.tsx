@@ -22,7 +22,7 @@ import {
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import type { PortalSaveState } from "@/hooks/portal-list";
 import { Button } from "@/components/ui/button";
 import type { AnimalFields } from "@/lib/animal";
 import { thumbnailUrl } from "@/lib/animal-images";

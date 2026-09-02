@@ -11,9 +11,13 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalEditor } from "@/components/portal/animal-editor";
-import { SPECIAL_NEEDS_META } from "@/components/portal/portal-fields";
-import { portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import {
+  COMPATIBILITY_META,
+  ENERGY_META,
+  SPECIAL_NEEDS_META,
+} from "@/components/portal/portal-fields";
+import { fill, portalText } from "@/components/portal/portal-text";
+import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalAnimal } from "@/lib/portal-api";
 
 afterEach(cleanup);
@@ -50,14 +54,20 @@ function animal(overrides: Partial<PortalAnimal> = {}): PortalAnimal {
   };
 }
 
-function open(onSave = vi.fn().mockResolvedValue(true)) {
+function open(
+  options: {
+    animal?: Partial<PortalAnimal>;
+    saveState?: PortalSaveState;
+  } = {},
+) {
   const onOpenChange = vi.fn();
+  const onSave = vi.fn().mockResolvedValue(true);
   render(
     <AnimalEditor
-      animal={animal()}
+      animal={animal(options.animal)}
       open
       onOpenChange={onOpenChange}
-      saveState={IDLE}
+      saveState={options.saveState ?? IDLE}
       onSave={onSave}
     />,
   );
@@ -68,6 +78,17 @@ function field(id: string): HTMLElement {
   const control = document.getElementById(id);
   if (!control) throw new Error(`no control #${id}`);
   return control;
+}
+
+/** One icon row of the form, by the field name above it. */
+function row(label: string): HTMLElement {
+  return screen.getByRole("radiogroup", { name: label });
+}
+
+function saveButton(): HTMLButtonElement {
+  return screen.getByRole("button", {
+    name: portalText.save,
+  }) as HTMLButtonElement;
 }
 
 /** Types something, so the form has work in it that a dismiss would lose. */
@@ -199,11 +220,7 @@ describe("what a field tells a screen reader", () => {
       portalText.fieldGoodWithDogs,
       portalText.fieldGoodWithCats,
     ]) {
-      expect(
-        screen
-          .getByRole("group", { name: label })
-          .getAttribute("aria-describedby"),
-      ).toBe(shared.id);
+      expect(row(label).getAttribute("aria-describedby")).toBe(shared.id);
     }
   });
 
@@ -211,22 +228,261 @@ describe("what a field tells a screen reader", () => {
     open();
 
     fireEvent.change(field("portal-age-years"), { target: { value: "1.5" } });
-    fireEvent.click(screen.getByRole("button", { name: portalText.save }));
+    fireEvent.click(saveButton());
 
-    const summary = screen.getByRole("alert");
-    expect(summary.textContent).toContain(portalText.invalidError);
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toContain(portalText.invalidError);
     const years = field("portal-age-years");
     expect(years.getAttribute("aria-invalid")).toBe("true");
-    expect(years.getAttribute("aria-errormessage")).toBe(summary.id);
+    expect(years.getAttribute("aria-errormessage")).toBe(message.id);
+  });
+
+  it("keeps the age's message beside the boxes it is about", () => {
+    open();
+
+    fireEvent.change(field("portal-age-years"), { target: { value: "1.5" } });
+    fireEvent.click(saveButton());
+
+    // At the foot of the form it is a phone screen below the boxes, which is
+    // why the submit had to scroll the box back into view to be read at all.
+    const ageRow = document.querySelector(
+      '[data-field="approximateAgeMonths"]',
+    );
+    expect(ageRow?.contains(screen.getByRole("alert"))).toBe(true);
   });
 
   it("moves the focus off the sticky footer onto the rejected box", () => {
     open();
 
     fireEvent.change(field("portal-age-months"), { target: { value: "-3" } });
-    fireEvent.click(screen.getByRole("button", { name: portalText.save }));
+    fireEvent.click(saveButton());
 
     expect(document.activeElement).toBe(field("portal-age-months"));
+  });
+
+  it("holds the age's message until an age box is the thing that changed", () => {
+    open();
+
+    fireEvent.change(field("portal-age-years"), { target: { value: "1.5" } });
+    fireEvent.click(saveButton());
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    // Another field is not an answer to a number that is still unusable.
+    fireEvent.change(field("portal-breed"), { target: { value: "Mešanec" } });
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    fireEvent.change(field("portal-age-years"), { target: { value: "2" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("taking an icon answer back", () => {
+  it("lets a mis-tap on an animal with nothing saved be tapped off", () => {
+    open();
+
+    const calm = within(row(portalText.fieldEnergy)).getByRole("radio", {
+      name: ENERGY_META.calm.label,
+    });
+    fireEvent.click(calm);
+    expect(calm.getAttribute("aria-checked")).toBe("true");
+    expect(saveButton().disabled).toBe(false);
+
+    fireEvent.click(calm);
+
+    // Back to where the form opened: no answer, and nothing left to save.
+    expect(calm.getAttribute("aria-checked")).toBe("false");
+    expect(saveButton().disabled).toBe(true);
+  });
+
+  it("clears an override the same way, and says so before it is saved", async () => {
+    const { onSave } = open({
+      animal: { goodWithKids: "yes", overrides: { goodWithKids: "yes" } },
+    });
+
+    const yes = within(row(portalText.fieldGoodWithKids)).getByRole("radio", {
+      name: COMPATIBILITY_META.yes.label,
+    });
+    fireEvent.click(yes);
+
+    expect(screen.getByText(portalText.willRevert)).toBeTruthy();
+    fireEvent.click(saveButton());
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith({ goodWithKids: null });
+    });
+  });
+});
+
+describe("the special needs flag", () => {
+  // The field is a boolean in the schema and on the wire. A third card said
+  // "Ni znano" and saved nothing, so it lit up and left Shrani disabled.
+  it("offers the two answers it actually has", () => {
+    open();
+
+    const cards = within(row(portalText.fieldSpecialNeeds)).getAllByRole(
+      "radio",
+    );
+
+    expect(cards.map((card) => card.textContent)).toEqual([
+      COMPATIBILITY_META.yes.label,
+      COMPATIBILITY_META.no.label,
+    ]);
+  });
+
+  it("saves the answer that is tapped", async () => {
+    const { onSave } = open();
+
+    fireEvent.click(
+      within(row(portalText.fieldSpecialNeeds)).getByRole("radio", {
+        name: COMPATIBILITY_META.no.label,
+      }),
+    );
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith({ specialNeeds: false });
+    });
+  });
+});
+
+describe("what a row the shelter has changed says for itself", () => {
+  it("explains the way back under the control, not in a hover title", () => {
+    open({ animal: { name: "Murka", overrides: { name: "Murka" } } });
+
+    const nameRow = document.querySelector('[data-field="name"]');
+    expect(nameRow).toBeTruthy();
+    expect(
+      within(nameRow as HTMLElement).getByText(portalText.fieldOwnLine),
+    ).toBeTruthy();
+  });
+
+  it("drops the line once the row is set to be given back", () => {
+    open({ animal: { name: "Murka", overrides: { name: "Murka" } } });
+
+    fireEvent.change(field("portal-name"), { target: { value: "" } });
+
+    expect(screen.queryByText(portalText.fieldOwnLine)).toBeNull();
+    expect(screen.getByText(portalText.willRevert)).toBeTruthy();
+  });
+
+  it("says nothing on a row that is still the crawler's", () => {
+    open();
+
+    expect(screen.queryByText(portalText.fieldOwnLine)).toBeNull();
+  });
+});
+
+describe("a failure left behind by the card's status buttons", () => {
+  // saveState is one slot per animal, shared with the status row on the card,
+  // and an error in it never expires.
+  it("stays out of an editor that has not saved anything yet", () => {
+    // Opened the way the card opens it, from closed, because that is the
+    // render the failure has to be remembered on.
+    const subject = animal();
+    const failed: PortalSaveState = {
+      status: "error",
+      message: portalText.saveError,
+    };
+    const view = render(
+      <AnimalEditor
+        animal={subject}
+        open={false}
+        onOpenChange={vi.fn()}
+        saveState={failed}
+        onSave={vi.fn()}
+      />,
+    );
+
+    view.rerender(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={failed}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(portalText.saveError)).toBeNull();
+  });
+
+  it("is shown once the editor's own save has failed", async () => {
+    const onSave = vi.fn().mockResolvedValue(false);
+    const subject = animal();
+    const view = render(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={IDLE}
+        onSave={onSave}
+      />,
+    );
+
+    makeDirty();
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    view.rerender(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={{ status: "error", message: portalText.saveError }}
+        onSave={onSave}
+      />,
+    );
+
+    expect(screen.getByText(portalText.saveError)).toBeTruthy();
+  });
+});
+
+describe("where the focus goes", () => {
+  it("gives it back to the control the editor was opened from", async () => {
+    // The editor is opened in code, from the card, so Radix has no trigger of
+    // its own to return to and would drop the focus on <body>.
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+
+    const subject = animal();
+    const view = render(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(document.activeElement).not.toBe(opener);
+
+    view.rerender(
+      <AnimalEditor
+        animal={subject}
+        open={false}
+        onOpenChange={vi.fn()}
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    opener.remove();
+  });
+
+  it("leaves the editor standing when Escape dismisses the confirm", async () => {
+    const { onOpenChange } = open();
+    makeDirty();
+    fireEvent.click(screen.getByRole("button", { name: portalText.cancel }));
+    expect(confirmShown()).toBe(true);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() => expect(confirmShown()).toBe(false));
+    expect(
+      screen.getByText(fill(portalText.editTitle, { name: "Muri" })),
+    ).toBeTruthy();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });
 
@@ -297,18 +553,19 @@ describe("a choice that gives the field back to the crawler", () => {
     );
   }
 
-  it('reads "Ni znano" on an overridden Posebne potrebe as a revert', () => {
-    // specialNeeds is a boolean on the wire, so "Ni znano" is not a third
-    // value: it is the null that clears the override, the same as an emptied
-    // box elsewhere in the form.
+  it("reads a cleared Posebne potrebe as a revert", () => {
+    // specialNeeds is a boolean on the wire, so the row has the two answers
+    // it actually has and no third card. Taking the answer back is what
+    // reaches the wire as the null that clears the override, the same as an
+    // emptied box elsewhere in the form.
     edit(animal({ specialNeeds: true, overrides: { specialNeeds: true } }));
     expect(
       within(row("specialNeeds")).getByText(portalText.edited),
     ).toBeTruthy();
 
     fireEvent.click(
-      within(row("specialNeeds")).getByRole("button", {
-        name: SPECIAL_NEEDS_META.unknown.label,
+      within(row("specialNeeds")).getByRole("radio", {
+        name: SPECIAL_NEEDS_META.yes.label,
       }),
     );
 
@@ -320,12 +577,12 @@ describe("a choice that gives the field back to the crawler", () => {
   });
 
   it("leaves an unoverridden Posebne potrebe alone", () => {
-    // Nothing to give back, so "Ni znano" is only an answer to be saved.
+    // Nothing to give back, so clearing the row is only an answer withdrawn.
     edit(animal({ specialNeeds: true }));
 
     fireEvent.click(
-      within(row("specialNeeds")).getByRole("button", {
-        name: SPECIAL_NEEDS_META.unknown.label,
+      within(row("specialNeeds")).getByRole("radio", {
+        name: SPECIAL_NEEDS_META.yes.label,
       }),
     );
 

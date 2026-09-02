@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { LoaderCircle, Search, TriangleAlert } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
-import { OverrideMark, RevertButton } from "@/components/portal/override-mark";
+import { ConfirmDialog } from "@/components/portal/confirm-dialog";
+import {
+  MissingMark,
+  OverrideMark,
+  RevertButton,
+} from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
@@ -12,16 +17,23 @@ import {
   SEX_META,
   SIZE_META,
   SPECIAL_NEEDS_META,
+  ageParts,
+  hintId,
+  isCount,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
+  isoDate,
   specialNeedsAnswer,
   specialNeedsValue,
+  trimmed,
+  type AgeBox,
   type PortalSpecialNeedsAnswer,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/use-portal-animals";
+import type { PortalSaveState } from "@/hooks/portal-list";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -64,40 +76,6 @@ type Draft = {
   apartmentOk: PortalCompatibility | null;
   specialNeeds: PortalSpecialNeedsAnswer | null;
 };
-
-/** <input type="date"> only understands YYYY-MM-DD, so both sides get cut to it. */
-function isoDate(value: string | null): string | null {
-  return value ? value.slice(0, 10) : null;
-}
-
-function trimmed(value: string): string | null {
-  const text = value.trim();
-  return text === "" ? null : text;
-}
-
-/**
- * The stored month count split over the two age inputs. A half that comes out
- * zero stays empty rather than reading "0", except when the whole age is zero
- * and the months box is the only place left to show it: two empty boxes are
- * what reverting the field looks like.
- */
-function ageParts(total: number | null): { years: string; months: string } {
-  if (total === null) return { years: "", months: "" };
-  const years = Math.floor(total / 12);
-  const months = total % 12;
-  return {
-    years: years === 0 ? "" : String(years),
-    months: months === 0 && years !== 0 ? "" : String(months),
-  };
-}
-
-/** Both halves of the age are whole counts, never a fraction or a minus. */
-function isCount(value: number): boolean {
-  return Number.isInteger(value) && value >= 0;
-}
-
-/** Which of the two age inputs holds something that is not a count. */
-type AgeBox = "years" | "months";
 
 function draftFrom(animal: PortalAnimal): Draft {
   const age = ageParts(animal.approximateAgeMonths ?? null);
@@ -220,25 +198,6 @@ function buildPatch(
   return { patch, ageError };
 }
 
-/**
- * A filter the adopter searches by that this animal still has no answer for.
- * It sits where OverrideMark sits and is built to the same scale, but says the
- * opposite thing: not "you changed this", "nobody has answered this yet".
- */
-function MissingMark() {
-  return (
-    <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl border border-amber-500/40 px-1.5 text-2xs font-medium text-amber-700 dark:text-amber-300">
-      <Search className="size-2.5" aria-hidden />
-      {portalText.missingBadge}
-    </span>
-  );
-}
-
-/** The hint a field renders, named so its control can point aria at it. */
-function hintId(uid: string, field: PortalField): string {
-  return `${uid}-${field}-hint`;
-}
-
 /** Label row shared by every field: the name, the edit mark, the way back. */
 function Field({
   uid,
@@ -277,6 +236,10 @@ function Field({
     </>
   );
 
+  // The row holds the shelter's own answer as long as they are not giving it
+  // back, which is the same condition the way back out is offered under.
+  const own = overridden && !reverting;
+
   return (
     <div data-field={field} className="space-y-1.5">
       <div className="flex min-h-6 items-center justify-between gap-2">
@@ -287,13 +250,32 @@ function Field({
             {heading}
           </span>
         )}
-        {overridden && !reverting && (
-          <RevertButton field={label} onRevert={onRevert} disabled={disabled} />
+        {own && (
+          <RevertButton
+            className="max-lg:tap-target"
+            field={label}
+            onRevert={onRevert}
+            disabled={disabled}
+          />
         )}
       </div>
       {/* Marked off from the label row so the field can be focused without
-          landing on its revert button. */}
-      <div data-field-control>{children}</div>
+          landing on its revert button.
+          The padding is for that button's tap-target overlay, which overhangs
+          its 24px drawing by 10px per side and would otherwise reach into this
+          control and take presses meant for it. space-y-1.5 leaves 6px, and
+          padding is what can add to that: the space-y rule outranks a margin
+          utility. Same 12px the card keeps. See globals.css. */}
+      <div data-field-control className={own ? "max-lg:pt-1.5" : undefined}>
+        {children}
+      </div>
+      {/* Under the control, not in a legend at the top: this is the one place
+          the shelter is looking when they wonder what Povrni would do. */}
+      {own && (
+        <p className="text-xs text-muted-foreground">
+          {portalText.fieldOwnLine}
+        </p>
+      )}
       {hint && (
         <p id={hintId(uid, field)} className="text-xs text-muted-foreground">
           {hint}
@@ -334,12 +316,16 @@ export function AnimalEditor({
   const [openedOn, setOpenedOn] = useState<PortalSaveState | null>(null);
   const [source, setSource] = useState({ animal, open });
   const formRef = useRef<HTMLFormElement>(null);
+  // Both dialogs are opened in code, so both put the focus back themselves.
+  const editorFocus = useReturnFocus();
+  const confirmFocus = useReturnFocus();
 
   // One prefix per mounted editor, so a hint and the error summary can be
   // named by the controls they belong to without colliding across dialogs.
   const uid = useId();
   const compatibilityHintId = `${uid}-compatibility-hint`;
   const errorId = `${uid}-error`;
+  const ageErrorId = `${uid}-age-error`;
 
   // The dialog opens on whatever the server last confirmed, so a cancelled
   // edit leaves nothing behind. Adjusted during render rather than in an
@@ -390,9 +376,11 @@ export function AnimalEditor({
   // and the dialog must not throw it away silently.
   const unsaved = dirty || badAgeBox !== null;
   const name = animal.name ?? portalText.unnamed;
-  const errorText = ageError
-    ? portalText.invalidError
-    : saveState.status === "error" && saveState !== openedOn
+  // The age has its own message, beside the boxes it is about. What is left
+  // for the foot of the form is the save that did not go through, and only
+  // once it is this dialog's own doing.
+  const errorText =
+    saveState.status === "error" && saveState !== openedOn
       ? saveState.message
       : null;
 
@@ -406,6 +394,15 @@ export function AnimalEditor({
   );
 
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  /**
+   * The age's own setter. Typing in either box retires its error; nothing
+   * else in the form can, or picking a size would clear a message about a
+   * number the shelter has not corrected.
+   */
+  function setAge(key: "ageYears" | "ageMonths", value: string) {
     setDraft((current) => ({ ...current, [key]: value }));
     setAgeError(false);
   }
@@ -442,6 +439,9 @@ export function AnimalEditor({
   }
 
   function discard() {
+    // The form the focus would go back to is about to unmount with the
+    // editor, which then puts the focus back where it opened from.
+    confirmFocus.release();
     setConfirming(false);
     onOpenChange(false);
   }
@@ -459,16 +459,16 @@ export function AnimalEditor({
       box?.focus({ preventScroll: true });
       return;
     }
-    if (!dirty) {
-      onOpenChange(false);
-      return;
-    }
     if (await onSave(patch)) onOpenChange(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={requestClose}>
-      <DialogContent closeLabel="Zapri" className="gap-0">
+      <DialogContent
+        closeLabel="Zapri"
+        className="gap-0"
+        {...editorFocus.props}
+      >
         <DialogHeader>
           <DialogTitle className="text-base">
             {fill(portalText.editTitle, { name })}
@@ -663,8 +663,9 @@ export function AnimalEditor({
                 className="grid grid-cols-2 gap-1.5"
               >
                 <div className="flex items-center gap-1.5">
-                  {/* The summary below the form is the age's error message
-                      too, so the box at fault points at it. */}
+                  {/* The age's message is its own and sits right below these
+                      two boxes, so the box at fault points at that. The
+                      summary at the foot of the form is a phone screen away. */}
                   <Input
                     id="portal-age-years"
                     type="number"
@@ -674,9 +675,9 @@ export function AnimalEditor({
                     value={draft.ageYears}
                     disabled={saving}
                     aria-invalid={ageError || undefined}
-                    aria-errormessage={ageError ? errorId : undefined}
+                    aria-errormessage={ageError ? ageErrorId : undefined}
                     aria-describedby={hintId(uid, "approximateAgeMonths")}
-                    onChange={(event) => set("ageYears", event.target.value)}
+                    onChange={(event) => setAge("ageYears", event.target.value)}
                   />
                   <Label
                     htmlFor="portal-age-years"
@@ -695,9 +696,11 @@ export function AnimalEditor({
                     value={draft.ageMonths}
                     disabled={saving}
                     aria-invalid={ageError || undefined}
-                    aria-errormessage={ageError ? errorId : undefined}
+                    aria-errormessage={ageError ? ageErrorId : undefined}
                     aria-describedby={hintId(uid, "approximateAgeMonths")}
-                    onChange={(event) => set("ageMonths", event.target.value)}
+                    onChange={(event) =>
+                      setAge("ageMonths", event.target.value)
+                    }
                   />
                   <Label
                     htmlFor="portal-age-months"
@@ -707,6 +710,19 @@ export function AnimalEditor({
                   </Label>
                 </div>
               </div>
+              {ageError && (
+                <p
+                  id={ageErrorId}
+                  role="alert"
+                  className="mt-1.5 flex items-start gap-1.5 text-sm text-destructive"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-3.5 shrink-0"
+                    aria-hidden
+                  />
+                  {portalText.invalidError}
+                </p>
+              )}
             </Field>
           </div>
 
@@ -802,28 +818,17 @@ export function AnimalEditor({
           </div>
         </form>
 
-        {/* Nested on purpose: it opens over the editor, so the form the
-            shelter is deciding about stays behind it. */}
-        <Dialog open={confirming} onOpenChange={setConfirming}>
-          <DialogContent showCloseButton={false} className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-base">
-                {portalText.discardTitle}
-              </DialogTitle>
-              <DialogDescription>{portalText.discardLead}</DialogDescription>
-            </DialogHeader>
-            {/* Reversed, so the safe answer is both the rightmost button and
-                the one the dialog opens focused on. */}
-            <div className="flex flex-row-reverse gap-2">
-              <Button type="button" onClick={() => setConfirming(false)}>
-                {portalText.keepEditing}
-              </Button>
-              <Button type="button" variant="destructive" onClick={discard}>
-                {portalText.discardChanges}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Whatever in the form asked the question gets the focus back. */}
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title={portalText.discardTitle}
+          lead={portalText.discardLead}
+          keepLabel={portalText.keepEditing}
+          confirmLabel={portalText.discardChanges}
+          onConfirm={discard}
+          {...confirmFocus.props}
+        />
       </DialogContent>
     </Dialog>
   );

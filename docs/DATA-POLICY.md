@@ -35,6 +35,14 @@ preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
    prek [obrazca](../../issues/new/choose) ali po e-pošti. Zahteve za
    odstranitev obravnavamo prednostno.
 
+7. **Neposredna objava.** Zavetišče, ki nima lastnega seznama živali, lahko
+   svoje živali objavi neposredno prek portala. Taka objava je izjava
+   zavetišča samega in velja kot dovoljenje za prikaz podatkov, opisov in
+   fotografij, ki jih vnese. Izvirna objava take živali je njena objava na
+   Posvoji.si, zato je pri njej kot vir navedena stran zavetišča na portalu.
+   Zavetišče objavo kadarkoli umakne samo. Tehnični opis je v
+   [MANUAL-LISTINGS.md](MANUAL-LISTINGS.md).
+
 ## Kaj dovoljenje zavetišča ureja
 
 - prikaz pomanjšanih fotografij in njihovo tehnično predpomnjenje,
@@ -66,5 +74,9 @@ rather than one of its animal photographs, so it carries its own dated grant
 source. No personal data
 of private individuals is ever collected, private-owner listings are excluded,
 and the crawler is conservative: identified bot, robots.txt, backoff, one
-request at a time. Shelters can change or revoke their participation at any
-time; shelter content is not covered by the repository's open-source license.
+request at a time. A shelter with no catalogue of its own can list animals
+directly through the portal; such a listing is the shelter's own statement and
+stands as permission for what it enters, its original listing is the one on
+Posvoji.si, and the shelter withdraws it itself. Shelters can change or revoke
+their participation at any time; shelter content is not covered by the
+repository's open-source license.

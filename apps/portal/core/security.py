@@ -3,6 +3,7 @@
 import hashlib
 import ipaddress
 import secrets
+from typing import Literal
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -122,4 +123,25 @@ def require_membership(request: HttpRequest, slug: str) -> Shelter:
     ).exists()
     if not is_member:
         raise HttpError(403, "not a member of this shelter")
+    return shelter
+
+
+def require_shelter(
+    request: HttpRequest, slug: str, *, ingestion: Literal["manual", "crawled"]
+) -> Shelter:
+    """The shelter behind {slug}, or 404 when its animals arrive another way.
+
+    A manual shelter writes the record here, a crawled one corrects what the
+    crawl found, and each set of routes belongs to one side of that line. A
+    record with two editing authorities is what this keeps from happening:
+    without the gate on both sides, a manual shelter's listings reach the
+    dataset and can then be overridden as if they had been crawled.
+
+    404 rather than 403 because the routes are not a permission the shelter is
+    missing, they are not there for it at all. Membership is still what is
+    checked first, so someone else's shelter is 403 either way.
+    """
+    shelter = require_membership(request, slug)
+    if shelter.is_manual != (ingestion == "manual"):
+        raise HttpError(404, "not found")
     return shelter

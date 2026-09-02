@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from django.conf import settings
 from django.db import models
@@ -8,6 +9,18 @@ from django.db import models
 def iso_utc(value: datetime) -> str:
     """A timestamp in the one format the ingest contract accepts."""
     return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def clean_text(value: Any) -> Any:
+    """Blank text is stored as NULL, the same as a field that was not sent.
+
+    For an override that clears the correction and the crawled value stands
+    again; for a listing it is the shelter not stating the field. Both
+    routers write what comes off the wire through this.
+    """
+    if isinstance(value, str):
+        return value.strip() or None
+    return value
 
 
 # Override column -> key used in the JSON API and in the ingest export. The
@@ -56,6 +69,28 @@ LISTING_COLUMN_BY_JSON_KEY: dict[str, str] = {
     "name": "name",
     **{key: column for column, key in LISTING_OPTIONAL_FIELDS},
 }
+
+
+# Columns that hold a date. Both the JSON API and the ingest contract carry
+# one as a string, so a column named here is serialised before it goes out.
+DATE_COLUMNS: frozenset[str] = frozenset({"birth_date"})
+
+
+def stated_values(
+    row: models.Model, fields: tuple[tuple[str, str], ...]
+) -> dict[str, object]:
+    """The fields the row states, keyed the way the wire names them.
+
+    A NULL column is left out: for an override it is a field the shelter has
+    not corrected, for a listing one it has not filled in.
+    """
+    values: dict[str, object] = {}
+    for column, key in fields:
+        value = getattr(row, column)
+        if value is None:
+            continue
+        values[key] = value.isoformat() if column in DATE_COLUMNS else value
+    return values
 
 
 class IngestionMode(models.TextChoices):
@@ -280,13 +315,7 @@ class AnimalOverride(models.Model):
 
     def overridden_fields(self) -> dict[str, object]:
         """The fields this shelter actually changed, keyed camelCase."""
-        result: dict[str, object] = {}
-        for column, key in OVERRIDE_FIELDS:
-            value = getattr(self, column)
-            if value is None:
-                continue
-            result[key] = value.isoformat() if column == "birth_date" else value
-        return result
+        return stated_values(self, OVERRIDE_FIELDS)
 
 
 def listing_photo_name(listing_id, filename: str) -> str:
@@ -407,27 +436,31 @@ class Listing(models.Model):
     def __str__(self) -> str:
         return f"{self.name} ({self.shelter.slug})"
 
-    def payload(self) -> dict[str, object]:
-        """The listing in the export's shape.
+    def payload_fields(self) -> dict[str, object]:
+        """Everything the export carries about the listing except its photos.
 
         An optional field the shelter has not stated is absent, never null.
         That maps one to one onto the Animal schema's optional fields.
+
+        Apart on its own because the API answers with the same fields but its
+        own photo list, one with an id on each row. Building both here would
+        walk the photos twice on every request.
         """
-        data: dict[str, object] = {
+        return {
             "providerId": self.shelter.slug,
             "id": str(self.id),
             "species": self.species,
             "status": self.status,
             "name": self.name,
+            **stated_values(self, LISTING_OPTIONAL_FIELDS),
+            "createdAt": iso_utc(self.created_at),
+            "updatedAt": iso_utc(self.updated_at),
         }
-        for column, key in LISTING_OPTIONAL_FIELDS:
-            value = getattr(self, column)
-            if value is None:
-                continue
-            data[key] = value.isoformat() if column == "birth_date" else value
+
+    def payload(self) -> dict[str, object]:
+        """The listing in the export's shape, photos and all."""
+        data = self.payload_fields()
         data["photos"] = [photo.payload() for photo in self.photos.all()]
-        data["createdAt"] = iso_utc(self.created_at)
-        data["updatedAt"] = iso_utc(self.updated_at)
         return data
 
 

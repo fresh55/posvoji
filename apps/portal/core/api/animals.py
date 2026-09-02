@@ -1,6 +1,13 @@
-"""Animal listing and overrides for one shelter."""
+"""Animal listing and overrides for one shelter.
 
-from typing import Annotated, Any
+These routes correct what the crawl found, so they exist only for a shelter
+the crawl is the origin of. A manual shelter writes the record itself and its
+listings reach the dataset like any crawled animal, so an override on top of
+one would give a single record two editing authorities. Those shelters get
+404 here, the mirror of the answer they get on the listing routes.
+"""
+
+from typing import Annotated
 
 from django.db import transaction
 from django.utils import timezone
@@ -12,23 +19,16 @@ from ..dataset import (
     find_animal,
     merge_animal,
 )
-from ..models import COLUMN_BY_JSON_KEY, AnimalOverride
+from ..models import COLUMN_BY_JSON_KEY, AnimalOverride, clean_text
 from ..schemas import AnimalOut, AnimalOverrideIn
-from ..security import require_membership
+from ..security import require_shelter
 
 router = Router()
 
 
-def _clean(value: Any) -> Any:
-    """Blank text clears the override the same way an explicit null does."""
-    if isinstance(value, str):
-        return value.strip() or None
-    return value
-
-
 @router.get("/shelters/{slug}/animals", response=list[AnimalOut])
 def list_animals(request, slug: str):
-    shelter = require_membership(request, slug)
+    shelter = require_shelter(request, slug, ingestion="crawled")
     overrides = {
         override.animal_id: override
         for override in AnimalOverride.objects.filter(shelter=shelter)
@@ -48,7 +48,7 @@ def upsert_override(
     animal_id: Annotated[str, Path(max_length=200)],
     payload: AnimalOverrideIn,
 ):
-    shelter = require_membership(request, slug)
+    shelter = require_shelter(request, slug, ingestion="crawled")
     # Only the keys present in the request body are touched, so a partial
     # update leaves the other overrides alone.
     changes = payload.model_dump(exclude_unset=True)
@@ -68,7 +68,7 @@ def upsert_override(
 
         baseline = dict(override.baseline)
         for key, value in changes.items():
-            cleaned = _clean(value)
+            cleaned = clean_text(value)
             setattr(override, COLUMN_BY_JSON_KEY[key], cleaned)
             # Record what the crawl says right now for the field being set, so a
             # later run can tell a source that has moved from a correction that

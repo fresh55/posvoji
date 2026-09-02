@@ -121,6 +121,14 @@ and reported, never written.
 All listing routes require membership of the shelter and a manual shelter.
 A crawled shelter gets 404 on every one of them.
 
+The rule holds from the other side too: the override routes under
+`/api/shelters/{slug}/animals` require a crawled shelter and answer 404 for a
+manual one. A manual shelter's listings are in the dataset like any other
+animal, so without that gate an override could be written against a listing
+and would then be applied on top of it, giving one record two authorities.
+Membership is checked first in both directions, so a shelter that is not a
+member gets 403 and cannot learn another shelter's ingestion mode.
+
 | Route | Body | Answer |
 | --- | --- | --- |
 | `GET /api/shelters/{slug}/listings` | | `ListingOut[]`, non-archived, by name |

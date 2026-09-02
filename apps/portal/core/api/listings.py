@@ -13,7 +13,6 @@ from uuid import UUID
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Max
-from django.http import HttpRequest
 from django.utils import timezone
 from ninja import File, Router, Status
 from ninja.errors import HttpError
@@ -24,29 +23,15 @@ from ..models import (
     Listing,
     ListingPhoto,
     Shelter,
+    clean_text,
     iso_utc,
     listing_photo_name,
 )
 from ..photos import PhotoRejected, encode_upload
 from ..schemas import ListingIn, ListingOut, ListingPhotoOut
-from ..security import require_membership
+from ..security import require_shelter
 
 router = Router()
-
-
-def _clean(value: Any) -> Any:
-    """Blank text is the shelter not stating the field, same as an absent one."""
-    if isinstance(value, str):
-        return value.strip() or None
-    return value
-
-
-def _manual_shelter(request: HttpRequest, slug: str) -> Shelter:
-    """The shelter behind {slug}, or 404 unless it writes its own listings."""
-    shelter = require_membership(request, slug)
-    if not shelter.is_manual:
-        raise HttpError(404, "not found")
-    return shelter
 
 
 def _live(shelter: Shelter, listing_id: UUID) -> Listing:
@@ -68,7 +53,8 @@ def photo_out(photo: ListingPhoto) -> dict[str, Any]:
 
 
 def listing_out(listing: Listing) -> dict[str, Any]:
-    data = listing.payload()
+    """The export's fields plus archivedAt, each photo carrying its id."""
+    data = listing.payload_fields()
     data["photos"] = [photo_out(photo) for photo in listing.photos.all()]
     data["archivedAt"] = (
         iso_utc(listing.archived_at) if listing.archived_at is not None else None
@@ -80,12 +66,12 @@ def apply_payload(listing: Listing, payload: ListingIn) -> None:
     """Writes the whole editable surface, because PUT is a full replace."""
     values = payload.model_dump()
     for key, column in LISTING_COLUMN_BY_JSON_KEY.items():
-        setattr(listing, column, _clean(values[key]))
+        setattr(listing, column, clean_text(values[key]))
 
 
 @router.get("/shelters/{slug}/listings", response=list[ListingOut])
 def list_listings(request, slug: str):
-    shelter = _manual_shelter(request, slug)
+    shelter = require_shelter(request, slug, ingestion="manual")
     listings = (
         Listing.objects.filter(shelter=shelter, archived_at__isnull=True)
         .select_related("shelter")
@@ -100,7 +86,7 @@ def list_listings(request, slug: str):
 
 @router.post("/shelters/{slug}/listings", response={201: ListingOut})
 def create_listing(request, slug: str, payload: ListingIn):
-    shelter = _manual_shelter(request, slug)
+    shelter = require_shelter(request, slug, ingestion="manual")
     listing = Listing(
         shelter=shelter,
         created_by=request.user,
@@ -113,7 +99,7 @@ def create_listing(request, slug: str, payload: ListingIn):
 
 @router.put("/shelters/{slug}/listings/{listing_id}", response=ListingOut)
 def replace_listing(request, slug: str, listing_id: UUID, payload: ListingIn):
-    shelter = _manual_shelter(request, slug)
+    shelter = require_shelter(request, slug, ingestion="manual")
     listing = _live(shelter, listing_id)
     apply_payload(listing, payload)
     listing.updated_by = request.user
@@ -123,7 +109,7 @@ def replace_listing(request, slug: str, listing_id: UUID, payload: ListingIn):
 
 @router.delete("/shelters/{slug}/listings/{listing_id}", response={204: None})
 def archive_listing(request, slug: str, listing_id: UUID):
-    shelter = _manual_shelter(request, slug)
+    shelter = require_shelter(request, slug, ingestion="manual")
     listing = Listing.objects.filter(shelter=shelter, id=listing_id).first()
     if listing is None:
         raise HttpError(404, "listing not found")
@@ -146,7 +132,7 @@ def add_photo(
     listing_id: UUID,
     file: Annotated[UploadedFile, File(...)],
 ):
-    shelter = _manual_shelter(request, slug)
+    shelter = require_shelter(request, slug, ingestion="manual")
     listing = _live(shelter, listing_id)
     try:
         encoded = encode_upload(file)
@@ -188,7 +174,7 @@ def add_photo(
     response={204: None},
 )
 def remove_photo(request, slug: str, listing_id: UUID, photo_id: int):
-    shelter = _manual_shelter(request, slug)
+    shelter = require_shelter(request, slug, ingestion="manual")
     listing = _live(shelter, listing_id)
     photo = ListingPhoto.objects.filter(listing=listing, pk=photo_id).first()
     if photo is None:

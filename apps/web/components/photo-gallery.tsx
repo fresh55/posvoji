@@ -51,7 +51,15 @@ const DEFAULT_WRAPPER_CLASS =
 
 // One dot's shape, hoisted so the ~1500 of them the grid draws are not 1500
 // string builds per render.
-const DOT_CLASS = "size-1.5 rounded-full shadow-xs transition-colors";
+// A shadow that is a dark edge rather than a soft drop, because what these sit
+// on is a photograph and a photograph can be any colour. shadow-xs is tuned to
+// lift a control off a known surface; over a white cat on a cream blanket both
+// the bg-background dot and its shadow are the same value as the picture and
+// the row disappears. The ring is drawn in black at low alpha, so it reads as
+// the dot's own edge on a light photo and disappears into a dark one, where the
+// white dots never needed help.
+const DOT_CLASS =
+  "size-1.5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)] transition-colors";
 
 type SwipeStart = { x: number; y: number; time: number; width: number };
 

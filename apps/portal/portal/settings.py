@@ -186,6 +186,16 @@ SESSION_COOKIE_DOMAIN = os.environ.get("PORTAL_SESSION_COOKIE_DOMAIN") or None
 SESSION_COOKIE_AGE = int(os.environ.get("PORTAL_SESSION_AGE", 60 * 60 * 24 * 14))
 CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 
+# A deployment terminates TLS at the proxy and forwards on loopback, so Django
+# sees a plain http request and request.is_secure() is False. That costs the
+# strict same-origin referer check CSRF applies to https requests, on top of
+# the token, which is worth having on a service whose whole surface is
+# state-changing. Opt-in rather than "on whenever DEBUG is off", because the
+# header is only trustworthy when a proxy sets it on every request: a service
+# reachable directly would let a caller claim https by sending it.
+if _env_bool("PORTAL_TRUST_PROXY_PROTO", False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ORIGINS", ["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS

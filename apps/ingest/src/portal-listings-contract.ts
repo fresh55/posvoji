@@ -72,6 +72,19 @@ export type PortalListing = z.infer<typeof PortalListing>;
 
 export const PortalListingsPayload = z.strictObject({
   generatedAt: z.iso.datetime(),
+  // Every shelter the portal currently considers manual, whether or not it
+  // has a listing. Without it an empty listings array is ambiguous: it could
+  // mean the manual shelters archived everything, or it could mean the
+  // portal's Shelter.ingestion has drifted from policy.yaml and the feed
+  // never answered for them at all. Only the first is a removal, and
+  // export.ts carries a provider forward rather than emptying it when the
+  // feed does not name it.
+  //
+  // Optional because a portal older than this field says nothing, and a run
+  // against one has to keep behaving as it did before the field existed
+  // rather than fail. Absent means "the portal did not say", which is a
+  // different fact from an empty array.
+  providers: z.array(z.string().min(1)).optional(),
   // Archived listings are not exported. A listing that leaves this array is
   // removed from the dataset the same way a crawled animal that left its
   // shelter's list page is.

@@ -227,7 +227,18 @@ class ListingOut(ExportListingOut):
 
 
 class ExportListingsOut(Schema):
+    """The manual listing feed.
+
+    providers names every shelter this payload is answering for, whether or
+    not it has listings. Without it an empty listings array is ambiguous: it
+    could mean the manual shelters archived everything, or it could mean this
+    portal does not consider them manual at all because Shelter.ingestion has
+    drifted from policy.yaml. The ingest side is the one that has to tell
+    those apart, because only the first is a removal.
+    """
+
     generatedAt: str
+    providers: list[str]
     listings: list[ExportListingOut]
 
 

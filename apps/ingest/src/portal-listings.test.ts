@@ -85,6 +85,49 @@ describe("PortalListingsPayload", () => {
     expect(result.success).toBe(true);
     expect(result.data?.listings).toHaveLength(4);
     expect(result.data?.listings[0]?.photos).toHaveLength(2);
+    // A named shelter with no listing of its own is the case the field is
+    // for, so the fixture carries one and this pins it.
+    expect(result.data?.providers).toEqual([
+      "contract-shelter",
+      "contract-shelter-empty",
+    ]);
+  });
+
+  // The fixture's envelope and this schema's keys are the same list, checked
+  // from both sides: the portal asserts its response schema against
+  // payloadFields, and this asserts the zod object against it too.
+  it("declares exactly the payload fields the contract names", () => {
+    const contract = JSON.parse(readFileSync(contractPath, "utf8")) as {
+      payloadFields: string[];
+    };
+
+    expect(Object.keys(PortalListingsPayload.shape).sort()).toEqual(
+      [...contract.payloadFields].sort(),
+    );
+  });
+
+  // A portal older than the providers field says nothing rather than sending
+  // an empty list, and a run against one has to keep working. export.ts reads
+  // the absence as "the portal did not say" and behaves as it did before.
+  it("parses a payload with no providers key", () => {
+    const result = PortalListingsPayload.safeParse({
+      generatedAt: "2026-09-01T12:00:00Z",
+      listings: [listing()],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.providers).toBeUndefined();
+  });
+
+  it("rejects a providers entry that is not a non-empty string", () => {
+    expect(
+      PortalListingsPayload.safeParse({ ...payload([]), providers: [""] })
+        .success,
+    ).toBe(false);
+    expect(
+      PortalListingsPayload.safeParse({ ...payload([]), providers: [1] })
+        .success,
+    ).toBe(false);
   });
 
   it("rejects a null optional field", () => {

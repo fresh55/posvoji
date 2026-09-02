@@ -9,7 +9,7 @@ import {
   manualPolicies,
   type LoadedPolicy,
 } from "./policies";
-import { buildListingAnimals } from "./portal-listings";
+import { answeredProviders, buildListingAnimals } from "./portal-listings";
 import type { PortalListingsPayload } from "./portal-listings-contract";
 import {
   carryFirstSeenAt,
@@ -54,9 +54,16 @@ const SHELTERS: ReadonlyMap<string, ShelterEntry> = new Map([
   ["muri", { id: "muri", name: "Zavod Muri", city: "Vransko" }],
 ]);
 
-function feed(ids: string[], providerId = "johanca"): PortalListingsPayload {
+// providers left out is a portal older than the field, which said nothing.
+// Passed explicitly, it is the feed naming the shelters it answers for.
+function feed(
+  ids: string[],
+  providerId = "johanca",
+  providers?: string[],
+): PortalListingsPayload {
   return {
     generatedAt: "2026-09-01T12:00:00Z",
+    ...(providers === undefined ? {} : { providers }),
     listings: ids.map((id) => ({
       providerId,
       id,
@@ -119,6 +126,42 @@ function runPipeline(input: {
     crawledProviderIds: input.crawledProviderIds,
   });
   return { published: restricted.animals, snapshot };
+}
+
+// export.ts's "ok" branch end to end: which manual providers the payload
+// answers for, the records it builds for those, and the carry-forward and
+// failed list for the ones it does not. answeredProviders is the function
+// export.ts itself calls, so a regression there fails here.
+function runFeed(input: {
+  payload: PortalListingsPayload;
+  manualProviderIds: string[];
+  previousCrawled: Animal[];
+  policies: Map<string, ProviderPolicy>;
+}): { published: Animal[]; failed: string[] } {
+  const { answered, unanswered } = answeredProviders(
+    input.manualProviderIds,
+    input.payload.providers,
+  );
+  // Narrowed to the answered providers, exactly as export.ts narrows it: a
+  // provider that is carried forward must not also have records built for it
+  // this run, or the carried copy and the fresh one collide on one id.
+  const listings = buildListingAnimals(
+    input.payload,
+    input.policies,
+    SHELTERS,
+    NOW,
+    new Set(answered),
+  ).animals;
+  const { published } = runPipeline({
+    crawled: [],
+    listings,
+    previousCrawled: input.previousCrawled,
+    // A provider is in crawledProviderIds when this run has a fresh answer
+    // for it, and the feed's providers list is that answer.
+    crawledProviderIds: new Set(answered),
+    policies: input.policies,
+  });
+  return { published, failed: unanswered };
 }
 
 describe("the crawl loop and the listings feed", () => {
@@ -284,6 +327,129 @@ describe("the crawl loop and the listings feed", () => {
     // export.ts pushes every enabled manual provider onto the same failed list
     // a thrown crawl uses, and that list is all exitCodeForRun reads.
     expect(exitCodeForRun(["johanca"].length)).toBe(2);
+  });
+
+  // The drift case, and the reason the providers list exists.
+  //
+  // Shelter.ingestion in the portal is a mirror of ingestion in policy.yaml,
+  // copied by seed_shelters. Flip the policy to manual and forget to re-seed
+  // and the feed filters that shelter out: 200, an empty listings array and
+  // no error. Two animals is under guardMassRemoval's minimum of three, so
+  // nothing else in the run stands between that and a deletion, and the
+  // portal is the only place these records exist.
+  it("carries a manual provider the feed did not name, and does not exit 0", () => {
+    const previous = buildListingAnimals(
+      feed(["a", "b"]),
+      new Map([["johanca", policy()]]),
+      SHELTERS,
+      "2026-08-01T00:00:00Z",
+    ).animals;
+
+    const { published, failed } = runFeed({
+      // The feed answers, and names only the shelter the portal still agrees
+      // is manual. johanca is not in it.
+      payload: feed([], "johanca", ["oskar"]),
+      manualProviderIds: ["johanca"],
+      previousCrawled: previous,
+      policies: new Map([["johanca", policy()]]),
+    });
+
+    expect(published.map((a) => a.id).sort()).toEqual([
+      "johanca:a",
+      "johanca:b",
+    ]);
+    expect(failed).toEqual(["johanca"]);
+    // The same list a thrown crawl uses, and all exitCodeForRun reads.
+    expect(exitCodeForRun(failed.length)).toBe(2);
+  });
+
+  // The mirror of it: the feed names the shelter and has nothing for it, so
+  // the shelter really did archive everything and the removal is its own.
+  it("honours an emptied feed for a provider the feed did name", () => {
+    const previous = buildListingAnimals(
+      feed(["a", "b"]),
+      new Map([["johanca", policy()]]),
+      SHELTERS,
+      "2026-08-01T00:00:00Z",
+    ).animals;
+
+    const { published, failed } = runFeed({
+      payload: feed([], "johanca", ["johanca"]),
+      manualProviderIds: ["johanca"],
+      previousCrawled: previous,
+      policies: new Map([["johanca", policy()]]),
+    });
+
+    // Two is under guardMassRemoval's minimum, so the guard permits it, which
+    // is the behaviour a named provider is supposed to get.
+    expect(published).toEqual([]);
+    expect(failed).toEqual([]);
+    expect(exitCodeForRun(failed.length)).toBe(0);
+  });
+
+  // A named provider is not exempt from the guard, only from the drift check.
+  it("still stops a named provider's mass removal at the guard", () => {
+    const ten = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
+    const previous = buildListingAnimals(
+      feed(ten),
+      new Map([["johanca", policy()]]),
+      SHELTERS,
+      "2026-08-01T00:00:00Z",
+    ).animals;
+
+    expect(() =>
+      runFeed({
+        payload: feed(["a"], "johanca", ["johanca"]),
+        manualProviderIds: ["johanca"],
+        previousCrawled: previous,
+        policies: new Map([["johanca", policy()]]),
+      }),
+    ).toThrow(/removal guard: johanca 10 -> 1/);
+  });
+
+  // A portal older than the providers field says nothing, and a run against
+  // one keeps the behaviour it had before the field existed rather than
+  // treating every manual shelter as unaccounted for.
+  it("treats a payload with no providers list as answering for all of them", () => {
+    const previous = buildListingAnimals(
+      feed(["a", "b"]),
+      new Map([["johanca", policy()]]),
+      SHELTERS,
+      "2026-08-01T00:00:00Z",
+    ).animals;
+
+    const { published, failed } = runFeed({
+      payload: feed([]),
+      manualProviderIds: ["johanca"],
+      previousCrawled: previous,
+      policies: new Map([["johanca", policy()]]),
+    });
+
+    expect(published).toEqual([]);
+    expect(failed).toEqual([]);
+  });
+
+  it("splits the manual providers by what the feed named", () => {
+    expect(answeredProviders(["johanca", "oskar"], ["oskar"])).toEqual({
+      answered: ["oskar"],
+      unanswered: ["johanca"],
+    });
+    // An empty list is the portal saying it considers no shelter manual,
+    // which is not the same as saying nothing.
+    expect(answeredProviders(["johanca"], [])).toEqual({
+      answered: [],
+      unanswered: ["johanca"],
+    });
+    expect(answeredProviders(["johanca"], undefined)).toEqual({
+      answered: ["johanca"],
+      unanswered: [],
+    });
+    // A name the run is not responsible for is not this function's business:
+    // a targeted run narrows manualProviderIds before it gets here.
+    expect(answeredProviders(["johanca"], ["johanca", "oskar"])).toEqual({
+      answered: ["johanca"],
+      unanswered: [],
+    });
   });
 
   // The other half of the same rule: a shelter whose permission was withdrawn

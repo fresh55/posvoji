@@ -41,48 +41,62 @@ export function LanguageSwitcher({
 }) {
   const { locale, messages } = useI18n();
 
-  const keepFilters = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.currentTarget.href = `${event.currentTarget.href}${window.location.search}`;
-  };
+  // The filters travel with the language, so the press carries the current
+  // query onto the link before the browser follows it. A static export has no
+  // server to read the query with, so this cannot be part of the rendered href.
+  //
+  // Built from the path the link was rendered with and not from the href the
+  // last press left on it. A held modifier opens the destination in a new tab
+  // and leaves this page mounted with its link rewritten, so an href appended
+  // to in place is appended to again on the next press: /en?vrsta=pes became
+  // /en?vrsta=pes?vrsta=macka. Rebuilt from the path each time, a press only
+  // ever states the query once.
+  const keepFilters =
+    (path: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+      event.currentTarget.href = `${path}${window.location.search}`;
+    };
 
   return (
     <nav
       aria-label={messages.chooseLanguage}
       className="flex items-center gap-0.5 rounded-ui bg-muted p-0.5"
     >
-      {LANGUAGES.map((language) => (
-        <Button
-          key={language.locale}
-          asChild
-          size="xs"
-          variant="ghost"
-          className={cn(
-            SWITCH,
-            locale === language.locale
-              ? "bg-background text-foreground shadow-sm hover:bg-background"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <a
-            href={paths?.[language.locale] ?? language.href}
-            hrefLang={language.locale}
-            lang={language.locale}
-            aria-label={language.name}
-            aria-current={locale === language.locale ? "page" : undefined}
-            onClick={keepFilters}
+      {LANGUAGES.map((language) => {
+        const path = paths?.[language.locale] ?? language.href;
+        return (
+          <Button
+            key={language.locale}
+            asChild
+            size="xs"
+            variant="ghost"
+            className={cn(
+              SWITCH,
+              locale === language.locale
+                ? "bg-background text-foreground shadow-sm hover:bg-background"
+                : "text-muted-foreground hover:text-foreground",
+            )}
           >
-            {/* The short name at every width, where the full names used to
-                appear from sm. Spelled out this was 151px of bordered
-                control, the widest thing in the header after the brand, and
-                it was reading as the header's main event next to the login
-                it stood beside. SL and EN are the two abbreviations nobody
-                has to be taught, and the full name is still the accessible
-                name: both are a prefix of the word they stand for, so
-                "click Slovenščina" still lands here. */}
-            {language.shortName}
-          </a>
-        </Button>
-      ))}
+            <a
+              href={path}
+              hrefLang={language.locale}
+              lang={language.locale}
+              aria-label={language.name}
+              aria-current={locale === language.locale ? "page" : undefined}
+              onClick={keepFilters(path)}
+            >
+              {/* The short name at every width, where the full names used to
+                  appear from sm. Spelled out this was 151px of bordered
+                  control, the widest thing in the header after the brand, and
+                  it was reading as the header's main event next to the login
+                  it stood beside. SL and EN are the two abbreviations nobody
+                  has to be taught, and the full name is still the accessible
+                  name: both are a prefix of the word they stand for, so
+                  "click Slovenščina" still lands here. */}
+              {language.shortName}
+            </a>
+          </Button>
+        );
+      })}
     </nav>
   );
 }

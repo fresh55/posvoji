@@ -11,7 +11,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { mailtoHref, telHref } from "@/lib/contact-links";
-import { animalsForClient, loadDataset } from "@/lib/dataset";
+import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
@@ -123,9 +123,7 @@ export function ShelterDetailPage({
   if (!shelter) notFound();
 
   const dataset = loadDataset();
-  const animals = (dataset?.animals ?? []).filter(
-    (animal) => animal.shelter.id === shelter.id,
-  );
+  const animals = shelterAnimals(shelter.id);
   const logos = getShelterLogos();
   const hasData = animals.length > 0;
   const text = pageText[locale];
@@ -200,22 +198,40 @@ export function ShelterDetailPage({
                     // not at all.
                     accent={hasData}
                   />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+                  {/* A floor under this column rather than min-w-0. The mark
+                      beside it draws up to 170px wide (SIZE.lg in
+                      shelter-avatar.tsx), which at a 320px viewport left this
+                      column about 100px, and neither the name nor the town
+                      line fits in that: the page scrolled sideways. With a
+                      floor, the row's flex-wrap moves the whole column under
+                      the mark instead of crushing it, and the column gets the
+                      full width there. */}
+                  <div className="min-w-40 flex-1 space-y-1">
+                    {/* break-words is the last resort under it: a name whose
+                        longest word is wider than the column breaks the word
+                        rather than the page. */}
+                    <h1 className="break-words text-2xl font-medium tracking-tight sm:text-3xl">
                       {shelter.name}
                     </h1>
-                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <MapPin className="size-3.5 shrink-0" aria-hidden />
-                      {shelter.city}
+                    {/* Wrapping, not truncation: the town and the count are
+                        both facts someone came here for. The two spans keep
+                        the pin with the town and the middot with the count, so
+                        a break falls between the facts rather than inside
+                        one. */}
+                    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-muted-foreground">
+                      <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <MapPin className="size-3.5 shrink-0" aria-hidden />
+                        <span className="break-words">{shelter.city}</span>
+                      </span>
                       {/* The number someone arriving from a card most wants:
                           whether this shelter has more to show. Absent rather
                           than zero for a registry shelter, whose notice below
                           already explains why there is no list. */}
                       {hasData && (
-                        <>
+                        <span className="inline-flex items-center gap-1.5">
                           <span className={META_DOT_CLASS}>·</span>
                           {animalCount(animals.length, locale)}
-                        </>
+                        </span>
                       )}
                     </p>
                   </div>

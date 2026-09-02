@@ -82,11 +82,22 @@ function missingFields(animal: PortalAnimal) {
  * the species and the shelter's town and id (see lib/animal-path.ts), and the
  * portal has all five. The value is complete for the call, which is what the
  * cast stands on.
+ *
+ * The name is handed in rather than read off the animal. The address carries
+ * the name, the public site is a static export rebuilt about every twelve
+ * hours, and its animal route generates no page for a slug that was not in
+ * that build (dynamicParams is false). A rename saved here therefore names a
+ * page that does not exist yet, so the link keeps the name the animal was
+ * listed under and the card says so beside it.
  */
-function publicPath(animal: PortalAnimal, shelter: PortalShelter): string {
+function publicPath(
+  animal: PortalAnimal,
+  shelter: PortalShelter,
+  name: string | null,
+): string {
   const fields = {
     id: animal.id,
-    name: animal.name ?? undefined,
+    name: name ?? undefined,
     species: animal.species ?? "zival",
     shelter: { id: shelter.slug, city: shelter.city ?? "" },
   } as unknown as AnimalFields;
@@ -112,12 +123,19 @@ function metaLine(animal: PortalAnimal, now: Date): string {
 export function PortalAnimalCard({
   animal,
   shelter,
+  publicName = animal.name,
   saveState,
   onSave,
 }: {
   animal: PortalAnimal;
   /** The shelter this card is listed under, for the public link's address. */
   shelter: PortalShelter;
+  /**
+   * The name the public site can already have a page for, which is the one
+   * the list loaded with. Defaults to the animal's own name, which is what an
+   * animal nobody has renamed in this session reads as.
+   */
+  publicName?: string | null;
   saveState: PortalSaveState;
   onSave: (patch: PortalAnimalPatch) => Promise<boolean>;
 }) {
@@ -143,6 +161,9 @@ export function PortalAnimalCard({
   const saving = saveState.status === "saving";
   const failed = saveState.status === "error";
   const missing = missingFields(animal);
+  // The public page is still filed under the older name, so the link below
+  // does not match the name above it and the card has to say why.
+  const renamed = publicName !== animal.name;
 
   return (
     <article className="space-y-3 rounded-ui border p-3 transition-colors hover:border-foreground/25 focus-within:border-foreground/25 sm:p-4">
@@ -327,7 +348,7 @@ export function PortalAnimalCard({
               shelter is working through a list and must not lose its place. */}
           <Button asChild variant="ghost" size="sm">
             <a
-              href={publicPath(animal, shelter)}
+              href={publicPath(animal, shelter, publicName)}
               target="_blank"
               rel="noreferrer"
             >
@@ -347,6 +368,15 @@ export function PortalAnimalCard({
           </p>
         )}
       </div>
+
+      {/* Directly under the link it is about, and only once the name here and
+          the name on the public page have parted: a shelter that has renamed
+          nothing never reads a word about publication schedules. */}
+      {renamed && (
+        <p className="text-2xs leading-relaxed text-muted-foreground">
+          {portalText.publicRenamed}
+        </p>
+      )}
 
       <AnimalEditor
         animal={animal}

@@ -40,7 +40,7 @@ describe("shelterPlateUrl", () => {
 
 describe("shelterMetadata", () => {
   it("says who and where, in the reader's language", () => {
-    const sl = shelterMetadata(shelter, "sl");
+    const sl = shelterMetadata(shelter, "sl", true);
     expect(sl.title).toBe("Zavod Muri | Posvoji.si");
     expect(sl.description).toContain("Zavod Muri, Vransko.");
     expect(sl.alternates?.canonical).toBe("/zavetisca/muri");
@@ -49,14 +49,30 @@ describe("shelterMetadata", () => {
       en: "/en/shelters/muri",
     });
 
-    const en = shelterMetadata(shelter, "en");
-    expect(en.description).toContain("Contact details");
+    const en = shelterMetadata(shelter, "en", true);
+    expect(en.description).toContain("Contact details and animals");
     expect(en.alternates?.canonical).toBe("/en/shelters/muri");
+  });
+
+  it("promises no animals for a shelter that shares none", () => {
+    // Six of the seventeen registered shelters are in this state today. The
+    // page says so in the body; the description used to advertise a list that
+    // was not there.
+    const sl = shelterMetadata(shelter, "sl", false);
+    expect(sl.description).toBe(
+      "Zavod Muri, Vransko. Kontaktni podatki zavetišča na Posvoji.si.",
+    );
+    expect(sl.openGraph?.description).toBe(sl.description);
+
+    const en = shelterMetadata(shelter, "en", false);
+    expect(en.description).toBe(
+      "Zavod Muri, Vransko. Shelter contact details on Posvoji.si.",
+    );
   });
 
   it("hands the plate to both languages as a large card", () => {
     for (const locale of ["sl", "en"] as const) {
-      const meta = shelterMetadata(shelter, locale);
+      const meta = shelterMetadata(shelter, locale, true);
       const images = meta.openGraph?.images;
       expect(images).toEqual([
         {
@@ -71,7 +87,7 @@ describe("shelterMetadata", () => {
   });
 
   it("falls back to a plain summary when no plate was drawn", () => {
-    const meta = shelterMetadata({ ...shelter, id: "not-a-shelter" }, "sl");
+    const meta = shelterMetadata({ ...shelter, id: "not-a-shelter" }, "sl", true);
     expect(meta.openGraph?.images).toBeUndefined();
     expect(twitterCard(meta)).toBe("summary");
   });

@@ -14,6 +14,7 @@ import { AnimalEditor } from "@/components/portal/animal-editor";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
+  SPECIAL_NEEDS_META,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type { PortalSaveState } from "@/hooks/portal-list";
@@ -374,7 +375,32 @@ describe("a failure left behind by the card's status buttons", () => {
   // saveState is one slot per animal, shared with the status row on the card,
   // and an error in it never expires.
   it("stays out of an editor that has not saved anything yet", () => {
-    open({ saveState: { status: "error", message: portalText.saveError } });
+    // Opened the way the card opens it, from closed, because that is the
+    // render the failure has to be remembered on.
+    const subject = animal();
+    const failed: PortalSaveState = {
+      status: "error",
+      message: portalText.saveError,
+    };
+    const view = render(
+      <AnimalEditor
+        animal={subject}
+        open={false}
+        onOpenChange={vi.fn()}
+        saveState={failed}
+        onSave={vi.fn()}
+      />,
+    );
+
+    view.rerender(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={failed}
+        onSave={vi.fn()}
+      />,
+    );
 
     expect(screen.queryByText(portalText.saveError)).toBeNull();
   });
@@ -457,5 +483,120 @@ describe("where the focus goes", () => {
       screen.getByText(fill(portalText.editTitle, { name: "Muri" })),
     ).toBeTruthy();
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("a save that failed before the editor was opened", () => {
+  // Same message, two attempts: the hook writes a fresh state object for each
+  // one, which is how the dialog tells the failure it inherited from the one
+  // its own save produced.
+  function failure(): PortalSaveState {
+    return { status: "error", message: portalText.saveError };
+  }
+
+  const subject = animal();
+
+  function editor(open: boolean, saveState: PortalSaveState) {
+    return (
+      <AnimalEditor
+        animal={subject}
+        open={open}
+        onOpenChange={vi.fn()}
+        saveState={saveState}
+        onSave={vi.fn()}
+      />
+    );
+  }
+
+  it("is not reported as this form's own", () => {
+    // A status tap on the card failed, and the shelter opens the editor after
+    // it. Nothing here has been submitted, so nothing here has failed.
+    const { rerender } = render(editor(false, failure()));
+
+    rerender(editor(true, failure()));
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("does not swallow what the next save says", () => {
+    const { rerender } = render(editor(false, failure()));
+    rerender(editor(true, failure()));
+
+    rerender(editor(true, failure()));
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      portalText.saveError,
+    );
+  });
+});
+
+describe("a choice that gives the field back to the crawler", () => {
+  function row(field: string): HTMLElement {
+    const found = document.querySelector<HTMLElement>(`[data-field="${field}"]`);
+    if (!found) throw new Error(`no row for ${field}`);
+    return found;
+  }
+
+  function revertButton(field: string): HTMLElement | null {
+    return within(row(field)).queryByRole("button", { name: /^Povrni/ });
+  }
+
+  function edit(subject: PortalAnimal) {
+    render(
+      <AnimalEditor
+        animal={subject}
+        open
+        onOpenChange={vi.fn()}
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+  }
+
+  it("reads a cleared Posebne potrebe as a revert", () => {
+    // specialNeeds is a boolean on the wire, so the row has the two answers
+    // it actually has and no third card. Taking the answer back is what
+    // reaches the wire as the null that clears the override, the same as an
+    // emptied box elsewhere in the form.
+    edit(animal({ specialNeeds: true, overrides: { specialNeeds: true } }));
+    expect(
+      within(row("specialNeeds")).getByText(portalText.edited),
+    ).toBeTruthy();
+
+    fireEvent.click(
+      within(row("specialNeeds")).getByRole("radio", {
+        name: SPECIAL_NEEDS_META.yes.label,
+      }),
+    );
+
+    expect(
+      within(row("specialNeeds")).getByText(portalText.willRevert),
+    ).toBeTruthy();
+    // And the button is gone: it offers an action already queued.
+    expect(revertButton("specialNeeds")).toBeNull();
+  });
+
+  it("leaves an unoverridden Posebne potrebe alone", () => {
+    // Nothing to give back, so clearing the row is only an answer withdrawn.
+    edit(animal({ specialNeeds: true }));
+
+    fireEvent.click(
+      within(row("specialNeeds")).getByRole("radio", {
+        name: SPECIAL_NEEDS_META.yes.label,
+      }),
+    );
+
+    expect(
+      within(row("specialNeeds")).queryByText(portalText.willRevert),
+    ).toBeNull();
+  });
+
+  it("still reads an emptied box as a revert", () => {
+    edit(animal({ name: "Muri", overrides: { name: "Muri" } }));
+
+    fireEvent.change(field("portal-name"), { target: { value: "" } });
+
+    expect(within(row("name")).getByText(portalText.willRevert)).toBeTruthy();
+    expect(revertButton("name")).toBeNull();
   });
 });

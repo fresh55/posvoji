@@ -122,6 +122,22 @@ export function loadDataset(): Dataset | null {
  * keeping every placeholder: the animal page carries one animal, and its
  * gallery blurs whichever photo the visitor steps to.
  */
+/**
+ * Every animal the dataset holds for one shelter.
+ *
+ * The shelter's own page asks this to draw its list, and both locales' routes
+ * ask it again to decide whether the page's description may promise animals.
+ * Written once here rather than three times as a filter over
+ * `loadDataset()?.animals`, so the head and the body of a shelter page cannot
+ * come to different answers about the same shelter. loadDataset caches, so the
+ * repeat costs a walk of the array and no second read.
+ */
+export function shelterAnimals(shelterId: string): Animal[] {
+  return (loadDataset()?.animals ?? []).filter(
+    (animal) => animal.shelter.id === shelterId,
+  );
+}
+
 export function animalsForClient(animals: Animal[]): ClientAnimal[] {
   return animals.map((animal) => ({
     ...animal,

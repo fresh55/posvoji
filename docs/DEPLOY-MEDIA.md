@@ -284,41 +284,55 @@ nothing about whether the file is reachable: 401 comes back either way, and a
 check accepts 200 or 401. The structural checks below need no credentials and
 are exact; the HTTP checks need credentials to mean anything.
 
+Every block below runs under `set -eu` and asserts what it checks, so a failed
+check exits non-zero and the block stops there. Each block ends with a single
+pass line that is only reachable when everything in it passed. That line is the
+pass, not the absence of alarming output: a block that printed some of its
+output and stopped is a failure, and so is a block that exited non-zero after
+printing nothing.
+
 **Structural checks.** On the host:
 
 ```bash
 (
+  set -eu
   cur=/srv/posvoji/current
-  test -d "$cur/public" && test ! -L "$cur/public" ||
-    echo "public/ is not a real directory"
+  test -d "$cur/public" || { echo "public/ is not a real directory" >&2; exit 1; }
+  test ! -L "$cur/public" ||
+    { echo "public/ is a symlink, so this is a v1 release" >&2; exit 1; }
   for f in dataset.crawled.json dataset.published.json publication.json; do
-    test -s "$cur/private/$f" || echo "missing: private/$f"
+    test -s "$cur/private/$f" || { echo "missing: private/$f" >&2; exit 1; }
   done
-  test ! -e "$cur/public/private" || echo "private/ is inside the docroot"
+  test ! -e "$cur/public/private" ||
+    { echo "private/ is inside the docroot" >&2; exit 1; }
+  echo "structural checks: OK"
 )
 ```
 
-Silence is the pass. The first check is what separates a real v2 release from
-a self-linked v1 one: `test -s public/index.html` alone follows the
-self-symlink and passes on both. It is the same assertion `deploy.sh` makes
-before every flip.
+`structural checks: OK` is the pass. The first two checks are what separate a
+real v2 release from a self-linked v1 one: `test -s public/index.html` alone
+follows the self-symlink and passes on both. It is the same assertion
+`deploy.sh` makes before every flip.
 
 The receipt names the release it was written for, so it has to agree with what
 `current` points at:
 
 ```bash
 (
+  set -eu
   receipt=/srv/posvoji/current/private/publication.json
   cur="$(basename "$(readlink /srv/posvoji/current)")"
   rid="$(sed -n 's/.*"releaseId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$receipt")"
   echo "current:   $cur"
   echo "releaseId: $rid"
-  [ "$cur" = "$rid" ] && echo match || echo MISMATCH
+  test "$cur" = "$rid" ||
+    { echo "the receipt names $rid, current points at $cur" >&2; exit 1; }
+  echo "receipt check: OK"
 )
 ```
 
-A mismatch means the release directory and the receipt inside it disagree, so
-the private half is not the one that deploy built.
+The block exits non-zero when the release directory and the receipt inside it
+disagree, because that means the private half is not the one that deploy built.
 
 **Authenticated HTTP checks.** Through Caddy, from the host. The credentials go
 into a temporary `.netrc` that curl reads, so they stay off the command line,
@@ -326,31 +340,47 @@ out of the process list and out of curl's own output:
 
 ```bash
 (
+  set -eu
   umask 077
   netrc="$(mktemp)"
+  trap 'rm -f "$netrc"' EXIT
+  trap 'exit 130' INT TERM
   cat >"$netrc" <<'NETRC'
 machine posvoji.si login BASIC_AUTH_USER password BASIC_AUTH_PASSWORD
 NETRC
-  for p in / /private/dataset.published.json /publication.json; do
+  for pair in "/ 200" "/private/dataset.published.json 404" "/publication.json 404"; do
+    p="${pair% *}"
+    want="${pair##* }"
     code="$(curl -s -o /dev/null -w '%{http_code}' --netrc-file "$netrc" \
       -k --resolve posvoji.si:443:127.0.0.1 "https://posvoji.si$p")"
     echo "$code $p"
+    test "$code" != 401 ||
+      { echo "401 on $p: the credentials did not apply, so this run is inconclusive" >&2
+        exit 1; }
+    test "$code" = "$want" || { echo "$p answered $code, expected $want" >&2; exit 1; }
   done
-  rm -f "$netrc"
+  echo "authenticated HTTP checks: OK"
 )
 ```
 
 `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are placeholders for the real pair.
-`umask 077` is what keeps the file unreadable to anyone else while it exists,
-and `rm -f` is what keeps it from outliving the check. A heredoc typed at the
-prompt still reaches the shell history, so either put the line in the file with
-an editor or paste the block with a leading space on a shell that has
+`umask 077` is what keeps the file unreadable to anyone else while it exists.
+The `trap` is installed straight after `mktemp` and before the credentials are
+written, and it is what removes the file on every path out of the block: the
+normal end, a failed check, and an interrupt. A plain `rm -f` at the bottom
+would only cover the first of those. The second `trap` is what makes an
+interrupt a failure: a POSIX `INT` handler that does not exit lets the shell
+carry on after the interrupted command, so without it the block could finish
+and report a pass after a Ctrl+C. A heredoc typed at the prompt still
+reaches the shell history, so either put the line in the file with an editor or
+paste the block with a leading space on a shell that has
 `HISTCONTROL=ignorespace`.
 
-Expected: `200 /`, then `404 /private/dataset.published.json` and
-`404 /publication.json`. A 401 on any of the three means the credentials did
-not apply, and then the run proves nothing: it is inconclusive, not a pass.
-Fix the credentials and run it again.
+The expected codes are asserted rather than printed for reading: 200 for `/`,
+404 for `/private/dataset.published.json` and 404 for `/publication.json`.
+Anything else fails the block. A 401 fails it with its own message, because it
+means the credentials did not apply and the run then proves nothing: it is
+inconclusive, not a pass. Fix the credentials and run it again.
 
 **The rollback drill.** Once, at migration time. A rollback onto a self-linked
 v1 release is what step 1 exists for, and doing it is the only way to know it
@@ -363,19 +393,31 @@ ls -ld /srv/posvoji/releases/*/public   # the v1 ones are symlinks
 
 ```bash
 (
-  set -e
+  set -eu
   v1=/srv/posvoji/releases/PICK-A-V1-RELEASE
   test -L "$v1/public"
   v2="$(readlink /srv/posvoji/current)"
+  umask 077
+  netrc="$(mktemp)"
+  cleanup() {
+    ln -sfn "$v2" /srv/posvoji/current
+    chown -h posvoji:caddy /srv/posvoji/current
+    rm -f "$netrc"
+    echo "restored: current -> $v2"
+  }
+  trap cleanup EXIT
+  trap 'exit 130' INT TERM
+  cat >"$netrc" <<'NETRC'
+machine posvoji.si login BASIC_AUTH_USER password BASIC_AUTH_PASSWORD
+NETRC
   echo "current: $v2"
   ln -sfn "$v1" /srv/posvoji/current
   chown -h posvoji:caddy /srv/posvoji/current
   test -s /srv/posvoji/current/public/index.html
-  curl -skI --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/ | head -1
-  ln -sfn "$v2" /srv/posvoji/current
-  chown -h posvoji:caddy /srv/posvoji/current
-  test -s /srv/posvoji/current/public/index.html
-  curl -skI --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/ | head -1
+  code="$(curl -s -o /dev/null -w '%{http_code}' --netrc-file "$netrc" \
+    -k --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/)"
+  test "$code" = 200 || { echo "v1 release answered $code, expected 200" >&2; exit 1; }
+  echo "the v1 release serves through current/public"
 )
 ```
 
@@ -383,10 +425,50 @@ ls -ld /srv/posvoji/releases/*/public   # the v1 ones are symlinks
 the block before it flips anything if the name was not replaced: `ln -sfn` onto
 a name that does not exist would leave `current` dangling and the site down.
 
-Both `test -s` checks pass and both curls answer 200 or 401, the v1 release
-through its self-symlink and the v2 one through its real `public/`. `ln -sfn`
-here is the same single operation `deploy.sh` uses for its own flip, so the
-drill runs the ordinary path rather than a special one.
+The restore is the trap's job, not a line at the end, and the trap is installed
+before the first flip. From the moment `current` can point at v1 there is
+already something that puts v2 back, and it runs on every exit path: the drill
+passing, a check failing, and Ctrl+C in the middle. The drill cannot leave
+production on the old release. The `INT TERM` trap exits rather than restoring
+by itself, so an interrupt runs the restore once, through `EXIT`, and leaves a
+non-zero status behind: an interrupted drill is a failed drill, not a quiet
+pass.
+
+The check is authenticated and has to see a 200. An unauthenticated
+`curl -skI ... | head -1` would not do the job: it accepts the same 401 this
+runbook calls inconclusive above, and the pipe makes the exit status `head`'s,
+so a request that failed outright would not even stop the block.
+
+Then confirm the restore landed:
+
+```bash
+(
+  set -eu
+  umask 077
+  netrc="$(mktemp)"
+  trap 'rm -f "$netrc"' EXIT
+  trap 'exit 130' INT TERM
+  cat >"$netrc" <<'NETRC'
+machine posvoji.si login BASIC_AUTH_USER password BASIC_AUTH_PASSWORD
+NETRC
+  cur=/srv/posvoji/current
+  test -d "$cur/public" || { echo "public/ is not a real directory" >&2; exit 1; }
+  test ! -L "$cur/public" ||
+    { echo "current still points at the v1 release" >&2; exit 1; }
+  test -s "$cur/public/index.html" ||
+    { echo "index.html is missing or empty" >&2; exit 1; }
+  code="$(curl -s -o /dev/null -w '%{http_code}' --netrc-file "$netrc" \
+    -k --resolve posvoji.si:443:127.0.0.1 https://posvoji.si/)"
+  test "$code" = 200 ||
+    { echo "the restored release answered $code, expected 200" >&2; exit 1; }
+  echo "restore confirmed: OK"
+)
+```
+
+`current/public` being a real directory and not a symlink is what says the v2
+release is back, and the 200 says it is being served. `ln -sfn` in the drill is
+the same single operation `deploy.sh` uses for its own flip, so the drill runs
+the ordinary path rather than a special one.
 
 Re-enable the scheduled task only after the structural checks, the
 authenticated checks and the drill have all passed:

@@ -5,6 +5,7 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
+import { PhotoGallery } from "@/components/photo-gallery";
 import type { ClientAnimal } from "@/lib/animal";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import { animalsForClient } from "@/lib/dataset";
@@ -354,6 +355,95 @@ describe("photo gallery swipe", () => {
     // A cancelled gesture leaves nothing behind for the next tap to trip over.
     click(surface);
     expect(opened).toEqual(["rex"]);
+  });
+});
+
+// The animal's own page mounts the same gallery with no href. There is no card
+// link there for the arrow keys to live on, so the frame itself has to be the
+// way through the photos.
+function setupPlain(rest: Partial<Animal> = {}) {
+  render(
+    <I18nProvider locale="sl">
+      <PhotoGallery images={animal(rest).images} name="Rex" sizes="100vw" />
+    </I18nProvider>,
+  );
+  return document.querySelector('[data-slot="photo-frame"] > div');
+}
+
+describe("photo gallery without a link", () => {
+  it("takes the focus and walks the photos with the arrow keys", () => {
+    const surface = setupPlain()!;
+
+    expect(surface.getAttribute("tabindex")).toBe("0");
+    expect(surface.getAttribute("role")).toBe("group");
+    expect(surface.getAttribute("aria-keyshortcuts")).toBe(
+      "ArrowLeft ArrowRight",
+    );
+
+    // 425 animals carry more than one photo, and before this every one of
+    // them showed a keyboard visitor the first photo and nothing else.
+    // preventDefault, so the page does not scroll out from under them.
+    expect(fireEvent.keyDown(surface, { key: "ArrowRight" })).toBe(false);
+    expect(counter()).toBe("2 / 3");
+    fireEvent.keyDown(surface, { key: "ArrowLeft" });
+    expect(counter()).toBe("1 / 3");
+  });
+
+  it("jumps to the ends of a long gallery with Home and End", () => {
+    const surface = setupPlain()!;
+
+    fireEvent.keyDown(surface, { key: "End" });
+    expect(counter()).toBe("3 / 3");
+    fireEvent.keyDown(surface, { key: "Home" });
+    expect(counter()).toBe("1 / 3");
+  });
+
+  it("leaves a key it does not answer to the page", () => {
+    const surface = setupPlain()!;
+
+    expect(fireEvent.keyDown(surface, { key: "ArrowDown" })).toBe(true);
+    expect(counter()).toBe("1 / 3");
+  });
+
+  it("names the group and lets the picture say which photo is showing", () => {
+    setupPlain();
+
+    expect(
+      screen.getByRole("group", { name: "Fotografija: Rex" }),
+    ).toBeTruthy();
+    expect(screen.getByAltText("Fotografija: Rex, 1 od 3")).toBeTruthy();
+  });
+
+  it("gives the chevrons back to the tab order and the reader", () => {
+    setupPlain();
+
+    // On the grid card these are a pointer affordance and nothing else,
+    // because the arrows on the card's own link are the keyboard's route.
+    // Here there is no such link, so they are ordinary buttons.
+    for (const name of ["Prejšnja fotografija", "Naslednja fotografija"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("tabindex")).toBeNull();
+      expect(button.getAttribute("aria-hidden")).toBeNull();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Naslednja fotografija" }));
+    expect(counter()).toBe("2 / 3");
+  });
+
+  it("offers no group and no keys for a single photo", () => {
+    const surface = setupPlain({
+      images: [
+        {
+          sourceUrl: "https://example.test/photo-0.jpg",
+          rights: "display-permitted" as const,
+        },
+      ],
+    })!;
+
+    // Nothing to walk: a lone photo is a picture, not a gallery, and a tab
+    // stop that answers no key is a tab stop wasted.
+    expect(surface.getAttribute("tabindex")).toBeNull();
+    expect(surface.getAttribute("role")).toBeNull();
   });
 });
 

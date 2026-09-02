@@ -10,10 +10,37 @@ const BY_CODE = new Map(POSTAL_DISTRICTS.map((d) => [d.code, d]));
 
 type Entry = { key: string; district: PostalDistrict };
 
-// One entry per district name, plus one per half of a bilingual "X - Y" name
-// (the coastal districts), so "ancarano" finds Ankaran - Ancarano.
+// The districts whose "X - Y" name is one place under two languages: Italian
+// on the coast, Hungarian in Prekmurje. Both halves name the same place, so
+// both halves are keys and "ancarano" finds Ankaran - Ancarano.
+//
+// Every other " - " name in the table is a single Slovene name spelled in two
+// parts, and half of one is not a name for that place. Splitting those made
+// "videm" resolve to 1312 Videm - Dobrepolje, which is Videm in Občina
+// Dobrepolje, while Občina Videm is 80 km east at Videm pri Ptuju. Someone
+// standing over a found animal in Videm was handed Dobrepolje's shelter, named
+// with the same confidence as a correct answer. The same split answered
+// "šentvid" with Ljubljana and "polje" with Ljubljana.
+//
+// Keyed by code and not by name: the code is what the generated table is keyed
+// on and does not move when a name is respelled. Regenerating
+// postal-districts.ts with a new bilingual district means adding its code here.
+const BILINGUAL_CODES = new Set([
+  "6000", // Koper - Capodistria
+  "6280", // Ankaran - Ancarano
+  "6310", // Izola - Isola
+  "6320", // Portorož - Portorose
+  "6330", // Piran - Pirano
+  "6333", // Sečovlje - Sicciole
+  "9205", // Hodoš - Hodos
+  "9207", // Prosenjakovci - Pártosfalva
+  "9220", // Lendava - Lendva
+  "9223", // Dobrovnik - Dobronak
+]);
+
+// One entry per district name, plus one per half of a bilingual name.
 const ENTRIES: Entry[] = POSTAL_DISTRICTS.flatMap((district) => {
-  const names = district.name.includes(" - ")
+  const names = BILINGUAL_CODES.has(district.code)
     ? district.name.split(" - ")
     : [district.name];
   return names.map((name) => ({ key: cityKey(name), district }));

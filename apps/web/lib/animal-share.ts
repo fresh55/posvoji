@@ -13,6 +13,11 @@ import {
   speciesLabel,
   statusLabel,
 } from "@/lib/labels";
+import {
+  localeAlternates,
+  openGraphLocale,
+  SITE_NAME,
+} from "@/lib/site-metadata";
 
 
 export { SITE_URL } from "@/lib/site";
@@ -156,19 +161,16 @@ export function animalMetadata(
     : undefined;
 
   return {
-    title: `${title} | Posvoji.si`,
+    title: `${title} | ${SITE_NAME}`,
     description,
-    alternates: {
-      canonical: path,
-      languages: {
-        sl: animalPath(animal, "sl"),
-        en: animalPath(animal, "en"),
-      },
-    },
+    alternates: localeAlternates(
+      { sl: animalPath(animal, "sl"), en: animalPath(animal, "en") },
+      locale,
+    ),
     openGraph: {
       type: "article",
-      siteName: "Posvoji.si",
-      locale: locale === "sl" ? "sl_SI" : "en_GB",
+      siteName: SITE_NAME,
+      locale: openGraphLocale(locale),
       title,
       description,
       url: path,

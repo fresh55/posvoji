@@ -21,17 +21,13 @@ import {
 import { shelterCensus } from "@/lib/shelter-census";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { homePath, sheltersIndexPath, shelterPath } from "@/lib/shelter-path";
+import {
+  homePath,
+  SHELTER_INDEX_PATHS,
+  shelterPath,
+} from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
 import { siteLinks } from "@/lib/site-links";
-
-/** This page's address in both locales. The language switcher needs the pair,
- *  and the header reads the current locale's half out of it to mark the nav
- *  item that points here, so the route is written once. */
-const SHELTER_INDEX_PATHS = {
-  sl: sheltersIndexPath("sl"),
-  en: sheltersIndexPath("en"),
-} as const;
 
 /** The issue form a shelter that is not in the registry yet can actually
  *  reach. The project has no contact address of its own, and the portal login

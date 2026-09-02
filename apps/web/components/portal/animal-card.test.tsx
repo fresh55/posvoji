@@ -334,3 +334,63 @@ describe("what the card says about the animal", () => {
     expect(link.getAttribute("target")).toBe("_blank");
   });
 });
+
+describe("the link to the animal's public page", () => {
+  function link(): HTMLElement {
+    return screen.getByRole("link", { name: portalText.publicListing });
+  }
+
+  it("keeps the name the public page was built with after a rename", () => {
+    // The public site is a static export rebuilt about every twelve hours and
+    // has no page for a name saved since. The workspace hands the card the
+    // name the list loaded with, and that is the one the address carries.
+    render(
+      <PortalAnimalCard
+        animal={animal({ name: "Murka", overrides: { name: "Murka" } })}
+        shelter={SHELTER}
+        publicName="Muri"
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(link().getAttribute("href")).toMatch(
+      /^\/zival\/muri-[0-9a-f]{6}\/ljubljana\/testno$/,
+    );
+    // And the card says why the link and the name above it disagree.
+    expect(screen.getByText(portalText.publicRenamed)).toBeTruthy();
+  });
+
+  it("says nothing about publication when the name has not moved", () => {
+    render(
+      <PortalAnimalCard
+        animal={animal()}
+        shelter={SHELTER}
+        publicName="Muri"
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(portalText.publicRenamed)).toBeNull();
+  });
+
+  it("uses the new name once a nameless animal has been given one", () => {
+    // The other direction of the same thing: the page that exists is the one
+    // the species and the id suffix name, not the new name.
+    render(
+      <PortalAnimalCard
+        animal={animal({ name: "Muri", overrides: { name: "Muri" } })}
+        shelter={SHELTER}
+        publicName={null}
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(link().getAttribute("href")).toMatch(
+      /^\/zival\/cat-[0-9a-f]{6}\/ljubljana\/testno$/,
+    );
+    expect(screen.getByText(portalText.publicRenamed)).toBeTruthy();
+  });
+});

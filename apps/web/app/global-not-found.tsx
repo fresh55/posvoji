@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
 import { NotFoundPage } from "@/components/not-found-page";
 import { getMessages } from "@/lib/i18n";
@@ -20,6 +20,12 @@ export const metadata: Metadata = {
   title: `${getMessages("sl").notFoundTitle} | Posvoji.si`,
   description: getMessages("sl").notFoundBody,
 };
+
+// Without this, env(safe-area-inset-*) resolves to 0 on iOS: the page draws
+// under the notch and home indicator, but nothing is told it may. This file
+// is a root of its own, so it needs the export the layouts carry; it does not
+// inherit theirs.
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function GlobalNotFound() {
   const en = getMessages("en");

@@ -24,6 +24,9 @@ playwright-report/
 .env
 .env.*
 !.env.example
+# The production template, which holds no secrets: every value that is one is
+# left blank with the command to generate it. See docs/DEPLOY-PORTAL.md.
+!.env.production.example
 
 # editor / tooling
 .claude/

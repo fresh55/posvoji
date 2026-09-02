@@ -100,6 +100,47 @@ export interface BuildListingsResult {
   skipped: ListingSkip[];
 }
 
+// Which manual providers a payload actually answers for, and which it left
+// unaccounted for.
+export interface AnsweredProviders {
+  // The feed named these, so its listings for them are the whole truth about
+  // them, an empty set of listings included. They go in crawledProviderIds
+  // and their removals are real, subject to guardMassRemoval.
+  answered: string[];
+  // The feed did not name these. Shelter.ingestion in the portal is a mirror
+  // of ingestion in policy.yaml, copied by seed_shelters, and this is the
+  // mirror lagging behind a policy that was flipped to manual: the feed
+  // filters the shelter out and returns nothing for it, which is not the same
+  // fact as the shelter having archived everything. Reading it as the second
+  // deletes every animal the shelter has, and guardMassRemoval does not stop
+  // it because the guard ignores a provider with fewer than three animals.
+  // These take the failed-fetch path instead: carried forward, in failed,
+  // exit 2.
+  unanswered: string[];
+}
+
+// feedProviders is the payload's own providers list, or undefined for a
+// portal older than the field. Undefined means the portal did not say, and
+// then every manual provider counts as answered for, which is the behaviour
+// from before the field existed rather than a run that fails on an old
+// portal. An empty array is a different fact: the portal said it considers no
+// shelter manual.
+export function answeredProviders(
+  manualProviderIds: readonly string[],
+  feedProviders: readonly string[] | undefined,
+): AnsweredProviders {
+  if (feedProviders === undefined) {
+    return { answered: [...manualProviderIds], unanswered: [] };
+  }
+  const named = new Set(feedProviders);
+  return {
+    answered: manualProviderIds.filter((providerId) => named.has(providerId)),
+    unanswered: manualProviderIds.filter(
+      (providerId) => !named.has(providerId),
+    ),
+  };
+}
+
 type ListingDecision =
   | { build: true; policy: ProviderPolicy; shelter: ShelterEntry }
   | { build: false; reason: ListingSkipReason };

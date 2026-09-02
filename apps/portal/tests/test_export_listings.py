@@ -17,12 +17,15 @@ from PIL import Image
 from core.models import (
     LISTING_COLUMN_BY_JSON_KEY,
     LISTING_OPTIONAL_FIELDS,
+    IngestionMode,
     Listing,
     ListingPhoto,
+    Shelter,
 )
 from core.schemas import (
     ExportListingOut,
     ExportListingPhotoOut,
+    ExportListingsOut,
     ListingOut,
     ListingPhotoOut,
 )
@@ -95,10 +98,13 @@ def test_export_is_401_without_or_with_a_wrong_token(client, export_token):
 
 @pytest.mark.django_db
 def test_export_is_empty_without_listings(client, export_token):
+    contract = load_contract()
+
     body = client.get(EXPORT, **bearer(TOKEN)).json()
 
-    assert set(body) == {"generatedAt", "listings"}
+    assert set(body) == set(contract["payloadFields"])
     assert body["listings"] == []
+    assert body["providers"] == []
     assert body["generatedAt"].endswith("Z")
     datetime.fromisoformat(body["generatedAt"].replace("Z", "+00:00"))
 
@@ -189,6 +195,55 @@ def test_a_crawled_shelters_listing_is_not_exported(
     assert [item["name"] for item in listings] == ["Miki"]
 
 
+@pytest.mark.django_db
+def test_providers_names_every_manual_shelter_including_an_empty_one(
+    client, export_token, manual_shelter, other_shelter
+):
+    """The feed says who it is answering for, listings or not.
+
+    A manual shelter with nothing to show is the case the field exists for:
+    without it, ingest cannot tell that shelter from one this portal does not
+    consider manual at all, and the second is not a removal.
+    """
+    Listing.objects.create(shelter=manual_shelter, **SPARSE)
+    Shelter.objects.create(
+        slug="brez",
+        name="Zavetisce Brez",
+        ingestion=IngestionMode.MANUAL,
+    )
+
+    body = client.get(EXPORT, **bearer(TOKEN)).json()
+
+    # Sorted, and other_shelter is crawled, so it is not named.
+    assert body["providers"] == ["brez", manual_shelter.slug]
+    assert [item["providerId"] for item in body["listings"]] == [manual_shelter.slug]
+
+
+@pytest.mark.django_db
+def test_a_shelter_flipped_back_to_scrape_leaves_providers_and_listings(
+    client, export_token, manual_shelter
+):
+    """The two have to move together.
+
+    A shelter named in providers but absent from listings means it archived
+    everything, and ingest removes its animals on that. Dropping it from one
+    array and not the other would say the wrong one of those.
+    """
+    Listing.objects.create(shelter=manual_shelter, **SPARSE)
+
+    before = client.get(EXPORT, **bearer(TOKEN)).json()
+    assert before["providers"] == [manual_shelter.slug]
+    assert len(before["listings"]) == 1
+
+    manual_shelter.ingestion = IngestionMode.SCRAPE
+    manual_shelter.save(update_fields=["ingestion"])
+
+    after = client.get(EXPORT, **bearer(TOKEN)).json()
+
+    assert after["providers"] == []
+    assert after["listings"] == []
+
+
 def test_the_field_names_match_the_contract():
     contract = load_contract()
 
@@ -212,6 +267,7 @@ def test_the_response_schemas_carry_every_contract_field():
     fields = set(contract["requiredFields"]) | set(contract["optionalFields"])
     photo_fields = set(contract["photoFields"])
 
+    assert set(ExportListingsOut.model_fields) == set(contract["payloadFields"])
     assert set(ExportListingOut.model_fields) == fields
     assert set(ExportListingPhotoOut.model_fields) == photo_fields
     # The API shape is the export plus what only an editor needs.
@@ -238,6 +294,14 @@ def test_the_vocabularies_match_the_contract():
 def test_the_fixture_payload_only_uses_fields_the_export_emits():
     contract = load_contract()
     known = set(contract["requiredFields"]) | set(contract["optionalFields"])
+
+    assert set(contract["export"]) == set(contract["payloadFields"])
+    # Every listing belongs to a shelter the payload answers for. The reverse
+    # does not hold: a named shelter with no listing is the whole point of
+    # the field, and the fixture carries one.
+    assert {item["providerId"] for item in contract["export"]["listings"]} <= set(
+        contract["export"]["providers"]
+    )
 
     for listing in contract["export"]["listings"]:
         assert set(listing) <= known

@@ -19,6 +19,9 @@ dev = [
     "pytest-django>=4.9",
     "ruff>=0.6",
 ]
+prod = [
+    "gunicorn>=23.0",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "portal.settings"

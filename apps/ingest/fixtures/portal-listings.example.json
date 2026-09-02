@@ -1,5 +1,6 @@
 {
   "generatedAt": "2026-09-01T12:00:00Z",
+  "providers": ["johanca", "oskar"],
   "listings": [
     {
       "providerId": "johanca",

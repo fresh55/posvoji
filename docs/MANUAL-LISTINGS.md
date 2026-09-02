@@ -51,6 +51,7 @@ against the fixture, and the ingest's zod schema parses the fixture's
 ```json
 {
   "generatedAt": "2026-09-01T12:00:00Z",
+  "providers": ["johanca", "oskar"],
   "listings": [
     {
       "providerId": "johanca",
@@ -84,6 +85,9 @@ against the fixture, and the ingest's zod schema parses the fixture's
 
 Rules:
 
+- `providers` is every shelter the portal currently considers manual, sorted,
+  whether or not it has a listing. `listings` holds the listings of those
+  shelters and of no others.
 - `providerId`, `id`, `species`, `status`, `name`, `photos`, `createdAt` and
   `updatedAt` are always present.
 - Every other field is present when set and absent when not. Never `null`.
@@ -94,6 +98,37 @@ Rules:
 - `photos` is ordered for display. Each `url` is absolute. `width` and
   `height` are the stored copy's pixel size.
 - Archived listings are not exported. Timestamps are UTC ISO 8601 with a `Z`.
+
+### Who the feed answers for
+
+`Shelter.ingestion` in the portal is a mirror of `ingestion` in
+`providers/<slug>/policy.yaml`, copied by `seed_shelters`. The two can drift,
+and one direction of drift used to delete published records.
+
+The feed selects on the portal's own copy. A shelter whose policy says
+`manual` while the portal still says `scrape` is filtered out of `listings`,
+so the route answers 200 with nothing for it. Ingest cannot tell that from a
+shelter that archived every listing it had. It used to read it as the second,
+mark the provider crawled, and drop every animal the shelter had.
+`guardMassRemoval` does not catch it: the guard ignores a provider with fewer
+than three animals, so a manual shelter with one or two was emptied without an
+error and the run still exited 0. For a manual shelter the portal is the only
+source of its animals, so there was nothing to restore them from.
+
+`providers` closes that. The rule on the ingest side:
+
+- A manual provider the feed **names** is answered for. Its listings become
+  its animals, and a name with no listings is a real emptying, subject to
+  `guardMassRemoval` like any other.
+- A manual provider the feed **does not name** is not empty, it is
+  unaccounted for. It takes the same path a failed fetch takes: it is left out
+  of `crawledProviderIds`, its previous animals are carried forward, it goes
+  in `failed`, and the run exits 2. The log names the provider and says to
+  re-run `seed_shelters`, and the override report lists it under
+  `listings.unanswered`.
+- A payload with no `providers` key at all is a portal older than the field.
+  It said nothing, so every manual provider counts as answered for and the run
+  behaves as it did before the field existed.
 
 ## Ingest record
 

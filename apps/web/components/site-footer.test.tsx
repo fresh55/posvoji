@@ -8,9 +8,9 @@ import { SiteFooter } from "./site-footer";
 
 afterEach(() => cleanup());
 
-// The found-animal lookup lives in a dialog that only AnimalGrid mounts, so
-// until this link existed the flow was reachable from the homepage and from
-// nowhere else: not a shelter page, not an animal page, not the resources
+// The found-animal lookup used to live in a dialog that only AnimalGrid
+// mounts, so until this link existed the flow was reachable from the homepage
+// and from nowhere else: not a shelter page, not an animal page, not the resources
 // page. Someone holding a stray is at least as likely to arrive by searching
 // a shelter's name as by landing on the homepage, and there the site said
 // nothing about the question at all. The link is the whole fix, which makes

@@ -67,9 +67,6 @@ function renderFinder() {
     <I18nProvider locale="sl">
       <MunicipalityFinder
         entries={ENTRIES}
-        selectableIds={new Set()}
-        selected={[]}
-        onToggle={() => undefined}
         onActiveShelters={() => undefined}
         onActiveMunicipality={() => undefined}
       />
@@ -155,9 +152,6 @@ describe("MunicipalityFinder enter key", () => {
       <I18nProvider locale="sl">
         <MunicipalityFinder
           entries={AMBIGUOUS}
-          selectableIds={new Set()}
-          selected={[]}
-          onToggle={() => undefined}
           onActiveShelters={() => undefined}
           onActiveMunicipality={() => undefined}
         />
@@ -176,10 +170,12 @@ describe("MunicipalityFinder enter key", () => {
     fireEvent.keyDown(search, { key: "Enter" });
 
     // Nothing has been named as the responsible shelter: the answer block,
-    // which is the only thing that carries "Kaj zdaj" and a reset beside it,
-    // is not on screen. The shelter names themselves are no test of that,
-    // because every row in the list already carries the one it would name.
-    expect(screen.queryByText("Kaj zdaj")).toBeNull();
+    // which is the only thing that says "pristojno zavetišče" over a named
+    // občina, is not on screen. The shelter names themselves are no test of
+    // that, because every row in the list already carries the one it would
+    // name. ("Kaj zdaj" is no test of it either, any more: the steps stand
+    // under the search whether or not an občina has been named.)
+    expect(screen.queryByText(/pristojno zavetišč/)).toBeNull();
     // And the list is still there to pick from, which is the whole of what
     // the visitor has to act on.
     expect(screen.getByRole("button", { name: /Ljubno/ })).toBeTruthy();
@@ -255,9 +251,6 @@ function renderReal() {
     <I18nProvider locale="sl">
       <MunicipalityFinder
         entries={REAL}
-        selectableIds={new Set()}
-        selected={[]}
-        onToggle={() => undefined}
         onActiveShelters={() => undefined}
         onActiveMunicipality={() => undefined}
       />

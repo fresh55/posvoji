@@ -42,14 +42,10 @@ export function CoverageCard({
   coverage,
   text,
   locale,
-  action,
 }: {
   coverage: LookupCoverage;
   text: CoverageCardText;
   locale: Locale;
-  /** Optional control the host mounts under the card, e.g. "select this
-   *  shelter as a filter" inside the map dialog. */
-  action?: React.ReactNode;
 }) {
   return (
     <Card className="space-y-3 p-4">
@@ -104,8 +100,6 @@ export function CoverageCard({
           </li>
         )}
       </ul>
-
-      {action}
 
       {/* The same lookup answers the opposite question, and the answer to that
           one is data this site already has: the shelter's current animals. */}

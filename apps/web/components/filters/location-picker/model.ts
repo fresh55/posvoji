@@ -1,8 +1,10 @@
 import type { ShelterRow } from "@/components/filters/shelter-rows";
 import type { FilterOption } from "@/lib/filters";
-import { cityAt, distanceKm, type LatLon } from "@/lib/geo";
+import { cityAt, distanceKm, project, type LatLon } from "@/lib/geo";
 import type { Locale } from "@/lib/i18n";
 import type { ShelterPin } from "@/lib/map-layout";
+import { regionAt } from "@/lib/map-regions";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
 
 export function sameValues(a: string[], b: string[]): boolean {
@@ -96,6 +98,42 @@ export function locateAndSort(
   });
   if (!origin) return located;
   return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+}
+
+/** Which shelters answer for the municipalities inside each region, by region
+ *  id, from the same coverage table the found-animal finder reads.
+ *
+ *  A region is found the way the map itself places a municipality (see
+ *  lib/map-layout.ts): the občina's GURS centroid through project(), then
+ *  regionAt() on the result. A name therefore lands in the region the map
+ *  would have drawn that municipality in, rather than in one a second lookup
+ *  table might disagree about.
+ *
+ *  Here rather than in the picker's controller, because two surfaces feed the
+ *  map this table now: the homepage dialog and the found-animal page. */
+export function shelterNamesByRegion(
+  entries: readonly LookupEntry[],
+): Map<number, string[]> {
+  const byRegion = new Map<number, string[]>();
+  for (const entry of entries) {
+    // `nearest` is a shortlist of neighbours, not an answer about who is
+    // responsible, so a municipality with no coverage contributes nothing.
+    if (entry.coverage.length === 0) continue;
+    const at = MUNICIPALITY_AT.get(entry.name);
+    if (!at) continue;
+    const region = regionAt(project(at));
+    if (!region) continue;
+    const names = byRegion.get(region.id) ?? [];
+    // Deduped, in the order the table lists them: one shelter answers for
+    // many občine and would otherwise be named once per municipality.
+    for (const covered of entry.coverage) {
+      if (!names.includes(covered.shelterName)) {
+        names.push(covered.shelterName);
+      }
+    }
+    byRegion.set(region.id, names);
+  }
+  return byRegion;
 }
 
 export function toPins(

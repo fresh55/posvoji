@@ -286,8 +286,6 @@ const sl = {
   muniSource: "Vir:",
   muniDatedSource:
     "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
-  muniSelectShelter: "Izberi to zavetišče",
-  muniShelterSelected: "Izbrano",
   speciesDogs: "Psi",
   speciesCats: "Mačke",
   // Genitive plural of each species tab, for sentences built around "nima"
@@ -578,8 +576,6 @@ const en: Messages = {
   muniSource: "Source:",
   muniDatedSource:
     "This comes from an older source; confirm with the shelter or municipality before visiting.",
-  muniSelectShelter: "Select this shelter",
-  muniShelterSelected: "Selected",
   speciesDogs: "Dogs",
   speciesCats: "Cats",
   speciesAbsenceAll: "animals",

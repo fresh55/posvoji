@@ -12,13 +12,15 @@ export type LocationPickerProps = {
   /** Animals the whole filter state currently matches, shown live on the
    * confirm button so picking a shelter has visible consequences. */
   resultCount: number;
-  /** Municipality → responsible-shelter entries. */
+  /** Municipality → responsible-shelter entries. Map furniture, not a mode:
+   * the picker names who answers for the občine inside a region the roster
+   * leaves empty. The lookup itself is a page (found-animal-page.tsx). */
   municipalities?: LookupEntry[];
   /** Registry shelters with no animals on the site. */
   offSite?: FilterOption[];
   /** Per-shelter species breakdown and longest wait, keyed by shelter id. */
   summaries?: Map<string, ShelterSummary>;
-  /** Which mounted instance answers found-animal and spotlight deep links. */
+  /** Which mounted instance answers an animal card's spotlight ask. */
   deepLink?: "desktop" | "mobile";
   /** The toolbar button or the filter sidebar's scope row. */
   dress?: "toolbar" | "sidebar";

@@ -46,3 +46,21 @@ test("a filtered deep link settles on the filtered grid with the pre-hydration m
   );
   expect(stillFiltering).toBe(false);
 });
+
+// /?najdena used to open the homepage map dialog on its found-animal tab.
+// Municipality websites published that address and cannot be asked to change
+// it, so the homepage still answers it: the tab is gone and the lookup is a
+// page, and the link lands on the page. A static export has no server to
+// redirect with, so this happens on hydration and is polled for.
+test("sends an old /?najdena link on to the found-animal page", async ({
+  page,
+}) => {
+  await page.goto("/?najdena");
+
+  await expect(page).toHaveURL(/\/najdena-zival$/);
+  // The page itself, not just its address: the finder's own field is what the
+  // link was opened for.
+  await expect(
+    page.getByRole("searchbox", { name: "Občina ali poštna številka …" }),
+  ).toBeVisible();
+});

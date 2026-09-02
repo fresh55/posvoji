@@ -1,5 +1,6 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
+import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
 import { I18nProvider } from "@/components/i18n-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -8,7 +9,7 @@ import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { loadShelters } from "@/lib/shelters";
+import { getShelterPhones, loadShelters } from "@/lib/shelters";
 
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -35,6 +36,11 @@ export function SitePage({ locale }: { locale: Locale }) {
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
+        {/* /?najdena, which municipality websites published back when the
+            lookup was a mode of the map dialog. It draws nothing; it sends
+            those visitors on to the page the flow lives on. */}
+        <FoundAnimalRedirect locale={locale} />
+
         <SiteHeader homeHref={locale === "sl" ? "/" : "/en"} />
 
         <main className="flex flex-1 flex-col gap-section-gap py-page-y">
@@ -84,6 +90,7 @@ export function SitePage({ locale }: { locale: Locale }) {
             // what ends up in the page's flight payload.
             animals={animalsForClient(animals)}
             logos={getShelterLogos()}
+            phones={getShelterPhones()}
             referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
             municipalities={municipalities}
             offSiteShelters={offSiteShelters}

@@ -32,6 +32,7 @@ function renderGrid(animals: Animal[], locale: "sl" | "en" = "sl") {
         // the projection, not the dataset's own animals.
         animals={animalsForClient(animals)}
         logos={{}}
+        phones={{}}
         referenceDate="2026-01-01"
       />
     </I18nProvider>,

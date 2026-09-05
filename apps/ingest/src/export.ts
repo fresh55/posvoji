@@ -15,6 +15,7 @@ import {
 } from "./crawled-snapshot";
 import { guardProviderRequests, type CrawlClient } from "./crawl-guard";
 import { exitCodeForRun } from "./exit-codes";
+import { checkPreviousGenerationSealed } from "./generation-seal";
 import {
   advanceCrawlState,
   crawlProviderIncrementally,
@@ -42,6 +43,7 @@ import {
   type PortalListingsPayload,
 } from "./portal-overrides";
 import { answeredProviders, buildListingAnimals } from "./portal-listings";
+import { applyPublicationPolicy } from "./publication-policy";
 import { providers } from "./registry";
 import { loadShelters } from "./shelters";
 import {
@@ -129,6 +131,10 @@ interface CrawlOutcome {
   // previous dataset.
   crawled: Set<string>;
   failed: string[];
+  // Animals a finished provider could not refresh. Their previous record was
+  // carried forward where we held one; where we did not, the listing was
+  // skipped this run.
+  failedAnimals: { providerId: string; sourceUrl: string }[];
   // Providers that re-fetched every listed animal, so every record they just
   // produced came from the current parsers under the current policy. Only
   // these advance the crawl state.
@@ -164,6 +170,7 @@ async function crawl(
   const animals: Animal[] = [];
   const crawled = new Set<string>();
   const failed: string[] = [];
+  const failedAnimals: { providerId: string; sourceUrl: string }[] = [];
   const fullyRefreshed: ProviderPolicy[] = [];
   let fetched = 0;
   let reused = 0;
@@ -176,6 +183,9 @@ async function crawl(
       fetched += result.value.fetched;
       reused += result.value.reused;
       if (result.value.fullRefresh) fullyRefreshed.push(policy);
+      for (const ref of result.value.failedRefs) {
+        failedAnimals.push({ providerId, sourceUrl: ref.sourceUrl });
+      }
       continue;
     }
     failed.push(providerId);
@@ -185,7 +195,15 @@ async function crawl(
         : String(result.reason);
     console.error(`crawl ${providerId} FAILED: ${reason}`);
   }
-  return { animals, crawled, failed, fullyRefreshed, fetched, reused };
+  return {
+    animals,
+    crawled,
+    failed,
+    failedAnimals,
+    fullyRefreshed,
+    fetched,
+    reused,
+  };
 }
 
 // What the listings feed left this run with: a payload, a fetch that threw,
@@ -224,9 +242,30 @@ async function fetchListingsFeed(): Promise<ListingsFeed> {
 // closes.
 //
 // The two files are also checked against each other there: they carry one
-// run's generatedAt, so a pair that disagrees is a run that stopped between
-// the two writes and neither file can be trusted as last run's other half.
+// run's generatedAt, and the snapshot is written first, so a snapshot ahead of
+// the published file is a run that stopped between the two writes and is
+// carried on from; a published file ahead of the snapshot is a restored old
+// snapshot and stops the run.
 const previousPublished = readPreviousDataset(datasetPath, { discardPrevious });
+// The generation receipt is the last write of a run, so a receipt that does
+// not name the published dataset's generation means the run that wrote the
+// datasets never committed. Its records are still last run's crawl and are
+// reused as such; what is lost is the change set's baseline, and it is lost
+// for good, because that run had already overwritten the datasets its
+// predecessor sealed. Say so instead of treating it as an ordinary previous
+// run.
+const previousSeal = checkPreviousGenerationSealed(
+  previousPublished?.generatedAt,
+);
+if (!previousSeal.sealed) {
+  console.warn(
+    `WARNING: the previous run wrote its datasets but never sealed them: ` +
+      `${previousSeal.reason}. Their records are still last run's crawl and ` +
+      `this run reuses them. changes.json this run is computed against that ` +
+      `unsealed baseline, so an animal the stopped run added is not reported ` +
+      `as added again.`,
+  );
+}
 const { dataset: previousCrawled, bootstrapping: bootstrappingSnapshot } =
   readPreviousCrawledDataset(crawledDatasetPath, {
     discardPrevious,
@@ -235,6 +274,7 @@ const { dataset: previousCrawled, bootstrapping: bootstrappingSnapshot } =
     targetedProviderId: requestedProviderId,
     published: previousPublished,
     publishedPath: datasetPath,
+    overrideReportPath,
   });
 // Which generation of the parsers, and which policy, produced the records we
 // are about to reuse. A missing or unreadable file forces a full crawl, which
@@ -289,6 +329,7 @@ const {
   animals: crawled,
   crawled: crawledProviderIds,
   failed,
+  failedAnimals,
   fullyRefreshed,
   fetched: detailsFetched,
   reused: detailsReused,
@@ -301,6 +342,14 @@ const {
 console.log(
   `detail pages: ${detailsFetched} fetched, ${detailsReused} reused`,
 );
+if (failedAnimals.length > 0) {
+  console.error(
+    `detail pages: ${failedAnimals.length} could not be refreshed`,
+  );
+  for (const { providerId, sourceUrl } of failedAnimals) {
+    console.error(`  ${providerId}: ${sourceUrl}`);
+  }
+}
 
 // The manual providers this run is responsible for: enabled, ingestion:
 // manual, and inside the --provider filter when there is one. crawlPolicies
@@ -479,7 +528,27 @@ for (const drop of dropped) {
 // by a targeted run that does not re-crawl its provider.
 const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
 
-guardUniqueAnimalIds(seeded);
+// What each shelter's policy.yaml permits right now, applied to the crawled
+// and the carried-over records alike. A carried record holds the policy as it
+// stood when it was fetched: the incremental crawl re-fetches a provider whose
+// policy fingerprint moved, but only one this run crawled. On a targeted run,
+// and after a failed crawl, this is the only thing that brings an excluded
+// page, an image, a description and an attribution back to what the shelter
+// grants today. It only ever narrows.
+const published = applyPublicationPolicy(seeded, policyById);
+for (const { providerId, count, reason } of published.dropped) {
+  console.warn(
+    `publication policy: ${providerId}: dropped ${count} animal(s) ${reason}`,
+  );
+}
+for (const { providerId, field, applied, count } of published.adjusted) {
+  console.warn(
+    `publication policy: ${providerId}: ${field} set to ` +
+      `${JSON.stringify(applied)} on ${count} animal(s)`,
+  );
+}
+
+guardUniqueAnimalIds(published.animals);
 
 // The portal keys every override by the shelter slug of the account that
 // recorded it and ships that slug as providerId; this pipeline matches an
@@ -490,7 +559,7 @@ guardUniqueAnimalIds(seeded);
 // A manual listing is built with both read off the same providerId, and its
 // sourceUrl is the shelter page that slug routes to, so the check covers the
 // listings feed for free.
-const misattributed = seeded.filter(
+const misattributed = published.animals.filter(
   (a) => a.shelter.id !== a.source.providerId,
 );
 if (misattributed.length > 0) {
@@ -517,7 +586,7 @@ if (misattributed.length > 0) {
 //   itself, which is a stronger grant than the crawl permission this list
 //   records; the same is already true of descriptions, where an override
 //   sets shortDescription whatever the policy's descriptions grant says.
-const restricted = applyAllowedFields(seeded, policyById);
+const restricted = applyAllowedFields(published.animals, policyById);
 for (const { providerId, field, count } of restricted.stripped) {
   console.warn(
     `allowedFields: ${providerId}: field ${field} is not in allowedFields, ` +
@@ -688,8 +757,15 @@ const changes = buildChangeSet({
   current: dataset.animals,
 });
 
-writeFileAtomic(datasetPath, JSON.stringify(dataset, null, 2));
+// The snapshot is written first, and the order is load-bearing. A run that
+// dies between the two writes then leaves a snapshot one generation ahead of
+// the published file, which is the recoverable direction: the snapshot is the
+// whole crawl, so everything that reads it is right, and only changes.json's
+// baseline is a generation old. The other order left an unusable pair that
+// blocked every following run. See assertGenerationPair in
+// crawled-snapshot.ts.
 writeFileAtomic(crawledDatasetPath, JSON.stringify(crawledDataset, null, 2));
+writeFileAtomic(datasetPath, JSON.stringify(dataset, null, 2));
 writeFileAtomic(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),
@@ -765,4 +841,15 @@ if (failed.length > 0) {
       `written, but this run is not a clean one.`,
   );
 }
-process.exitCode = exitCodeForRun(failed.length);
+if (failedAnimals.length > 0) {
+  console.error(
+    `${failedAnimals.length} animal(s) could not be refreshed. The record we ` +
+      `already held was carried forward for each one we hold, and the ` +
+      `listing was skipped for each one we do not, so this run is not a ` +
+      `clean one either.`,
+  );
+}
+process.exitCode = exitCodeForRun({
+  failedProviders: failed.length,
+  failedAnimals: failedAnimals.length,
+});

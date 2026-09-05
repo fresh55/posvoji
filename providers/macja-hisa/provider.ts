@@ -146,16 +146,20 @@ export function parseSlovenianDate(value: string): string | undefined {
   return date.toISOString().slice(0, 10) === iso ? iso : undefined;
 }
 
+// Listings are built from titled cards: "Osnovni podatki", "Veterinarski
+// status". Nothing else on the site renders them.
+function cardByTitle($: cheerio.CheerioAPI, title: RegExp) {
+  return $(".card")
+    .filter((_, el) =>
+      title.test($(el).find(".card-header").text().normalize("NFC")),
+    )
+    .first();
+}
+
 function parseMedical($: cheerio.CheerioAPI): AnimalMedical | undefined {
   // Vet facts only come from the "Veterinarski status" card; without it there
   // is nothing trustworthy to read.
-  const card = $(".card")
-    .filter((_, el) =>
-      /veterinarski status/i.test(
-        $(el).find(".card-header").text().normalize("NFC"),
-      ),
-    )
-    .first();
+  const card = cardByTitle($, /veterinarski status/i);
   if (card.length === 0) return undefined;
   const rows = card.find("div");
 
@@ -223,6 +227,13 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
+  // Every listing carries the "Osnovni podatki" card, down to the sparsest
+  // one. A page without it is not a listing, and parsing it anyway would
+  // yield no name and the default species "cat", which normalize() turns into
+  // an available animal and writes over the real one.
+  if (cardByTitle($, /osnovni podatki/i).length === 0) {
+    throw new Error(`${PROVIDER_ID}: detail page has no Osnovni podatki card`);
+  }
   const identity = parseIdentity($);
 
   const imageUrls: string[] = [];

@@ -219,7 +219,9 @@ missing bearer token 401.
 ### Running it offline
 
 The ingest side reads `PORTAL_EXPORT_URL` and `PORTAL_EXPORT_TOKEN`, and
-skips overrides entirely when either is unset. Set `PORTAL_EXPORT_FIXTURE` to
+skips overrides entirely when both are unset. With exactly one of them set it
+refuses the run, so a lost secret cannot silently drop every correction. Set
+`PORTAL_EXPORT_FIXTURE` to
 the path of a saved export instead and it reads that file, so the merge, the
 conflict report and the sidecar can all be exercised without a deployment.
 The fixture wins over the URL when both are set, which is what makes it

@@ -72,6 +72,21 @@ export function parseList(html: string): SourceAnimalRef[] {
   return [...refs.values()];
 }
 
+// discover() reads one page per species, so an HTTP 200 page that is not a
+// species page silently removes that whole species. The saved archive carries
+// the page's <main> wrapper around the cards and nothing else that names the
+// listing, so those are the two signals there are: a page with neither is not
+// a listing. The cards are never required on their own, because a species
+// with nothing to show is a real state the site can be in.
+// Checked the live species pages 2026-09-05: the theme has no <main> at all.
+// The cards are article.project elements inside div.portfolio, which sits in
+// the shortcode wrapper div.cmsms_wrap_portfolio. Either wrapper marks the
+// archive; a page carrying neither is not the listing.
+export function hasListingMarkup(html: string): boolean {
+  const $ = cheerio.load(html);
+  return $(".cmsms_wrap_portfolio, div.portfolio").length > 0;
+}
+
 function normalizeLabel(value: string): string {
   return value
     .normalize("NFC")
@@ -153,6 +168,13 @@ function addImageUrl(urls: string[], value: string | undefined): void {
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const article = $("article.project").first();
+  // The listing is the project article. Without it the page carries no facts
+  // and no evidence number for fetch() to check: parsed anyway the record
+  // would normalize into an available "other" animal with no photos, written
+  // over the real one.
+  if (article.length === 0) {
+    throw new Error(`${PROVIDER_ID}: detail page has no project article`);
+  }
   const details = readDetails($);
   const heading = article
     .find(".cmsms_project_title")
@@ -237,6 +259,9 @@ const provider: AdoptionProvider = {
         throw new Error(
           `${PROVIDER_ID}: list fetch failed with HTTP ${response.status} for ${url}`,
         );
+      }
+      if (!hasListingMarkup(response.body)) {
+        throw new Error(`${PROVIDER_ID}: list page ${url} has no listing markup`);
       }
       for (const ref of parseList(response.body)) refs.set(ref.sourceAnimalId, ref);
     }

@@ -69,19 +69,32 @@ function parseSpecies($: cheerio.CheerioAPI): Species {
   return "other";
 }
 
+// The listings write half years as "1,5 leta". Matching only `\d+` on a word
+// boundary takes the "5" and publishes five years, so the count has to take
+// the separator and its decimals with it, and the lookbehind has to stop the
+// pattern from starting in the middle of a number.
+const AGE_COUNT = "(?<![\\d,.])(\\d+(?:[.,]\\d+)?)";
+
+function ageCount(raw: string | undefined): number {
+  return Number((raw ?? "").replace(",", "."));
+}
+
 export function parseApproximateAgeMonths(
   value: string,
 ): number | undefined {
   const normalized = value.normalize("NFC").replace(/\s+/g, " ");
   const months = normalized.match(
-    /\b(\d+)\s*(?:mesecev|mesece|meseca|mesec)\b/iu,
+    new RegExp(`${AGE_COUNT}\\s*(?:mesecev|mesece|meseca|mesec)\\b`, "iu"),
   );
-  if (months) return Number(months[1]);
+  if (months) return Math.round(ageCount(months[1]));
 
   const years = normalized.match(
-    /\b(\d+)\s*(?:-|\s)*(?:letni|letna|leten|letnega|leta|leti|let)\b/iu,
+    new RegExp(
+      `${AGE_COUNT}\\s*(?:-|\\s)*(?:letni|letna|leten|letnega|leta|leti|let)\\b`,
+      "iu",
+    ),
   );
-  if (years) return Number(years[1]) * 12;
+  if (years) return Math.round(ageCount(years[1]) * 12);
   return /\b(?:približno\s+)?leto\s+dni\b/iu.test(normalized) ? 12 : undefined;
 }
 

@@ -80,18 +80,50 @@ async function readBoundedBody(
   return Buffer.concat(chunks, total).toString("utf8");
 }
 
+type PortalConfig =
+  | { kind: "fixture"; path: string }
+  | { kind: "remote"; baseUrl: string; token: string }
+  | { kind: "disabled" };
+
+// The one place the environment variables are read, so the predicate below
+// and every feed's fetch cannot disagree about whether this run has the
+// portal. The fixture variable is the feed's own; the base URL and the token
+// are shared by both.
+//
+// Half a configuration is refused rather than treated as "off". A deployment
+// that lost one of the two secrets used to log a line and carry on with the
+// raw crawl values, which republishes every correction the portal holds: an
+// animal a shelter marked adopted is available again, at exit 0, on a run
+// nobody had reason to look at.
+function portalConfig(fixtureVar: string): PortalConfig {
+  const fixturePath = process.env[fixtureVar];
+  if (fixturePath) return { kind: "fixture", path: fixturePath };
+
+  const baseUrl = process.env["PORTAL_EXPORT_URL"];
+  const token = process.env["PORTAL_EXPORT_TOKEN"];
+  if (baseUrl && token) return { kind: "remote", baseUrl, token };
+  if (baseUrl || token) {
+    const set = baseUrl ? "PORTAL_EXPORT_URL" : "PORTAL_EXPORT_TOKEN";
+    const missing = baseUrl ? "PORTAL_EXPORT_TOKEN" : "PORTAL_EXPORT_URL";
+    throw new Error(
+      `${set} is set but ${missing} is not, so the portal integration is only ` +
+        `half configured. Refusing the run: continuing would publish the raw ` +
+        `crawl values and silently drop every correction the portal holds. ` +
+        `Set ${missing}, or unset ${set} to run without the portal.`,
+    );
+  }
+  return { kind: "disabled" };
+}
+
 // Whether this run has the portal integration configured at all, decided from
 // the same three variables the override feed below reads: its fixture, the
 // base URL and the token. It is a separate
 // predicate because the pipeline has to know before the payload is fetched:
 // the crawled-snapshot bootstrap in crawled-snapshot.ts is strict when
-// corrections can reach the dataset and forgiving when they cannot. Keep the
-// two in step.
+// corrections can reach the dataset and forgiving when they cannot. Both read
+// portalConfig, which is what keeps them in step.
 export function portalIntegrationEnabled(): boolean {
-  return Boolean(
-    process.env["PORTAL_EXPORT_FIXTURE"] ||
-      (process.env["PORTAL_EXPORT_URL"] && process.env["PORTAL_EXPORT_TOKEN"]),
-  );
+  return portalConfig("PORTAL_EXPORT_FIXTURE").kind !== "disabled";
 }
 
 // What one feed is: the fixture variable that stands in for the network, the
@@ -116,19 +148,17 @@ interface PortalFeed<T> {
 }
 
 async function fetchPortalFeed<T>(feed: PortalFeed<T>): Promise<T | null> {
-  const fixturePath = process.env[feed.fixtureVar];
-  if (fixturePath) {
-    console.log(`portal: reading ${feed.label} from fixture ${fixturePath}`);
+  const config = portalConfig(feed.fixtureVar);
+  if (config.kind === "fixture") {
+    console.log(`portal: reading ${feed.label} from fixture ${config.path}`);
     return parsePayload(
       feed.schema,
       feed.errorLabel,
-      JSON.parse(readFileSync(fixturePath, "utf8")),
+      JSON.parse(readFileSync(config.path, "utf8")),
     );
   }
 
-  const baseUrl = process.env["PORTAL_EXPORT_URL"];
-  const token = process.env["PORTAL_EXPORT_TOKEN"];
-  if (!baseUrl || !token) {
+  if (config.kind === "disabled") {
     console.log(
       `portal: ${feed.label} disabled (PORTAL_EXPORT_URL/PORTAL_EXPORT_TOKEN not set)`,
     );
@@ -137,11 +167,11 @@ async function fetchPortalFeed<T>(feed: PortalFeed<T>): Promise<T | null> {
 
   // This calls our own portal service, not a shelter website. PoliteClient's
   // crawling etiquette therefore does not apply.
-  const url = portalEndpoint(baseUrl, feed.path);
+  const url = portalEndpoint(config.baseUrl, feed.path);
   let response: Response;
   try {
     response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${config.token}` },
       signal: AbortSignal.timeout(PORTAL_EXPORT_TIMEOUT_MS),
     });
   } catch (error) {
@@ -175,8 +205,9 @@ async function fetchPortalFeed<T>(feed: PortalFeed<T>): Promise<T | null> {
 }
 
 // Fetches the portal's current export, or returns null when the integration
-// is not configured. Shape or HTTP failures abort the export so the pipeline
-// never writes a dataset with only some corrections applied.
+// is not configured at all. A half configuration throws in portalConfig, and
+// shape or HTTP failures abort the export, so the pipeline never writes a
+// dataset with only some corrections applied.
 export async function fetchPortalOverrides(): Promise<PortalExportPayloadType | null> {
   return fetchPortalFeed({
     label: "overrides",

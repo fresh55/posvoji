@@ -8,7 +8,7 @@ import type { ProviderPolicy } from "@posvoji/schema";
 // The slice of PoliteClient a provider uses. Structural on purpose: the guard
 // wraps whatever the SDK hands over without depending on the class.
 export interface CrawlClient {
-  get(url: string): Promise<PoliteResponse>;
+  get(url: string, options?: GetBytesOptions): Promise<PoliteResponse>;
   getBytes(url: string, options?: GetBytesOptions): Promise<PoliteBytesResponse>;
 }
 
@@ -109,6 +109,13 @@ export function excludedPathFor(
 // Both rules are central rather than trusted to every parser: a provider may
 // crawl only its policy source origin, and excluded private-owner paths may
 // never reach the network even when a link percent-encodes part of the path.
+//
+// The URL an adapter asks for is not the only URL a request can reach: the
+// client follows same-host redirects on its own, so an allowed listing URL
+// that 302s into an excluded section would fetch the excluded page without
+// the adapter ever naming it. Both rules are therefore applied again to every
+// redirect target, through the client's allowRedirect hook, before the request
+// for that target is made.
 export function guardProviderRequests(
   client: CrawlClient,
   policy: ProviderPolicy,
@@ -128,12 +135,25 @@ export function guardProviderRequests(
     return url;
   };
 
+  // check throws, which is what a refused redirect should do: the alternative
+  // is returning false, and the caller would then be handed a 30x response it
+  // has no way to read as "policy refused this".
+  const guarded = (options?: GetBytesOptions): GetBytesOptions => ({
+    ...options,
+    allowRedirect: (target, from) => {
+      check(target.href);
+      return options?.allowRedirect
+        ? options.allowRedirect(target, from)
+        : true;
+    },
+  });
+
   return {
-    async get(url) {
-      return client.get(check(url));
+    async get(url, options) {
+      return client.get(check(url), guarded(options));
     },
     async getBytes(url, options) {
-      return client.getBytes(check(url), options);
+      return client.getBytes(check(url), guarded(options));
     },
   };
 }

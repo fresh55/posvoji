@@ -340,6 +340,12 @@ describe("parseDetail", () => {
       "unknown",
     );
   });
+
+  it("refuses a page that carries no project article", () => {
+    expect(() =>
+      parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
+    ).toThrow("detail page has no project article");
+  });
 });
 
 describe("resolveAgeMonths", () => {
@@ -374,6 +380,34 @@ describe("discover", () => {
     ]);
     // The same fixture served twice must not double the animals.
     expect(refs).toEqual(parseList(listHtml));
+  });
+
+  it("refuses a species page that is not the listing", async () => {
+    const client = {
+      get: async (url: string) => ({
+        status: 200,
+        body: url.endsWith("/muce")
+          ? "<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"
+          : listHtml,
+        notModified: false,
+        headers: {},
+      }),
+    } as unknown as PoliteClient;
+    await expect(provider.discover({ client, policy })).rejects.toThrow(
+      "list page https://zavodmuri.si/posvojitev/iscejo-dom/muce has no listing markup",
+    );
+  });
+
+  it("accepts a species page with nothing to show right now", async () => {
+    const client = {
+      get: async () => ({
+        status: 200,
+        body: '<div class="portfolio grid"></div>',
+        notModified: false,
+        headers: {},
+      }),
+    } as unknown as PoliteClient;
+    expect(await provider.discover({ client, policy })).toEqual([]);
   });
 });
 

@@ -206,6 +206,12 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
+  // The WooCommerce product container is the listing itself. A page without
+  // it carries no facts: parsed anyway the record would normalize into an
+  // available cat with no name and no photos, over the real one.
+  if ($("div.product").length === 0) {
+    throw new Error(`${PROVIDER_ID}: detail page has no product container`);
+  }
   const name = $("h1.product_title").first().text().normalize("NFC").trim();
   const status = parseStatus($);
   const sexRaw = labelValue($, "Spol")?.toLowerCase();

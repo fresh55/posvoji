@@ -153,12 +153,58 @@ export function parseStatus(value: string | undefined): AdoptionStatus {
   return "unknown";
 }
 
+type CareField = "neutered" | "vaccinated" | "microchipped";
+
+// Whole words only. "nekastriran" contains "kastriran", and a substring match
+// turns the shelter saying the animal is not neutered into the claim that it
+// is.
+const CARE_TERMS: ReadonlyArray<[CareField, RegExp]> = [
+  ["neutered", /^(?:steriliziran|kastriran)[aeio]?$/u],
+  ["vaccinated", /^cepljen[aeio]?$/u],
+  ["microchipped", /^(?:mikro)?čipiran[aeio]?$/u],
+];
+
+// Words that negate the term following them, so "še ni cepljen" is read
+// through its "ni".
+const NEGATING_WORDS = new Set(["ni", "niso", "nista", "ne", "brez"]);
+
+// A negated term is recorded as false rather than dropped: the shelter stated
+// the fact, and AnimalMedical carries booleans both ways.
+export function parseVeterinaryCare(
+  value: string,
+): Partial<Record<CareField, boolean>> {
+  const tokens = value
+    .normalize("NFC")
+    .toLocaleLowerCase("sl")
+    .split(/[^\p{L}]+/u)
+    .filter((token) => token.length > 0);
+
+  const claims = new Map<CareField, Set<boolean>>();
+  tokens.forEach((token, index) => {
+    for (const [field, term] of CARE_TERMS) {
+      const prefixNegated = token.startsWith("ne") && term.test(token.slice(2));
+      if (!prefixNegated && !term.test(token)) continue;
+      const negated =
+        prefixNegated || NEGATING_WORDS.has(tokens[index - 1] ?? "");
+      const claim = claims.get(field) ?? new Set<boolean>();
+      claim.add(!negated);
+      claims.set(field, claim);
+    }
+  });
+
+  const care: Partial<Record<CareField, boolean>> = {};
+  for (const [field, claim] of claims) {
+    // A line asserting and denying the same term settles nothing, so the
+    // field stays unset rather than taking whichever word came last.
+    if (claim.size === 1) care[field] = [...claim][0]!;
+  }
+  return care;
+}
+
 function parseMedical(facts: Map<string, string>): AnimalMedical | undefined {
-  const care = facts.get("veterinarska oskrba")?.toLowerCase() ?? "";
-  const medical: AnimalMedical = {};
-  if (/steriliziran|kastriran/.test(care)) medical.neutered = true;
-  if (/cepljen/.test(care)) medical.vaccinated = true;
-  if (/čipiran/.test(care)) medical.microchipped = true;
+  const medical: AnimalMedical = {
+    ...parseVeterinaryCare(facts.get("veterinarska oskrba") ?? ""),
+  };
 
   const tests = facts.get("felv+fiv")?.toLowerCase();
   const result: TestResult | undefined = tests?.startsWith("negativ")

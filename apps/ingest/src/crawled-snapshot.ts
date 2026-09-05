@@ -1,5 +1,6 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { Animal, Dataset } from "@posvoji/schema";
+import type { OverrideReport } from "./portal-report";
 import { readPreviousDataset, type PreviousDatasetOptions } from "./run-guards";
 
 // The run writes two datasets. animals.json is what the site reads: the crawl
@@ -48,6 +49,11 @@ export interface PreviousCrawledOptions extends PreviousDatasetOptions {
   // the other half of the generation pair checked below.
   published: Dataset | undefined;
   publishedPath: string;
+  // overrides.json, the audit trail export.ts writes on every run. It is the
+  // only evidence on disk of whether a correction has ever been merged into
+  // animals.json, and the portal-off fallback below needs it before it can
+  // call that file the crawl's own answer.
+  overrideReportPath: string;
 }
 
 export interface PreviousCrawledResult {
@@ -66,20 +72,28 @@ export interface PreviousCrawledResult {
   bootstrapping: boolean;
 }
 
-// One run writes animals.json and animals.crawled.json from the same clock
-// reading, one after the other. A run that dies between the two writes leaves
-// a new merged dataset beside the previous snapshot, and every "what did the
-// crawl say last time" question below would then be answered by a run that is
-// one generation behind: the reuse input, firstSeenAt, the carried records and
-// the removal guard. Nothing about the older file looks wrong on its own, so
-// the pair is checked rather than the files.
+// One run writes animals.crawled.json and animals.json from the same clock
+// reading, the snapshot first. A run that dies between the two writes leaves
+// this run's snapshot beside the previous published file, and the order is
+// chosen so that this is the recoverable direction: the snapshot is the crawl
+// as it ran, complete, so every "what did the crawl say last time" question
+// below is answered correctly. The reuse input, firstSeenAt, the carried
+// records and the removal guard all read it and are right. Only changes.json
+// has a baseline one generation old, and it answers "what changed on the site"
+// against a file that is one run behind, so it reports last run's changes once
+// more. That is a warning, not an abort.
 //
-// The asymmetric cases are not symmetrical in what they cost:
+// The other direction is not recoverable in the same way, and with this write
+// order it cannot come from a crash at all: a published file newer than the
+// snapshot means somebody put an old snapshot back beside a newer publication.
+// The snapshot is then not what the last crawl said, and everything above
+// would carry stale records forward as the crawl's own answer. That throws.
 //
-//   - snapshot present, animals.json missing or discarded: recoverable and
-//     allowed. The snapshot is still crawl truth, so everything that reads it
-//     is correct; only the change set loses its baseline and reports every
-//     animal as added for one run.
+// The remaining cases:
+//
+//   - snapshot present, animals.json missing or discarded: allowed. The
+//     snapshot is still crawl truth; only the change set loses its baseline
+//     and reports every animal as added for one run.
 //   - snapshot missing, animals.json present: the bootstrap below, which is
 //     recoverable by definition. That is the case this module exists to make
 //     safe.
@@ -97,19 +111,162 @@ function assertGenerationPair(
     );
     return;
   }
-  if (options.published.generatedAt === crawled.generatedAt) return;
+
+  // Both stamps come out of Dataset.parse, which validates them as ISO
+  // timestamps, so they always parse and their formatting cannot differ.
+  const publishedAt = Date.parse(options.published.generatedAt);
+  const crawledAt = Date.parse(crawled.generatedAt);
+  if (publishedAt === crawledAt) return;
+
+  if (publishedAt < crawledAt) {
+    console.warn(
+      `WARNING: ${path} is from ${crawled.generatedAt} and ` +
+        `${options.publishedPath} from ${options.published.generatedAt}, so ` +
+        `the last run stopped between the two dataset writes. The snapshot is ` +
+        `written first and is the whole crawl, so everything that reads it is ` +
+        `last run's crawl and this run continues on it. Only changes.json has ` +
+        `a baseline one generation old: it reports the previous run's changes ` +
+        `once more.`,
+    );
+    return;
+  }
 
   throw new Error(
-    `the two previous datasets are from different runs: ` +
-      `${options.publishedPath} was generated at ` +
+    `the two previous datasets are from different runs, and the published one ` +
+      `is the newer: ${options.publishedPath} was generated at ` +
       `${options.published.generatedAt} and ${path} at ${crawled.generatedAt}. ` +
-      `One run writes both, so a pair that disagrees is a run that stopped ` +
-      `between the two writes, and the older of them is not what the last ` +
-      `crawl said. Nothing was read and nothing was written. Delete ${path} ` +
-      `and bootstrap it again: with the portal integration off the next run ` +
-      `re-derives it from ${options.publishedPath}, and with the portal on it ` +
-      `takes one full clean run, \`pnpm dataset:export --refresh-all\` over ` +
-      `every provider.`,
+      `One run writes the snapshot first and the published dataset second, so ` +
+      `a crash cannot produce this; an older snapshot restored beside a newer ` +
+      `publication can. ${path} is then not what the last crawl said, and ` +
+      `every record carried forward from it would be stale. Nothing was read ` +
+      `and nothing was written. Delete ${path} and bootstrap it again: with ` +
+      `the portal integration off the next run re-derives it from ` +
+      `${options.publishedPath}, and with the portal on it takes one full ` +
+      `clean run, \`pnpm dataset:export --refresh-all\` over every provider.`,
+  );
+}
+
+// Whether a correction has ever been merged into animals.json, as far as
+// overrides.json can say. The report is written on every run, portal
+// configured or not, so its absence is itself an answer: the last run predates
+// it, and so predates the portal.
+//
+// Each outcome carries the words the caller prints, so the reason a file was
+// trusted or refused is written where the decision is made.
+type OverrideEvidence =
+  // Nothing has been merged, and this is how we know.
+  | { merged: false; because: string }
+  // Something has, or the report cannot prove otherwise. An unreadable report
+  // proves nothing and the cost of guessing wrong is a correction written
+  // into the snapshot as crawl truth, so both fail closed.
+  | { merged: true; why: string };
+
+function readOverrideEvidence(
+  path: string,
+  publishedPath: string,
+): OverrideEvidence {
+  if (!existsSync(path)) {
+    return {
+      merged: false,
+      because:
+        `there is no override report at ${path}, so the last run predates ` +
+        `it and no override has ever been merged into ${publishedPath}`,
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    return {
+      merged: true,
+      why: `the override report at ${path} is not valid JSON (${error})`,
+    };
+  }
+
+  const report = parsed as Partial<OverrideReport>;
+  if (
+    report === null ||
+    typeof report !== "object" ||
+    typeof report.enabled !== "boolean" ||
+    !Array.isArray(report.applied)
+  ) {
+    return {
+      merged: true,
+      why:
+        `the override report at ${path} does not have the shape of one ` +
+        `(an enabled flag and an applied list)`,
+    };
+  }
+
+  if (report.enabled) {
+    return {
+      merged: true,
+      why:
+        `the override report at ${path} says the portal integration was ` +
+        `configured on the last run`,
+    };
+  }
+  if (report.applied.length > 0) {
+    return {
+      merged: true,
+      why:
+        `the override report at ${path} records ` +
+        `${report.applied.length} applied override(s)`,
+    };
+  }
+  return {
+    merged: false,
+    because:
+      `${path} records no configured portal and no applied override, so no ` +
+      `correction has been merged into ${publishedPath}`,
+  };
+}
+
+// The rules for standing animals.json in for a snapshot that is not there,
+// for every case where it carries corrections or might. reason says why it
+// cannot simply be read, and goes into all three messages.
+//
+// Refusing a targeted run happens here rather than after the crawl, because
+// --provider is a flag on this run and no outcome of the crawl can make it
+// acceptable. Both throws exit 1, which is EXIT_BLOCKED in exit-codes.ts:
+// nothing written, nothing shipped.
+function bootstrapFromPublished(
+  path: string,
+  options: PreviousCrawledOptions,
+  reason: string,
+): PreviousCrawledResult {
+  if (options.targetedProviderId) {
+    throw new Error(
+      `no crawled snapshot at ${path}, ${reason}, and this run targets ` +
+        `--provider ${options.targetedProviderId}. Every other provider's ` +
+        `records would be carried over from ${options.publishedPath}, ` +
+        `corrections included, and written into the new snapshot as if the ` +
+        `crawl had said them. Bootstrap it with one full run over every ` +
+        `provider first: \`pnpm dataset:export --refresh-all\`, then run the ` +
+        `targeted export.`,
+    );
+  }
+
+  if (options.refreshAll) {
+    console.warn(
+      `WARNING: no crawled snapshot at ${path} and ${reason}, so this run ` +
+        `bootstraps one with --refresh-all. Every listed animal is re-read ` +
+        `from its shelter, so the snapshot this run writes is the crawl's own ` +
+        `answer. This run has to be a clean one: if any enabled provider ` +
+        `fails or does not refresh in full, it aborts after the crawl and ` +
+        `before anything is written, because a provider carried over from ` +
+        `${options.publishedPath} brings its corrections with it.`,
+    );
+    return { dataset: options.published, bootstrapping: true };
+  }
+
+  throw new Error(
+    `no crawled snapshot at ${path}, and ${reason}. Reusing ` +
+      `${options.publishedPath} here would seed the snapshot with the ` +
+      `corrections merged into it, which is exactly what the two files exist ` +
+      `to keep apart. Bootstrap it with one full run: ` +
+      `\`pnpm dataset:export --refresh-all\`.`,
   );
 }
 
@@ -124,21 +281,31 @@ function assertGenerationPair(
 // the first run after this file shipped, which is the case worth being careful
 // about. animals.json is then the only record of the last crawl, and whether
 // it can stand in for one depends on whether corrections have ever been merged
-// into it:
+// into it. The portal being off today does not answer that: it may have been
+// on for the runs that wrote the file, and a correction merged then is still
+// in it. overrides.json is the evidence, so:
 //
-//   - portal off: no override has ever reached that file, so it is the last
-//     crawl, and it is used with a log line saying so.
+//   - portal off and no override report: the last run predates the report, so
+//     it predates the portal, so no override has ever reached animals.json.
+//     It is the last crawl, and it is used with a log line saying so.
+//   - portal off and a report showing no configured portal and no applied
+//     override: the same, and now on evidence.
+//   - portal off but a report showing the portal configured or an override
+//     applied: animals.json carries corrections and is treated exactly like
+//     the portal-on case below. A targeted run would otherwise write another
+//     shelter's correction into the new snapshot as crawl truth, and clearing
+//     that override later would not revert the value until its provider was
+//     fully re-crawled.
 //   - portal on, one full non-targeted run with --refresh-all: every listed
 //     animal of every enabled provider is re-read from the shelter, so the
 //     snapshot this run writes comes from the crawl. This is the bootstrap the
-//     aborts below ask for, and it is only half checkable here: whether every
+//     aborts ask for, and it is only half checkable here: whether every
 //     provider actually finished and actually refreshed is known after the
 //     crawl, by assertBootstrapCrawlIsComplete.
 //   - portal on, anything else: refused. Reusing the merged file for the
 //     providers this run does not re-read is the bug this split fixes, and
 //     doing it on the one run that has no snapshot would seed the new file
-//     with corrections. The throw exits 1, which is EXIT_BLOCKED in
-//     exit-codes.ts: nothing written, nothing shipped.
+//     with corrections.
 export function readPreviousCrawledDataset(
   path: string,
   options: PreviousCrawledOptions,
@@ -161,47 +328,31 @@ export function readPreviousCrawledDataset(
   }
 
   if (!options.portalEnabled) {
+    const evidence = readOverrideEvidence(
+      options.overrideReportPath,
+      options.publishedPath,
+    );
+    if (evidence.merged) {
+      return bootstrapFromPublished(
+        path,
+        options,
+        `the portal integration is off now, but ${evidence.why}, so ` +
+          `corrections were merged into ${options.publishedPath} by an ` +
+          `earlier run`,
+      );
+    }
     console.log(
-      `no crawled snapshot at ${path} yet. The portal integration is off, so ` +
-        `no override has ever been merged into ${options.publishedPath} and ` +
-        `it is the last crawl; this run reads it and writes the snapshot.`,
+      `no crawled snapshot at ${path} yet. The portal integration is off and ` +
+        `${evidence.because}; it is the last crawl, and this run reads it ` +
+        `and writes the snapshot.`,
     );
     return { dataset: options.published, bootstrapping: false };
   }
 
-  // Refused here rather than after the crawl, because --provider is a flag on
-  // this run and no outcome of the crawl can make it acceptable.
-  if (options.targetedProviderId) {
-    throw new Error(
-      `no crawled snapshot at ${path}, the portal integration is enabled, and ` +
-        `this run targets --provider ${options.targetedProviderId}. Every ` +
-        `other provider's records would be carried over from ` +
-        `${options.publishedPath}, corrections included, and written into the ` +
-        `new snapshot as if the crawl had said them. Bootstrap it with one ` +
-        `full run over every provider first: ` +
-        `\`pnpm dataset:export --refresh-all\`, then run the targeted export.`,
-    );
-  }
-
-  if (options.refreshAll) {
-    console.warn(
-      `WARNING: no crawled snapshot at ${path}, bootstrapping one with ` +
-        `--refresh-all. Every listed animal is re-read from its shelter, so ` +
-        `the snapshot this run writes is the crawl's own answer. This run has ` +
-        `to be a clean one: if any enabled provider fails or does not refresh ` +
-        `in full, it aborts after the crawl and before anything is written, ` +
-        `because a provider carried over from ${options.publishedPath} brings ` +
-        `its corrections with it.`,
-    );
-    return { dataset: options.published, bootstrapping: true };
-  }
-
-  throw new Error(
-    `no crawled snapshot at ${path}, and the portal integration is enabled. ` +
-      `Reusing ${options.publishedPath} here would seed the snapshot with the ` +
-      `corrections merged into it, which is exactly what the two files exist ` +
-      `to keep apart. Bootstrap it with one full run: ` +
-      `\`pnpm dataset:export --refresh-all\`.`,
+  return bootstrapFromPublished(
+    path,
+    options,
+    "the portal integration is enabled",
   );
 }
 

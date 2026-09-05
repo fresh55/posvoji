@@ -52,6 +52,9 @@ interface NextData {
 }
 
 export interface DetailFacts {
+  // The CMS id the list page identifies the animal by. fetch() compares it
+  // with the ref it asked for.
+  sourceAnimalId?: string;
   name?: string;
   species: Species;
   sex?: Sex;
@@ -190,13 +193,26 @@ function imageUrl(photo: CmsPhoto): string | undefined {
   }
 }
 
+// Each term has to stand on its own: "nekastrirana" and "ni cepljena" contain
+// the positive word and must not read as the positive claim.
+const NOT_NEGATED = String.raw`(?<!\p{L})(?<!\bni\s+)`;
+const NEUTERED = new RegExp(
+  `${NOT_NEGATED}kastrirana\\s*\\/\\s*${NOT_NEGATED}sterilizirana`,
+  "iu",
+);
+const MICROCHIPPED = new RegExp(`${NOT_NEGATED}mikročipirana`, "iu");
+const VACCINATED = new RegExp(
+  `${NOT_NEGATED}cepljena proti kužnim boleznim`,
+  "iu",
+);
+
 function parseMedical(html: string): AnimalMedical | undefined {
   const text = cheerio.load(html).root().text().replace(/\s+/g, " ");
   const complete =
     text.includes("Žival je celovito oskrbljena") &&
-    /kastrirana\s*\/\s*sterilizirana/i.test(text) &&
-    /mikročipirana/i.test(text) &&
-    /cepljena proti kužnim boleznim/i.test(text);
+    NEUTERED.test(text) &&
+    MICROCHIPPED.test(text) &&
+    VACCINATED.test(text);
   return complete
     ? { neutered: true, microchipped: true, vaccinated: true }
     : undefined;
@@ -234,8 +250,13 @@ export function parseDescription(descriptionHtml: string): string | undefined {
 
 export function parseDetail(html: string): DetailFacts {
   const value = nextData(html)?.props?.pageProps?.pet;
-  const pet: CmsPet =
-    typeof value === "object" && value !== null ? (value as CmsPet) : {};
+  // A maintenance page answers 200 without the pet payload. Read as an empty
+  // record it would normalize into a schema-valid animal with no name, no
+  // photos and species "other", overwriting everything the shelter published.
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${PROVIDER_ID}: detail page has no pet data`);
+  }
+  const pet = value as CmsPet;
   const birthRaw = stringValue(pet.date_of_birth);
   const intakeRaw = stringValue(pet.date);
   const imageUrls: string[] = [];
@@ -248,6 +269,7 @@ export function parseDetail(html: string): DetailFacts {
   }
 
   return {
+    sourceAnimalId: stringValue(pet.id),
     name: stringValue(pet.title),
     species: parseSpecies(pet),
     sex: parseSex(pet.spol),
@@ -291,10 +313,20 @@ const provider: AdoptionProvider = {
     if (res.status !== 200 || res.body === null) {
       throw new Error(`${PROVIDER_ID}: detail fetch failed with HTTP ${res.status}`);
     }
+    const data = parseDetail(res.body);
+    // normalize() takes the identity from the ref, so a 200 carrying another
+    // animal would be filed under the requested one. parseList reads the same
+    // CMS id field, so the two are directly comparable.
+    if (data.sourceAnimalId !== ref.sourceAnimalId) {
+      throw new Error(
+        `${PROVIDER_ID}: detail page for ${ref.sourceAnimalId} returned ` +
+          `${data.sourceAnimalId ?? "no id"}`,
+      );
+    }
     return {
       ref,
       fetchedAt: new Date().toISOString(),
-      data: parseDetail(res.body),
+      data,
     };
   },
 

@@ -1,7 +1,15 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from "vitest";
 import { Dataset } from "@posvoji/schema";
 import type { Animal, ChangeSet, ProviderPolicy } from "@posvoji/schema";
 import { applyAllowedFields } from "./allowed-fields";
@@ -14,6 +22,7 @@ import {
 import { reuseAnimal } from "./incremental-crawl";
 import { applyOverrides } from "./portal-merge";
 import type { OverrideFields, PortalExportPayload } from "./portal-contract";
+import type { OverrideReport } from "./portal-report";
 
 const GENERATED_AT = "2026-08-28T06:00:00Z";
 
@@ -185,6 +194,8 @@ describe("readPreviousCrawledDataset", () => {
   let dir: string;
   let crawledPath: string;
   let publishedPath: string;
+  let overrideReportPath: string;
+  let warn: MockInstance<typeof console.warn>;
   const published = Dataset.parse({
     generatedAt: GENERATED_AT,
     animals: [animal()],
@@ -195,15 +206,34 @@ describe("readPreviousCrawledDataset", () => {
     refreshAll: false,
     published,
     publishedPath: "",
+    overrideReportPath: "",
   };
+
+  // overrides.json as export.ts writes it. Left off disk by default, which is
+  // the run that predates the report.
+  function writeOverrideReport(report: Partial<OverrideReport>): void {
+    writeFileSync(
+      overrideReportPath,
+      JSON.stringify({
+        generatedAt: GENERATED_AT,
+        enabled: false,
+        applied: [],
+        unmatched: [],
+        conflicts: [],
+        ...report,
+      }),
+    );
+  }
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "posvoji-crawled-"));
     crawledPath = join(dir, "animals.crawled.json");
     publishedPath = join(dir, "animals.json");
+    overrideReportPath = join(dir, "overrides.json");
     options.publishedPath = publishedPath;
+    options.overrideReportPath = overrideReportPath;
     vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -229,12 +259,22 @@ describe("readPreviousCrawledDataset", () => {
     expect(result.bootstrapping).toBe(false);
   });
 
-  it("falls back to animals.json when the portal is off", () => {
+  it("falls back to animals.json when the portal is off and no report exists", () => {
     const result = readPreviousCrawledDataset(crawledPath, options);
 
     expect(result.dataset).toBe(published);
-    // Nothing to prove after the crawl: with the portal off the merged file
-    // and the crawl are the same records.
+    // Nothing to prove after the crawl: the last run predates the override
+    // report, so it predates the portal, and the merged file and the crawl
+    // are the same records.
+    expect(result.bootstrapping).toBe(false);
+  });
+
+  it("falls back to animals.json when the report shows nothing was merged", () => {
+    writeOverrideReport({ enabled: false, applied: [] });
+
+    const result = readPreviousCrawledDataset(crawledPath, options);
+
+    expect(result.dataset).toBe(published);
     expect(result.bootstrapping).toBe(false);
   });
 
@@ -272,6 +312,77 @@ describe("readPreviousCrawledDataset", () => {
     expect(result.bootstrapping).toBe(true);
   });
 
+  // The portal being off today says nothing about the runs that wrote
+  // animals.json. overrides.json is what says whether a correction ever
+  // reached it.
+  describe("the portal-off fallback over a file the portal has touched", () => {
+    const applied = [
+      {
+        providerId: "macja-hisa",
+        animalId: "macja-hisa:luna",
+        fields: ["name"],
+      },
+    ];
+
+    it("refuses when the report records an applied override", () => {
+      writeOverrideReport({ enabled: true, applied });
+
+      expect(() => readPreviousCrawledDataset(crawledPath, options)).toThrow(
+        /portal integration is off now/,
+      );
+    });
+
+    it("refuses when the report records a configured portal that applied nothing", () => {
+      writeOverrideReport({ enabled: true, applied: [] });
+
+      expect(() => readPreviousCrawledDataset(crawledPath, options)).toThrow(
+        /--refresh-all/,
+      );
+    });
+
+    it("refuses a targeted run over a file the portal has touched", () => {
+      writeOverrideReport({ enabled: true, applied });
+
+      expect(() =>
+        readPreviousCrawledDataset(crawledPath, {
+          ...options,
+          targetedProviderId: "macja-hisa",
+        }),
+      ).toThrow(/--provider macja-hisa/);
+    });
+
+    it("lets --refresh-all bootstrap over it, with the crawl still to prove", () => {
+      writeOverrideReport({ enabled: true, applied });
+
+      const result = readPreviousCrawledDataset(crawledPath, {
+        ...options,
+        refreshAll: true,
+      });
+
+      expect(result.dataset).toBe(published);
+      expect(result.bootstrapping).toBe(true);
+    });
+
+    it("treats an unreadable report as a file the portal has touched", () => {
+      writeFileSync(overrideReportPath, "not json at all");
+
+      expect(() => readPreviousCrawledDataset(crawledPath, options)).toThrow(
+        /not valid JSON/,
+      );
+    });
+
+    it("treats a report of another shape as a file the portal has touched", () => {
+      writeFileSync(
+        overrideReportPath,
+        JSON.stringify({ generatedAt: GENERATED_AT }),
+      );
+
+      expect(() => readPreviousCrawledDataset(crawledPath, options)).toThrow(
+        /does not have the shape/,
+      );
+    });
+  });
+
   it("treats a first run as a first run whatever the portal is doing", () => {
     const result = readPreviousCrawledDataset(crawledPath, {
       ...options,
@@ -305,19 +416,36 @@ describe("readPreviousCrawledDataset", () => {
   });
 
   describe("the generation pair", () => {
-    it("accepts two datasets from the same run", () => {
+    it("accepts two datasets from the same run without a word", () => {
       writeSnapshot();
 
       const result = readPreviousCrawledDataset(crawledPath, options);
 
       expect(result.dataset?.generatedAt).toBe(GENERATED_AT);
+      expect(warn).not.toHaveBeenCalled();
     });
 
-    it("refuses two datasets from different runs", () => {
+    // The snapshot is written first, so this is the run that died between the
+    // two writes: recoverable, because the snapshot is the whole crawl.
+    it("continues on a snapshot newer than the published dataset", () => {
+      writeSnapshot("2026-08-29T06:00:00Z", "Muri");
+
+      const result = readPreviousCrawledDataset(crawledPath, options);
+
+      expect(result.dataset?.animals[0]!.name).toBe("Muri");
+      expect(result.bootstrapping).toBe(false);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(/changes.json has a baseline one generation old/),
+      );
+    });
+
+    // The write order cannot produce this one. Somebody restored an old
+    // snapshot beside a newer publication, and its records are stale.
+    it("refuses a published dataset newer than the snapshot", () => {
       writeSnapshot("2026-08-27T06:00:00Z");
 
       expect(() => readPreviousCrawledDataset(crawledPath, options)).toThrow(
-        /not from one export run|different runs/,
+        /different runs, and the published one is the newer/,
       );
     });
 

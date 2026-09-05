@@ -325,8 +325,10 @@ describe("the crawl loop and the listings feed", () => {
       published.filter((a) => a.source.providerId === "johanca"),
     ).toHaveLength(5);
     // export.ts pushes every enabled manual provider onto the same failed list
-    // a thrown crawl uses, and that list is all exitCodeForRun reads.
-    expect(exitCodeForRun(["johanca"].length)).toBe(2);
+    // a thrown crawl uses, and that count is what exitCodeForRun reads.
+    expect(
+      exitCodeForRun({ failedProviders: ["johanca"].length, failedAnimals: 0 }),
+    ).toBe(2);
   });
 
   // The drift case, and the reason the providers list exists.
@@ -359,8 +361,10 @@ describe("the crawl loop and the listings feed", () => {
       "johanca:b",
     ]);
     expect(failed).toEqual(["johanca"]);
-    // The same list a thrown crawl uses, and all exitCodeForRun reads.
-    expect(exitCodeForRun(failed.length)).toBe(2);
+    // The same list a thrown crawl uses, and what exitCodeForRun reads.
+    expect(
+      exitCodeForRun({ failedProviders: failed.length, failedAnimals: 0 }),
+    ).toBe(2);
   });
 
   // The mirror of it: the feed names the shelter and has nothing for it, so
@@ -384,7 +388,9 @@ describe("the crawl loop and the listings feed", () => {
     // is the behaviour a named provider is supposed to get.
     expect(published).toEqual([]);
     expect(failed).toEqual([]);
-    expect(exitCodeForRun(failed.length)).toBe(0);
+    expect(
+      exitCodeForRun({ failedProviders: failed.length, failedAnimals: 0 }),
+    ).toBe(0);
   });
 
   // A named provider is not exempt from the guard, only from the drift check.

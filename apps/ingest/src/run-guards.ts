@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { Dataset } from "@posvoji/schema";
-import type { Animal, ProviderPolicy } from "@posvoji/schema";
+import type { Animal, ProviderPolicy, Species } from "@posvoji/schema";
 
-// A provider with fewer animals than this is too small for a share to mean
-// anything: a shelter with two dogs can rehome both in a week.
+// A group with fewer animals than this is too small for a share to mean
+// anything: a shelter with two dogs can rehome both in a week. Applied to a
+// provider's total and to each of its species counts alike.
 const GUARD_MIN_BEFORE = 3;
-// More than this share of a provider's animals disappearing in one run is
+// More than this share of a group's animals disappearing in one run is
 // markup drift until an operator says otherwise.
 const GUARD_MAX_LOSS = 0.8;
 
@@ -159,10 +160,47 @@ export function countByProvider(
   return counts;
 }
 
+interface SpeciesCount {
+  providerId: string;
+  species: Species;
+  count: number;
+}
+
+function countByProviderSpecies(
+  animals: readonly Animal[],
+): Map<string, SpeciesCount> {
+  const counts = new Map<string, SpeciesCount>();
+  for (const animal of animals) {
+    const providerId = animal.source.providerId;
+    const key = `${providerId}\n${animal.species}`;
+    const entry = counts.get(key) ?? {
+      providerId,
+      species: animal.species,
+      count: 0,
+    };
+    entry.count++;
+    counts.set(key, entry);
+  }
+  return counts;
+}
+
 export interface MassRemoval {
   providerId: string;
+  // Set when the loss is confined to one of a provider's species. Absent when
+  // the provider's whole listing collapsed.
+  species?: Species;
   before: number;
   after: number;
+}
+
+function isMassLoss(had: number, has: number): boolean {
+  return has === 0 || had - has > had * GUARD_MAX_LOSS;
+}
+
+// What a removal is called in a log line and in the abort message.
+function nameRemoval(removal: MassRemoval): string {
+  const species = removal.species === undefined ? "" : ` ${removal.species}`;
+  return `${removal.providerId}${species} ${removal.before} -> ${removal.after}`;
 }
 
 export interface MassRemovalOptions {
@@ -185,12 +223,37 @@ export function findMassRemovals(
   const crawled = options.crawledProviderIds;
 
   const removals: MassRemoval[] = [];
+  const named = new Set<string>();
   for (const [providerId, had] of before) {
     if (crawled && !crawled.has(providerId)) continue;
     if (had < GUARD_MIN_BEFORE) continue;
     const has = after.get(providerId) ?? 0;
-    if (has === 0 || had - has > had * GUARD_MAX_LOSS) {
+    if (isMassLoss(had, has)) {
       removals.push({ providerId, before: had, after: has });
+      named.add(providerId);
+    }
+  }
+
+  // A provider's total can stay well inside the threshold while one species
+  // of it is wiped: a shelter with five dogs and five cats whose cat listing
+  // comes back as an empty 200 loses half its animals, and half a provider is
+  // a clean run. Each (provider, species) pair is held to the same two
+  // thresholds. A provider already named above is skipped, because its
+  // species are part of the loss that is being reported.
+  const beforeSpecies = countByProviderSpecies(previous);
+  const afterSpecies = countByProviderSpecies(current);
+  for (const [key, had] of beforeSpecies) {
+    if (crawled && !crawled.has(had.providerId)) continue;
+    if (named.has(had.providerId)) continue;
+    if (had.count < GUARD_MIN_BEFORE) continue;
+    const has = afterSpecies.get(key)?.count ?? 0;
+    if (isMassLoss(had.count, has)) {
+      removals.push({
+        providerId: had.providerId,
+        species: had.species,
+        before: had.count,
+        after: has,
+      });
     }
   }
   return removals;
@@ -199,7 +262,13 @@ export function findMassRemovals(
 // The last thing that runs before the media sweeps and the dataset write. A
 // parser whose selectors stopped matching returns an empty list, and
 // everything downstream reads that as "the shelter emptied": photos, cards
-// and records go, firstSeenAt is reset, and the run exits 0.
+// and records go, firstSeenAt is reset, and the run exits 0. One listing page
+// of several breaking looks the same from inside one species, which is why
+// each species is checked as well as each provider.
+//
+// --accept-removals is per provider id and waives that provider's total and
+// every one of its species at once: an operator who has looked at the site has
+// looked at all of it.
 export function guardMassRemoval(
   previous: readonly Animal[],
   current: readonly Animal[],
@@ -218,8 +287,8 @@ export function guardMassRemoval(
 
   for (const removal of waived) {
     console.warn(
-      `removal guard: ${removal.providerId} ${removal.before} -> ` +
-        `${removal.after} animals, accepted by --accept-removals`,
+      `removal guard: ${nameRemoval(removal)} animals, accepted by ` +
+        `--accept-removals`,
     );
   }
 
@@ -232,15 +301,13 @@ export function guardMassRemoval(
     return;
   }
 
-  const named = blocking
-    .map((r) => `${r.providerId} ${r.before} -> ${r.after}`)
-    .join(", ");
+  const named = blocking.map(nameRemoval).join(", ");
+  const providerIds = [...new Set(blocking.map((r) => r.providerId))];
   throw new Error(
     `removal guard: ${named}. A provider losing this many animals in one run ` +
       `is markup drift until proven otherwise, so nothing was deleted and ` +
       `nothing was written. Check the shelter's site, then re-run with ` +
-      `--accept-removals ${blocking.map((r) => r.providerId).join(",")} if the ` +
-      `removal is real.`,
+      `--accept-removals ${providerIds.join(",")} if the removal is real.`,
   );
 }
 
@@ -259,6 +326,13 @@ export interface RetainResult {
 // are held to the policy as it stands now, not as it stood when they were
 // crawled. A shelter that switched off, or whose permission was withdrawn,
 // leaves the dataset on the next run whether or not that run crawled it.
+//
+// This is the whether, not the what: it decides that a provider may still
+// publish at all. What a carried record may still carry - its images, its
+// description, its attribution, and whether its page is under a path the
+// policy now excludes - is applyPublicationPolicy in publication-policy.ts,
+// and the field list a shelter granted is applyAllowedFields in
+// allowed-fields.ts. All three run on every record on every run.
 export function retainableAnimals(
   animals: readonly Animal[],
   policies: ReadonlyMap<string, ProviderPolicy>,

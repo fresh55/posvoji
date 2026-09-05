@@ -37,6 +37,17 @@ function many(count: number, providerId = "macja-hisa"): Animal[] {
   return Array.from({ length: count }, (_, i) => animal(String(i), providerId));
 }
 
+function manyOf(
+  count: number,
+  species: Animal["species"],
+  providerId = "macja-hisa",
+): Animal[] {
+  return Array.from({ length: count }, (_, i) => ({
+    ...animal(`${species}-${i}`, providerId),
+    species,
+  }));
+}
+
 function policy(overrides: Record<string, unknown> = {}): ProviderPolicy {
   return ProviderPolicy.parse({
     providerId: "macja-hisa",
@@ -140,6 +151,48 @@ describe("findMassRemovals", () => {
     );
   });
 
+  it("catches a species wiped while the provider's total holds", () => {
+    // One listing page of two coming back as an empty 200: half the shelter
+    // is gone, and half is a clean run for the provider check.
+    const previous = [...manyOf(5, "dog"), ...manyOf(5, "cat")];
+
+    expect(
+      findMassRemovals(previous, manyOf(5, "dog"), {
+        crawledProviderIds: new Set(["macja-hisa"]),
+      }),
+    ).toEqual([
+      { providerId: "macja-hisa", species: "cat", before: 5, after: 0 },
+    ]);
+  });
+
+  it("leaves a species too small to measure alone", () => {
+    const previous = [...manyOf(8, "dog"), ...manyOf(2, "cat")];
+
+    expect(
+      findMassRemovals(previous, manyOf(8, "dog"), {
+        crawledProviderIds: new Set(["macja-hisa"]),
+      }),
+    ).toEqual([]);
+  });
+
+  it("ignores the species of a provider this run did not crawl", () => {
+    const previous = [...manyOf(5, "dog", "muri"), ...manyOf(5, "cat", "muri")];
+
+    expect(
+      findMassRemovals(previous, manyOf(5, "dog", "muri"), {
+        crawledProviderIds: new Set(["macja-hisa"]),
+      }),
+    ).toEqual([]);
+  });
+
+  it("names a collapsed provider once, not once per species", () => {
+    const previous = [...manyOf(5, "dog"), ...manyOf(5, "cat")];
+
+    expect(findMassRemovals(previous, [])).toEqual([
+      { providerId: "macja-hisa", before: 10, after: 0 },
+    ]);
+  });
+
   it("counts an animal the crawl reused as present", () => {
     // The incremental crawl skips the detail page of an animal that is still
     // on the list page and republishes what we hold. It was seen, it ships,
@@ -174,6 +227,30 @@ describe("guardMassRemoval", () => {
       guardMassRemoval(many(12), [], { accepted: new Set(["macja-hisa"]) }),
     ).not.toThrow();
     expect(warn.mock.calls[0]?.[0]).toMatch(/accepted by --accept-removals/);
+  });
+
+  it("names the species that emptied", () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const previous = [...manyOf(5, "dog"), ...manyOf(5, "cat")];
+
+    expect(() => guardMassRemoval(previous, manyOf(5, "dog"))).toThrow(
+      /macja-hisa cat 5 -> 0/,
+    );
+  });
+
+  it("waives a cleared provider's species removals too", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const previous = [...manyOf(5, "dog"), ...manyOf(5, "cat")];
+
+    expect(() =>
+      guardMassRemoval(previous, manyOf(5, "dog"), {
+        accepted: new Set(["macja-hisa"]),
+      }),
+    ).not.toThrow();
+    expect(warn.mock.calls[0]?.[0]).toMatch(
+      /macja-hisa cat 5 -> 0 animals, accepted by --accept-removals/,
+    );
   });
 
   it("logs its verdict on a clean run", () => {

@@ -24,6 +24,7 @@ import {
   usePortalSession,
   type PortalSessionState,
 } from "@/hooks/use-portal-session";
+import { clearAccountDrafts } from "@/lib/portal-drafts";
 import {
   isManualShelter,
   type PortalAnimal,
@@ -47,6 +48,8 @@ import {
 export type PortalContextValue = {
   session: PortalSessionState;
   reloadSession: () => void;
+  /** The signed-in address, which the stored drafts are filed under. */
+  account: string | null;
   /** True from the moment the shelter asks to leave until the page is gone. */
   leaving: boolean;
   signOut: () => void;
@@ -63,6 +66,13 @@ export type PortalContextValue = {
   saveStates: Record<string, PortalSaveState>;
   reloadAnimals: () => void;
   save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
+  /**
+   * The animal the last save went to, so the list can take the shelter back
+   * to the card they were working on. Null until something has been saved,
+   * and dropped again the moment the shelter touches the filters.
+   */
+  lastSaved: string | null;
+  clearLastSaved: () => void;
   publicName: (animal: PortalAnimal) => string | null;
   listings: PortalListing[];
   listingState: PortalListState;
@@ -132,7 +142,9 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [leaving, setLeaving] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PortalStatus | null>(null);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
 
+  const account = session.status === "ready" ? session.session.email : null;
   const shelters =
     session.status === "ready" ? session.session.shelters : NO_SHELTERS;
   const active = chosen ?? shelters[0]?.slug ?? null;
@@ -176,7 +188,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     state: animalState,
     saveStates,
     reload: reloadAnimals,
-    save,
+    save: saveAnimalFields,
     publicName,
   } = usePortalAnimals(manual ? null : active, onUnauthorized);
   const {
@@ -187,15 +199,35 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     actions: listingActions,
   } = usePortalListings(manual ? active : null, onUnauthorized);
 
+  // Whatever was saved last is where the list should take the shelter back
+  // to, whether the save came from a status button here or from the editor
+  // page. Recorded here rather than in the hook: the hook answers for one
+  // shelter's list, and this outlives a client navigation between the pages.
+  const save = useCallback(
+    async (animalId: string, patch: PortalAnimalPatch): Promise<boolean> => {
+      const saved = await saveAnimalFields(animalId, patch);
+      if (saved) setLastSaved(animalId);
+      return saved;
+    },
+    [saveAnimalFields],
+  );
+
+  const clearLastSaved = useCallback(() => setLastSaved(null), []);
+
   const leave = useCallback(() => {
     setLeaving(true);
+    // The drafts are this account's unsaved work and nobody else's. The next
+    // account signed in to this tab must not inherit them, and the shelter
+    // asked to leave, so they go before the request that ends the session.
+    if (account) clearAccountDrafts(account);
     void signOut();
-  }, [signOut]);
+  }, [account, signOut]);
 
   const value = useMemo<PortalContextValue>(
     () => ({
       session,
       reloadSession,
+      account,
       leaving,
       signOut: leave,
       shelters,
@@ -208,6 +240,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       saveStates,
       reloadAnimals,
       save,
+      lastSaved,
+      clearLastSaved,
       publicName,
       listings,
       listingState,
@@ -223,6 +257,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     [
       session,
       reloadSession,
+      account,
       leaving,
       leave,
       shelters,
@@ -235,6 +270,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       saveStates,
       reloadAnimals,
       save,
+      lastSaved,
+      clearLastSaved,
       publicName,
       listings,
       listingState,

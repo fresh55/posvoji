@@ -172,6 +172,23 @@ export const portalText = {
   searchableLead:
     "Neizpolnjena polja so filtri, po katerih posvojitelji iščejo. Dokler so prazna, se žival v teh iskanjih ne pojavi.",
   searchableDone: "Vsa polja za iskalnik so izpolnjena.",
+  // What is left of a form the shelter walked away from. The draft is kept
+  // for the tab's lifetime, so a Back, a Forward and a reload all land back
+  // on the same typed work and this line says why the boxes are not empty.
+  draftResumed: "Nadaljujete neshranjene popravke.",
+  draftDiscard: "Zavrzi",
+  // The visible word starts the label, so voice control can say it
+  // (WCAG 2.5.3) and a screen reader still hears what would go.
+  draftDiscardLabel: "Zavrzi neshranjene popravke",
+  // The same fact on the card in the list, so the shelter can see which
+  // animal they left half-written without opening it.
+  draftBadge: "Neshranjeno",
+  draftBadgeHint:
+    "Na strani te živali so popravki, ki še niso shranjeni. Odprite jo in jih shranite ali zavrzite.",
+  // A save can move an animal out of the filter the shelter is looking
+  // through, and the card they just worked on would simply be gone. The
+  // notice names it and offers the whole list back.
+  savedHidden: "{name} je shranjen, a ga trenutni filter skrije",
   saveError: "Shranjevanje ni uspelo. Poskusite znova.",
   invalidError: "Podatek ni v pravi obliki. Preverite vnos.",
   edited: "Urejeno",

@@ -1,7 +1,7 @@
 "use client";
 
 import type * as React from "react";
-import { Pencil, Search, Undo2 } from "lucide-react";
+import { Pencil, PencilLine, Search, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,28 @@ export function MissingMark() {
     >
       <Search className="size-2.5" aria-hidden />
       {portalText.missingBadge}
+    </span>
+  );
+}
+
+/**
+ * An animal whose editor page holds typed work that was never saved. It sits
+ * where OverrideMark sits, on the same pill, and says the third thing the
+ * pair does not: not "you changed this" and not "nobody has answered this",
+ * but "you started this and it is still only in this browser".
+ */
+export function DraftMark({ className }: { className?: string }) {
+  return (
+    <span
+      title={portalText.draftBadgeHint}
+      className={cn(
+        PORTAL_BADGE,
+        "border-dashed border-foreground/40 text-muted-foreground",
+        className,
+      )}
+    >
+      <PencilLine className="size-2.5" aria-hidden />
+      {portalText.draftBadge}
     </span>
   );
 }

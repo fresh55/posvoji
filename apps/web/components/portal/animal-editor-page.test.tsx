@@ -74,6 +74,9 @@ Element.prototype.scrollIntoView = vi.fn();
 afterEach(cleanup);
 
 beforeEach(() => {
+  // A draft outlives the page it was typed on, on purpose, so each test has
+  // to start in a tab that has never been used.
+  window.sessionStorage.clear();
   search = new URLSearchParams({ zavetisce: "testno", id: "testno:1" });
   push.mockReset();
   vi.mocked(fetchSession).mockReset();
@@ -710,6 +713,83 @@ describe("a failure left behind by the list's status buttons", () => {
       );
     });
     expect(push).not.toHaveBeenCalled();
+  });
+});
+
+describe("work the shelter typed and did not save", () => {
+  function description(): HTMLTextAreaElement {
+    return field("portal-description") as HTMLTextAreaElement;
+  }
+
+  it("is waiting when the page is opened again", async () => {
+    const view = await open();
+    fireEvent.change(description(), { target: { value: "Rada crklja." } });
+    // Back, Forward and a reload all reach the form the same way: a fresh
+    // mount reading the same session storage.
+    view.unmount();
+
+    await open();
+
+    expect(description().value).toBe("Rada crklja.");
+    expect(screen.getByText(portalText.draftResumed)).toBeTruthy();
+    expect(saveButton().disabled).toBe(false);
+  });
+
+  it("is dropped by the line's own Zavrzi, storage and all", async () => {
+    const view = await open();
+    fireEvent.change(description(), { target: { value: "Rada crklja." } });
+    view.unmount();
+    await open();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: portalText.draftDiscardLabel }),
+    );
+
+    expect(description().value).toBe("");
+    expect(screen.queryByText(portalText.draftResumed)).toBeNull();
+    expect(saveButton().disabled).toBe(true);
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("is dropped when the shelter leaves and confirms", async () => {
+    await open();
+    fireEvent.change(description(), { target: { value: "Rada crklja." } });
+    fireEvent.click(cancelButton());
+
+    fireEvent.click(
+      screen.getByRole("button", { name: portalText.discardChanges }),
+    );
+
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("is kept when the shelter goes back to editing", async () => {
+    await open();
+    fireEvent.change(description(), { target: { value: "Rada crklja." } });
+    fireEvent.click(cancelButton());
+
+    fireEvent.click(
+      screen.getByRole("button", { name: portalText.keepEditing }),
+    );
+
+    expect(window.sessionStorage.length).toBe(1);
+  });
+
+  it("is gone once it has been saved", async () => {
+    await open();
+    fireEvent.change(description(), { target: { value: "Rada crklja." } });
+    expect(window.sessionStorage.length).toBe(1);
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/portal"));
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("leaves no key behind for a form nobody typed in", async () => {
+    await open();
+
+    expect(window.sessionStorage.length).toBe(0);
   });
 });
 

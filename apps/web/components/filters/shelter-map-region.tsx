@@ -152,6 +152,7 @@ const REGION_LOOK: Record<
 // React.memo wraps) without instrumenting the component itself: nothing else
 // in the app needs this outside shelter-map.tsx.
 export const Region = memo(function Region({
+  interactive,
   region,
   stats,
   onPick,
@@ -168,13 +169,15 @@ export const Region = memo(function Region({
   armedNote,
   hatchId,
 }: {
+  /** False when the whole plate is a labelled graphic rather than a picker. */
+  interactive: boolean;
   region: RegionShape;
   stats: RegionStats;
   /** The map's own click callback, unadapted: this component already has
    *  region and stats as its own props, so it builds the MapPick itself
    *  rather than being handed a wrapper that would need a fresh identity on
    *  every render. */
-  onPick: (values: string[], from: MapPick) => void;
+  onPick?: (values: string[], from: MapPick) => void;
   tabIndex: 0 | -1;
   /** Takes the region's id rather than closing over it, so one function
    *  covers every region: see the note on Region above for why that matters. */
@@ -227,11 +230,14 @@ export const Region = memo(function Region({
         // empty regions are. role="img" and not a button, because there is
         // nothing here to press; no tabIndex, so it never joins the tab order
         // the live regions share.
-        role="img"
+        role={interactive ? "img" : undefined}
+        aria-hidden={interactive ? undefined : true}
         aria-label={
-          covered
-            ? `${region.name}: ${messages.noSheltersInRegion}. ${covered}`
-            : `${region.name}: ${messages.noSheltersInRegion}`
+          interactive
+            ? covered
+              ? `${region.name}: ${messages.noSheltersInRegion}. ${covered}`
+              : `${region.name}: ${messages.noSheltersInRegion}`
+            : undefined
         }
         data-region-state="inert"
         // Pointer events are back on so the region can name itself, but only
@@ -239,20 +245,25 @@ export const Region = memo(function Region({
         // pointerenter and the card appears, the same way it already does for
         // a live region, and the next tap elsewhere fires pointerleave and
         // takes it away. Nothing here is bespoke to touch.
-        onPointerEnter={() => onPointerEnter(region.id, stats)}
-        onPointerLeave={() => onPointerLeave(region.id, stats)}
+        onPointerEnter={
+          interactive ? () => onPointerEnter(region.id, stats) : undefined
+        }
+        onPointerLeave={
+          interactive ? () => onPointerLeave(region.id, stats) : undefined
+        }
         strokeLinejoin="round"
         className={cn(
           // cursor-help, matching the legend's density swatches: this answers
           // with information and does nothing else. cursor-pointer would
           // promise a click that never lands.
-          "cursor-help transition-[fill] motion-reduce:transition-none",
+          "transition-[fill] motion-reduce:transition-none",
+          interactive ? "cursor-help" : "pointer-events-none",
           // The faintest acknowledgment there is: 4% to 7% neutral. The ramp's
           // own smallest step is 8 points (0.20 to 0.28), which is what a live
           // region moves by on hover, so this is under half of that and lands
           // 13 points below DENSITY_STEPS[0]. The surface confirms it heard the
           // pointer without ever reading as "a few animals here".
-          "hover:fill-foreground/7",
+          interactive && "hover:fill-foreground/7",
           // Neutral foreground and not the ramp's green, on purpose: "no
           // shelters here" is a different statement from "few animals here",
           // and a faint tint would have said the second. A full step of the
@@ -277,19 +288,26 @@ export const Region = memo(function Region({
 
   return (
     <path
-      ref={(element) => elementRef(region.id, element)}
+      ref={
+        interactive
+          ? (element) => elementRef(region.id, element)
+          : undefined
+      }
       d={d}
-      role="button"
-      tabIndex={tabIndex}
-      aria-pressed={stats.state}
+      role={interactive ? "button" : undefined}
+      aria-hidden={interactive ? undefined : true}
+      tabIndex={interactive ? tabIndex : undefined}
+      aria-pressed={interactive ? stats.state : undefined}
       // The same three facts the annotation carries, and, while the region is
       // armed, the same fourth one: what the press after this will do. A
       // screen reader hears the sentence the eye is being shown, in the words
       // it is shown in.
       aria-label={
-        armedNote
-          ? `${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}. ${armedNote}.`
-          : `${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}`
+        interactive
+          ? armedNote
+            ? `${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}. ${armedNote}.`
+            : `${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}`
+          : undefined
       }
       // Attribute and not a class, because a pattern reference cannot be
       // written as a Tailwind fill utility.
@@ -297,44 +315,57 @@ export const Region = memo(function Region({
       data-region-state={stateName}
       // Only on this branch, which is the only one with a click to commit: an
       // empty region returns above and carries none. See commitKey.
-      data-map-commit={commitKey("region", region.id)}
+      data-map-commit={
+        interactive ? commitKey("region", region.id) : undefined
+      }
       data-region-density={stats.density}
       data-region-highlighted={highlighted || undefined}
       data-region-density-focus={densityFocus}
       strokeLinejoin="round"
-      onClick={() =>
-        onPick(stats.values, {
-          kind: "group",
-          label: region.name,
-          values: stats.values,
-        })
+      onClick={
+        interactive
+          ? () =>
+              onPick?.(stats.values, {
+                kind: "group",
+                label: region.name,
+                values: stats.values,
+              })
+          : undefined
       }
-      onFocus={() => onFocus(region.id)}
-      onBlur={() => onBlur(region.id)}
-      onPointerEnter={() => onPointerEnter(region.id, stats)}
-      onPointerLeave={() => onPointerLeave(region.id, stats)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onPick(stats.values, {
-            kind: "group",
-            label: region.name,
-            values: stats.values,
-          });
-          return;
-        }
-        if (
-          event.key === "ArrowLeft" ||
-          event.key === "ArrowRight" ||
-          event.key === "ArrowUp" ||
-          event.key === "ArrowDown" ||
-          event.key === "Home" ||
-          event.key === "End"
-        ) {
-          event.preventDefault();
-          onMoveFocus(region.id, event.key);
-        }
-      }}
+      onFocus={interactive ? () => onFocus(region.id) : undefined}
+      onBlur={interactive ? () => onBlur(region.id) : undefined}
+      onPointerEnter={
+        interactive ? () => onPointerEnter(region.id, stats) : undefined
+      }
+      onPointerLeave={
+        interactive ? () => onPointerLeave(region.id, stats) : undefined
+      }
+      onKeyDown={
+        interactive
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onPick?.(stats.values, {
+                  kind: "group",
+                  label: region.name,
+                  values: stats.values,
+                });
+                return;
+              }
+              if (
+                event.key === "ArrowLeft" ||
+                event.key === "ArrowRight" ||
+                event.key === "ArrowUp" ||
+                event.key === "ArrowDown" ||
+                event.key === "Home" ||
+                event.key === "End"
+              ) {
+                event.preventDefault();
+                onMoveFocus(region.id, event.key);
+              }
+            }
+          : undefined
+      }
       style={
         stats.state === false ? densityStyle(stats.density, dimmed) : undefined
       }
@@ -351,14 +382,16 @@ export const Region = memo(function Region({
         // width) now runs at that timing too. It is the same declaration on the
         // same element, and a region answering a pointer in the same beat it
         // answers a species tab is one region, not two.
-        "cursor-pointer outline-none transition-[fill,stroke,fill-opacity,stroke-width] motion-reduce:transition-none",
+        "outline-none transition-[fill,stroke,fill-opacity,stroke-width] motion-reduce:transition-none",
+        interactive ? "cursor-pointer" : "pointer-events-none",
         MAP_MORPH,
         REGION_LOOK[stateName][lit ? "highlighted" : "rest"],
         // 2.1: the selected region's own hover/highlighted stroke now runs at
         // 1.8, so the old 1.75 focus ring would have tied it rather than
         // outranked it. Keyboard focus has to stay the single heaviest line
         // on the plate whatever state the region under it is in.
-        "focus-visible:stroke-foreground focus-visible:[stroke-width:2.1]",
+        interactive &&
+          "focus-visible:stroke-foreground focus-visible:[stroke-width:2.1]",
       )}
     />
   );

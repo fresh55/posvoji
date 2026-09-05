@@ -271,6 +271,7 @@ export function commitKey(
 // together. See shelter-map.tsx's handleTown* callbacks and the comment
 // above where these props are built.
 export const Marker = memo(function Marker({
+  interactive,
   town,
   selected,
   onPick,
@@ -286,12 +287,14 @@ export const Marker = memo(function Marker({
   onBlur,
   onMoveFocus,
 }: {
+  /** False when the whole plate is a labelled graphic rather than a picker. */
+  interactive: boolean;
   town: Town;
   selected: string[];
   /** The map's own click callback, unadapted: this component already has
    *  town as its own prop, so it builds the MapPick itself rather than being
    *  handed a wrapper that would need a fresh identity on every render. */
-  onPick: (values: string[], from: MapPick) => void;
+  onPick?: (values: string[], from: MapPick) => void;
   /** Takes the town rather than closing over it, so one function covers
    *  every marker: see the note on Marker above for why that matters. */
   onPointerEnter: (town: Town) => void;
@@ -339,7 +342,7 @@ export const Marker = memo(function Marker({
   // it was aimed at instead of toggling the whole town. Empty for single,
   // overflow and dominated markers, which divide their target another way or
   // not at all.
-  const wedges = clusterHitWedges(town);
+  const wedges = interactive ? clusterHitWedges(town) : [];
   // Sized by each shelter's own count, so the discs order the same way the
   // coins do. Empty unless this is a town that still shares its coin.
   const discs = clusterDiscs(town);
@@ -351,9 +354,14 @@ export const Marker = memo(function Marker({
     dominantIndex >= 0 ? town.shelters[dominantIndex] : undefined;
   // Every per-shelter target on the marker, in painting order: a cluster's
   // discs, or a dominated town's coin and satellites.
-  const hits: ClusterDisc[] = dominant
-    ? satelliteHitCircles(town)
-    : discs.map((disc) => ({ ...disc, r: disc.r + MARKER_STROKE_WIDTH / 2 }));
+  const hits: ClusterDisc[] = interactive
+    ? dominant
+      ? satelliteHitCircles(town)
+      : discs.map((disc) => ({
+          ...disc,
+          r: disc.r + MARKER_STROKE_WIDTH / 2,
+        }))
+    : [];
   // Whether the marker's own marks answer for their shelters, which is when
   // the group must stop answering for the town as a whole.
   const wedged = hits.length > 0;
@@ -404,7 +412,7 @@ export const Marker = memo(function Marker({
   // is what lets that prop stay one shared function for every marker; see the
   // comment on Marker above.
   const pick = (values: string[]) => {
-    onPick(
+    onPick?.(
       values,
       values.length === 1
         ? { kind: "shelter", value: values[0] }
@@ -443,7 +451,7 @@ export const Marker = memo(function Marker({
   // Only while drilled. At coin level Escape is the dialog's own and closes
   // the picker exactly as it always has.
   useEffect(() => {
-    if (drilled === null) return;
+    if (!interactive || drilled === null) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -454,7 +462,7 @@ export const Marker = memo(function Marker({
     window.addEventListener("keydown", handleEscape, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleEscape, { capture: true });
-  }, [drilled, onHoverShelter, town]);
+  }, [drilled, interactive, onHoverShelter, town]);
 
   // The pointer half of a cluster's per-shelter target, shared by the wedge
   // and by the disc circle painted over it.
@@ -462,13 +470,17 @@ export const Marker = memo(function Marker({
     const shelter = town.shelters.find((entry) => entry.value === value);
     // An off-site shelter's target names it and stops there, the same deal its
     // dot has always had.
-    const pickable = live && shelter?.selectable !== false;
+    const pickable = interactive && live && shelter?.selectable !== false;
     return {
       pickable,
       props: {
         onClick: pickable ? () => pick([value]) : undefined,
-        onPointerEnter: () => onHoverShelter(town, value),
-        onPointerLeave: () => onHoverShelter(town, null),
+        onPointerEnter: interactive
+          ? () => onHoverShelter(town, value)
+          : undefined,
+        onPointerLeave: interactive
+          ? () => onHoverShelter(town, null)
+          : undefined,
         className: cn(
           "fill-transparent stroke-none",
           pickable ? "cursor-pointer" : "cursor-default",
@@ -479,25 +491,28 @@ export const Marker = memo(function Marker({
 
   return (
     <g
-      ref={(element) => elementRef(town, element)}
+      ref={interactive ? (element) => elementRef(town, element) : undefined}
       // Named for assistive tech either way, and a control only when there is
       // something to press. Same division the regions keep: a live one is a
       // button that reports what it has, an inert one is an image that says
       // what it is. A marker was aria-hidden entirely once, which told a
       // screen reader nothing about where the shelters are.
-      role={live ? "button" : "img"}
+      role={interactive ? (live ? "button" : "img") : undefined}
+      aria-hidden={interactive ? undefined : true}
       // A drilled coin is standing on one of its marks, so it answers as that
       // shelter. The town's own name comes back the moment Escape does.
       aria-label={
-        drilledShelter
-          ? wedgeLabel(drilledShelter, locale, messages.noAnimalsListed)
-          : markerLabel(town, locale, messages.noAnimalsListed)
+        interactive
+          ? drilledShelter
+            ? wedgeLabel(drilledShelter, locale, messages.noAnimalsListed)
+            : markerLabel(town, locale, messages.noAnimalsListed)
+          : undefined
       }
-      aria-pressed={pressed}
+      aria-pressed={interactive ? pressed : undefined}
       // Only a live marker joins the roving tab order. tabIndex and not
       // tabindex: React writes the attribute, and an undefined here is what
       // keeps an inert coin out of the tab order altogether.
-      tabIndex={live ? tabIndex : undefined}
+      tabIndex={interactive && live ? tabIndex : undefined}
       data-marker-kind={
         !shared ? "single" : satellites.length > 0 ? "satellite" : "cluster"
       }
@@ -513,23 +528,30 @@ export const Marker = memo(function Marker({
       // divides its target per shelter and each of those marks carries its
       // own, and a coin with nothing to pick carries none. See commitKey.
       data-map-commit={
-        !wedged && live ? commitKey("town", town.key) : undefined
+        interactive && !wedged && live
+          ? commitKey("town", town.key)
+          : undefined
       }
-      onClick={wedged ? undefined : () => live && pick(values)}
-      onPointerEnter={wedged ? undefined : () => onPointerEnter(town)}
-      onPointerLeave={wedged ? undefined : () => onPointerLeave(town)}
-      onFocus={() => onFocus(town)}
-      onBlur={() => {
-        // Focus leaving the coin closes the drill outright, so a coin the
-        // visitor comes back to is always found at coin level. Nothing worth
-        // keeping is thrown away: the marks are walked in painting order and
-        // drilling in always starts at the first of them, so a remembered
-        // wedge would save one keypress at the price of a coin that answers
-        // differently depending on where the keyboard has been. It would also
-        // have to survive the species tabs re-cutting the coin, which they do.
-        if (drilledIndex !== null) leaveWedges();
-        onBlur(town);
-      }}
+      onClick={
+        interactive && !wedged ? () => live && pick(values) : undefined
+      }
+      onPointerEnter={
+        interactive && !wedged ? () => onPointerEnter(town) : undefined
+      }
+      onPointerLeave={
+        interactive && !wedged ? () => onPointerLeave(town) : undefined
+      }
+      onFocus={interactive ? () => onFocus(town) : undefined}
+      onBlur={
+        interactive
+          ? () => {
+              // Focus leaving the coin closes the drill outright, so a coin
+              // the visitor comes back to is always found at coin level.
+              if (drilledIndex !== null) leaveWedges();
+              onBlur(town);
+            }
+          : undefined
+      }
       // Two levels, and which one the coin is on decides what a key means.
       //
       // At coin level Enter and Space toggle what a click on the coin toggles,
@@ -545,7 +567,7 @@ export const Marker = memo(function Marker({
       // Drilled, the coin belongs to the mark under the keyboard: the arrows
       // walk the marks, Enter and Space pick the one they are standing on,
       // Escape leaves without picking.
-      onKeyDown={(event) => {
+      onKeyDown={interactive ? (event) => {
         if (!live) return;
         if (drilled !== null) {
           // Escape never arrives here. It is taken in the capture phase at the
@@ -620,10 +642,12 @@ export const Marker = memo(function Marker({
           event.preventDefault();
           onMoveFocus(town, event.key);
         }
-      }}
+      } : undefined}
       className={cn(
         "group/pin outline-none transition-opacity motion-reduce:transition-none",
-        live
+        !interactive
+          ? "pointer-events-none"
+          : live
           ? wedged
             ? "cursor-default"
             : "cursor-pointer"
@@ -743,7 +767,7 @@ export const Marker = memo(function Marker({
 
           It stands down while the coin is drilled into: the keyboard is on one
           mark then, and the ring below says which. */}
-      {live && !drilledMark && (
+      {interactive && live && !drilledMark && (
         <circle
           data-marker-focus-ring=""
           cx={town.x}
@@ -755,7 +779,7 @@ export const Marker = memo(function Marker({
 
       {/* The same ring one step in: around the one mark the keyboard has
           drilled into, at the weight the coin's own ring would have taken. */}
-      {live && drilledMark && (
+      {interactive && live && drilledMark && (
         <circle
           data-wedge-focus-ring={drilledMark.value}
           cx={drilledMark.x}

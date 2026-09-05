@@ -12,6 +12,10 @@ meta:
   register_source: "UVHVVR — Register zavetišč (gov.si)"
   register_date: 2026-02-23
   last_reviewed: 2026-08-20
+  # hours and onCallPhone: read off each shelter's own website on the date
+  # below. Free text, kept in the shelter's own words and shortened; a
+  # shelter with no website, or none published, has neither field.
+  hours_checked: 2026-09-06
 
 shelters:
   - id: zonzani
@@ -20,6 +24,7 @@ shelters:
     website: https://www.zonzani.si/
     email: info@zonzani.si
     phone: "03 749 06 00"
+    hours: "Pon–pet 8.00–12.00, obisk po dogovoru"
     notes: >-
       Ločena kataloga psov in mačk. Dovoljenje potrjeno 2026-08-18;
       provider zonzani je vklopljen za strukturirana dejstva in oddaljene slike.
@@ -30,7 +35,9 @@ shelters:
     website: https://obalnozavetisce.si/
     email: zavetisce@marjeticakoper.si
     phone: "05 663 37 66"
-    notes: Skupno zavetišče obalnih občin.
+    hours: "Pon, sre 12.00–16.00 · tor, čet, pet, sob 10.00–14.00"
+    onCallPhone: "031 726 029"
+    notes: Skupno zavetišče obalnih občin. Dežurna služba 24 ur.
 
   - id: ljubljana
     name: Zavetišče Ljubljana
@@ -38,6 +45,7 @@ shelters:
     website: https://www.zavetisce-ljubljana.si/
     email: info@zavetisce-ljubljana.si
     phone: "01 256 02 79"
+    hours: "Pon–pet 8.00–14.00 · nujni primeri 24 ur na isti številki (pritisni 1)"
     notes: >-
       Pisno dovoljenje je potrdil nosilec projekta 2026-08-18. Provider je
       vklopljen za strukturirana dejstva in oddaljeni prikaz fotografij;
@@ -49,6 +57,7 @@ shelters:
     website: https://zavetisceoskar.si/
     email: info@zavetisceoskar.si
     phone: "05 307 85 70"
+    hours: "Pon–pet 9.00–13.00 · sob 9.00–12.00"
 
   - id: horjul
     name: Zavetišče Horjul
@@ -56,6 +65,7 @@ shelters:
     website: https://www.zavetisce-horjul.net/
     email: info@zavetisce-horjul.net
     phone: "051 304 435"
+    hours: "Pon–pet 8.30–12.30"
     notes: >-
       Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
       Dovoljenje potrjeno 2026-08-18; provider je vklopljen za strukturirana
@@ -67,6 +77,9 @@ shelters:
     website: https://zavetisceturk.com/
     email: zavetisce.turk@gmail.com
     phone: "07 308 94 30"
+    # The site names this number, beside the landline, for reporting found
+    # animals; no hours are published.
+    onCallPhone: "041 609 240"
 
   - id: meli
     name: Meli Center Repče
@@ -74,6 +87,10 @@ shelters:
     website: https://www.meli-center.si/
     email: meli.center.repce@gmail.com
     phone: "07 304 56 16"
+    hours: "Pon–pet 10.00–14.00 · sob 8.00–12.00"
+    # "Dežurni oskrbnik za obvestila o najdenih živalih"; 24-urno dežurstvo
+    # za odlov.
+    onCallPhone: "031 331 336"
 
   - id: mala-hisa
     name: Zavetišče Mala hiša
@@ -92,6 +109,9 @@ shelters:
     website: https://zavetisce-mb.si/
     email: zavetisce.mb@snaga-mb.si
     phone: "02 480 16 60"
+    hours: "Pon–pet 8.00–12.00"
+    # "Številka za nujne primere" on the site.
+    onCallPhone: "031 788 822"
     notes: >-
       Pisno dovoljenje za zajem kataloga, celotne opise ter prikaz in
       predpomnjenje fotografij je bilo prejeto 19. 8. 2026.
@@ -109,6 +129,8 @@ shelters:
     website: https://veterina-sevnica.si/
     email: vet.post.sev@siol.net
     phone: "07 816 02 10"
+    # The veterinary station's hours; the shelter has no page of its own.
+    hours: "Pon–pet 7.00–18.00 · sob 7.00–10.00"
     notes: Spletna stran nima stabilnega kataloga; primernejši je partnerski feed.
 
   - id: brezice
@@ -117,6 +139,9 @@ shelters:
     website: https://www.veterinarskabolnica.si/
     email: zavetisce.brezice@vbb.si
     phone: "07 496 11 56"
+    # The veterinary hospital's hours; it states a 24-hour emergency duty on
+    # the same numbers.
+    hours: "Pon–pet 7.00–19.00 · sob, ned, prazniki 7.00–9.00 · dežurstvo 24 ur"
 
   - id: macja-hisa
     name: Zavetišče Mačja hiša

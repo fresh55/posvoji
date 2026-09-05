@@ -131,11 +131,16 @@ export const ARMED_TTL_MS = 6000;
  *  Exported so a test asks the same question the plate asks. */
 export const NO_HOVER = "(hover: none)";
 
+// A presentation map has no selection by definition. Keep one stable array so
+// its regions and markers do not redraw merely because the parent did.
+const EMPTY_SELECTION: string[] = [];
+
 // Regions carry the controls on every plate; town markers add pointer precision
 // and their own keyboard roving once the measured plate can draw them clearly.
 export function ShelterMap({
+  interactive = true,
   pins,
-  selected,
+  selected = EMPTY_SELECTION,
   onPick,
   origin,
   className,
@@ -146,17 +151,29 @@ export function ShelterMap({
   spotlightNote,
   spotlightFrom,
   highlightedDensity,
+  shading = "density",
   summaries,
   regionShelterNames,
   describedElsewhere,
   onMarkersVisible,
   onFacts,
-}: {
+}: (
+  | {
+      /** The default filter-map contract: regions and markers are controls. */
+      interactive?: true;
+      selected: string[];
+      /** Toggles the values, and says what was aimed at so the panel can
+       *  answer the click with a card. See MapPick. */
+      onPick: (values: string[], from: MapPick) => void;
+    }
+  | {
+      /** A labelled graphic only: no controls, hover actions or selection. */
+      interactive: false;
+      selected?: never;
+      onPick?: never;
+    }
+) & {
   pins: ShelterPin[];
-  selected: string[];
-  /** Toggles the values, and says what was aimed at so the panel can answer
-   *  the click with a card. See MapPick. */
-  onPick: (values: string[], from: MapPick) => void;
   origin?: LatLon;
   className?: string;
   /** A shelter hovered elsewhere (the list row), so its marker and region light
@@ -190,6 +207,13 @@ export function ShelterMap({
    *  means no legend hover. Picked and partly picked regions are left alone:
    *  they carry a selection, which outranks a preview. */
   highlightedDensity?: number | null;
+  /** How a live region is filled. "density" ranks each region's animals on
+   *  the ramp the legend explains, which is the picker's question. "flat"
+   *  draws every region with a shelter at the ramp's first step and leaves the
+   *  rest untinted: the found-animal page asks where the shelters are, not how
+   *  full they are, and draws no legend to read a ramp by. The ranking itself
+   *  is skipped rather than overwritten; see regionStatsByRegion. */
+  shading?: "density" | "flat";
   /** Per-shelter species breakdown, keyed by shelter id, the same map the
    *  panel's pick card reads. The annotation over a single hovered shelter
    *  grows a line of species glyphs from it. Towns and regions never get one:
@@ -534,8 +558,8 @@ export function ShelterMap({
   // over every town, and this component re-renders on every hover anywhere on
   // the map.
   const regions = useMemo(
-    () => regionStatsByRegion(byRegion, selected),
-    [byRegion, selected],
+    () => regionStatsByRegion(byRegion, selected, shading === "density"),
+    [byRegion, selected, shading],
   );
   const facts = useMemo(
     () => mapFacts(towns, regions, selected),
@@ -693,10 +717,12 @@ export function ShelterMap({
   // liveRegionIds above for the same reason.
   const focusableTowns = useMemo(
     () =>
-      towns
-        .filter((town) => townIsLive(town, selected))
-        .sort((a, b) => a.x - b.x || a.y - b.y),
-    [towns, selected],
+      interactive
+        ? towns
+            .filter((town) => townIsLive(town, selected))
+            .sort((a, b) => a.x - b.x || a.y - b.y)
+        : [],
+    [interactive, towns, selected],
   );
   // One tab stop for the whole plate of coins, the way the regions share one.
   const tabStopTownKey =
@@ -872,24 +898,32 @@ export function ShelterMap({
     <svg
       ref={plateRef}
       viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-      role="group"
+      role={interactive ? "group" : "img"}
       aria-label={messages.shelterMapLabel}
       // One listener for the whole plate, above every mark on it, so a tap is
       // read before the mark it landed on can act on it. See the handler.
-      onClickCapture={handlePlateClickCapture}
+      onClickCapture={interactive ? handlePlateClickCapture : undefined}
       // A finger that moved is not a tap. The plate does not pan, so a drag
       // across it is the page or the sheet under it moving, and the mark the
       // finger started on is no longer the mark it is over.
-      onTouchMove={() => {
-        if (armed) withdrawArmed();
-      }}
+      onTouchMove={
+        interactive
+          ? () => {
+              if (armed) withdrawArmed();
+            }
+          : undefined
+      }
       // touch-action: manipulation. The plate is a field of controls a finger
       // has to hit exactly, and the delay the browser holds every tap back by
       // to see whether a double tap is coming is delay a two-tap gesture pays
       // twice. It also takes double-tap zoom off the map, which on a plate
       // this dense zooms in on whatever was under the second tap rather than
       // picking it.
-      className={cn("h-auto w-full shrink-0 touch-manipulation", className)}
+      className={cn(
+        "h-auto w-full shrink-0",
+        interactive && "touch-manipulation",
+        className,
+      )}
     >
       <defs>
         <MixedHatch id={hatchId} />
@@ -923,6 +957,7 @@ export function ShelterMap({
       {regions.map(({ region, stats }) => (
         <Region
           key={region.id}
+          interactive={interactive}
           region={region}
           stats={stats}
           // The raw toggle-and-say-what-was-clicked callback, unadapted:
@@ -978,6 +1013,7 @@ export function ShelterMap({
           {towns.map((town) => (
             <Marker
               key={town.key}
+              interactive={interactive}
               town={town}
               selected={selected}
               // Handed straight through, unadapted: Marker already has town as

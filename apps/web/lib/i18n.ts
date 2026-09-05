@@ -139,7 +139,6 @@ const sl = {
   noResultsShelterDual: "Izbrani zavetišči trenutno nimata {species}.",
   noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
-  clear: "Počisti",
   resetFilters: "Ponastavi",
   resetAgeFilters: "Ponastavi filter starosti",
   resetSexFilters: "Ponastavi filter spola",
@@ -234,7 +233,6 @@ const sl = {
   // open as a sheet below it.
   mapInstructionsDesktop: "Klikni regijo ali zavetišče",
   mapInstructionsMobile: "Izberi regijo na zemljevidu",
-  mapInstructionsMuni: "Zemljevid pokaže pristojno zavetišče",
   locating: "Iščem lokacijo…",
   nearestFirst: "Najbližje prvo",
   // The picker's way out, naming what is behind it rather than the press
@@ -252,36 +250,38 @@ const sl = {
   muniPromptTitle: "Si našel žival?",
   muniTab: "Najdena žival",
   muniSearch: "Občina ali poštna številka …",
-  muniHint:
-    "Vpiši občino ali poštno številko kraja, kjer je bila žival najdena, in dobiš pristojno zavetišče s kontakti.",
   muniHere: "Uporabi mojo lokacijo",
+  // The field's placeholder while the device's position is the answer, so
+  // the pressed arrow beside it has a word to go with it.
+  muniHereActive: "Moja lokacija",
   retryLocation: "Poskusi znova",
   muniPostcodeInstead:
     "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
-  muniExampleLead: "Npr.:",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
   muniNoMatch: "Ni občine z imenom",
   muniResponsible: "pristojno zavetišče",
   muniResponsiblePlural: "pristojni zavetišči",
-  muniOnSite: "Živali tega zavetišča so na posvoji.si ({count})",
   muniCall: "Pokliči {phone}",
-  muniCost:
-    "Stroške odlova, prevoza, veterinarskega pregleda in oskrbe prvih 30 dni krije občina, kjer je bila žival najdena. Tebe kot najditelja ne stane nič.",
+  // Two rows the card draws when the register holds them: when the phone is
+  // answered, and the number that is answered outside those hours. The hours
+  // are free text from the shelter's own site, copied in Slovenian for both
+  // locales: times read the same in either, and a translation of "pon-pet"
+  // would be the one thing on the card the shelter did not say.
+  muniHours: "Uradne ure",
+  muniOnCall: "Dežurna številka",
+  muniCallAdvice:
+    "Po telefonu povej točno lokacijo, opis živali in morebitne poškodbe.",
+  muniCost: "Odlov in oskrbo plača občina, ne ti.",
   muniCostSource: "Zakon o zaščiti živali, 31. člen",
-  muniStepsTitle: "Kaj zdaj",
-  muniStep1:
-    "Pokliči zavetišče in povej, kje je žival. Odlov in prevoz sta del javne službe.",
-  muniStep2:
-    "Če je žival označena s čipom, zavetišče preveri register in v 24 urah obvesti lastnika.",
-  muniStep3: "Poškodovane živali ne premikaj na silo. To povej po telefonu.",
-  muniLost: "Si žival izgubil? Poglej živali v tem zavetišču",
+  muniInjured:
+    "Poškodovane živali ne premikaj na silo. Če se ji ni varno približati, ostani na razdalji.",
   muniNearestTitle: "Najbližja zavetišča",
   muniNearestNote:
     "Ni potrjeno, da so pristojna za to občino. Pokliči in vprašaj.",
   muniUnverified: "ni preverjenega podatka",
   muniUnverifiedAdvice:
-    "Za to občino nimamo preverjenega podatka o pristojnem zavetišču. Preveri pri svoji občini ali v javnem registru zavetišč.",
+    "Pokliči občino, kjer si našel žival, in vprašaj, katero zavetišče jo lahko prevzame.",
   // Names the office, not a register: gov.si no longer publishes the list of
   // shelters at any address, so the link goes to UVHVVR itself.
   muniRegister: "Uprava za varno hrano, veterinarstvo in varstvo rastlin (gov.si)",
@@ -484,7 +484,6 @@ const en: Messages = {
   noResultsShelterDual: "The selected shelters currently have no {species}.",
   noResultsShelterPlural: "The selected shelters currently have no {species}.",
   showFromAllShelters: "Show from all shelters",
-  clear: "Clear",
   resetFilters: "Reset",
   resetAgeFilters: "Reset age filters",
   resetSexFilters: "Reset sex filters",
@@ -537,7 +536,6 @@ const en: Messages = {
   whereSearching: "Where are you looking?",
   mapInstructionsDesktop: "Click a region or a shelter",
   mapInstructionsMobile: "Pick a region on the map",
-  mapInstructionsMuni: "The map shows the responsible shelter",
   locating: "Finding your location…",
   nearestFirst: "Nearest first",
   showAnimals: "Show {count}",
@@ -546,36 +544,31 @@ const en: Messages = {
   muniPromptTitle: "Found an animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
-  muniHint:
-    "Type the municipality or the postcode of the place where the animal was found to get the responsible shelter and its contacts.",
   muniHere: "Use my location",
+  muniHereActive: "My location",
   retryLocation: "Try again",
   muniPostcodeInstead:
     "Or type the postcode of the place where the animal was found.",
-  muniExampleLead: "E.g.:",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
   muniNoMatch: "No municipality named",
   muniResponsible: "responsible shelter",
   muniResponsiblePlural: "responsible shelters",
-  muniOnSite: "This shelter's animals are on posvoji.si ({count})",
   muniCall: "Call {phone}",
-  muniCost:
-    "Capture, transport, the veterinary examination and the first 30 days of care are paid by the municipality where the animal was found. As the finder you pay nothing.",
+  muniHours: "Office hours",
+  muniOnCall: "On-call number",
+  muniCallAdvice:
+    "On the phone, give the exact location, a description of the animal and any injuries.",
+  muniCost: "The municipality pays for capture and care, not you.",
   muniCostSource: "Animal Protection Act, Article 31",
-  muniStepsTitle: "What now",
-  muniStep1:
-    "Call the shelter and say where the animal is. Capture and transport are part of the public service.",
-  muniStep2:
-    "If the animal is chipped, the shelter checks the register and notifies the owner within 24 hours.",
-  muniStep3: "Do not force-move an injured animal. Say so on the phone.",
-  muniLost: "Lost your animal? Look at this shelter's animals",
+  muniInjured:
+    "Do not force an injured animal to move. Keep your distance if it is unsafe to approach.",
   muniNearestTitle: "Nearest shelters",
   muniNearestNote:
     "Not confirmed as responsible for this municipality. Call and ask.",
   muniUnverified: "no verified data",
   muniUnverifiedAdvice:
-    "We have no verified data on the responsible shelter for this municipality. Check with your municipality or the public shelter register.",
+    "Call the municipality where you found the animal and ask which shelter can collect it.",
   muniRegister: "Food Safety, Veterinary and Plant Protection Administration (gov.si)",
   muniSource: "Source:",
   muniDatedSource:

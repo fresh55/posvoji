@@ -88,6 +88,29 @@ function factsFor(pins: ShelterPin[], selected: string[]) {
   return mapFacts(towns, regionStatsByRegion(byRegion, selected), selected);
 }
 
+describe("ShelterMap presentation mode", () => {
+  it("renders one labelled graphic without pick or hover controls", () => {
+    const html = renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          interactive={false}
+          pins={[
+            pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+            pin("empty", "Zavetišče brez živali", "Maribor", 0),
+          ]}
+        />
+      </I18nProvider>,
+    );
+
+    expect(html).toMatch(/<svg[^>]*role="img"[^>]*aria-label="[^"]+"/);
+    expect(html).not.toContain('role="button"');
+    expect(html).not.toContain("aria-pressed=");
+    expect(html).not.toContain("tabindex=");
+    expect(html).not.toContain("data-map-commit=");
+    expect(html).not.toContain("cursor-pointer");
+  });
+});
+
 // The one <g> a marker draws, found by the key its town carries.
 function markerTag(html: string, key: string): string {
   return html.match(new RegExp(`<g[^>]*data-marker-key="${key}"[^>]*>`))?.[0] ?? "";

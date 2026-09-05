@@ -19,6 +19,13 @@ export type ShelterRegistryEntry = {
   website?: string;
   email?: string;
   phone?: string;
+  /** When the phone is answered, as the shelter's own site puts it. Free
+   *  text, Slovenian. */
+  hours?: string;
+  /** The number answered outside those hours for found animals: a 24-hour
+   *  on-call line where the shelter runs one, or the line it names for
+   *  reporting a found animal. Absent when the site names none. */
+  onCallPhone?: string;
   notes?: string;
 };
 
@@ -73,6 +80,16 @@ function phoneProblem(value: unknown): string | undefined {
   return undefined;
 }
 
+// Free text the card prints as it is, so the one thing to check is that
+// there is some. The three fields an entry must carry ask the same question,
+// and ask it through this, so the rule cannot drift between the two loops.
+function textProblem(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return `is not text: ${String(value)}`;
+  }
+  return undefined;
+}
+
 /** The fields an entry may carry beyond the three it must, each with what
  *  makes it usable. A table rather than three hand-written blocks: all three
  *  ask the same two questions, and a fourth field added later should not have
@@ -81,6 +98,8 @@ const OPTIONAL_FIELDS = [
   ["website", websiteProblem],
   ["email", emailProblem],
   ["phone", phoneProblem],
+  ["hours", textProblem],
+  ["onCallPhone", phoneProblem],
 ] as const;
 
 /**
@@ -97,10 +116,7 @@ function entryProblems(value: unknown, index: number): string[] {
   const problems: string[] = [];
 
   for (const field of ["id", "name", "city"] as const) {
-    const held = entry[field];
-    if (typeof held !== "string" || held.trim().length === 0) {
-      problems.push(`${at} has no ${field}`);
-    }
+    if (textProblem(entry[field])) problems.push(`${at} has no ${field}`);
   }
 
   // Named by id once there is one to name it by: "shelter zonzani" is what a

@@ -6,28 +6,34 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortalProvider } from "@/components/portal/portal-provider";
 import { PortalWorkspace } from "@/components/portal/portal-workspace";
-import { portalText } from "@/components/portal/portal-text";
+import { fill, portalText } from "@/components/portal/portal-text";
 import {
   PortalError,
   fetchAnimals,
   fetchListings,
   fetchSession,
+  logout,
+  saveAnimal,
   type PortalAnimal,
   type PortalListing,
   type PortalShelter,
 } from "@/lib/portal-api";
+import { writeDraft } from "@/lib/portal-drafts";
 
-// Only the reads the workspace makes on its way in are stubbed; PortalError
-// and isUnauthorized stay the real ones, because the hooks branch on them.
+// Only the calls the workspace makes are stubbed; PortalError and
+// isUnauthorized stay the real ones, because the hooks branch on them.
 vi.mock("@/lib/portal-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/portal-api")>()),
   fetchSession: vi.fn(),
   fetchAnimals: vi.fn(),
   fetchListings: vi.fn(),
+  saveAnimal: vi.fn(),
+  logout: vi.fn(),
 }));
 
 Object.defineProperty(window, "matchMedia", {
@@ -41,13 +47,21 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 Element.prototype.scrollTo = vi.fn();
+// The list scrolls back to the card a save went to, and jsdom lays nothing
+// out to scroll.
+Element.prototype.scrollIntoView = vi.fn();
 
 afterEach(cleanup);
 
 beforeEach(() => {
+  // A draft outlives the page it was typed on, so every test starts in a tab
+  // that has never been used.
+  window.sessionStorage.clear();
   vi.mocked(fetchSession).mockReset();
   vi.mocked(fetchAnimals).mockReset();
   vi.mocked(fetchListings).mockReset();
+  vi.mocked(saveAnimal).mockReset();
+  vi.mocked(logout).mockReset().mockResolvedValue(undefined);
 });
 
 const SESSION = {
@@ -347,5 +361,164 @@ describe("a crawled shelter", () => {
     expect(screen.queryByText(portalText.listingsEmptyLead)).toBeNull();
     expect(addButton()).toBeNull();
     expect(fetchListings).not.toHaveBeenCalled();
+  });
+});
+
+describe("work left unsaved on an animal's own page", () => {
+  const ACCOUNT = "info@zavetisce.si";
+
+  function card(name: string): HTMLElement {
+    const heading = screen.getByRole("heading", { name });
+    const article = heading.closest("article");
+    if (!article) throw new Error(`no card for ${name}`);
+    return article;
+  }
+
+  it("is marked on the card, so the shelter can see which animal it is", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", name: "Rex" }),
+      animal({ id: "ljubljana:2", name: "Bine" }),
+    ]);
+    writeDraft(ACCOUNT, "ljubljana", "ljubljana:1", { name: "Reks" });
+
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
+    });
+    expect(within(card("Rex")).getByText(portalText.draftBadge)).toBeTruthy();
+    // And only on the animal it belongs to.
+    expect(
+      within(card("Bine")).queryByText(portalText.draftBadge),
+    ).toBeNull();
+  });
+
+  it("goes with the account when it signs out", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", name: "Rex" }),
+    ]);
+    writeDraft(ACCOUNT, "ljubljana", "ljubljana:1", { name: "Reks" });
+
+    renderWorkspace();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: portalText.logout }));
+
+    // The next account to sign in to this tab must not inherit a stranger's
+    // half-written edits.
+    expect(window.sessionStorage.length).toBe(0);
+  });
+});
+
+describe("a save that the current filter hides", () => {
+  function statusButton(name: string, label: string): HTMLElement {
+    const article = screen.getByRole("heading", { name }).closest("article");
+    if (!article) throw new Error(`no card for ${name}`);
+    return within(
+      within(article as HTMLElement).getByRole("group", {
+        name: portalText.statusLegend,
+      }),
+    ).getByRole("button", { name: label });
+  }
+
+  async function listOf() {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", name: "Rex" }),
+      animal({ id: "ljubljana:2", name: "Bine" }),
+      animal({ id: "ljubljana:3", name: "Muc", status: "adopted" }),
+    ]);
+    renderWorkspace();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
+    });
+  }
+
+  it("names the animal and offers the whole list back", async () => {
+    await listOf();
+    vi.mocked(saveAnimal).mockResolvedValue(
+      animal({
+        id: "ljubljana:1",
+        name: "Rex",
+        status: "adopted",
+        overrides: { status: "adopted" },
+      }),
+    );
+
+    // Looking at the animals that are still on offer, the shelter marks one
+    // of them adopted. It leaves the list under the hand that saved it.
+    fireEvent.click(
+      within(
+        screen.getByRole("group", { name: portalText.filterLegend }),
+      ).getByRole("button", { name: /Na voljo/ }),
+    );
+    fireEvent.click(statusButton("Rex", "Oddan"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(fill(portalText.savedHidden, { name: "Rex" })),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByRole("heading", { name: "Rex" })).toBeNull();
+
+    // Pokaži vse drops the filter and the card is back.
+    fireEvent.click(screen.getByRole("button", { name: portalText.showAll }));
+
+    expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
+    expect(
+      screen.queryByText(fill(portalText.savedHidden, { name: "Rex" })),
+    ).toBeNull();
+  });
+
+  it("says nothing when the animal is still on the page", async () => {
+    await listOf();
+    vi.mocked(saveAnimal).mockResolvedValue(
+      animal({
+        id: "ljubljana:1",
+        name: "Rex",
+        status: "reserved",
+        overrides: { status: "reserved" },
+      }),
+    );
+
+    fireEvent.click(statusButton("Rex", "Rezerviran"));
+
+    await waitFor(() => {
+      expect(screen.getByText(portalText.statusOwnLine)).toBeTruthy();
+    });
+    expect(screen.queryByText(/trenutni filter skrije/)).toBeNull();
+  });
+
+  it("is dropped again as soon as the shelter searches for something else", async () => {
+    await listOf();
+    vi.mocked(saveAnimal).mockResolvedValue(
+      animal({
+        id: "ljubljana:1",
+        name: "Rex",
+        status: "adopted",
+        overrides: { status: "adopted" },
+      }),
+    );
+    fireEvent.click(
+      within(
+        screen.getByRole("group", { name: portalText.filterLegend }),
+      ).getByRole("button", { name: /Na voljo/ }),
+    );
+    fireEvent.click(statusButton("Rex", "Oddan"));
+    await waitFor(() => {
+      expect(
+        screen.getByText(fill(portalText.savedHidden, { name: "Rex" })),
+      ).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText(portalText.searchLabel), {
+      target: { value: "bin" },
+    });
+
+    expect(screen.queryByText(/trenutni filter skrije/)).toBeNull();
   });
 });

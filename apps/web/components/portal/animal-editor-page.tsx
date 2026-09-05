@@ -6,9 +6,11 @@ import {
   ChevronRight,
   ExternalLink,
   LoaderCircle,
+  RotateCcw,
   Search,
   SearchX,
   TriangleAlert,
+  Undo2,
 } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import Link from "next/link";
@@ -41,6 +43,7 @@ import { useReturnFocus } from "@/hooks/use-return-focus";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
 import { Button } from "@/components/ui/button";
 import { thumbnailUrl } from "@/lib/animal-images";
+import { clearDraft, readDraft, writeDraft } from "@/lib/portal-drafts";
 import type {
   PortalAnimal,
   PortalAnimalPatch,
@@ -62,6 +65,7 @@ export function AnimalEditorPage() {
   const {
     session,
     reloadSession,
+    account,
     shelters,
     active,
     activeShelter,
@@ -201,7 +205,7 @@ export function AnimalEditorPage() {
     );
   }
 
-  if (!animal || !activeShelter) {
+  if (!animal || !activeShelter || !account) {
     return (
       <>
         <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
@@ -224,6 +228,8 @@ export function AnimalEditorPage() {
       // is a different component instance and not this one re-used.
       key={animal.id}
       animal={animal}
+      account={account}
+      shelter={activeShelter.slug}
       shelterName={activeShelter.name}
       publicHref={portalPublicPath(animal, activeShelter, publicName(animal))}
       renamed={publicName(animal) !== animal.name}
@@ -286,6 +292,8 @@ function SearchableChecklist({ animal }: { animal: PortalAnimal }) {
 
 function AnimalEditor({
   animal,
+  account,
+  shelter,
   shelterName,
   publicHref,
   renamed,
@@ -295,6 +303,9 @@ function AnimalEditor({
   onDone,
 }: {
   animal: PortalAnimal;
+  /** Both halves of where this animal's draft is filed, with its id. */
+  account: string;
+  shelter: string;
   shelterName: string;
   publicHref: string;
   /** The public page is still filed under the name the list loaded with. */
@@ -306,7 +317,23 @@ function AnimalEditor({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const now = useMemo(() => new Date(), []);
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(animal));
+  // What this browser tab still holds of an earlier visit to this animal.
+  // Read once, in the initialiser: the page renders on the client only (the
+  // build prerenders the Suspense fallback and nothing below it), so there is
+  // no server pass for this to disagree with.
+  //
+  // Laid over a draft built from the animal rather than used as it is. A
+  // deploy can change the shape of a draft while a tab is still open on the
+  // old one, and a missing key would turn its box into an uncontrolled input
+  // halfway through the form.
+  const [stored] = useState(() => {
+    const kept = readDraft<Partial<Draft>>(account, shelter, animal.id);
+    return kept ? { ...draftFrom(animal), ...kept } : null;
+  });
+  const [draft, setDraft] = useState<Draft>(() => stored ?? draftFrom(animal));
+  // Whether the form the shelter is looking at came out of storage. Said once,
+  // above the form, so the boxes are never full of words with no explanation.
+  const [resumed, setResumed] = useState(stored !== null);
   const [ageError, setAgeError] = useState(false);
   const [confirming, setConfirming] = useState(false);
   // A save that failed on the card keeps its message until the next attempt,
@@ -356,6 +383,15 @@ function AnimalEditor({
   // An unusable age produces no patch, but it is still work the shelter typed
   // and the page must not throw it away silently.
   const unsaved = dirty || badAgeBox !== null;
+  // Mirrored on every change, so a Back, a Forward and a reload all come back
+  // to the same typed work. Only while there is work: a form nobody has
+  // touched must not leave a key behind, or the list would mark every animal
+  // that was ever opened.
+  useEffect(() => {
+    if (unsaved) writeDraft(account, shelter, animal.id, draft);
+    else clearDraft(account, shelter, animal.id);
+  }, [account, animal.id, draft, shelter, unsaved]);
+
   const name = animal.name ?? portalText.unnamed;
   const overrideCount = Object.keys(animal.overrides).length;
   const speciesIcon = portalSpeciesIcon(animal.species);
@@ -414,7 +450,16 @@ function AnimalEditor({
     // The control the focus would go back to is about to leave with the page.
     confirmFocus.release();
     setConfirming(false);
+    clearDraft(account, shelter, animal.id);
     onDone();
+  }
+
+  /** The line's own button: keep the animal, drop what was typed before. */
+  function discardStored() {
+    clearDraft(account, shelter, animal.id);
+    setDraft(draftFrom(animal));
+    setAgeError(false);
+    setResumed(false);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -430,7 +475,10 @@ function AnimalEditor({
       box?.focus({ preventScroll: true });
       return;
     }
-    if (await onSave(patch)) onDone();
+    if (await onSave(patch)) {
+      clearDraft(account, shelter, animal.id);
+      onDone();
+    }
   }
 
   return (
@@ -602,6 +650,28 @@ function AnimalEditor({
           </aside>
 
           <div className="space-y-6 max-lg:pb-28">
+            {/* Above the rows it is about, and quiet: the shelter came back
+                to a form that is not the animal's saved state, and nothing
+                else on the page would say why. */}
+            {resumed && (
+              <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <RotateCcw className="size-3.5 shrink-0" aria-hidden />
+                {portalText.draftResumed}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  disabled={saving}
+                  aria-label={portalText.draftDiscardLabel}
+                  onClick={discardStored}
+                  className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground max-lg:tap-target hover:text-foreground"
+                >
+                  <Undo2 aria-hidden />
+                  {portalText.draftDiscard}
+                </Button>
+              </p>
+            )}
+
             <AnimalForm
               uid={uid}
               animal={animal}

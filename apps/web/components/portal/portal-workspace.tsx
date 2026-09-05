@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Inbox, LoaderCircle, Plus, SearchX, TriangleAlert } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import { PortalAnimalCard } from "@/components/portal/animal-card";
@@ -13,12 +20,23 @@ import { PortalListingCard } from "@/components/portal/listing-card";
 import { ListingForm } from "@/components/portal/listing-form";
 import { PortalNotice } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
-import { portalText } from "@/components/portal/portal-text";
+import { fill, portalText } from "@/components/portal/portal-text";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEW_LISTING } from "@/hooks/use-portal-listings";
 import { animalCount } from "@/lib/labels";
+import { draftIds, subscribeDrafts } from "@/lib/portal-drafts";
+
+// One empty set for every state with no stored drafts, so a re-read that
+// finds none does not hand the list a new object to re-render for.
+const EMPTY_DRAFTS: ReadonlySet<string> = new Set();
+
+/** Names a card in the page, so a save can scroll back to the one it went to.
+ *  The id travels through an attribute, and a crawled one holds a colon. */
+function cardDomId(animalId: string): string {
+  return `animal-${encodeURIComponent(animalId)}`;
+}
 
 function CardSkeleton() {
   return (
@@ -41,6 +59,7 @@ export function PortalWorkspace() {
   const {
     session: state,
     reloadSession,
+    account,
     shelters,
     active,
     activeShelter,
@@ -51,6 +70,8 @@ export function PortalWorkspace() {
     saveStates,
     reloadAnimals,
     save,
+    lastSaved,
+    clearLastSaved,
     publicName,
     listings,
     listingState,
@@ -85,6 +106,62 @@ export function PortalWorkspace() {
   const visibleCount = manual ? visibleListings.length : visibleAnimals.length;
   const newListing =
     listings.find((listing) => listing.id === newListingId) ?? null;
+
+  // The animal the last save went to, when the filters no longer let it
+  // through. Read off the whole list, because that is where it still is.
+  const hiddenSave =
+    lastSaved && !visibleAnimals.some((animal) => animal.id === lastSaved)
+      ? (animals.find((animal) => animal.id === lastSaved) ?? null)
+      : null;
+  const hidden = hiddenSave !== null;
+
+  // Which animals this tab is still holding unsaved work for. Storage is an
+  // external store and is read as one, so a draft written or dropped anywhere
+  // in this tab reaches the list without an effect that sets state.
+  //
+  // The snapshot has to be the same object until the answer actually changes,
+  // or every render would produce a fresh Set and React would never settle.
+  // The two listeners are for a page the browser restored from its cache,
+  // which runs no effect of its own to ask again with.
+  const draftCache = useRef<{ signature: string; ids: ReadonlySet<string> }>({
+    signature: "",
+    ids: EMPTY_DRAFTS,
+  });
+  const subscribeToDrafts = useCallback((onChange: () => void) => {
+    const unsubscribe = subscribeDrafts(onChange);
+    window.addEventListener("pageshow", onChange);
+    document.addEventListener("visibilitychange", onChange);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("pageshow", onChange);
+      document.removeEventListener("visibilitychange", onChange);
+    };
+  }, []);
+  const readDrafts = useCallback((): ReadonlySet<string> => {
+    if (!account || !active || manual) return EMPTY_DRAFTS;
+    const ids = draftIds(account, active);
+    // Ids never carry a newline, so it is a safe separator for the join.
+    const signature = [...ids].sort().join("\n");
+    if (draftCache.current.signature !== signature) {
+      draftCache.current = { signature, ids };
+    }
+    return draftCache.current.ids;
+  }, [account, active, manual]);
+  const drafts = useSyncExternalStore(
+    subscribeToDrafts,
+    readDrafts,
+    () => EMPTY_DRAFTS,
+  );
+
+  // Back from the editor onto a long list, the card that was just saved is
+  // somewhere off screen. Once, when the save is known and the card is on the
+  // page: while it is filtered away the notice above the list stands in.
+  useEffect(() => {
+    if (!lastSaved || hidden) return;
+    document
+      .getElementById(cardDomId(lastSaved))
+      ?.scrollIntoView({ block: "center" });
+  }, [hidden, lastSaved]);
 
   const openAdd = useCallback(() => {
     setNewListingId(null);
@@ -243,10 +320,38 @@ export function PortalWorkspace() {
               <PortalListTools
                 animals={all}
                 query={query}
-                onQueryChange={setQuery}
+                // Touching a filter is the shelter looking for something
+                // else, so the pointer back to the card they last saved has
+                // done its job and goes.
+                onQueryChange={(next) => {
+                  clearLastSaved();
+                  setQuery(next);
+                }}
                 status={status}
-                onStatusChange={setStatus}
+                onStatusChange={(next) => {
+                  clearLastSaved();
+                  setStatus(next);
+                }}
               />
+            )}
+
+            {/* The save went through, but the animal no longer matches what
+                the shelter is looking at, so the card would simply be gone.
+                It is named, and the whole list is one tap away. */}
+            {hiddenSave && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-ui border bg-muted/30 px-3 py-2 text-sm"
+              >
+                <p className="min-w-0">
+                  {fill(portalText.savedHidden, {
+                    name: hiddenSave.name ?? portalText.unnamed,
+                  })}
+                </p>
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  {portalText.showAll}
+                </Button>
+              </div>
             )}
 
             {listState.status === "ready" &&
@@ -314,11 +419,15 @@ export function PortalWorkspace() {
                         // last cards waiting.
                         delay: Math.min(index, 8) * 0.03,
                       }}
+                      // Named so a save made on the editor page can bring the
+                      // shelter back to the card it belonged to.
+                      id={cardDomId(animal.id)}
                     >
                       <PortalAnimalCard
                         animal={animal}
                         shelter={activeShelter}
                         publicName={publicName(animal)}
+                        hasDraft={drafts.has(animal.id)}
                         saveState={saveStates[animal.id] ?? { status: "idle" }}
                         onSave={(patch) => save(animal.id, patch)}
                       />

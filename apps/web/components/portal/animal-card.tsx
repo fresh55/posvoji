@@ -16,7 +16,7 @@ import {
   portalPublicPath,
 } from "@/components/portal/animal-meta";
 import { Glyph } from "@/components/portal/glyph";
-import { OverrideMark } from "@/components/portal/override-mark";
+import { DraftMark, OverrideMark } from "@/components/portal/override-mark";
 import { portalSpeciesIcon } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusBlock } from "@/components/portal/status-block";
@@ -34,6 +34,7 @@ export function PortalAnimalCard({
   animal,
   shelter,
   publicName = animal.name,
+  hasDraft = false,
   saveState,
   onSave,
 }: {
@@ -46,6 +47,8 @@ export function PortalAnimalCard({
    * animal nobody has renamed in this session reads as.
    */
   publicName?: string | null;
+  /** This tab is holding typed work for this animal that was never saved. */
+  hasDraft?: boolean;
   saveState: PortalSaveState;
   onSave: (patch: PortalAnimalPatch) => Promise<boolean>;
 }) {
@@ -98,6 +101,7 @@ export function PortalAnimalCard({
                 })}
               />
             )}
+            {hasDraft && <DraftMark className="shrink-0" />}
           </div>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             {/* Only next to a photo. Without one the square to the left is

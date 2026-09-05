@@ -1,80 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  Check,
-  LoaderCircle,
-  Pencil,
-  TriangleAlert,
-  type LucideIcon,
-} from "lucide-react";
+import { useMemo } from "react";
+import { Check, LoaderCircle, Pencil, TriangleAlert } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
-import { ListingForm, listingInput } from "@/components/portal/listing-form";
-import { PORTAL_BADGE } from "@/components/portal/override-mark";
+import Link from "next/link";
 import {
-  SEARCHABLE_FIELDS,
-  SEX_META,
+  missingSearchableFields,
+  portalMetaLine,
+} from "@/components/portal/animal-meta";
+import { Glyph } from "@/components/portal/glyph";
+import { listingInput } from "@/components/portal/listing-form";
+import { DraftMark, PORTAL_BADGE } from "@/components/portal/override-mark";
+import {
   STATUS_META,
-  isPortalSex,
   isPortalStatus,
   portalSpeciesIcon,
-  portalSpeciesLabel,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import { StatusActions } from "@/components/portal/status-actions";
+import { ListingStatusBlock } from "@/components/portal/status-block";
 import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
+import { portalAnimalPath } from "@/hooks/use-portal-session";
 import { Button } from "@/components/ui/button";
-import { ageInMonths } from "@/lib/filters";
-import { formatAge } from "@/lib/labels";
-import type { PortalField, PortalListing } from "@/lib/portal-api";
+import type { PortalListing } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
-
-// The public site's arithmetic, read through the API's nulls, so the same
-// birth date turns into the same number of months on both sides. Measured
-// from today, as the crawled card does: the portal is looking at live records.
-function ageMonths(listing: PortalListing, now: Date): number | undefined {
-  return ageInMonths(
-    {
-      birthDate: listing.birthDate ?? undefined,
-      approximateAgeMonths: listing.approximateAgeMonths ?? undefined,
-    },
-    now,
-  );
-}
-
-function Glyph({
-  icon: Icon,
-  className,
-}: {
-  icon: LucideIcon;
-  className: string;
-}) {
-  return <Icon className={className} strokeWidth={1.75} aria-hidden />;
-}
-
-/**
- * The searchable fields this listing still has no answer for, keys and all.
- * The line under the card prints the labels; the keys are what lets it open
- * the form at the first of them.
- */
-function missingFields(listing: PortalListing) {
-  return SEARCHABLE_FIELDS.filter((field) => listing[field.key] === null);
-}
-
-function metaLine(listing: PortalListing, now: Date): string {
-  const months = ageMonths(listing, now);
-  return [
-    portalSpeciesLabel(listing.species),
-    listing.breed ?? "",
-    isPortalSex(listing.sex) && listing.sex !== "unknown"
-      ? SEX_META[listing.sex].label.toLowerCase()
-      : "",
-    months === undefined ? "" : formatAge(months, "sl"),
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
 
 /**
  * One manual listing, laid out as the crawled card is so a shelter that has
@@ -83,31 +32,29 @@ function metaLine(listing: PortalListing, now: Date): string {
  */
 export function PortalListingCard({
   listing,
+  shelter,
+  hasDraft = false,
   saveState,
   actions,
 }: {
   listing: PortalListing;
+  /** The slug the editor page is opened under. */
+  shelter: string;
+  /** This tab is holding typed work for this listing that was never saved. */
+  hasDraft?: boolean;
   saveState: PortalSaveState;
   /** The hook's, already bound to the shelter. */
   actions: PortalListingActions;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const [editing, setEditing] = useState(false);
-  // The field the form should open at, set only when the card names one.
-  const [formField, setFormField] = useState<PortalField | null>(null);
   const now = useMemo(() => new Date(), []);
-
-  function openForm(field: PortalField | null) {
-    setFormField(field);
-    setEditing(true);
-  }
 
   const speciesIcon = portalSpeciesIcon(listing.species);
   const photo = listing.photos[0];
   const status = isPortalStatus(listing.status) ? listing.status : null;
   const saving = saveState.status === "saving";
   const failed = saveState.status === "error";
-  const missing = missingFields(listing);
+  const missing = missingSearchableFields(listing);
 
   return (
     <article className="space-y-3 rounded-ui border p-3 transition-colors hover:border-foreground/25 focus-within:border-foreground/25 sm:p-4">
@@ -145,15 +92,16 @@ export function PortalListingCard({
                 {STATUS_META[status].label}
               </span>
             )}
+            {hasDraft && <DraftMark className="shrink-0" />}
           </div>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             {photo && <Glyph icon={speciesIcon} className="size-3.5 shrink-0" />}
-            <span className="truncate">{metaLine(listing, now)}</span>
+            <span className="truncate">{portalMetaLine(listing, now)}</span>
           </p>
         </div>
 
         {/* One quiet place for the outcome of a save, so a status tap and a
-            dialog save report themselves the same way. */}
+            save made on the listing's own page report themselves the same. */}
         <div aria-live="polite" className="min-h-6 shrink-0">
           {saving && (
             <m.span
@@ -182,58 +130,47 @@ export function PortalListingCard({
         </div>
       </div>
 
-      <div>
-        <div className="mb-2 flex min-h-6 items-center justify-between gap-2">
-          <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {portalText.statusLegend}
-          </h4>
-        </div>
-        {/* Always the shelter's own answer: there is no site to have read it
-            from, so nothing here is inherited and nothing needs confirming.
-            The route is a full replace, so the tap sends the whole listing
-            with the status swapped. */}
-        <StatusActions
-          value={status}
-          source="shelter"
-          busy={saving}
-          onSelect={(next) =>
-            void actions.update(listing.id, {
-              ...listingInput(listing),
-              status: next,
-            })
-          }
-        />
-      </div>
+      {/* Always the shelter's own answer: there is no site to have read it
+          from, so nothing here is inherited and nothing needs confirming. The
+          route is a full replace, so the tap sends the whole listing with the
+          status swapped. */}
+      <ListingStatusBlock
+        status={status}
+        busy={saving}
+        onSelect={(next) =>
+          void actions.update(listing.id, {
+            ...listingInput(listing),
+            status: next,
+          })
+        }
+      />
 
       {missing.length > 0 && (
-        // Sits directly above the button that opens the form, and is itself
-        // the shortest way in: it opens the form at the first field it names.
+        // Sits directly above the link that opens the editor, and is itself
+        // the shortest way in: it opens the page at the first field it names.
         // What it does goes in the title, not in an aria-label: the visible
         // text has to stay the accessible name (WCAG 2.5.3).
-        <button
-          type="button"
-          disabled={saving}
+        <Link
+          href={portalAnimalPath(shelter, listing.id, missing[0].key)}
           title={fill(portalText.missingOpen, { name: listing.name })}
-          onClick={() => openForm(missing[0].key)}
-          className="block w-full rounded-ui text-left text-2xs leading-relaxed text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          className="block w-full rounded-ui text-left text-2xs leading-relaxed text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
         >
           <span className="font-medium">{portalText.missingTitle}</span>{" "}
           <span className="underline decoration-dotted underline-offset-2">
             {missing.map((field) => field.label).join(", ")}
           </span>
-        </button>
+        </Link>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={saving}
-          onClick={() => openForm(null)}
-        >
-          <Pencil aria-hidden />
-          {portalText.edit}
+        {/* next/link, not an anchor: the editor is a page of the portal and
+            the whole point of going there without a document load is that the
+            session and this list stay in memory behind it. */}
+        <Button asChild variant="outline" size="sm">
+          <Link href={portalAnimalPath(shelter, listing.id)}>
+            <Pencil aria-hidden />
+            {portalText.edit}
+          </Link>
         </Button>
 
         {failed && (
@@ -246,15 +183,6 @@ export function PortalListingCard({
           </p>
         )}
       </div>
-
-      <ListingForm
-        listing={listing}
-        open={editing}
-        onOpenChange={setEditing}
-        actions={actions}
-        saveState={saveState}
-        initialField={formField}
-      />
     </article>
   );
 }

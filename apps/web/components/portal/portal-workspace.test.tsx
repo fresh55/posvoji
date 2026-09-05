@@ -19,6 +19,7 @@ import {
   fetchSession,
   logout,
   saveAnimal,
+  updateListing,
   type PortalAnimal,
   type PortalListing,
   type PortalShelter,
@@ -32,6 +33,7 @@ vi.mock("@/lib/portal-api", async (importOriginal) => ({
   fetchSession: vi.fn(),
   fetchAnimals: vi.fn(),
   fetchListings: vi.fn(),
+  updateListing: vi.fn(),
   saveAnimal: vi.fn(),
   logout: vi.fn(),
 }));
@@ -61,6 +63,7 @@ beforeEach(() => {
   vi.mocked(fetchAnimals).mockReset();
   vi.mocked(fetchListings).mockReset();
   vi.mocked(saveAnimal).mockReset();
+  vi.mocked(updateListing).mockReset();
   vi.mocked(logout).mockReset().mockResolvedValue(undefined);
 });
 
@@ -154,8 +157,9 @@ function headings(): HTMLElement[] {
   return screen.queryAllByRole("heading", { level: 1 });
 }
 
-function addButton(): HTMLElement | null {
-  return screen.queryByRole("button", { name: portalText.listingAdd });
+/** The one action a manual shelter has up here. A link now, not a dialog. */
+function addLink(): HTMLElement | null {
+  return screen.queryByRole("link", { name: portalText.listingAdd });
 }
 
 describe("what a failure tells the shelter", () => {
@@ -274,7 +278,9 @@ describe("a shelter that writes its own listings", () => {
     expect(fetchListings).toHaveBeenCalledWith("johanca");
     expect(fetchAnimals).not.toHaveBeenCalled();
     expect(screen.queryByText(portalText.emptyLead)).toBeNull();
-    expect(addButton()).toBeTruthy();
+    expect(addLink()?.getAttribute("href")).toBe(
+      "/portal/zival?zavetisce=johanca&nova=1",
+    );
   });
 
   it("lists its animals as listing cards under the add button", async () => {
@@ -287,7 +293,7 @@ describe("a shelter that writes its own listings", () => {
     });
     expect(screen.getByText("1 žival")).toBeTruthy();
     expect(
-      screen.getAllByRole("button", { name: portalText.listingAdd }),
+      screen.getAllByRole("link", { name: portalText.listingAdd }),
     ).toHaveLength(1);
     // A listing card, not a crawled one: nothing to confirm off a site.
     expect(screen.queryByText(portalText.statusFromSiteLine)).toBeNull();
@@ -296,16 +302,30 @@ describe("a shelter that writes its own listings", () => {
     ).toBeNull();
   });
 
-  it("opens the new listing form from the header", async () => {
+  it("links each listing card to its own page", async () => {
     signIn(MANUAL);
     vi.mocked(fetchListings).mockResolvedValue([LISTING]);
     renderWorkspace();
-    await waitFor(() => expect(addButton()).toBeTruthy());
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
+    });
 
-    fireEvent.click(addButton() as HTMLElement);
+    expect(
+      screen.getByRole("link", { name: portalText.edit }).getAttribute("href"),
+    ).toBe(`/portal/zival?zavetisce=johanca&id=${LISTING.id}`);
+  });
 
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByText(portalText.listingNewTitle)).toBeTruthy();
+  it("marks a listing this tab holds unsaved work for", async () => {
+    signIn(MANUAL);
+    vi.mocked(fetchListings).mockResolvedValue([LISTING]);
+    writeDraft("info@zavetisce.si", "johanca", LISTING.id, { name: "Lunica" });
+
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
+    });
+    expect(screen.getByText(portalText.draftBadge)).toBeTruthy();
   });
 
   it("filters the listing cards by name", async () => {
@@ -341,7 +361,7 @@ describe("a crawled shelter", () => {
     });
     expect(fetchAnimals).toHaveBeenCalledWith("ljubljana");
     expect(fetchListings).not.toHaveBeenCalled();
-    expect(addButton()).toBeNull();
+    expect(addLink()).toBeNull();
     // The crawled row: a status pill that says whose answer it shows, the
     // "Za pregled" chip, and the banner that offers to confirm the crawl's
     // reading, said once above the list instead of on every animal.
@@ -419,7 +439,7 @@ describe("a crawled shelter", () => {
       expect(screen.getByText(portalText.emptyLead)).toBeTruthy();
     });
     expect(screen.queryByText(portalText.listingsEmptyLead)).toBeNull();
-    expect(addButton()).toBeNull();
+    expect(addLink()).toBeNull();
     expect(fetchListings).not.toHaveBeenCalled();
   });
 });
@@ -586,6 +606,75 @@ describe("a save that the current filter hides", () => {
       target: { value: "bin" },
     });
 
+    expect(screen.queryByText(/trenutni filter skrije/)).toBeNull();
+  });
+});
+
+describe("a listing save that the current filter hides", () => {
+  function statusButton(name: string, label: string): HTMLElement {
+    const article = screen.getByRole("heading", { name }).closest("article");
+    if (!article) throw new Error(`no card for ${name}`);
+    return within(
+      within(article as HTMLElement).getByRole("group", {
+        name: portalText.statusLegend,
+      }),
+    ).getByRole("button", { name: label });
+  }
+
+  async function listOf() {
+    signIn(MANUAL);
+    vi.mocked(fetchListings).mockResolvedValue([
+      LISTING,
+      { ...LISTING, id: "b", name: "Bine" },
+    ]);
+    renderWorkspace();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
+    });
+  }
+
+  it("names the listing and offers the whole list back", async () => {
+    // The same notice the crawled list shows, over the other list: a manual
+    // shelter's animals are its listings.
+    await listOf();
+    vi.mocked(updateListing).mockResolvedValue({
+      ...LISTING,
+      status: "adopted",
+    });
+
+    // Looking at the animals still on offer, the shelter marks one adopted.
+    fireEvent.click(
+      within(
+        screen.getByRole("group", { name: portalText.filterLegend }),
+      ).getByRole("button", { name: /Na voljo/ }),
+    );
+    fireEvent.click(statusButton("Luna", "Oddan"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(fill(portalText.savedHidden, { name: "Luna" })),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByRole("heading", { name: "Luna" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: portalText.showAll }));
+
+    expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
+    expect(
+      screen.queryByText(fill(portalText.savedHidden, { name: "Luna" })),
+    ).toBeNull();
+  });
+
+  it("says nothing while the listing is still on the page", async () => {
+    await listOf();
+    vi.mocked(updateListing).mockResolvedValue({
+      ...LISTING,
+      status: "reserved",
+    });
+
+    fireEvent.click(statusButton("Luna", "Rezerviran"));
+
+    await waitFor(() => expect(updateListing).toHaveBeenCalled());
     expect(screen.queryByText(/trenutni filter skrije/)).toBeNull();
   });
 });

@@ -7,7 +7,6 @@ import {
   ExternalLink,
   LoaderCircle,
   RotateCcw,
-  Search,
   SearchX,
   TriangleAlert,
   Undo2,
@@ -27,16 +26,16 @@ import {
 } from "@/components/portal/animal-meta";
 import { ConfirmDialog } from "@/components/portal/confirm-dialog";
 import { Glyph } from "@/components/portal/glyph";
+import { ListingEditorPage } from "@/components/portal/listing-editor-page";
 import { PortalNotice } from "@/components/portal/notice";
 import { OverrideMark } from "@/components/portal/override-mark";
 import {
-  SEARCHABLE_FIELDS,
-  SEARCHABLE_LABELS,
   isPortalField,
   portalSpeciesIcon,
 } from "@/components/portal/portal-fields";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
+import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { StatusBlock } from "@/components/portal/status-block";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
 import { useReturnFocus } from "@/hooks/use-return-focus";
@@ -70,6 +69,7 @@ export function AnimalEditorPage() {
     active,
     activeShelter,
     setActive,
+    manual,
     animals,
     animalState,
     reloadAnimals,
@@ -92,6 +92,12 @@ export function AnimalEditorPage() {
   useEffect(() => {
     if (slug && known && slug !== active) setActive(slug);
   }, [active, known, setActive, slug]);
+
+  // A shelter with no catalogue of its own has no crawled animal to edit: the
+  // same address opens one of its listings, on the same frame. Which of the
+  // two this is follows the active shelter, which the effect above has just
+  // taken from the address.
+  if (manual) return <ListingEditorPage />;
 
   const showing = known && slug === active;
   const animal = showing
@@ -238,55 +244,6 @@ export function AnimalEditorPage() {
       field={polje}
       onDone={() => router.push(PORTAL_PATH)}
     />
-  );
-}
-
-/** The five filters an adopter narrows the grid by, ticked off as the shelter
- *  answers them. Read off the saved animal, so it says what the public site
- *  knows rather than what is typed but not sent. */
-function SearchableChecklist({ animal }: { animal: PortalAnimal }) {
-  const answered = SEARCHABLE_FIELDS.filter(
-    (field) => animal[field.key] !== null,
-  ).length;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {portalText.sectionSearchable}
-      </p>
-      <ul className="space-y-1">
-        {SEARCHABLE_FIELDS.map((field) => {
-          const done = animal[field.key] !== null;
-          return (
-            <li key={field.key} className="flex items-center gap-1.5 text-xs">
-              {done ? (
-                <Check
-                  className="size-3.5 shrink-0 text-[var(--filter-accent-foreground)]"
-                  strokeWidth={2.4}
-                  aria-hidden
-                />
-              ) : (
-                <Search
-                  className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-              )}
-              <span className={done ? "text-muted-foreground" : "font-medium"}>
-                {SEARCHABLE_LABELS[field.key]}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      {/* Which of the two sentences is true right now, rather than a legend
-          for the icons above. */}
-      <p className="text-2xs leading-relaxed text-muted-foreground">
-        {answered === SEARCHABLE_FIELDS.length
-          ? portalText.searchableDone
-          : portalText.searchableLead}
-      </p>
-    </div>
   );
 }
 

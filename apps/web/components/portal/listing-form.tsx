@@ -1,21 +1,14 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type ReactNode,
-} from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import {
   ImagePlus,
   LoaderCircle,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
+import { FormSection } from "@/components/portal/animal-form";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
-import { ConfirmDialog } from "@/components/portal/confirm-dialog";
 import { MissingMark } from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
@@ -44,17 +37,7 @@ import {
   type PortalSpecialNeedsAnswer,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type { PortalSaveState } from "@/hooks/portal-list";
-import type { PortalListingActions } from "@/hooks/use-portal-listings";
-import { useReturnFocus } from "@/hooks/use-return-focus";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +53,7 @@ import {
   type PortalField,
   type PortalListing,
   type PortalListingInput,
+  type PortalListingPhoto,
   type PortalSex,
   type PortalSize,
   type PortalSpecies,
@@ -78,16 +62,10 @@ import {
 import { SPECIES_ORDER } from "@/lib/species";
 import { cn } from "@/lib/utils";
 
-/** What the API takes, checked by opening the file; this is the first pass. */
-const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-/** The same cap as PORTAL_MAX_UPLOAD_BYTES in apps/portal. */
-const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
-
 /** The rows the form has, for the data-field marks opening at one needs. */
-type ListingField = PortalField | "species" | "photos";
+export type ListingField = PortalField | "species" | "photos";
 
-type Draft = {
+export type Draft = {
   species: PortalSpecies | null;
   status: PortalStatus;
   name: string;
@@ -112,27 +90,47 @@ type Draft = {
  * enforced. Kept apart from PortalListingInput so "what changed" can be
  * asked of a draft the API would refuse.
  */
-type Shape = Omit<PortalListingInput, "species" | "name"> & {
+export type Shape = Omit<PortalListingInput, "species" | "name"> & {
   species: PortalSpecies | null;
   name: string | null;
 };
 
 /** The two fields a listing cannot exist without. */
-type Required = "species" | "name";
+export type Required = "species" | "name";
 
 /** What a submit can refuse: a required field left empty, or an unusable age. */
-type Refused = Required | "age";
-
-/** The two questions the form asks before work is thrown away. */
-type Asking = "discard" | "archive";
+export type Refused = Required | "age";
 
 /** A file picked for a listing and not stored yet. */
-type PendingPhoto = {
+export type PendingPhoto = {
   key: number;
   file: File;
   /** An object URL of the file, revoked once the file is stored or dropped. */
   previewUrl: string;
   failed: boolean;
+};
+
+/** Everything the photo section draws and everything a tap on it reaches. */
+export type PhotoPanel = {
+  /** The photos the API has, in its own order. */
+  stored: PortalListingPhoto[];
+  pending: PendingPhoto[];
+  uploading: { index: number; total: number } | null;
+  /** A refused file, or a remove that did not go through. */
+  error: string | null;
+  errorId: string;
+  /** The stored photo whose Odstrani is waiting for its second tap. */
+  removing: number | null;
+  busy: boolean;
+  /**
+   * Whether a pending file has somewhere to go yet. A listing that has not
+   * been saved has no id for the photo route, so its files wait as previews.
+   */
+  storable: boolean;
+  onPick: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRetry: (item: PendingPhoto) => void;
+  onDrop: (item: PendingPhoto) => void;
+  onRemove: (photoId: number) => void;
 };
 
 const isPortalSpecies = (value: string | null): value is PortalSpecies =>
@@ -142,7 +140,7 @@ const isPortalSpecies = (value: string | null): value is PortalSpecies =>
  * The form a new listing opens on: nothing chosen but the status, which the
  * API defaults to "available" and the form says out loud.
  */
-const EMPTY_DRAFT: Draft = {
+export const EMPTY_DRAFT: Draft = {
   species: null,
   status: "available",
   name: "",
@@ -161,7 +159,7 @@ const EMPTY_DRAFT: Draft = {
   specialNeeds: null,
 };
 
-function draftFrom(listing: PortalListing | null): Draft {
+export function draftFrom(listing: PortalListing | null): Draft {
   if (!listing) return EMPTY_DRAFT;
   const age = ageParts(listing.approximateAgeMonths);
   return {
@@ -196,7 +194,7 @@ function draftFrom(listing: PortalListing | null): Draft {
  * The whole draft as the API would read it. The age stays null while a box
  * holds something that is not a count, and says which box.
  */
-function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
+export function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
   // The wire carries one month count. An empty half counts as zero, so
   // "2 let" alone is two years; only two empty boxes mean no age. The months
   // box is not capped at eleven: "18 mesecev" adds up to the same age.
@@ -239,7 +237,7 @@ function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
  * in the same order and every value is a primitive: comparing the encodings is
  * comparing the shapes.
  */
-function sameShape(left: Shape, right: Shape): boolean {
+export function sameShape(left: Shape, right: Shape): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
@@ -248,7 +246,7 @@ function sameShape(left: Shape, right: Shape): boolean {
  * empty, in the form's order. One answer for both, so what the form refuses
  * and what it would send cannot disagree.
  */
-function inputOf(shape: Shape): {
+export function inputOf(shape: Shape): {
   input: PortalListingInput | null;
   missing: Required | null;
 } {
@@ -261,9 +259,10 @@ function inputOf(shape: Shape): {
 }
 
 /**
- * A saved listing as the PUT body that would leave it unchanged. The card's
- * status buttons send this with one field swapped, because the route is a
- * full replace and a partial body would clear everything it left out.
+ * A saved listing as the PUT body that would leave it unchanged. The status
+ * buttons on the card and in the editor's summary send this with one field
+ * swapped, because the route is a full replace and a partial body would clear
+ * everything it left out.
  *
  * The API's own enums make the fallbacks unreachable: a listing is stored
  * through ListingIn, which only admits these values.
@@ -278,7 +277,7 @@ export function listingInput(listing: PortalListing): PortalListingInput {
 }
 
 /** The row a field draws in, which both the form's focus paths look up. */
-function fieldRow(
+export function fieldRow(
   form: HTMLFormElement | null,
   field: ListingField,
 ): HTMLElement | null {
@@ -286,7 +285,7 @@ function fieldRow(
 }
 
 /** The controls inside one row, in the order they are read. */
-function fieldControls(row: HTMLElement): HTMLElement[] {
+export function fieldControls(row: HTMLElement): HTMLElement[] {
   return Array.from(
     row.querySelectorAll<HTMLElement>(
       "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
@@ -312,7 +311,7 @@ function Field({
 }: {
   /** The form's id prefix, which the hint's own id is built from. */
   uid: string;
-  /** Names the row so opening the dialog at one field can find it. */
+  /** Names the row so an address that opens at one field can find it. */
   field: ListingField;
   label: string;
   /** Set for a single control; left out for the icon rows, which are groups. */
@@ -364,932 +363,554 @@ function Field({
 }
 
 /**
- * The one form a manual shelter's listing has. `listing` null is a new one;
- * otherwise it edits, and every save sends the whole record.
+ * The photos, stored and picked alike, in one grid with the picker at its end.
  *
- * Photos have routes of their own, so on an existing listing a picked file is
- * stored the moment it is picked. A new listing has no id for the photo route
- * until it is saved, so its files wait as previews and go up one by one after
- * the POST. A parent that keeps the dialog open through that should hand the
- * created listing back in through `listing` once `onCreated` reports it, so
- * the photos the uploads add are read off the live record; until it does, the
- * form holds the created listing itself.
+ * Its own section, because it is the one part of the form that talks to the
+ * network on its own: on a saved listing a picked file is stored the moment it
+ * is picked, and every state of that has to be readable.
+ */
+function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
+  const fileId = `${uid}-file`;
+
+  return (
+    <div data-field="photos" className="space-y-1.5">
+      <div data-field-control>
+        <div
+          role="group"
+          aria-label={portalText.fieldPhotos}
+          aria-describedby={hintId(uid, "photos")}
+          className="grid grid-cols-3 gap-1.5 sm:grid-cols-4"
+        >
+          {panel.stored.map((photo, index) => {
+            const confirm = panel.removing === photo.id;
+            return (
+              <figure key={photo.id} className="space-y-1">
+                {/* The API host is not one next/image knows, and the stored
+                    copy is already capped at 2048px. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.url}
+                  width={photo.width}
+                  height={photo.height}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-square w-full rounded-ui border bg-muted/40 object-cover"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  disabled={panel.busy}
+                  aria-label={
+                    confirm
+                      ? undefined
+                      : fill(portalText.photoRemoveLabel, {
+                          index: index + 1,
+                        })
+                  }
+                  onClick={() => panel.onRemove(photo.id)}
+                  className={cn(
+                    "w-full font-normal text-muted-foreground hover:text-foreground",
+                    confirm && "text-destructive hover:text-destructive",
+                  )}
+                >
+                  {confirm
+                    ? portalText.photoRemoveConfirm
+                    : portalText.photoRemove}
+                </Button>
+              </figure>
+            );
+          })}
+
+          {panel.pending.map((item) => (
+            <figure key={item.key} className="space-y-1">
+              {/* A local object URL; nothing to optimise. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.previewUrl}
+                alt=""
+                className={cn(
+                  "aspect-square w-full rounded-ui border bg-muted/40 object-cover",
+                  !item.failed && "opacity-60",
+                )}
+              />
+              {item.failed ? (
+                <div className="space-y-1">
+                  <p
+                    role="alert"
+                    className="text-2xs leading-tight text-destructive"
+                  >
+                    {fill(portalText.photoUploadFailed, {
+                      name: item.file.name,
+                    })}
+                  </p>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      disabled={panel.busy || !panel.storable}
+                      onClick={() => panel.onRetry(item)}
+                      className="flex-1"
+                    >
+                      <RefreshCw aria-hidden />
+                      {portalText.photoRetry}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      disabled={panel.busy}
+                      onClick={() => panel.onDrop(item)}
+                      className="font-normal text-muted-foreground hover:text-foreground"
+                    >
+                      {portalText.photoRemove}
+                    </Button>
+                  </div>
+                </div>
+              ) : panel.storable ? (
+                <p className="text-center text-2xs text-muted-foreground">
+                  {portalText.photoPending}
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  disabled={panel.busy}
+                  onClick={() => panel.onDrop(item)}
+                  className="w-full font-normal text-muted-foreground hover:text-foreground"
+                >
+                  {portalText.photoRemove}
+                </Button>
+              )}
+            </figure>
+          ))}
+
+          {/* The picker is an icon card like every other choice in the form.
+              The input itself is what takes the focus, so the card draws the
+              ring for it. */}
+          <label
+            htmlFor={fileId}
+            className={choiceCard(
+              false,
+              cn(
+                "aspect-square cursor-pointer flex-col gap-1 self-start px-1.5 py-1.5 text-center text-xs leading-tight font-medium focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
+                panel.busy && "pointer-events-none opacity-50",
+              ),
+            )}
+          >
+            <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden />
+            <span>{portalText.photoAdd}</span>
+            <input
+              id={fileId}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              disabled={panel.busy}
+              aria-describedby={hintId(uid, "photos")}
+              onChange={panel.onPick}
+              className="sr-only"
+            />
+          </label>
+        </div>
+        {panel.uploading && (
+          <p
+            aria-live="polite"
+            className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+          >
+            <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+            {fill(portalText.photoUploading, panel.uploading)}
+          </p>
+        )}
+      </div>
+      {panel.error && (
+        <p
+          id={panel.errorId}
+          role="alert"
+          className="flex items-start gap-1.5 text-sm text-destructive"
+        >
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          {panel.error}
+        </p>
+      )}
+      <p id={hintId(uid, "photos")} className="text-xs text-muted-foreground">
+        {portalText.photosHint} {portalText.photoLimits}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Every row of a manual listing, in named sections. The draft and everything
+ * that acts on it belong to the page: this draws the rows and reports what was
+ * touched, exactly as AnimalForm does for a crawled animal.
+ *
+ * The order differs between the two things this form is. A listing that
+ * exists is edited photos first, then the fields an adopter narrows the grid
+ * by, as the crawled page reads. A listing that does not exist yet cannot be
+ * saved without a species and a name, so those come first and the photos wait
+ * behind them, which is the order the dialog this replaced asked in.
  */
 export function ListingForm({
+  uid,
   listing,
-  open,
-  onOpenChange,
-  actions,
-  saveState,
-  onCreated,
-  initialField = null,
+  draft,
+  set,
+  setAge,
+  refused,
+  refusedErrorId,
+  disabled,
+  photos,
 }: {
+  /** One prefix per mounted form, for the hints' own ids. */
+  uid: string;
+  /** Null while the listing is being written for the first time. */
   listing: PortalListing | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  actions: PortalListingActions;
-  /** The listing's own slot, or NEW_LISTING's while it does not exist yet. */
-  saveState: PortalSaveState;
-  /** The POST went through; the dialog is now editing what it answered. */
-  onCreated?: (listing: PortalListing) => void;
-  /** The field to open at, when the card sent the shelter to a named one. */
-  initialField?: PortalField | null;
+  draft: Draft;
+  set: <Key extends keyof Draft>(key: Key, value: Draft[Key]) => void;
+  /** Its own setter, because typing in an age box also retires its error. */
+  setAge: (key: "ageYears" | "ageMonths", value: string) => void;
+  /** The field the last submit refused. One at a time, so one message. */
+  refused: Refused | null;
+  /** The three rows share the one message id: only one can be refused. */
+  refusedErrorId: string;
+  disabled: boolean;
+  photos: PhotoPanel;
 }) {
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(listing));
-  // The listing the POST answered with, for a parent that does not switch
-  // the prop over. Cleared on every fresh open.
-  const [created, setCreated] = useState<PortalListing | null>(null);
-  /** The field the submit refused. One at a time, so one message at a time. */
-  const [refused, setRefused] = useState<Refused | null>(null);
-  /** The question the form is asking, when it is asking one. */
-  const [asking, setAsking] = useState<Asking | null>(null);
-  // The save slot is shared with the card's status buttons and an error in
-  // it never expires, so the foot of the form only reads it once this form
-  // has sent a save of its own.
-  const [attempted, setAttempted] = useState(false);
-  // Around the POST, the PUT and the archive: the whole form waits on those.
-  const [submitting, setSubmitting] = useState(false);
-  const [pending, setPending] = useState<PendingPhoto[]>([]);
-  const [uploading, setUploading] = useState<{
-    index: number;
-    total: number;
-  } | null>(null);
-  /** The sentence beside the photo control: a refused file, a failed remove. */
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  /** The stored photo whose Odstrani is waiting for its second tap. */
-  const [removing, setRemoving] = useState<number | null>(null);
-  const [source, setSource] = useState({ id: listing?.id ?? null, open });
-  const formRef = useRef<HTMLFormElement>(null);
-  // Both dialogs are opened in code, so both put the focus back themselves.
-  // One pair for the two questions: only one of them can be open.
-  const formFocus = useReturnFocus();
-  const askFocus = useReturnFocus();
-  // Every preview URL still outstanding. Object URLs are not garbage
-  // collected, so each is revoked when its file is stored or dropped, and
-  // whatever is left when the dialog closes or unmounts.
-  const previews = useRef(new Set<string>());
-  // Bumped on every close, so an upload loop the shelter walked away from
-  // stops writing into the next opening's state.
-  const sessionRef = useRef(0);
-  const nextKey = useRef(0);
-
-  const uid = useId();
   const nameId = `${uid}-name`;
   const breedId = `${uid}-breed`;
   const birthDateId = `${uid}-birth-date`;
   const ageYearsId = `${uid}-age-years`;
   const ageMonthsId = `${uid}-age-months`;
   const descriptionId = `${uid}-description`;
-  const fileId = `${uid}-file`;
   const compatibilityHintId = `${uid}-compatibility-hint`;
-  const errorId = `${uid}-error`;
-  /** One refusal at a time, so the three rows share the one message id. */
-  const refusedErrorId = `${uid}-refused-error`;
-  const photoErrorId = `${uid}-photo-error`;
-
-  const current = listing ?? created;
-
-  // The dialog opens on whatever the server last confirmed. Adjusted during
-  // render rather than in an effect: only a prop the draft is derived from
-  // changed. Keyed on the id, not the object: a photo upload replaces the
-  // listing object mid-edit, and a draft reset then would drop typed work.
-  const id = listing?.id ?? null;
-  if (source.id !== id || source.open !== open) {
-    setSource({ id, open });
-    if (source.open !== open) {
-      // Both ways: a fresh open starts with no files, and a close drops
-      // whatever an upload loop was still reporting.
-      setPending([]);
-      setUploading(null);
-      setCreated(null);
-      setPhotoError(null);
-      setRemoving(null);
-    }
-    if (open) {
-      setDraft(draftFrom(listing));
-      setRefused(null);
-      setAsking(null);
-      setAttempted(false);
-    }
-  }
-
-  // The previews are handed to the browser outside React, so they are taken
-  // back outside it too: on close, and on an unmount with one still up.
-  useEffect(() => {
-    if (open) return;
-    sessionRef.current += 1;
-    for (const url of previews.current) URL.revokeObjectURL(url);
-    previews.current.clear();
-  }, [open]);
-  useEffect(() => {
-    const held = previews.current;
-    return () => {
-      for (const url of held) URL.revokeObjectURL(url);
-      held.clear();
-    };
-  }, []);
-
-  // Opening at a field: the shelter came from the card's "manjka" line, so the
-  // row it named has to be what the dialog shows first. One frame after the
-  // open, which is where the dialog has finished mounting and taken its own
-  // initial focus.
-  useEffect(() => {
-    if (!open || !initialField) return;
-    const frame = requestAnimationFrame(() => {
-      const form = formRef.current;
-      const panel = form?.parentElement;
-      const row = fieldRow(form, initialField);
-      if (!panel || !row) return;
-      const offset =
-        row.getBoundingClientRect().top - panel.getBoundingClientRect().top;
-      panel.scrollTo({ top: Math.max(panel.scrollTop + offset - 12, 0) });
-      fieldControls(row)[0]?.focus({ preventScroll: true });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [open, initialField]);
-
-  const editing = current !== null;
-  const { shape, ageError: badAgeBox } = shapeOf(draft);
-  // The age is not tested here: submit() returns on an unusable one before it
-  // reads the input.
-  const { input, missing } = inputOf(shape);
-  // What the form would change against what is saved, or against nothing.
-  const baseline = shapeOf(draftFrom(current)).shape;
-  const dirty = !sameShape(shape, baseline);
-  // Pending files are work too: a failed upload is a photo the shelter still
-  // means to add, and a new listing's files have nowhere to be yet.
-  const unsaved = dirty || badAgeBox !== null || pending.length > 0;
-  // An unusable age is not a change, but Shrani has to be pressable for the
-  // form to say what is wrong with it.
-  const canSave = editing ? dirty || badAgeBox !== null : missing === null;
-  const busy = submitting || uploading !== null;
-  const name = current?.name ?? portalText.unnamed;
-  const errorText =
-    attempted && saveState.status === "error" ? saveState.message : null;
 
   // Which of the adopter's filters this listing still leaves blank. Read off
   // the saved listing, not the draft, so the row keeps saying what the public
   // site currently knows until the save goes through.
-  const missingSearchable = new Set<PortalField>(
-    current
-      ? SEARCHABLE_FIELDS.filter((field) => current[field.key] === null).map(
+  const missing = new Set<PortalField>(
+    listing
+      ? SEARCHABLE_FIELDS.filter((field) => listing[field.key] === null).map(
           (field) => field.key,
         )
       : [],
   );
 
-  function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
-    setDraft((draft) => ({ ...draft, [key]: value }));
-  }
+  const photoSection = (
+    <FormSection title={portalText.fieldPhotos}>
+      <Photos uid={uid} panel={photos} />
+    </FormSection>
+  );
 
-  /** An answer given to the refused field retires its message, and only its. */
-  function answered(field: Refused) {
-    setRefused((current) => (current === field ? null : current));
-  }
+  const searchableSection = (
+    <FormSection title={portalText.sectionSearchable}>
+      <Field
+        uid={uid}
+        field="energy"
+        label={portalText.fieldEnergy}
+        missing={missing.has("energy")}
+        hint={portalText.listingEnergyHint}
+      >
+        <ChoiceGrid
+          label={portalText.fieldEnergy}
+          options={PORTAL_ENERGIES}
+          meta={ENERGY_META}
+          value={draft.energy}
+          onPick={(energy) => set("energy", energy)}
+          disabled={disabled}
+          describedBy={hintId(uid, "energy")}
+        />
+      </Field>
 
-  /**
-   * Puts a refused field back on screen, with the message the submit left on
-   * it: a submit from the sticky footer leaves the reason off screen
-   * otherwise. `index` picks between the two age inputs, which share a row.
-   */
-  function showRefused(field: ListingField, index = 0) {
-    const row = fieldRow(formRef.current, field);
-    const target = row ? fieldControls(row)[index] : undefined;
-    target?.scrollIntoView({ block: "center" });
-    target?.focus({ preventScroll: true });
-  }
+      {(
+        [
+          ["goodWithKids", portalText.fieldGoodWithKids],
+          ["goodWithDogs", portalText.fieldGoodWithDogs],
+          ["goodWithCats", portalText.fieldGoodWithCats],
+        ] as const
+      ).map(([field, label]) => (
+        <Field
+          key={field}
+          uid={uid}
+          field={field}
+          label={label}
+          missing={missing.has(field)}
+        >
+          <ChoiceGrid
+            label={label}
+            options={PORTAL_COMPATIBILITIES}
+            meta={COMPATIBILITY_META}
+            value={draft[field]}
+            onPick={(value) => set(field, value)}
+            disabled={disabled}
+            describedBy={compatibilityHintId}
+          />
+        </Field>
+      ))}
+      {/* One line for the three rows above, so all three point at it. */}
+      <p id={compatibilityHintId} className="text-xs text-muted-foreground">
+        {portalText.compatibilityHint}
+      </p>
 
-  /**
-   * The age's own setter. Typing in either box retires its error; nothing
-   * else in the form can.
-   */
-  function setAge(key: "ageYears" | "ageMonths", value: string) {
-    setDraft((draft) => ({ ...draft, [key]: value }));
-    answered("age");
-  }
+      <Field
+        uid={uid}
+        field="apartmentOk"
+        label={portalText.fieldApartmentOk}
+        missing={missing.has("apartmentOk")}
+      >
+        <ChoiceGrid
+          label={portalText.fieldApartmentOk}
+          options={PORTAL_COMPATIBILITIES}
+          meta={COMPATIBILITY_META}
+          value={draft.apartmentOk}
+          onPick={(value) => set("apartmentOk", value)}
+          disabled={disabled}
+        />
+      </Field>
+    </FormSection>
+  );
 
-  /** Every way out but a finished save. Typed work is confirmed away, never dropped. */
-  function requestClose() {
-    if (unsaved) {
-      setAsking("discard");
-      return;
-    }
-    onOpenChange(false);
-  }
+  const basicsSection = (
+    <FormSection title={portalText.sectionBasics}>
+      <Field
+        uid={uid}
+        field="species"
+        label={portalText.fieldSpecies}
+        error={refused === "species" ? portalText.speciesRequired : null}
+        errorId={refusedErrorId}
+      >
+        <ChoiceGrid
+          label={portalText.fieldSpecies}
+          options={SPECIES_ORDER}
+          meta={SPECIES_META}
+          value={draft.species}
+          onPick={(species) => set("species", species)}
+          disabled={disabled}
+          describedBy={refused === "species" ? refusedErrorId : undefined}
+        />
+      </Field>
 
-  function discard() {
-    // The form the focus would go back to is about to unmount with the
-    // dialog, which then puts the focus back where it opened from.
-    askFocus.release();
-    setAsking(null);
-    onOpenChange(false);
-  }
+      <Field
+        uid={uid}
+        field="name"
+        label={portalText.fieldName}
+        htmlFor={nameId}
+        hint={portalText.nameHint}
+        error={refused === "name" ? portalText.nameRequired : null}
+        errorId={refusedErrorId}
+      >
+        <Input
+          id={nameId}
+          value={draft.name}
+          disabled={disabled}
+          aria-invalid={refused === "name" || undefined}
+          aria-errormessage={refused === "name" ? refusedErrorId : undefined}
+          aria-describedby={hintId(uid, "name")}
+          onChange={(event) => set("name", event.target.value)}
+        />
+      </Field>
 
-  /** Esc, a tap on the cancel, anything but an answer to the question. */
-  function closeAsk(open: boolean) {
-    if (!open) setAsking(null);
-  }
+      {/* Only while the listing is being written. Once it exists the status is
+          the summary's, beside the form, where it saves on the tap. */}
+      {!listing && (
+        <Field uid={uid} field="status" label={portalText.statusLegend}>
+          <ChoiceGrid
+            label={portalText.statusLegend}
+            options={PORTAL_STATUSES}
+            meta={STATUS_META}
+            value={draft.status}
+            // A listing always has a status, so the chosen card cannot be
+            // tapped off; the API would default it to "available" anyway.
+            onPick={(status) => {
+              if (status) set("status", status);
+            }}
+            disabled={disabled}
+          />
+        </Field>
+      )}
 
-  /** Takes the preview of a file that is stored or dropped back from the browser. */
-  function releasePreview(item: PendingPhoto) {
-    URL.revokeObjectURL(item.previewUrl);
-    previews.current.delete(item.previewUrl);
-  }
+      <Field uid={uid} field="sex" label={portalText.fieldSex}>
+        <ChoiceGrid
+          label={portalText.fieldSex}
+          options={PORTAL_SEXES}
+          meta={SEX_META}
+          value={draft.sex}
+          onPick={(sex) => set("sex", sex)}
+          disabled={disabled}
+        />
+      </Field>
 
-  /**
-   * Stores `items` one after another, saying which one is going up. A file
-   * that fails stays pending, marked, with its retry; the rest still go.
-   * Answers whether any failed.
-   */
-  async function uploadFiles(
-    listingId: string,
-    items: PendingPhoto[],
-  ): Promise<boolean> {
-    const session = sessionRef.current;
-    let failed = false;
-    for (const [index, item] of items.entries()) {
-      setUploading({ index: index + 1, total: items.length });
-      const photo = await actions.uploadPhoto(listingId, item.file);
-      if (sessionRef.current !== session) return failed;
-      if (photo) {
-        releasePreview(item);
-        setPending((pending) =>
-          pending.filter((candidate) => candidate.key !== item.key),
-        );
-      } else {
-        failed = true;
-        setPending((pending) =>
-          pending.map((candidate) =>
-            candidate.key === item.key
-              ? { ...candidate, failed: true }
-              : candidate,
-          ),
-        );
-      }
-    }
-    setUploading(null);
-    return failed;
-  }
+      <Field
+        uid={uid}
+        field="breed"
+        label={portalText.fieldBreed}
+        htmlFor={breedId}
+      >
+        <Input
+          id={breedId}
+          value={draft.breed}
+          disabled={disabled}
+          onChange={(event) => set("breed", event.target.value)}
+        />
+      </Field>
 
-  function pickFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    // So the same file can be picked again after it was dropped.
-    event.target.value = "";
-    setPhotoError(null);
-    setRemoving(null);
+      <Field uid={uid} field="size" label={portalText.fieldSize}>
+        <ChoiceGrid
+          label={portalText.fieldSize}
+          options={PORTAL_SIZES}
+          meta={SIZE_META}
+          value={draft.size}
+          onPick={(size) => set("size", size)}
+          disabled={disabled}
+        />
+      </Field>
+    </FormSection>
+  );
 
-    const accepted: PendingPhoto[] = [];
-    let refused: string | null = null;
-    for (const file of files) {
-      if (!ACCEPTED_TYPES.has(file.type)) {
-        refused ??= fill(portalText.photoTypeRejected, { name: file.name });
-        continue;
-      }
-      if (file.size > MAX_PHOTO_BYTES) {
-        refused ??= fill(portalText.photoTooLarge, { name: file.name });
-        continue;
-      }
-      const key = nextKey.current++;
-      const previewUrl = URL.createObjectURL(file);
-      previews.current.add(previewUrl);
-      accepted.push({ key, file, previewUrl, failed: false });
-    }
-    if (refused) setPhotoError(refused);
-    if (accepted.length === 0) return;
+  const ageSection = (
+    <FormSection title={portalText.sectionAge}>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          uid={uid}
+          field="birthDate"
+          label={portalText.fieldBirthDate}
+          htmlFor={birthDateId}
+        >
+          <Input
+            id={birthDateId}
+            type="date"
+            value={draft.birthDate}
+            disabled={disabled}
+            onChange={(event) => set("birthDate", event.target.value)}
+          />
+        </Field>
 
-    setPending((pending) => [...pending, ...accepted]);
-    // An existing listing has a photo route; a new one gets its id from the
-    // save, and the files wait for that.
-    if (current) void uploadFiles(current.id, accepted);
-  }
+        {/* Two inputs, because a shelter knows an age as "two years", not as a
+            month count. The unit next to each box labels it; the field itself
+            is the group above them. */}
+        <Field
+          uid={uid}
+          field="approximateAgeMonths"
+          label={portalText.fieldAgeMonths}
+          hint={portalText.ageHint}
+          error={refused === "age" ? portalText.invalidError : null}
+          errorId={refusedErrorId}
+        >
+          <div
+            role="group"
+            aria-label={portalText.fieldAgeMonths}
+            aria-describedby={hintId(uid, "approximateAgeMonths")}
+            className="grid grid-cols-2 gap-1.5"
+          >
+            <div className="flex items-center gap-1.5">
+              <Input
+                id={ageYearsId}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={draft.ageYears}
+                disabled={disabled}
+                aria-invalid={refused === "age" || undefined}
+                aria-errormessage={
+                  refused === "age" ? refusedErrorId : undefined
+                }
+                aria-describedby={hintId(uid, "approximateAgeMonths")}
+                onChange={(event) => setAge("ageYears", event.target.value)}
+              />
+              <Label
+                htmlFor={ageYearsId}
+                className="shrink-0 text-xs font-normal text-muted-foreground"
+              >
+                {portalText.fieldAgeYearsUnit}
+              </Label>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Input
+                id={ageMonthsId}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={draft.ageMonths}
+                disabled={disabled}
+                aria-invalid={refused === "age" || undefined}
+                aria-errormessage={
+                  refused === "age" ? refusedErrorId : undefined
+                }
+                aria-describedby={hintId(uid, "approximateAgeMonths")}
+                onChange={(event) => setAge("ageMonths", event.target.value)}
+              />
+              <Label
+                htmlFor={ageMonthsId}
+                className="shrink-0 text-xs font-normal text-muted-foreground"
+              >
+                {portalText.fieldAgeMonthsUnit}
+              </Label>
+            </div>
+          </div>
+        </Field>
+      </div>
+    </FormSection>
+  );
 
-  function retry(item: PendingPhoto) {
-    if (!current) return;
-    const again = { ...item, failed: false };
-    setPending((pending) =>
-      pending.map((candidate) => (candidate.key === item.key ? again : candidate)),
-    );
-    void uploadFiles(current.id, [again]);
-  }
+  const descriptionSection = (
+    <FormSection title={portalText.sectionDescription}>
+      <Field
+        uid={uid}
+        field="specialNeeds"
+        label={portalText.fieldSpecialNeeds}
+        hint={portalText.specialNeedsHint}
+      >
+        <ChoiceGrid
+          label={portalText.fieldSpecialNeeds}
+          options={PORTAL_SPECIAL_NEEDS_ANSWERS}
+          meta={SPECIAL_NEEDS_META}
+          value={draft.specialNeeds}
+          onPick={(value) => set("specialNeeds", value)}
+          disabled={disabled}
+          describedBy={hintId(uid, "specialNeeds")}
+        />
+      </Field>
 
-  function dropPending(item: PendingPhoto) {
-    releasePreview(item);
-    setPending((pending) =>
-      pending.filter((candidate) => candidate.key !== item.key),
-    );
-  }
-
-  async function removePhoto(photoId: number) {
-    if (!current) return;
-    if (removing !== photoId) {
-      setRemoving(photoId);
-      return;
-    }
-    setRemoving(null);
-    setPhotoError(null);
-    if (!(await actions.deletePhoto(current.id, photoId))) {
-      setPhotoError(portalText.photoRemoveError);
-    }
-  }
-
-  // The confirm closes on the tap and hands the focus back to Odstrani
-  // objavo, which is where it belongs if the request fails; on success the
-  // whole dialog closes after it and moves the focus out again.
-  async function archive() {
-    if (!current) return;
-    setAsking(null);
-    setAttempted(true);
-    setSubmitting(true);
-    try {
-      if (await actions.archive(current.id)) onOpenChange(false);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (missing) {
-      setRefused(missing);
-      showRefused(missing);
-      return;
-    }
-    if (badAgeBox) {
-      setRefused("age");
-      showRefused("approximateAgeMonths", badAgeBox === "months" ? 1 : 0);
-      return;
-    }
-    if (!input) return;
-
-    // From here the form owns whatever the shared save slot says next.
-    setAttempted(true);
-    setSubmitting(true);
-    try {
-      if (current) {
-        if (await actions.update(current.id, input)) onOpenChange(false);
-        return;
-      }
-      const saved = await actions.create(input);
-      if (!saved) return;
-      setCreated(saved);
-      onCreated?.(saved);
-      // The listing exists now whatever happens to its photos, so from here
-      // the dialog is editing it. A failed file stays on screen with its
-      // retry rather than closing over a listing with fewer photos than the
-      // shelter picked. `pending` is this render's, which is the one the
-      // submit was clicked in: nothing could be picked during the POST.
-      const failed = await uploadFiles(saved.id, pending);
-      if (!failed) onOpenChange(false);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const photos = current?.photos ?? [];
+      <Field
+        uid={uid}
+        field="shortDescription"
+        label={portalText.fieldDescription}
+        htmlFor={descriptionId}
+        hint={portalText.descriptionHint}
+      >
+        <Textarea
+          id={descriptionId}
+          rows={5}
+          value={draft.shortDescription}
+          disabled={disabled}
+          aria-describedby={hintId(uid, "shortDescription")}
+          onChange={(event) => set("shortDescription", event.target.value)}
+        />
+      </Field>
+    </FormSection>
+  );
 
   return (
-    <Dialog open={open} onOpenChange={requestClose}>
-      <DialogContent closeLabel="Zapri" className="gap-0" {...formFocus.props}>
-        <DialogHeader>
-          <DialogTitle className="text-base">
-            {editing
-              ? fill(portalText.editTitle, { name })
-              : portalText.listingNewTitle}
-          </DialogTitle>
-          <DialogDescription>
-            {editing ? portalText.listingEditLead : portalText.listingNewLead}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* The two fields a listing cannot exist without come first, then
-            the photos, then the status and the five fields an adopter
-            narrows the public grid by, then the descriptive rest. */}
-        <form
-          ref={formRef}
-          onSubmit={submit}
-          className="mt-5 space-y-5"
-          noValidate
-        >
-          <Field
-            uid={uid}
-            field="species"
-            label={portalText.fieldSpecies}
-            error={refused === "species" ? portalText.speciesRequired : null}
-            errorId={refusedErrorId}
-          >
-            <ChoiceGrid
-              label={portalText.fieldSpecies}
-              options={SPECIES_ORDER}
-              meta={SPECIES_META}
-              value={draft.species}
-              onPick={(species) => {
-                set("species", species);
-                if (species) answered("species");
-              }}
-              disabled={submitting}
-              describedBy={refused === "species" ? refusedErrorId : undefined}
-            />
-          </Field>
-
-          <Field
-            uid={uid}
-            field="name"
-            label={portalText.fieldName}
-            htmlFor={nameId}
-            hint={portalText.nameHint}
-            error={refused === "name" ? portalText.nameRequired : null}
-            errorId={refusedErrorId}
-          >
-            <Input
-              id={nameId}
-              value={draft.name}
-              disabled={submitting}
-              aria-invalid={refused === "name" || undefined}
-              aria-errormessage={
-                refused === "name" ? refusedErrorId : undefined
-              }
-              aria-describedby={hintId(uid, "name")}
-              onChange={(event) => {
-                set("name", event.target.value);
-                if (event.target.value.trim()) answered("name");
-              }}
-            />
-          </Field>
-
-          <Field
-            uid={uid}
-            field="photos"
-            label={portalText.fieldPhotos}
-            hint={`${portalText.photosHint} ${portalText.photoLimits}`}
-            error={photoError}
-            errorId={photoErrorId}
-          >
-            <div
-              role="group"
-              aria-label={portalText.fieldPhotos}
-              aria-describedby={hintId(uid, "photos")}
-              className="grid grid-cols-3 gap-1.5 sm:grid-cols-4"
-            >
-              {photos.map((photo, index) => {
-                const confirm = removing === photo.id;
-                return (
-                  <figure key={photo.id} className="space-y-1">
-                    {/* The API host is not one next/image knows, and the
-                        stored copy is already capped at 2048px. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.url}
-                      width={photo.width}
-                      height={photo.height}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="aspect-square w-full rounded-ui border bg-muted/40 object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      disabled={busy}
-                      aria-label={
-                        confirm
-                          ? undefined
-                          : fill(portalText.photoRemoveLabel, {
-                              index: index + 1,
-                            })
-                      }
-                      onClick={() => void removePhoto(photo.id)}
-                      className={cn(
-                        "w-full font-normal text-muted-foreground hover:text-foreground",
-                        confirm && "text-destructive hover:text-destructive",
-                      )}
-                    >
-                      {confirm
-                        ? portalText.photoRemoveConfirm
-                        : portalText.photoRemove}
-                    </Button>
-                  </figure>
-                );
-              })}
-
-              {pending.map((item) => (
-                <figure key={item.key} className="space-y-1">
-                  {/* A local object URL; nothing to optimise. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.previewUrl}
-                    alt=""
-                    className={cn(
-                      "aspect-square w-full rounded-ui border bg-muted/40 object-cover",
-                      !item.failed && "opacity-60",
-                    )}
-                  />
-                  {item.failed ? (
-                    <div className="space-y-1">
-                      <p
-                        role="alert"
-                        className="text-2xs leading-tight text-destructive"
-                      >
-                        {fill(portalText.photoUploadFailed, {
-                          name: item.file.name,
-                        })}
-                      </p>
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          disabled={busy || !current}
-                          onClick={() => retry(item)}
-                          className="flex-1"
-                        >
-                          <RefreshCw aria-hidden />
-                          {portalText.photoRetry}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          disabled={busy}
-                          onClick={() => dropPending(item)}
-                          className="font-normal text-muted-foreground hover:text-foreground"
-                        >
-                          {portalText.photoRemove}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : editing ? (
-                    <p className="text-center text-2xs text-muted-foreground">
-                      {portalText.photoPending}
-                    </p>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      disabled={busy}
-                      onClick={() => dropPending(item)}
-                      className="w-full font-normal text-muted-foreground hover:text-foreground"
-                    >
-                      {portalText.photoRemove}
-                    </Button>
-                  )}
-                </figure>
-              ))}
-
-              {/* The picker is an icon card like every other choice in the
-                  form. The input itself is what takes the focus, so the card
-                  draws the ring for it. */}
-              <label
-                htmlFor={fileId}
-                className={choiceCard(
-                  false,
-                  cn(
-                    "aspect-square cursor-pointer flex-col gap-1 self-start px-1.5 py-1.5 text-center text-xs leading-tight font-medium focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
-                    busy && "pointer-events-none opacity-50",
-                  ),
-                )}
-              >
-                <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden />
-                <span>{portalText.photoAdd}</span>
-                <input
-                  id={fileId}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  disabled={busy}
-                  aria-describedby={hintId(uid, "photos")}
-                  onChange={pickFiles}
-                  className="sr-only"
-                />
-              </label>
-            </div>
-            {uploading && (
-              <p
-                aria-live="polite"
-                className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
-              >
-                <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-                {fill(portalText.photoUploading, uploading)}
-              </p>
-            )}
-          </Field>
-
-          <Field
-            uid={uid}
-            field="status"
-            label={portalText.statusLegend}
-          >
-            <ChoiceGrid
-              label={portalText.statusLegend}
-              options={PORTAL_STATUSES}
-              meta={STATUS_META}
-              value={draft.status}
-              // A listing always has a status, so the chosen card cannot be
-              // tapped off; the API would default it to "available" anyway.
-              onPick={(status) => {
-                if (status) set("status", status);
-              }}
-              disabled={submitting}
-            />
-          </Field>
-
-          <Field
-            uid={uid}
-            field="energy"
-            label={portalText.fieldEnergy}
-            missing={missingSearchable.has("energy")}
-            hint={portalText.listingEnergyHint}
-          >
-            <ChoiceGrid
-              label={portalText.fieldEnergy}
-              options={PORTAL_ENERGIES}
-              meta={ENERGY_META}
-              value={draft.energy}
-              onPick={(energy) => set("energy", energy)}
-              disabled={submitting}
-              describedBy={hintId(uid, "energy")}
-            />
-          </Field>
-
-          <div className="space-y-5">
-            {(
-              [
-                ["goodWithKids", portalText.fieldGoodWithKids],
-                ["goodWithDogs", portalText.fieldGoodWithDogs],
-                ["goodWithCats", portalText.fieldGoodWithCats],
-              ] as const
-            ).map(([field, label]) => (
-              <Field
-                key={field}
-                uid={uid}
-                field={field}
-                label={label}
-                missing={missingSearchable.has(field)}
-              >
-                <ChoiceGrid
-                  label={label}
-                  options={PORTAL_COMPATIBILITIES}
-                  meta={COMPATIBILITY_META}
-                  value={draft[field]}
-                  onPick={(value) => set(field, value)}
-                  disabled={submitting}
-                  describedBy={compatibilityHintId}
-                />
-              </Field>
-            ))}
-            {/* One line for the three rows above, so all three point at it. */}
-            <p
-              id={compatibilityHintId}
-              className="text-xs text-muted-foreground"
-            >
-              {portalText.compatibilityHint}
-            </p>
-          </div>
-
-          <Field
-            uid={uid}
-            field="apartmentOk"
-            label={portalText.fieldApartmentOk}
-            missing={missingSearchable.has("apartmentOk")}
-          >
-            <ChoiceGrid
-              label={portalText.fieldApartmentOk}
-              options={PORTAL_COMPATIBILITIES}
-              meta={COMPATIBILITY_META}
-              value={draft.apartmentOk}
-              onPick={(value) => set("apartmentOk", value)}
-              disabled={submitting}
-            />
-          </Field>
-
-          <Field uid={uid} field="sex" label={portalText.fieldSex}>
-            <ChoiceGrid
-              label={portalText.fieldSex}
-              options={PORTAL_SEXES}
-              meta={SEX_META}
-              value={draft.sex}
-              onPick={(sex) => set("sex", sex)}
-              disabled={submitting}
-            />
-          </Field>
-
-          <Field
-            uid={uid}
-            field="breed"
-            label={portalText.fieldBreed}
-            htmlFor={breedId}
-          >
-            <Input
-              id={breedId}
-              value={draft.breed}
-              disabled={submitting}
-              onChange={(event) => set("breed", event.target.value)}
-            />
-          </Field>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field
-              uid={uid}
-              field="birthDate"
-              label={portalText.fieldBirthDate}
-              htmlFor={birthDateId}
-            >
-              <Input
-                id={birthDateId}
-                type="date"
-                value={draft.birthDate}
-                disabled={submitting}
-                onChange={(event) => set("birthDate", event.target.value)}
-              />
-            </Field>
-
-            {/* Two inputs, because a shelter knows an age as "two years", not
-                as a month count. The unit next to each box labels it; the
-                field itself is the group above them. */}
-            <Field
-              uid={uid}
-              field="approximateAgeMonths"
-              label={portalText.fieldAgeMonths}
-              hint={portalText.ageHint}
-              error={refused === "age" ? portalText.invalidError : null}
-              errorId={refusedErrorId}
-            >
-              <div
-                role="group"
-                aria-label={portalText.fieldAgeMonths}
-                aria-describedby={hintId(uid, "approximateAgeMonths")}
-                className="grid grid-cols-2 gap-1.5"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    id={ageYearsId}
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    step={1}
-                    value={draft.ageYears}
-                    disabled={submitting}
-                    aria-invalid={refused === "age" || undefined}
-                    aria-errormessage={
-                      refused === "age" ? refusedErrorId : undefined
-                    }
-                    aria-describedby={hintId(uid, "approximateAgeMonths")}
-                    onChange={(event) => setAge("ageYears", event.target.value)}
-                  />
-                  <Label
-                    htmlFor={ageYearsId}
-                    className="shrink-0 text-xs font-normal text-muted-foreground"
-                  >
-                    {portalText.fieldAgeYearsUnit}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    id={ageMonthsId}
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    step={1}
-                    value={draft.ageMonths}
-                    disabled={submitting}
-                    aria-invalid={refused === "age" || undefined}
-                    aria-errormessage={
-                      refused === "age" ? refusedErrorId : undefined
-                    }
-                    aria-describedby={hintId(uid, "approximateAgeMonths")}
-                    onChange={(event) =>
-                      setAge("ageMonths", event.target.value)
-                    }
-                  />
-                  <Label
-                    htmlFor={ageMonthsId}
-                    className="shrink-0 text-xs font-normal text-muted-foreground"
-                  >
-                    {portalText.fieldAgeMonthsUnit}
-                  </Label>
-                </div>
-              </div>
-            </Field>
-          </div>
-
-          <Field uid={uid} field="size" label={portalText.fieldSize}>
-            <ChoiceGrid
-              label={portalText.fieldSize}
-              options={PORTAL_SIZES}
-              meta={SIZE_META}
-              value={draft.size}
-              onPick={(size) => set("size", size)}
-              disabled={submitting}
-            />
-          </Field>
-
-          <Field
-            uid={uid}
-            field="specialNeeds"
-            label={portalText.fieldSpecialNeeds}
-            hint={portalText.specialNeedsHint}
-          >
-            <ChoiceGrid
-              label={portalText.fieldSpecialNeeds}
-              options={PORTAL_SPECIAL_NEEDS_ANSWERS}
-              meta={SPECIAL_NEEDS_META}
-              value={draft.specialNeeds}
-              onPick={(value) => set("specialNeeds", value)}
-              disabled={submitting}
-              describedBy={hintId(uid, "specialNeeds")}
-            />
-          </Field>
-
-          <Field
-            uid={uid}
-            field="shortDescription"
-            label={portalText.fieldDescription}
-            htmlFor={descriptionId}
-            hint={portalText.descriptionHint}
-          >
-            <Textarea
-              id={descriptionId}
-              rows={5}
-              value={draft.shortDescription}
-              disabled={submitting}
-              aria-describedby={hintId(uid, "shortDescription")}
-              onChange={(event) => set("shortDescription", event.target.value)}
-            />
-          </Field>
-
-          {errorText && (
-            <p
-              id={errorId}
-              role="alert"
-              className="flex items-start gap-1.5 text-sm text-destructive"
-            >
-              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              {errorText}
-            </p>
-          )}
-
-          <div className="sticky bottom-0 -mx-5 flex gap-2 border-t bg-popover px-5 pt-3 pb-1">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={busy}
-              onClick={requestClose}
-            >
-              {portalText.cancel}
-            </Button>
-            {editing && (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => setAsking("archive")}
-                className="text-destructive hover:text-destructive"
-              >
-                {portalText.listingArchive}
-              </Button>
-            )}
-            <Button
-              type="submit"
-              disabled={busy || !canSave}
-              className="flex-1"
-            >
-              {submitting && (
-                <LoaderCircle className="animate-spin" aria-hidden />
-              )}
-              {submitting ? portalText.saving : portalText.save}
-            </Button>
-          </div>
-        </form>
-
-        {/* The two questions, one state: only one of them can be open. Two
-            elements and not one parameterised block, so the words do not
-            change under the one that is closing. */}
-        <ConfirmDialog
-          open={asking === "discard"}
-          onOpenChange={closeAsk}
-          title={portalText.discardTitle}
-          lead={portalText.discardLead}
-          keepLabel={portalText.keepEditing}
-          confirmLabel={portalText.discardChanges}
-          onConfirm={discard}
-          {...askFocus.props}
-        />
-
-        {/* The shelter's delete. The lead says when the animal leaves the
-            public site, because for a manual shelter this form is the only
-            listing there is. */}
-        <ConfirmDialog
-          open={asking === "archive"}
-          onOpenChange={closeAsk}
-          title={fill(portalText.listingArchiveTitle, { name })}
-          lead={portalText.listingArchiveLead}
-          keepLabel={portalText.listingArchiveCancel}
-          confirmLabel={portalText.listingArchive}
-          onConfirm={() => void archive()}
-          {...askFocus.props}
-        />
-      </DialogContent>
-    </Dialog>
+    <div className="space-y-8">
+      {listing ? (
+        <>
+          {photoSection}
+          {searchableSection}
+          {basicsSection}
+        </>
+      ) : (
+        <>
+          {basicsSection}
+          {photoSection}
+          {searchableSection}
+        </>
+      )}
+      {ageSection}
+      {descriptionSection}
+    </div>
   );
 }

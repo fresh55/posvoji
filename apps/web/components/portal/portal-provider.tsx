@@ -79,9 +79,9 @@ export type PortalContextValue = {
   /** How far that run has got, for the banner to say so. */
   bulk: PortalBulkState;
   /**
-   * The animal the last save went to, so the list can take the shelter back
-   * to the card they were working on. Null until something has been saved,
-   * and dropped again the moment the shelter touches the filters.
+   * The animal or listing the last save went to, so the list can take the
+   * shelter back to the card they were working on. Null until something has
+   * been saved, and dropped again the moment the shelter touches the filters.
    */
   lastSaved: string | null;
   clearLastSaved: () => void;
@@ -91,6 +91,8 @@ export type PortalContextValue = {
   listingSaveStates: Record<string, PortalSaveState>;
   reloadListings: () => void;
   listingActions: PortalListingActions;
+  /** The name a listing's public page is filed under, or null when it has none. */
+  listingPublicName: (listing: PortalListing) => string | null;
   query: string;
   setQuery: (query: string) => void;
   /** The one chip that is on: a status, the review queue, or nothing. */
@@ -211,7 +213,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     state: listingState,
     saveStates: listingSaveStates,
     reload: reloadListings,
-    actions: listingActions,
+    actions: writeListing,
+    publicName: listingPublicName,
   } = usePortalListings(manual ? active : null, onUnauthorized);
 
   // Whatever was saved last is where the list should take the shelter back
@@ -225,6 +228,26 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       return saved;
     },
     [saveAnimalFields],
+  );
+
+  // The same for a manual shelter, whose animals are listings. Only the two
+  // calls that leave a card behind to go back to: a photo or an archive is
+  // either not a card of its own or not a card any more.
+  const listingActions = useMemo<PortalListingActions>(
+    () => ({
+      ...writeListing,
+      create: async (input) => {
+        const saved = await writeListing.create(input);
+        if (saved) setLastSaved(saved.id);
+        return saved;
+      },
+      update: async (listingId, input) => {
+        const saved = await writeListing.update(listingId, input);
+        if (saved) setLastSaved(listingId);
+        return saved;
+      },
+    }),
+    [writeListing],
   );
 
   const clearLastSaved = useCallback(() => setLastSaved(null), []);
@@ -265,6 +288,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       listingSaveStates,
       reloadListings,
       listingActions,
+      listingPublicName,
       query,
       setQuery,
       status,
@@ -297,6 +321,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       listingSaveStates,
       reloadListings,
       listingActions,
+      listingPublicName,
       query,
       status,
       clearFilters,

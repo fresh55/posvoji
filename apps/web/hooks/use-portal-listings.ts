@@ -96,9 +96,17 @@ export function usePortalListings(
   saveStates: Record<string, PortalSaveState>;
   reload: () => void;
   actions: PortalListingActions;
+  publicName: (listing: PortalListing) => string | null;
 } {
   const [listings, setListings] = useState<PortalListing[]>([]);
   const [state, setState] = useState<PortalListState>({ status: "loading" });
+  // The name every listing carried when this list arrived. A save replaces the
+  // listing but never this, so it stays the name from before the edit. A
+  // listing created in this session is in neither: the public site has no page
+  // for it at all yet.
+  const [listedNames, setListedNames] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  );
   const [saveStates, setSaveStates] = useState<Record<string, PortalSaveState>>(
     {},
   );
@@ -127,6 +135,7 @@ export function usePortalListings(
       (list) => {
         if (!live) return;
         setListings(list);
+        setListedNames(new Map(list.map((listing) => [listing.id, listing.name])));
         setState({ status: "ready" });
       },
       (error: unknown) => {
@@ -319,5 +328,17 @@ export function usePortalListings(
     [archive, create, deletePhoto, update, uploadPhoto],
   );
 
-  return { listings, state, saveStates, reload, actions };
+  /**
+   * The name the public site can already have a page for, or null when it can
+   * have none: the public site is a static export rebuilt about every twelve
+   * hours and generates no page for a slug that was not in that build, so a
+   * link built from a name typed since would land nowhere.
+   */
+  const publicName = useCallback(
+    (listing: PortalListing): string | null =>
+      listedNames.get(listing.id) ?? null,
+    [listedNames],
+  );
+
+  return { listings, state, saveStates, reload, actions, publicName };
 }

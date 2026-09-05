@@ -36,6 +36,18 @@ export function portalAnimalPath(
   return `${PORTAL_ANIMAL_PATH}?${query}`;
 }
 
+/**
+ * The same page, opened on a listing a manual shelter has not written yet.
+ *
+ * A listing that exists is an animal like any other and travels through
+ * portalAnimalPath: its uuid is the id. One that does not has no id to name,
+ * so the address says so instead, and the page opens an empty form.
+ */
+export function portalNewListingPath(shelter: string): string {
+  const query = new URLSearchParams({ zavetisce: shelter, nova: "1" });
+  return `${PORTAL_ANIMAL_PATH}?${query}`;
+}
+
 export type PortalSessionState =
   | { status: "loading" }
   | { status: "anonymous" }

@@ -277,8 +277,14 @@ function Field({
   );
 }
 
-/** One titled block of rows. Four of them make the form. */
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** One titled block of rows. Four or five of them make a form. */
+export function FormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="space-y-5">
       <h2 className="border-b pb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -338,7 +344,7 @@ export function AnimalForm({
 
   return (
     <div className="space-y-8">
-      <Section title={portalText.sectionSearchable}>
+      <FormSection title={portalText.sectionSearchable}>
         <Field
           uid={uid}
           field="energy"
@@ -414,9 +420,9 @@ export function AnimalForm({
             disabled={saving}
           />
         </Field>
-      </Section>
+      </FormSection>
 
-      <Section title={portalText.sectionBasics}>
+      <FormSection title={portalText.sectionBasics}>
         <Field
           uid={uid}
           field="name"
@@ -492,9 +498,9 @@ export function AnimalForm({
             disabled={saving}
           />
         </Field>
-      </Section>
+      </FormSection>
 
-      <Section title={portalText.sectionAge}>
+      <FormSection title={portalText.sectionAge}>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             uid={uid}
@@ -595,9 +601,9 @@ export function AnimalForm({
             )}
           </Field>
         </div>
-      </Section>
+      </FormSection>
 
-      <Section title={portalText.sectionDescription}>
+      <FormSection title={portalText.sectionDescription}>
         <Field
           uid={uid}
           field="specialNeeds"
@@ -639,7 +645,7 @@ export function AnimalForm({
             onChange={(event) => set("shortDescription", event.target.value)}
           />
         </Field>
-      </Section>
+      </FormSection>
     </div>
   );
 }

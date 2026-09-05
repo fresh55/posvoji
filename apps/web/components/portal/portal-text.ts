@@ -190,6 +190,11 @@ export const portalText = {
   leaveTitle: "Popravki niso shranjeni",
   leaveLead:
     "Če zdaj odprete seznam, se vpisano izgubi. Stanje se je shranilo takoj, ko ste ga izbrali, in ostane.",
+  // A listing that has never been saved has no status behind it and no record
+  // on the site, so the second half of leaveLead would be a lie: nothing about
+  // this animal has been kept anywhere.
+  leaveNewLead:
+    "Če zdaj odprete seznam, se vpisano izgubi in žival ne bo objavljena.",
   // The nav above the form. "Kje ste" rather than "Drobtinice": the portal
   // says things in words a shelter uses.
   breadcrumbLabel: "Kje ste",

@@ -72,23 +72,6 @@ export interface PreviousCrawledResult {
   bootstrapping: boolean;
 }
 
-// Which of two dataset stamps is the later one. Both come out of
-// Dataset.parse, so they are ISO strings and Date.parse orders them whatever
-// their formatting; a string that does not parse leaves nothing to say beyond
-// whether the two are the same, and undefined means "different, in an order
-// this cannot name".
-function compareGenerations(
-  left: string,
-  right: string,
-): number | undefined {
-  const a = Date.parse(left);
-  const b = Date.parse(right);
-  if (Number.isNaN(a) || Number.isNaN(b)) {
-    return left === right ? 0 : undefined;
-  }
-  return a === b ? 0 : a < b ? -1 : 1;
-}
-
 // One run writes animals.crawled.json and animals.json from the same clock
 // reading, the snapshot first. A run that dies between the two writes leaves
 // this run's snapshot beside the previous published file, and the order is
@@ -129,13 +112,13 @@ function assertGenerationPair(
     return;
   }
 
-  const order = compareGenerations(
-    options.published.generatedAt,
-    crawled.generatedAt,
-  );
-  if (order === 0) return;
+  // Both stamps come out of Dataset.parse, which validates them as ISO
+  // timestamps, so they always parse and their formatting cannot differ.
+  const publishedAt = Date.parse(options.published.generatedAt);
+  const crawledAt = Date.parse(crawled.generatedAt);
+  if (publishedAt === crawledAt) return;
 
-  if (order === -1) {
+  if (publishedAt < crawledAt) {
     console.warn(
       `WARNING: ${path} is from ${crawled.generatedAt} and ` +
         `${options.publishedPath} from ${options.published.generatedAt}, so ` +
@@ -163,29 +146,40 @@ function assertGenerationPair(
   );
 }
 
-// What overrides.json says about corrections having reached animals.json. It
-// is written on every run, portal configured or not, so its absence is itself
-// an answer: the last run predates the report.
+// Whether a correction has ever been merged into animals.json, as far as
+// overrides.json can say. The report is written on every run, portal
+// configured or not, so its absence is itself an answer: the last run predates
+// it, and so predates the portal.
+//
+// Each outcome carries the words the caller prints, so the reason a file was
+// trusted or refused is written where the decision is made.
 type OverrideEvidence =
-  // No report on disk. The run that wrote animals.json ran before the report
-  // existed, which is before the portal integration existed too.
-  | { kind: "no-report" }
-  // A report that says the portal was not configured and applied nothing.
-  | { kind: "clean" }
-  // A report that says otherwise, or one that cannot be read. Both fail
-  // closed: an unreadable report proves nothing, and the cost of guessing
-  // wrong is a correction written into the snapshot as crawl truth.
-  | { kind: "contaminated"; why: string };
+  // Nothing has been merged, and this is how we know.
+  | { merged: false; because: string }
+  // Something has, or the report cannot prove otherwise. An unreadable report
+  // proves nothing and the cost of guessing wrong is a correction written
+  // into the snapshot as crawl truth, so both fail closed.
+  | { merged: true; why: string };
 
-function readOverrideEvidence(path: string): OverrideEvidence {
-  if (!existsSync(path)) return { kind: "no-report" };
+function readOverrideEvidence(
+  path: string,
+  publishedPath: string,
+): OverrideEvidence {
+  if (!existsSync(path)) {
+    return {
+      merged: false,
+      because:
+        `there is no override report at ${path}, so the last run predates ` +
+        `it and no override has ever been merged into ${publishedPath}`,
+    };
+  }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
     return {
-      kind: "contaminated",
+      merged: true,
       why: `the override report at ${path} is not valid JSON (${error})`,
     };
   }
@@ -198,7 +192,7 @@ function readOverrideEvidence(path: string): OverrideEvidence {
     !Array.isArray(report.applied)
   ) {
     return {
-      kind: "contaminated",
+      merged: true,
       why:
         `the override report at ${path} does not have the shape of one ` +
         `(an enabled flag and an applied list)`,
@@ -207,7 +201,7 @@ function readOverrideEvidence(path: string): OverrideEvidence {
 
   if (report.enabled) {
     return {
-      kind: "contaminated",
+      merged: true,
       why:
         `the override report at ${path} says the portal integration was ` +
         `configured on the last run`,
@@ -215,13 +209,18 @@ function readOverrideEvidence(path: string): OverrideEvidence {
   }
   if (report.applied.length > 0) {
     return {
-      kind: "contaminated",
+      merged: true,
       why:
         `the override report at ${path} records ` +
         `${report.applied.length} applied override(s)`,
     };
   }
-  return { kind: "clean" };
+  return {
+    merged: false,
+    because:
+      `${path} records no configured portal and no applied override, so no ` +
+      `correction has been merged into ${publishedPath}`,
+  };
 }
 
 // The rules for standing animals.json in for a snapshot that is not there,
@@ -329,8 +328,11 @@ export function readPreviousCrawledDataset(
   }
 
   if (!options.portalEnabled) {
-    const evidence = readOverrideEvidence(options.overrideReportPath);
-    if (evidence.kind === "contaminated") {
+    const evidence = readOverrideEvidence(
+      options.overrideReportPath,
+      options.publishedPath,
+    );
+    if (evidence.merged) {
       return bootstrapFromPublished(
         path,
         options,
@@ -339,18 +341,10 @@ export function readPreviousCrawledDataset(
           `earlier run`,
       );
     }
-    const because =
-      evidence.kind === "no-report"
-        ? `there is no override report at ${options.overrideReportPath}, so ` +
-          `the last run predates it and no override has ever been merged into ` +
-          `${options.publishedPath}`
-        : `${options.overrideReportPath} records no configured portal and no ` +
-          `applied override, so no correction has been merged into ` +
-          `${options.publishedPath}`;
     console.log(
       `no crawled snapshot at ${path} yet. The portal integration is off and ` +
-        `${because}; it is the last crawl, and this run reads it and writes ` +
-        `the snapshot.`,
+        `${evidence.because}; it is the last crawl, and this run reads it ` +
+        `and writes the snapshot.`,
     );
     return { dataset: options.published, bootstrapping: false };
   }

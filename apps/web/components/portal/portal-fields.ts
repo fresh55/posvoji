@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { filterCardVariants } from "@/components/filters/filter-card";
+import { portalText } from "@/components/portal/portal-text";
 import { ENERGY_ICONS, SPECIES_ICONS } from "@/lib/animal-icons";
 import { FILTER_METADATA } from "@/lib/filters";
 import { SPECIES_ORDER } from "@/lib/species";
@@ -18,6 +19,7 @@ import { sexLabel, sizeLabel, speciesLabel } from "@/lib/labels";
 import {
   PORTAL_COMPATIBILITIES,
   PORTAL_ENERGIES,
+  PORTAL_FIELDS,
   PORTAL_SEXES,
   PORTAL_SIZES,
   PORTAL_STATUSES,
@@ -38,6 +40,9 @@ function oneOf<Value extends string>(
 }
 
 export const isPortalStatus = oneOf(PORTAL_STATUSES);
+// The editor page reads the field to open at out of the address, where any
+// string can turn up.
+export const isPortalField = oneOf(PORTAL_FIELDS);
 export const isPortalSex = oneOf(PORTAL_SEXES);
 export const isPortalSize = oneOf(PORTAL_SIZES);
 export const isPortalEnergy = oneOf(PORTAL_ENERGIES);
@@ -279,6 +284,23 @@ export const SEARCHABLE_FIELDS = [
   { key: "goodWithCats", label: "mačke" },
   { key: "apartmentOk", label: "stanovanje" },
 ] as const;
+
+/**
+ * The same five under the names the form gives them. The editor page lists
+ * them one per line beside the form, where there is room for the whole name
+ * and where the checklist has to read as the same thing as the rows it sits
+ * next to.
+ */
+export const SEARCHABLE_LABELS: Record<
+  (typeof SEARCHABLE_FIELDS)[number]["key"],
+  string
+> = {
+  energy: portalText.fieldEnergy,
+  goodWithKids: portalText.fieldGoodWithKids,
+  goodWithDogs: portalText.fieldGoodWithDogs,
+  goodWithCats: portalText.fieldGoodWithCats,
+  apartmentOk: portalText.fieldApartmentOk,
+};
 
 /**
  * Selected state for a deliberate "I don't know" answer. It is still a

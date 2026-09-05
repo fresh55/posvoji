@@ -11,6 +11,7 @@ import {
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
 import { ListingForm } from "@/components/portal/listing-form";
+import { PortalNotice } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { portalText } from "@/components/portal/portal-text";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
@@ -31,36 +32,6 @@ function CardSkeleton() {
       </div>
       <Skeleton className="h-11 w-full" />
       <Skeleton className="h-8 w-32" />
-    </div>
-  );
-}
-
-function Notice({
-  icon: Icon,
-  title,
-  children,
-  action,
-}: {
-  icon: typeof Inbox;
-  title: string;
-  children: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col items-start gap-3 rounded-ui border bg-muted/30 px-4 py-6 text-sm sm:items-center sm:text-center">
-      <span
-        aria-hidden
-        className="grid size-11 place-items-center rounded-ui border bg-background text-muted-foreground sm:mx-auto"
-      >
-        <Icon className="size-5" strokeWidth={1.75} />
-      </span>
-      <div className="space-y-1">
-        <p className="font-medium">{title}</p>
-        <p className="max-w-prose leading-relaxed text-muted-foreground">
-          {children}
-        </p>
-      </div>
-      {action}
     </div>
   );
 }
@@ -147,7 +118,7 @@ export function PortalWorkspace() {
       )}
 
       {state.status === "error" && (
-        <Notice
+        <PortalNotice
           icon={TriangleAlert}
           title={portalText.sessionErrorTitle}
           action={
@@ -162,13 +133,13 @@ export function PortalWorkspace() {
           {state.offline
             ? portalText.networkError
             : portalText.sessionErrorLead}
-        </Notice>
+        </PortalNotice>
       )}
 
       {state.status === "ready" && shelters.length === 0 && (
-        <Notice icon={Inbox} title={portalText.noSheltersTitle}>
+        <PortalNotice icon={Inbox} title={portalText.noSheltersTitle}>
           {portalText.noSheltersLead}
-        </Notice>
+        </PortalNotice>
       )}
 
       {state.status === "ready" && shelters.length > 0 && (
@@ -234,7 +205,7 @@ export function PortalWorkspace() {
             )}
 
             {listState.status === "error" && (
-              <Notice
+              <PortalNotice
                 icon={TriangleAlert}
                 title={portalText.listErrorTitle}
                 action={
@@ -244,13 +215,13 @@ export function PortalWorkspace() {
                 }
               >
                 {listState.message}
-              </Notice>
+              </PortalNotice>
             )}
 
             {listState.status === "ready" &&
               all.length === 0 &&
               (manual ? (
-                <Notice
+                <PortalNotice
                   icon={Inbox}
                   title={portalText.emptyTitle}
                   action={
@@ -261,11 +232,11 @@ export function PortalWorkspace() {
                   }
                 >
                   {portalText.listingsEmptyLead}
-                </Notice>
+                </PortalNotice>
               ) : (
-                <Notice icon={Inbox} title={portalText.emptyTitle}>
+                <PortalNotice icon={Inbox} title={portalText.emptyTitle}>
                   {portalText.emptyLead}
-                </Notice>
+                </PortalNotice>
               ))}
 
             {listState.status === "ready" && all.length > 0 && (
@@ -281,7 +252,7 @@ export function PortalWorkspace() {
             {listState.status === "ready" &&
               all.length > 0 &&
               visibleCount === 0 && (
-                <Notice
+                <PortalNotice
                   icon={SearchX}
                   title={portalText.noMatchesTitle}
                   action={
@@ -291,7 +262,7 @@ export function PortalWorkspace() {
                   }
                 >
                   {portalText.noMatchesLead}
-                </Notice>
+                </PortalNotice>
               )}
 
             {listState.status === "ready" &&

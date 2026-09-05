@@ -1,13 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PortalAnimalCard } from "@/components/portal/animal-card";
 import { fill, portalText } from "@/components/portal/portal-text";
@@ -15,9 +8,8 @@ import type { PortalAnimal, PortalShelter } from "@/lib/portal-api";
 
 afterEach(cleanup);
 
-// jsdom lays nothing out and has no Element.scrollTo. The editor scrolls the
-// dialog panel to the field it opens at and focuses it right after, so
-// without this the scroll throws and the focus never happens.
+// jsdom lays nothing out and has no Element.scrollTo, which motion reaches
+// for while it measures the card's own animations.
 Element.prototype.scrollTo = vi.fn();
 
 const IDLE = { status: "idle" } as const;
@@ -59,7 +51,7 @@ function statusButton(name: string): HTMLElement {
 
 /** The "manjka" line, found by the text it shows: that is its whole name. */
 function missingLine(): HTMLElement {
-  return screen.getByRole("button", {
+  return screen.getByRole("link", {
     name: (name) => name.startsWith(portalText.missingTitle),
   });
 }
@@ -193,7 +185,7 @@ describe("fields the public filters need", () => {
     expect(screen.queryByText(portalText.missingTitle)).toBeNull();
   });
 
-  it("opens the editor at the first field it names", async () => {
+  it("leads to the editor at the first field it names", () => {
     render(
       <PortalAnimalCard
         animal={animal({ energy: "calm" })}
@@ -203,23 +195,14 @@ describe("fields the public filters need", () => {
       />,
     );
 
-    fireEvent.click(missingLine());
-
-    // The editor is the dialog behind the line, opened by the line itself.
-    const dialog = screen.getByRole("dialog");
-    expect(
-      within(dialog).getByText(fill(portalText.editTitle, { name: "Muri" })),
-    ).toBeTruthy();
-
-    // Opening it is only half the job: energy is answered here, so the first
-    // field the line names is goodWithKids, and that is the row the dialog
-    // has to hand the shelter. The editor focuses it one frame after the
-    // open, so the assertion waits for that frame.
-    const row = dialog.querySelector('[data-field="goodWithKids"]');
-    expect(row).toBeTruthy();
-    await waitFor(() => {
-      expect(row?.contains(document.activeElement)).toBe(true);
-    });
+    // Energy is answered here, so the first field the line names is
+    // goodWithKids, and that is the row the address has to ask for. The page
+    // scrolls to it and focuses it once the animal has loaded.
+    const href = missingLine().getAttribute("href");
+    expect(href).toContain("/portal/zival?");
+    expect(href).toContain("zavetisce=testno");
+    expect(href).toContain("id=testno%3A1");
+    expect(href).toContain("polje=goodWithKids");
   });
 
   it("names the line by what it says, not by a hidden label", () => {
@@ -313,6 +296,26 @@ describe("what the card says about the animal", () => {
     );
 
     expect(screen.getByText(/Mačka · mešanec · samica/)).toBeTruthy();
+  });
+
+  it("sends Uredi podatke to the animal's own editor page", () => {
+    render(
+      <PortalAnimalCard
+        animal={animal()}
+        shelter={SHELTER}
+        saveState={IDLE}
+        onSave={vi.fn()}
+      />,
+    );
+
+    // A link and not a button: the editor is a page of the portal now, and
+    // the shelter travels in the address because a manual listing's id does
+    // not name the shelter it belongs to.
+    const link = screen.getByRole("link", { name: portalText.edit });
+    expect(link.getAttribute("href")).toBe(
+      "/portal/zival?zavetisce=testno&id=testno%3A1",
+    );
+    expect(link.getAttribute("target")).toBeNull();
   });
 
   it("links to the animal's public page under the shelter's town", () => {

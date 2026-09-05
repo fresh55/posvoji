@@ -178,6 +178,28 @@ export function cacheableUrls(
   return [...urls];
 }
 
+// The fields withCachedUrls grafts onto an image below. They describe a file
+// this run produced, so anything republishing an image from an older dataset
+// has to take them off and let the current manifest put them back: a stale
+// cachedUrl names a file the deletion sweep may already have removed, and a
+// provider whose caching rights were withdrawn must not keep one at all.
+export const CACHE_DERIVED_IMAGE_FIELDS = [
+  "cachedUrl",
+  "width",
+  "height",
+  "widths",
+  "avif",
+  "blurDataURL",
+] as const;
+
+// An image with every cache-derived field taken off. The caller decides what
+// to do with the rights; this only removes what points at a cached file.
+export function stripCacheDerivedFields(image: AnimalImage): AnimalImage {
+  const stripped: Record<string, unknown> = { ...image };
+  for (const field of CACHE_DERIVED_IMAGE_FIELDS) delete stripped[field];
+  return stripped as AnimalImage;
+}
+
 export function withCachedUrls(
   animals: Animal[],
   manifest: ImageCacheManifest,

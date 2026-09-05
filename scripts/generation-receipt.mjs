@@ -3,6 +3,11 @@ import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { collectMediaReferences } from "./media-references.mjs";
 
+/** @typedef {import('./operation-types.js').GenerationReceipt} GenerationReceipt */
+/** @typedef {import('./operation-types.js').GenerationReceiptPaths} GenerationReceiptPaths */
+/** @typedef {import('./operation-types.js').GenerationReceiptValidation} GenerationReceiptValidation */
+/** @typedef {import('./operation-types.js').GenerationRepair} GenerationRepair */
+
 export const GENERATION_RECEIPT_VERSION = 1;
 export const GENERATION_RECEIPT_FILE = "generation.json";
 
@@ -180,10 +185,12 @@ function artifactDigests(bytes) {
   );
 }
 
+/** @param {string} datasetGeneratedAt @param {Record<string, string>} artifacts @param {Record<string, string>} media */
 export function generationIdFor(datasetGeneratedAt, artifacts, media) {
   // Arrays make the canonical input independent of object insertion order.
   // Explicit code-unit order is identical on Windows and Linux; localeCompare
   // is host-locale-dependent and cannot define a portable digest.
+  /** @param {[string, string]} leftEntry @param {[string, string]} rightEntry */
   const byPath = ([left], [right]) => (left < right ? -1 : left > right ? 1 : 0);
   const canonical = JSON.stringify({
     version: GENERATION_RECEIPT_VERSION,
@@ -194,7 +201,11 @@ export function generationIdFor(datasetGeneratedAt, artifacts, media) {
   return digest(Buffer.from(canonical));
 }
 
-/** Build the last-written receipt for one complete generated snapshot. */
+/**
+ * Build the last-written receipt for one complete generated snapshot.
+ * @param {GenerationReceiptPaths} paths
+ * @returns {GenerationReceipt}
+ */
 export function createGenerationReceipt({ distDir, mediaRoot }) {
   const loaded = loadArtifacts(distDir);
   const snapshot = snapshotFrom(loaded.parsed);
@@ -339,6 +350,8 @@ function validationResult(validation) {
 /**
  * Validate both the receipt shape and every byte it commits to. The returned
  * parsed snapshot lets verify-media reuse the same authoritative read.
+ * @param {GenerationReceiptPaths} paths
+ * @returns {GenerationReceiptValidation}
  */
 export function validateGenerationReceipt(paths) {
   const validation = readValidationInputs(paths);
@@ -412,6 +425,7 @@ function repairablePaths(validation, repair) {
  * can recreate. Masters, all JSON inputs, and every unrelated media byte stay
  * strict, so a repair cannot bless a mixed export.
  */
+/** @param {GenerationReceiptPaths} paths @param {GenerationRepair} repair @returns {GenerationReceiptValidation & {repairableMedia: string[]}} */
 export function validateGenerationReceiptForRepair(paths, repair) {
   const validation = readValidationInputs(paths);
   const repairable = repairablePaths(validation, repair);

@@ -10,11 +10,14 @@
 //      could not be refreshed inside a provider that otherwise finished, and
 //      their previous records were carried forward (or, for an animal we have
 //      never held, the listing was skipped). The site goes slightly stale
+//      A per-provider mass-removal guard also takes this path: its suspect
+//      result is discarded before checkpointing, and prior records are kept.
 //      there, which is a better outcome than not deploying everything that did
 //      crawl.
 //   1  Blocked. Nothing was written, or what was written must not ship. This
-//      is every throw in the pipeline: invalid policies, a mass-removal guard
-//      trip, a misattributed animal, an unreadable previous dataset. Node
+//      is an uncaught throw in the pipeline: invalid policies, the final
+//      merged-dataset mass-removal guard, invalid merged records, or an
+//      unreadable previous dataset. Provider-local throws instead become 2. Node
 //      exits 1 on an uncaught throw by itself, so nothing here has to set it.
 //
 // Anything else is a crash of the runtime rather than a decision of ours, and

@@ -80,6 +80,9 @@ function validateSnapshot(dataset, shareManifest, logoManifest) {
  * The returned map keeps human-readable reasons because verify-media prints
  * them for missing files. Deployment consumes only its keys as an allowlist,
  * so an unreferenced file left in the local cache can never become public.
+ * @param {{generatedAt: string, animals: {id: string, images: {rights: string, cachedUrl?: string, widths?: number[], avif?: boolean}[]}[]}} dataset
+ * @param {{entries: Record<string, {files: string[]}>} | undefined} shareManifest
+ * @param {{entries: Record<string, {file: string}>} | undefined} logoManifest
  */
 export function collectMediaReferences(
   dataset,

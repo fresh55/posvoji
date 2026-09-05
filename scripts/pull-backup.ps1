@@ -9,6 +9,7 @@ param(
   [string]$Server = 'root@116.203.202.17',
   [string]$KeyFile = (Join-Path $env:USERPROFILE '.ssh\posvoji_hetzner_recovery'),
   [string]$PasswordFile = (Join-Path $env:USERPROFILE '.posvoji-backup-password'),
+  [ValidateRange(1, 168)][int]$MaxAgeHours = 36,
   [switch]$Initialize
 )
 $ErrorActionPreference = 'Stop'
@@ -46,6 +47,8 @@ $receiptText = & ssh @sshOptions $Server 'cat /srv/posvoji/backups/latest.json'
 if ($LASTEXITCODE -ne 0) { throw 'Could not read the host backup receipt' }
 $receipt = ($receiptText -join "`n") | ConvertFrom-Json
 if ($receipt.file -notmatch '^backup-[a-f0-9]{32}\.tar$' -or $receipt.sha256 -notmatch '^[a-f0-9]{64}$') { throw 'Invalid host backup receipt' }
+. (Join-Path $PSScriptRoot 'backup-freshness.ps1')
+Assert-BackupFreshness -Receipt $receipt -MaxAgeHours $MaxAgeHours
 $stage = Join-Path $resolvedRoot ('.transfer-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
 try {

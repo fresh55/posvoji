@@ -72,7 +72,7 @@ describe("generated artifact lock", () => {
     unblock();
     await first;
     expect(existsSync(lock)).toBe(false);
-  });
+  }, process.platform === "win32" ? 20_000 : 5_000);
 
   it("releases after a failed run", async () => {
     const { lock } = temporaryLock();

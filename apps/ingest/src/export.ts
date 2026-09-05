@@ -321,6 +321,7 @@ const policyById = new Map(
 // Carried records keep their actual observation time. A missing provider
 // checkpoint (the first upgraded run, or an empty legacy shelter) is unknown.
 Object.assign(snapshotReferences, readSnapshotReferences(datasetDir, previousCrawled?.generatedAt));
+providerSnapshots.prune(policies.map(({ policy }) => policy), snapshotReferences);
 
 if (requestedProviderId) {
   const target = policyById.get(requestedProviderId);
@@ -882,6 +883,7 @@ writeFileAtomic(join(datasetDir, "crawl-manifest.json"), JSON.stringify(buildCra
   listings: listings.kind === "ok" ? listings.payload : null,
 }), null, 2));
 const generationId = writeGenerationReceipt({}, { preserveInputRevision: true });
+providerSnapshots.prune(policies.map(({ policy }) => policy), snapshotReferences);
 console.log(`sealed generation ${generationId}`);
 
 console.log(

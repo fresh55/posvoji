@@ -12,7 +12,7 @@
     "test:node": "pnpm -r test",
     "test:portal": "uv run --directory apps/portal pytest",
     "test:visual": "pnpm --filter web test:e2e:visual",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "node scripts/generate-operation-types.mjs && pnpm -r typecheck",
     "lint": "pnpm lint:node && pnpm lint:portal && pnpm lint:shell",
     "lint:node": "pnpm -r lint",
     "lint:portal": "uv run --directory apps/portal ruff check . && uv run --directory apps/portal ruff format --check .",

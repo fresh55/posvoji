@@ -76,9 +76,24 @@ export function assertNotSuperseded(current, next) {
 export function assertFresh(status, now = Date.now(), maxAgeHours = 30) {
   validateStatus(status);
   if (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0) throw new Error("invalid freshness threshold");
-  const observations = status.providers.length ? status.providers.map((p) => [p.providerId, p.checkedAt]) : [["dataset", status.datasetGeneratedAt]];
-  const stale = observations.filter(([, at]) => !at || now - Date.parse(at) > maxAgeHours * 3600000 || Date.parse(at) > now + 300000);
-  if (stale.length) throw new Error(`stale or unknown source checks: ${stale.map(([id]) => id).join(", ")}`);
+  if (now - Date.parse(status.datasetGeneratedAt) > maxAgeHours * 3600000 || Date.parse(status.datasetGeneratedAt) > now + 300000) {
+    throw new Error("pipeline dataset is stale or future-dated");
+  }
+  return status.providers.filter((p) => !p.checkedAt || now - Date.parse(p.checkedAt) > maxAgeHours * 3600000 || Date.parse(p.checkedAt) > now + 300000).map((p) => p.providerId);
+}
+
+export function assertOperations(value, now = Date.now()) {
+  if (value?.version !== 1 || !value.jobs) throw new Error("missing host job status");
+  const warnings = [];
+  for (const [job, maxAgeHours, maxRunHours] of [["crawl", 30, 11], ["backup", 36, 2]]) {
+    const entry = value.jobs[job];
+    if (!entry || !["running", "success", "degraded", "failed"].includes(entry.state)) throw new Error(`${job}: missing job outcome`);
+    if (entry.state === "failed") throw new Error(`${job}: host job failed`);
+    if (!timestamp(entry.lastSuccessAt) || now - Date.parse(entry.lastSuccessAt) > maxAgeHours * 3600000 || Date.parse(entry.lastSuccessAt) > now + 300000) throw new Error(`${job}: no recent successful host job`);
+    if (entry.state === "running" && (!timestamp(entry.lastStartedAt) || now - Date.parse(entry.lastStartedAt) > maxRunHours * 3600000 || Date.parse(entry.lastStartedAt) > now + 300000)) throw new Error(`${job}: host job exceeded its run window`);
+    if (entry.state === "degraded" || entry.degraded === true) warnings.push(`${job}: publication succeeded with carried source data`);
+  }
+  return warnings;
 }
 
 function main([command, ...args]) {
@@ -91,10 +106,13 @@ function main([command, ...args]) {
     const [current, next] = args;
     assertNotSuperseded(existsSync(current) ? read(current) : null, read(next));
   } else if (command === "fresh") {
-    assertFresh(read(args[0]), Date.now(), Number(args[1] ?? 30));
+    const stale = assertFresh(read(args[0]), Date.now(), Number(args[1] ?? 30));
+    if (stale.length) console.log(`::warning::Shelter checks need attention: ${stale.join(", ")}`);
     if (args[2] && createHash("sha256").update(readFileSync(args[2])).digest("hex") !== read(args[0]).indexSha256) {
       throw new Error("public homepage does not match the served release status");
     }
+  } else if (command === "operations") {
+    for (const warning of assertOperations(read(args[0]))) console.log(`::warning::${warning}`);
   } else {
     throw new Error("usage: release-status.mjs create DIST RELEASE SHA OUTPUT | order CURRENT NEXT | fresh STATUS [HOURS]");
   }

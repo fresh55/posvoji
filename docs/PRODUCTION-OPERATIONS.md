@@ -1,31 +1,8 @@
 # Production crawl operations
 
-## Deployment state
-
-The host runner was installed and activated on 6 September 2026. A supervised
-crawl checked all 11 website providers, exported 486 animals, and published a
-release whose status and homepage bytes passed authenticated HTTPS verification.
-The crawl and backup timers are enabled; the previous Windows crawl and dead-man
-tasks are disabled. The old portal-only host backup timer is also disabled.
-
-The installed code is pinned to `eec8dd52a7c3ba8c26ffc5b53efa2cd043b96351`.
-The successful publication retry took 3 minutes 31 seconds, peaking at 3 GB of
-memory; this is one observation with a warm dependency and image cache, not a
-correction-latency guarantee. The server retains its existing release layout.
-The deployment checks required repairing the existing Caddy HTML fallback;
-authentication and the shared media route remain enabled.
-
-An encrypted off-server backup exists on the maintainer PC and passed a restore
-drill, including SQLite integrity and the generation's media hashes. Daily and
-logon retrieval is registered. The monitoring credentials and enablement variable
-are configured in GitHub; scheduled execution requires this workflow on the
-default branch. Confirm its manual run after merging before relying on it.
-
-On 6 September 2026, the stale home-address restriction was repaired in both
-the Hetzner firewall and the host UFW configuration. A supervised Rescue boot
-used the existing SSH key; no console password reset was needed. The server
-returned to normal operation and its existing homepage was verified over
-authenticated HTTPS. No paid backup or new paid service was enabled.
+The host runs an installed commit reachable from `origin/main`. The current pin
+belongs in private `/etc/posvoji/crawl.env`, not this runbook. Historical rollout
+measurements are in [the handover log](operations/2026-09-06-crawl-handover.md).
 
 ## Operating contract
 
@@ -68,9 +45,8 @@ retain the host lock for inspection. This verifies delivery, not every route.
 
 1. Restore SSH access. Inspect the server firewall and SSH listener from the
    console; retain the restriction to the maintainer's current address.
-2. Review and commit the intended code and its required deployment helpers.
-   This working tree also contains unrelated UI edits; do not commit or promote
-   them implicitly. Run all repository checks before choosing the commit.
+2. Review, test and merge the intended code. Promote the resulting full main
+   commit, including the new SHA created by a squash merge.
 3. Install the repository's Node version and pinned pnpm, plus Python 3.12+,
    Git, curl, flock and the existing portal runtime. Prepare the checkout at
    `/srv/posvoji/app`, owned by `posvoji:caddy`. Install frozen dependencies as
@@ -103,6 +79,22 @@ Before activation fails, the fallback is the existing PC publisher. After the
 host starts creating revisions, never resume the old PC state without seeding
 it from the host and stopping the host publisher first.
 
+## Promoting installed code
+
+Run `sudo posvoji-promote FULL_MAIN_COMMIT_SHA` after checks and merge. The
+installer places this command outside the checkout so a checkout cannot replace
+a running script. It fetches `origin/main`, rejects a dirty checkout or a target
+outside main history, pauses active timers, and refuses to interrupt an active
+job. It holds the crawl and artifact locks while installing frozen dependencies,
+updating units and atomically updating only the private commit pin. Failure
+restores the old checkout, dependencies and configuration; failed rollback leaves
+timers paused and reports that explicitly. Timers never pull or promote code.
+
+After promotion, start `posvoji-crawl.service` under supervision and verify its
+journal, served release and operations status. A code promotion itself does not
+publish a release. Build temporary files use `/srv/posvoji/tmp`, on the same disk
+as the checkout and media, including with systemd `PrivateTmp` enabled.
+
 For a sealed export that failed only during publication, run
 `bash scripts/run-host-crawl.sh --retry-publish` as the service user. It verifies
 the saved generation and publishes without another crawl. For applying current
@@ -111,25 +103,49 @@ a full Next build and may need missing media; it is not a five-minute guarantee.
 
 ## External monitoring without a new account
 
-`.github/workflows/production-health.yml` checks the production status and
-homepage at minutes 17 and 47. It verifies their identity and fails when any
-provider check is unknown, future-dated or older than 30 hours. Legacy releases
-without provider metadata use the dataset timestamp. It retries the pair once
-to tolerate a release switch between the two reads.
+`.github/workflows/production-health.yml` checks production at minutes 17 and
+47. It verifies the status/homepage identity and fails when the dataset is more
+than 30 hours old. Individual shelter check times that are unknown or old produce
+separate warnings; they do not label the whole pipeline broken.
 
-After deploying the status endpoint, set repository variable
-`POSVOJI_MONITOR_ENABLED=true`, run the workflow manually and confirm a green
-result. While basic auth is enabled, store its netrc content in Actions secret
-`POSVOJI_MONITOR_NETRC`; never put it in a variable, workflow, log or commit.
-Verify the maintainer receives failed-workflow notifications using a controlled
-failure before relying on it. The workflow is explicitly gated to public
-repositories to avoid paid private-repository runner usage.
+Crawl and backup units use `ExecStartPre` and `ExecStopPost` to record bounded
+status fields in `/srv/posvoji/operations/status.json`. Systemd passes the job
+result even after a failed start, timeout or OOM kill. A degraded export still
+publishes, then records `degraded` rather than silently becoming clean. No logs,
+credentials, database content or machine paths go into this status document.
 
-This is external polling, not an immediate per-run heartbeat. A failed publish
-can remain below the freshness threshold until the next check, and GitHub can
-delay scheduled runs or disable schedules after repository inactivity. Review
-the monitor periodically. Healthchecks integration can be added if an account
-is later chosen; none is required or claimed active here.
+Serve just this file from the existing authenticated site, before its fallback:
+
+```caddyfile
+handle /_posvoji/operations.json {
+    root * /srv/posvoji/operations
+    rewrite * /status.json
+    file_server
+}
+```
+
+The deploy layout check permits `/srv/posvoji/operations` as an additional root.
+Pass `--allow-root /srv/posvoji/operations` when running that check manually too.
+
+The monitor fails on a failed host job, missing outcome, overlong running job, or
+no recent successful crawl/backup (30/36 hours). A dead host backup is therefore
+detected even while the website stays fresh. A recorded failure is visible on
+the next monitor run, rather than waiting for the dataset freshness threshold.
+Run both services once when installing status reporting; missing history fails
+closed. The monitor checks host backup preparation, not whether the PC is online.
+
+Set repository variable `POSVOJI_MONITOR_ENABLED=true`. While basic auth remains,
+store its netrc in Actions secret `POSVOJI_MONITOR_NETRC`, never a variable or
+commit. Confirm both a manual and a scheduled run execute the verification job.
+The public-repository gate compares the serialized boolean to `false`; missing
+payload metadata cannot pass by coercion. The first step validates the actual
+event payload and logs only its event name and public-repository verdict.
+
+GitHub checks are external; HTTPS checks initiated on the production host are
+not independent monitoring. GitHub can delay schedules or disable them after
+inactivity. Failed-workflow notifications depend on the maintainer's GitHub
+notification preferences; successful polling does not prove notification
+receipt. This setup needs no new monitoring account or SMTP credentials.
 
 ## Backups using existing PC storage
 
@@ -160,7 +176,8 @@ The first command creates an encrypted repository under
 in an existing password manager. The second command registers a hidden daily
 and logon retrieval task. Retrieval checks the transferred archive's SHA-256,
 checks the encrypted repository and retains 7 daily, 4 weekly and 6 monthly
-snapshots. Disk space is still finite; inspect usage and `last-success.json`.
+snapshots. Archives include a creation time; retrieval rejects missing, future
+or older-than-36-hour receipts before transferring anything. Disk space is still finite; inspect usage and `last-success.json`.
 For another installation, no task or usable off-server backup exists merely
 because these scripts exist; verify retrieval and restoration there too.
 
@@ -191,8 +208,18 @@ an immediate `dataset:export --republish`, then `scripts/deploy.sh --withdrawal`
 the merged dataset and media allowlist, and reduces release retention to one.
 Withdrawal pruning failures are reported as failures even if the new page is
 live. Verify old animal/media URLs and old release directories are gone; review
-private checkpoint and backup retention against the withdrawal request too.
+private backup retention against the withdrawal request too. Every export,
+including `--republish`, removes checkpoints for non-granted or removed providers.
+Granted providers keep three recent snapshots plus latest and any receipt-bound
+reference needed by the current generation.
 This is an operator procedure, not an automatic policy-change watcher.
+
+Retired artifact-lock directories are safety tombstones, not ordinary temporary
+files. Age alone cannot prove a paused retire/recovery process is gone. The host
+prunes only same-machine retirements older than a day and older than the current
+boot, checking their nonce, checkout identity and file types. Current-boot
+retirements remain small but accumulate until a later reboot; do not delete them
+on an age-only schedule.
 
 The availability overlay and portal worker are deferred until SMTP, shelter
 login and the public-launch decision are resolved. The crawl export credentials

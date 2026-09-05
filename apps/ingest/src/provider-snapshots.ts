@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Animal } from "@posvoji/schema";
 import type { ProviderPolicy } from "@posvoji/schema";
@@ -72,6 +72,42 @@ export function reserveInputRevision(root: string): InputRevision {
 
 export class ProviderSnapshots {
   constructor(private readonly root: string) {}
+
+  // Called under the artifact lock. Keep receipt references even when a run
+  // advanced latest and then failed before sealing its dataset.
+  prune(policies: readonly ProviderPolicy[], references: Record<string, SnapshotReference>, keep = 3): void {
+    if (!Number.isSafeInteger(keep) || keep < 1) throw new Error("invalid snapshot retention");
+    const base = join(this.root, "provider-snapshots");
+    if (!existsSync(base)) return;
+    if (lstatSync(base).isSymbolicLink()) throw new Error("snapshot directory must not be a link");
+    const granted = new Set(policies.filter((p) => p.permission.status === "granted").map((p) => p.providerId));
+    for (const providerId of readdirSync(base)) {
+      const dir = this.directory(providerId);
+      if (!lstatSync(dir).isDirectory() || lstatSync(dir).isSymbolicLink()) throw new Error("invalid snapshot provider directory");
+      const names = readdirSync(dir);
+      for (const name of names) {
+        if ((name !== "latest.json" && !/^[a-f0-9]{64}\.json$/.test(name)) ||
+            !lstatSync(join(dir, name)).isFile() || lstatSync(join(dir, name)).isSymbolicLink()) {
+          throw new Error("unexpected entry in snapshot directory");
+        }
+      }
+      if (!granted.has(providerId)) {
+        for (const name of names) unlinkSync(join(dir, name));
+        rmdirSync(dir);
+        continue;
+      }
+      const retained = new Set([references[providerId]?.snapshotId]);
+      if (names.includes("latest.json")) {
+        const pointer = json(join(dir, "latest.json")) as { snapshotId: string };
+        if (!HASH.test(pointer.snapshotId)) throw new Error("invalid provider snapshot reference");
+        retained.add(pointer.snapshotId);
+      }
+      const objects = names.filter((name) => name !== "latest.json").sort((a, b) =>
+        statSync(join(dir, b)).mtimeMs - statSync(join(dir, a)).mtimeMs || a.localeCompare(b));
+      for (const name of objects.slice(0, keep)) retained.add(name.slice(0, -5));
+      for (const name of objects) if (!retained.has(name.slice(0, -5))) unlinkSync(join(dir, name));
+    }
+  }
 
   private directory(providerId: string): string {
     if (!/^[a-z0-9-]+$/.test(providerId)) throw new Error("invalid snapshot provider id");

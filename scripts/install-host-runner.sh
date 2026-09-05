@@ -16,6 +16,9 @@ getent group caddy >/dev/null
 [[ -d "$repo/node_modules" ]] || { echo 'install pinned dependencies as posvoji before installing the units' >&2; exit 1; }
 install -d -o posvoji -g caddy -m 750 /srv/posvoji/.cache /srv/posvoji/.local
 install -d -o posvoji -g caddy -m 700 /srv/posvoji/backups
+install -d -o posvoji -g caddy -m 700 /srv/posvoji/tmp
+install -d -o posvoji -g caddy -m 750 /srv/posvoji/operations
+[[ $(stat -c '%d' /srv/posvoji/tmp) = $(stat -c '%d' "$repo") ]] || { echo 'build temporary directory must share the checkout filesystem' >&2; exit 1; }
 # Provision the same store used by both normal and recovery jobs. In particular,
 # systemd PrivateTmp must not make the offline build depend on a temporary store.
 runuser -u posvoji -- env npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store pnpm --dir "$repo" fetch --frozen-lockfile
@@ -24,4 +27,6 @@ for unit in posvoji-crawl.service posvoji-crawl.timer posvoji-backup.service pos
   install -o root -g root -m 644 "$repo/scripts/systemd/$unit" "/etc/systemd/system/$unit"
 done
 systemctl daemon-reload
+install -o root -g root -m 750 "$repo/scripts/promote-host.sh" /usr/local/sbin/posvoji-promote.new
+mv -f /usr/local/sbin/posvoji-promote.new /usr/local/sbin/posvoji-promote
 echo 'Units installed. Run and verify one supervised crawl and backup before enabling the timers.'

@@ -1,18 +1,18 @@
 import { Fragment } from "react";
 import type { Animal } from "@posvoji/schema";
+import { PosterFacts, posterTiles } from "@/components/poster/poster-facts";
 import { QrCode } from "@/components/poster/qr-code";
 import type { AnimalFields } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { posterPhoto } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
+import { brandMarkPaths, BRAND_MARK_VIEWBOX } from "@/lib/brand-mark";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
 import {
   ageLabel,
-  animalMetaParts,
   longStayMonths,
-  META_SEPARATOR,
-  monthsInShelter,
   registerDateLabel,
+  statusLabel,
 } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import type { ShelterPhones } from "@/lib/shelters";
@@ -24,13 +24,13 @@ import "./poster.css";
  * One animal on one sheet of A4, for a vet's waiting room or a notice board.
  *
  * A server component, and it has to stay one: the QR code beside it is
- * encoded during the export, and every fact on the sheet is read from the
- * dataset the build already has open. Nothing here is interactive, because
- * paper is not.
+ * encoded during the export, the site's own mark is read off disk, and every
+ * fact on the sheet comes from the dataset the build already has open.
+ * Nothing here is interactive, because paper is not.
  *
- * The sheet says the name, shows the animal, names the shelter and carries
- * the code. It says nothing else. A poster that explains itself is a poster
- * nobody reads across a room.
+ * The sheet says the name, shows the animal, states what the shelter recorded
+ * about it, names the shelter and carries the code. It says nothing else. A
+ * poster that explains itself is a poster nobody reads across a room.
  */
 
 const posterText = {
@@ -56,61 +56,42 @@ const posterText = {
 } satisfies Record<Locale, Record<string, unknown>>;
 
 /**
- * The card's own fact line, in both of the two shapes it takes.
+ * How large the name is set, from how long it is.
  *
- * A card has room for two facts at 375px and picks which two: the "Vse" tab
- * says the species and the age, a species tab already said the species and
- * says the age and the size instead. A sheet of A4 has room for all three and
- * no reason to choose, and they are the same facts either way, so both shapes
- * are asked for and folded together. animalMetaParts stays the one place that
- * decides how each of them is worded and which are known at all.
+ * Counted at build time and never measured: a static export has no browser to
+ * ask, and a sheet whose headline resized itself after hydration would print
+ * differently from the preview it was printed off. Characters are a coarse
+ * proxy for width, which is the right kind of coarse here, because every step
+ * has a whole line of slack under it.
+ *
+ * 96% of the register's names are ten characters or fewer and take the top
+ * step; the ladder exists for the eighteen that are a name with the breed and
+ * the age written into it ("Rolf, nemški ovčar, 8 let"), which is how one
+ * shelter lists its dogs.
  */
-function metaParts(
-  animal: AnimalFields,
-  locale: Locale,
-  reference: Date,
-): string[] {
-  // The narrowing is what picks the second shape: only a tab that names one
-  // species drops the species word and says the size instead, and those are
-  // the two the SpeciesFilter union has.
-  const sized =
-    animal.species === "dog" || animal.species === "cat"
-      ? animalMetaParts(animal, locale, reference, animal.species)
-      : [];
-  return [
-    ...new Set([...animalMetaParts(animal, locale, reference), ...sized]),
-  ];
+export function headlineStep(name: string): "l" | "m" | "s" | "xs" {
+  if (name.length <= 10) return "l";
+  if (name.length <= 16) return "m";
+  if (name.length <= 24) return "s";
+  return "xs";
 }
 
-/** The wait, or nothing. The plea and the quiet aside are the dialog's own
- *  two voices for it, and which one an animal gets is labels.ts's call rather
- *  than this sheet's: see shelter-block.tsx and animal-facts.tsx. */
-function waitLine(
+/** The plea, or nothing. Past LONG_STAY_MONTHS the site stops stating the
+ *  wait and asks about it instead, in the animal's own name; the sheet
+ *  follows that one decision rather than making its own. The shorter wait is
+ *  a tile like the rest (see stayTile in poster-facts.tsx). */
+function pleaLine(
   animal: AnimalFields,
   locale: Locale,
   reference: Date,
   name: string,
-): { text: string; plea: boolean } | undefined {
-  const long = longStayMonths(animal, reference);
-  if (long !== undefined) {
-    const duration = ageLabel(long, locale);
-    return {
-      text: animal.name
-        ? translate(locale, "longStay", { name, duration })
-        : translate(locale, "longStayUnnamed", { duration }),
-      plea: true,
-    };
-  }
-  // An adopted animal has left, so its stay is history and stays off the
-  // sheet. It has no business on a poster at all, but a dataset can be a day
-  // behind a shelter's own listing.
-  if (!animal.intakeDate || animal.status === "adopted") return undefined;
-  const months = monthsInShelter(animal.intakeDate, reference);
+): string | undefined {
+  const months = longStayMonths(animal, reference);
   if (months === undefined) return undefined;
-  return {
-    text: `${getMessages(locale).factTimeInShelter}: ${ageLabel(months, locale)}`,
-    plea: false,
-  };
+  const duration = ageLabel(months, locale);
+  return animal.name
+    ? translate(locale, "longStay", { name, duration })
+    : translate(locale, "longStayUnnamed", { duration });
 }
 
 export function AnimalPoster({
@@ -139,8 +120,16 @@ export function AnimalPoster({
   const photo = posterPhoto(animal.images);
   const SpeciesMark = SPECIES_ICONS[animal.species];
 
-  const meta = metaParts(animal, locale, reference);
-  const wait = waitLine(animal, locale, reference, name);
+  const tiles = posterTiles(animal, locale, reference);
+  const plea = pleaLine(animal, locale, reference, name);
+  // Reserved and held are the two states worth a word beside the name: the
+  // animal is on the shelter's list and is not waiting for this reader's
+  // decision. Available says nothing, the way the site's own badge says
+  // nothing (components/status-badge.tsx).
+  const status =
+    animal.status === "reserved" || animal.status === "hold"
+      ? statusLabel(animal.status, locale)
+      : undefined;
 
   const logo = logos[animal.shelter.id];
   const phone = phones[animal.shelter.id];
@@ -172,24 +161,36 @@ export function AnimalPoster({
         // fotografije" would be the largest thing on the sheet and would be
         // about us rather than about the animal.
         <div className="poster-mark" aria-hidden>
-          <SpeciesMark strokeWidth={0.6} />
+          <SpeciesMark strokeWidth={0.8} />
         </div>
       )}
 
-      <h1 className="poster-headline">{name}</h1>
-      <p className="poster-seeking">{text.seeking}</p>
+      {/* The name and, where there is one, the word that says the animal is
+          already spoken for. Beside the name rather than under it, because it
+          qualifies the name and a reader who takes the sheet in from three
+          metres away reads those two things as one. */}
+      <div className="poster-head">
+        <h1 className={cn("poster-headline", `poster-headline--${headlineStep(name)}`)}>
+          {name}
+        </h1>
+        {status && <span className="poster-status">{status}</span>}
+      </div>
+      {/* "išče dom" is a claim, and an animal the shelter has taken off the
+          list is not making it. The status word beside the name says what is
+          true instead, so the sentence yields to it rather than printing its
+          own contradiction under it. */}
+      {!status && <p className="poster-seeking">{text.seeking}</p>}
 
-      {meta.length > 0 && (
-        <p className="poster-meta">{meta.join(META_SEPARATOR)}</p>
-      )}
+      {plea && <p className="poster-plea">{plea}</p>}
 
-      {wait && (
-        <p className={wait.plea ? "poster-wait" : "poster-stay"}>{wait.text}</p>
-      )}
+      <PosterFacts tiles={tiles} />
 
       <div className="poster-spacer" />
 
-      <div className="poster-foot">
+      {/* Who to ask, and how to find the page: one soft band across the foot
+          of the sheet. The two of them are one answer to one question and the
+          rule that used to separate them made them two. */}
+      <div className="poster-band">
         <div className="poster-shelter">
           {logo && (
             <span
@@ -212,16 +213,20 @@ export function AnimalPoster({
             </span>
           )}
           <p className="poster-shelter-name">{animal.shelter.name}</p>
-          <p className="poster-shelter-line">
-            {phone
-              ? `${animal.shelter.city}${META_SEPARATOR}${phone}`
-              : animal.shelter.city}
-          </p>
+          <p className="poster-shelter-city">{animal.shelter.city}</p>
+          {/* The one thing a passer-by copies off a wall, so it is set at the
+              shelter's own size rather than as a tail on the town's line. */}
+          {phone && <p className="poster-shelter-phone">{phone}</p>}
           <p className="poster-shelter-note">{text.adoption}</p>
         </div>
 
         <div className="poster-qr">
-          <QrCode value={url} label={text.qrLabel(name)} />
+          {/* The code keeps a white plate of its own inside the band's paper
+              tone: a symbol read by a camera wants white all the way out to
+              its quiet zone, and the band is not white. */}
+          <span className="poster-qr-plate">
+            <QrCode value={url} label={text.qrLabel(name)} />
+          </span>
           {/* A break opportunity after each separator, so the address wraps
               where a reader would expect it to. Without them the only rule in
               play is overflow-wrap: anywhere, which is the fallback for a
@@ -244,7 +249,20 @@ export function AnimalPoster({
       </div>
 
       <p className="poster-colophon">
-        <span className="poster-wordmark">posvoji.si</span>
+        <span className="poster-brand">
+          {/* The site's own mark, read off app/icon.svg during the export and
+              re-fronted with the sheet's ink. See lib/brand-mark.ts for why
+              neither the favicon's fill nor the header's mask can serve a
+              printer. */}
+          <svg
+            className="poster-brand-mark"
+            viewBox={BRAND_MARK_VIEWBOX}
+            fill="#111111"
+            aria-hidden
+            dangerouslySetInnerHTML={{ __html: brandMarkPaths() }}
+          />
+          <span className="poster-wordmark">posvoji.si</span>
+        </span>
         <span>{text.asOf(registerDateLabel(generatedAt, locale))}</span>
       </p>
     </div>

@@ -44,7 +44,6 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-import type { ShelterPhones } from "@/lib/shelters";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
 export type DialogPhotoRect = {
@@ -150,7 +149,6 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
 export function AnimalDialog({
   animal,
   logos,
-  phones,
   origin,
   siblingIds,
   reference,
@@ -161,8 +159,6 @@ export function AnimalDialog({
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
   logos: ShelterLogos;
-  /** Registry phones for the shelter block's secondary call to action. */
-  phones: ShelterPhones;
   origin?: DialogOrigin;
   /** The ids on screen, in the order they are shown. */
   siblingIds: string[];
@@ -638,7 +634,6 @@ export function AnimalDialog({
                   <ShelterBlock
                     animal={lastAnimal}
                     logos={logos}
-                    phones={phones}
                     reference={reference}
                     // The sticky bar below repeats this box's button on the
                     // phone, so the box keeps its own for sm and up only.

@@ -66,7 +66,6 @@ import type { LookupEntry } from "@/lib/municipality-coverage";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-import type { ShelterPhones } from "@/lib/shelters";
 
 // How long a cleared filter state can still be taken back. Long enough to
 // read the row and reach for it, short enough that the offer is gone before
@@ -211,16 +210,12 @@ function EmptyState({ children }: { children: ReactNode }) {
 export function AnimalGrid({
   animals,
   logos,
-  phones,
   referenceDate,
   municipalities,
   offSiteShelters,
 }: {
   animals: ClientAnimal[];
   logos: ShelterLogos;
-  /** Registry phones, keyed by shelter id like `logos`. Read on the server
-   *  and passed through to the dialog's shelter block. */
-  phones: ShelterPhones;
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
   referenceDate: string;
@@ -1004,7 +999,6 @@ export function AnimalGrid({
       <AnimalDialog
         animal={selected}
         logos={logos}
-        phones={phones}
         origin={origin}
         siblingIds={shownIds}
         reference={reference}

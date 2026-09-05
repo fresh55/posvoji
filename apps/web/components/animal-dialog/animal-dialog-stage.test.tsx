@@ -112,7 +112,6 @@ function dialogFor(subject: Animal) {
       <AnimalDialog
         animal={client}
         logos={{}}
-        phones={{}}
         siblingIds={[]}
         reference={new Date(REFERENCE)}
         onNavigate={() => {}}

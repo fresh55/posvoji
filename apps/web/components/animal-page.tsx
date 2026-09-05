@@ -16,7 +16,6 @@ import { animalPath, findAnimalBySlug, posterPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { getShelterPhones } from "@/lib/shelters";
 import { speciesLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -152,7 +151,6 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             <ShelterBlock
               animal={fields}
               logos={getShelterLogos()}
-              phones={getShelterPhones()}
               reference={reference}
             />
 

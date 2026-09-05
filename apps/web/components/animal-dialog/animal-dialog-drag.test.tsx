@@ -73,7 +73,6 @@ function renderDialog() {
       <AnimalDialog
         animal={client}
         logos={{}}
-        phones={{}}
         siblingIds={[]}
         reference={new Date(REFERENCE)}
         onNavigate={() => {}}

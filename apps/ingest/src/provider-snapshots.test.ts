@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -51,6 +51,25 @@ describe("provider checkpoints", () => {
     const store = new ProviderSnapshots(root);
     const ref = store.save(policy, sha, result);
     expect(new ProviderSnapshots(root).read(policy, sha)?.snapshotId).toBe(ref.snapshotId);
+  });
+  it("bounds history while retaining the sealed reference and latest interrupted progress", () => {
+    const store = new ProviderSnapshots(root);
+    const refs = Array.from({ length: 8 }, (_, i) => {
+      const ref = store.save(policy, sha, { ...result, checkedAt: `2026-09-05T0${i}:00:00Z` });
+      utimesSync(join(root, "provider-snapshots/fixture", `${ref.snapshotId}.json`), i + 1, i + 1);
+      return ref;
+    });
+    store.prune([policy], { fixture: refs[0]! });
+    const files = readdirSync(join(root, "provider-snapshots/fixture"));
+    expect(files).toHaveLength(5); // three recent objects, sealed object, pointer
+    expect(files).toContain(`${refs[0]!.snapshotId}.json`);
+    expect(store.read(policy, sha)?.snapshotId).toBe(refs[7]!.snapshotId);
+  });
+  it("removes withdrawn checkpoints even when the old receipt still refers to them", () => {
+    const store = new ProviderSnapshots(root);
+    const ref = store.save(policy, sha, result);
+    store.prune([{ ...policy, enabled: false, permission: { status: "denied" } }], { fixture: ref });
+    expect(existsSync(join(root, "provider-snapshots/fixture"))).toBe(false);
   });
 });
 

@@ -3,7 +3,7 @@
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 scratch=$(mktemp -d)
-trap 'rm -f -- "$scratch/status.json" "$scratch/index.html"; rmdir -- "$scratch"' EXIT
+trap 'rm -f -- "$scratch/status.json" "$scratch/index.html" "$scratch/operations.json"; rmdir -- "$scratch"' EXIT
 args=(--disable --fail --silent --show-error --compressed --proto '=https' --connect-timeout 10 --max-time 30 --max-filesize 16777216 --header 'Cache-Control: no-cache')
 if [[ -n "${POSVOJI_MONITOR_NETRC_FILE:-}" ]]; then
   [[ -f "$POSVOJI_MONITOR_NETRC_FILE" && ! -L "$POSVOJI_MONITOR_NETRC_FILE" && $(stat -c '%a' "$POSVOJI_MONITOR_NETRC_FILE") = 600 ]] || { echo 'monitor credentials must be a mode-600 regular file' >&2; exit 1; }
@@ -22,4 +22,6 @@ check() {
 # A release can switch between the two reads. Retry the pair once; sustained
 # HTTP, identity or freshness failures still fail the workflow.
 check || check
-echo 'production content and source freshness: OK'
+fetch https://posvoji.si/_posvoji/operations.json "$scratch/operations.json"
+node "$script_dir/release-status.mjs" operations "$scratch/operations.json"
+echo 'production delivery, pipeline freshness and host jobs: OK'

@@ -113,8 +113,12 @@ run non-zero and indistinguishable from a guard trip. Shipping ten shelters
 that crawled plus one that is a few hours stale is better than shipping
 nothing at all and leaving every shelter a day stale.
 
-`1` is every throw in the pipeline: invalid provider policies, a mass-removal
-guard trip, an animal whose shelter id and provider id disagree, an unreadable
+`2` also covers a provider-local mass-removal guard: its suspect checkpoint is
+not saved, its prior records and real check time are carried forward, and other
+shelters can publish. Provider-local validation throws take the same path.
+
+`1` is an uncaught throw outside provider isolation: invalid provider policies,
+the final merged-dataset mass-removal guard, invalid merged records, an unreadable
 previous dataset, two previous datasets from different runs. Node exits `1` on
 an uncaught throw by itself, so nothing in the exporter has to set it. These
 are the cases where the dataset either does not exist or should not be

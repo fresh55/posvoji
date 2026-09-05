@@ -957,6 +957,7 @@ else
       --host posvoji.si \
       --root "${EXPECTED_DOCROOT}" \
       --require-route "/media/*=${MEDIA_DIR}" \
+      --allow-root "${BASE_DIR}/operations" \
       --require-clean-html \
       --forbid-root "${FORBIDDEN_DOCROOT}" ||
     fail "the active Caddy route disagrees with ${LAYOUT_MARKER}; shared media was not changed"

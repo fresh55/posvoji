@@ -18,6 +18,11 @@ import { fileURLToPath } from "node:url";
 
 export const ARTIFACT_LOCK_VERSION = 1;
 
+/** @typedef {import('./operation-types.js').ProcessProbe} ProcessProbe */
+/** @typedef {import('./operation-types.js').ArtifactLockOwner} ArtifactLockOwner */
+/** @typedef {import('./operation-types.js').ArtifactLockRuntime} ArtifactLockRuntime */
+/** @typedef {import('./operation-types.js').AcquireArtifactLockOptions} AcquireArtifactLockOptions */
+
 const NONCE = /^[a-f0-9]{32}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 
@@ -76,6 +81,7 @@ export function machineIdentity() {
  * existing parent makes a copied lock name the checkout where it was made,
  * while still treating two spellings of a symlinked parent as one checkout.
  */
+/** @param {string} lockDir */
 export function artifactLockIdentity(lockDir) {
   const absolute = resolve(lockDir);
   let parent = dirname(absolute);
@@ -89,6 +95,7 @@ export function artifactLockIdentity(lockDir) {
   return process.platform === "win32" ? identity.toLowerCase() : identity;
 }
 
+/** @param {number} pid @returns {ProcessProbe} */
 function fallbackProcessProbe(pid) {
   try {
     process.kill(pid, 0);
@@ -103,6 +110,7 @@ function fallbackProcessProbe(pid) {
   }
 }
 
+/** @param {number} pid @returns {ProcessProbe} */
 function linuxProcessProbe(pid) {
   try {
     // Field 22 is the process start tick after boot. The second field is in
@@ -135,6 +143,7 @@ function linuxProcessProbe(pid) {
   }
 }
 
+/** @param {number} pid @returns {ProcessProbe} */
 function windowsProcessProbe(pid) {
   const command = [
     `$p = Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}'`,
@@ -162,6 +171,7 @@ function windowsProcessProbe(pid) {
   }
 }
 
+/** @param {number} pid @returns {ProcessProbe} */
 export function probeProcess(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) return { state: "unknown" };
   if (process.platform === "linux") return linuxProcessProbe(pid);
@@ -433,7 +443,11 @@ function recoverStaleLock(lockDir, runtime) {
   return retireArtifactLock(lockDir, second);
 }
 
-/** Acquire the checkout-wide generated-artifact lock. */
+/**
+ * Acquire the checkout-wide generated-artifact lock.
+ * @param {AcquireArtifactLockOptions} options
+ * @returns {{token: string, owner: ArtifactLockOwner}}
+ */
 export function acquireArtifactLock({
   activity,
   lockDir,
@@ -473,7 +487,10 @@ export function acquireArtifactLock({
   }
 }
 
-/** Release only the exact lock returned by acquireArtifactLock. */
+/**
+ * Release only the exact lock returned by acquireArtifactLock.
+ * @param {{lockDir: string, token: string}} options
+ */
 export function releaseArtifactLock({ lockDir, token }) {
   const first = readOwner(lockDir);
   const { owner } = first;

@@ -8,7 +8,9 @@ Type=oneshot
 User=posvoji
 Group=caddy
 WorkingDirectory=/srv/posvoji/app
+ExecStartPre=/usr/bin/python3 /srv/posvoji/app/scripts/operations-status.py crawl start
 ExecStart=/bin/bash /srv/posvoji/app/scripts/run-host-crawl.sh
+ExecStopPost=/usr/bin/python3 /srv/posvoji/app/scripts/operations-status.py crawl finish
 TimeoutStartSec=10h
 KillMode=control-group
 UMask=0027
@@ -20,6 +22,7 @@ ReadWritePaths=/srv/posvoji
 Environment=PNPM_HOME=/srv/posvoji/.local/share/pnpm
 Environment=XDG_CACHE_HOME=/srv/posvoji/.cache
 Environment=npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store
+Environment=TMPDIR=/srv/posvoji/tmp
 CPUQuota=100%
 MemoryHigh=50%
 MemoryMax=65%

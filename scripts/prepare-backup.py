@@ -15,6 +15,7 @@ import tarfile
 import tempfile
 import uuid
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -114,6 +115,7 @@ def prepare(
         receipt = json.loads((stage / "generation/dist/generation.json").read_text())
         metadata = {
             "version": 1,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
             "generationId": receipt["generationId"],
             "codeSha": subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=repo, text=True

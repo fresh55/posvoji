@@ -10,6 +10,18 @@ const source = readFileSync(join(root, "scripts", "deploy.sh"), "utf8").replaceA
   "\n",
 );
 
+// Parse and execute the generated awk programs, not just the outer shell.
+// Unescaped quotes around the slash used to disappear when Bash constructed
+// the host command, so Linux deployment failed after a successful build.
+for (const line of source.split("\n").filter((line) => line.includes("\\$(awk -v root="))) {
+  const fragment = line.trim().replace("/proc/self/mountinfo", "/dev/stdin");
+  const checked = spawnSync("bash", ["-s"], {
+    encoding: "utf8",
+    input: `set -eu\nRELEASE_DIR=/safe\nMEDIA_STAGE_DIR=/safe\nRELEASE_STAGE_DIR=/safe\nMEDIA_DIR=/safe\nresolved=/safe\nold=old\nrendered="${fragment}"\nprintf '1 2 3 4 /safe/child 6\\n' | bash -c "$rendered"\n`,
+  });
+  assert.equal(checked.status, 0, `generated mount check failed: ${checked.stderr}`);
+}
+
 assert.ok(
   source.includes('LC_ALL=C comm -13 \\"\\${desired}\\"'),
   "the orphan diff must compare its C-sorted lists under the C locale",

@@ -384,7 +384,7 @@ cleanup() {
         echo 'refusing to delete the failed release because current still resolves to it' >&2
         exit 1
       fi
-      mounted=\$(awk -v root=${RELEASE_DIR} '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
+      mounted=\$(awk -v root=${RELEASE_DIR} '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
       [ -z \"\$mounted\" ] || { echo \"refusing to delete a failed release containing mountpoint: \$mounted\" >&2; exit 1; }
       rm -rf --one-file-system -- ${RELEASE_DIR}
     else
@@ -410,7 +410,7 @@ esac"; then
     if [ ! -e ${MEDIA_STAGE_DIR} ] && [ ! -L ${MEDIA_STAGE_DIR} ]; then
       :
     elif [ \"\$(cat ${MEDIA_STAGE_DIR}/.deploy-owner 2>/dev/null || true)\" = ${RELEASE_NAME} ]; then
-      mounted=\$(awk -v root=${MEDIA_STAGE_DIR} '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
+      mounted=\$(awk -v root=${MEDIA_STAGE_DIR} '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
       [ -z \"\$mounted\" ] || { echo \"refusing to remove media staging containing mountpoint: \$mounted\" >&2; exit 1; }
       rm -rf --one-file-system -- ${MEDIA_STAGE_DIR}
     else
@@ -434,7 +434,7 @@ esac"; then
     if [ ! -e ${RELEASE_STAGE_DIR} ] && [ ! -L ${RELEASE_STAGE_DIR} ]; then
       :
     elif [ \"\$(cat ${RELEASE_STAGE_DIR}/.deploy-owner 2>/dev/null || true)\" = ${RELEASE_NAME} ]; then
-      mounted=\$(awk -v root=${RELEASE_STAGE_DIR} '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
+      mounted=\$(awk -v root=${RELEASE_STAGE_DIR} '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
       [ -z \"\$mounted\" ] || { echo \"refusing to remove release staging containing mountpoint: \$mounted\" >&2; exit 1; }
       rm -rf --one-file-system -- ${RELEASE_STAGE_DIR}
     else
@@ -922,7 +922,7 @@ test -s \"\$live${CURRENT_SITE_SUFFIX}/index.html\" || { echo 'the current relea
 test -r /proc/self/mountinfo || { echo 'host mount table is unreadable' >&2; exit 1; }
 if [ -e ${MEDIA_DIR} ] || [ -L ${MEDIA_DIR} ]; then
   test -d ${MEDIA_DIR} && test ! -L ${MEDIA_DIR} || { echo '${MEDIA_DIR} is not a real directory' >&2; exit 1; }
-  media_mount=\$(awk -v root=${MEDIA_DIR} '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
+  media_mount=\$(awk -v root=${MEDIA_DIR} '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
   [ -z \"\$media_mount\" ] || { echo \"mountpoint at or under ${MEDIA_DIR}: \$media_mount\" >&2; exit 1; }
 fi
 for unused in ${MEDIA_STAGE_DIR} ${RELEASE_DIR} ${RELEASE_DIR}.staging /tmp/posvoji-verify-${RELEASE_NAME} ${CURRENT_LINK}.${RELEASE_NAME}.next; do
@@ -981,14 +981,14 @@ remote_stream "atomically installing staged media files" \
   "cat '${REPO_ROOT}/scripts/list-media-files.mjs'" \
   "set -u
 test \"\$(cat ${MEDIA_STAGE_DIR}/.deploy-owner 2>/dev/null || true)\" = ${RELEASE_NAME} || { echo 'media staging ownership is missing or wrong' >&2; exit 1; }
-stage_mount=\$(awk -v root=${MEDIA_STAGE_DIR} '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
+stage_mount=\$(awk -v root=${MEDIA_STAGE_DIR} '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
 [ -z \"\$stage_mount\" ] || { echo \"nested mount under media staging: \$stage_mount\" >&2; exit 1; }
 unexpected=\$(find ${MEDIA_STAGE_DIR} -mindepth 1 ! -type f ! -type d -print -quit) || exit 1
 [ -z \"\$unexpected\" ] || { echo \"unexpected path in media staging: \$unexpected\" >&2; exit 1; }
 empty=\$(find ${MEDIA_STAGE_DIR} -type f ! -path ${MEDIA_STAGE_DIR}/.deploy-owner ! -path ${MEDIA_STAGE_DIR}/.deploy-files -empty -print -quit) || exit 1
 [ -z \"\$empty\" ] || { echo \"empty file in media staging: \$empty\" >&2; exit 1; }
 mkdir -p ${MEDIA_DIR} || exit 1
-live_mount=\$(awk -v root=${MEDIA_DIR} '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
+live_mount=\$(awk -v root=${MEDIA_DIR} '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || exit 1
 [ -z \"\$live_mount\" ] || { echo \"nested mount under live media: \$live_mount\" >&2; exit 1; }
 node - ${MEDIA_DIR} >/dev/null || { echo 'live media topology is unsafe' >&2; exit 1; }
 unexpected=\$(find ${MEDIA_DIR} -mindepth 1 ! -type f ! -type d -print -quit) || exit 1
@@ -1361,7 +1361,7 @@ while IFS= read -r old; do
     echo \"keeping \$old, it is the current release\"
     continue
   fi
-  mounted=\$(awk -v root=\"\$resolved\" '\$5 == root || index(\$5, root "/") == 1 { print \$5; exit }' /proc/self/mountinfo) || { echo \"could not inspect mounts under \$old\" >&2; prune_failed=true; continue; }
+  mounted=\$(awk -v root=\"\$resolved\" '\$5 == root || index(\$5, root \"/\") == 1 { print \$5; exit }' /proc/self/mountinfo) || { echo \"could not inspect mounts under \$old\" >&2; prune_failed=true; continue; }
   if [ -n \"\$mounted\" ]; then
     echo \"refusing to prune \$old; it contains mountpoint \$mounted\" >&2
     prune_failed=true

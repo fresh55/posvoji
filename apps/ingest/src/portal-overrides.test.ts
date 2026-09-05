@@ -391,10 +391,11 @@ describe("fetchPortalOverrides", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("returns null when only the URL is set", async () => {
+  it("refuses the run when only the URL is set", async () => {
     process.env["PORTAL_EXPORT_URL"] = "https://portal.posvoji.si";
-    const result = await fetchPortalOverrides();
-    expect(result).toBeNull();
+    await expect(fetchPortalOverrides()).rejects.toThrow(
+      /PORTAL_EXPORT_TOKEN is not/,
+    );
     expect(fetch).not.toHaveBeenCalled();
   });
 

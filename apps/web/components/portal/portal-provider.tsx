@@ -103,8 +103,8 @@ export type PortalContextValue = {
 
 const PortalContext = createContext<PortalContextValue | null>(null);
 
-// One array for every state that has no shelters, so the context value is not
-// rebuilt on each render only because a fresh [] was allocated for it.
+// One array for every state that has no shelters, so a consumer that keys an
+// effect or a memo on the list is not woken by a fresh [] each render.
 const NO_SHELTERS: PortalShelter[] = [];
 
 export function usePortal(): PortalContextValue {
@@ -261,72 +261,44 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     void signOut();
   }, [account, signOut]);
 
-  const value = useMemo<PortalContextValue>(
-    () => ({
-      session,
-      reloadSession,
-      account,
-      leaving,
-      signOut: leave,
-      shelters,
-      active,
-      activeShelter,
-      manual,
-      setActive,
-      animals,
-      animalState,
-      saveStates,
-      reloadAnimals,
-      save,
-      confirmStatuses,
-      bulk,
-      lastSaved,
-      clearLastSaved,
-      publicName,
-      listings,
-      listingState,
-      listingSaveStates,
-      reloadListings,
-      listingActions,
-      listingPublicName,
-      query,
-      setQuery,
-      status,
-      setStatus,
-      clearFilters,
-    }),
-    [
-      session,
-      reloadSession,
-      account,
-      leaving,
-      leave,
-      shelters,
-      active,
-      activeShelter,
-      manual,
-      setActive,
-      animals,
-      animalState,
-      saveStates,
-      reloadAnimals,
-      save,
-      confirmStatuses,
-      bulk,
-      lastSaved,
-      clearLastSaved,
-      publicName,
-      listings,
-      listingState,
-      listingSaveStates,
-      reloadListings,
-      listingActions,
-      listingPublicName,
-      query,
-      status,
-      clearFilters,
-    ],
-  );
+  // Not memoised on purpose. This provider re-renders only when its own
+  // state or one of its two list hooks changes, which is exactly when a
+  // dependency would have changed anyway, so a memo here can never prevent a
+  // rebuild. What it would add is a twenty-five entry dependency list that
+  // goes silently out of date the first time a field is added below.
+  const value: PortalContextValue = {
+    session,
+    reloadSession,
+    account,
+    leaving,
+    signOut: leave,
+    shelters,
+    active,
+    activeShelter,
+    manual,
+    setActive,
+    animals,
+    animalState,
+    saveStates,
+    reloadAnimals,
+    save,
+    confirmStatuses,
+    bulk,
+    lastSaved,
+    clearLastSaved,
+    publicName,
+    listings,
+    listingState,
+    listingSaveStates,
+    reloadListings,
+    listingActions,
+    listingPublicName,
+    query,
+    setQuery,
+    status,
+    setStatus,
+    clearFilters,
+  };
 
   return (
     <PortalContext value={value}>

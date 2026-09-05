@@ -2,16 +2,10 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  Check,
-  ChevronRight,
   ExternalLink,
-  LoaderCircle,
-  RotateCcw,
   SearchX,
   TriangleAlert,
-  Undo2,
 } from "lucide-react";
-import { m, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -25,24 +19,40 @@ import {
   portalPublicPath,
 } from "@/components/portal/animal-meta";
 import { ConfirmDialog } from "@/components/portal/confirm-dialog";
+import {
+  DraftResumedLine,
+  EditorBreadcrumb,
+  EditorSaveBar,
+} from "@/components/portal/editor-chrome";
 import { Glyph } from "@/components/portal/glyph";
 import { ListingEditorPage } from "@/components/portal/listing-editor-page";
-import { PortalNotice } from "@/components/portal/notice";
+import {
+  FieldError,
+  PortalNotice,
+  PortalPageHeading,
+  PortalPending,
+} from "@/components/portal/notice";
 import { OverrideMark } from "@/components/portal/override-mark";
 import {
+  fieldControls,
+  fieldRow,
   isPortalField,
   portalSpeciesIcon,
 } from "@/components/portal/portal-fields";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
+import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { StatusBlock } from "@/components/portal/status-block";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
+import {
+  usePortalDraft,
+  usePortalDraftMirror,
+} from "@/hooks/use-portal-draft";
 import { useReturnFocus } from "@/hooks/use-return-focus";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
 import { Button } from "@/components/ui/button";
 import { thumbnailUrl } from "@/lib/animal-images";
-import { clearDraft, readDraft, writeDraft } from "@/lib/portal-drafts";
 import type {
   PortalAnimal,
   PortalAnimalPatch,
@@ -104,27 +114,34 @@ export function AnimalEditorPage() {
     ? (animals.find((candidate) => candidate.id === animalId) ?? null)
     : null;
 
-  const backToList = (
-    <Button asChild variant="outline" size="sm">
-      <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
-    </Button>
+  const notFound = (
+    <>
+      <PortalPageHeading />
+      <PortalNotice
+        icon={SearchX}
+        title={portalText.editorNotFoundTitle}
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
+          </Button>
+        }
+      >
+        {portalText.editorNotFoundLead}
+      </PortalNotice>
+    </>
   );
 
   if (session.status === "loading" || session.status === "anonymous") {
     return (
       <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
-        <p
-          aria-live="polite"
-          className="flex items-center gap-2 text-sm text-muted-foreground"
-        >
-          <LoaderCircle className="size-4 animate-spin" aria-hidden />
-          {session.status === "anonymous"
-            ? portalText.redirecting
-            : portalText.loading}
-        </p>
+        <PortalPageHeading />
+        <PortalPending
+          label={
+            session.status === "anonymous"
+              ? portalText.redirecting
+              : portalText.loading
+          }
+        />
       </>
     );
   }
@@ -132,9 +149,7 @@ export function AnimalEditorPage() {
   if (session.status === "error") {
     return (
       <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
+        <PortalPageHeading />
         <PortalNotice
           icon={TriangleAlert}
           title={portalText.sessionErrorTitle}
@@ -154,29 +169,12 @@ export function AnimalEditorPage() {
 
   // A shelter the account does not have is answered at once: nothing is
   // loading that could turn it into an animal.
-  if (!slug || !animalId || !known) {
-    return (
-      <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
-        <PortalNotice
-          icon={SearchX}
-          title={portalText.editorNotFoundTitle}
-          action={backToList}
-        >
-          {portalText.editorNotFoundLead}
-        </PortalNotice>
-      </>
-    );
-  }
+  if (!slug || !animalId || !known) return notFound;
 
   if (showing && animalState.status === "error") {
     return (
       <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
+        <PortalPageHeading />
         <PortalNotice
           icon={TriangleAlert}
           title={portalText.listErrorTitle}
@@ -197,36 +195,13 @@ export function AnimalEditorPage() {
   if (!showing || animalState.status !== "ready") {
     return (
       <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
-        <p
-          aria-live="polite"
-          className="flex items-center gap-2 text-sm text-muted-foreground"
-        >
-          <LoaderCircle className="size-4 animate-spin" aria-hidden />
-          {portalText.loading}
-        </p>
+        <PortalPageHeading />
+        <PortalPending label={portalText.loading} />
       </>
     );
   }
 
-  if (!animal || !activeShelter || !account) {
-    return (
-      <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
-        <PortalNotice
-          icon={SearchX}
-          title={portalText.editorNotFoundTitle}
-          action={backToList}
-        >
-          {portalText.editorNotFoundLead}
-        </PortalNotice>
-      </>
-    );
-  }
+  if (!animal || !activeShelter || !account) return notFound;
 
   return (
     <AnimalEditor
@@ -272,25 +247,16 @@ function AnimalEditor({
   field: PortalField | null;
   onDone: () => void;
 }) {
-  const shouldReduceMotion = useReducedMotion();
   const now = useMemo(() => new Date(), []);
-  // What this browser tab still holds of an earlier visit to this animal.
-  // Read once, in the initialiser: the page renders on the client only (the
-  // build prerenders the Suspense fallback and nothing below it), so there is
-  // no server pass for this to disagree with.
-  //
-  // Laid over a draft built from the animal rather than used as it is. A
-  // deploy can change the shape of a draft while a tab is still open on the
-  // old one, and a missing key would turn its box into an uncontrolled input
-  // halfway through the form.
-  const [stored] = useState(() => {
-    const kept = readDraft<Partial<Draft>>(account, shelter, animal.id);
-    return kept ? { ...draftFrom(animal), ...kept } : null;
-  });
-  const [draft, setDraft] = useState<Draft>(() => stored ?? draftFrom(animal));
-  // Whether the form the shelter is looking at came out of storage. Said once,
-  // above the form, so the boxes are never full of words with no explanation.
-  const [resumed, setResumed] = useState(stored !== null);
+  // The typed half, and whatever this tab still holds of an earlier visit to
+  // this animal. See the hook for what is kept and when it is dropped.
+  const {
+    draft,
+    setDraft,
+    resumed,
+    reset: resetDraft,
+    clear: clearOwnDraft,
+  } = usePortalDraft(account, shelter, animal.id, () => draftFrom(animal));
   const [ageError, setAgeError] = useState(false);
   const [confirming, setConfirming] = useState(false);
   // A save that failed on the card keeps its message until the next attempt,
@@ -318,16 +284,10 @@ function AnimalEditor({
   useEffect(() => {
     if (!field) return;
     const frame = requestAnimationFrame(() => {
-      const row = formRef.current?.querySelector<HTMLElement>(
-        `[data-field="${field}"]`,
-      );
+      const row = fieldRow(formRef.current, field);
       if (!row) return;
       row.scrollIntoView({ block: "center" });
-      row
-        .querySelector<HTMLElement>(
-          "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
-        )
-        ?.focus({ preventScroll: true });
+      fieldControls(row)[0]?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [field]);
@@ -344,10 +304,7 @@ function AnimalEditor({
   // to the same typed work. Only while there is work: a form nobody has
   // touched must not leave a key behind, or the list would mark every animal
   // that was ever opened.
-  useEffect(() => {
-    if (unsaved) writeDraft(account, shelter, animal.id, draft);
-    else clearDraft(account, shelter, animal.id);
-  }, [account, animal.id, draft, shelter, unsaved]);
+  usePortalDraftMirror(account, shelter, animal.id, draft, unsaved);
 
   const name = animal.name ?? portalText.unnamed;
   const overrideCount = Object.keys(animal.overrides).length;
@@ -407,16 +364,14 @@ function AnimalEditor({
     // The control the focus would go back to is about to leave with the page.
     confirmFocus.release();
     setConfirming(false);
-    clearDraft(account, shelter, animal.id);
+    clearOwnDraft();
     onDone();
   }
 
   /** The line's own button: keep the animal, drop what was typed before. */
   function discardStored() {
-    clearDraft(account, shelter, animal.id);
-    setDraft(draftFrom(animal));
+    resetDraft();
     setAgeError(false);
-    setResumed(false);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -433,37 +388,18 @@ function AnimalEditor({
       return;
     }
     if (await onSave(patch)) {
-      clearDraft(account, shelter, animal.id);
+      clearOwnDraft();
       onDone();
     }
   }
 
   return (
     <>
-      <nav
-        aria-label={portalText.breadcrumbLabel}
-        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <Link
-          href={PORTAL_PATH}
-          onClick={(event) => {
-            // The link is a real one, so Back, a middle click and a long
-            // press all behave. It is only held back when there is typed
-            // work the shelter has not been asked about yet.
-            if (unsaved) {
-              event.preventDefault();
-              setConfirming(true);
-            }
-          }}
-          className="rounded-ui underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring"
-        >
-          {portalText.animalsTitle}
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" aria-hidden />
-        <span aria-current="page" className="min-w-0 truncate text-foreground">
-          {name}
-        </span>
-      </nav>
+      <EditorBreadcrumb
+        name={name}
+        blocked={unsaved}
+        onBlocked={() => setConfirming(true)}
+      />
 
       {/* One form over both columns, so the bar in the summary submits the
           rows beside it without a form attribute to tie them together. */}
@@ -515,37 +451,7 @@ function AnimalEditor({
 
               {/* The same quiet place the card keeps for the outcome of a
                   save, so a status tap reports itself the same way here. */}
-              <div aria-live="polite" className="min-h-6 shrink-0">
-                {saving && (
-                  <m.span
-                    key="saving"
-                    initial={shouldReduceMotion ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-                  >
-                    <LoaderCircle
-                      className="size-3.5 animate-spin"
-                      aria-hidden
-                    />
-                    {portalText.saving}
-                  </m.span>
-                )}
-                {saveState.status === "saved" && (
-                  <m.span
-                    key="saved"
-                    initial={
-                      shouldReduceMotion ? false : { opacity: 0, scale: 0.92 }
-                    }
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="inline-flex items-center gap-1 rounded-4xl border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-1.5 py-0.5 text-2xs font-medium text-[var(--filter-accent-foreground)]"
-                  >
-                    <Check className="size-3" strokeWidth={2.6} aria-hidden />
-                    {portalText.saved}
-                  </m.span>
-                )}
-              </div>
+              <SaveStatusPip state={saveState} />
             </div>
 
             <StatusBlock
@@ -584,26 +490,12 @@ function AnimalEditor({
                 The bottom padding carries the phone's home indicator, and the
                 page's own max-lg:pb-28 keeps the last row's tap-target
                 overlay clear of the bar. */}
-            <div className="flex gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={saving}
-                onClick={requestLeave}
-              >
-                {portalText.cancel}
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving || !unsaved}
-                className="flex-1"
-              >
-                {saving && (
-                  <LoaderCircle className="animate-spin" aria-hidden />
-                )}
-                {saving ? portalText.saving : portalText.save}
-              </Button>
-            </div>
+            <EditorSaveBar
+              saving={saving}
+              cancelDisabled={saving}
+              saveDisabled={saving || !unsaved}
+              onCancel={requestLeave}
+            />
           </aside>
 
           <div className="space-y-6 max-lg:pb-28">
@@ -611,22 +503,7 @@ function AnimalEditor({
                 to a form that is not the animal's saved state, and nothing
                 else on the page would say why. */}
             {resumed && (
-              <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <RotateCcw className="size-3.5 shrink-0" aria-hidden />
-                {portalText.draftResumed}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  disabled={saving}
-                  aria-label={portalText.draftDiscardLabel}
-                  onClick={discardStored}
-                  className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground max-lg:tap-target hover:text-foreground"
-                >
-                  <Undo2 aria-hidden />
-                  {portalText.draftDiscard}
-                </Button>
-              </p>
+              <DraftResumedLine disabled={saving} onDiscard={discardStored} />
             )}
 
             <AnimalForm
@@ -642,19 +519,7 @@ function AnimalEditor({
               ageErrorId={ageErrorId}
             />
 
-            {errorText && (
-              <p
-                id={errorId}
-                role="alert"
-                className="flex items-start gap-1.5 text-sm text-destructive"
-              >
-                <TriangleAlert
-                  className="mt-0.5 size-3.5 shrink-0"
-                  aria-hidden
-                />
-                {errorText}
-              </p>
-            )}
+            {errorText && <FieldError id={errorId}>{errorText}</FieldError>}
           </div>
         </div>
       </form>

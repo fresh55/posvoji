@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
+import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
 import {
   MissingMark,
@@ -12,18 +13,17 @@ import {
   COMPATIBILITY_META,
   ENERGY_META,
   PORTAL_SPECIAL_NEEDS_ANSWERS,
-  SEARCHABLE_FIELDS,
   SEX_META,
   SIZE_META,
   SPECIAL_NEEDS_META,
   ageParts,
   hintId,
-  isCount,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
   isoDate,
+  parseAgeBoxes,
   specialNeedsAnswer,
   specialNeedsValue,
   trimmed,
@@ -163,31 +163,18 @@ export function buildPatch(
     animal.specialNeeds,
   );
 
-  // The wire still carries one month count. An empty half counts as zero, so
-  // "2 let" alone is two years; only two empty boxes clear the override. The
-  // months box is not capped at eleven: "18 mesecev" adds up to the same age.
-  const rawYears = draft.ageYears.trim();
-  const rawMonths = draft.ageMonths.trim();
-  let ageError: AgeBox | null = null;
-  if (rawYears === "" && rawMonths === "") {
-    put("approximateAgeMonths", null, animal.approximateAgeMonths ?? null);
-  } else {
-    const years = rawYears === "" ? 0 : Number(rawYears);
-    const months = rawMonths === "" ? 0 : Number(rawMonths);
-    if (!isCount(years)) {
-      ageError = "years";
-    } else if (!isCount(months)) {
-      ageError = "months";
-    } else {
-      put(
-        "approximateAgeMonths",
-        years * 12 + months,
-        animal.approximateAgeMonths ?? null,
-      );
-    }
+  // A box that holds something unusable is left out of the patch: it is not a
+  // value to save and not a request to give the field back either.
+  const age = parseAgeBoxes(draft.ageYears, draft.ageMonths);
+  if (!age.error) {
+    put(
+      "approximateAgeMonths",
+      age.months,
+      animal.approximateAgeMonths ?? null,
+    );
   }
 
-  return { patch, ageError };
+  return { patch, ageError: age.error };
 }
 
 /** Label row shared by every field: the name, the edit mark, the way back. */
@@ -337,9 +324,7 @@ export function AnimalForm({
   // the saved animal, not the draft, so the row keeps saying what the public
   // site currently knows until the save goes through.
   const missing = new Set<PortalField>(
-    SEARCHABLE_FIELDS.filter((field) => animal[field.key] === null).map(
-      (field) => field.key,
-    ),
+    missingSearchableFields(animal).map((field) => field.key),
   );
 
   return (

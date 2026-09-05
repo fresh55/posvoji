@@ -456,7 +456,7 @@ export function PortalWorkspace() {
                         shelter={active}
                         hasDraft={drafts.has(listing.id)}
                         saveState={
-                          listingSaveStates[listing.id] ?? { status: "idle" }
+                          listingSaveStates[listing.id] ?? IDLE
                         }
                         actions={listingActions}
                       />

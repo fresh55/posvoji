@@ -9,16 +9,10 @@ import {
   type ChangeEvent,
 } from "react";
 import {
-  Check,
-  ChevronRight,
   ExternalLink,
-  LoaderCircle,
-  RotateCcw,
   SearchX,
   TriangleAlert,
-  Undo2,
 } from "lucide-react";
-import { m, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -26,12 +20,16 @@ import {
   portalMetaLine,
 } from "@/components/portal/animal-meta";
 import { ConfirmDialog } from "@/components/portal/confirm-dialog";
+import {
+  DraftResumedLine,
+  EditorBreadcrumb,
+  EditorSaveBar,
+} from "@/components/portal/editor-chrome";
 import { Glyph } from "@/components/portal/glyph";
 import {
+  ACCEPTED_PHOTO_TYPES,
   ListingForm,
   draftFrom,
-  fieldControls,
-  fieldRow,
   inputOf,
   listingInput,
   sameShape,
@@ -41,30 +39,38 @@ import {
   type PendingPhoto,
   type Refused,
 } from "@/components/portal/listing-form";
-import { PortalNotice } from "@/components/portal/notice";
 import {
+  FieldError,
+  PortalNotice,
+  PortalPageHeading,
+  PortalPending,
+} from "@/components/portal/notice";
+import {
+  fieldControls,
+  fieldRow,
   isPortalField,
   isPortalStatus,
   portalSpeciesIcon,
 } from "@/components/portal/portal-fields";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
+import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { ListingStatusBlock } from "@/components/portal/status-block";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
 import { NEW_LISTING, type PortalListingActions } from "@/hooks/use-portal-listings";
 import { PORTAL_PATH, portalAnimalPath } from "@/hooks/use-portal-session";
+import {
+  usePortalDraft,
+  usePortalDraftMirror,
+} from "@/hooks/use-portal-draft";
 import { useReturnFocus } from "@/hooks/use-return-focus";
 import { Button } from "@/components/ui/button";
-import { clearDraft, readDraft, writeDraft } from "@/lib/portal-drafts";
 import type {
   PortalField,
   PortalListing,
   PortalShelter,
 } from "@/lib/portal-api";
-
-/** What the API takes, checked by opening the file; this is the first pass. */
-const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /** The same cap as PORTAL_MAX_UPLOAD_BYTES in apps/portal. */
 const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
@@ -119,21 +125,17 @@ export function ListingEditorPage() {
       ? (listings.find((candidate) => candidate.id === wanted) ?? null)
       : null;
 
-  const backToList = (
-    <Button asChild variant="outline" size="sm">
-      <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
-    </Button>
-  );
-
   const notFound = (
     <>
-      <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-        {portalText.brand}
-      </h1>
+      <PortalPageHeading />
       <PortalNotice
         icon={SearchX}
         title={portalText.editorNotFoundTitle}
-        action={backToList}
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
+          </Button>
+        }
       >
         {portalText.editorNotFoundLead}
       </PortalNotice>
@@ -147,9 +149,7 @@ export function ListingEditorPage() {
   if (showing && listingState.status === "error") {
     return (
       <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
+        <PortalPageHeading />
         <PortalNotice
           icon={TriangleAlert}
           title={portalText.listErrorTitle}
@@ -171,16 +171,8 @@ export function ListingEditorPage() {
   if (!showing || listingState.status !== "ready" || !activeShelter || !account) {
     return (
       <>
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
-          {portalText.brand}
-        </h1>
-        <p
-          aria-live="polite"
-          className="flex items-center gap-2 text-sm text-muted-foreground"
-        >
-          <LoaderCircle className="size-4 animate-spin" aria-hidden />
-          {portalText.loading}
-        </p>
+        <PortalPageHeading />
+        <PortalPending label={portalText.loading} />
       </>
     );
   }
@@ -239,24 +231,19 @@ function ListingEditor({
   onCreated: (listing: PortalListing) => void;
   onDone: () => void;
 }) {
-  const shouldReduceMotion = useReducedMotion();
   const now = useMemo(() => new Date(), []);
   // Where this listing's typed work is filed. A new one has no id of its own
   // yet, and keeps this key for as long as it is being written.
   const [draftId] = useState(() => listing?.id ?? NEW_DRAFT_ID);
-  // What this browser tab still holds of an earlier visit. Read once, in the
-  // initialiser: the page renders on the client only, so there is no server
-  // pass for this to disagree with. Laid over a draft built from the listing
-  // rather than used as it is, because a deploy can change the shape of a
-  // draft while a tab is still open on the old one.
-  const [stored] = useState(() => {
-    const kept = readDraft<Partial<Draft>>(account, shelter.slug, draftId);
-    return kept ? { ...draftFrom(listing), ...kept } : null;
-  });
-  const [draft, setDraft] = useState<Draft>(() => stored ?? draftFrom(listing));
-  // Whether the form the shelter is looking at came out of storage. Said once,
-  // above the form, so the boxes are never full of words with no explanation.
-  const [resumed, setResumed] = useState(stored !== null);
+  // The typed half, and whatever this tab still holds of an earlier visit to
+  // this listing. See the hook for what is kept and when it is dropped.
+  const {
+    draft,
+    setDraft,
+    resumed,
+    reset: resetDraft,
+    clear: clearOwnDraft,
+  } = usePortalDraft(account, shelter.slug, draftId, () => draftFrom(listing));
   /** The field the submit refused. One at a time, so one message at a time. */
   const [refused, setRefused] = useState<Refused | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -329,7 +316,9 @@ function ListingEditor({
   // reads the input.
   const { input, missing } = inputOf(shape);
   // What the form would change against what is saved, or against nothing.
-  const baseline = shapeOf(draftFrom(listing)).shape;
+  // Built from the saved listing alone, so it is not rebuilt on every
+  // keystroke: sameShape below serialises both sides to compare them.
+  const baseline = useMemo(() => shapeOf(draftFrom(listing)).shape, [listing]);
   const dirty = !sameShape(shape, baseline);
   // Pending files are work too: a failed upload is a photo the shelter still
   // means to add, and a new listing's files have nowhere to be yet.
@@ -359,10 +348,7 @@ function ListingEditor({
   // touched must not leave a key behind, or the list would mark every listing
   // that was ever opened.
   const typedWork = dirty || badAgeBox !== null;
-  useEffect(() => {
-    if (typedWork) writeDraft(account, shelter.slug, draftId, draft);
-    else clearDraft(account, shelter.slug, draftId);
-  }, [account, draft, draftId, shelter.slug, typedWork]);
+  usePortalDraftMirror(account, shelter.slug, draftId, draft, typedWork);
 
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -412,16 +398,14 @@ function ListingEditor({
     // The control the focus would go back to is about to leave with the page.
     confirmFocus.release();
     setConfirming(false);
-    clearDraft(account, shelter.slug, draftId);
+    clearOwnDraft();
     onDone();
   }
 
   /** The line's own button: keep the listing, drop what was typed before. */
   function discardStored() {
-    clearDraft(account, shelter.slug, draftId);
-    setDraft(draftFrom(listing));
+    resetDraft();
     setRefused(null);
-    setResumed(false);
   }
 
   /** Takes the preview of a file that is stored or dropped back from the browser. */
@@ -473,7 +457,7 @@ function ListingEditor({
     const accepted: PendingPhoto[] = [];
     let rejected: string | null = null;
     for (const file of files) {
-      if (!ACCEPTED_TYPES.has(file.type)) {
+      if (!(ACCEPTED_PHOTO_TYPES as readonly string[]).includes(file.type)) {
         rejected ??= fill(portalText.photoTypeRejected, { name: file.name });
         continue;
       }
@@ -534,7 +518,7 @@ function ListingEditor({
     setSubmitting(true);
     try {
       if (await actions.archive(listing.id)) {
-        clearDraft(account, shelter.slug, draftId);
+        clearOwnDraft();
         onDone();
       }
     } finally {
@@ -562,14 +546,14 @@ function ListingEditor({
     try {
       if (listing) {
         if (await actions.update(listing.id, input)) {
-          clearDraft(account, shelter.slug, draftId);
+          clearOwnDraft();
           onDone();
         }
         return;
       }
       const saved = await actions.create(input);
       if (!saved) return;
-      clearDraft(account, shelter.slug, draftId);
+      clearOwnDraft();
       onCreated(saved);
       // The listing exists now whatever happens to its photos, so from here
       // the page is editing it. A failed file stays on screen with its retry
@@ -584,30 +568,11 @@ function ListingEditor({
 
   return (
     <>
-      <nav
-        aria-label={portalText.breadcrumbLabel}
-        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <Link
-          href={PORTAL_PATH}
-          onClick={(event) => {
-            // The link is a real one, so Back, a middle click and a long press
-            // all behave. It is only held back when there is work the shelter
-            // has not been asked about yet.
-            if (unsaved) {
-              event.preventDefault();
-              setConfirming(true);
-            }
-          }}
-          className="rounded-ui underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring"
-        >
-          {portalText.animalsTitle}
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" aria-hidden />
-        <span aria-current="page" className="min-w-0 truncate text-foreground">
-          {name}
-        </span>
-      </nav>
+      <EditorBreadcrumb
+        name={name}
+        blocked={unsaved}
+        onBlocked={() => setConfirming(true)}
+      />
 
       {/* One form over both columns, so the bar in the summary submits the
           rows beside it without a form attribute to tie them together. */}
@@ -658,37 +623,7 @@ function ListingEditor({
 
               {/* The same quiet place the card keeps for the outcome of a
                   save, so a status tap reports itself the same way here. */}
-              <div aria-live="polite" className="min-h-6 shrink-0">
-                {saving && (
-                  <m.span
-                    key="saving"
-                    initial={shouldReduceMotion ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-                  >
-                    <LoaderCircle
-                      className="size-3.5 animate-spin"
-                      aria-hidden
-                    />
-                    {portalText.saving}
-                  </m.span>
-                )}
-                {saveState.status === "saved" && (
-                  <m.span
-                    key="saved"
-                    initial={
-                      shouldReduceMotion ? false : { opacity: 0, scale: 0.92 }
-                    }
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="inline-flex items-center gap-1 rounded-4xl border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-1.5 py-0.5 text-2xs font-medium text-[var(--filter-accent-foreground)]"
-                  >
-                    <Check className="size-3" strokeWidth={2.6} aria-hidden />
-                    {portalText.saved}
-                  </m.span>
-                )}
-              </div>
+              <SaveStatusPip state={saveState} />
             </div>
 
             {/* Only once there is a listing to save it against. Until then the
@@ -752,22 +687,12 @@ function ListingEditor({
                 page the shelter has scrolled away from.
                 The bottom padding carries the phone's home indicator, and the
                 page's own max-lg:pb-28 keeps the last row clear of the bar. */}
-            <div className="flex gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={busy}
-                onClick={requestLeave}
-              >
-                {portalText.cancel}
-              </Button>
-              <Button type="submit" disabled={busy || !canSave} className="flex-1">
-                {submitting && (
-                  <LoaderCircle className="animate-spin" aria-hidden />
-                )}
-                {submitting ? portalText.saving : portalText.save}
-              </Button>
-            </div>
+            <EditorSaveBar
+              saving={submitting}
+              cancelDisabled={busy}
+              saveDisabled={busy || !canSave}
+              onCancel={requestLeave}
+            />
 
             {/* The shelter's delete, last and on its own: it is the one action
                 here that cannot be undone from the portal. */}
@@ -790,22 +715,7 @@ function ListingEditor({
                 a form that is not the listing's saved state, and nothing else
                 on the page would say why. */}
             {resumed && (
-              <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <RotateCcw className="size-3.5 shrink-0" aria-hidden />
-                {portalText.draftResumed}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  disabled={busy}
-                  aria-label={portalText.draftDiscardLabel}
-                  onClick={discardStored}
-                  className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground max-lg:tap-target hover:text-foreground"
-                >
-                  <Undo2 aria-hidden />
-                  {portalText.draftDiscard}
-                </Button>
-              </p>
+              <DraftResumedLine disabled={busy} onDiscard={discardStored} />
             )}
 
             <ListingForm
@@ -833,19 +743,7 @@ function ListingEditor({
               }}
             />
 
-            {errorText && (
-              <p
-                id={errorId}
-                role="alert"
-                className="flex items-start gap-1.5 text-sm text-destructive"
-              >
-                <TriangleAlert
-                  className="mt-0.5 size-3.5 shrink-0"
-                  aria-hidden
-                />
-                {errorText}
-              </p>
-            )}
+            {errorText && <FieldError id={errorId}>{errorText}</FieldError>}
           </div>
         </div>
       </form>

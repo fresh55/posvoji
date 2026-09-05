@@ -90,10 +90,20 @@ export function portalPublicPath(
   shelter: PortalShelter,
   name: string | null,
 ): string {
+  return publicPath(animal.id, name, animal.species ?? "zival", shelter);
+}
+
+/** The one call, so the cast above is written once. */
+function publicPath(
+  id: string,
+  name: string | null,
+  species: string,
+  shelter: PortalShelter,
+): string {
   const fields = {
-    id: animal.id,
+    id,
     name: name ?? undefined,
-    species: animal.species ?? "zival",
+    species,
     shelter: { id: shelter.slug, city: shelter.city ?? "" },
   } as unknown as AnimalFields;
   return animalPath(fields, "sl");
@@ -116,13 +126,12 @@ export function portalListingPublicPath(
   shelter: PortalShelter,
   name: string,
 ): string {
-  const fields = {
-    id: `${listing.providerId}:${listing.id}`,
+  return publicPath(
+    `${listing.providerId}:${listing.id}`,
     name,
-    species: listing.species,
-    shelter: { id: shelter.slug, city: shelter.city ?? "" },
-  } as unknown as AnimalFields;
-  return animalPath(fields, "sl");
+    listing.species,
+    shelter,
+  );
 }
 
 /**

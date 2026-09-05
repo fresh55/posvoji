@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Check, LoaderCircle, Pencil, TriangleAlert } from "lucide-react";
-import { m, useReducedMotion } from "motion/react";
+import { Pencil, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import {
   missingSearchableFields,
@@ -17,6 +16,7 @@ import {
   portalSpeciesIcon,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
+import { SaveStatusPip } from "@/components/portal/save-status";
 import { ListingStatusBlock } from "@/components/portal/status-block";
 import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
@@ -46,7 +46,6 @@ export function PortalListingCard({
   /** The hook's, already bound to the shelter. */
   actions: PortalListingActions;
 }) {
-  const shouldReduceMotion = useReducedMotion();
   const now = useMemo(() => new Date(), []);
 
   const speciesIcon = portalSpeciesIcon(listing.species);
@@ -102,32 +101,7 @@ export function PortalListingCard({
 
         {/* One quiet place for the outcome of a save, so a status tap and a
             save made on the listing's own page report themselves the same. */}
-        <div aria-live="polite" className="min-h-6 shrink-0">
-          {saving && (
-            <m.span
-              key="saving"
-              initial={shouldReduceMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-            >
-              <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-              {portalText.saving}
-            </m.span>
-          )}
-          {saveState.status === "saved" && (
-            <m.span
-              key="saved"
-              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="inline-flex items-center gap-1 rounded-4xl border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-1.5 py-0.5 text-2xs font-medium text-[var(--filter-accent-foreground)]"
-            >
-              <Check className="size-3" strokeWidth={2.6} aria-hidden />
-              {portalText.saved}
-            </m.span>
-          )}
-        </div>
+        <SaveStatusPip state={saveState} />
       </div>
 
       {/* Always the shelter's own answer: there is no site to have read it

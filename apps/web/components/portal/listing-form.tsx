@@ -8,13 +8,13 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { FormSection } from "@/components/portal/animal-form";
+import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
 import { MissingMark } from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
   PORTAL_SPECIAL_NEEDS_ANSWERS,
-  SEARCHABLE_FIELDS,
   SEX_META,
   SIZE_META,
   SPECIAL_NEEDS_META,
@@ -23,13 +23,13 @@ import {
   ageParts,
   choiceCard,
   hintId,
-  isCount,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
   isPortalStatus,
   isoDate,
+  parseAgeBoxes,
   specialNeedsAnswer,
   specialNeedsValue,
   trimmed,
@@ -65,6 +65,17 @@ import { cn } from "@/lib/utils";
 /** The rows the form has, for the data-field marks opening at one needs. */
 export type ListingField = PortalField | "species" | "photos";
 
+/**
+ * What the API takes. One list, because the picker's own check and the file
+ * input's accept attribute have to agree: a type the input offers and the
+ * check refuses is a file the shelter can pick and then be told off for.
+ */
+export const ACCEPTED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
 export type Draft = {
   species: PortalSpecies | null;
   status: PortalStatus;
@@ -90,13 +101,13 @@ export type Draft = {
  * enforced. Kept apart from PortalListingInput so "what changed" can be
  * asked of a draft the API would refuse.
  */
-export type Shape = Omit<PortalListingInput, "species" | "name"> & {
+type Shape = Omit<PortalListingInput, "species" | "name"> & {
   species: PortalSpecies | null;
   name: string | null;
 };
 
 /** The two fields a listing cannot exist without. */
-export type Required = "species" | "name";
+type Required = "species" | "name";
 
 /** What a submit can refuse: a required field left empty, or an unusable age. */
 export type Refused = Required | "age";
@@ -111,7 +122,7 @@ export type PendingPhoto = {
 };
 
 /** Everything the photo section draws and everything a tap on it reaches. */
-export type PhotoPanel = {
+type PhotoPanel = {
   /** The photos the API has, in its own order. */
   stored: PortalListingPhoto[];
   pending: PendingPhoto[];
@@ -140,7 +151,7 @@ const isPortalSpecies = (value: string | null): value is PortalSpecies =>
  * The form a new listing opens on: nothing chosen but the status, which the
  * API defaults to "available" and the form says out loud.
  */
-export const EMPTY_DRAFT: Draft = {
+const EMPTY_DRAFT: Draft = {
   species: null,
   status: "available",
   name: "",
@@ -195,20 +206,10 @@ export function draftFrom(listing: PortalListing | null): Draft {
  * holds something that is not a count, and says which box.
  */
 export function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
-  // The wire carries one month count. An empty half counts as zero, so
-  // "2 let" alone is two years; only two empty boxes mean no age. The months
-  // box is not capped at eleven: "18 mesecev" adds up to the same age.
-  const rawYears = draft.ageYears.trim();
-  const rawMonths = draft.ageMonths.trim();
-  let ageError: AgeBox | null = null;
-  let approximateAgeMonths: number | null = null;
-  if (rawYears !== "" || rawMonths !== "") {
-    const years = rawYears === "" ? 0 : Number(rawYears);
-    const months = rawMonths === "" ? 0 : Number(rawMonths);
-    if (!isCount(years)) ageError = "years";
-    else if (!isCount(months)) ageError = "months";
-    else approximateAgeMonths = years * 12 + months;
-  }
+  const { months: approximateAgeMonths, error: ageError } = parseAgeBoxes(
+    draft.ageYears,
+    draft.ageMonths,
+  );
 
   return {
     shape: {
@@ -274,23 +275,6 @@ export function listingInput(listing: PortalListing): PortalListingInput {
     species: shape.species ?? "other",
     name: shape.name ?? listing.name,
   };
-}
-
-/** The row a field draws in, which both the form's focus paths look up. */
-export function fieldRow(
-  form: HTMLFormElement | null,
-  field: ListingField,
-): HTMLElement | null {
-  return form?.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? null;
-}
-
-/** The controls inside one row, in the order they are read. */
-export function fieldControls(row: HTMLElement): HTMLElement[] {
-  return Array.from(
-    row.querySelectorAll<HTMLElement>(
-      "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
-    ),
-  );
 }
 
 /**
@@ -506,7 +490,7 @@ function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
             <input
               id={fileId}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept={ACCEPTED_PHOTO_TYPES.join(",")}
               multiple
               disabled={panel.busy}
               aria-describedby={hintId(uid, "photos")}
@@ -592,9 +576,7 @@ export function ListingForm({
   // site currently knows until the save goes through.
   const missing = new Set<PortalField>(
     listing
-      ? SEARCHABLE_FIELDS.filter((field) => listing[field.key] === null).map(
-          (field) => field.key,
-        )
+      ? missingSearchableFields(listing).map((field) => field.key)
       : [],
   );
 

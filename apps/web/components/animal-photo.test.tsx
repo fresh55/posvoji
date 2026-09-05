@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AnimalPhoto } from "@/components/animal-photo";
 import type { PermittedPhoto } from "@/lib/animal-images";
@@ -18,13 +18,39 @@ const CACHED: PermittedPhoto = {
   blurDataURL: "data:image/webp;base64,UklGRg==",
 };
 
-function draw(props: Partial<Parameters<typeof AnimalPhoto>[0]> = {}) {
-  const { container } = render(
+// What a surface with something to say about a missing photo hands over. The
+// lightbox's own line is the only one on the site; this stands in for it.
+const UNAVAILABLE = <p data-slot="unavailable">Fotografije ni.</p>;
+
+function fallback(container: HTMLElement) {
+  return container.querySelector('[data-slot="unavailable"]');
+}
+
+type PhotoProps = Partial<Parameters<typeof AnimalPhoto>[0]>;
+
+function draw(props: PhotoProps = {}) {
+  const { container, rerender } = render(
     <AnimalPhoto photo={CACHED} alt="" sizes={SIZES} {...props} />,
   );
-  const img = container.querySelector("img");
-  if (!img) throw new Error("no image drawn");
-  return { container, img };
+  function drawn() {
+    const img = container.querySelector("img");
+    if (!img) throw new Error("no image drawn");
+    return img;
+  }
+  return {
+    container,
+    img: drawn(),
+    // The element itself, read again: a surface that hands this component one
+    // photo after another gets a new <img> per source, so the one a test holds
+    // from before a step is not the one on screen after it.
+    drawn,
+    // The caller coming back with another photo, the way the lightbox does.
+    show(next: PhotoProps) {
+      rerender(
+        <AnimalPhoto photo={CACHED} alt="" sizes={SIZES} {...props} {...next} />,
+      );
+    },
+  };
 }
 
 describe("AnimalPhoto candidates", () => {
@@ -115,6 +141,34 @@ describe("AnimalPhoto placeholder", () => {
   });
 });
 
+describe("AnimalPhoto crop", () => {
+  it("anchors a portrait photo above the middle of the box", () => {
+    // 3:4, the tallest print the fan draws. Centred, the crop takes the head.
+    const { img } = draw({ photo: { ...CACHED, aspect: 0.75 } });
+    expect(img.style.objectPosition).toBe("50% 20%");
+  });
+
+  it("leaves a photo the box already fits alone", () => {
+    // No aspect is the 4:3 every box assumes, so there is nothing to bias.
+    const { img } = draw();
+    expect(img.style.objectPosition).toBe("");
+  });
+
+  it("leaves a square photo alone", () => {
+    // A square loses the same amount either side of centre, and the head is
+    // not pushed out of it.
+    const { img } = draw({ photo: { ...CACHED, aspect: 1 } });
+    expect(img.style.objectPosition).toBe("");
+  });
+
+  it("stays centred where the caller does not crop", () => {
+    // The lightbox contains the photo, where an object-position would only
+    // shove a fully visible picture upward.
+    const { img } = draw({ photo: { ...CACHED, aspect: 0.75 }, crop: "center" });
+    expect(img.style.objectPosition).toBe("");
+  });
+});
+
 describe("AnimalPhoto loading", () => {
   it("is lazy and unhurried by default", () => {
     const { img } = draw();
@@ -128,5 +182,108 @@ describe("AnimalPhoto loading", () => {
     const { img } = draw({ eager: true });
     expect(img.getAttribute("loading")).toBe("eager");
     expect(img.getAttribute("fetchpriority")).toBe("high");
+  });
+
+  it("loads at once without taking the front of the queue", () => {
+    // The prints beside the front one in the dialog's fan: on screen from the
+    // start, so waiting for them to scroll into view says nothing, but not the
+    // photo being looked at either, so they must not be asked for ahead of it.
+    const { img } = draw({ loading: "eager" });
+    expect(img.getAttribute("loading")).toBe("eager");
+    expect(img.getAttribute("fetchpriority")).toBeNull();
+  });
+
+  it("lets eager win where a surface asks for both", () => {
+    // Above the fold beats "on screen but not the subject", so the priority
+    // survives a lazy default the caller also passed.
+    const { img } = draw({ eager: true, loading: "lazy" });
+    expect(img.getAttribute("loading")).toBe("eager");
+    expect(img.getAttribute("fetchpriority")).toBe("high");
+  });
+});
+
+describe("AnimalPhoto failure", () => {
+  it("takes a photo that never arrived out of the box", () => {
+    // A cached copy renamed under a stale page, or a shelter file gone. Left
+    // alone it sits as a broken image over the box's own ground; hidden, the
+    // ground shows instead, which is what the box shows while a photo is still
+    // on its way. Written to the element rather than to state, so this is the
+    // element itself that has to change.
+    const { img } = draw();
+    fireEvent.error(img);
+
+    expect(img.hidden).toBe(true);
+    expect(img.dataset.broken).toBe("true");
+  });
+
+  it("leaves a photo that arrived alone", () => {
+    const { img } = draw();
+    expect(img.hidden).toBe(false);
+    expect(img.dataset.broken).toBeUndefined();
+  });
+
+  it("hides the photo that failed and not the one shown after it", () => {
+    // The lightbox keeps one of these mounted and hands it photo after photo,
+    // so the same element is reused with a new src. Written to the element,
+    // the flag has to leave with the file it was about, or one photo that
+    // never arrived would take every healthy one after it down with it.
+    const { img, drawn, show } = draw();
+    fireEvent.error(img);
+    expect(img.hidden).toBe(true);
+
+    const next = { ...CACHED, src: "/media/animals/fedcba9876543210.webp" };
+    show({ photo: next });
+
+    const after = drawn();
+    expect(after.getAttribute("src")).toBe(next.src);
+    expect(after.hidden).toBe(false);
+    expect(after.dataset.broken).toBeUndefined();
+  });
+
+  it("puts a photo back when a later attempt at it arrives", () => {
+    // A browser may pick another rung off the srcset and retry on this same
+    // element. The load that lands is the failure being over.
+    const { img } = draw();
+    fireEvent.error(img);
+    fireEvent.load(img);
+
+    expect(img.hidden).toBe(false);
+    expect(img.dataset.broken).toBeUndefined();
+  });
+
+  it("draws the caller's fallback over the ground the photo left", () => {
+    // The surface where the photograph is the whole view has something to say
+    // about a photo that never came; every other one keeps its own ground and
+    // passes none of this.
+    const { container, img } = draw({ fallback: UNAVAILABLE });
+    expect(fallback(container)).toBeNull();
+
+    fireEvent.error(img);
+
+    expect(fallback(container)?.textContent).toBe("Fotografije ni.");
+  });
+
+  it("takes the fallback away when a later attempt at the photo arrives", () => {
+    // The same retry the flag above comes off on. A line about a failure that
+    // is over would outlive the thing it was about.
+    const { container, img } = draw({ fallback: UNAVAILABLE });
+    fireEvent.error(img);
+    fireEvent.load(img);
+
+    expect(fallback(container)).toBeNull();
+  });
+
+  it("keeps the fallback with the photo that failed and not the next one", () => {
+    // The failure is held by source, not by the box: the index is the caller's
+    // and moves under this component, the file does not. So the next photo is
+    // drawn clean, and the way back to the one that failed says what it said.
+    const { container, drawn, show } = draw({ fallback: UNAVAILABLE });
+    fireEvent.error(drawn());
+
+    show({ photo: { ...CACHED, src: "/media/animals/fedcba9876543210.webp" } });
+    expect(fallback(container)).toBeNull();
+
+    show({ photo: CACHED });
+    expect(fallback(container)).not.toBeNull();
   });
 });

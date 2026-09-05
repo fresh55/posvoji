@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { ClientAnimal } from "@/lib/animal";
+import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
@@ -179,6 +180,17 @@ export function AnimalCard({
             images={animal.images}
             name={animal.name}
             sizes={CARD_PHOTO_SIZES}
+            // A plain click here opens the dialog, whose fan mounts its five
+            // prints at once at 24rem. The rung ladder is 320/480/640 plus the
+            // original, so at every common density that is a different file
+            // from the 229px card's: the front print would otherwise be a cold
+            // fetch the moment the dialog opens. Tied to openDialog below,
+            // which is what makes this photo open the fan at all.
+            //
+            // The constant comes from lib and not from the fan itself: an
+            // import of photo-spread here would pull the whole fan into the
+            // grid's bundle.
+            warmSizes={FAN_PHOTO_SIZES}
             tone={settled ? QUIET_PHOTO : undefined}
             href={href}
             onNavigate={openDialog}

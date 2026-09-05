@@ -16,18 +16,26 @@ import { Button } from "@/components/ui/button";
 import {
   adjacentImages,
   photoDotWindow,
-  photoSrcSet,
   type PermittedPhoto,
 } from "@/lib/animal-images";
 import { translate } from "@/lib/i18n";
+import { preloadPhotos } from "@/lib/preload-photos";
+import { declareAxis, swipeVerdict } from "@/lib/swipe";
 import { cn } from "@/lib/utils";
 
 // Shared with the dialog's photo spread, so both sets of chevrons behave and
 // look the same. The spread drives its own reveal off its own ancestor, so the
 // group here is unqualified and this constant carries no pointer-events of its
 // own; see OWN_BUTTON_CLASS below for what this component uses.
+//
+// A near-solid ground and no backdrop filter. These sit on the fan, whose
+// photos move under them every frame of a drag, and a backdrop filter has to
+// re-sample and re-blur what it stands over each of those frames on a real
+// GPU. The extra 10% of opacity is what the blur was there for: to keep a
+// chevron legible over a photograph of any colour. The card's own chevrons
+// below keep theirs, because their photo stands still.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-focus-within:opacity-100";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-focus-within:opacity-100";
 
 // This component's own chevrons, which differ from the shared constant in two
 // ways.
@@ -63,23 +71,15 @@ const DOT_CLASS =
 
 type SwipeStart = { x: number; y: number; time: number; width: number };
 
-// A drag past this share of the frame's width commits the swipe even at no
-// particular speed; a flick short of that distance still commits if it was
-// quick enough. Either heuristic alone was too easy to trigger by accident or
-// too hard to pull off on purpose, so a swipe only has to clear one of them.
-const SWIPE_DISTANCE_RATIO = 0.22;
-const SWIPE_VELOCITY_PX_MS = 0.5;
-// The flick heuristic used to be velocity and nothing else, which let a 2px
-// twitch over 3ms clear 0.5px/ms and commit. That is a tap with finger drift,
-// and the result was the worst of both: the photo advanced and the tap that
-// meant to open the animal was swallowed.
-const MIN_SWIPE_PX = 24;
-// How far a gesture has to travel before it is allowed to declare its axis.
-const AXIS_SLOP_PX = 8;
 // A pointer that crosses the photo and leaves again was not asking for the
 // next picture. Mean image weight is about 52KB and a mouse can cross a whole
 // grid row in a second, so an ungated preload on enter pulled megabytes.
 const PRELOAD_DWELL_MS = 150;
+// Which photo the surface a click here opens starts on. This gallery's own
+// stepped index does not travel with the click: useAnimalDialog's open()
+// strips ?foto= from the address it pushes, so the dialog opens on the first
+// photo whatever the card was showing.
+const WARM_INDEX = 0;
 
 type PhotoGalleryProps = {
   /** Already resolved to what is drawn, and already free of anything no
@@ -90,6 +90,11 @@ type PhotoGalleryProps = {
   /** The animal's, for the alt text on a surface that is not a link. */
   name?: string | null;
   sizes: string;
+  /** A second sizes value the dwell also fetches the opening photo and its
+   *  neighbours at, for a surface that a click on this gallery opens and that
+   *  draws the same photos larger. Leave it out on a gallery that opens
+   *  nothing, or that opens something drawing them at `sizes`. */
+  warmSizes?: string;
   className?: string;
   /**
    * Laid over whatever the surface already is, for callers that want the
@@ -105,6 +110,8 @@ type PhotoGalleryProps = {
   /** Set to drive the gallery from outside; leave out to keep its own index. */
   index?: number;
   onIndexChange?: (index: number) => void;
+  /** Activate the position live region when a parent changes a controlled index. */
+  announceChanges?: boolean;
   /** Above-the-fold cards, so the largest image on screen is not lazy. */
   eager?: boolean;
   /** Serve the AVIF sibling of the photo where ingest derived one. See
@@ -116,12 +123,14 @@ export function PhotoGallery({
   images,
   name,
   sizes,
+  warmSizes,
   className,
   tone,
   href,
   onNavigate,
   index,
   onIndexChange,
+  announceChanges = false,
   eager = false,
   avif = false,
 }: PhotoGalleryProps) {
@@ -129,6 +138,12 @@ export function PhotoGallery({
   const swipeStart = useRef<SwipeStart | null>(null);
   const suppressImageLink = useRef(false);
   const preloadedImages = useRef(new Set<string>());
+  // Its own set, because warmSizes asks for a different file of the same
+  // photo: the rung ladder is 320/480/640 plus the original, so the card picks
+  // 320 or 480 where the dialog's fan picks 480 or 640. preloadPhotos dedupes
+  // by src within the set it is handed, so sharing one would let whichever
+  // sizes asked first swallow the other's fetch.
+  const warmedImages = useRef(new Set<string>());
   // One gesture at a time. swipeStart is a single slot, so a second finger
   // used to overwrite the first one's origin and steal the capture, which made
   // finishSwipe measure one finger's position against the other's start - a
@@ -148,7 +163,7 @@ export function PhotoGallery({
   // this and reacts only once the gesture is over.
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [announce, setAnnounce] = useState(false);
+  const [announceOwnChanges, setAnnounceOwnChanges] = useState(false);
   // The card owns nothing and keeps its own index; the dialog shares one index
   // between the swipeable photo and the thumbnails under it.
   const imageIndex = index ?? ownIndex;
@@ -165,13 +180,6 @@ export function PhotoGallery({
   // component only for an animal with no photo at all, where hasGallery is
   // false. So the two can never answer the same key press.
   const keyboardGallery = hasGallery && href === undefined;
-  // The two chevrons differ only in direction, so the attributes that answer
-  // the question above are decided once here rather than four times between
-  // them. Omitted rather than set to undefined in the keyboard case, so the
-  // card path renders exactly the attributes it always did.
-  const chevronProps = keyboardGallery
-    ? {}
-    : { tabIndex: -1, "aria-hidden": "true" as const };
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -182,32 +190,30 @@ export function PhotoGallery({
     // mounts one of these per multi-photo card, which was 425 live regions in
     // one document, and a filter change inserts new nodes that already carry
     // their text. result-count.tsx gates the same shape the same way.
-    setAnnounce(true);
+    setAnnounceOwnChanges(true);
     if (index === undefined) setOwnIndex(next);
     onIndexChange?.(next);
   }
 
+  // The two neighbours of `index`, warmed with this gallery's own sizes. The
+  // dialog's fan warms the tier about to walk in through the same helper.
   function preloadAdjacent(index: number) {
-    for (const photo of adjacentImages(images, index)) {
-      if (preloadedImages.current.has(photo.src)) continue;
-      preloadedImages.current.add(photo.src);
-      const preload = new window.Image();
-      // The visitor has not asked for these yet, so they must not compete with
-      // the photo they are actually looking at.
-      preload.fetchPriority = "low";
-      preload.decoding = "async";
-      // The same ladder and the same sizes the rendered photo carries, set
-      // before src so the browser runs its own selection over them. That is
-      // what makes the preload fetch the rung this layout would pick rather
-      // than the 800px file at every width, and it means the fetch the visitor
-      // then triggers is a cache hit rather than a second, different file.
-      const srcSet = photoSrcSet(photo);
-      if (srcSet) {
-        preload.sizes = sizes;
-        preload.srcset = srcSet;
-      }
-      preload.src = photo.src;
-    }
+    preloadPhotos(adjacentImages(images, index), sizes, preloadedImages.current);
+  }
+
+  // What the surface behind a click here mounts first, at the sizes that
+  // surface draws with. Three prints and not the dialog fan's five: the outer
+  // two are scaled to 0.42 and tucked behind the rest, and five files for one
+  // hovered card is more than a hover should cost.
+  function preloadWarm() {
+    if (!warmSizes) return;
+    const opening = images[WARM_INDEX];
+    if (!opening) return;
+    preloadPhotos(
+      [opening, ...adjacentImages(images, WARM_INDEX)],
+      warmSizes,
+      warmedImages.current,
+    );
   }
 
   function goToImage(nextIndex: number) {
@@ -223,6 +229,7 @@ export function PhotoGallery({
   // Home and End as well as the arrows: the longest gallery in the register
   // runs to fourteen photos, which is a long walk one key at a time.
   function stepPhoto(event: KeyboardEvent<HTMLDivElement>) {
+    if (!keyboardGallery) return;
     if (event.key === "ArrowLeft") changeImage(-1);
     else if (event.key === "ArrowRight") changeImage(1);
     else if (event.key === "Home") goToImage(0);
@@ -272,9 +279,10 @@ export function PhotoGallery({
     const distanceY = event.clientY - start.y;
 
     if (axis.current === null) {
-      if (Math.hypot(distanceX, distanceY) < AXIS_SLOP_PX) return;
       // A vertical drag belongs to the page's own scroll, not to the photo.
-      axis.current = Math.abs(distanceX) > Math.abs(distanceY) ? "x" : "y";
+      axis.current = declareAxis(distanceX, distanceY);
+      // Still short of the slop: it could yet turn out to be a tap.
+      if (axis.current === null) return;
     }
     if (axis.current !== "x") return;
 
@@ -299,13 +307,14 @@ export function PhotoGallery({
     // not also navigate.
     suppressImageLink.current = true;
 
-    const velocity = Math.abs(distanceX) / elapsed;
-    const farEnough = Math.abs(distanceX) > start.width * SWIPE_DISTANCE_RATIO;
-    const flicked =
-      velocity > SWIPE_VELOCITY_PX_MS && Math.abs(distanceX) > MIN_SWIPE_PX;
-    if (!farEnough && !flicked) return;
+    const verdict = swipeVerdict({
+      dx: distanceX,
+      elapsed,
+      width: start.width,
+    });
+    if (verdict === 0) return;
 
-    changeImage(distanceX < 0 ? 1 : -1);
+    changeImage(verdict);
   }
 
   function handleSwipeCancel() {
@@ -315,10 +324,13 @@ export function PhotoGallery({
 
   function handlePointerEnter() {
     window.clearTimeout(preloadTimer.current);
-    preloadTimer.current = window.setTimeout(
-      () => preloadAdjacent(imageIndex),
-      PRELOAD_DWELL_MS,
-    );
+    // The dwell is the only path that warms at warmSizes. Stepping or swiping
+    // is somebody reading this gallery, not somebody about to open the surface
+    // behind it, and those paths keep to this gallery's own sizes.
+    preloadTimer.current = window.setTimeout(() => {
+      preloadAdjacent(imageIndex);
+      preloadWarm();
+    }, PRELOAD_DWELL_MS);
   }
 
   function handlePointerLeave() {
@@ -383,34 +395,6 @@ export function PhotoGallery({
           : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
     },
   };
-
-  // What the plain surface takes on when it is the gallery's own keyboard
-  // route: focus, the keys, and a name. A group, not a listbox or a tablist,
-  // because nothing here is chosen or selected, the visitor is walking one
-  // picture at a time. The label names whose photos these are; which one is
-  // showing is the picture's own alt text and the live line at the bottom of
-  // this component. The focus ring is drawn inside the frame's rounded,
-  // clipping box, the way the grid card draws its own.
-  //
-  // Spread onto the same element the plain surface uses rather than a branch
-  // of its own, so the swipe contract above stays one set of handlers on one
-  // element in both cases. stepPhoto is attached here and nowhere else, which
-  // is what keeps it from answering a key the card's own link owns.
-  const keyboardProps = keyboardGallery
-    ? {
-        role: "group",
-        "aria-label": translate(locale, "photoAltSingle", {
-          name: name ?? messages.unnamed,
-        }),
-        "aria-keyshortcuts": "ArrowLeft ArrowRight",
-        tabIndex: 0,
-        onKeyDown: stepPhoto,
-        className: cn(
-          surfaceClassName,
-          "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background",
-        ),
-      }
-    : {};
 
   const imageContent = image ? (
     <AnimalPhoto
@@ -479,10 +463,31 @@ export function PhotoGallery({
         >
           {imageContent}
         </a>
-      ) : (
-        <div {...surface} {...keyboardProps}>
+      ) : keyboardGallery ? (
+        // A group, not a listbox or a tablist: nothing here is chosen or
+        // selected, the visitor is walking one picture at a time. The label
+        // names whose photos these are; which one is showing is the picture's
+        // own alt text and the live line at the bottom of this component.
+        <div
+          role="group"
+          aria-label={translate(locale, "photoAltSingle", {
+            name: name ?? messages.unnamed,
+          })}
+          aria-keyshortcuts="ArrowLeft ArrowRight Home End"
+          tabIndex={0}
+          onKeyDown={stepPhoto}
+          {...surface}
+          // Inside the frame's own rounded, clipping box, so the ring is drawn
+          // as an inset outline the way the grid card draws it.
+          className={cn(
+            surfaceClassName,
+            "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background",
+          )}
+        >
           {imageContent}
         </div>
+      ) : (
+        <div {...surface}>{imageContent}</div>
       )}
 
       {hasGallery && (
@@ -491,22 +496,29 @@ export function PhotoGallery({
             type="button"
             variant="outline"
             size="icon-sm"
-            // On a card these leave the tab order and the accessibility tree,
-            // and chevronProps above carries both attributes. Two chevrons on
-            // every card came to 850 of the grid's tab stops, and a screen
-            // reader's virtual cursor walks the tree by DOM position rather
-            // than by tab order, so it landed on all 850 of them anyway. The
-            // keyboard route through a card's gallery is the arrow keys on the
-            // card's own link, one stop instead of two, and the sr-only line
-            // below announces the position. A surface with no link has no such
-            // route, so there these are ordinary buttons.
-            {...chevronProps}
+            // Out of the tab order on a card: two chevrons on every card came
+            // to 850 of the grid's tab stops. The keyboard route through a
+            // card's gallery is the arrow keys on the card's own link, which
+            // is one stop instead of two and faster than pressing Enter on a
+            // disc. A surface with no link has no such route, so there these
+            // are ordinary buttons.
+            tabIndex={keyboardGallery ? undefined : -1}
             // Read by the grid card, whose press feedback squeezes the whole
             // card. These turn the picture and open nothing, so they are held
             // out of it. Surfaces that do not squeeze ignore the attribute.
             data-press-exempt
             onClick={() => changeImage(-1)}
             aria-label={messages.previousPhoto}
+            // Out of the accessibility tree too, same reason as the photo
+            // anchor and the dots below: tabIndex=-1 keeps these off the tab
+            // order, but a screen reader's virtual cursor walks the tree by
+            // DOM position, not by tab order, so it still landed on both
+            // chevrons on every multi-photo card - about 850 of them across
+            // the grid. The keyboard route is the arrow keys on the card
+            // link, and the sr-only line below announces the position. Again
+            // the card's case only: where there is no link these are the
+            // announced way through the gallery.
+            aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${OWN_BUTTON_CLASS} left-1.5`}
           >
             <ChevronLeft className="size-4" aria-hidden />
@@ -515,10 +527,11 @@ export function PhotoGallery({
             type="button"
             variant="outline"
             size="icon-sm"
-            {...chevronProps}
+            tabIndex={keyboardGallery ? undefined : -1}
             data-press-exempt
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
+            aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${OWN_BUTTON_CLASS} right-1.5`}
           >
             <ChevronRight className="size-4" aria-hidden />
@@ -557,8 +570,8 @@ export function PhotoGallery({
             // node came first in the document.
             data-slot="photo-position"
             className="sr-only"
-            aria-live={announce ? "polite" : undefined}
-            aria-atomic={announce ? "true" : undefined}
+            aria-live={announceChanges || announceOwnChanges ? "polite" : undefined}
+            aria-atomic={announceChanges || announceOwnChanges ? "true" : undefined}
           >
             {translate(locale, "photoCount", {
               current: imageIndex + 1,

@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
@@ -18,10 +21,9 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import { DialogShareButton } from "@/components/animal-dialog/dialog-share-button";
 import { PhotoBloom } from "@/components/animal-dialog/photo-bloom";
-import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
-import { StageWash } from "@/components/animal-dialog/photo-wash";
-import { ShareButton } from "@/components/animal-dialog/share-button";
+import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { useI18n } from "@/components/i18n-provider";
 import { StatusBadge } from "@/components/status-badge";
@@ -34,8 +36,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ClientAnimal } from "@/lib/animal";
-import { animalPath } from "@/lib/animal-path";
+import { animalPath, photoFromSearch } from "@/lib/animal-path";
 import { speciesLabel } from "@/lib/labels";
+import {
+  getSearchSnapshot,
+  getServerSearchSnapshot,
+  subscribeToLocation,
+} from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import type { ShelterPhones } from "@/lib/shelters";
 
@@ -89,6 +96,17 @@ const CARD_CLASS =
 // the same translate variable.
 const ANIMAL_NAV_CLASS =
   "absolute inset-y-0 z-40 my-auto hidden size-9 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:inline-flex";
+
+// The same two steps for a phone, which has neither the edge arrows above nor
+// the PageUp and PageDown keys they double for: without these the only way to
+// the next animal is to close the dialog and find the next card. They ride the
+// title row beside the share button rather than the edges of the screen, where
+// the fan's own chevrons and the close button already are. No backdrop blur:
+// they sit on the card's own ground, not over a photograph. size-11 is the
+// 44px floor every other control on the phone layout is held to (the share
+// button beside them does the same); icon-sm alone would be 32px.
+const PHONE_NAV_CLASS =
+  "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background sm:hidden";
 
 const DRAG_SPRING = {
   type: "spring",
@@ -162,8 +180,23 @@ export function AnimalDialog({
   // A phone can throw the dialog away downwards. The offset lives in a motion
   // value so a finger drag does not re-render the dialog on every frame.
   const dragY = useMotionValue(0);
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
-  const dragging = useRef(false);
+  // Every finger currently on the glass, counted the way the lightbox counts
+  // its own. A boolean saying only that a second finger had arrived could not
+  // be cleared correctly: any release had to clear it, so with three fingers
+  // down, lifting one re-armed the pull while two were still pressing.
+  const pointers = useRef(new Set<number>());
+  // The pull in flight: the finger it belongs to, where that finger started,
+  // and whether it has passed the axis test. A phone can have two fingers on
+  // the glass at once, and without an owner the second one moved and ended the
+  // first one's gesture: the release was then measured against a start point
+  // the other finger had set, which is a dismissal nobody performed. Null while
+  // no finger is pulling.
+  const drag = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    committed: boolean;
+  } | null>(null);
   const dragSnap = useRef<ReturnType<typeof animate> | null>(null);
 
   // A snap back that outlives the dialog would keep a frame loop alive.
@@ -173,8 +206,8 @@ export function AnimalDialog({
   // behind for the next one to inherit.
   useEffect(() => {
     dragSnap.current?.stop();
-    dragStart.current = null;
-    dragging.current = false;
+    pointers.current.clear();
+    drag.current = null;
     dragY.set(0);
   }, [animal, dragY]);
 
@@ -228,12 +261,39 @@ export function AnimalDialog({
           : "",
     });
   }
-  // The fan is remounted per animal so its photos start over, which means the
-  // wash cannot live inside it: it would go out with the old animal and come
-  // back from nothing. Held here instead, it is one continuous layer, and
-  // stepping animals crossfades one colour into the next. On the way out it
-  // keeps the last animal's colour and leaves with the dialog.
-  const [washSource, setWashSource] = useState<string | undefined>(undefined);
+  // Which photo the fan has in front, so the share sheet hands over the one
+  // the visitor is looking at rather than always the first. A motion value and
+  // not state: only the share button reads it, and a step must not re-render
+  // the card. DialogShareButton subscribes to it and is the only thing that
+  // renders again when the fan turns a photo.
+  const shownPhoto = useMotionValue(0);
+  const openedId = animal?.id;
+  const reportPhoto = useCallback(
+    (index: number) => shownPhoto.set(index),
+    [shownPhoto],
+  );
+  // The number belongs to the animal it was counted on, so it is cleared as
+  // that animal leaves rather than as the next one arrives: React runs every
+  // cleanup in a commit before any of that commit's new effects, so the fan
+  // mounting for the next animal still gets the last word and a link opened on
+  // ?foto= is not zeroed by its own arrival.
+  useEffect(() => {
+    if (!openedId) return;
+    return () => shownPhoto.jump(0);
+  }, [openedId, shownPhoto]);
+
+  // Which photo a shared link asked to open on. Read off the same store the
+  // dialog's own address comes from, whose server snapshot is "": nothing is
+  // open on the server, so the fan is first mounted once the location can be
+  // read, and it takes the number from there. Never read again after that, so
+  // stepping through the photos does not fight the parameter.
+  const search = useSyncExternalStore(
+    subscribeToLocation,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
+  const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
+
   // The card shows an animal's first photo, and so does the fan on the way in,
   // so that is the one the bloom carries across.
   const firstPhoto = lastAnimal?.images[0];
@@ -285,23 +345,41 @@ export function AnimalDialog({
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
     if (shouldReduceMotion || event.pointerType === "mouse") return;
+    pointers.current.add(event.pointerId);
+    // A pull arms on a lone finger and on nothing else. A second finger takes
+    // it away from the first rather than joining it or inheriting it: what two
+    // fingers mean here is a pinch, which the photo stage offers on purpose,
+    // and neither of them is pulling the dialog anywhere. The count is what
+    // keeps it away until the glass is clear again, because a press is only
+    // the first of a hand while nothing else is down.
+    if (pointers.current.size !== 1) {
+      if (drag.current) {
+        drag.current = null;
+        dragSnap.current = animate(dragY, 0, DRAG_SPRING);
+      }
+      return;
+    }
     // The gesture belongs to the full-screen phone layout. From sm up the
     // card scrolls instead, so the shell's scrollTop says nothing.
     if (!window.matchMedia(PHONE_LAYOUT).matches) return;
     if ((contentRef.current?.scrollTop ?? 0) > 0) return;
-    dragStart.current = { x: event.clientX, y: event.clientY };
-    dragging.current = false;
+    drag.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      committed: false,
+    };
   }
 
   function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const start = dragStart.current;
-    if (!start) return;
-    const dy = event.clientY - start.y;
-    const dx = event.clientX - start.x;
+    const pull = drag.current;
+    if (!pull || event.pointerId !== pull.pointerId) return;
+    const dy = event.clientY - pull.y;
+    const dx = event.clientX - pull.x;
     // A sideways swipe belongs to the photos, and an upward one to the scroll.
-    if (!dragging.current) {
+    if (!pull.committed) {
       if (dy < 8 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
-      dragging.current = true;
+      pull.committed = true;
       // Capture only once the gesture is committed, so a finger that leaves
       // the element still reports its release. Capturing on pointerdown, the
       // way this used to, retargeted every later pointer event at this
@@ -315,11 +393,14 @@ export function AnimalDialog({
   }
 
   function endDrag(event: PointerEvent<HTMLDivElement>) {
-    const start = dragStart.current;
-    dragStart.current = null;
-    if (!dragging.current || !start) return;
-    dragging.current = false;
-    if (event.clientY - start.y > DRAG_CLOSE_PX) {
+    // The finger is off the glass whoever it belonged to, and the count is
+    // what the next press is read against.
+    pointers.current.delete(event.pointerId);
+    const pull = drag.current;
+    if (!pull || event.pointerId !== pull.pointerId) return;
+    drag.current = null;
+    if (!pull.committed) return;
+    if (event.clientY - pull.y > DRAG_CLOSE_PX) {
       dragY.set(0);
       onClose();
       return;
@@ -327,10 +408,14 @@ export function AnimalDialog({
     dragSnap.current = animate(dragY, 0, DRAG_SPRING);
   }
 
-  // A cancelled pointer is not a decision, so it always snaps back.
-  function cancelDrag() {
-    dragStart.current = null;
-    dragging.current = false;
+  // A cancelled pointer is not a decision, so it always snaps back. Only the
+  // owner's cancellation counts: a second finger the browser takes away has
+  // nothing to give back.
+  function cancelDrag(event: PointerEvent<HTMLDivElement>) {
+    pointers.current.delete(event.pointerId);
+    const pull = drag.current;
+    if (!pull || event.pointerId !== pull.pointerId) return;
+    drag.current = null;
     dragSnap.current = animate(dragY, 0, DRAG_SPRING);
   }
 
@@ -434,13 +519,14 @@ export function AnimalDialog({
                 variants={CONTENT_ITEM}
                 transition={transition}
               >
-                <StageWash source={washSource} status={lastAnimal.status} />
-                {/* Keyed, so stepping to another animal starts its photos
-                    over rather than inheriting the last one's state. */}
-                <PhotoSpread
-                  key={lastAnimal.id}
+                {/* The wash and the fan, with everything a photo step changes
+                    held inside them. Not keyed: the wash has to outlive the
+                    fan's own per-animal remount for one animal's colour to
+                    fade into the next one's. */}
+                <PhotoStage
                   animal={lastAnimal}
-                  onWashSource={setWashSource}
+                  initialIndex={askedPhoto}
+                  onIndexChange={reportPhoto}
                 />
               </m.div>
 
@@ -480,10 +566,41 @@ export function AnimalDialog({
                       status={lastAnimal.status}
                       locale={locale}
                     />
+                    {/* One unit, so a row that wraps takes the whole group of
+                        controls to the next line rather than splitting it. */}
                     <span className="ms-auto flex items-center gap-1">
-                      <ShareButton
+                      {previousId && (
+                        <Button
+                          type="button"
+                          data-slot="animal-nav-phone"
+                          data-direction="previous"
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() => onNavigate(previousId)}
+                          aria-label={messages.previousAnimal}
+                          className={PHONE_NAV_CLASS}
+                        >
+                          <ChevronLeft className="size-4" aria-hidden />
+                        </Button>
+                      )}
+                      {nextId && (
+                        <Button
+                          type="button"
+                          data-slot="animal-nav-phone"
+                          data-direction="next"
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() => onNavigate(nextId)}
+                          aria-label={messages.nextAnimal}
+                          className={PHONE_NAV_CLASS}
+                        >
+                          <ChevronRight className="size-4" aria-hidden />
+                        </Button>
+                      )}
+                      <DialogShareButton
                         path={animalPath(lastAnimal, locale)}
                         name={name}
+                        photo={shownPhoto}
                       />
                       <DialogPrimitive.Close asChild>
                         <Button

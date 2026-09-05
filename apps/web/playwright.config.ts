@@ -17,6 +17,18 @@ const MOBILE_SPECS = [
   "filter-drawer-mobile.spec.ts",
   "deep-link-filters.spec.ts",
   "incremental-grid.spec.ts",
+  // The phone fan is the layout below sm, and its swipe arrives as a touch
+  // pointer: the stage takes no pointer capture for one, on purpose, so it
+  // does not fight the dialog's dismiss gesture over the same finger. A
+  // desktop browser narrowed to 412px draws the same markup and never
+  // exercises either.
+  "photo-fan-mobile.spec.ts",
+  // The dialog's own phone chrome: the animal arrows the title row carries
+  // below sm, which a desktop browser never draws.
+  "animal-dialog-mobile.spec.ts",
+  // Pinch, pan and the pull-down that closes the lightbox all arrive as touch
+  // pointers, two of them at once for the pinch.
+  "photo-lightbox-mobile.spec.ts",
 ];
 
 // Screenshot baselines have a deliberately smaller, dataset-free Chromium

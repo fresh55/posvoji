@@ -94,3 +94,58 @@ export function findAnimalBySlug<T extends AnimalFields>(
 ): T | undefined {
   return animals.find((animal) => animalPathParts(animal).animal === slug);
 }
+
+// Which photo of the animal a link opens on, counted from one. Slovenian like
+// `zival`, and the same word in both languages: an address is one address
+// whichever language the page it names is read in.
+//
+// Written by the share sheet and nowhere else. Stepping through the photos
+// does not rewrite the address, so the parameter says where a visitor was
+// when they handed the link on rather than where they are now.
+export const PHOTO_PARAM = "foto";
+
+/**
+ * The photo a query names, as an index into the animal's own photos, or
+ * undefined when it names none.
+ *
+ * Anything but a whole number above zero is nobody's photo: `?foto=0`,
+ * `?foto=2.5` and `?foto=jutri` all read as no parameter at all, so a
+ * hand-edited link degrades to the page it would have opened anyway. Whether
+ * the index is one this animal has is the caller's question, because only the
+ * caller knows how many photos there are.
+ */
+export function photoFromSearch(search: string): number | undefined {
+  const named = new URLSearchParams(search).get(PHOTO_PARAM);
+  if (named === null) return undefined;
+  const position = Number(named);
+  if (!Number.isInteger(position) || position < 1) return undefined;
+  return position - 1;
+}
+
+/**
+ * The caller's half of the rule above: the photo a link named, as an index the
+ * animal actually has, and the first photo for anything else.
+ *
+ * A link that has outlived a photo still opens the animal it was written for.
+ * Both surfaces that answer `?foto=` used to spell this out themselves, in two
+ * different ways, so a change to the fallback had two places to land and one
+ * of them was easy to miss.
+ */
+export function clampPhotoIndex(
+  asked: number | undefined,
+  count: number,
+): number {
+  if (asked === undefined || !Number.isInteger(asked)) return 0;
+  if (asked < 0 || asked >= count) return 0;
+  return asked;
+}
+
+/**
+ * An animal's page, on one of its photos. The first photo is left unnamed:
+ * that is the page's own address, and a link that says nothing extra is the
+ * one people read out loud.
+ */
+export function pathWithPhoto(path: string, index: number | undefined): string {
+  if (index === undefined || !Number.isInteger(index) || index < 1) return path;
+  return `${path}?${PHOTO_PARAM}=${index + 1}`;
+}

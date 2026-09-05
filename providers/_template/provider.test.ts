@@ -44,6 +44,14 @@ describe("parseDetail", () => {
       status: "available",
     });
   });
+
+  it("keeps a decimal age whole", () => {
+    const html = loadFixture(import.meta.url, "detail.html").replace(
+      "4 leta",
+      "1,5 leta",
+    );
+    expect(parseDetail(html).approximateAgeMonths).toBe(18);
+  });
 });
 
 describe("normalize", () => {

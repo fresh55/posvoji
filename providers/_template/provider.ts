@@ -63,7 +63,11 @@ export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const speciesRaw = labelValue($, "Vrsta")?.toLowerCase() ?? "";
   const sexRaw = labelValue($, "Spol")?.toLowerCase();
-  const years = labelValue($, "Starost")?.match(/\d+/);
+  // "1,5 leta" is one and a half years; the lookbehind keeps the "5" after
+  // the comma from being read on its own.
+  const years = labelValue($, "Starost")?.match(
+    /(?<![\d,.])(\d+(?:[.,]\d+)?)\s*(?:let|leta|leti)\b/iu,
+  );
   const intakeRaw = labelValue($, "Datum sprejema");
   const statusRaw = labelValue($, "Status")?.toLowerCase();
 
@@ -71,7 +75,9 @@ export function parseDetail(html: string): DetailFacts {
     name: $("h1").first().text().trim(),
     species: SPECIES[speciesRaw] ?? "other",
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
-    approximateAgeMonths: years ? Number(years[0]) * 12 : undefined,
+    approximateAgeMonths: years
+      ? Math.round(Number(years[1]!.replace(",", ".")) * 12)
+      : undefined,
     intakeDate: intakeRaw ? parseSlovenianDate(intakeRaw) : undefined,
     status: statusRaw?.includes("išče") ? "available" : "unknown",
   };

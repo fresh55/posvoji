@@ -15,6 +15,7 @@ import {
 } from "./crawled-snapshot";
 import { guardProviderRequests, type CrawlClient } from "./crawl-guard";
 import { exitCodeForRun } from "./exit-codes";
+import { checkPreviousGenerationSealed } from "./generation-seal";
 import {
   advanceCrawlState,
   crawlProviderIncrementally,
@@ -246,6 +247,25 @@ async function fetchListingsFeed(): Promise<ListingsFeed> {
 // carried on from; a published file ahead of the snapshot is a restored old
 // snapshot and stops the run.
 const previousPublished = readPreviousDataset(datasetPath, { discardPrevious });
+// The generation receipt is the last write of a run, so a receipt that does
+// not name the published dataset's generation means the run that wrote the
+// datasets never committed. Its records are still last run's crawl and are
+// reused as such; what is lost is the change set's baseline, and it is lost
+// for good, because that run had already overwritten the datasets its
+// predecessor sealed. Say so instead of treating it as an ordinary previous
+// run.
+const previousSeal = checkPreviousGenerationSealed(
+  previousPublished?.generatedAt,
+);
+if (!previousSeal.sealed) {
+  console.warn(
+    `WARNING: the previous run wrote its datasets but never sealed them: ` +
+      `${previousSeal.reason}. Their records are still last run's crawl and ` +
+      `this run reuses them. changes.json this run is computed against that ` +
+      `unsealed baseline, so an animal the stopped run added is not reported ` +
+      `as added again.`,
+  );
+}
 const { dataset: previousCrawled, bootstrapping: bootstrappingSnapshot } =
   readPreviousCrawledDataset(crawledDatasetPath, {
     discardPrevious,

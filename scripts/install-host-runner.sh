@@ -5,6 +5,7 @@ set -euo pipefail
 [[ $(id -u) = 0 ]] || { echo 'install-host-runner requires root' >&2; exit 1; }
 repo=/srv/posvoji/app
 [[ -d "$repo/.git" || -f "$repo/.git" ]] || { echo 'install the pinned checkout at /srv/posvoji/app first' >&2; exit 1; }
+cd "$repo"
 for tool in node pnpm python3 git curl flock systemctl systemd-analyze; do
   command -v "$tool" >/dev/null || { echo "missing prerequisite: $tool" >&2; exit 1; }
 done

@@ -5,6 +5,7 @@ set -euo pipefail
 target=$1
 repo=/srv/posvoji/app
 config=/etc/posvoji/crawl.env
+cd "$repo"
 exec 7>/srv/posvoji/.promotion.lock
 flock -n 7 || { echo 'another promotion is active' >&2; exit 1; }
 as_app() { runuser -u posvoji -- env CI=true TMPDIR=/srv/posvoji/tmp npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store "$@"; }

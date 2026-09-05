@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { pathWithPhoto } from "@/lib/animal-path";
 import type { Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const shareText = {
   sl: {
     heading: "Deli to žival",
     intro: "Povezava odpre stran te živali, s fotografijo in zavetiščem.",
+    introPhoto: "Povezava odpre stran te živali na tej fotografiji.",
     link: "Povezava",
     copy: "Kopiraj povezavo",
     copied: "Kopirano",
@@ -33,6 +35,7 @@ const shareText = {
   en: {
     heading: "Share this animal",
     intro: "The link opens this animal's page, with its photo and shelter.",
+    introPhoto: "The link opens this animal's page on this photo.",
     link: "Link",
     copy: "Copy link",
     copied: "Copied",
@@ -115,7 +118,17 @@ function Target({
  * the popover tells nobody anything; only a click the visitor makes leaves
  * the site. The native share sheet joins the row where the platform has one.
  */
-export function ShareButton({ path, name }: { path: string; name: string }) {
+export function ShareButton({
+  path,
+  name,
+  photo,
+}: {
+  path: string;
+  name: string;
+  /** The photo on show, counted from zero. A shared link opens on it, unless
+   *  it is the first, which is where the page opens anyway. */
+  photo?: number;
+}) {
   const { locale, messages } = useI18n();
   const text = shareText[locale];
   const [copied, setCopied] = useState(false);
@@ -135,7 +148,10 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  const url = `${SITE_URL}${path}`;
+  // Every target and the copy field share one address, so what is pasted out
+  // of the field is the same link the buttons hand over.
+  const shared = pathWithPhoto(path, photo);
+  const url = `${SITE_URL}${shared}`;
   const invite = text.invite(name);
 
   async function copy() {
@@ -174,8 +190,11 @@ export function ShareButton({ path, name }: { path: string; name: string }) {
       <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
         <div className="space-y-1">
           <p className="text-sm font-medium">{text.heading}</p>
+          {/* What the link does, which is not the same sentence once it names
+              a photo: somebody sharing the fourth picture should be told that
+              is what arrives, rather than left to read the URL. */}
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {text.intro}
+            {shared === path ? text.intro : text.introPhoto}
           </p>
         </div>
 

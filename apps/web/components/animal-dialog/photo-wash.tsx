@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { AnimatePresence, m, useReducedMotion } from "motion/react";
+import {
+  AnimatePresence,
+  m,
+  useReducedMotion,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
 import type { AdoptionStatus } from "@posvoji/schema";
 import { thumbnailUrl } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
@@ -22,10 +28,11 @@ export const STAGE_WIDTH = "w-full sm:w-[80%]";
 export const WASH_MASK =
   "radial-gradient(50% 50% at 50% 50%, black 65%, transparent 100%)";
 
-// Opacity carries no momentum worth preserving, so the wash crossfades on a
-// fixed length rather than the fan's spring. That also bounds the pile-up:
-// however fast the photos are walked, no more layers can overlap than the fade
-// is long. The length is where FAN_SPRING has settled.
+// One animal's colour fading into the next one's. Inside an animal there is no
+// fade left to run: the layers are blended off the fan's own walk, and that
+// blend is what the crossfade used to stand in for. Opacity carries no
+// momentum worth preserving, so this stays a fixed length rather than the
+// fan's spring, and the length is where that spring has settled.
 const WASH_FADE = { duration: 0.22, ease: "easeOut" } as const;
 
 // The thumb is a fixed 112px file, so there is nothing wider to pick even if
@@ -56,57 +63,59 @@ export function washTone(status: AdoptionStatus): string {
   return status === "adopted" || status === "hold" ? QUIET_TONE : STAGE_TONE;
 }
 
+/** One photo the stage wash is holding, and how far its print stands from the
+ *  front of the fan right now: 0 is the photo on show, ±1 its neighbours. */
+export type WashLayer = { offset: number; source: string };
+
 /**
- * The blurred photo, crossfading whenever the source changes. Callers own the
- * box it fills, what clips it, and how heavy it reads.
+ * How far forward a print this far from the front is standing, from 0 (a whole
+ * step away or more) to 1 (in front).
+ *
+ * The wash blends its layers on this curve and the fan deepens the front
+ * photo's shadow on the same one, so the light and the depth change together
+ * as a print is pulled in.
  */
-function Wash({
-  slot,
+export function frontness(offset: number, progress: number): number {
+  return Math.max(0, Math.min(1, 1 - Math.abs(offset - progress)));
+}
+
+/** One photo of the stage wash, at the weight its print's place in the fan
+ *  gives it. Every layer is drawn at once and the blend between them is what
+ *  makes the light move: at rest only the front one is visible, and mid-drag
+ *  the two either side of the gesture are mixed exactly the way the prints
+ *  themselves are walking. */
+function StageWashLayer({
+  offset,
   source,
   tone,
-  blur,
-  mask,
-  className,
+  progress,
 }: {
-  slot: string;
-  source: string | undefined;
+  offset: number;
+  source: string;
   tone: string;
-  blur: string;
-  mask?: string;
-  className?: string;
+  /** How far the fan has been walked, in photos. */
+  progress: MotionValue<number>;
 }) {
-  const shouldReduceMotion = useReducedMotion();
+  // A commit re-seats the window, so this layer's offset changes under it.
+  // useTransform recomputes during the render that hands it a new function, so
+  // building the closure fresh every render is what keeps a re-seated layer
+  // honest without waiting for the next move of the progress.
+  const opacity = useTransform(progress, (walked) => frontness(offset, walked));
 
   return (
-    <div
-      data-slot={slot}
-      aria-hidden
-      className={cn("pointer-events-none overflow-hidden", className)}
-      style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
+    <m.div
+      data-wash-offset={offset}
+      className="absolute inset-0"
+      style={{ opacity }}
     >
-      <AnimatePresence>
-        {source && (
-          // Keyed by the photo, not by its place in a list. Two slots that
-          // hold the same file have nothing to fade between.
-          <m.div
-            key={source}
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={shouldReduceMotion ? { duration: 0 } : WASH_FADE}
-          >
-            <Image
-              src={thumbnailUrl(source)}
-              alt=""
-              fill
-              sizes={WASH_SIZES}
-              className={cn("scale-125 object-cover", blur, tone)}
-            />
-          </m.div>
-        )}
-      </AnimatePresence>
-    </div>
+      <Image
+        src={thumbnailUrl(source)}
+        alt=""
+        fill
+        sizes={WASH_SIZES}
+        className={cn("scale-125 object-cover blur-2xl", tone)}
+      />
+    </m.div>
   );
 }
 
@@ -114,14 +123,30 @@ function Wash({
  * The wash behind the fan. It is mounted above the fan's own remount, so
  * stepping to another animal crossfades one animal's colour into the next
  * while the fan itself still starts over and cascades back in.
+ *
+ * Within one animal nothing crossfades: the layers are held together and
+ * blended off the fan's own progress, so the colour changes while a print is
+ * being pulled in rather than after it lands.
  */
 export function StageWash({
-  source,
+  layers,
+  progress,
   status,
+  animalId,
 }: {
-  source: string | undefined;
+  /** The print on show at offset 0 and the one either side of it, which is as
+   *  far out as a layer is ever worth drawing. Empty for an animal with
+   *  nothing to show. */
+  layers: WashLayer[];
+  /** The fan's walk, mirrored out of whichever layout is on screen. */
+  progress: MotionValue<number>;
   status: AdoptionStatus;
+  /** What a crossfade is between. Everything inside one animal is a blend. */
+  animalId: string;
 }) {
+  const shouldReduceMotion = useReducedMotion();
+  const tone = washTone(status);
+
   return (
     // Both layouts run a fan now, so both get the same wash behind it.
     <div className="pointer-events-none absolute inset-0">
@@ -137,32 +162,90 @@ export function StageWash({
           STAGE_WIDTH,
         )}
       >
-        <Wash
-          slot="photo-wash"
-          source={source}
-          tone={washTone(status)}
-          blur="blur-2xl"
-          mask={WASH_MASK}
+        <div
+          data-slot="photo-wash"
+          aria-hidden
           // It reaches past the stage, because the part behind the photos is
           // the part nobody can see, and stops at the card's top edge, which
           // is where the card starts painting over it anyway.
-          className="absolute -inset-x-[12%] -top-6 bottom-4 z-0"
-        />
+          className="pointer-events-none absolute -inset-x-[12%] -top-6 bottom-4 z-0 overflow-hidden"
+          style={{ maskImage: WASH_MASK, WebkitMaskImage: WASH_MASK }}
+        >
+          <AnimatePresence>
+            {layers.length > 0 && (
+              // Keyed by the animal, not by the photo: the whole set of layers
+              // belongs to one animal, and stepping to the next is the only
+              // thing here that is a fade rather than a blend.
+              <m.div
+                key={animalId}
+                className="absolute inset-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={shouldReduceMotion ? { duration: 0 } : WASH_FADE}
+              >
+                {layers.map((layer) => (
+                  <StageWashLayer
+                    key={layer.source}
+                    offset={layer.offset}
+                    source={layer.source}
+                    tone={tone}
+                    progress={progress}
+                  />
+                ))}
+              </m.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
 }
 
-/** Behind the lightbox photo, on the scrim rather than on the page. */
+/**
+ * Behind the lightbox photo, on the scrim rather than on the page, crossfading
+ * whenever the source changes.
+ *
+ * One photo at a time. The stage holds the front print and its two neighbours
+ * and blends between them instead; this is the lightbox's shape, where the only
+ * photo that exists is the one on screen.
+ */
 export function LightboxWash({ source }: { source: string | undefined }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <Wash
-      slot="photo-lightbox-wash"
-      source={source}
-      tone={LIGHTBOX_TONE}
-      blur="blur-3xl"
-      // Its edges are the screen's edges, so there is nothing to fade into.
-      className="absolute inset-0"
-    />
+    <div
+      data-slot="photo-lightbox-wash"
+      aria-hidden
+      // Its edges are the screen's edges, so there is nothing to fade into and
+      // no mask over it, unlike the stage's.
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <AnimatePresence>
+        {source && (
+          // Keyed by the photo, not by its place in a list. Two slots that hold
+          // the same file have nothing to fade between.
+          <m.div
+            key={source}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={shouldReduceMotion ? { duration: 0 } : WASH_FADE}
+          >
+            {/* A heavier blur than the stage's blur-2xl: this one is spread
+                over the whole screen, and the same radius on that much ground
+                reads as a photograph rather than a colour. */}
+            <Image
+              src={thumbnailUrl(source)}
+              alt=""
+              fill
+              sizes={WASH_SIZES}
+              className={cn("scale-125 object-cover blur-3xl", LIGHTBOX_TONE)}
+            />
+          </m.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

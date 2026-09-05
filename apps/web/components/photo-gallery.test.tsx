@@ -7,8 +7,10 @@ import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import type { ClientAnimal } from "@/lib/animal";
+import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import { animalsForClient } from "@/lib/dataset";
+import { capturePreloads, pointer } from "@/test/pointer";
 
 afterEach(() => {
   cleanup();
@@ -53,27 +55,6 @@ function schemaAnimal(rest: Partial<Animal> = {}): Animal {
     attribution: "Foto: Zavetišče Test",
     ...rest,
   };
-}
-
-// jsdom has no PointerEvent, and the Event it falls back to drops clientY and
-// pointerType, so the gesture is built on MouseEvent by hand. React listens by
-// event name, so the pointer handlers still receive these.
-function pointer(
-  element: Element,
-  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel",
-  init: { x: number; y: number; pointerType?: string; pointerId?: number },
-) {
-  const event = new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    clientX: init.x,
-    clientY: init.y,
-  });
-  Object.defineProperty(event, "pointerType", {
-    value: init.pointerType ?? "touch",
-  });
-  Object.defineProperty(event, "pointerId", { value: init.pointerId ?? 1 });
-  fireEvent(element, event);
 }
 
 /** Returns whether the click was allowed through to the browser. */
@@ -137,23 +118,18 @@ const CACHED: Animal["images"] = Array.from({ length: 3 }, (_, i) => ({
   rights: "cache-permitted" as const,
 }));
 
-/** Every image the gallery builds to warm the cache, in the order it made
- *  them. new window.Image() is the only way that preload is observable. */
-function capturePreloads() {
-  const made: { src: string; srcset: string; sizes: string }[] = [];
-  class FakeImage {
-    src = "";
-    srcset = "";
-    sizes = "";
-    fetchPriority = "";
-    decoding = "";
-    constructor() {
-      made.push(this);
-    }
-  }
-  vi.stubGlobal("Image", FakeImage);
-  return made;
-}
+// Four, so the photo the dialog opens on and its two neighbours are three
+// different files rather than the same one twice.
+const CACHED_FOUR: Animal["images"] = Array.from({ length: 4 }, (_, i) => ({
+  sourceUrl: `https://example.test/photo-${i}.jpg`,
+  cachedUrl: `/media/animals/photo-${i}.webp`,
+  width: 800,
+  height: 600,
+  widths: [320, 480, 640, 800],
+  blurDataURL: "data:image/webp;base64,UklGRg==",
+  rights: "cache-permitted" as const,
+}));
+
 
 describe("photo gallery candidates", () => {
   it("offers the card's photo as a ladder, with the card's own sizes", () => {
@@ -221,6 +197,68 @@ describe("photo gallery candidates", () => {
     expect(preloads[0].src).toBe("https://example.test/photo-0.jpg");
     expect(preloads[0].srcset).toBe("");
     expect(preloads[0].sizes).toBe("");
+  });
+});
+
+// Comfortably past PRELOAD_DWELL_MS, which the component keeps to itself.
+// What these tests are about is that the dwell has to elapse at all, not the
+// exact length of it, so they wait longer than it rather than matching it.
+const PAST_DWELL_MS = 500;
+
+describe("photo gallery dwell", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("warms what the dialog's fan mounts first, at the fan's own sizes", () => {
+    const preloads = capturePreloads();
+    const surface = setup({ images: CACHED_FOUR });
+
+    fireEvent.pointerEnter(surface);
+    // A pointer crossing the grid is not asking for anything, so nothing is
+    // fetched until it has stayed.
+    expect(preloads).toHaveLength(0);
+    vi.advanceTimersByTime(PAST_DWELL_MS);
+
+    // The card's own neighbours, unchanged: this gallery's sizes, the photos
+    // either side of the one on show.
+    expect(
+      preloads.filter((image) => image.sizes === CARD_PHOTO_SIZES).map((i) => i.src),
+    ).toEqual(["/media/animals/photo-3.webp", "/media/animals/photo-1.webp"]);
+
+    // And the three prints the fan mounts nearest the front, at the sizes the
+    // fan draws them with. The dialog opens on the first photo whatever this
+    // card is showing, so the window is fixed at index 0.
+    const warm = preloads.filter((image) => image.sizes === FAN_PHOTO_SIZES);
+    expect(warm.map((image) => image.src)).toEqual([
+      "/media/animals/photo-0.webp",
+      "/media/animals/photo-3.webp",
+      "/media/animals/photo-1.webp",
+    ]);
+    // The whole ladder, so the browser picks the rung the fan's layout asks
+    // for. That is a different file from the card's, which is the entire
+    // reason this second warm exists.
+    expect(warm[0].srcset).toContain("/media/animals/photo-0-640.webp 640w");
+  });
+
+  it("asks for nothing extra on a gallery that opens no such surface", () => {
+    const preloads = capturePreloads();
+    const surface = setupPlain({ images: CACHED_FOUR })!;
+
+    fireEvent.pointerEnter(surface);
+    vi.advanceTimersByTime(PAST_DWELL_MS);
+
+    // The animal's own page mounts this gallery with no warmSizes. Its two
+    // neighbours are all it may fetch.
+    expect(preloads.map((image) => image.src)).toEqual([
+      "/media/animals/photo-3.webp",
+      "/media/animals/photo-1.webp",
+    ]);
+    expect(preloads.every((image) => image.sizes === "100vw")).toBe(true);
   });
 });
 
@@ -377,7 +415,7 @@ describe("photo gallery without a link", () => {
     expect(surface.getAttribute("tabindex")).toBe("0");
     expect(surface.getAttribute("role")).toBe("group");
     expect(surface.getAttribute("aria-keyshortcuts")).toBe(
-      "ArrowLeft ArrowRight",
+      "ArrowLeft ArrowRight Home End",
     );
 
     // 425 animals carry more than one photo, and before this every one of

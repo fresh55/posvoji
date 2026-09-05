@@ -5,7 +5,7 @@ import { ShareButton } from "@/components/animal-dialog/share-button";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
-import { PhotoGallery } from "@/components/photo-gallery";
+import { AnimalPageGallery } from "@/components/animal-page-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -101,7 +101,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 Without one the facts column sat alone beside an empty half. */}
             <div className={cn("grid gap-8", hasPhoto && "sm:grid-cols-2 sm:items-start")}>
             {hasPhoto && (
-              <PhotoGallery
+              <AnimalPageGallery
                 // Resolved here rather than by the grid's client projection:
                 // this page carries one animal, and its gallery blurs whichever
                 // photo the visitor steps to, so every placeholder stays.
@@ -112,13 +112,6 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 // and there it is a little under half the viewport, and below
                 // sm it is the whole column.
                 sizes="(min-width: 1024px) 31rem, (min-width: 640px) 47vw, 100vw"
-                // The page's own subject, above the fold, and the largest
-                // thing on it.
-                eager
-                // The one surface that asks for the top of the ladder anyway:
-                // a phone gives it the full width, and a desktop gives it
-                // 31rem, which is 992px on a 2x screen.
-                avif
                 className="relative aspect-[4/3] overflow-hidden rounded-ui border bg-muted"
               />
             )}

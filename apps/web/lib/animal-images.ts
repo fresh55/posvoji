@@ -13,7 +13,10 @@ const CACHE_PREFIX = "/media/animals/";
  *  The intrinsic width and height ingest records are not among them. Nothing
  *  here draws with a size attribute: every photo fills a box its caller sizes,
  *  and the ladder photoSrcSet builds comes from `widths` alone. They stay in
- *  the ingest manifest, which is the one place that uses them. */
+ *  the ingest manifest, which is the one place that uses them. What does come
+ *  through is their ratio, reduced to `aspect` below, because the shape of a
+ *  photo is something a surface can draw with: a print can keep it, and a
+ *  crop can know where the subject is likely to be. */
 export type PermittedPhoto = {
   /** What an <img src> points at: our cached copy where there is one. */
   src: string;
@@ -22,7 +25,34 @@ export type PermittedPhoto = {
   /** An `.avif` sibling of `src` exists, at `src`'s own width and no other. */
   avif?: boolean;
   blurDataURL?: string;
+  /** Width over height, clamped to the range a print is drawn in (see
+   *  printAspect) and absent when it rounds to the 4:3 every surface assumes.
+   *  Absent, too, for a photo ingest never measured. */
+  aspect?: number;
 };
+
+/** The sizes every print in the dialog's fan carries. It lives here rather than
+ *  with the fan because the card warms photos at it before the dialog opens. */
+export const FAN_PHOTO_SIZES = "(max-width: 639px) 80vw, 24rem";
+
+/** The shape a print is drawn in when the photo says nothing else, and what
+ *  every photo box on the site has always been. */
+export const PRINT_ASPECT = 4 / 3;
+/** The tallest print the fan draws. A photo taller than this is cropped to it,
+ *  which is where the crop bias in AnimalPhoto earns its keep. */
+export const PRINT_ASPECT_MIN = 3 / 4;
+
+/** A photo's ratio as a print would show it: clamped between 3:4 and 4:3, and
+ *  rounded so it serializes short. Undefined when it is 4:3 within the
+ *  rounding, so the common case costs nothing on the wire: most shelter photos
+ *  are 4:3 or 3:2, and 3:2 clamps to 4:3 as well. */
+export function printAspect(width: number, height: number): number | undefined {
+  if (!(width > 0) || !(height > 0)) return undefined;
+  const clamped = Math.min(PRINT_ASPECT, Math.max(PRINT_ASPECT_MIN, width / height));
+  const rounded = Math.round(clamped * 100) / 100;
+  if (Math.abs(rounded - PRINT_ASPECT) < 0.02) return undefined;
+  return rounded;
+}
 
 /** Whether a surface may draw this image at all. permittedPhotos keeps
  *  exactly these, in the order they arrive, so the first one to pass is the
@@ -57,6 +87,10 @@ export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
       if (image.widths !== undefined) photo.widths = image.widths;
       if (image.avif !== undefined) photo.avif = image.avif;
       if (image.blurDataURL !== undefined) photo.blurDataURL = image.blurDataURL;
+      if (image.width !== undefined && image.height !== undefined) {
+        const aspect = printAspect(image.width, image.height);
+        if (aspect !== undefined) photo.aspect = aspect;
+      }
       return [photo];
     }
     return [{ src: image.sourceUrl }];

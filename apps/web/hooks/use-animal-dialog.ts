@@ -7,11 +7,13 @@ import {
   animalPath,
   animalSlugFromPath,
   findAnimalBySlug,
+  PHOTO_PARAM,
 } from "@/lib/animal-path";
 import {
   commitLocation,
   getLocationSnapshot,
   getServerLocationSnapshot,
+  mergeOwnedParams,
   subscribeToLocation,
 } from "@/lib/location-search";
 
@@ -31,8 +33,19 @@ function splitLocation(location: string): [string, string] {
   return [location.slice(0, mark), location.slice(mark + 1)];
 }
 
-function currentQuery(): string {
-  return window.location.search.replace(/^\?/, "");
+// The rest of the query, which is where the filters live, without the photo.
+//
+// ?foto= names a photo of one animal, so it cannot travel with the visitor:
+// stepping to the next animal, or clicking another card while a deep link is
+// open, would otherwise open that animal on its third picture. The ?zival=
+// rewrite is the one place it survives, because that is the same animal
+// arriving at its own address.
+//
+// mergeOwnedParams rather than URLSearchParams: it keeps every param it does
+// not own as the exact bytes it already is, and a filter value is not this
+// hook's to re-encode.
+function queryWithout(...params: string[]): string {
+  return mergeOwnedParams(window.location.search, params, "");
 }
 
 export function useAnimalDialog({
@@ -82,7 +95,7 @@ export function useAnimalDialog({
       if (!animal) return;
       commitLocation(
         animalPath(animal, locale),
-        currentQuery(),
+        queryWithout(PHOTO_PARAM),
         "push",
         PUSHED_BY_DIALOG,
       );
@@ -97,7 +110,11 @@ export function useAnimalDialog({
     (id: string) => {
       const animal = animals.find((candidate) => candidate.id === id);
       if (!animal) return;
-      commitLocation(animalPath(animal, locale), currentQuery(), "replace");
+      commitLocation(
+        animalPath(animal, locale),
+        queryWithout(PHOTO_PARAM),
+        "replace",
+      );
     },
     [animals, locale],
   );
@@ -110,9 +127,9 @@ export function useAnimalDialog({
       history.back();
       return;
     }
-    const params = new URLSearchParams(window.location.search);
-    params.delete("zival");
-    commitLocation(basePath, params.toString(), "replace");
+    // Both of the dialog's own params go back with it: the list behind it has
+    // no animal open and so has no photo on show either.
+    commitLocation(basePath, queryWithout("zival", PHOTO_PARAM), "replace");
   }, [basePath]);
 
   return { openId, open, swap, close };

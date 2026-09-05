@@ -590,7 +590,7 @@ describe("crawlProviderIncrementally", () => {
         forcedBecause: "--refresh-all",
         now,
       }),
-    ).rejects.toThrow(/every detail fetch failed \(2 of 2 attempted\)/);
+    ).rejects.toThrow(/all 2 detail fetch\(es\) this run attempted failed/);
   });
 
   it("isolates a normalize failure the way it isolates a fetch failure", async () => {

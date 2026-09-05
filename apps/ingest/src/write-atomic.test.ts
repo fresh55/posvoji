@@ -31,6 +31,17 @@ describe("writeFileAtomic", () => {
     expect(readdirSync(dir)).toEqual(["manifest.json"]);
   });
 
+  it("atomically replaces binary output", () => {
+    const path = join(dir, "card.jpg");
+    writeFileAtomic(path, Buffer.from([0xff, 0xd8, 0x00]));
+    writeFileAtomic(path, Buffer.from([0xff, 0xd8, 0x01, 0xff, 0xd9]));
+
+    expect(readFileSync(path)).toEqual(
+      Buffer.from([0xff, 0xd8, 0x01, 0xff, 0xd9]),
+    );
+    expect(readdirSync(dir)).toEqual(["card.jpg"]);
+  });
+
   it("does not reuse another writer's staging sibling", () => {
     const path = join(dir, "manifest.json");
     const occupiedTemp = `${path}.tmp`;

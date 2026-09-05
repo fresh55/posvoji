@@ -7,16 +7,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { repoRoot } from "./paths";
 
 // scripts/publication.cjs is run by scripts/deploy.sh, not by the pipeline,
-// but the invariant it enforces is this workspace's: animals.json,
-// animals.crawled.json and overrides.json are written by one export run and
-// carry one generatedAt. The check lives at the packaging end because that is
-// the last point before a release is built out of all three, and it is tested
-// here because this is where the three files come from.
+// but the semantic invariant it enforces is this workspace's: animals.json,
+// animals.crawled.json and overrides.json carry one generatedAt, and the
+// already-validated ingest generation id is copied into the deploy receipt.
+// Cryptographic artifact/media checks live in generation-receipt.mjs; this is
+// tested here because the files and the first receipt come from ingest.
 
 const PUBLICATION = join(repoRoot, "scripts", "publication.cjs");
 
 interface Receipt {
   releaseId: string;
+  generationId: string;
   datasetGeneratedAt: string;
   overridesEnabled: boolean;
   portalGeneratedAt?: string;
@@ -27,6 +28,7 @@ interface ReceiptInput {
   dataset: unknown;
   crawled: unknown;
   overrides: unknown;
+  generation: unknown;
 }
 
 const require_ = createRequire(import.meta.url);
@@ -37,6 +39,7 @@ const { buildReceipt } = require_(PUBLICATION) as {
 const GENERATED_AT = "2026-08-30T06:00:00Z";
 const PORTAL_AT = "2026-08-30T05:45:00Z";
 const RELEASE_ID = "a1b2c3d4e5f6-20260830T070000Z";
+const GENERATION_ID = "a".repeat(64);
 
 function input(overrides: Partial<ReceiptInput> = {}): ReceiptInput {
   return {
@@ -44,6 +47,11 @@ function input(overrides: Partial<ReceiptInput> = {}): ReceiptInput {
     dataset: { generatedAt: GENERATED_AT, animals: [] },
     crawled: { generatedAt: GENERATED_AT, animals: [] },
     overrides: { generatedAt: GENERATED_AT, enabled: false },
+    generation: {
+      version: 1,
+      generationId: GENERATION_ID,
+      datasetGeneratedAt: GENERATED_AT,
+    },
     ...overrides,
   };
 }
@@ -52,6 +60,7 @@ describe("buildReceipt", () => {
   it("writes the receipt when the three files are from one run", () => {
     expect(buildReceipt(input())).toEqual({
       releaseId: RELEASE_ID,
+      generationId: GENERATION_ID,
       datasetGeneratedAt: GENERATED_AT,
       overridesEnabled: false,
     });
@@ -79,6 +88,23 @@ describe("buildReceipt", () => {
     expect(() => buildReceipt(input({ dataset: { animals: [] } }))).toThrow(
       /no usable generatedAt/,
     );
+  });
+
+  it("refuses a missing or mismatched generation receipt", () => {
+    expect(() => buildReceipt(input({ generation: undefined }))).toThrow(
+      /generation\.json/,
+    );
+    expect(() =>
+      buildReceipt(
+        input({
+          generation: {
+            version: 1,
+            generationId: GENERATION_ID,
+            datasetGeneratedAt: "2026-08-29T18:00:00Z",
+          },
+        }),
+      ),
+    ).toThrow(/generation\.json/);
   });
 
   it("carries the portal timestamp when the integration was on", () => {
@@ -144,6 +170,11 @@ describe("publication.cjs as deploy.sh runs it", () => {
       "animals.json": { generatedAt: GENERATED_AT, animals: [] },
       "animals.crawled.json": { generatedAt: GENERATED_AT, animals: [] },
       "overrides.json": { generatedAt: GENERATED_AT, enabled: false },
+      "generation.json": {
+        version: 1,
+        generationId: GENERATION_ID,
+        datasetGeneratedAt: GENERATED_AT,
+      },
       ...overrides,
     };
     for (const [name, body] of Object.entries(files)) {
@@ -175,6 +206,7 @@ describe("publication.cjs as deploy.sh runs it", () => {
 
     expect(JSON.parse(readFileSync(out, "utf8"))).toEqual({
       releaseId: RELEASE_ID,
+      generationId: GENERATION_ID,
       datasetGeneratedAt: GENERATED_AT,
       overridesEnabled: false,
     });

@@ -1,5 +1,11 @@
 # Crawl scheduling
 
+The host-runner implementation and its activation checklist are now in
+[PRODUCTION-OPERATIONS.md](PRODUCTION-OPERATIONS.md). It includes verified
+release delivery, provider checkpoints, free external monitoring and encrypted
+PC backups. The Windows scheduler described below remains active until that
+checklist's supervised handover succeeds; adding unit files does not migrate it.
+
 The dataset behind posvoji.si is a crawl artifact, so the site is only as
 current as the last export. This is how that export is made to happen on its
 own, twice a day, without anybody remembering to do it.
@@ -17,7 +23,7 @@ task folder `\Posvoji\`.
 
 | Task | Trigger | Runs |
 |---|---|---|
-| `PosvojiCrawlDeploy` | once, then every 12 hours, forever | `scripts/scheduled-crawl.sh` under Git Bash |
+| `PosvojiCrawlDeploy` | once, then every 12 hours for 10 years (reinstall renews it) | `scripts/scheduled-crawl.sh` under Git Bash |
 | `PosvojiCrawlDeadman` | at logon (3 min delay) and 12:00 daily | `scripts/crawl-deadman.ps1` |
 
 Neither task stores a password. Both run with an interactive token, which
@@ -29,8 +35,16 @@ The crawl task is set `StartWhenAvailable` and `WakeToRun`, so a PC that was
 asleep at 03:00 wakes for the run, and a PC that was switched off runs the
 missed occurrence once it comes back rather than waiting for the next slot.
 `MultipleInstances IgnoreNew` is the single-instance guard: a run that
-overruns is never joined by a second one. The execution time limit is 6
-hours.
+overruns is never joined by a second one. The execution time limit is 10
+hours: a cold image-cache and derivative pass can legitimately take about
+seven, while ten still stops a wedged run two hours before the next scheduled
+occurrence. The separate keep-awake helper gives up after 10 hours 15 minutes,
+so even Task Scheduler's hard termination cannot leave the machine held awake
+indefinitely through an abandoned flag.
+
+Changing the setup script does not edit an already registered task. After an
+update to these settings, rerun `scripts/setup-crawl-task.ps1`; its idempotent
+registration is what replaces the old execution limit on the machine.
 
 ### What one run does
 
@@ -58,7 +72,8 @@ editing, and so a deploy is always of committed code.
    Both are optional. Without them ingest skips the override and listing
    feeds, so a machine with no portal configured still has a crawl to do; the
    shelters that write their own listings simply carry forward.
-2. **Wait for a network.** Up to 150 seconds, pinging 1.1.1.1 and 8.8.8.8.
+2. **Wait for a network.** Up to 150 seconds of retry delay, plus bounded
+   ping attempts, checking 1.1.1.1 and 8.8.8.8.
    A machine that just woke for this run usually has a link within a few
    seconds; DHCP and a VPN can take longer. The log says which one answered.
 3. **Update the clone.** `git fetch --prune`, `git reset --hard origin/main`,
@@ -115,8 +130,13 @@ had said them. So it checks after the crawl that every enabled provider
 finished and refreshed in full, and exits `1` before writing anything if not.
 See `apps/ingest/src/crawled-snapshot.ts`.
 
-When the export is blocked or the deploy fails, the site keeps serving the
-previous release. Nothing is torn down first.
+When the export is blocked, the site keeps serving the previous release. The
+deploy checks a new release before an atomic link replacement, and its remote
+flip transaction restores the previous target when the post-flip health check
+fails. A connection loss exactly at the transaction's commit boundary can make
+the caller's result uncertain, so a deploy-failure notification asks the
+operator to inspect `/srv/posvoji/current` rather than claiming which release
+is live.
 
 ## Logs
 
@@ -148,10 +168,12 @@ toast and writes an Application event-log record under the source
 | Crawl degraded, deploying anyway | warning | 101 | The export exited 2. The deploy is proceeding. |
 | Crawl could not start | error | 100 | No network, or git, or the install failed. Nothing was crawled or deployed. |
 | Crawl failed, nothing deployed | error | 100 | The export was blocked. The site still serves the previous release. |
-| Deploy failed | error | 100 | The dataset is fine, shipping it is not. The site still serves the previous release. |
+| Deploy failed | error | 100 | The dataset is fine, shipping it is not. The flip normally restored the previous release; verify `current` because a commit-boundary connection loss is ambiguous. |
 | Scheduled crawl looks stopped | warning | 101 | From the dead man's switch, below. |
 
-Every toast names the run log to read.
+Failure notifications include the run log when one is available. Success
+toasts are intentionally brief, and the separate dead-man's-switch toast points
+at the stale dataset instead.
 
 There is no toast module involved. The script uses raw WinRT with the AUMID
 Windows already registers for Windows PowerShell, which is what lets it show
@@ -210,11 +232,14 @@ Enable-ScheduledTask  -TaskName PosvojiCrawlDeploy -TaskPath \Posvoji\
 .\scripts\crawl-deadman.ps1 -CloneDir C:\Users\bruno\source\repos\posvoji-crawl
 ```
 
-`LastTaskResult` is the runner's exit code: `0` deployed, `1` did not.
+`LastTaskResult` of `0` means the runner fully completed. Any nonzero value (or
+a Task Scheduler launch code rather than a shell exit code) requires the run
+log and `/srv/posvoji/current` to determine how far it got.
 
 Pause it before touching production by hand, and before any change to
-`deploy.sh` that has not been dry-run. A crawl firing in the middle of a
-manual deploy is the one way two release flips can race.
+`deploy.sh` that has not been dry-run. Deploys themselves are serialized by the
+host-wide `.deploy-lock`, but a hand migration or server edit is not safe until
+it either holds that same lock or the scheduled task has stopped.
 
 ### Installing or reinstalling
 
@@ -251,8 +276,23 @@ crawl spends half an hour waiting on shelter servers with the CPU near idle,
 which is what an unused machine looks like. The first real run, on 29 August
 2026, was lost that way eleven minutes in. `scripts/crawl-keepawake.ps1` now
 holds `ES_SYSTEM_REQUIRED` for as long as the run's flag file exists, so the
-idle timer cannot end a crawl. Choosing Sleep or Shut down by hand still ends
-it, as it should; that run writes nothing and the next one starts over.
+idle timer cannot suspend a crawl. Manually sleeping the PC suspends and later
+resumes it; shutdown or forced termination interrupts it and may leave partial
+generated files, which the export/deploy consistency guards reject before
+publication. It may also leave `.artifact-lock` because Task Scheduler's hard
+termination does not guarantee that the process receives a cleanup signal.
+The next ingest or deploy recovers that lock only when its structured owner
+record names this hostname, stable machine identity and exact checkout, and
+the recorded process birth identity is proved gone. PID reuse is distinguished
+on Windows rather than treated as the old job. Locks copied from another
+checkout or machine, legacy owner files and unreadable identity/liveness checks
+stay fail-closed. For one of those cases, first
+verify in Task Manager that no `scheduled-crawl.sh`, ingest Node process or
+`deploy.sh` for this clone is running, then move `.artifact-lock` aside for
+inspection; do not delete it merely because it is old. Released and recovered
+locks are retained beside it as ignored `.artifact-lock.retired-<nonce>`
+evidence and ABA guards; they do not block later runs. The next complete run
+replaces partial artifacts.
 
 **A changed home IP address breaks the deploy at the first ssh.** The host
 only accepts SSH from the maintainer's home address, so when the ISP hands out
@@ -264,21 +304,27 @@ This constraint disappears entirely when the job moves to the host, since a
 job running on the host does not SSH into it.
 
 **The deploy needs the dataset and the media to be present locally.**
-`deploy.sh` refuses to run without `data/dist/animals.json` and a non-empty
-`apps/web/public/media/animals`, which is why the setup script can seed both.
-A first run against an unseeded clone works but crawls and re-fetches
-everything, which takes hours. Once the host is on release layout v2 it also
-needs `data/dist/animals.crawled.json`, which every export writes; see
-"Release layout" in [DEPLOY-MEDIA.md](DEPLOY-MEDIA.md). Until the host's
-marker file exists, an unattended deploy ships today's layout, withholds the
-private artifacts and prints the three steps that move the host onto the new
-layout. Pause this task for those three steps, as for any hand change to
-production: a release shipped in the middle of them has no `public/` of its
-own, and the docroot is about to be moved onto that path.
+`deploy.sh` refuses to run if `data/dist/animals.json`,
+`animals.crawled.json`, `image-cache.json`, `overrides.json`, `share-cards.json`,
+`shelter-logos.json`, the last-written `generation.json` receipt or the media
+root is missing, or if any receipt-named media byte does not match. An empty
+referenced-media set is valid. The setup script can seed this generated state;
+without it and with the portal integration off, a first run crawls and
+re-fetches everything, which takes hours. With the portal integration on, seed
+first or run a supervised full `pnpm dataset:export --refresh-all` so the
+crawled baseline exists. Under release layout v2 that already-required crawled
+dataset is also copied into the release's private half; see "Release layout" in
+[DEPLOY-MEDIA.md](DEPLOY-MEDIA.md). Until the host's marker file exists, an
+unattended deploy ships today's layout, withholds the private artifacts and
+points to the authoritative migration runbook. Pause
+this task for those three steps, as for any hand change to production; the
+runbook also holds the host deploy lock across the docroot and marker changes
+so neither a scheduled nor manual release can land between them.
 
-**One clone, one machine.** Nothing coordinates between the scheduled clone
-and a working copy. Do not point the task at a directory anybody edits: the
-runner hard-resets it on every run.
+**One scheduled clone, one machine.** The runner hard-resets its clone on every
+run, so do not point the task at a directory anybody edits. A working copy may
+deploy separately because the host lock serializes host mutations, but its
+local build inputs and the scheduled clone remain independent.
 
 ## Later: move it to the host
 
@@ -292,14 +338,19 @@ box.
 runs one catch-up rather than one per missed slot, plus
 `RandomizedDelaySec=15min` so the shelters are not all hit at exactly the same
 minute of the hour by a job that never forgets. The service is
-`Type=oneshot` with an explicit `TimeoutStartSec=45min`, since a oneshot with
-no timeout can hang forever holding the timer's next run, and an `OnFailure=`
-alert unit so a failure reaches a person the way the toast does now.
+`Type=oneshot` with an explicit `TimeoutStartSec=10h`: the same bound as the
+desktop task, long enough for a cold seven-hour image pass but still short of
+the next 12-hour occurrence. A oneshot with no timeout can hang forever holding
+the timer's next run. An `OnFailure=` alert unit makes a timeout or other
+failure reach a person the way the toast does now.
 
-**Confinement.** `DynamicUser=yes`, `ProtectSystem=strict`, and
-`ReadWritePaths=/srv/posvoji` so the crawl can write the dataset and the media
-and nothing else. `MemoryMax=` and `CPUQuota=` are not optional on that box:
-the image pipeline is the heaviest thing that will ever run there and Caddy is
+**Confinement.** Run as the existing `posvoji` account (the deployed tree is
+owned `posvoji:caddy`), with `ProtectSystem=strict` and
+`ReadWritePaths=/srv/posvoji` so the crawl can write the dataset and media but
+not arbitrary system paths. `DynamicUser=yes` is not compatible with those
+existing Unix ownership and mode requirements. `MemoryMax=` and `CPUQuota=`
+are not optional on that box: the image pipeline is the heaviest thing that
+will ever run there and Caddy is
 serving the site from the same two cores. A crawl that starves the web server
 has failed at its purpose.
 

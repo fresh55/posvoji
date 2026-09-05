@@ -1,6 +1,6 @@
 # Deploy headers
 
-`apps/web` is a static export (`next export`). Next.js only applies the
+`apps/web` uses `next build` with `output: "export"`. Next.js only applies the
 `headers()` config from `next.config.ts` when it is serving requests itself,
 which a static export never does. Any headers this site needs have to come
 from whatever serves the exported files, not from Next.js.
@@ -20,7 +20,7 @@ location / {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
 
-    try_files $uri $uri.html $uri/ =404;
+    try_files $uri.html $uri $uri/ =404;
 }
 ```
 
@@ -36,9 +36,12 @@ passes through more than one proxy.
 
 ## Caddy
 
+This is a header-only excerpt, not the complete production media configuration:
+
 ```caddy
-example.com {
-    root * /var/www/posvoji
+posvoji.si {
+    root * /srv/posvoji/current/public
+    try_files {path}.html {path} {path}/index.html
     file_server
 
     header {
@@ -47,6 +50,9 @@ example.com {
     }
 }
 ```
+
+Use the complete shared-media example below in production; media is excluded
+from releases and lives under `/srv/posvoji/media`.
 
 Caddy's `reverse_proxy` sets `X-Forwarded-For` for the upstream. The portal
 automatically trusts one Caddy hop when it connects on loopback; otherwise set
@@ -95,10 +101,11 @@ Cache-Control: public, max-age=31536000, immutable
 
 ### `/media/share/*`
 
-Filenames here are the animal id, not a content hash (`shareCardFile` in
-`apps/ingest/src/share-cards.ts` writes `<id>.jpg` or `<id>.<locale>.jpg`).
-The same name can point at different bytes over time: an animal's status,
-name or photo can change and the card is redrawn under the same filename.
+Filenames here are stable id-derived names, not content hashes. `shareCardFile`
+in `apps/ingest/src/share-cards.ts` writes a sanitized bounded stem plus a
+16-hex digest of the full id, optionally followed by a locale. The same name
+can point at different bytes over time: an animal's status, name or photo can
+change and the card is redrawn under the same filename.
 `immutable` or a long `max-age` would leave link-preview crawlers (Facebook,
 Slack, Twitter) showing a stale card indefinitely, since most of them cache
 the image themselves for as long as the header allows. Use a short one
@@ -115,38 +122,70 @@ quickly.
 ### nginx
 
 ```nginx
-location /media/animals/ {
-    add_header Cache-Control "public, max-age=31536000, immutable" always;
-}
+location /media/ {
+    alias /srv/posvoji/media/;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Content-Type-Options "nosniff" always;
 
-location /media/shelter-logos/ {
-    add_header Cache-Control "public, max-age=31536000, immutable" always;
-}
+    location /media/animals/ {
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
 
-location /media/share/ {
-    add_header Cache-Control "public, max-age=3600" always;
+    location /media/shelter-logos/ {
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location /media/share/ {
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Cache-Control "public, max-age=3600";
+    }
 }
 ```
 
-Put these above the general `location /` block; nginx matches the most
-specific prefix, so order between these three does not matter.
+Put this above the general `location /` block. `alias` maps `/media/` to the
+shared production tree, and nginx matches the most specific nested prefix.
+Each child repeats the security headers because defining any `add_header` stops
+normal inheritance from the parent. Keeping `always` only on security headers
+prevents a 401 or 404 from being cached as immutable for a year.
 
 ### Caddy
 
 ```caddy
-example.com {
-    root * /var/www/posvoji
+posvoji.si {
+    handle_path /media/* {
+        root * /srv/posvoji/media
+        file_server
+
+        @cachedMedia path /animals/* /shelter-logos/*
+        header @cachedMedia Cache-Control "public, max-age=31536000, immutable" {
+            match status 2xx 304
+        }
+
+        @shareCards path /share/*
+        header @shareCards Cache-Control "public, max-age=3600" {
+            match status 2xx 304
+        }
+    }
+
+    root * /srv/posvoji/current/public
+    try_files {path}.html {path} {path}/index.html
     file_server
 
     header {
         Referrer-Policy "strict-origin-when-cross-origin"
         X-Content-Type-Options "nosniff"
     }
-
-    @cachedMedia path /media/animals/* /media/shelter-logos/*
-    header @cachedMedia Cache-Control "public, max-age=31536000, immutable"
-
-    @shareCards path /media/share/*
-    header @shareCards Cache-Control "public, max-age=3600"
 }
 ```
+
+`handle_path` removes the `/media` prefix before matching inside the block. The
+response matchers apply cache policy only to successful/304 responses, so a
+transient authentication or missing-file error cannot acquire a long-lived
+public cache header. The `.html` candidate comes before the literal path because
+Next also exports a same-named directory of RSC payloads; choosing that directory
+first breaks clean URLs such as `/en/resources`.

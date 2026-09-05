@@ -1,0 +1,41 @@
+name: Production health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17,47 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-health
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    # Standard runners are free for public repositories. Keep this disabled
+    # until the status-producing release is live; never incur private-repo usage.
+    if: github.event.repository.private == false && vars.POSVOJI_MONITOR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - name: Verify the public release and source freshness
+        env:
+          MONITOR_NETRC: ${{ secrets.POSVOJI_MONITOR_NETRC }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          netrc=$(mktemp)
+          trap 'rm -f -- "$netrc"' EXIT
+          if [[ -n "$MONITOR_NETRC" ]]; then
+            printf '%s\n' "$MONITOR_NETRC" >"$netrc"
+            chmod 600 "$netrc"
+            export POSVOJI_MONITOR_NETRC_FILE="$netrc"
+          fi
+          unset MONITOR_NETRC
+          bash scripts/monitor-production.sh

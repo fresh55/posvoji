@@ -83,7 +83,10 @@ $DeadmanTaskName = 'PosvojiCrawlDeadman'
 $EventSource = 'PosvojiCrawl'
 
 $CrawlIntervalHours = 12
-$CrawlTimeLimitHours = 6
+# A cold photo cache/derivative pass can take about seven hours. Ten leaves
+# room for the crawl, build and deploy while still stopping a wedged run before
+# the next 12-hour occurrence. IgnoreNew below remains the overlap guard.
+$CrawlTimeLimitHours = 10
 $DeadmanMaxAgeHours = 30
 
 $UserId = "$env:USERDOMAIN\$env:USERNAME"
@@ -342,8 +345,9 @@ $crawlTrigger = New-RepeatingTrigger -At $StartAt -IntervalHours $CrawlIntervalH
 # StartWhenAvailable runs a missed occurrence once the machine is back, so a
 # desktop that slept through 03:00 crawls when it wakes instead of skipping
 # to 15:00. WakeToRun wakes it rather than waiting. IgnoreNew is the single
-# instance guard: a run that overruns its 12 hours is never joined by a
-# second one.
+# instance guard: a run that reaches the next 12-hour occurrence is never
+# joined by a second one. The ten-hour limit is long enough for the observed
+# seven-hour cold image phase and still leaves a two-hour separation.
 $crawlSettings = New-ScheduledTaskSettingsSet `
   -StartWhenAvailable `
   -WakeToRun `

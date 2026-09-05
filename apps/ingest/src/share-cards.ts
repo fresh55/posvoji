@@ -5,7 +5,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -518,7 +517,7 @@ export async function writeShareCards(
       if (photo) {
         const source = readFileSync(photo);
         const file = shareCardFile(animal.id);
-        writeFileSync(
+        writeFileAtomic(
           join(cardsDir, file),
           await renderPhotoCard(source, cardText(animal, "sl", reference)),
         );
@@ -527,7 +526,7 @@ export async function writeShareCards(
         const files: string[] = [];
         for (const locale of CARD_LOCALES) {
           const file = shareCardFile(animal.id, locale);
-          writeFileSync(
+          writeFileAtomic(
             join(cardsDir, file),
             await renderTypographicCard(
               cardText(animal, locale, reference),

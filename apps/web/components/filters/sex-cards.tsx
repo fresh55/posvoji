@@ -3,8 +3,10 @@
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
+  FilterCardHoverLift,
   FilterSelectionMark,
   filterCardVariants,
+  isDeadOption,
 } from "@/components/filters/filter-card";
 import {
   useFilterCardHover,
@@ -16,27 +18,34 @@ import { groupLabel, type FilterOption } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// The lucide "mars" and "venus" nodes, with the circle rewritten as two arcs so
-// the whole glyph is one list of paths that both layers can draw.
+// Lucide outlines split in construction order: circle, shaft/stem, then two
+// branches. Each branch draws out from its junction rather than across it.
 const SEX_GLYPHS: Record<string, string[]> = {
-  male: ["M16 14a6 6 0 1 0-12 0 6 6 0 1 0 12 0", "M16 3h5v5", "m21 3-6.75 6.75"],
-  female: ["M18 9a6 6 0 1 0-12 0 6 6 0 1 0 12 0", "M12 15v7", "M9 19h6"],
+  male: [
+    "M16 14a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
+    "M14.25 9.75 21 3",
+    "M21 3H16",
+    "M21 3V8",
+  ],
+  female: [
+    "M18 9a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
+    "M12 15v7",
+    "M12 19H9",
+    "M12 19H15",
+  ],
 };
 
-const DRAW_DURATION = 0.4;
-const DRAW_STAGGER = 0.12;
+// Give the stroke time to read at 24px, then settle with the same ease-out
+// used by the other filter gestures.
+const DRAW_STEPS = [
+  { duration: 0.22, delay: 0 },
+  { duration: 0.24, delay: 0.14 },
+  { duration: 0.18, delay: 0.34 },
+] as const;
 const FADE_DURATION = 0.15;
-const POP_DURATION = 0.42;
-const POP_MS = 500;
-// The glyph draws over DRAW_DURATION plus one stagger step, so the check waits
-// for the drawing hand instead of racing it.
-const DRAW_CHECK_DELAY = 0.3;
-
-// A zero-count option is a dead end, but an active selection is never locked
-// out of being unchecked.
-function isDead(count: number, checked: boolean): boolean {
-  return count === 0 && !checked;
-}
+const DESELECT_DURATION = 0.24;
+const POP_DURATION = 0.52;
+const POP_MS = 600;
 
 function changedValue(selected: string[], nextSelected: string[]) {
   return (
@@ -50,6 +59,7 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
 
   return (
     <svg
+      aria-hidden
       viewBox="0 0 24 24"
       className="size-6"
       fill="none"
@@ -62,17 +72,30 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <g className="text-muted-foreground" stroke="currentColor">
+      <m.g
+        className="text-muted-foreground"
+        stroke="currentColor"
+        initial={false}
+        animate={{ opacity: checked ? 0.2 : 1 }}
+        transition={{
+          duration: shouldReduceMotion
+            ? 0
+            : checked
+              ? FADE_DURATION
+              : DESELECT_DURATION,
+          ease: "easeOut",
+        }}
+      >
         {paths.map((d) => (
           <path key={d} d={d} />
         ))}
-      </g>
+      </m.g>
       <m.g
         stroke="var(--filter-accent-strong)"
         initial={false}
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
-          duration: shouldReduceMotion || checked ? 0 : FADE_DURATION,
+          duration: shouldReduceMotion || checked ? 0 : DESELECT_DURATION,
           ease: "easeOut",
         }}
       >
@@ -87,15 +110,12 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
                 ? { duration: 0 }
                 : checked
                   ? {
-                      duration: DRAW_DURATION,
-                      // Circle, then each stroke in turn, so the glyph reads as
-                      // one hand drawing it.
-                      delay: index * DRAW_STAGGER,
+                      ...DRAW_STEPS[Math.min(index, 2)],
                       ease: "easeOut",
                     }
                   : // The drawn length drops only once the overlay has faded
                     // out, so unchecking never runs the draw backwards.
-                    { duration: 0, delay: FADE_DURATION }
+                    { duration: 0, delay: DESELECT_DURATION }
             }
           />
         ))}
@@ -125,10 +145,6 @@ export function SexCards({
   const { hoveredValue: hoveredSex, handlers: hoverHandlers } =
     useFilterCardHover();
 
-  const celebrationIndex = options.findIndex(
-    ({ value }) => value === celebration?.value,
-  );
-
   return (
     <LazyMotion features={domAnimation}>
       <ToggleGroup
@@ -138,7 +154,7 @@ export function SexCards({
           const changed = changedValue(selected, nextSelected);
           if (!changed) return;
 
-          if (nextSelected.includes(changed)) {
+          if (nextSelected.includes(changed) && !shouldReduceMotion) {
             celebrate(changed);
           } else {
             clearCelebration();
@@ -149,23 +165,20 @@ export function SexCards({
         spacing={1.5}
         className="grid w-full grid-cols-2 items-stretch"
       >
-        {options.map(({ value, label }, index) => {
+        {options.map(({ value, label }) => {
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
           const paths = SEX_GLYPHS[value];
           if (!paths) return null;
 
           const celebrating = celebration?.value === value && checked;
-          const reacting = celebrationIndex >= 0 && !celebrating;
-          // The card that did not change leans away from the one that did.
-          const tiltDirection = Math.sign(index - celebrationIndex) || 1;
           const hovered = hoveredSex === value;
 
           return (
             <ToggleGroupItem
               key={value}
               value={value}
-              disabled={isDead(count, checked)}
+              disabled={isDeadOption(count, checked)}
               {...hoverHandlers(value)}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
@@ -176,50 +189,27 @@ export function SexCards({
             >
               <FilterSelectionMark
                 checked={checked}
-                appearDelay={DRAW_CHECK_DELAY}
                 className="absolute right-2 top-2"
               />
 
-              <m.span
-                aria-hidden
-                className="flex items-center justify-center"
-                initial={false}
-                animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
-                transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 420, damping: 26, mass: 0.5 }
-                }
-              >
+              <FilterCardHoverLift hovered={hovered}>
                 <m.span
                   className="flex items-center justify-center"
                   initial={false}
                   animate={
-                    shouldReduceMotion
-                      ? { scale: 1, rotate: 0, y: 0 }
-                      : celebrating
-                        ? value === "male"
-                          ? { scale: [1, 1.12, 1], rotate: [0, -8, 0], y: 0 }
-                          : { scale: [1, 1.12, 1], rotate: 0, y: [0, -1.5, 0] }
-                        : reacting
-                          ? {
-                              scale: 1,
-                              rotate: [0, tiltDirection * 2.5, 0],
-                              y: 0,
-                            }
-                          : { scale: 1, rotate: 0, y: 0 }
+                    !shouldReduceMotion && celebrating
+                      ? { scale: [1, 1.1, 1] }
+                      : { scale: 1 }
                   }
                   transition={
-                    celebrating
-                      ? { duration: POP_DURATION, ease: "easeOut" }
-                      : reacting
-                        ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
-                        : { duration: 0.16 }
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : { duration: POP_DURATION, ease: "easeOut" }
                   }
                 >
                   <SexGlyph paths={paths} checked={checked} />
                 </m.span>
-              </m.span>
+              </FilterCardHoverLift>
               <span className={cn("text-xs", checked && "font-medium")}>
                 {label}
               </span>

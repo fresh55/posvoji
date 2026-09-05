@@ -98,6 +98,42 @@ export const portalText = {
   // Marks the same fields inside the editor, so the card's list and the form
   // rows name each other.
   missingBadge: "Manjka za iskalnik",
+  // The list row. One line per animal, so the status is a pill that opens a
+  // menu rather than four buttons, and the sentence that explained the four
+  // buttons on every card is said once, above the list, as the banner below.
+  //
+  // Whose answer the pill shows. Spoken after the visible status, so voice
+  // control can still say the pill by its label (WCAG 2.5.3).
+  statusSourceSite: "prebrano z vaše spletne strani",
+  statusSourceOwn: "določili ste sami",
+  // The menu's first item while the value is the crawl's reading. The status
+  // is named in the item, because confirming is a choice of that value.
+  statusConfirmAs: "Potrdi: {status}",
+  // The menu's last item once the shelter has chosen or confirmed.
+  statusRevertItem: "Povrni na podatek s strani",
+  // The overflow menu at the end of the row. The visible mark is three dots,
+  // so the name has to carry the animal.
+  rowMenu: "Več možnosti za {name}",
+  // The "manjka" cell. missingCountLabel() in animal-meta.ts picks the verb
+  // form for the count; these are the four Slovenian forms it picks from.
+  missingOne: "{count} manjka",
+  missingTwo: "{count} manjkata",
+  missingFew: "{count} manjkajo",
+  missingMany: "{count} manjka",
+  missingNone: "Vsa polja za iskalnik so izpolnjena",
+  // The chip beside the status chips: animals with a status the shelter has
+  // not confirmed, or a searchable field with no answer. It is the queue the
+  // shelter works through, and its count going down is the point of it.
+  reviewChip: "Za pregled",
+  // Above the list, once, instead of the same sentence on every card. Genitive
+  // "živali" is the same form for every count, so one string serves.
+  reviewBannerLead:
+    "Stanje {count} živali smo prebrali z vaše spletne strani in ga še niste potrdili.",
+  reviewBannerConfirm: "Potrdi vse ({count})",
+  reviewBannerConfirming: "Potrjujem {done} od {count} …",
+  reviewBannerDone: "Stanja so potrjena.",
+  reviewBannerFailed:
+    "Nekaterih stanj ni bilo mogoče potrditi. Poskusite znova.",
   edit: "Uredi podatke",
   editTitle: "Uredi {name}",
   // True of every row, which "Prazno polje pomeni …" was not: a row the

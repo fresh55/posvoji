@@ -3,19 +3,18 @@ import { join } from "node:path";
 import { datasetDir } from "./paths";
 
 // The receipt the export writes last, after every dataset and media write, as
-// the generation's commit point. Its name and version are fixed by
-// scripts/generation-receipt.mjs, which owns the format; only the two facts
-// this file needs are repeated here, so that the read at the start of a run
-// does not pull in the hashing the full validation does.
+// the generation's commit point. The job that writes it owns the format; the
+// two facts this file needs are named here rather than imported from it, so
+// that reading one timestamp at the start of a run does not pull in the
+// hashing the full validation does.
 const GENERATION_RECEIPT_FILE = "generation.json";
 const GENERATION_RECEIPT_VERSION = 1;
 
 export interface PreviousGenerationSeal {
   sealed: boolean;
-  // Why it is not, in words the run can print.
+  // Why it is not, in words the run can print. It names both generations, so
+  // nothing else has to be carried out of here to write the warning.
   reason?: string;
-  // What the receipt on disk seals, when it could be read.
-  receiptGeneratedAt?: string;
 }
 
 // Whether the previous run reached its commit point.
@@ -74,18 +73,14 @@ export function checkPreviousGenerationSealed(
   if (publishedGeneratedAt === undefined) {
     return {
       sealed: false,
-      receiptGeneratedAt,
       reason:
         `the generation receipt at ${receiptPath} seals ` +
         `${receiptGeneratedAt}, and there is no published dataset beside it`,
     };
   }
-  if (receiptGeneratedAt === publishedGeneratedAt) {
-    return { sealed: true, receiptGeneratedAt };
-  }
+  if (receiptGeneratedAt === publishedGeneratedAt) return { sealed: true };
   return {
     sealed: false,
-    receiptGeneratedAt,
     reason:
       `the generation receipt at ${receiptPath} seals ${receiptGeneratedAt}, ` +
       `and the published dataset beside it is from ${publishedGeneratedAt}`,

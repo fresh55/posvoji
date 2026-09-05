@@ -40,7 +40,6 @@ describe("checkPreviousGenerationSealed", () => {
 
     expect(checkPreviousGenerationSealed(GENERATED_AT, receiptPath)).toEqual({
       sealed: true,
-      receiptGeneratedAt: GENERATED_AT,
     });
   });
 
@@ -51,7 +50,6 @@ describe("checkPreviousGenerationSealed", () => {
     const result = checkPreviousGenerationSealed(GENERATED_AT, receiptPath);
 
     expect(result.sealed).toBe(false);
-    expect(result.receiptGeneratedAt).toBe(sealedAt);
     expect(result.reason).toContain(sealedAt);
     expect(result.reason).toContain(GENERATED_AT);
   });

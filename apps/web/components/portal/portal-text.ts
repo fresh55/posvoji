@@ -98,6 +98,42 @@ export const portalText = {
   // Marks the same fields inside the editor, so the card's list and the form
   // rows name each other.
   missingBadge: "Manjka za iskalnik",
+  // The list row. One line per animal, so the status is a pill that opens a
+  // menu rather than four buttons, and the sentence that explained the four
+  // buttons on every card is said once, above the list, as the banner below.
+  //
+  // Whose answer the pill shows. Spoken after the visible status, so voice
+  // control can still say the pill by its label (WCAG 2.5.3).
+  statusSourceSite: "prebrano z vaše spletne strani",
+  statusSourceOwn: "določili ste sami",
+  // The menu's first item while the value is the crawl's reading. The status
+  // is named in the item, because confirming is a choice of that value.
+  statusConfirmAs: "Potrdi: {status}",
+  // The menu's last item once the shelter has chosen or confirmed.
+  statusRevertItem: "Povrni na podatek s strani",
+  // The overflow menu at the end of the row. The visible mark is three dots,
+  // so the name has to carry the animal.
+  rowMenu: "Več možnosti za {name}",
+  // The "manjka" cell. missingCountLabel() in animal-meta.ts picks the verb
+  // form for the count; these are the four Slovenian forms it picks from.
+  missingOne: "{count} manjka",
+  missingTwo: "{count} manjkata",
+  missingFew: "{count} manjkajo",
+  missingMany: "{count} manjka",
+  missingNone: "Vsa polja za iskalnik so izpolnjena",
+  // The chip beside the status chips: animals with a status the shelter has
+  // not confirmed, or a searchable field with no answer. It is the queue the
+  // shelter works through, and its count going down is the point of it.
+  reviewChip: "Za pregled",
+  // Above the list, once, instead of the same sentence on every card. Genitive
+  // "živali" is the same form for every count, so one string serves.
+  reviewBannerLead:
+    "Stanje {count} živali smo prebrali z vaše spletne strani in ga še niste potrdili.",
+  reviewBannerConfirm: "Potrdi vse ({count})",
+  reviewBannerConfirming: "Potrjujem {done} od {count} …",
+  reviewBannerDone: "Stanja so potrjena.",
+  reviewBannerFailed:
+    "Nekaterih stanj ni bilo mogoče potrditi. Poskusite znova.",
   edit: "Uredi podatke",
   editTitle: "Uredi {name}",
   // True of every row, which "Prazno polje pomeni …" was not: a row the
@@ -147,6 +183,49 @@ export const portalText = {
   discardLead: "Če zdaj zaprete okno, se vpisano izgubi.",
   keepEditing: "Nadaljuj urejanje",
   discardChanges: "Zavrzi popravke",
+
+  // The editor page. Leaving it is a navigation and not a closed window, and
+  // the status buttons on it have already saved by the time anyone asks, so
+  // the question names both halves: what is lost and what is not.
+  leaveTitle: "Popravki niso shranjeni",
+  leaveLead:
+    "Če zdaj odprete seznam, se vpisano izgubi. Stanje se je shranilo takoj, ko ste ga izbrali, in ostane.",
+  // The nav above the form. "Kje ste" rather than "Drobtinice": the portal
+  // says things in words a shelter uses.
+  breadcrumbLabel: "Kje ste",
+  editorNotFoundTitle: "Te živali ni mogoče odpreti",
+  editorNotFoundLead:
+    "Povezava vodi do živali, ki ni na vašem seznamu. Odprite seznam in izberite žival na njem.",
+  backToList: "Nazaj na seznam",
+  // The four sections of the form, in the order the animal gets the most out
+  // of them.
+  sectionSearchable: "Za iskalnik",
+  sectionBasics: "Osnovno",
+  sectionAge: "Starost",
+  sectionDescription: "Opis",
+  // The checklist beside the form, said in whichever of its two states the
+  // animal is actually in.
+  searchableLead:
+    "Neizpolnjena polja so filtri, po katerih posvojitelji iščejo. Dokler so prazna, se žival v teh iskanjih ne pojavi.",
+  searchableDone: "Vsa polja za iskalnik so izpolnjena.",
+  // What is left of a form the shelter walked away from. The draft is kept
+  // for the tab's lifetime, so a Back, a Forward and a reload all land back
+  // on the same typed work and this line says why the boxes are not empty.
+  draftResumed: "Nadaljujete neshranjene popravke.",
+  draftDiscard: "Zavrzi",
+  // The visible word starts the label, so voice control can say it
+  // (WCAG 2.5.3) and a screen reader still hears what would go.
+  draftDiscardLabel: "Zavrzi neshranjene popravke",
+  // The same fact on the card in the list, so the shelter can see which
+  // animal they left half-written without opening it.
+  draftBadge: "Neshranjeno",
+  draftBadgeHint:
+    "Na strani te živali so popravki, ki še niso shranjeni. Odprite jo in jih shranite ali zavrzite.",
+  // A save can move an animal out of the filter the shelter is looking
+  // through, and the card they just worked on would simply be gone. The
+  // notice names it and offers the whole list back. "Shranjeno" and "žival"
+  // rather than "je shranjen", so the sentence agrees for every animal's name.
+  savedHidden: "Shranjeno. Trenutni filter skrije žival {name}.",
   saveError: "Shranjevanje ni uspelo. Poskusite znova.",
   invalidError: "Podatek ni v pravi obliki. Preverite vnos.",
   edited: "Urejeno",

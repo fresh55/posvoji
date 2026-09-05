@@ -6,11 +6,35 @@ import {
   fetchSession,
   isUnauthorized,
   logout,
+  type PortalField,
   type PortalSession,
 } from "@/lib/portal-api";
 
 export const PORTAL_LOGIN_PATH = "/portal/prijava";
 export const PORTAL_PATH = "/portal";
+export const PORTAL_ANIMAL_PATH = "/portal/zival";
+
+/**
+ * The editor page for one animal.
+ *
+ * Both the shelter and the animal travel in the query rather than in the
+ * path. The site is a static export, so a route with a dynamic segment would
+ * need a page generated per animal at build time and the portal's records are
+ * not in that build at all. And the shelter has to be named separately: a
+ * crawled id carries its provider ("ljubljana:123") but a manual listing's is
+ * a bare uuid, so the id alone does not say whose animal it is.
+ */
+export function portalAnimalPath(
+  shelter: string,
+  animalId: string,
+  field?: PortalField | null,
+): string {
+  const query = new URLSearchParams({ zavetisce: shelter, id: animalId });
+  // Only when the shelter is being sent to a named row, which is what the
+  // card's "manjka za iskalnik" line does.
+  if (field) query.set("polje", field);
+  return `${PORTAL_ANIMAL_PATH}?${query}`;
+}
 
 export type PortalSessionState =
   | { status: "loading" }

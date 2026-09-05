@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ExternalLink,
-  Inbox,
-  LoaderCircle,
-  LogOut,
-  Plus,
-  SearchX,
-  TriangleAlert,
-} from "lucide-react";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { Inbox, LoaderCircle, Plus, SearchX, TriangleAlert } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
-import { PortalAnimalCard } from "@/components/portal/animal-card";
+import {
+  hasMissingSearchableFields,
+  hasUnconfirmedStatus,
+  needsReview,
+} from "@/components/portal/animal-meta";
+import { PortalAnimalRow } from "@/components/portal/animal-row";
 import {
   PortalListTools,
   filterPortalAnimals,
@@ -19,23 +23,29 @@ import {
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
 import { ListingForm } from "@/components/portal/listing-form";
-import { PortalShell } from "@/components/portal/portal-shell";
-import { portalText } from "@/components/portal/portal-text";
+import { PortalNotice } from "@/components/portal/notice";
+import { usePortal } from "@/components/portal/portal-provider";
+import { fill, portalText } from "@/components/portal/portal-text";
+import { ReviewBanner } from "@/components/portal/review-banner";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePortalAnimals } from "@/hooks/use-portal-animals";
-import {
-  NEW_LISTING,
-  usePortalListings,
-} from "@/hooks/use-portal-listings";
-import {
-  PORTAL_LOGIN_PATH,
-  usePortalSession,
-} from "@/hooks/use-portal-session";
+import { IDLE } from "@/hooks/portal-list";
+import { NEW_LISTING } from "@/hooks/use-portal-listings";
 import { animalCount } from "@/lib/labels";
-import { isManualShelter, type PortalStatus } from "@/lib/portal-api";
+import { draftIds, subscribeDrafts } from "@/lib/portal-drafts";
 
+// One empty set for every state with no stored drafts, so a re-read that
+// finds none does not hand the list a new object to re-render for.
+const EMPTY_DRAFTS: ReadonlySet<string> = new Set();
+
+/** Names a row in the page, so a save can scroll back to the one it went to.
+ *  The id travels through an attribute, and a crawled one holds a colon. */
+function cardDomId(animalId: string): string {
+  return `animal-${encodeURIComponent(animalId)}`;
+}
+
+// The manual listing cards keep their own shape, so their placeholder does.
 function CardSkeleton() {
   return (
     <div className="space-y-3 rounded-ui border p-3 sm:p-4">
@@ -52,92 +62,63 @@ function CardSkeleton() {
   );
 }
 
-function Notice({
-  icon: Icon,
-  title,
-  children,
-  action,
-}: {
-  icon: typeof Inbox;
-  title: string;
-  children: string;
-  action?: React.ReactNode;
-}) {
+// The same three columns the row lays out, so nothing jumps when it arrives.
+function RowSkeleton() {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-ui border bg-muted/30 px-4 py-6 text-sm sm:items-center sm:text-center">
-      <span
-        aria-hidden
-        className="grid size-11 place-items-center rounded-ui border bg-background text-muted-foreground sm:mx-auto"
-      >
-        <Icon className="size-5" strokeWidth={1.75} />
-      </span>
-      <div className="space-y-1">
-        <p className="font-medium">{title}</p>
-        <p className="max-w-prose leading-relaxed text-muted-foreground">
-          {children}
-        </p>
+    <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
+      <Skeleton className="size-10 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3.5 w-28" />
+        <Skeleton className="h-3 w-40" />
       </div>
-      {action}
+      <Skeleton className="h-8 w-24 rounded-full" />
     </div>
   );
 }
 
+// Crawled shelters are the long lists: Mačja hiša alone carries 186 animals,
+// and the card each of them used to get made that about 46,000px of page.
+// One row per animal, the four status buttons folded into a pill, and the
+// sentence that explained the buttons said once above the list instead.
+const ROW_LIST = "divide-y rounded-ui border";
+
 export function PortalWorkspace() {
   const shouldReduceMotion = useReducedMotion();
-  const { state, reload: reloadSession, signOut } = usePortalSession();
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [leaving, setLeaving] = useState(false);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<PortalStatus | null>(null);
+  const {
+    session: state,
+    reloadSession,
+    account,
+    shelters,
+    active,
+    activeShelter,
+    manual,
+    setActive,
+    animals,
+    animalState,
+    saveStates,
+    reloadAnimals,
+    save,
+    confirmStatuses,
+    bulk,
+    lastSaved,
+    clearLastSaved,
+    publicName,
+    listings,
+    listingState,
+    listingSaveStates,
+    reloadListings,
+    listingActions,
+    query,
+    setQuery,
+    status,
+    setStatus,
+    clearFilters,
+  } = usePortal();
   // The "Dodaj žival" dialog, and the listing it made once it has: the form
   // keeps editing that one while its photos go up, so it is read back off
   // the live list rather than off the answer to the POST.
   const [adding, setAdding] = useState(false);
   const [newListingId, setNewListingId] = useState<string | null>(null);
-
-  const shelters = state.status === "ready" ? state.session.shelters : [];
-  const active = chosen ?? shelters[0]?.slug ?? null;
-  // The card needs the whole shelter, not its slug: the public link it draws
-  // is built from the name and the town as well.
-  const activeShelter = shelters.find((shelter) => shelter.slug === active);
-  // A shelter with no catalogue of its own writes its animals here, so it
-  // gets the listing form instead of the override editor. No mode means a
-  // crawled shelter, which is what every shelter was before the field.
-  const manual = activeShelter ? isManualShelter(activeShelter) : false;
-
-  const clearFilters = useCallback(() => {
-    setQuery("");
-    setStatus(null);
-  }, []);
-
-  // The guard: no session, no workspace. replace() so the back button does
-  // not walk into a page that will only bounce again.
-  useEffect(() => {
-    if (state.status === "anonymous")
-      window.location.replace(PORTAL_LOGIN_PATH);
-  }, [state.status]);
-
-  const onUnauthorized = useCallback(() => {
-    window.location.replace(PORTAL_LOGIN_PATH);
-  }, []);
-
-  // Both hooks always run, as hooks must; the one the shelter does not use
-  // gets no slug and stays idle without a request.
-  const {
-    animals,
-    state: animalState,
-    saveStates,
-    reload: reloadAnimals,
-    save,
-    publicName,
-  } = usePortalAnimals(manual ? null : active, onUnauthorized);
-  const {
-    listings,
-    state: listingState,
-    saveStates: listingSaveStates,
-    reload: reloadListings,
-    actions: listingActions,
-  } = usePortalListings(manual ? active : null, onUnauthorized);
 
   const listState = manual ? listingState : animalState;
   const reloadList = manual ? reloadListings : reloadAnimals;
@@ -145,9 +126,24 @@ export function PortalWorkspace() {
   // carry under the same names, so each list goes through them as it is.
   const all: PortalListEntry[] = manual ? listings : animals;
   const visibleAnimals = useMemo(
-    () => filterPortalAnimals(animals, query, status),
+    () => filterPortalAnimals(animals, query, status, needsReview),
     [animals, query, status],
   );
+  // What the "Za pregled" chip counts, and what the banner offers to settle.
+  // Both read the whole list, never the filtered one, for the same reason the
+  // status chips do: a count that moved with the filter would say nothing. One
+  // pass for the pair: an unconfirmed status is one of the two things that put
+  // an animal in the chip, so the walk that finds them answers both.
+  const review = useMemo(() => {
+    let count = 0;
+    let unconfirmed = 0;
+    for (const animal of animals) {
+      const pending = hasUnconfirmedStatus(animal);
+      if (pending) unconfirmed += 1;
+      if (pending || hasMissingSearchableFields(animal)) count += 1;
+    }
+    return { count, unconfirmed };
+  }, [animals]);
   const visibleListings = useMemo(
     () => filterPortalAnimals(listings, query, status),
     [listings, query, status],
@@ -156,50 +152,66 @@ export function PortalWorkspace() {
   const newListing =
     listings.find((listing) => listing.id === newListingId) ?? null;
 
+  // The animal the last save went to, when the filters no longer let it
+  // through. Read off the whole list, because that is where it still is.
+  const hiddenSave =
+    lastSaved && !visibleAnimals.some((animal) => animal.id === lastSaved)
+      ? (animals.find((animal) => animal.id === lastSaved) ?? null)
+      : null;
+  const hidden = hiddenSave !== null;
+
+  // Which animals this tab is still holding unsaved work for. Storage is an
+  // external store and is read as one, so a draft written or dropped anywhere
+  // in this tab reaches the list without an effect that sets state.
+  //
+  // The snapshot has to be the same object until the answer actually changes,
+  // or every render would produce a fresh Set and React would never settle.
+  // The two listeners are for a page the browser restored from its cache,
+  // which runs no effect of its own to ask again with.
+  const draftCache = useRef<{ signature: string; ids: ReadonlySet<string> }>({
+    signature: "",
+    ids: EMPTY_DRAFTS,
+  });
+  const subscribeToDrafts = useCallback((onChange: () => void) => {
+    const unsubscribe = subscribeDrafts(onChange);
+    window.addEventListener("pageshow", onChange);
+    document.addEventListener("visibilitychange", onChange);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("pageshow", onChange);
+      document.removeEventListener("visibilitychange", onChange);
+    };
+  }, []);
+  const readDrafts = useCallback((): ReadonlySet<string> => {
+    if (!account || !active || manual) return EMPTY_DRAFTS;
+    const ids = draftIds(account, active);
+    // Ids never carry a newline, so it is a safe separator for the join.
+    const signature = [...ids].sort().join("\n");
+    if (draftCache.current.signature !== signature) {
+      draftCache.current = { signature, ids };
+    }
+    return draftCache.current.ids;
+  }, [account, active, manual]);
+  const drafts = useSyncExternalStore(
+    subscribeToDrafts,
+    readDrafts,
+    () => EMPTY_DRAFTS,
+  );
+
+  // Back from the editor onto a long list, the card that was just saved is
+  // somewhere off screen. Once, when the save is known and the card is on the
+  // page: while it is filtered away the notice above the list stands in.
+  useEffect(() => {
+    if (!lastSaved || hidden) return;
+    document
+      .getElementById(cardDomId(lastSaved))
+      ?.scrollIntoView({ block: "center" });
+  }, [hidden, lastSaved]);
+
   const openAdd = useCallback(() => {
     setNewListingId(null);
     setAdding(true);
   }, []);
-
-  const actions =
-    state.status === "ready" ? (
-      <div className="flex items-center gap-2">
-        <span className="hidden max-w-56 truncate text-xs text-muted-foreground sm:inline">
-          {state.session.email}
-        </span>
-        {active && (
-          <Button asChild variant="outline" size="sm">
-            {/* A new tab, so a shelter checking the public page does not
-                lose the workspace it was halfway through. */}
-            <a
-              href={`/zavetisca/${active}`}
-              target="_blank"
-              rel="noreferrer"
-              title={portalText.publicPage}
-            >
-              <ExternalLink aria-hidden />
-              {/* The label collapses on a phone but stays readable to a
-                  screen reader, so the icon is never the only name. */}
-              <span className="sr-only sm:not-sr-only">
-                {portalText.publicPage}
-              </span>
-            </a>
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={leaving}
-          onClick={() => {
-            setLeaving(true);
-            void signOut();
-          }}
-        >
-          <LogOut aria-hidden />
-          {portalText.logout}
-        </Button>
-      </div>
-    ) : null;
 
   // The workspace names itself "Vaše živali" below, and that is the page's
   // heading once there is a list to name. Every state before it is the same
@@ -208,7 +220,7 @@ export function PortalWorkspace() {
   const hasOwnHeading = state.status === "ready" && shelters.length > 0;
 
   return (
-    <PortalShell actions={actions}>
+    <>
       {!hasOwnHeading && (
         <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
           {portalText.brand}
@@ -228,7 +240,7 @@ export function PortalWorkspace() {
       )}
 
       {state.status === "error" && (
-        <Notice
+        <PortalNotice
           icon={TriangleAlert}
           title={portalText.sessionErrorTitle}
           action={
@@ -243,13 +255,13 @@ export function PortalWorkspace() {
           {state.offline
             ? portalText.networkError
             : portalText.sessionErrorLead}
-        </Notice>
+        </PortalNotice>
       )}
 
       {state.status === "ready" && shelters.length === 0 && (
-        <Notice icon={Inbox} title={portalText.noSheltersTitle}>
+        <PortalNotice icon={Inbox} title={portalText.noSheltersTitle}>
           {portalText.noSheltersLead}
-        </Notice>
+        </PortalNotice>
       )}
 
       {state.status === "ready" && shelters.length > 0 && (
@@ -259,10 +271,11 @@ export function PortalWorkspace() {
               shelters={shelters}
               active={active}
               onSelect={(slug) => {
-                // A filter set over one shelter's list means nothing over the
-                // next one's, so switching starts from the whole list again.
-                setChosen(slug);
-                clearFilters();
+                if (slug === active) return;
+                // The provider drops the filters with the shelter; the half
+                // that is this page's own is the add form, which is about a
+                // listing that would belong to the shelter being left.
+                setActive(slug);
                 setAdding(false);
                 setNewListingId(null);
               }}
@@ -305,16 +318,26 @@ export function PortalWorkspace() {
               </p>
             </div>
 
-            {listState.status === "loading" && (
-              <div className="space-y-3" aria-hidden>
-                <CardSkeleton />
-                <CardSkeleton />
-                <CardSkeleton />
-              </div>
-            )}
+            {listState.status === "loading" &&
+              (manual ? (
+                <div className="space-y-3" aria-hidden>
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </div>
+              ) : (
+                <div className={ROW_LIST} aria-hidden>
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                </div>
+              ))}
 
             {listState.status === "error" && (
-              <Notice
+              <PortalNotice
                 icon={TriangleAlert}
                 title={portalText.listErrorTitle}
                 action={
@@ -324,13 +347,13 @@ export function PortalWorkspace() {
                 }
               >
                 {listState.message}
-              </Notice>
+              </PortalNotice>
             )}
 
             {listState.status === "ready" &&
               all.length === 0 &&
               (manual ? (
-                <Notice
+                <PortalNotice
                   icon={Inbox}
                   title={portalText.emptyTitle}
                   action={
@@ -341,27 +364,69 @@ export function PortalWorkspace() {
                   }
                 >
                   {portalText.listingsEmptyLead}
-                </Notice>
+                </PortalNotice>
               ) : (
-                <Notice icon={Inbox} title={portalText.emptyTitle}>
+                <PortalNotice icon={Inbox} title={portalText.emptyTitle}>
                   {portalText.emptyLead}
-                </Notice>
+                </PortalNotice>
               ))}
 
             {listState.status === "ready" && all.length > 0 && (
               <PortalListTools
                 animals={all}
                 query={query}
-                onQueryChange={setQuery}
-                status={status}
-                onStatusChange={setStatus}
+                // Touching a filter is the shelter looking for something
+                // else, so the pointer back to the card they last saved has
+                // done its job and goes.
+                onQueryChange={(next) => {
+                  clearLastSaved();
+                  setQuery(next);
+                }}
+                filter={status}
+                onFilterChange={(next) => {
+                  clearLastSaved();
+                  setStatus(next);
+                }}
+                // Manual listings have no crawl underneath, so there is
+                // nothing on them to confirm and no chip to offer.
+                reviewCount={manual ? undefined : review.count}
               />
+            )}
+
+            {/* Once, above the list, in place of the same sentence on every
+                card. The banner counts only statuses; the missing fields are
+                the chip's business, and each row names its own. */}
+            {listState.status === "ready" && !manual && animals.length > 0 && (
+              <ReviewBanner
+                count={review.unconfirmed}
+                bulk={bulk}
+                onConfirmAll={() => void confirmStatuses()}
+              />
+            )}
+
+            {/* The save went through, but the animal no longer matches what
+                the shelter is looking at, so the card would simply be gone.
+                It is named, and the whole list is one tap away. */}
+            {hiddenSave && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-ui border bg-muted/30 px-3 py-2 text-sm"
+              >
+                <p className="min-w-0">
+                  {fill(portalText.savedHidden, {
+                    name: hiddenSave.name ?? portalText.unnamed,
+                  })}
+                </p>
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  {portalText.showAll}
+                </Button>
+              </div>
             )}
 
             {listState.status === "ready" &&
               all.length > 0 &&
               visibleCount === 0 && (
-                <Notice
+                <PortalNotice
                   icon={SearchX}
                   title={portalText.noMatchesTitle}
                   action={
@@ -371,7 +436,7 @@ export function PortalWorkspace() {
                   }
                 >
                   {portalText.noMatchesLead}
-                </Notice>
+                </PortalNotice>
               )}
 
             {listState.status === "ready" &&
@@ -407,7 +472,7 @@ export function PortalWorkspace() {
               !manual &&
               visibleAnimals.length > 0 &&
               activeShelter && (
-                <div className="space-y-3">
+                <div className={ROW_LIST}>
                   {visibleAnimals.map((animal, index) => (
                     <m.div
                       key={animal.id}
@@ -423,13 +488,17 @@ export function PortalWorkspace() {
                         // last cards waiting.
                         delay: Math.min(index, 8) * 0.03,
                       }}
+                      // Named so a save made on the editor page can bring the
+                      // shelter back to the row it belonged to.
+                      id={cardDomId(animal.id)}
                     >
-                      <PortalAnimalCard
+                      <PortalAnimalRow
                         animal={animal}
                         shelter={activeShelter}
                         publicName={publicName(animal)}
-                        saveState={saveStates[animal.id] ?? { status: "idle" }}
-                        onSave={(patch) => save(animal.id, patch)}
+                        hasDraft={drafts.has(animal.id)}
+                        saveState={saveStates[animal.id] ?? IDLE}
+                        onSave={save}
                       />
                     </m.div>
                   ))}
@@ -460,6 +529,6 @@ export function PortalWorkspace() {
           )}
         </>
       )}
-    </PortalShell>
+    </>
   );
 }

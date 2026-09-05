@@ -27,7 +27,9 @@ const SPECIES: Record<Locale, Record<Species, string>> = {
 };
 
 // Slovenian has a dual, so 1, 2, 3-4 and 5+ each take a different form.
-function pick(
+// Exported because a second copy of this ladder in a component is a second
+// place for it to be wrong.
+export function pick(
   n: number,
   forms: [string, string, string, string],
 ): string {

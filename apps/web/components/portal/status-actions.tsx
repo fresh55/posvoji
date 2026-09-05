@@ -54,7 +54,11 @@ export function StatusActions({
     <div
       role="group"
       aria-label={portalText.statusLegend}
-      className="grid grid-cols-2 gap-1.5 sm:grid-cols-4"
+      // Four across is decided by how wide this row actually is, not by how
+      // wide the window is. The row is drawn full width on the list and in a
+      // 288px column beside the editor's form, and at four columns there
+      // "Rezerviran" came out as "Re…". StatusBlock is the container.
+      className="grid grid-cols-2 gap-1.5 @md:grid-cols-4"
     >
       {PORTAL_STATUSES.map((status) => {
         const meta = STATUS_META[status];

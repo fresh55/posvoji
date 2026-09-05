@@ -9,6 +9,7 @@ set -a
 source "$config"
 set +a
 repo=${POSVOJI_REPO_DIR:-/srv/posvoji/app}
+export npm_config_store_dir=${POSVOJI_PNPM_STORE:-/srv/posvoji/.local/share/pnpm/store}
 cd "$repo"
 [[ -n "${POSVOJI_EXPECTED_SHA:-}" && $(git rev-parse HEAD) = "$POSVOJI_EXPECTED_SHA" ]] || { echo 'installed code does not match the promoted commit' >&2; exit 1; }
 [[ -z $(git status --porcelain) ]] || { echo 'installed checkout is dirty' >&2; exit 1; }

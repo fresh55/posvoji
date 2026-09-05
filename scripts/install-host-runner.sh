@@ -16,6 +16,9 @@ getent group caddy >/dev/null
 [[ -d "$repo/node_modules" ]] || { echo 'install pinned dependencies as posvoji before installing the units' >&2; exit 1; }
 install -d -o posvoji -g caddy -m 750 /srv/posvoji/.cache /srv/posvoji/.local
 install -d -o posvoji -g caddy -m 700 /srv/posvoji/backups
+# Provision the same store used by both normal and recovery jobs. In particular,
+# systemd PrivateTmp must not make the offline build depend on a temporary store.
+runuser -u posvoji -- env npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store pnpm --dir "$repo" fetch --frozen-lockfile
 systemd-analyze verify "$repo/scripts/systemd/posvoji-crawl.service" "$repo/scripts/systemd/posvoji-crawl.timer" "$repo/scripts/systemd/posvoji-backup.service" "$repo/scripts/systemd/posvoji-backup.timer"
 for unit in posvoji-crawl.service posvoji-crawl.timer posvoji-backup.service posvoji-backup.timer; do
   install -o root -g root -m 644 "$repo/scripts/systemd/$unit" "/etc/systemd/system/$unit"

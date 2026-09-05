@@ -149,8 +149,12 @@ checks the encrypted repository and retains 7 daily, 4 weekly and 6 monthly
 snapshots. Disk space is still finite; inspect usage and `last-success.json`.
 No task or usable off-server backup exists merely because these scripts exist.
 
-For a restore drill, use restic to restore the latest `posvoji-production`
-snapshot to a new private directory, extract `posvoji.tar` there with Python's
+For a restore drill, use `restic ls latest --json` to find the saved archive
+path, then `restic dump latest ARCHIVE_PATH` to write its decrypted bytes to a
+new private directory. Use binary-safe output redirection (for example Python's
+`subprocess.run(..., stdout=binary_file, check=True)`). This avoids restoring
+Windows ancestor-directory ACLs and timestamps along with the single archive.
+Check the archive SHA-256 against `last-success.json`, then extract it with Python's
 safe `tarfile` data filter, and check `portal.sqlite3` with
 `PRAGMA integrity_check`. Verify `generation/dist` and `generation/media` with
 `validateGenerationReceipt` from the saved code version. Check the raw crawl,

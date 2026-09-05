@@ -19,6 +19,7 @@ ProtectHome=true
 ReadWritePaths=/srv/posvoji
 Environment=PNPM_HOME=/srv/posvoji/.local/share/pnpm
 Environment=XDG_CACHE_HOME=/srv/posvoji/.cache
+Environment=npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store
 CPUQuota=100%
 MemoryHigh=50%
 MemoryMax=65%

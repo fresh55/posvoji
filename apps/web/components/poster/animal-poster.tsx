@@ -1,12 +1,12 @@
 import { Fragment } from "react";
 import type { Animal } from "@posvoji/schema";
+import { Logo } from "@/components/logo";
 import { PosterFacts, posterTiles } from "@/components/poster/poster-facts";
 import { QrCode } from "@/components/poster/qr-code";
 import type { AnimalFields } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { posterPhoto } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { brandMarkPaths, BRAND_MARK_VIEWBOX } from "@/lib/brand-mark";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
 import {
   ageLabel,
@@ -250,17 +250,14 @@ export function AnimalPoster({
 
       <p className="poster-colophon">
         <span className="poster-brand">
-          {/* The site's own mark, read off app/icon.svg during the export and
-              re-fronted with the sheet's ink. See lib/brand-mark.ts for why
-              neither the favicon's fill nor the header's mask can serve a
-              printer. */}
-          <svg
-            className="poster-brand-mark"
-            viewBox={BRAND_MARK_VIEWBOX}
-            fill="#111111"
-            aria-hidden
-            dangerouslySetInnerHTML={{ __html: brandMarkPaths() }}
-          />
+          {/* The header's own mark, drawn the way the header draws it: a mask
+              of app/icon.svg painting the sheet's ink. Inlining the paths
+              instead put 22KB into each of the thousand poster pages, the
+              same weight logo.tsx took out of every page of the site. Logo
+              preloads the file, and a mask reads only alpha, so the icon's
+              own colour-scheme rule never reaches the paper; poster.css keeps
+              the painted colour through print-color-adjust. */}
+          <Logo className="poster-brand-mark" />
           <span className="poster-wordmark">posvoji.si</span>
         </span>
         <span>{text.asOf(registerDateLabel(generatedAt, locale))}</span>

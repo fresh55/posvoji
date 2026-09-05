@@ -449,7 +449,7 @@
 .poster-qr-plate {
   display: block;
   box-sizing: border-box;
-  width: calc(42 * var(--u));
+  width: calc(46 * var(--u));
   padding: calc(2 * var(--u));
   border: calc(0.3 * var(--u)) solid #d6d3d1;
   border-radius: calc(1 * var(--u));
@@ -493,13 +493,14 @@
   gap: calc(2 * var(--u));
 }
 
-/* The site's own drawing, at the height of a word beside it. The fill is set
-   on the element in the markup, because the file's own is a <style> block
-   with a prefers-color-scheme rule in it (lib/brand-mark.ts). */
+/* The site's own drawing, at the height of a word beside it. Logo paints
+   currentColor through a mask of the icon, so the ink is set here and the
+   width follows from the mark's own aspect ratio. The mask is a background
+   paint, which is exactly what a browser drops when it prints unless told
+   not to. */
 .poster-brand-mark {
-  display: block;
   height: calc(7 * var(--u));
-  width: auto;
+  color: #111111;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }

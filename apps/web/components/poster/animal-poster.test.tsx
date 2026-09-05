@@ -363,11 +363,10 @@ describe("the colophon", () => {
 
     const mark = container.querySelector(".poster-brand-mark");
     expect(mark).toBeTruthy();
-    expect(mark?.getAttribute("viewBox")).toBe("0 0 128 120.8");
-    // One explicit fill, so the sheet prints ink rather than whatever colour
-    // scheme the preview happens to be in.
-    expect(mark?.getAttribute("fill")).toBe("#111111");
-    expect(mark?.querySelector("path")).toBeTruthy();
+    // The header's mask, not the icon's paths: the drawing is one cached
+    // request for every sheet, and the sheet's ink comes from poster.css.
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector(".poster-brand svg")).toBeNull();
     expect(container.querySelector(".poster-wordmark")?.textContent).toBe(
       "posvoji.si",
     );

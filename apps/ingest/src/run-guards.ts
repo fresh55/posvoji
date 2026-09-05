@@ -213,11 +213,18 @@ export interface MassRemovalOptions {
   crawledProviderIds?: ReadonlySet<string>;
 }
 
-export function findMassRemovals(
+interface MassRemovalScan {
+  removals: MassRemoval[];
+  // Every provider in the previous dataset with what it had, which the guard
+  // below needs for its summary line and which this already has to build.
+  before: ReadonlyMap<string, number>;
+}
+
+function scanMassRemovals(
   previous: readonly Animal[],
   current: readonly Animal[],
-  options: MassRemovalOptions = {},
-): MassRemoval[] {
+  options: MassRemovalOptions,
+): MassRemovalScan {
   const before = countByProvider(previous);
   const after = countByProvider(current);
   const crawled = options.crawledProviderIds;
@@ -256,7 +263,15 @@ export function findMassRemovals(
       });
     }
   }
-  return removals;
+  return { removals, before };
+}
+
+export function findMassRemovals(
+  previous: readonly Animal[],
+  current: readonly Animal[],
+  options: MassRemovalOptions = {},
+): MassRemoval[] {
+  return scanMassRemovals(previous, current, options).removals;
 }
 
 // The last thing that runs before the media sweeps and the dataset write. A
@@ -269,17 +284,24 @@ export function findMassRemovals(
 // --accept-removals is per provider id and waives that provider's total and
 // every one of its species at once: an operator who has looked at the site has
 // looked at all of it.
+//
+// This is the outer half of a deliberate pair. An adapter that can recognize
+// its own list page refuses one that carries no listing markup, which fails
+// that provider and lets every other shelter ship (a degraded run). This
+// guard is the backstop for a page that still looks like a listing and simply
+// came back short, and it stops the whole run rather than publishing the loss.
+// The adapter check also covers what this one cannot: a species too small for
+// GUARD_MIN_BEFORE is invisible here.
 export function guardMassRemoval(
   previous: readonly Animal[],
   current: readonly Animal[],
   options: MassRemovalOptions = {},
 ): void {
   const accepted = options.accepted ?? new Set<string>();
-  const removals = findMassRemovals(previous, current, options);
+  const { removals, before } = scanMassRemovals(previous, current, options);
   const waived = removals.filter((r) => accepted.has(r.providerId));
   const blocking = removals.filter((r) => !accepted.has(r.providerId));
 
-  const before = countByProvider(previous);
   const crawled = options.crawledProviderIds;
   const checked = [...before.keys()].filter(
     (id) => !crawled || crawled.has(id),

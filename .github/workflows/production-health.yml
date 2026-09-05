@@ -3,7 +3,7 @@ name: Production health
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "7,17,27,37,47,57 * * * *"
 
 permissions:
   contents: read

@@ -103,8 +103,8 @@ a full Next build and may need missing media; it is not a five-minute guarantee.
 
 ## External monitoring without a new account
 
-`.github/workflows/production-health.yml` checks production at minutes 17 and
-47. It verifies the status/homepage identity and fails when the dataset is more
+`.github/workflows/production-health.yml` checks production every ten minutes,
+away from the hour boundary. It verifies the status/homepage identity and fails when the dataset is more
 than 30 hours old. Individual shelter check times that are unknown or old produce
 separate warnings; they do not label the whole pipeline broken.
 

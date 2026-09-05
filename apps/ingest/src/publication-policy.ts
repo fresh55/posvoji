@@ -1,6 +1,11 @@
 import { Animal } from "@posvoji/schema";
 import type { AnimalImage, ProviderPolicy } from "@posvoji/schema";
+import {
+  CACHE_DERIVED_IMAGE_FIELDS,
+  stripCacheDerivedFields,
+} from "./cache-images";
 import { excludedPathFor } from "./crawl-guard";
+import type { DroppedAnimals } from "./run-guards";
 
 // What a shelter granted is re-read from its policy.yaml on every run and
 // applied to every record about to be published, crawled and carried-over
@@ -31,25 +36,6 @@ const ELLIPSIS = "…";
 // rather than an excerpt, so the word boundary is the better cut.
 const MIN_SENTENCE_EXCERPT = Math.floor(EXCERPT_MAX_CHARS * 0.4);
 
-// Set on an image by the ingest image cache, never by a provider. Twin of
-// CACHE_DERIVED_IMAGE_FIELDS in incremental-crawl.ts, which is not exported;
-// both list every field withCachedUrls in cache-images.ts grafts on. Change
-// one and change the other.
-const CACHE_DERIVED_IMAGE_FIELDS = [
-  "cachedUrl",
-  "width",
-  "height",
-  "widths",
-  "avif",
-  "blurDataURL",
-] as const;
-
-export interface PublicationDrop {
-  providerId: string;
-  count: number;
-  reason: string;
-}
-
 export type PublicationField = "images" | "descriptions" | "attribution";
 
 export interface PublicationAdjustment {
@@ -62,7 +48,9 @@ export interface PublicationAdjustment {
 
 export interface PublicationPolicyResult {
   animals: Animal[];
-  dropped: PublicationDrop[];
+  // The same shape retainableAnimals reports its drops in, so export.ts says
+  // "dropped N animal(s) of X because Y" the one way for both.
+  dropped: DroppedAnimals[];
   adjusted: PublicationAdjustment[];
 }
 
@@ -101,33 +89,30 @@ export function excerptDescription(text: string): string {
   return body.endsWith(ELLIPSIS) ? body : body + ELLIPSIS;
 }
 
-function carriesCachedCopy(image: AnimalImage): boolean {
-  return CACHE_DERIVED_IMAGE_FIELDS.some((field) => image[field] !== undefined);
-}
-
 // An image under a policy that no longer permits caching: the rights come
 // down to display-permitted and the cached copy's fields come off, so nothing
-// points at a file the media sweep is free to delete. The fields are stripped
-// from every image rather than only from downgraded ones, because under
-// "remote" no image may ship a cached copy at all.
+// points at a file the media sweep is free to delete. Checked on every image
+// rather than only on downgraded ones, because under "remote" no image may
+// ship a cached copy at all.
 function needsRemoteNarrowing(image: AnimalImage): boolean {
-  return image.rights === "cache-permitted" || carriesCachedCopy(image);
+  return (
+    image.rights === "cache-permitted" ||
+    CACHE_DERIVED_IMAGE_FIELDS.some((field) => image[field] !== undefined)
+  );
 }
 
 function narrowToRemote(image: AnimalImage): AnimalImage {
-  const narrowed: Record<string, unknown> = { ...image };
-  for (const field of CACHE_DERIVED_IMAGE_FIELDS) delete narrowed[field];
-  if (image.rights === "cache-permitted") {
-    narrowed["rights"] = "display-permitted";
-  }
-  return narrowed as AnimalImage;
+  const narrowed = stripCacheDerivedFields(image);
+  return image.rights === "cache-permitted"
+    ? { ...narrowed, rights: "display-permitted" }
+    : narrowed;
 }
 
 export function applyPublicationPolicy(
   animals: readonly Animal[],
   policies: ReadonlyMap<string, ProviderPolicy>,
 ): PublicationPolicyResult {
-  const drops = new Map<string, PublicationDrop>();
+  const drops = new Map<string, DroppedAnimals>();
   const adjustments = new Map<string, PublicationAdjustment>();
 
   const countDrop = (providerId: string, reason: string): void => {
@@ -182,33 +167,36 @@ export function applyPublicationPolicy(
       continue;
     }
 
-    const next: Record<string, unknown> = { ...animal };
-    let changed = false;
+    // Each step either leaves next as it found it or replaces it, so the
+    // identity check at the end is what says whether anything narrowed.
+    let next: Animal = animal;
 
     if (policy.images === "none") {
       // images is required by the schema, so it empties rather than drops,
       // the same way allowedFields handles it.
       if (animal.images.length > 0) {
-        next["images"] = [];
-        changed = true;
+        next = { ...next, images: [] };
         countAdjustment(providerId, "images", "none");
       }
-    } else if (policy.images === "remote") {
-      if (animal.images.some(needsRemoteNarrowing)) {
-        next["images"] = animal.images.map((image) =>
+    } else if (
+      policy.images === "remote" &&
+      animal.images.some(needsRemoteNarrowing)
+    ) {
+      next = {
+        ...next,
+        images: animal.images.map((image) =>
           needsRemoteNarrowing(image) ? narrowToRemote(image) : image,
-        );
-        changed = true;
-        countAdjustment(providerId, "images", "remote");
-      }
+        ),
+      };
+      countAdjustment(providerId, "images", "remote");
     }
 
     if (policy.descriptions === "facts-only") {
       if (animal.shortDescription !== undefined) {
-        // Deleted rather than set to undefined, so the record serializes like
+        // Dropped rather than set to undefined, so the record serializes like
         // one that never carried a description.
-        delete next["shortDescription"];
-        changed = true;
+        const { shortDescription: _dropped, ...rest } = next;
+        next = rest;
         countAdjustment(providerId, "descriptions", "facts-only");
       }
     } else if (
@@ -217,8 +205,7 @@ export function applyPublicationPolicy(
     ) {
       const excerpt = excerptDescription(animal.shortDescription);
       if (excerpt !== animal.shortDescription) {
-        next["shortDescription"] = excerpt;
-        changed = true;
+        next = { ...next, shortDescription: excerpt };
         countAdjustment(providerId, "descriptions", "excerpt-permitted");
       }
     }
@@ -227,14 +214,13 @@ export function applyPublicationPolicy(
     // normalize time. A shelter that reworded its credit gets the new wording
     // on the next run whether or not it was crawled.
     if (animal.attribution !== policy.attribution) {
-      next["attribution"] = policy.attribution;
-      changed = true;
+      next = { ...next, attribution: policy.attribution };
       countAdjustment(providerId, "attribution", policy.attribution);
     }
 
     // Only a record that actually changed is re-parsed: an untouched animal
     // keeps its identity and its place in the change-set diff.
-    kept.push(changed ? Animal.parse(next) : animal);
+    kept.push(next === animal ? animal : Animal.parse(next));
   }
 
   const dropped = [...drops.values()].sort(

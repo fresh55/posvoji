@@ -9,7 +9,6 @@ import type { ClientAnimal } from "@/lib/animal";
 import { CARD_GRID } from "@/lib/card-grid";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-import type { ShelterPhones } from "@/lib/shelters";
 
 // The cards, the grid and the dialog wiring are the home page's; the species
 // tabs, filter sidebar and clear-filters trail that come with AnimalGrid are
@@ -25,15 +24,12 @@ import type { ShelterPhones } from "@/lib/shelters";
 export function ShelterAnimalGrid({
   animals,
   logos,
-  phones,
   referenceDate,
   basePath,
 }: {
   /** At least one. See the note above on why there is no empty state. */
   animals: ClientAnimal[];
   logos: ShelterLogos;
-  /** Registry phones for the dialog's shelter block, keyed like `logos`. */
-  phones: ShelterPhones;
   /** When the dataset was built; ages are measured from it, not the clock. */
   referenceDate: string;
   /** This shelter's own page, where closing the dialog returns to. */
@@ -70,7 +66,6 @@ export function ShelterAnimalGrid({
       <AnimalDialog
         animal={selected}
         logos={logos}
-        phones={phones}
         origin={origin}
         siblingIds={shownIds}
         reference={reference}

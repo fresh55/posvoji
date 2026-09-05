@@ -84,7 +84,6 @@ function renderGrid() {
       <AnimalGrid
         animals={animalsForClient([MANY])}
         logos={{}}
-        phones={{}}
         referenceDate={REFERENCE}
       />
     </I18nProvider>,

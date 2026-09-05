@@ -230,12 +230,10 @@ export function loadShelters(): ShelterRegistryEntry[] {
 /** Shelter id to the phone the register holds for it. */
 export type ShelterPhones = Record<string, string>;
 
-// The same shape as getShelterLogos, and for the same reason: the grid, the
-// dialog and the shelter block are client components, so what they are given
-// is what the page serializes into its flight payload. A record of the one
-// field they need keeps this file, which opens node:fs and parses the whole
-// register, on the server where it belongs. Phones only. The register also
-// holds emails and websites, and neither is a call to action on an animal.
+// The same shape as getShelterLogos. The poster prints the shelter's number
+// and needs nothing else from the register, so this hands it the one field
+// rather than the whole file. Phones only. The register also holds emails and
+// websites, and neither belongs on a poster.
 export function getShelterPhones(): ShelterPhones {
   const phones: ShelterPhones = {};
   for (const shelter of loadShelters()) {

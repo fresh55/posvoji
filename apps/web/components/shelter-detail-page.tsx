@@ -383,9 +383,6 @@ export function ShelterDetailPage({
                 // same projection: see animalsForClient in lib/dataset.ts.
                 animals={animalsForClient(animals)}
                 logos={logos}
-                // Every animal in this grid is this shelter's, so the whole
-                // register would be seventeen entries to answer one lookup.
-                phones={shelter.phone ? { [shelter.id]: shelter.phone } : {}}
                 referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
                 basePath={`${indexHref}/${shelter.id}`}
               />

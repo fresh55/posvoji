@@ -45,6 +45,7 @@ elif name == 'git':
     elif args[0] == 'checkout': (base / 'head').write_text(args[-1])
     elif args[0] == 'merge-base' and failure == 'unmerged': sys.exit(1)
 elif name == 'pnpm':
+    if pathlib.Path.cwd() != base / 'app': sys.exit(2)
     if failure == 'dependencies' and (base / 'head').read_text() == 'b' * 40:
         sys.exit(1)
 elif name == 'systemctl':
@@ -68,6 +69,7 @@ elif name == 'install':
     )
     result = subprocess.run(
         ["bash", str(script), new],
+        cwd=tmp_path,
         env={
             **os.environ,
             "PATH": str(binary) + os.pathsep + os.environ["PATH"],

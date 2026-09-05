@@ -6,7 +6,7 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { animalPathParts } from "@/lib/animal-path";
+import { animalPathParts, posterPath } from "@/lib/animal-path";
 import { AnimalPage } from "./animal-page";
 
 Object.defineProperty(window, "matchMedia", {
@@ -225,6 +225,25 @@ describe("the animal page's way to the shelter", () => {
     expect(
       screen.getByRole("link", { name: /Odpri objavo pri zavetišču/ }),
     ).toBeTruthy();
+  });
+});
+
+describe("the animal page's way to a printed sheet", () => {
+  it("links to the animal's own poster, drawn like the link beside it", () => {
+    render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+
+    const poster = screen.getByRole("link", { name: "Natisni plakat" });
+    expect(poster.getAttribute("href")).toBe(
+      posterPath(ANIMAL_NO_PHOTO, "sl"),
+    );
+
+    // The same quiet grammar as "Poglej vse živali", down to the focus ring
+    // and the tap target: this is a second way on, not a second call to
+    // action. The one call to action is on the shelter block above.
+    const finder = screen.getByRole("link", { name: /Poglej vse živali/ });
+    expect(poster.className).toBe(finder.className);
   });
 });
 

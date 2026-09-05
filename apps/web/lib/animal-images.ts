@@ -97,6 +97,30 @@ export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
   });
 }
 
+/**
+ * The one photo a printed poster may carry, or nothing at all.
+ *
+ * Narrower than what the page draws, on purpose. `display-permitted` is a
+ * hotlink: the shelter let us show its file in a browser, which is not the
+ * same as letting us print it onto paper and hang it in a shop, and we do not
+ * hold a copy of it to print from either. So the poster asks for our own
+ * cached copy of the animal's lead drawable photo and takes the typographic
+ * sheet when there is none.
+ *
+ * The same rule photoSourceFor makes in apps/ingest/src/share-cards.ts for the
+ * link preview card, read off the resolved photo rather than off the raw
+ * rights: permittedPhotos already turned a cache-permitted image whose
+ * download failed back into the shelter's own URL, and that URL is exactly
+ * what this has to refuse.
+ */
+export function posterPhoto(
+  images: Animal["images"],
+): PermittedPhoto | undefined {
+  const lead = permittedPhotos(images)[0];
+  if (!lead || !lead.src.startsWith(CACHE_PREFIX)) return undefined;
+  return lead;
+}
+
 function isCachedCopy(src: string): boolean {
   return src.startsWith(CACHE_PREFIX) && src.endsWith(".webp");
 }

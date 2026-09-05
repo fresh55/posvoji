@@ -39,6 +39,40 @@ function renderFacts(extra: Partial<Animal> = {}, locale: Locale = "sl") {
   );
 }
 
+describe("the zdravje row", () => {
+  // FIV and FeLV are cat viruses. A dog's record can carry a negative all the
+  // same, a field filled in rather than a test run.
+  it("keeps the FIV and FeLV badges off a dog", () => {
+    renderFacts({
+      species: "dog",
+      medical: { fiv: "negative", felv: "negative" },
+    });
+    // Not folded behind the summary either: there is no health row at all.
+    expect(screen.queryByRole("list", { name: "Zdravje" })).toBeNull();
+  });
+
+  it("draws them for a cat with the same record", () => {
+    renderFacts({ medical: { fiv: "negative", felv: "negative" } });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    expect(within(row).getByText("Brez FIV")).toBeTruthy();
+    expect(within(row).getByText("Brez FeLV")).toBeTruthy();
+  });
+
+  // The summary counts what the species could be asked, so a dog is complete
+  // at three and folds the same way a cat does at five.
+  it("folds a dog's complete record at three", () => {
+    renderFacts({
+      species: "dog",
+      medical: { neutered: true, vaccinated: true, microchipped: true },
+    });
+
+    expect(
+      screen.getByRole("button", { name: /Vse zdravstveno urejeno \(3\/3\)/ }),
+    ).toBeTruthy();
+  });
+});
+
 describe("the družba row", () => {
   it("says nothing at all when the shelter has answered nothing", () => {
     renderFacts({ sex: "female" });

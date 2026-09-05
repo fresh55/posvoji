@@ -262,6 +262,22 @@ describe("the fact tiles", () => {
     expect(green).toEqual(["Sterilizacija"]);
   });
 
+  // The cat above earns "Brez FIV". A dog's record can carry the same negative
+  // field, and a sheet cannot be corrected once it is on a noticeboard.
+  it("prints no FIV or FeLV tile for a dog", () => {
+    const { container } = poster({
+      animal: animal({
+        species: "dog",
+        medical: { neutered: true, fiv: "negative", felv: "negative" },
+      }),
+    });
+
+    const green = [...container.querySelectorAll(".poster-tile--health")].map(
+      (tile) => tile.textContent,
+    );
+    expect(green).toEqual(["Sterilizacija"]);
+  });
+
   it("prints a household answer only where it is a yes", () => {
     const { container } = poster({
       animal: animal({

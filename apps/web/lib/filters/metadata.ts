@@ -37,8 +37,12 @@ export function groupLabel(group: MultiGroup, locale: Locale): string {
   return GROUP_LABELS[locale][group];
 }
 
-// species pins a toggle to one tab; without it the toggle asks something every
-// species can answer.
+// species pins a toggle to one species: FIV and FeLV are questions only a cat
+// can be asked. Without it the toggle asks something every species can answer.
+// Two readers spell the pin differently and both are right. The matcher below
+// compares the animal's own species; the sidebar asks whether the control
+// belongs on the tab the visitor is on, where rabbits fold into "other"
+// (toggleFitsSpecies in engine.ts).
 export type ToggleDef = {
   key: ToggleKey;
   label: string;
@@ -48,7 +52,7 @@ export type ToggleDef = {
 
 // Nouns, not adjectives: Slovenian would force a gender on "cepljen" that
 // "živali" doesn't share.
-export const TOGGLES: ToggleDef[] = [
+const TOGGLE_DEFS: ToggleDef[] = [
   {
     key: "sterilizacija",
     label: "Sterilizacija",
@@ -80,6 +84,39 @@ export const TOGGLES: ToggleDef[] = [
     matches: (animal) => animal.medical?.felv === "negative",
   },
 ];
+
+// The pin as one rule, read by both the matcher and the denominator below.
+function appliesToSpecies(
+  only: Species | undefined,
+  species: Species,
+): boolean {
+  return only === undefined || only === species;
+}
+
+// A pinned toggle answers for its own species alone, whatever the record says.
+// A dog's record can carry a negative FIV field, filled in rather than tested,
+// and "Brez FIV" on that dog states a fact that cannot exist. Wrapped at the
+// definition, so every reader of matches inherits it: the dialog's badges, the
+// poster's tiles and the filter index.
+function pinned(toggle: ToggleDef): ToggleDef {
+  const { species, matches } = toggle;
+  if (!species) return toggle;
+  return {
+    ...toggle,
+    matches: (animal) =>
+      appliesToSpecies(species, animal.species) && matches(animal),
+  };
+}
+
+export const TOGGLES: readonly ToggleDef[] = TOGGLE_DEFS.map(pinned);
+
+/** The questions this species can be asked, answered or not. The dialog needs
+ *  it as the denominator of "Vse zdravstveno urejeno (n/n)": a dog is not two
+ *  answers short for never having been asked about FIV. Built from the rule
+ *  the matchers are gated on, so a count and a badge row cannot disagree. */
+export function togglesAskedOf(species: Species): ToggleDef[] {
+  return TOGGLES.filter((toggle) => appliesToSpecies(toggle.species, species));
+}
 
 const TOGGLE_LABELS_EN: Record<ToggleKey, string> = {
   sterilizacija: "Neutered",

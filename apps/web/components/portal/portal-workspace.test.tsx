@@ -342,12 +342,72 @@ describe("a crawled shelter", () => {
     expect(fetchAnimals).toHaveBeenCalledWith("ljubljana");
     expect(fetchListings).not.toHaveBeenCalled();
     expect(addButton()).toBeNull();
-    // The crawled card, provenance line and public link included.
-    expect(screen.getByText(portalText.statusFromSiteLine)).toBeTruthy();
+    // The crawled row: a status pill that says whose answer it shows, the
+    // "Za pregled" chip, and the banner that offers to confirm the crawl's
+    // reading, said once above the list instead of on every animal.
     expect(
-      screen.getByRole("link", { name: portalText.publicListing }),
+      screen.getByRole("button", {
+        name: `${portalText.statusLegend}: Na voljo , ${portalText.statusSourceSite}`,
+      }),
+    ).toBeTruthy();
+    expect(
+      within(
+        screen.getByRole("group", { name: portalText.filterLegend }),
+      ).getByRole("button", { name: /Za pregled/ }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(fill(portalText.reviewBannerLead, { count: 1 })),
     ).toBeTruthy();
     expect(screen.getByText("1 žival")).toBeTruthy();
+  });
+
+  it("confirms every crawled status from the banner in one go", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", name: "Rex" }),
+      animal({ id: "ljubljana:2", name: "Bine", status: "reserved" }),
+      // Already the shelter's own answer: nothing to confirm on it.
+      animal({
+        id: "ljubljana:3",
+        name: "Muc",
+        status: "adopted",
+        overrides: { status: "adopted" },
+      }),
+    ]);
+    vi.mocked(saveAnimal).mockImplementation(async (_slug, id, patch) =>
+      animal({
+        id,
+        status: patch.status ?? null,
+        overrides: { status: patch.status },
+      }),
+    );
+    renderWorkspace();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: fill(portalText.reviewBannerConfirm, { count: 2 }),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(portalText.reviewBannerDone)).toBeTruthy();
+    });
+    expect(saveAnimal).toHaveBeenCalledTimes(2);
+    expect(saveAnimal).toHaveBeenCalledWith("ljubljana", "ljubljana:1", {
+      status: "available",
+    });
+    expect(saveAnimal).toHaveBeenCalledWith("ljubljana", "ljubljana:2", {
+      status: "reserved",
+    });
+    // Every pill now says the answer is the shelter's own.
+    expect(
+      screen.getAllByRole("button", {
+        name: new RegExp(`, ${portalText.statusSourceOwn}$`),
+      }),
+    ).toHaveLength(3);
   });
 
   it("keeps the crawl's empty state", async () => {
@@ -415,14 +475,17 @@ describe("work left unsaved on an animal's own page", () => {
 });
 
 describe("a save that the current filter hides", () => {
-  function statusButton(name: string, label: string): HTMLElement {
+  // The row's status is a pill that opens a menu. Radix opens it on Enter in
+  // jsdom, where pointerdown lacks the fields it checks (see
+  // status-menu.test.tsx); the values are the menu's radio items.
+  function chooseStatus(name: string, label: string): void {
     const article = screen.getByRole("heading", { name }).closest("article");
-    if (!article) throw new Error(`no card for ${name}`);
-    return within(
-      within(article as HTMLElement).getByRole("group", {
-        name: portalText.statusLegend,
-      }),
-    ).getByRole("button", { name: label });
+    if (!article) throw new Error(`no row for ${name}`);
+    const pill = within(article as HTMLElement).getByRole("button", {
+      name: new RegExp(`^${portalText.statusLegend}: `),
+    });
+    fireEvent.keyDown(pill, { key: "Enter" });
+    fireEvent.click(screen.getByRole("menuitemradio", { name: label }));
   }
 
   async function listOf() {
@@ -456,7 +519,7 @@ describe("a save that the current filter hides", () => {
         screen.getByRole("group", { name: portalText.filterLegend }),
       ).getByRole("button", { name: /Na voljo/ }),
     );
-    fireEvent.click(statusButton("Rex", "Oddan"));
+    chooseStatus("Rex", "Oddan");
 
     await waitFor(() => {
       expect(
@@ -485,10 +548,14 @@ describe("a save that the current filter hides", () => {
       }),
     );
 
-    fireEvent.click(statusButton("Rex", "Rezerviran"));
+    chooseStatus("Rex", "Rezerviran");
 
     await waitFor(() => {
-      expect(screen.getByText(portalText.statusOwnLine)).toBeTruthy();
+      expect(
+        screen.getByRole("button", {
+          name: `${portalText.statusLegend}: Rezerviran , ${portalText.statusSourceOwn}`,
+        }),
+      ).toBeTruthy();
     });
     expect(screen.queryByText(/trenutni filter skrije/)).toBeNull();
   });
@@ -508,7 +575,7 @@ describe("a save that the current filter hides", () => {
         screen.getByRole("group", { name: portalText.filterLegend }),
       ).getByRole("button", { name: /Na voljo/ }),
     );
-    fireEvent.click(statusButton("Rex", "Oddan"));
+    chooseStatus("Rex", "Oddan");
     await waitFor(() => {
       expect(
         screen.getByText(fill(portalText.savedHidden, { name: "Rex" })),

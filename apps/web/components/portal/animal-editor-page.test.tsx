@@ -647,7 +647,7 @@ describe("a status saved from the summary", () => {
   });
 });
 
-describe("a failure left behind by the list's status buttons", () => {
+describe("a failure left behind by the list's status pill", () => {
   // saveStates is one slot per animal, shared with the card's status row, and
   // an error in it never expires.
   function Swap() {
@@ -676,13 +676,17 @@ describe("a failure left behind by the list's status buttons", () => {
       expect(screen.getByRole("heading", { name: "Muri" })).toBeTruthy();
     });
 
-    // A status tap on the card fails, and the shelter opens the editor after
-    // it. Nothing here has been submitted, so nothing here has failed.
-    fireEvent.click(
-      within(
-        screen.getByRole("group", { name: portalText.statusLegend }),
-      ).getByRole("button", { name: "Rezerviran" }),
+    // A status pick on the row fails, and the shelter opens the editor after
+    // it. Nothing here has been submitted, so nothing here has failed. The
+    // row's status is a pill that opens a menu; Enter opens it in jsdom (see
+    // status-menu.test.tsx).
+    fireEvent.keyDown(
+      screen.getByRole("button", {
+        name: (name) => name.startsWith(`${portalText.statusLegend}: `),
+      }),
+      { key: "Enter" },
     );
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Rezerviran" }));
     await waitFor(() => {
       expect(screen.getByText(portalText.saveError)).toBeTruthy();
     });

@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   ExternalLink,
   LoaderCircle,
@@ -9,15 +15,19 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { fold } from "@/components/filters/location-picker/model";
 import { useI18n } from "@/components/i18n-provider";
 import { telHref } from "@/lib/contact-links";
-import {
-  CoverageCard,
-  type CoverageCardText,
-} from "@/components/municipality-coverage-card";
+import { CoverageCard } from "@/components/municipality-coverage-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNearby } from "@/hooks/use-nearby";
+import { FOUND_ANIMAL_PLACE_PARAMS } from "@/lib/found-animal";
+import {
+  getSearchSnapshot,
+  getServerSearchSnapshot,
+  subscribeToLocation,
+} from "@/lib/location-search";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   municipalitiesForInput,
@@ -25,14 +35,6 @@ import {
   type MunicipalityGuess,
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
-
-// Diacritic folding shared with the shelter search: "sencur" finds Šenčur.
-function fold(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
 
 // The authority that keeps the register of shelters. It used to point at
 // gov.si/teme/zascita-zivali/, which returns 404 and has no snapshot in the
@@ -46,21 +48,19 @@ function fold(text: string): string {
 const REGISTER_URL =
   "https://www.gov.si/drzavni-organi/organi-v-sestavi/uprava-za-varno-hrano-veterinarstvo-in-varstvo-rastlin/";
 const LAW_URL =
-  "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2021-01-2993";
+  "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
 // Enough to disambiguate any prefix without becoming a directory. The page
 // this replaced listed all 212 občine; the finder answers one question.
 const MAX_MATCHES = 8;
 
-// Tap-to-try examples for the empty state, so the box teaches its own input
-// instead of leaving a blank field to guess at. One obvious capital, one from
-// the northeast, one on the coast: three taps also say the lookup covers the
-// whole country, not just Ljubljana. Names, not translations, since a
-// municipality is called the same thing in both locales. Each one resolves to
-// exactly one entry with real coverage; see municipality-finder.test.tsx.
-const EXAMPLE_MUNICIPALITIES = ["Ljubljana", "Maribor", "Koper"];
+/** The question as asked: what is in the box, and which občina is settled.
+ *  picked is null while several still match, or while nothing does. */
+type Ask = { query: string; picked: string | null };
+
+const NOT_ASKED: Ask = { query: "", picked: null };
 
 // The found-animal lookup: say where the animal was found and get the shelter
-// responsible for it, what it costs (nothing), and what to do next. The občina
+// responsible for it and what to do next. The občina
 // can be typed, but a postcode or the device's own position is usually faster
 // and is what someone standing in the street actually has.
 //
@@ -70,6 +70,10 @@ const EXAMPLE_MUNICIPALITIES = ["Ljubljana", "Maribor", "Koper"];
 // (found-animal-atlas.tsx) and the dialog does not host it, so the finder
 // takes no selection and offers none: the coverage card links to the shelter's
 // own page, which is where its animals already are.
+//
+// Emergency numbers remain available before a location is known. Practical
+// guidance follows the contact result; reporting alone does not make the
+// finder responsible for shelter care costs under the amended Article 31.
 export function MunicipalityFinder({
   entries,
   onActiveShelters,
@@ -83,26 +87,71 @@ export function MunicipalityFinder({
    *  where the question was asked from. Null when none is picked. */
   onActiveMunicipality?: (name: string | null) => void;
 }) {
-  const { locale, messages, t } = useI18n();
-  const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<string | null>(null);
+  const { messages, t } = useI18n();
+  // What the box holds and which občina is settled, as one value: they change
+  // together every time. Typing is a new question and drops the pick, and a
+  // pick keeps the text that produced it, so two useStates only ever risked
+  // being written apart.
+  //
+  // Null means the visitor has not asked yet, and the link decides; anything
+  // else is theirs and outranks it. That is what lets the seed below be
+  // derived rather than assigned from an effect.
+  const [asked, setAsked] = useState<Ask | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { state, toggle: locate, turnOff: stopLocating } = useNearby();
+  const { state, toggle: locate } = useNearby();
 
   const byName = useMemo(
     () => new Map(entries.map((entry) => [entry.name, entry])),
     [entries],
   );
 
-  // Every občina name folded once, rather than all 212 of them folded again on
-  // each keystroke by the search, the exact-name check and the Enter handler in
-  // turn. fold normalizes, strips diacritics and lowercases, so it is three
-  // string allocations a name; the names themselves never change, and entries
-  // is a stable reference at both call sites.
+  // Every občina name folded once, rather than all 212 of them folded again
+  // on every keystroke. entries arrives from the server and never changes
+  // identity, so this is a constant the search was recomputing per character.
   const folded = useMemo(
     () => entries.map((entry) => ({ entry, key: fold(entry.name) })),
     [entries],
   );
+
+  // What a link asked for, if anything: /najdena-zival?kraj=Ptuj or
+  // ?posta=2250, so an občina's website or a post in a group can point at an
+  // answer rather than an empty box.
+  //
+  // Read through lib/location-search, which is this app's answer to reading
+  // the query under output: export. useSyncExternalStore is what makes it a
+  // derived value rather than an effect that writes state on mount: the
+  // prerendered HTML carries no query, the server snapshot is "", and the
+  // client snapshot arrives at hydration without a mismatch. Deriving it also
+  // means a link reached with back or forward is read again, for as long as
+  // the visitor has asked nothing of their own; once they have, their
+  // question stands and a history move does not take their text away.
+  //
+  // A name spelled in full is a pick, which is what a link from that občina
+  // is; anything else is left to the ordinary lookup below, so a postcode
+  // covering several občine still asks which one.
+  const linked = useSyncExternalStore(
+    subscribeToLocation,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
+  const seed = useMemo<Ask>(() => {
+    const params = new URLSearchParams(linked);
+    const place = FOUND_ANIMAL_PLACE_PARAMS.map((key) =>
+      params.get(key)?.trim(),
+    ).find(Boolean);
+    if (!place) return NOT_ASKED;
+    const needle = fold(place);
+    const exact = folded.find(({ key }) => key === needle);
+    return { query: place, picked: exact ? exact.entry.name : null };
+  }, [folded, linked]);
+
+  // The visitor's own question once there is one, the link's until then.
+  const { query, picked } = asked ?? seed;
+
+  // Typing, clearing and asking the device are all the same move: a new
+  // question, with nothing settled yet.
+  const askFor = (next: string) => setAsked({ query: next, picked: null });
+  const pick = (name: string) => setAsked({ query, picked: name });
 
   // A postcode or town in the box, and the device's position, both answer
   // "which občina" through the same postal table. What was typed wins: it is
@@ -149,15 +198,15 @@ export function MunicipalityFinder({
   const matches = useMemo(() => {
     if (!guess) return nameMatches;
     const typed = fold(query.trim());
-    // Names are unique, so at most one entry is spelled out in full and the
-    // guess cannot repeat itself: the only possible duplicate is that one
-    // entry already sitting in the guess.
+    // Names are unique, so an exact match is one entry or none, and that is
+    // the whole of the dedupe: drop it from the guess and put it in front.
     const exact = nameMatches.find((entry) => fold(entry.name) === typed);
-    const guessed = guess.municipalities.flatMap((name) => {
-      const entry = byName.get(name);
-      return entry ? [entry] : [];
-    });
-    return exact && !guessed.includes(exact) ? [exact, ...guessed] : guessed;
+    const guessed = guess.municipalities.flatMap(
+      (name) => byName.get(name) ?? [],
+    );
+    return exact
+      ? [exact, ...guessed.filter((entry) => entry.name !== exact.name)]
+      : guessed;
   }, [byName, guess, nameMatches, query]);
 
   const active =
@@ -171,40 +220,28 @@ export function MunicipalityFinder({
     onActiveMunicipality?.(active ? active.name : null);
   }, [active, onActiveMunicipality, onActiveShelters]);
 
-  const cardText: CoverageCardText = {
-    dogs: messages.speciesDogs,
-    cats: messages.speciesCats,
-    call: messages.muniCall,
-    onSite: messages.muniOnSite,
-    lost: messages.muniLost,
-    sourcePrefix: messages.muniSource,
-    datedSourceNote: messages.muniDatedSource,
-  };
-
-  const reset = () => {
-    setQuery("");
-    setPicked(null);
-    stopLocating();
-  };
+  // Both trailing controls start a new question; they differ by where they
+  // send it next.
+  const clearQuery = () => askFor("");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0">
+    <div>
+      <div>
+        {/* No label over the box: the page's h1 has asked the question, and
+            the placeholder says what the box takes. The field keeps its name
+            for screen readers from aria-label below. */}
         <div className="relative">
           <Search
-            className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <Input
             ref={searchRef}
             type="search"
             value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              // A new search is a new question; the old pick would otherwise
-              // sit on top of its answer.
-              setPicked(null);
-            }}
+            // A new search is a new question, so askFor drops the old pick:
+            // it would otherwise sit on top of its answer.
+            onChange={(event) => askFor(event.target.value)}
             onKeyDown={(event) => {
               // Enter takes the answer when there is one answer, and does
               // nothing when there are several.
@@ -235,68 +272,82 @@ export function MunicipalityFinder({
                   ? matches[0]
                   : matches.find((entry) => fold(entry.name) === typed);
               if (!answer) return;
-              setPicked(answer.name);
+              pick(answer.name);
               event.preventDefault();
             }}
-            placeholder={messages.muniSearch}
+            // While the device's position is the answer the empty field says
+            // so, in the placeholder's weight: a state, not something typed.
+            placeholder={
+              state.status === "on" ? messages.muniHereActive : messages.muniSearch
+            }
             aria-label={messages.muniSearch}
             // 44px tall below lg, the touch target the shelter picker's own
             // fields keep. text-base and not text-sm at that size: iOS Safari
             // zooms the whole page when a focused input sets type under 16px,
             // and the map is beside this field, so a zoom is a map nobody can
-            // aim at.
-            className="h-11 pl-8 text-base lg:h-8 lg:text-sm"
+            // aim at. At lg it is a full-size field and not the dialog's
+            // compact h-8: this is the one control on the page.
+            //
+            // Room on the right for the two trailing controls, and Chrome's
+            // own clear button on a search field switched off: it drew a
+            // second X under ours.
+            className="h-11 pl-9 pr-24 text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none"
           />
-          {query !== "" && (
-            <button
+          {/* The field's trailing controls, in the order they are worth
+              reaching for: clear what was typed, then ask the device instead.
+              The location button lives in the field because it is another way
+              of filling it and not a separate step; as a text link under the
+              box it read as a footnote. Icon only, named for screen readers
+              and on hover: the arrow is the glyph every map app uses for the
+              same thing, and the pressed state plus the placeholder say when
+              it is the answer. Below lg each is its own 44px target. */}
+          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
+            {query !== "" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => {
+                  clearQuery();
+                  searchRef.current?.focus();
+                }}
+                aria-label={messages.clearSearch}
+                className="text-muted-foreground max-lg:size-11"
+              >
+                <X className="size-4" aria-hidden />
+              </Button>
+            )}
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={() => {
-                setQuery("");
-                setPicked(null);
-                searchRef.current?.focus();
+                clearQuery();
+                locate();
               }}
-              aria-label={messages.clearSearch}
-              // The icon stays small; below lg the button's own box grows to
-              // the touch target around it, centred on the same spot.
-              className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground lg:size-6"
+              aria-pressed={state.status === "on"}
+              aria-label={
+                state.status === "locating" ? messages.locating : messages.muniHere
+              }
+              title={messages.muniHere}
+              className={cn(
+                "max-lg:size-11",
+                state.status === "on"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground",
+              )}
             >
-              <X className="size-3.5" aria-hidden />
-            </button>
-          )}
+              {state.status === "locating" ? (
+                <LoaderCircle className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Navigation className="size-4" aria-hidden />
+              )}
+            </Button>
+          </div>
         </div>
-
-        {/* Quiet, and named for what it actually does: it asks the browser
-            for a fix, which means a permission prompt. Same shape as the
-            shelter picker's own location button, one row below its field. */}
-        <button
-          type="button"
-          onClick={() => {
-            setQuery("");
-            setPicked(null);
-            locate();
-          }}
-          aria-pressed={state.status === "on"}
-          className={cn(
-            // Same 44px-below-lg rule the rest of this finder keeps.
-            "mt-2 inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors max-lg:min-h-11",
-            state.status === "on"
-              ? "font-medium text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {state.status === "locating" ? (
-            <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Navigation className="size-3.5" aria-hidden />
-          )}
-          {state.status === "locating" ? messages.locating : messages.muniHere}
-        </button>
       </div>
 
-      {/* Scrolls on its own, so a host that bounds this finder's height, the
-          found-animal page's column at lg, gets a scroller here rather than a
-          block that overruns it. */}
-      <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+      <div className="mt-4 space-y-3">
         {/* A denied or timed-out fix used to be a dead end: one sentence and
             nothing to press. Both ways out are here now, in the order they are
             worth trying: ask again, or stop asking and type the postcode,
@@ -321,9 +372,33 @@ export function MunicipalityFinder({
           {state.status === "error" ? state.message : ""}
         </p>
 
+        {/* The answer's heading, and the finder's one announcement: the
+            občina in the foreground weight, what the card under it is in the
+            muted one. Mounted whether or not there is an answer, for the same
+            reason as the status line above: a live region that appears
+            together with its first message is one nothing was listening to.
+            Sighted readers see the card appear; without this line a screen
+            reader typing a postcode heard nothing happen. */}
+        <p aria-live="polite" className="text-sm empty:hidden">
+          {active && (
+            <>
+              <span className="font-medium">{active.name}</span>
+              <span className="text-muted-foreground">
+                {" "}
+                ·{" "}
+                {active.coverage.length === 1
+                  ? messages.muniResponsible
+                  : active.coverage.length > 1
+                    ? messages.muniResponsiblePlural
+                    : messages.muniUnverified}
+              </span>
+            </>
+          )}
+        </p>
+
         {state.status === "error" && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {messages.muniPostcodeInstead}
             </p>
             <Button
@@ -331,48 +406,19 @@ export function MunicipalityFinder({
               variant="outline"
               size="sm"
               onClick={locate}
-              className="h-11 gap-1.5 text-xs lg:h-7"
+              className="h-11 lg:h-9"
             >
-              <Navigation className="size-3" aria-hidden />
+              <Navigation className="size-4" aria-hidden />
               {messages.retryLocation}
             </Button>
           </div>
         )}
 
-        {!query.trim() && !guess && !active && state.status !== "error" && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">{messages.muniHint}</p>
-
-            {/* Fills the void this empty state used to leave below the
-                explainer, and doubles as a hint about what the box takes.
-                Quiet on purpose: these are a teaching aid, not a shortcut
-                worth competing with the search box for attention. Tapping
-                one runs the exact same path as typing it, by writing the
-                same query state the input's own onChange writes. */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">
-                {messages.muniExampleLead}
-              </span>
-              {EXAMPLE_MUNICIPALITIES.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => {
-                    setQuery(name);
-                    setPicked(null);
-                  }}
-                  className="inline-flex h-6 items-center rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-lg:min-h-11 max-lg:px-4"
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Shows its work: which postal district the občina came from. */}
-        {guess && (
-          <p className="text-xs text-muted-foreground">
+        {/* Shows its work while there is still a choice to make: which postal
+            district the občine on the list came from. Once one of them is the
+            answer, its name at the head of the answer says it. */}
+        {guess && !active && (
+          <p className="text-sm text-muted-foreground">
             {t("muniFromPostcode", { code: guess.code, name: guess.label })}
           </p>
         )}
@@ -386,7 +432,7 @@ export function MunicipalityFinder({
         {!active && matches.length > 1 && (
           <div className="space-y-1.5">
             {guess && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {messages.muniWhichOne}
               </p>
             )}
@@ -395,7 +441,7 @@ export function MunicipalityFinder({
                 <li key={entry.name}>
                   <button
                     type="button"
-                    onClick={() => setPicked(entry.name)}
+                    onClick={() => pick(entry.name)}
                     className="flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 max-lg:min-h-11 max-lg:items-center"
                   >
                     <span className="font-medium">{entry.name}</span>
@@ -418,44 +464,23 @@ export function MunicipalityFinder({
           </div>
         )}
 
-        {active && (
-          <div className="space-y-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                {active.name} ·{" "}
-                {active.coverage.length === 1
-                  ? messages.muniResponsible
-                  : active.coverage.length > 1
-                    ? messages.muniResponsiblePlural
-                    : messages.muniUnverified}
-              </p>
-              <button
-                type="button"
-                onClick={reset}
-                className="inline-flex shrink-0 items-center text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline max-lg:min-h-11"
-              >
-                {messages.clear}
-              </button>
-            </div>
-
-            {active.coverage.length > 0 ? (
-              active.coverage.map((coverage) => (
-                <CoverageCard
-                  key={`${coverage.shelterId}-${coverage.species ?? "all"}`}
-                  coverage={coverage}
-                  text={cardText}
-                  locale={locale}
-                />
-              ))
-            ) : (
-              <div className="space-y-3">
+        {active &&
+          (active.coverage.length > 0 ? (
+            active.coverage.map((coverage) => (
+              <CoverageCard
+                key={`${coverage.shelterId}-${coverage.species ?? "all"}`}
+                coverage={coverage}
+              />
+            ))
+          ) : (
+            <div className="space-y-3">
                 <div className="space-y-1.5 rounded-ui border border-dashed p-4 text-sm text-muted-foreground">
                   <p>{messages.muniUnverifiedAdvice}</p>
                   <a
                     href={REGISTER_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs underline underline-offset-2 hover:text-foreground"
+                    className="inline-flex items-center gap-1.5 underline underline-offset-4 hover:text-foreground"
                   >
                     {messages.muniRegister}
                     <ExternalLink className="size-3" aria-hidden />
@@ -465,10 +490,10 @@ export function MunicipalityFinder({
                 {/* Not an answer, but better than none: somewhere to call. */}
                 {active.nearest.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-xs font-medium">
+                    <p className="text-sm font-medium">
                       {messages.muniNearestTitle}
                     </p>
-                    <p className="text-2xs leading-tight text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {messages.muniNearestNote}
                     </p>
                     <ul className="space-y-0.5 pt-0.5">
@@ -484,16 +509,16 @@ export function MunicipalityFinder({
                             >
                               {shelter.shelterName}
                             </a>
-                            <span className="block truncate text-2xs text-muted-foreground">
+                            <span className="block truncate text-xs text-muted-foreground">
                               {shelter.city} · {shelter.km} km
                             </span>
                           </span>
                           {shelter.phone && (
                             <a
                               href={telHref(shelter.phone)}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2 py-1 text-xs transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2.5 py-1 text-sm transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
                             >
-                              <Phone className="size-3" aria-hidden />
+                              <Phone className="size-3.5" aria-hidden />
                               {shelter.phone}
                             </a>
                           )}
@@ -502,53 +527,33 @@ export function MunicipalityFinder({
                     </ul>
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          ))}
 
-        {/* The fact that stops people reporting a found animal: they assume
-            the vet bill is theirs. It is not.
-
-            Under the search whether or not an občina has been named, and the
-            steps with it. Both used to be part of the answer block, so they
-            appeared only once the finder had a shelter to show; the person
-            this flow exists for is standing over the animal before they know
-            which municipality they are in, and step 3 ("do not move an
-            injured animal") is the one they need first. The answer block
-            still lands above them, so the order once there is an answer is
-            unchanged: shelter, then cost, then what to do. */}
-        <div className="space-y-1 rounded-ui border bg-muted/40 p-3">
-          <p className="text-xs leading-relaxed">{messages.muniCost}</p>
-          <a
-            href={LAW_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            {messages.muniCostSource}
-            <ExternalLink className="size-2.5" aria-hidden />
-          </a>
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium">{messages.muniStepsTitle}</p>
-          <ol className="space-y-1.5">
-            {[messages.muniStep1, messages.muniStep2, messages.muniStep3].map(
-              (step, index) => (
-                <li
-                  key={step}
-                  className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
-                >
-                  <span className="shrink-0 font-medium text-foreground">
-                    {index + 1}.
-                  </span>
-                  {step}
-                </li>
-              ),
-            )}
-          </ol>
-        </div>
+        {/* The guidance, under whatever the search has answered, in the
+            muted weight: the card above it is the answer, this is what goes
+            with it. Three sentences: what not to do, what to say, who pays.
+            Call and safety guidance follows Zavetišče Ljubljana's procedure
+            (zavetisce-ljubljana.si/najdene-zivali/kaj-storiti-ce-najdemo-
+            zapusceno-zival). The list used to end with the emergency numbers
+            112 and 113; a found animal is a call to the shelter, not to
+            either, so they are gone. */}
+        <ul className="space-y-2 border-t pt-4 text-sm leading-relaxed text-muted-foreground">
+          <li>{messages.muniInjured}</li>
+          <li>{messages.muniCallAdvice}</li>
+          <li>
+            {messages.muniCost}{" "}
+            <a
+              href={LAW_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
+            >
+              {messages.muniCostSource}
+              <ExternalLink className="size-3" aria-hidden />
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
   );

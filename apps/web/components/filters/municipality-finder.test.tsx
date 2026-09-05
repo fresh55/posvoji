@@ -8,9 +8,8 @@ import { MunicipalityFinder } from "./municipality-finder";
 
 afterEach(cleanup);
 
-// Same three names as the component's own EXAMPLE_MUNICIPALITIES, with real
-// coverage, so the fixture matches what the tap-to-try chips promise: a
-// working lookup, not just an entry that resolves to nothing.
+// Three občine from different corners of the country, each with real coverage,
+// so a lookup that resolves has a card to show.
 const ENTRIES: LookupEntry[] = [
   {
     name: "Ljubljana",
@@ -74,30 +73,103 @@ function renderFinder() {
   );
 }
 
-describe("MunicipalityFinder example chips", () => {
-  it("renders the three example municipalities in the empty state", () => {
-    renderFinder();
-
-    expect(screen.getByText("Npr.:")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Ljubljana" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Maribor" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Koper" })).toBeTruthy();
+describe("MunicipalityFinder deep link", () => {
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
   });
 
-  it("tapping a chip runs the same lookup as typing the name", () => {
+  it("opens the občina the URL names", () => {
+    window.history.replaceState({}, "", "/najdena-zival?kraj=Koper");
     renderFinder();
 
-    fireEvent.click(screen.getByRole("button", { name: "Koper" }));
-
-    // The search box now holds the tapped name, same as if it had been typed.
-    const search = screen.getByRole("searchbox") as HTMLInputElement;
-    expect(search.value).toBe("Koper");
-    // And the same single-match result the typed path resolves to: the
-    // responsible shelter's card, with its name and call button.
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe(
+      "Koper",
+    );
     expect(screen.getByText("Zavetišče Obala")).toBeTruthy();
   });
 
-  it("typing a name by hand resolves to the identical result the chip gives", () => {
+  it("takes a postcode too, and folds the spelling", () => {
+    window.history.replaceState({}, "", "/najdena-zival?posta=koper");
+    renderFinder();
+
+    expect(screen.getByText("Zavetišče Obala")).toBeTruthy();
+  });
+
+  it("leaves the box empty when the URL names nothing", () => {
+    window.history.replaceState({}, "", "/najdena-zival");
+    renderFinder();
+
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText("Zavetišče Obala")).toBeNull();
+  });
+
+  // The seed is derived from the URL rather than written into state on mount,
+  // so the one thing worth pinning is that it gives way: what the visitor
+  // types is the question, and the link is only where they started.
+  it("gives way to what the visitor types over it", () => {
+    window.history.replaceState({}, "", "/najdena-zival?kraj=Koper");
+    renderFinder();
+
+    expect(screen.getByText("Zavetišče Obala")).toBeTruthy();
+
+    const search = screen.getByRole("searchbox");
+    fireEvent.change(search, { target: { value: "Maribor" } });
+
+    expect((search as HTMLInputElement).value).toBe("Maribor");
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(screen.queryByText("Zavetišče Obala")).toBeNull();
+  });
+
+  it("stays empty after the link is cleared, rather than seeding again", () => {
+    window.history.replaceState({}, "", "/najdena-zival?kraj=Koper");
+    renderFinder();
+
+    fireEvent.click(screen.getByRole("button", { name: "Počisti iskanje" }));
+
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText("Zavetišče Obala")).toBeNull();
+  });
+});
+
+describe("MunicipalityFinder empty state", () => {
+  it("puts the box first and the guidance under it, with no example towns", () => {
+    renderFinder();
+
+    // Finding a contact does not require choosing from example towns.
+    const search = screen.getByRole("searchbox");
+    expect(search).toBeTruthy();
+    expect(screen.queryByText("Npr.:")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ljubljana" })).toBeNull();
+    // The guidance and the two emergency numbers stand under the search, not
+    // above it: the box is the one control this page exists for.
+    const guidance = screen.getByText(/Poškodovane živali ne premikaj/);
+    expect(
+      search.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // No emergency numbers: a found animal is a call to the shelter.
+    expect(screen.queryByRole("link", { name: "112" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "113" })).toBeNull();
+    expect(screen.getByText(/Odlov in oskrbo plača občina/)).toBeTruthy();
+    // No label over the box: the page's h1 has asked the question.
+    expect(screen.queryByText("Kje si našel žival?")).toBeNull();
+  });
+
+  it("announces the answer through a live region that was already mounted", () => {
+    renderFinder();
+
+    const live = document.querySelectorAll('[aria-live="polite"]');
+    // The status line for the fix, and the answer's heading, both empty.
+    expect(live.length).toBe(2);
+    expect(live[1].textContent).toBe("");
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "Koper" },
+    });
+
+    expect(live[1].textContent).toBe("Koper · pristojno zavetišče");
+  });
+
+  it("names the shelter once a single občina is typed", () => {
     renderFinder();
 
     fireEvent.change(screen.getByRole("searchbox"), {
@@ -105,19 +177,14 @@ describe("MunicipalityFinder example chips", () => {
     });
 
     expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
-  });
-
-  it("hides the examples once a lookup result is showing", () => {
-    renderFinder();
-
-    expect(screen.getByRole("button", { name: "Ljubljana" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Ljubljana" }));
-
-    // The teaching aid's job is done: the result card is up, and the chips
-    // (including the one that was just tapped) leave the space to it.
-    expect(screen.queryByRole("button", { name: "Ljubljana" })).toBeNull();
-    expect(screen.queryByText("Npr.:")).toBeNull();
+    // The answer carries the občina's name in one line with what the card
+    // under it is. Read off the live region rather than by text: the card
+    // below names the shelter's town as well, and both are "Maribor".
+    expect(
+      document.querySelectorAll('[aria-live="polite"]')[1]?.textContent,
+    ).toBe("Maribor · pristojno zavetišče");
+    // No second "clear" beside it, because the X in the box already is one.
+    expect(screen.queryByRole("button", { name: "Počisti" })).toBeNull();
   });
 });
 
@@ -173,8 +240,7 @@ describe("MunicipalityFinder enter key", () => {
     // which is the only thing that says "pristojno zavetišče" over a named
     // občina, is not on screen. The shelter names themselves are no test of
     // that, because every row in the list already carries the one it would
-    // name. ("Kaj zdaj" is no test of it either, any more: the steps stand
-    // under the search whether or not an občina has been named.)
+    // name.
     expect(screen.queryByText(/pristojno zavetišč/)).toBeNull();
     // And the list is still there to pick from, which is the whole of what
     // the visitor has to act on.

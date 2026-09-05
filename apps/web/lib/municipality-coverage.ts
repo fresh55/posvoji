@@ -15,6 +15,10 @@ export type LookupCoverage = {
   phone?: string;
   email?: string;
   website?: string;
+  /** When the phone is answered and what to dial when it is not; both from
+   *  the register, both optional. See ShelterRegistryEntry. */
+  hours?: string;
+  onCallPhone?: string;
   detailHref: string;
   /** > 0 when the shelter shares a structured animal list on posvoji.si. */
   animals: number;
@@ -221,6 +225,8 @@ export function buildMunicipalityEntries(
           phone: shelter.phone,
           email: shelter.email,
           website: shelter.website,
+          hours: shelter.hours,
+          onCallPhone: shelter.onCallPhone,
           detailHref: `${detailBase}/${shelter.id}`,
           animals: counts.get(shelter.id) ?? 0,
           species: coverage.species,

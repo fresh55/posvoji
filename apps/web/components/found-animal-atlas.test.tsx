@@ -45,6 +45,15 @@ const PINS: ShelterPin[] = [
     count: 0,
     selectable: false,
   },
+  // Far busier than Ljubljana, so a density ramp would put the two regions on
+  // different steps and a flat map on the same one.
+  {
+    value: "obalno",
+    label: "Zavetišče Obala",
+    city: "Koper",
+    at: cityAt("Koper")!,
+    count: 40,
+  },
 ];
 
 function renderAtlas() {
@@ -60,18 +69,29 @@ describe("the found-animal atlas", () => {
     renderAtlas();
 
     // Both halves of the answer, the map and the finder, on one page.
-    expect(screen.getByRole("group", { name: /zemljevid/i })).toBeTruthy();
-    expect(screen.getByRole("searchbox")).toBeTruthy();
-    // The map says what it does, once, on the plate.
+    const map = screen.getByRole("img", { name: /zemljevid/i });
+    expect(map).toBeTruthy();
+    // This page explains a lookup result; it does not expose filter controls
+    // whose activation is silently discarded.
     expect(
-      screen.getByText("Zemljevid pokaže pristojno zavetišče"),
-    ).toBeTruthy();
-    // The credit the boundaries are licensed under, on this plate too.
+      map.querySelector(
+        '[role="button"], [aria-pressed], [tabindex], [data-map-commit]',
+      ),
+    ).toBeNull();
+    expect(screen.getByRole("searchbox")).toBeTruthy();
+    // Nothing on the plate but the map and the credit its boundaries are
+    // licensed under: no instruction chip, and no legend, because the regions
+    // are flat here and there is no ramp to read.
     expect(document.querySelector('[data-slot="map-attribution"]')).toBeTruthy();
-    // What to do stands under the search before any občina is named: the
-    // person this page is for needs "do not move an injured animal" first.
-    expect(screen.getByText("Kaj zdaj")).toBeTruthy();
+    expect(document.querySelector("[data-map-legend]")).toBeNull();
+    const densities = [...map.querySelectorAll("[data-region-density]")].map(
+      (region) => region.getAttribute("data-region-density"),
+    );
+    expect(densities.length).toBeGreaterThan(1);
+    expect(new Set(densities)).toEqual(new Set(["0"]));
+    // Guidance remains available before a municipality is named.
     expect(screen.getByText(/Zakon o zaščiti živali/)).toBeTruthy();
+    expect(screen.getByText(/Poškodovane živali ne premikaj/)).toBeTruthy();
     // And nothing is ringed yet.
     expect(document.querySelector("[data-map-spotlight]")).toBeNull();
   });

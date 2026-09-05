@@ -154,17 +154,29 @@ export function groupTownsByRegion(towns: Town[]): {
 // grouping rather than the town list, so a caller that already grouped its
 // towns (ShelterMap keeps the grouping for its own hover lookups) does not
 // pay for a second pass.
+//
+// rank=false is the found-animal map, which asks where the shelters are and
+// not how full they are: every live region lands on the ramp's first step and
+// the rest stay untinted. It is answered here rather than by the caller
+// zeroing the ranking afterwards, so a map and its own mini preview cannot
+// disagree about what a region's density is, and so the scale is not built to
+// be thrown away. It is densityScale's own behaviour with nothing to rank.
 export function regionStatsByRegion(
   byRegion: Map<number, Town[]>,
   selected: string[],
+  rank = true,
 ): { region: RegionShape; stats: RegionStats }[] {
   const counted = REGION_SHAPES.map((region) => ({
     region,
     stats: getRegionStats(byRegion.get(region.id) ?? [], selected),
   }));
-  const step = densityScale(
-    counted.filter(({ stats }) => stats.live).map(({ stats }) => stats.animals),
-  );
+  const step = rank
+    ? densityScale(
+        counted
+          .filter(({ stats }) => stats.live)
+          .map(({ stats }) => stats.animals),
+      )
+    : () => 0;
   return counted.map(({ region, stats }) => ({
     region,
     stats: { ...stats, density: step(stats.animals) },

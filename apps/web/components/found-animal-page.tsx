@@ -4,10 +4,10 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadDataset } from "@/lib/dataset";
+import { toPins } from "@/components/filters/location-picker/model";
 import { cityAt } from "@/lib/geo";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
-import type { ShelterPin } from "@/lib/map-layout";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { shelterCensus } from "@/lib/shelter-census";
 import { loadShelters } from "@/lib/shelters";
@@ -29,12 +29,8 @@ import { loadShelters } from "@/lib/shelters";
 // the smallest change that gave the flow a URL and left the map, the better
 // half of the answer, behind in the dialog.
 //
-// One h1 and the atlas, nothing between them. The finder explains itself in
-// its own empty state (muniHint), so an intro paragraph here would be the
-// explanatory subtitle this site does not write. The cost answer and the
-// what-now steps live inside the finder, under the search, before and after
-// an občina is named: somebody standing over an injured animal needs "do not
-// move it" before they know which municipality they are in.
+// Keep the actionable guidance inside the finder so it is available before
+// and after a municipality is named, ahead of the map on phones.
 export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
@@ -50,21 +46,18 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   // leaves it off: a marker roughly in the right place is worse than none.
   const shelters = loadShelters();
   const census = shelterCensus(shelters, animals);
-  const pins: ShelterPin[] = shelters.flatMap((shelter) => {
-    const at = cityAt(shelter.city);
-    if (!at) return [];
-    const count = census.byShelter.get(shelter.id) ?? 0;
-    return [
-      {
-        value: shelter.id,
-        label: shelter.name,
-        city: shelter.city,
-        at,
-        count,
-        ...(count === 0 ? { selectable: false } : {}),
-      },
-    ];
-  });
+  const pins = toPins(
+    shelters.map((shelter) => ({
+      value: shelter.id,
+      label: shelter.name,
+      city: shelter.city,
+      at: cityAt(shelter.city),
+    })),
+    (row) => {
+      const count = census.byShelter.get(row.value) ?? 0;
+      return count > 0 ? { count } : { count, selectable: false };
+    },
+  );
 
   return (
     <I18nProvider locale={locale}>

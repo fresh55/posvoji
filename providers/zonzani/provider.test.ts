@@ -160,6 +160,52 @@ describe("provider", () => {
     expect(refs).toHaveLength(2);
   });
 
+  it("refuses a species page that is not the listing", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: 200,
+        body: loadFixture(import.meta.url, "list.html"),
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        body: "<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>",
+      });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow(
+      "list page https://www.zonzani.si/macke/ has no listing markup",
+    );
+  });
+
+  it("accepts a species page with nothing to show right now", async () => {
+    const get = vi.fn().mockResolvedValue({
+      status: 200,
+      body:
+        '<div id="main"><div class="cmsms_wrap_portfolio entry-summary">' +
+        '<div class="portfolio grid"></div></div></div>',
+    });
+    expect(await provider.discover({ client: { get } as never, policy })).toEqual(
+      [],
+    );
+  });
+
+  it("refuses a page that keeps the site frame but lost the portfolio", async () => {
+    const get = vi.fn().mockResolvedValue({
+      status: 200,
+      body: '<div id="main"><section id="middle"><h1>Vzdrževanje</h1></section></div>',
+    });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow("has no listing markup");
+  });
+
+  it("refuses a detail page that carries no project article", () => {
+    expect(() =>
+      parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
+    ).toThrow("detail page has no project article");
+  });
+
   it("rejects a detail page whose evidence number changed", async () => {
     const get = vi.fn().mockResolvedValue({ status: 200, body: dogHtml });
     await expect(

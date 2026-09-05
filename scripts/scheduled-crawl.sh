@@ -73,6 +73,21 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # for the benefit of this one machine.
 LOG_DIR="${REPO_ROOT}-logs"
 
+# The portal's endpoint and bearer token, beside the clone for the same reason
+# the logs are and for one the logs do not have: this script resets the clone
+# to origin/main before every run, so a token committed here would be both
+# destroyed on the next run and published on the first. Optional, because a
+# machine with no portal configured still has a crawl to do: ingest skips the
+# override and listing feeds when PORTAL_EXPORT_URL and PORTAL_EXPORT_TOKEN
+# are unset. Documented in docs/CRAWL-SCHEDULING.md.
+CRAWL_ENV="${HOME}/.posvoji-crawl.env"
+if [ -f "${CRAWL_ENV}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "${CRAWL_ENV}"
+  set +a
+fi
+
 NOTIFY_PS1="${REPO_ROOT}/scripts/crawl-notify.ps1"
 KEEPAWAKE_PS1="${REPO_ROOT}/scripts/crawl-keepawake.ps1"
 DEPLOY_SH="${REPO_ROOT}/scripts/deploy.sh"

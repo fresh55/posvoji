@@ -44,7 +44,20 @@ editing, and so a deploy is always of committed code.
    script sets `HOME`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA` and the temp
    directory itself, and prepends the absolute locations of Node, the npm
    global bin where pnpm lives, Git's own binaries and System32 to `PATH`.
-   `HOME` matters more than it looks: `deploy.sh` finds the SSH key under it.
+   `HOME` matters more than it looks: `deploy.sh` finds the SSH key under it,
+   and the portal's credentials are read from `$HOME/.posvoji-crawl.env` when
+   that file exists. It sits beside the clone rather than in it because step 3
+   resets the clone to `origin/main`, so a token committed here would be
+   destroyed on the next run and published on the first. Two keys go in it:
+
+   ```sh
+   PORTAL_EXPORT_URL=https://api.posvoji.si
+   PORTAL_EXPORT_TOKEN=<the value of PORTAL_EXPORT_TOKEN in the portal's env>
+   ```
+
+   Both are optional. Without them ingest skips the override and listing
+   feeds, so a machine with no portal configured still has a crawl to do; the
+   shelters that write their own listings simply carry forward.
 2. **Wait for a network.** Up to 150 seconds, pinging 1.1.1.1 and 8.8.8.8.
    A machine that just woke for this run usually has a link within a few
    seconds; DHCP and a VPN can take longer. The log says which one answered.

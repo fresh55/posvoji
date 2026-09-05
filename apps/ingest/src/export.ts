@@ -241,8 +241,10 @@ async function fetchListingsFeed(): Promise<ListingsFeed> {
 // closes.
 //
 // The two files are also checked against each other there: they carry one
-// run's generatedAt, so a pair that disagrees is a run that stopped between
-// the two writes and neither file can be trusted as last run's other half.
+// run's generatedAt, and the snapshot is written first, so a snapshot ahead of
+// the published file is a run that stopped between the two writes and is
+// carried on from; a published file ahead of the snapshot is a restored old
+// snapshot and stops the run.
 const previousPublished = readPreviousDataset(datasetPath, { discardPrevious });
 const { dataset: previousCrawled, bootstrapping: bootstrappingSnapshot } =
   readPreviousCrawledDataset(crawledDatasetPath, {
@@ -252,6 +254,7 @@ const { dataset: previousCrawled, bootstrapping: bootstrappingSnapshot } =
     targetedProviderId: requestedProviderId,
     published: previousPublished,
     publishedPath: datasetPath,
+    overrideReportPath,
   });
 // Which generation of the parsers, and which policy, produced the records we
 // are about to reuse. A missing or unreadable file forces a full crawl, which
@@ -734,8 +737,15 @@ const changes = buildChangeSet({
   current: dataset.animals,
 });
 
-writeFileAtomic(datasetPath, JSON.stringify(dataset, null, 2));
+// The snapshot is written first, and the order is load-bearing. A run that
+// dies between the two writes then leaves a snapshot one generation ahead of
+// the published file, which is the recoverable direction: the snapshot is the
+// whole crawl, so everything that reads it is right, and only changes.json's
+// baseline is a generation old. The other order left an unusable pair that
+// blocked every following run. See assertGenerationPair in
+// crawled-snapshot.ts.
 writeFileAtomic(crawledDatasetPath, JSON.stringify(crawledDataset, null, 2));
+writeFileAtomic(datasetPath, JSON.stringify(dataset, null, 2));
 writeFileAtomic(
   join(datasetDir, "changes.json"),
   JSON.stringify(ChangeSet.parse(changes), null, 2),

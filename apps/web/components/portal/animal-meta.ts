@@ -7,13 +7,20 @@ import {
   SEARCHABLE_FIELDS,
   SEX_META,
   isPortalSex,
+  isPortalStatus,
   portalSpeciesLabel,
 } from "@/components/portal/portal-fields";
 import type { AnimalFields } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
-import { formatAge } from "@/lib/labels";
-import type { PortalAnimal, PortalShelter } from "@/lib/portal-api";
+import { formatAge, pick } from "@/lib/labels";
+import { isOverridden } from "@/components/portal/animal-form";
+import { fill, portalText } from "@/components/portal/portal-text";
+import type {
+  PortalAnimal,
+  PortalShelter,
+  PortalStatus,
+} from "@/lib/portal-api";
 
 // The public site's arithmetic, read through the API's nulls, so the same
 // birth date turns into the same number of months on both sides.
@@ -85,4 +92,60 @@ export function portalPublicPath(
  */
 export function missingSearchableFields(animal: PortalAnimal) {
   return SEARCHABLE_FIELDS.filter((field) => animal[field.key] === null);
+}
+
+/**
+ * "{n} manjka" with the verb in the form Slovenian wants for that count.
+ * pick() is the site's one dual-and-plural ladder, so this cannot drift from
+ * the counts the public grid prints.
+ */
+export function missingCountLabel(count: number): string {
+  return fill(
+    pick(count, [
+      portalText.missingOne,
+      portalText.missingTwo,
+      portalText.missingFew,
+      portalText.missingMany,
+    ]),
+    { count },
+  );
+}
+
+/** The status as the portal edits it, and whose answer it is. */
+export function statusOf(animal: PortalAnimal): {
+  status: PortalStatus | null;
+  /**
+   * "shelter" once the shelter has picked or confirmed a value, "site" while
+   * it is still the crawl's reading of their own page.
+   */
+  source: "shelter" | "site";
+} {
+  return {
+    status: isPortalStatus(animal.status) ? animal.status : null,
+    source: isOverridden(animal, "status") ? "shelter" : "site",
+  };
+}
+
+/**
+ * A status the shelter has not made its own yet. Only these are what the
+ * banner above the list offers to confirm in one go; an animal with no status
+ * at all is not among them, because there is nothing to confirm.
+ */
+export function hasUnconfirmedStatus(animal: PortalAnimal): boolean {
+  const { status, source } = statusOf(animal);
+  return status !== null && source === "site";
+}
+
+/** The same question as missingSearchableFields, without building the list. */
+export function hasMissingSearchableFields(animal: PortalAnimal): boolean {
+  return SEARCHABLE_FIELDS.some((field) => animal[field.key] === null);
+}
+
+/**
+ * Whether the animal belongs in the "Za pregled" filter: something on it is
+ * still waiting for the shelter, either the status or one of the fields an
+ * adopter searches by.
+ */
+export function needsReview(animal: PortalAnimal): boolean {
+  return hasUnconfirmedStatus(animal) || hasMissingSearchableFields(animal);
 }

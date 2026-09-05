@@ -10,7 +10,12 @@ import {
 } from "react";
 import { Inbox, LoaderCircle, Plus, SearchX, TriangleAlert } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
-import { PortalAnimalCard } from "@/components/portal/animal-card";
+import {
+  hasMissingSearchableFields,
+  hasUnconfirmedStatus,
+  needsReview,
+} from "@/components/portal/animal-meta";
+import { PortalAnimalRow } from "@/components/portal/animal-row";
 import {
   PortalListTools,
   filterPortalAnimals,
@@ -21,9 +26,11 @@ import { ListingForm } from "@/components/portal/listing-form";
 import { PortalNotice } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
+import { ReviewBanner } from "@/components/portal/review-banner";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IDLE } from "@/hooks/portal-list";
 import { NEW_LISTING } from "@/hooks/use-portal-listings";
 import { animalCount } from "@/lib/labels";
 import { draftIds, subscribeDrafts } from "@/lib/portal-drafts";
@@ -32,12 +39,13 @@ import { draftIds, subscribeDrafts } from "@/lib/portal-drafts";
 // finds none does not hand the list a new object to re-render for.
 const EMPTY_DRAFTS: ReadonlySet<string> = new Set();
 
-/** Names a card in the page, so a save can scroll back to the one it went to.
+/** Names a row in the page, so a save can scroll back to the one it went to.
  *  The id travels through an attribute, and a crawled one holds a colon. */
 function cardDomId(animalId: string): string {
   return `animal-${encodeURIComponent(animalId)}`;
 }
 
+// The manual listing cards keep their own shape, so their placeholder does.
 function CardSkeleton() {
   return (
     <div className="space-y-3 rounded-ui border p-3 sm:p-4">
@@ -53,6 +61,26 @@ function CardSkeleton() {
     </div>
   );
 }
+
+// The same three columns the row lays out, so nothing jumps when it arrives.
+function RowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
+      <Skeleton className="size-10 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3.5 w-28" />
+        <Skeleton className="h-3 w-40" />
+      </div>
+      <Skeleton className="h-8 w-24 rounded-full" />
+    </div>
+  );
+}
+
+// Crawled shelters are the long lists: Mačja hiša alone carries 186 animals,
+// and the card each of them used to get made that about 46,000px of page.
+// One row per animal, the four status buttons folded into a pill, and the
+// sentence that explained the buttons said once above the list instead.
+const ROW_LIST = "divide-y rounded-ui border";
 
 export function PortalWorkspace() {
   const shouldReduceMotion = useReducedMotion();
@@ -70,6 +98,8 @@ export function PortalWorkspace() {
     saveStates,
     reloadAnimals,
     save,
+    confirmStatuses,
+    bulk,
     lastSaved,
     clearLastSaved,
     publicName,
@@ -96,9 +126,24 @@ export function PortalWorkspace() {
   // carry under the same names, so each list goes through them as it is.
   const all: PortalListEntry[] = manual ? listings : animals;
   const visibleAnimals = useMemo(
-    () => filterPortalAnimals(animals, query, status),
+    () => filterPortalAnimals(animals, query, status, needsReview),
     [animals, query, status],
   );
+  // What the "Za pregled" chip counts, and what the banner offers to settle.
+  // Both read the whole list, never the filtered one, for the same reason the
+  // status chips do: a count that moved with the filter would say nothing. One
+  // pass for the pair: an unconfirmed status is one of the two things that put
+  // an animal in the chip, so the walk that finds them answers both.
+  const review = useMemo(() => {
+    let count = 0;
+    let unconfirmed = 0;
+    for (const animal of animals) {
+      const pending = hasUnconfirmedStatus(animal);
+      if (pending) unconfirmed += 1;
+      if (pending || hasMissingSearchableFields(animal)) count += 1;
+    }
+    return { count, unconfirmed };
+  }, [animals]);
   const visibleListings = useMemo(
     () => filterPortalAnimals(listings, query, status),
     [listings, query, status],
@@ -273,13 +318,23 @@ export function PortalWorkspace() {
               </p>
             </div>
 
-            {listState.status === "loading" && (
-              <div className="space-y-3" aria-hidden>
-                <CardSkeleton />
-                <CardSkeleton />
-                <CardSkeleton />
-              </div>
-            )}
+            {listState.status === "loading" &&
+              (manual ? (
+                <div className="space-y-3" aria-hidden>
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </div>
+              ) : (
+                <div className={ROW_LIST} aria-hidden>
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                  <RowSkeleton />
+                </div>
+              ))}
 
             {listState.status === "error" && (
               <PortalNotice
@@ -327,11 +382,25 @@ export function PortalWorkspace() {
                   clearLastSaved();
                   setQuery(next);
                 }}
-                status={status}
-                onStatusChange={(next) => {
+                filter={status}
+                onFilterChange={(next) => {
                   clearLastSaved();
                   setStatus(next);
                 }}
+                // Manual listings have no crawl underneath, so there is
+                // nothing on them to confirm and no chip to offer.
+                reviewCount={manual ? undefined : review.count}
+              />
+            )}
+
+            {/* Once, above the list, in place of the same sentence on every
+                card. The banner counts only statuses; the missing fields are
+                the chip's business, and each row names its own. */}
+            {listState.status === "ready" && !manual && animals.length > 0 && (
+              <ReviewBanner
+                count={review.unconfirmed}
+                bulk={bulk}
+                onConfirmAll={() => void confirmStatuses()}
               />
             )}
 
@@ -403,7 +472,7 @@ export function PortalWorkspace() {
               !manual &&
               visibleAnimals.length > 0 &&
               activeShelter && (
-                <div className="space-y-3">
+                <div className={ROW_LIST}>
                   {visibleAnimals.map((animal, index) => (
                     <m.div
                       key={animal.id}
@@ -420,16 +489,16 @@ export function PortalWorkspace() {
                         delay: Math.min(index, 8) * 0.03,
                       }}
                       // Named so a save made on the editor page can bring the
-                      // shelter back to the card it belonged to.
+                      // shelter back to the row it belonged to.
                       id={cardDomId(animal.id)}
                     >
-                      <PortalAnimalCard
+                      <PortalAnimalRow
                         animal={animal}
                         shelter={activeShelter}
                         publicName={publicName(animal)}
                         hasDraft={drafts.has(animal.id)}
-                        saveState={saveStates[animal.id] ?? { status: "idle" }}
-                        onSave={(patch) => save(animal.id, patch)}
+                        saveState={saveStates[animal.id] ?? IDLE}
+                        onSave={save}
                       />
                     </m.div>
                   ))}

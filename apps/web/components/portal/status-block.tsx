@@ -1,8 +1,8 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { statusOf } from "@/components/portal/animal-meta";
 import { RevertButton } from "@/components/portal/override-mark";
-import { isPortalStatus } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import type { PortalAnimal, PortalAnimalPatch } from "@/lib/portal-api";
  * the current value is, the way to confirm the crawl's reading, and the way
  * to give it back.
  *
- * The card and the editor page both draw this, and both save the moment a
- * button is tapped. One copy, because the two are the same control on two
- * screens and a shelter that learns it on the list must not meet a different
- * one on the page.
+ * The editor page draws this; the list draws StatusMenu, which folds the same
+ * four values into a pill because a row has no width for four buttons and the
+ * sentence that explains them. Both read whose answer the value is through
+ * statusOf, so the two presentations cannot disagree about that, and both save
+ * the moment a value is chosen.
  */
 export function StatusBlock({
   animal,
@@ -27,11 +28,8 @@ export function StatusBlock({
   busy: boolean;
   onSave: (patch: PortalAnimalPatch) => void;
 }) {
-  const status = isPortalStatus(animal.status) ? animal.status : null;
-  const overridden = Object.prototype.hasOwnProperty.call(
-    animal.overrides,
-    "status",
-  );
+  const { status, source } = statusOf(animal);
+  const overridden = source === "shelter";
 
   return (
     // A container, so the status row can count its own width. See

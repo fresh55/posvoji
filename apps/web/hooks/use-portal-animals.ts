@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  hasUnconfirmedStatus,
+  statusOf,
+} from "@/components/portal/animal-meta";
 import { portalText } from "@/components/portal/portal-text";
 import {
   IDLE,
@@ -15,7 +19,23 @@ import {
   saveAnimal,
   type PortalAnimal,
   type PortalAnimalPatch,
+  type PortalStatus,
 } from "@/lib/portal-api";
+
+/**
+ * Confirming every unconfirmed status at once, as the banner above the list
+ * reports it. "done" and "failed" both carry the total, because the sentence
+ * they are drawn as says how much work the shelter just had done for them.
+ */
+export type PortalBulkState =
+  | { status: "idle" }
+  | { status: "running"; done: number; total: number }
+  | { status: "done"; total: number }
+  | { status: "failed"; failed: number; total: number };
+
+/** What one PUT settled as. A 401 is neither: nothing was stored and nothing
+ *  more can be, so it is the caller who decides what happens next. */
+type SaveOutcome = "saved" | "failed" | "unauthorized";
 
 /**
  * The shelter's animals plus a per-animal save state. Saving is not
@@ -31,6 +51,8 @@ export function usePortalAnimals(
   saveStates: Record<string, PortalSaveState>;
   reload: () => void;
   save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
+  confirmStatuses: () => Promise<void>;
+  bulk: PortalBulkState;
   publicName: (animal: PortalAnimal) => string | null;
 } {
   const [animals, setAnimals] = useState<PortalAnimal[]>([]);
@@ -43,8 +65,16 @@ export function usePortalAnimals(
   const [saveStates, setSaveStates] = useState<Record<string, PortalSaveState>>(
     {},
   );
+  const [bulk, setBulk] = useState<PortalBulkState>({ status: "idle" });
   const [attempt, setAttempt] = useState(0);
   const timers = useRef(new Map<string, number>());
+  // One run at a time, read synchronously: a second tap on "Potrdi vse"
+  // arrives long before any state from the first has rendered.
+  const confirming = useRef(false);
+  // The list as it is right now, so a run started from a button drawn one
+  // render ago still sends what each animal's status says today.
+  const latest = useRef(animals);
+  latest.current = animals;
   // Kept in a ref so save() does not have to be rebuilt on every redirect
   // callback identity change.
   const unauthorized = useRef(onUnauthorized);
@@ -58,11 +88,28 @@ export function usePortalAnimals(
     };
   }, []);
 
+  // A finished run has long enough to be read that the last row's own
+  // "Shranjeno" has gone, and then the banner has nothing left to say. Owned
+  // by an effect rather than by a timer every early return has to remember to
+  // clear: leaving "done" for any reason, a new shelter and an unmount
+  // included, is this effect being cleaned up.
+  useEffect(() => {
+    if (bulk.status !== "done") return;
+    const timer = window.setTimeout(
+      () => setBulk({ status: "idle" }),
+      SAVED_FLASH_MS * 2,
+    );
+    return () => window.clearTimeout(timer);
+  }, [bulk.status]);
+
   useEffect(() => {
     if (!slug) return;
     let live = true;
     setState({ status: "loading" });
     setSaveStates({});
+    // A run belongs to the list it was started over. A new list, whether
+    // another shelter's or this one reloaded, answers for itself.
+    setBulk({ status: "idle" });
 
     fetchAnimals(slug).then(
       (list) => {
@@ -104,9 +151,18 @@ export function usePortalAnimals(
     );
   }, []);
 
-  const save = useCallback(
-    async (animalId: string, patch: PortalAnimalPatch): Promise<boolean> => {
-      if (!slug) return false;
+  /**
+   * One PUT and everything it leaves behind on the animal it went to: the
+   * saving and saved flashes, and the record the server merged. It says what
+   * happened rather than acting on a 401 itself, because a run of these has
+   * to redirect once, not once per request still in flight.
+   */
+  const runSave = useCallback(
+    async (
+      animalId: string,
+      patch: PortalAnimalPatch,
+    ): Promise<SaveOutcome> => {
+      if (!slug) return "failed";
       setSaveStates((current) => ({
         ...current,
         [animalId]: { status: "saving" },
@@ -124,12 +180,9 @@ export function usePortalAnimals(
           [animalId]: { status: "saved" },
         }));
         flashSaved(animalId);
-        return true;
+        return "saved";
       } catch (error) {
-        if (isUnauthorized(error)) {
-          unauthorized.current();
-          return false;
-        }
+        if (isUnauthorized(error)) return "unauthorized";
         setSaveStates((current) => ({
           ...current,
           [animalId]: {
@@ -137,11 +190,86 @@ export function usePortalAnimals(
             message: message(error, portalText.saveError),
           },
         }));
-        return false;
+        return "failed";
       }
     },
     [flashSaved, slug],
   );
+
+  const save = useCallback(
+    async (animalId: string, patch: PortalAnimalPatch): Promise<boolean> => {
+      const outcome = await runSave(animalId, patch);
+      if (outcome === "unauthorized") {
+        unauthorized.current();
+        return false;
+      }
+      return outcome === "saved";
+    },
+    [runSave],
+  );
+
+  /**
+   * Making the crawl's reading of the status the shelter's own answer, for a
+   * whole list at once. There is no bulk route, so each animal gets the PUT it
+   * would have got from its own row, with the value it already shows: the
+   * point of confirming is that the value does not change, only whose answer
+   * it is. Each row therefore flashes its own saving and saved, and the list
+   * is replaced from each response, exactly as a single tap would leave it.
+   *
+   * The set is read here rather than handed in: an animal the shelter has
+   * already answered for is never resent, so a banner drawn a render ago
+   * cannot write over an edit made since.
+   *
+   * One PUT at a time. The API writes to SQLite, and on 2026-09-06 three at a
+   * time made 39 of 185 fail with "database is locked". A run of 186 takes
+   * about ten seconds this way, and the banner counts them up as they land.
+   */
+  const confirmStatuses = useCallback(async (): Promise<void> => {
+    if (confirming.current) return;
+
+    const pending: { id: string; status: PortalStatus }[] = [];
+    for (const animal of latest.current) {
+      if (!hasUnconfirmedStatus(animal)) continue;
+      const { status } = statusOf(animal);
+      if (status) pending.push({ id: animal.id, status });
+    }
+    if (pending.length === 0) {
+      setBulk({ status: "idle" });
+      return;
+    }
+
+    confirming.current = true;
+    const total = pending.length;
+    setBulk({ status: "running", done: 0, total });
+
+    let failed = 0;
+    let gone = false;
+    for (const [index, animal] of pending.entries()) {
+      const outcome = await runSave(animal.id, { status: animal.status });
+      // The session is over. Whatever is left would only fail the same way,
+      // and the page is about to be replaced anyway.
+      if (outcome === "unauthorized") {
+        gone = true;
+        break;
+      }
+      if (outcome === "failed") failed += 1;
+      setBulk({ status: "running", done: index + 1, total });
+    }
+    confirming.current = false;
+
+    if (gone) {
+      setBulk({ status: "idle" });
+      unauthorized.current();
+      return;
+    }
+    // A failure is left standing: the banner is the only place that says some
+    // of it did not go through, and it carries the retry.
+    setBulk(
+      failed > 0
+        ? { status: "failed", failed, total }
+        : { status: "done", total },
+    );
+  }, [runSave]);
 
   /**
    * The name to build this animal's public address from.
@@ -162,5 +290,14 @@ export function usePortalAnimals(
     [listedNames],
   );
 
-  return { animals, state, saveStates, reload, save, publicName };
+  return {
+    animals,
+    state,
+    saveStates,
+    reload,
+    save,
+    confirmStatuses,
+    bulk,
+    publicName,
+  };
 }

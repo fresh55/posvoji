@@ -380,6 +380,17 @@ function retireArtifactLock(lockDir, expected) {
     );
   }
   const retired = `${lockDir}.retired-${expected.owner.nonce}`;
+  // POSIX rename can replace an empty destination directory; Windows refuses
+  // it. An existing retirement is always evidence to stop, even if an
+  // operator or an interrupted older implementation left it empty. Real
+  // concurrent retirements contain the owner file, so rename also refuses
+  // them atomically after this check.
+  if (existsSync(retired)) {
+    throw new Error(
+      `artifact-lock retirement already exists for ${expected.owner.nonce}; ` +
+        "refusing to move a possibly replaced successor",
+    );
+  }
   try {
     renameSync(lockDir, retired);
   } catch (error) {

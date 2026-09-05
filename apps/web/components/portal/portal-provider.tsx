@@ -10,11 +10,15 @@ import {
   type ReactNode,
 } from "react";
 import { ExternalLink, LogOut } from "lucide-react";
+import type { PortalListFilter } from "@/components/portal/list-tools";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
 import type { PortalListState, PortalSaveState } from "@/hooks/portal-list";
-import { usePortalAnimals } from "@/hooks/use-portal-animals";
+import {
+  usePortalAnimals,
+  type PortalBulkState,
+} from "@/hooks/use-portal-animals";
 import {
   usePortalListings,
   type PortalListingActions,
@@ -31,7 +35,6 @@ import {
   type PortalAnimalPatch,
   type PortalListing,
   type PortalShelter,
-  type PortalStatus,
 } from "@/lib/portal-api";
 
 /**
@@ -67,6 +70,15 @@ export type PortalContextValue = {
   reloadAnimals: () => void;
   save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
   /**
+   * Making the crawl's reading of the status the shelter's own, for every
+   * animal named at once. The banner above the list is the only caller: the
+   * sentence that used to sit on every card is said there once, and this is
+   * the button under it.
+   */
+  confirmStatuses: (animalIds: string[]) => Promise<void>;
+  /** How far that run has got, for the banner to say so. */
+  bulk: PortalBulkState;
+  /**
    * The animal the last save went to, so the list can take the shelter back
    * to the card they were working on. Null until something has been saved,
    * and dropped again the moment the shelter touches the filters.
@@ -81,8 +93,9 @@ export type PortalContextValue = {
   listingActions: PortalListingActions;
   query: string;
   setQuery: (query: string) => void;
-  status: PortalStatus | null;
-  setStatus: (status: PortalStatus | null) => void;
+  /** The one chip that is on: a status, the review queue, or nothing. */
+  status: PortalListFilter | null;
+  setStatus: (status: PortalListFilter | null) => void;
   clearFilters: () => void;
 };
 
@@ -141,7 +154,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<PortalStatus | null>(null);
+  const [status, setStatus] = useState<PortalListFilter | null>(null);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
 
   const account = session.status === "ready" ? session.session.email : null;
@@ -189,6 +202,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     saveStates,
     reload: reloadAnimals,
     save: saveAnimalFields,
+    confirmStatuses,
+    bulk,
     publicName,
   } = usePortalAnimals(manual ? null : active, onUnauthorized);
   const {
@@ -240,6 +255,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       saveStates,
       reloadAnimals,
       save,
+      confirmStatuses,
+      bulk,
       lastSaved,
       clearLastSaved,
       publicName,
@@ -270,6 +287,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       saveStates,
       reloadAnimals,
       save,
+      confirmStatuses,
+      bulk,
       lastSaved,
       clearLastSaved,
       publicName,

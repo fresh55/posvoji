@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { LayoutList, Search } from "lucide-react";
+import { ClipboardList, LayoutList, Search } from "lucide-react";
 import {
   STATUS_META,
   choiceCard,
@@ -27,6 +27,14 @@ export type PortalListEntry = {
 };
 
 /**
+ * What one chip filters the list down to. The four statuses are a property of
+ * the record; "review" is not, because whether an animal still waits for the
+ * shelter is a question about the crawl's answers and the blanks left in
+ * them. The caller answers it with a predicate.
+ */
+export type PortalListFilter = PortalStatus | "review";
+
+/**
  * The name a search matches on. slugify folds the diacritics away, so "zan"
  * finds "Žan" and "muc" finds "Mucka": a shelter typing on a phone keyboard
  * should not have to reach for č, š or ž. The breed rides along because it is
@@ -38,17 +46,27 @@ function haystack(animal: PortalListEntry): string {
 
 /**
  * The list as the tools leave it. Both filters are ands: an empty query and a
- * null status each match everything, which is what "Vse" resets to.
+ * null filter each match everything, which is what "Vse" resets to.
+ *
+ * A caller with no needsReview has nothing to review, so the "review" filter
+ * leaves that list empty rather than whole. Only the crawled list hands the
+ * predicate in; a manual shelter writes its own records and is never offered
+ * the chip.
  */
 export function filterPortalAnimals<Entry extends PortalListEntry>(
   animals: Entry[],
   query: string,
-  status: PortalStatus | null,
+  filter: PortalListFilter | null,
+  needsReview?: (entry: Entry) => boolean,
 ): Entry[] {
   const needle = slugify(query);
-  if (!needle && !status) return animals;
+  if (!needle && !filter) return animals;
   return animals.filter((animal) => {
-    if (status && animal.status !== status) return false;
+    if (filter === "review") {
+      if (!needsReview?.(animal)) return false;
+    } else if (filter && animal.status !== filter) {
+      return false;
+    }
     return !needle || haystack(animal).includes(needle);
   });
 }
@@ -98,27 +116,41 @@ function Chip({
 }
 
 /**
- * Search and status chips over the shelter's own list. The counts are read off
+ * Search and filter chips over the shelter's own list. The counts are read off
  * the full list, never off what the filters left: a chip has to say how many
  * animals it would show, or the numbers move under the hand that is using
  * them. A status with no animals is not offered, because tapping it could only
  * ever empty the list.
+ *
+ * "Za pregled" sits second, right after "Vse", because it is the only chip
+ * that names work rather than a state: the animals whose status is still the
+ * crawl's reading, or that leave one of the adopter's filters blank. It keeps
+ * the plain green selected state of every other chip, and it is offered only
+ * to a list that has a count for it, so a manual shelter never sees it.
  */
 export function PortalListTools({
   animals,
   query,
   onQueryChange,
-  status,
-  onStatusChange,
+  filter,
+  onFilterChange,
+  reviewCount,
 }: {
   /** The full list, not the filtered one. */
   animals: PortalListEntry[];
   query: string;
   onQueryChange: (query: string) => void;
-  status: PortalStatus | null;
-  onStatusChange: (status: PortalStatus | null) => void;
+  filter: PortalListFilter | null;
+  onFilterChange: (filter: PortalListFilter | null) => void;
+  /** Left out by a list that has nothing to review, which hides the chip. */
+  reviewCount?: number;
 }) {
   const counts = useMemo(() => statusCounts(animals), [animals]);
+  const reviewSelected = filter === "review";
+  // The chip that is currently on stays on screen at zero, the same way a
+  // status chip does, so the filter can be switched back off.
+  const showReview =
+    reviewCount !== undefined && (reviewCount > 0 || reviewSelected);
 
   return (
     <div className="space-y-2.5">
@@ -151,11 +183,20 @@ export function PortalListTools({
           icon={LayoutList}
           label={portalText.statusAll}
           count={animals.length}
-          selected={status === null}
-          onClick={() => onStatusChange(null)}
+          selected={filter === null}
+          onClick={() => onFilterChange(null)}
         />
+        {showReview && (
+          <Chip
+            icon={ClipboardList}
+            label={portalText.reviewChip}
+            count={reviewCount}
+            selected={reviewSelected}
+            onClick={() => onFilterChange(reviewSelected ? null : "review")}
+          />
+        )}
         {PORTAL_STATUSES.map((option) => {
-          const selected = status === option;
+          const selected = filter === option;
           // A zero count is a dead end, but the chip that is currently on
           // stays on screen so the filter can be switched back off.
           if (counts[option] === 0 && !selected) return null;
@@ -168,7 +209,7 @@ export function PortalListTools({
               count={counts[option]}
               selected={selected}
               selectedClass={meta.selected}
-              onClick={() => onStatusChange(selected ? null : option)}
+              onClick={() => onFilterChange(selected ? null : option)}
             />
           );
         })}

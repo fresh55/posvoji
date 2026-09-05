@@ -90,8 +90,22 @@ describe("parseDescription", () => {
 });
 
 describe("parseDetail", () => {
+  it("does not read a negated care term as the positive claim", () => {
+    const negated = [
+      ["kastrirana / sterilizirana", "nekastrirana / nesterilizirana"],
+      ["mikročipirana", "ni mikročipirana"],
+      ["cepljena proti", "necepljena proti"],
+    ] as const;
+    for (const [positive, negative] of negated) {
+      const html = rabbitHtml.replace(positive, negative);
+      expect(html).not.toBe(rabbitHtml);
+      expect(parseDetail(html).medical).toBeUndefined();
+    }
+  });
+
   it("recognises the rabbit and the complete-care medical bundle", () => {
     expect(parseDetail(rabbitHtml)).toEqual({
+      sourceAnimalId: "rabbit-uuid",
       name: "Peter Z.",
       species: "rabbit",
       sex: "male",
@@ -161,6 +175,20 @@ describe("parseDetail", () => {
       "</script>";
     expect(parseDetail(html)).toMatchObject({ status: "available" });
   });
+
+  it("refuses a page that carries no __NEXT_DATA__ payload", () => {
+    expect(() =>
+      parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
+    ).toThrow("detail page has no pet data");
+  });
+
+  it("refuses a payload whose pet is missing", () => {
+    const html =
+      '<script id="__NEXT_DATA__" type="application/json">' +
+      JSON.stringify({ props: { pageProps: {} } }) +
+      "</script>";
+    expect(() => parseDetail(html)).toThrow("detail page has no pet data");
+  });
 });
 
 describe("provider", () => {
@@ -202,6 +230,29 @@ describe("provider", () => {
     });
     expect(get).toHaveBeenCalledWith(policy.source);
     expect(refs).toHaveLength(3);
+  });
+
+  it("fetches the detail page the ref points at", async () => {
+    const get = vi.fn().mockResolvedValue({ status: 200, body: rabbitHtml });
+    const raw = await provider.fetch(
+      { policy, client: { get } as unknown as PoliteClient },
+      ref,
+    );
+    expect(get).toHaveBeenCalledWith(ref.sourceUrl);
+    expect(raw.data).toMatchObject({ sourceAnimalId: "rabbit-uuid" });
+  });
+
+  it("refuses a detail page that answers with another animal", async () => {
+    const get = vi.fn().mockResolvedValue({
+      status: 200,
+      body: loadFixture(import.meta.url, "detail-dog-trial.html"),
+    });
+    await expect(
+      provider.fetch(
+        { policy, client: { get } as unknown as PoliteClient },
+        ref,
+      ),
+    ).rejects.toThrow("detail page for rabbit-uuid returned dog-uuid");
   });
 
   it("drops photos when policy permission is absent", async () => {

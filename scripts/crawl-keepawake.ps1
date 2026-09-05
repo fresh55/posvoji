@@ -4,10 +4,11 @@ Keeps the machine awake while the scheduled crawl runs.
 
 .DESCRIPTION
 WakeToRun gets the PC out of sleep for the 02:00 crawl, but nothing keeps it
-out. A crawl is 30 to 45 minutes of waiting on shelter servers with almost no
-local work, which reads to Windows as an idle machine, so the unattended idle
-timer puts it back to sleep and the run dies mid-fetch with nothing written.
-That is exactly how the first real run was lost on 29 August 2026.
+out. A crawl spends long stretches waiting on shelter servers with almost no
+local work, and a cold image pass can take about seven hours, which reads to
+Windows as an idle machine. The unattended idle timer can therefore put it
+back to sleep and leave the run interrupted. That is how the first real run
+was lost on 29 August 2026.
 
 This holds ES_SYSTEM_REQUIRED for as long as the flag file exists. The runner
 creates the flag before it starts and removes it on the way out, including
@@ -24,11 +25,13 @@ this only stops the idle timer.
 The hold lasts while this path exists.
 
 .PARAMETER MaxMinutes
-Safety deadline. Matches the task's own six hour execution limit.
+Safety deadline. Fifteen minutes beyond the task's ten-hour execution limit,
+so a legitimate run stays awake while a hard-killed runner cannot hold the
+machine awake indefinitely through its abandoned flag.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$FlagFile,
-  [int]$MaxMinutes = 360
+  [int]$MaxMinutes = 615
 )
 
 Set-StrictMode -Version Latest

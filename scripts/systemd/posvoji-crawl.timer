@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Posvoji twice daily
+
+[Timer]
+OnCalendar=*-*-* 06,18:00:00 Europe/Ljubljana
+Persistent=true
+RandomizedDelaySec=15min
+Unit=posvoji-crawl.service
+
+[Install]
+WantedBy=timers.target

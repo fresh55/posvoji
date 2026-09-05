@@ -1,0 +1,20 @@
+[Unit]
+Description=Prepare a consistent Posvoji backup for PC retrieval
+
+[Service]
+Type=oneshot
+User=posvoji
+Group=caddy
+EnvironmentFile=/etc/posvoji/backup.env
+ExecStart=/usr/bin/python3 /srv/posvoji/app/scripts/prepare-backup.py --repo /srv/posvoji/app --database ${PORTAL_DB_PATH} --output /srv/posvoji/backups
+TimeoutStartSec=1h
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/posvoji
+CPUQuota=50%
+MemoryMax=25%
+IOWeight=10
+Nice=15

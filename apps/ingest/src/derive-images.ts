@@ -3,10 +3,12 @@
 // placeholders and hero avif over photos that are already cached, without
 // re-crawling every animal.
 //
-// Nothing here touches the network. It reads the dataset and the manifest,
-// cuts what is missing from our own cached files and writes both back.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// Nothing here touches the network. It first validates the committed snapshot,
+// then reads the dataset and image manifest, cuts what is missing from our own
+// cached files and writes both back under a replacement receipt.
+import { existsSync, readFileSync } from "node:fs";
 import { Dataset } from "@posvoji/schema";
+import { holdArtifactLock } from "./artifact-lock";
 import {
   deriveVariants,
   heroSourceUrls,
@@ -14,11 +16,23 @@ import {
   withCachedUrls,
 } from "./cache-images";
 import {
+  assertRepairableGeneration,
+  writeGenerationReceipt,
+} from "./generation-receipt";
+import {
   cachedImagesDir,
   datasetDir,
   datasetPath,
   imageCacheManifestPath,
 } from "./paths";
+import { writeFileAtomic } from "./write-atomic";
+
+holdArtifactLock("derive-images");
+
+// Missing derivatives are the one invalid state this job can prove it owns
+// and recreate from receipt-verified masters. Changed/empty derivatives,
+// master photos and every unrelated byte remain fail-closed.
+assertRepairableGeneration("image-derivatives");
 
 // Only the published dataset. animals.crawled.json deliberately carries no
 // cached image fields: they are stripped again the moment a record is reused.
@@ -38,16 +52,17 @@ const derived = await deriveVariants(
   heroSourceUrls(dataset.animals),
   cachedImagesDir,
 );
-writeFileSync(imageCacheManifestPath, JSON.stringify(manifest, null, 2));
+writeFileAtomic(imageCacheManifestPath, JSON.stringify(manifest, null, 2));
 
 // Only the images change, so everything else in the dataset is carried over
 // as it stands. generatedAt records when the data was fetched, and this run
 // fetched nothing, so it keeps the time of the export that did.
 const animals = withCachedUrls(dataset.animals, manifest);
-writeFileSync(
+writeFileAtomic(
   datasetPath,
   JSON.stringify(Dataset.parse({ ...dataset, animals }), null, 2),
 );
+const generationId = writeGenerationReceipt();
 
 console.log(
   `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
@@ -55,5 +70,6 @@ console.log(
 );
 console.log(
   `derived over ${cached} cached images, rewrote ${animals.length} animals ` +
-    `in ${datasetDir} (generatedAt ${dataset.generatedAt} unchanged)`,
+    `in ${datasetDir} (generatedAt ${dataset.generatedAt} unchanged, ` +
+    `generation ${generationId})`,
 );

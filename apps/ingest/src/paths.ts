@@ -18,17 +18,21 @@ export const datasetPath = join(datasetDir, "animals.json");
 // change set. See the two-snapshot comment in export.ts for why.
 export const crawledDatasetPath = join(datasetDir, "animals.crawled.json");
 
+// Last-written digest receipt binding every deploy-consumed JSON artifact and
+// every referenced public-media byte into one fail-closed generation.
+export const generationReceiptPath = join(datasetDir, "generation.json");
+
 // Cached shelter photos land inside the web app's public dir (gitignored:
 // shelter content is not repository content) so both `next dev` and the
 // static export serve them without a copy step.
-export const cachedImagesDir = join(
+export const publicMediaDir = join(
   repoRoot,
   "apps",
   "web",
   "public",
   "media",
-  "animals",
 );
+export const cachedImagesDir = join(publicMediaDir, "animals");
 export const imageCacheManifestPath = join(datasetDir, "image-cache.json");
 
 // Audit trail for the shelter corrections merged into the dataset. A
@@ -39,26 +43,12 @@ export const overrideReportPath = join(datasetDir, "overrides.json");
 // Shelter logos live beside the cached photos for the same reason: a logo is
 // the shelter's mark, not repository content, so it is fetched rather than
 // committed.
-export const shelterLogosDir = join(
-  repoRoot,
-  "apps",
-  "web",
-  "public",
-  "media",
-  "shelter-logos",
-);
+export const shelterLogosDir = join(publicMediaDir, "shelter-logos");
 export const shelterLogoManifestPath = join(datasetDir, "shelter-logos.json");
 
 // Share cards live beside the cached photos: same public dir, same
 // gitignore, same "shelter content is not repository content" rule.
-export const shareCardsDir = join(
-  repoRoot,
-  "apps",
-  "web",
-  "public",
-  "media",
-  "share",
-);
+export const shareCardsDir = join(publicMediaDir, "share");
 export const shareCardManifestPath = join(datasetDir, "share-cards.json");
 
 // Inter is vendored rather than taken from the system: sharp resolves fonts

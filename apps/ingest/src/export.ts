@@ -1,12 +1,15 @@
 import { mkdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { PoliteClient } from "@posvoji/provider-sdk";
 import { ChangeSet, Dataset } from "@posvoji/schema";
 import type { Animal, ProviderPolicy } from "@posvoji/schema";
 import { applyAllowedFields } from "./allowed-fields";
+import { holdArtifactLock } from "./artifact-lock";
 import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { cacheLogos, logoTargets } from "./cache-logos";
 import { buildChangeSet } from "./changes";
+import { writeGenerationReceipt } from "./generation-receipt";
 import { flagList, flagValue, hasFlag } from "./cli";
 import {
   assertBootstrapCrawlIsComplete,
@@ -61,6 +64,8 @@ import {
   overrideReportPath,
 } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
+import { buildCrawlManifest, ProviderSnapshots, readSnapshotReferences, reserveInputRevision, type SnapshotReference } from "./provider-snapshots";
+import { repoRoot } from "./paths";
 
 const USER_AGENT = "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)";
 
@@ -80,6 +85,14 @@ const discardPrevious = hasFlag(argv, "--discard-previous");
 // every record at once; CRAWL_GENERATION in incremental-crawl.ts is the
 // version of this that does not need anybody to remember the flag.
 const refreshAll = hasFlag(argv, "--refresh-all");
+const republish = hasFlag(argv, "--republish");
+if (republish && (refreshAll || requestedProviderId)) throw new Error("--republish cannot be combined with --refresh-all or --provider");
+
+holdArtifactLock("dataset-export");
+const inputRevision = reserveInputRevision(datasetDir);
+const codeSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim();
+const providerSnapshots = new ProviderSnapshots(datasetDir);
+const snapshotReferences: Record<string, SnapshotReference> = {};
 
 function loadValidPolicies(): LoadedPolicy[] {
   const { policies, errors } = loadPolicies();
@@ -116,13 +129,33 @@ async function crawlProvider(
     policy,
   ) as unknown as PoliteClient;
   const ctx = { client: guarded, policy };
+  const resumed = !refreshAll && !bootstrappingSnapshot
+    ? providerSnapshots.resume(policy, codeSha, previousPublished?.generatedAt)
+    : null;
+  if (resumed) {
+    console.log(`${policy.providerId}: resuming completed provider checkpoint`);
+    const held = providerSnapshots.read(policy, codeSha)!;
+    snapshotReferences[policy.providerId] = { snapshotId: held.snapshotId, checkedAt: held.snapshot.checkedAt };
+    return resumed;
+  }
   // The list page still decides who is listed, and every listed animal ends up
   // in the result. What this skips is the detail page of an animal we already
   // hold and read recently enough.
-  return crawlProviderIncrementally(provider, ctx, {
+  const result = await crawlProviderIncrementally(provider, ctx, {
     previous: previousAnimals,
     forcedBecause: forceFullRefresh(state, policy, refreshAll),
   });
+  const policyMap = new Map([[policy.providerId, policy]]);
+  result.animals = applyAllowedFields(
+    applyPublicationPolicy(carryFirstSeenAt(previousAnimals, result.animals).map(normalizeAnimalOrigin), policyMap).animals,
+    policyMap,
+  ).animals;
+  guardUniqueAnimalIds(result.animals);
+  guardMassRemoval(previousAnimals, result.animals, {
+    accepted: acceptRemovals, crawledProviderIds: new Set([policy.providerId]),
+  });
+  snapshotReferences[policy.providerId] = providerSnapshots.save(policy, codeSha, result);
+  return result;
 }
 
 interface CrawlOutcome {
@@ -285,6 +318,9 @@ const policies = loadValidPolicies();
 const policyById = new Map(
   policies.map(({ policy }) => [policy.providerId, policy] as const),
 );
+// Carried records keep their actual observation time. A missing provider
+// checkpoint (the first upgraded run, or an empty legacy shelter) is unknown.
+Object.assign(snapshotReferences, readSnapshotReferences(datasetDir, previousCrawled?.generatedAt));
 
 if (requestedProviderId) {
   const target = policyById.get(requestedProviderId);
@@ -306,7 +342,7 @@ if (requestedProviderId) {
     );
   }
 }
-const crawlPolicies = requestedProviderId
+const crawlPolicies = republish ? manualPolicies(policies) : requestedProviderId
   ? policies.filter(({ policy }) => policy.providerId === requestedProviderId)
   : policies;
 const client = new PoliteClient({ userAgent: USER_AGENT });
@@ -669,7 +705,7 @@ const { animals, fetched, reused, deleted, derived } = await cacheImages(
   overridden,
   client,
   imagePolicies,
-  requestedProviderId ? { refreshProviderIds: crawledProviderIds } : {},
+  requestedProviderId || republish ? { refreshProviderIds: crawledProviderIds } : {},
 );
 console.log(
   `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
@@ -821,6 +857,32 @@ writeFileAtomic(
     2,
   ),
 );
+
+// Portal-managed shelters have a real observation too, including an empty
+// feed. Save only after the common validation and removal guards succeeded.
+if (listings.kind === "ok") {
+  for (const providerId of answeredProviderIds) {
+    const policy = policyById.get(providerId)!;
+    const animals = crawledSnapshot.filter((animal) => animal.source.providerId === providerId);
+    snapshotReferences[providerId] = providerSnapshots.save(policy, codeSha, {
+      checkedAt: listings.payload.generatedAt, animals, listed: animals.length,
+      fetched: 0, reused: 0, failedRefs: [], excluded: 0, fullRefresh: true,
+    });
+  }
+}
+
+// This is the commit point for the generated snapshot. It hashes the five
+// deployment inputs, the image-cache manifest used by standalone derivation,
+// and every media byte they reference. It is written only after all of those
+// writes have completed. A stopped run therefore leaves either the prior valid
+// generation or a stale receipt deployment refuses to accept.
+writeFileAtomic(join(datasetDir, "crawl-manifest.json"), JSON.stringify(buildCrawlManifest({
+  generatedAt, inputRevision, codeSha, policies: policies.map(({ policy }) => policy),
+  references: snapshotReferences, overrides: portalPayload?.overrides ?? null,
+  listings: listings.kind === "ok" ? listings.payload : null,
+}), null, 2));
+const generationId = writeGenerationReceipt({}, { preserveInputRevision: true });
+console.log(`sealed generation ${generationId}`);
 
 console.log(
   `exported ${dataset.animals.length} animals ` +

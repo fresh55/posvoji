@@ -4,7 +4,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
@@ -386,7 +385,7 @@ export async function deriveVariants(
     const thumbPath = join(mediaDir, thumbFileFor(file));
     if (stale || !existsSync(thumbPath)) {
       const cut = await derived("thumbnail", async () =>
-        writeFileSync(
+        writeFileAtomic(
           thumbPath,
           await webp({ width: THUMB_WIDTH, withoutEnlargement: true }),
         ),
@@ -405,7 +404,7 @@ export async function deriveVariants(
         continue;
       }
       const cut = await derived(`${rung}px rung`, async () =>
-        writeFileSync(rungPath, await webp({ width: rung })),
+        writeFileAtomic(rungPath, await webp({ width: rung })),
       );
       if (cut) {
         widths.push(rung);
@@ -428,7 +427,7 @@ export async function deriveVariants(
     let avif = group.hero;
     if (avif && (stale || !existsSync(join(mediaDir, avifFileFor(file))))) {
       const cut = await derived("avif", async () =>
-        writeFileSync(
+        writeFileAtomic(
           join(mediaDir, avifFileFor(file)),
           await pipeline()
             .clone()

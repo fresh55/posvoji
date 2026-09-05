@@ -1,5 +1,8 @@
-// Writes a layout v2 release's private/publication.json, and refuses to write
-// one for a data/dist whose files are not from a single export run.
+// Writes a layout-v2 release's private/publication.json. This is the deploy
+// receipt: it adds the release id and carries forward the ingest generation id.
+// It is distinct from data/dist/generation.json, which ingest writes last and
+// which verify-media cryptographically validates against every receipt-bound
+// JSON file and referenced media byte before this script runs.
 //
 // scripts/deploy.sh runs this before it uploads a release, not after: a
 // release directory that pairs one run's site with another run's dataset is
@@ -35,18 +38,17 @@ function isTimestamp(value) {
 }
 
 // One export run stamps animals.json, animals.crawled.json and overrides.json
-// with one generatedAt. The three files are written one after another, so a
-// run that stopped partway leaves a set that disagrees, and the disagreement
-// is the only thing that says so: each file is valid on its own. The ingest
-// checks the same pair when it reads the two datasets back
-// (apps/ingest/src/crawled-snapshot.ts); this is the same invariant at the
-// other end, where a release is about to be built out of all three.
+// with one generatedAt. generation.json closes the wider cross-file boundary;
+// this smaller semantic check keeps the release receipt human-auditable and
+// catches an impossible timestamp mix even after digest verification. Ingest
+// checks the same dataset pair when it reads them back
+// (apps/ingest/src/crawled-snapshot.ts).
 //
 // The recovery is the same one the ingest names: re-run the export, and with
 // the portal integration on that means a full clean
 // `pnpm dataset:export --refresh-all` over every provider.
 function buildReceipt(input) {
-  const { releaseId, dataset, crawled, overrides } = input;
+  const { releaseId, dataset, crawled, overrides, generation } = input;
 
   const generatedAt = dataset.generatedAt;
   if (!isTimestamp(generatedAt)) {
@@ -77,6 +79,19 @@ function buildReceipt(input) {
     );
   }
 
+  if (
+    !generation ||
+    generation.version !== 1 ||
+    typeof generation.generationId !== "string" ||
+    !/^[a-f0-9]{64}$/.test(generation.generationId) ||
+    generation.datasetGeneratedAt !== generatedAt
+  ) {
+    throw new Error(
+      "generation.json is missing, malformed or does not name this dataset " +
+        "generation. Run a complete export; nothing was packaged.",
+    );
+  }
+
   const overridesEnabled = overrides.enabled === true;
   // No timestamp is manufactured for a portal that was not consulted: with
   // the integration off there is nothing to record and the key stays out. On
@@ -94,6 +109,7 @@ function buildReceipt(input) {
 
   const receipt = {
     releaseId,
+    generationId: generation.generationId,
     datasetGeneratedAt: generatedAt,
     overridesEnabled,
   };
@@ -118,6 +134,10 @@ function main(argv) {
     // A run with the portal off still writes this file, so an unreadable one
     // is a real fault rather than a configuration that has not been set up.
     overrides: readJson(`${dist}/overrides.json`),
+    // verify-media has already recomputed this receipt's JSON and media
+    // digests. Carrying its id into the release receipt binds that proof to
+    // the artifact the operator may inspect later.
+    generation: readJson(`${dist}/generation.json`),
   });
   writeFileSync(out, `${JSON.stringify(receipt, null, 2)}\n`);
 }

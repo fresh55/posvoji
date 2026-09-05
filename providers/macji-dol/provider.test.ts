@@ -9,6 +9,12 @@ const policy = ProviderPolicy.parse(
   parse(readFileSync(new URL("./policy.yaml", import.meta.url), "utf8")),
 );
 
+// Every listing is a WooCommerce product container; parseDetail refuses a
+// page without one. No stock flag here, so the status reading stays with
+// normalize() as it did before.
+const listing = (body: string) =>
+  `<div class="product type-product">${body}</div>`;
+
 describe("policy.yaml", () => {
   it("records permission for descriptions and cacheable photos", () => {
     expect(policy.providerId).toBe(provider.id);
@@ -105,31 +111,37 @@ describe("parseDetail", () => {
   });
 
   it("never substring-matches a qualified or housing term", () => {
-    const html = `
+    const html = listing(`
       <div class="summary"><article><div class="entry-content">
         <p><strong>DRUŽABNOST:</strong> Ljudje, z določenimi mačkami, poznani mačji prijatelji, bivanje samo v stanovanju</p>
-      </div></article></div>`;
+      </div></article></div>`);
     expect(parseDetail(html).goodWith).toBeUndefined();
   });
 
   it("reads the housing term as an apartment cat", () => {
-    const html = `
+    const html = listing(`
       <div class="summary"><article><div class="entry-content">
         <p><strong>DRUŽABNOST:</strong> Ljudje, bivanje samo v stanovanju</p>
-      </div></article></div>`;
+      </div></article></div>`);
     expect(parseDetail(html).apartmentOk).toBe("yes");
   });
 
   it("leaves apartmentOk unset when the term is qualified or absent", () => {
-    const qualified = `
+    const qualified = listing(`
       <div class="summary"><article><div class="entry-content">
         <p><strong>DRUŽABNOST:</strong> Mačke, po možnosti bivanje samo v stanovanju</p>
-      </div></article></div>`;
+      </div></article></div>`);
     expect(parseDetail(qualified).apartmentOk).toBeUndefined();
     expect(
       parseDetail(loadFixture(import.meta.url, "detail-pair-separate.html"))
         .apartmentOk,
     ).toBeUndefined();
+  });
+
+  it("refuses a page that carries no product container", () => {
+    expect(() =>
+      parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
+    ).toThrow("detail page has no product container");
   });
 });
 
@@ -167,10 +179,10 @@ describe("normalize", () => {
   });
 
   it("carries the housing term through to the listing", async () => {
-    const html = `
+    const html = listing(`
       <div class="summary"><article><div class="entry-content">
         <p><strong>DRUŽABNOST:</strong> Ljudje, bivanje samo v stanovanju</p>
-      </div></article></div>`;
+      </div></article></div>`);
     const animal = Animal.parse(
       await provider.normalize(ctx, { ...raw, data: parseDetail(html) }),
     );

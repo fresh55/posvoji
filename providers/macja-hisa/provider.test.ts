@@ -16,6 +16,13 @@ const policy = ProviderPolicy.parse(
 
 const detailHtml = loadFixture(import.meta.url, "detail.html");
 
+// A listing page always carries the "Osnovni podatki" card; parseDetail
+// refuses a page without it. Synthetic headings are wrapped in an empty one.
+const listing = (body: string) =>
+  `<div class="with-bootstrap">${body}` +
+  '<div class="card"><div class="card-header"><strong>Osnovni podatki</strong>' +
+  "</div></div></div>";
+
 const raw = {
   ref: {
     sourceAnimalId: "3187",
@@ -133,21 +140,25 @@ describe("parseDetail", () => {
     ["PES - Medo"],
     ["pes Medo"],
   ])("recognises the dog prefix in %s", (heading) => {
-    expect(
-      parseDetail(`<div class="with-bootstrap"><h1>${heading}</h1></div>`),
-    ).toMatchObject({
+    expect(parseDetail(listing(`<h1>${heading}</h1>`))).toMatchObject({
       name: "Medo",
       species: "dog",
     });
   });
 
   it("classifies as a dog with no name when the heading is only the prefix", () => {
-    expect(
-      parseDetail('<div class="with-bootstrap"><h1>Pes</h1></div>'),
-    ).toMatchObject({
+    expect(parseDetail(listing("<h1>Pes</h1>"))).toMatchObject({
       name: undefined,
       species: "dog",
     });
+  });
+
+  it("refuses a page that is not a listing", () => {
+    expect(() =>
+      parseDetail(
+        '<div class="with-bootstrap"><h1>Stran ni na voljo</h1></div>',
+      ),
+    ).toThrow("detail page has no Osnovni podatki card");
   });
 });
 

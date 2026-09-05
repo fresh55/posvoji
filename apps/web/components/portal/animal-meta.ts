@@ -13,7 +13,8 @@ import {
 import type { AnimalFields } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
-import { formatAge } from "@/lib/labels";
+import { formatAge, pick } from "@/lib/labels";
+import { isOverridden } from "@/components/portal/animal-form";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type {
   PortalAnimal,
@@ -94,20 +95,20 @@ export function missingSearchableFields(animal: PortalAnimal) {
 }
 
 /**
- * "{n} manjka" with the verb in the form Slovenian wants for that count:
- * singular for 1, dual for 2, plural for 3 and 4, and the genitive plural
- * construction from 5 on, which takes the singular verb again.
+ * "{n} manjka" with the verb in the form Slovenian wants for that count.
+ * pick() is the site's one dual-and-plural ladder, so this cannot drift from
+ * the counts the public grid prints.
  */
 export function missingCountLabel(count: number): string {
-  const form =
-    count === 1
-      ? portalText.missingOne
-      : count === 2
-        ? portalText.missingTwo
-        : count === 3 || count === 4
-          ? portalText.missingFew
-          : portalText.missingMany;
-  return fill(form, { count });
+  return fill(
+    pick(count, [
+      portalText.missingOne,
+      portalText.missingTwo,
+      portalText.missingFew,
+      portalText.missingMany,
+    ]),
+    { count },
+  );
 }
 
 /** The status as the portal edits it, and whose answer it is. */
@@ -121,9 +122,7 @@ export function statusOf(animal: PortalAnimal): {
 } {
   return {
     status: isPortalStatus(animal.status) ? animal.status : null,
-    source: Object.prototype.hasOwnProperty.call(animal.overrides, "status")
-      ? "shelter"
-      : "site",
+    source: isOverridden(animal, "status") ? "shelter" : "site",
   };
 }
 
@@ -137,13 +136,16 @@ export function hasUnconfirmedStatus(animal: PortalAnimal): boolean {
   return status !== null && source === "site";
 }
 
+/** The same question as missingSearchableFields, without building the list. */
+export function hasMissingSearchableFields(animal: PortalAnimal): boolean {
+  return SEARCHABLE_FIELDS.some((field) => animal[field.key] === null);
+}
+
 /**
  * Whether the animal belongs in the "Za pregled" filter: something on it is
  * still waiting for the shelter, either the status or one of the fields an
  * adopter searches by.
  */
 export function needsReview(animal: PortalAnimal): boolean {
-  return (
-    hasUnconfirmedStatus(animal) || missingSearchableFields(animal).length > 0
-  );
+  return hasUnconfirmedStatus(animal) || hasMissingSearchableFields(animal);
 }

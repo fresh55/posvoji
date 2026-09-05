@@ -49,12 +49,13 @@ export function StatusMenu({
   const meta = status === null ? null : STATUS_META[status];
   const label = meta?.label ?? portalText.statusUnknown;
   const Icon = meta?.icon ?? CircleDashed;
-  // Both strings are written to be read after the value ("Na voljo, prebrano
-  // z vaše spletne strani"), so as a menu heading they start the line and are
-  // capitalised here rather than kept twice in portal-text.
-  const sourceLine = sentence(
-    inherited ? portalText.statusSourceSite : portalText.statusSourceOwn,
-  );
+  // One string, read in two places. It is written to follow the value ("Na
+  // voljo, prebrano z vaše spletne strani"), so the menu heading, which starts
+  // a line with it, capitalises it here rather than keeping a second copy of
+  // the same sentence in portal-text.
+  const sourceText = inherited
+    ? portalText.statusSourceSite
+    : portalText.statusSourceOwn;
 
   return (
     <DropdownMenu>
@@ -81,9 +82,7 @@ export function StatusMenu({
           {/* A status the crawl never read has no source to name: saying it
               was read from the shelter's page would be untrue of "Ni podatka". */}
           {status !== null && (
-            <span className="sr-only">
-              {`, ${inherited ? portalText.statusSourceSite : portalText.statusSourceOwn}`}
-            </span>
+            <span className="sr-only">{`, ${sourceText}`}</span>
           )}
           {busy ? (
             <LoaderCircle
@@ -101,7 +100,9 @@ export function StatusMenu({
       <DropdownMenuContent align="end" className="w-52">
         {status !== null && (
           <>
-            <DropdownMenuLabel>{sourceLine}</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {sourceText.charAt(0).toUpperCase() + sourceText.slice(1)}
+            </DropdownMenuLabel>
             {inherited && (
               <>
                 {/* The one save that settles an inherited value. It names the
@@ -154,9 +155,4 @@ export function StatusMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-/** A line written to be read mid-sentence, used at the start of one. */
-function sentence(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

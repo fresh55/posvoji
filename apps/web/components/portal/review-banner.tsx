@@ -6,21 +6,14 @@ import {
   LoaderCircle,
   TriangleAlert,
 } from "lucide-react";
+import { Glyph } from "@/components/portal/glyph";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
 import type { PortalBulkState } from "@/hooks/use-portal-animals";
 import { cn } from "@/lib/utils";
 
 /** The mark in front of the sentence, once the run has something to report. */
-function Mark({ icon: Icon }: { icon: typeof Check }) {
-  return (
-    <Icon
-      aria-hidden
-      strokeWidth={1.75}
-      className="mr-1.5 inline size-4 align-[-0.2em]"
-    />
-  );
-}
+const MARK = "mr-1.5 inline size-4 align-[-0.2em]";
 
 /**
  * One line above the list for every status the crawl read and the shelter has
@@ -54,6 +47,7 @@ export function ReviewBanner({
   const running = bulk.status === "running";
   const done = bulk.status === "done";
   const failed = bulk.status === "failed";
+  const mark = done ? Check : failed ? TriangleAlert : null;
 
   return (
     <div
@@ -66,8 +60,7 @@ export function ReviewBanner({
           failed ? "text-destructive" : "text-muted-foreground",
         )}
       >
-        {done && <Mark icon={Check} />}
-        {failed && <Mark icon={TriangleAlert} />}
+        {mark && <Glyph icon={mark} className={MARK} />}
         {running
           ? // The string names its own second number {count}: here that is
             // the whole run, not what is left of it.

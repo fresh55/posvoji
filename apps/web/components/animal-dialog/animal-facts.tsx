@@ -27,8 +27,8 @@ import {
   ageGroup,
   ageInMonths,
   GOOD_WITH_KEYS,
-  TOGGLES,
   toggleLabel,
+  togglesAskedOf,
   type GoodWithKey,
   type ToggleKey,
 } from "@/lib/filters";
@@ -352,15 +352,14 @@ export function AnimalFacts({
   // counts as waiting long; see shelter-block.tsx.
   const longStay = longStayMonths(animal, reference) !== undefined;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
-  const medical = TOGGLES.filter((toggle) => toggle.matches(animal));
+  // "Complete" is measured against what the species can answer: FIV and FeLV
+  // are cat questions, so a dog is not two answers short for never having been
+  // asked. A full row of green ticks carries one message, so it collapses to
+  // that message until someone wants the itemized version.
+  const applicable = togglesAskedOf(animal.species);
+  const medical = applicable.filter((toggle) => toggle.matches(animal));
   const hasIdentity =
     sex !== undefined || months !== undefined || animal.size !== undefined;
-  // "Complete" is measured against what the species can answer: FIV and FeLV
-  // are cat questions. A full row of green ticks carries one message, so it
-  // collapses to that message until someone wants the itemized version.
-  const applicable = TOGGLES.filter(
-    (toggle) => !toggle.species || toggle.species === animal.species,
-  );
   const fullRecord =
     medical.length === applicable.length && applicable.length >= 3;
   // One answered question is enough to show the row, and the row then answers

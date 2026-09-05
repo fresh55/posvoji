@@ -15,6 +15,8 @@ import {
   speciesCounts,
   speciesFacetCounts,
   toggleCounts,
+  TOGGLES,
+  togglesAskedOf,
   toggleValues,
   visibleCare,
   visibleGoodWith,
@@ -299,6 +301,17 @@ describe("visibleToggles", () => {
     expect(matches(undefined)).toBe(false);
   });
 
+  it("never matches a dog, whatever its record says", () => {
+    const record = { fiv: "negative", felv: "negative" } as const;
+    const keys = (a: Animal) =>
+      TOGGLES.filter((toggle) => toggle.matches(a)).map((t) => t.key);
+    expect(keys(animal("dog", { medical: record }))).toEqual([]);
+    expect(keys(animal("cat", { medical: record }))).toEqual([
+      "brez-fiv",
+      "brez-felv",
+    ]);
+  });
+
   it("keeps a selected toggle once every animal answers it", () => {
     // ?lastnosti=cepljenje over a pool where everybody is vaccinated. The
     // toggle narrows nothing, but it is on, and a control nobody can see is a
@@ -482,6 +495,25 @@ describe("pruneHiddenFilters", () => {
       energy: ["calm", "lively"],
     });
     expect(pruned.energy).toEqual(["calm", "lively"]);
+  });
+});
+
+describe("togglesAskedOf", () => {
+  // The denominator of the dialog's "Vse zdravstveno urejeno (n/n)". A dog was
+  // never asked the two cat questions, so it is not two answers short.
+  it("asks a cat every question and a dog only the shared three", () => {
+    expect(togglesAskedOf("cat").map((t) => t.key)).toEqual([
+      "sterilizacija",
+      "cepljenje",
+      "cip",
+      "brez-fiv",
+      "brez-felv",
+    ]);
+    expect(togglesAskedOf("dog").map((t) => t.key)).toEqual([
+      "sterilizacija",
+      "cepljenje",
+      "cip",
+    ]);
   });
 });
 

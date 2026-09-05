@@ -1,0 +1,369 @@
+/* The A4 sheet, on screen and on paper.
+
+   A stylesheet of its own rather than utilities and a slice of globals.css.
+   Every measurement here is a millimetre on a printer's page box, which is
+   the one place on this site where the rem ladder Tailwind is built on says
+   nothing: a headline is 20mm because 20mm is what carries across a waiting
+   room, not because it is the next step up from the one below it.
+
+   Colours are literals and not tokens. The site swaps its tokens under
+   prefers-color-scheme, and a poster is white paper with near-black ink on a
+   printer that has never heard of dark mode. Preview and print have to agree,
+   so the sheet states its own two colours and reads none of the site's. */
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+/* One unit, everywhere.
+
+   On paper it is a millimetre. On screen it shrinks so a full sheet fits the
+   viewport, which is what makes the preview show what will print rather than
+   a crop of it: nothing inside the sheet knows the difference, because
+   nothing inside the sheet is written in anything else.
+
+   min() of a millimetre and a share of the viewport, so the sheet is never
+   drawn larger than life on a wide monitor. The 3.5rem is the stage's own
+   padding with room left over for a scrollbar, which 100vw counts and the
+   page cannot use. */
+.poster-stage {
+  --u: min(1mm, calc((100vw - 3.5rem) / 210));
+
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  /* The ground the sheet sits on is site chrome, not the poster, so it reads
+     the site's token and follows the visitor's theme. The sheet on it is
+     white paper either way, which is what a print preview looks like. */
+  background: var(--muted);
+}
+
+.poster-sheet {
+  /* The page box, exactly. A print with `margin: 0` puts this corner to
+     corner on the paper, so these two numbers are the only ones that decide
+     whether anything is clipped. */
+  width: calc(210 * var(--u));
+  height: calc(297 * var(--u));
+  padding: calc(12 * var(--u));
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #ffffff;
+  color: #111111;
+  /* Without this a browser drops backgrounds and light ink when it prints,
+     which would take the letterbox behind the photo and the QR's own quiet
+     zone with it. */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+  break-inside: avoid;
+
+  /* Slovenian sits in the same face the rest of the site uses; the sheet is
+     inside the locale layout for that reason. See app/font-stack.ts. */
+  font-family: var(--font-sans), sans-serif;
+  line-height: 1.25;
+  /* Names are printed as the shelter wrote them and hyphenating one would be
+     a word the poster invented. */
+  hyphens: none;
+}
+
+/* On screen only: paper needs an edge to read as paper. */
+@media screen {
+  .poster-sheet {
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.16), 0 12px 32px rgb(0 0 0 / 0.12);
+  }
+}
+
+/* -- the picture ------------------------------------------------------- */
+
+/* The picture is the only thing on the sheet that may give up room, and it is
+   what makes an A4 with a fixed height safe to fill with text nobody wrote for
+   it. Every word below is flex: none and therefore never squeezed; the spacer
+   under them takes whatever is left over and the picture gives back whatever
+   is missing, down to a floor it is still a picture at. A four-line name and a
+   long shelter's name cost the photo some height rather than pushing the
+   colophon onto a second sheet or clipping a line off this one. */
+.poster-photo {
+  position: relative;
+  width: calc(186 * var(--u));
+  height: calc(132 * var(--u));
+  min-height: calc(88 * var(--u));
+  flex: 0 1 auto;
+  overflow: hidden;
+  /* The letterbox shows wherever the photo does not reach, so it is the
+     colour of the sheet's own frame rather than of nothing. */
+  background: #f2f0ed;
+}
+
+.poster-headline,
+.poster-seeking,
+.poster-meta,
+.poster-wait,
+.poster-stay,
+.poster-foot,
+.poster-colophon {
+  flex: none;
+}
+
+/* The recipe the share cards use (apps/ingest/src/share-cards.ts): the photo
+   blown up and blurred to fill the frame, the whole uncropped photo on top of
+   it. A shelter photo keeps its face and its paws where a cover crop would
+   cut through them, and the box is still filled. Scaled past its box because
+   a blur samples past the edges it is given and would otherwise fade out
+   against them. */
+.poster-photo-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.15);
+  filter: blur(calc(2.5 * var(--u))) brightness(0.86) saturate(1.1);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.poster-photo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Never cropped. */
+  object-fit: contain;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* The other sheet: no photo, so the species stands in for the animal at the
+   size the photo would have been. Quiet, because it is a mark and not a
+   picture, and it must not out-shout the name under it. */
+.poster-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(186 * var(--u));
+  height: calc(132 * var(--u));
+  min-height: calc(88 * var(--u));
+  flex: 0 1 auto;
+  background: #f6f4f1;
+  color: #d3ccc2;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.poster-mark svg {
+  width: calc(96 * var(--u));
+  height: calc(96 * var(--u));
+}
+
+/* -- the words --------------------------------------------------------- */
+
+.poster-headline {
+  margin: calc(9 * var(--u)) 0 0;
+  font-size: calc(20 * var(--u));
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  /* A name is one word and a long one still has to fit the sheet. */
+  overflow-wrap: anywhere;
+}
+
+.poster-seeking {
+  margin: calc(2 * var(--u)) 0 0;
+  font-size: calc(8 * var(--u));
+  font-weight: 400;
+  line-height: 1.1;
+  color: #3d3a36;
+}
+
+.poster-meta {
+  margin: calc(5 * var(--u)) 0 0;
+  font-size: calc(5.5 * var(--u));
+  color: #57534e;
+}
+
+/* The wait, in either of the two voices the site already gives it. The plea
+   is the one coloured line on the sheet, in the amber the dialog's own long
+   stay wears; a shorter stay is a fact like the ones above it and is drawn
+   like them. Which of the two an animal gets is labels.ts's decision, not
+   this sheet's. */
+.poster-wait {
+  margin: calc(2.5 * var(--u)) 0 0;
+  font-size: calc(5 * var(--u));
+  color: #b45309;
+  font-weight: 500;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.poster-stay {
+  margin: calc(2.5 * var(--u)) 0 0;
+  font-size: calc(5 * var(--u));
+  color: #78716c;
+}
+
+/* Whatever height the words leave over goes here, so the shelter and the code
+   sit on the same line of every sheet whether or not the animal has a wait to
+   state or a two-line name. */
+.poster-spacer {
+  flex: 1 1 0;
+  min-height: calc(6 * var(--u));
+}
+
+/* -- who to ask, and how to find the page ------------------------------ */
+
+.poster-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(8 * var(--u));
+  border-top: calc(0.4 * var(--u)) solid #d6d3d1;
+  padding-top: calc(6 * var(--u));
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.poster-shelter {
+  min-width: 0;
+}
+
+/* The mark at whatever size fits both caps, never letterboxed inside a box
+   larger than itself: the file's own ratio decides which cap binds. */
+.poster-shelter-logo {
+  display: block;
+  max-height: calc(11 * var(--u));
+  max-width: calc(46 * var(--u));
+  width: auto;
+  height: auto;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.poster-shelter-mark {
+  display: inline-flex;
+  margin-bottom: calc(3.5 * var(--u));
+}
+
+/* A mark whose ink does not hold on white gets something to sit on, which is
+   what the site draws on its own light card (chipOnLight in
+   lib/shelter-logos.ts, ShelterAvatar). Paper is a light card that cannot be
+   re-themed, so the chip is unconditional here: the dark: half of the site's
+   rule would spell it off in a dark preview and print a white wordmark onto
+   white paper. */
+.poster-shelter-mark--chip {
+  background: #262626;
+  border-radius: calc(1.5 * var(--u));
+  padding: calc(1.8 * var(--u)) calc(2.4 * var(--u));
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* A mark that brings its own rectangle is a plate already. */
+.poster-shelter-logo--opaque {
+  border-radius: calc(1.5 * var(--u));
+}
+
+.poster-shelter-name {
+  margin: 0;
+  font-size: calc(6 * var(--u));
+  font-weight: 600;
+}
+
+.poster-shelter-line {
+  margin: calc(1.5 * var(--u)) 0 0;
+  font-size: calc(5 * var(--u));
+  color: #57534e;
+}
+
+.poster-shelter-note {
+  margin: calc(3 * var(--u)) 0 0;
+  font-size: calc(4 * var(--u));
+  color: #78716c;
+}
+
+.poster-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2 * var(--u));
+  flex: none;
+}
+
+.poster-qr svg {
+  display: block;
+  width: calc(40 * var(--u));
+  height: calc(40 * var(--u));
+}
+
+/* The same address in letters, for a reader with no phone in their hand. */
+.poster-url {
+  margin: 0;
+  max-width: calc(58 * var(--u));
+  font-size: calc(3.2 * var(--u));
+  line-height: 1.25;
+  text-align: center;
+  color: #57534e;
+  overflow-wrap: anywhere;
+}
+
+/* -- the strip along the bottom ---------------------------------------- */
+
+.poster-colophon {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(6 * var(--u));
+  margin-top: calc(5 * var(--u));
+  font-size: calc(3.6 * var(--u));
+  color: #78716c;
+}
+
+.poster-wordmark {
+  font-weight: 600;
+  color: #111111;
+  letter-spacing: -0.01em;
+}
+
+/* -- print ------------------------------------------------------------- */
+
+@media print {
+  /* The site's shell is a min-height flex column. Printed, that floor is a
+     second page with nothing on it. !important because these are Tailwind
+     utilities on the body element and a bare tag selector does not outrank
+     a class. */
+  html,
+  body {
+    display: block !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* A millimetre is a millimetre again, and the stage stops being a stage:
+     any padding or centring left here would push the sheet off the page box
+     and take a strip of it onto a second sheet. */
+  .poster-stage {
+    --u: 1mm;
+
+    display: block;
+    padding: 0;
+    background: none;
+  }
+
+  .poster-sheet {
+    margin: 0;
+  }
+
+  /* Everything that is not the sheet. The route draws no site header, footer
+     or back-to-top, so this is the bar above the sheet and the dev overlay a
+     development build injects into the body. */
+  .poster-chrome,
+  body > nextjs-portal {
+    display: none !important;
+  }
+}

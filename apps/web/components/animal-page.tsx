@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Printer } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { ShareButton } from "@/components/animal-dialog/share-button";
@@ -12,7 +12,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
 import { animalFields } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
-import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
+import { animalPath, findAnimalBySlug, posterPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -36,11 +36,17 @@ import { cn } from "@/lib/utils";
 const pageText = {
   sl: {
     openInFinder: (count: number) => `Poglej vse živali (${count})`,
+    /** The A4 sheet, for a notice board or a vet's waiting room. Drawn like
+     *  the link above it and placed beside it, because it is the same kind of
+     *  quiet way on: something a visitor may want after reading the page, not
+     *  a second thing the page is asking them to do. */
+    printPoster: "Natisni plakat",
   },
   en: {
     openInFinder: (count: number) => `See all animals (${count})`,
+    printPoster: "Print poster",
   },
-} satisfies Record<Locale, Record<string, (count: number) => string>>;
+} satisfies Record<Locale, Record<string, string | ((count: number) => string)>>;
 
 /**
  * Where a shared link lands. The dialog on the index is the place to browse
@@ -167,13 +173,35 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 control under it asked the visitor to choose between leaving
                 for the shelter and staying on the site. This is the quiet way
                 on, so it is drawn as the quiet thing it is. */}
-            <a
-              href={`${indexHref}?zival=${encodeURIComponent(animal.id)}`}
-              className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
-            >
-              {text.openInFinder(dataset.animals.length)}
-              <ArrowRight className="size-4 shrink-0" aria-hidden />
-            </a>
+            {/* Both ways on off this page, in one row and in one voice. The
+                gap is wide enough that the two read as two links rather than
+                as one wrapped sentence, and they stack at a width that cannot
+                hold both. */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <a
+                href={`${indexHref}?zival=${encodeURIComponent(animal.id)}`}
+                className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+              >
+                {text.openInFinder(dataset.animals.length)}
+                <ArrowRight className="size-4 shrink-0" aria-hidden />
+              </a>
+
+              {/* The same classes as the link beside it, down to the focus
+                  ring and the tap target: this is the second quiet way on,
+                  not a second call to action, and the page still has exactly
+                  one of those on the shelter block above.
+                  The mark leads rather than trails. The arrow next door points
+                  at where that link goes, which is the whole of what it says;
+                  a printer is the subject of this one, and it is what tells
+                  the two links apart at a glance in a row. */}
+              <a
+                href={posterPath(animal, locale)}
+                className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+              >
+                <Printer className="size-4 shrink-0" aria-hidden />
+                {text.printPoster}
+              </a>
+            </div>
           </div>
         </main>
 

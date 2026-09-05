@@ -69,6 +69,25 @@ export function animalPath(animal: AnimalFields, locale: Locale): string {
   return `${PREFIX[locale]}/${parts.animal}/${parts.city}/${parts.shelter}`;
 }
 
+// The printable sheet's own segment, hung off the animal's address. A page
+// and not a query, because a static export builds pages: a print stylesheet
+// that switched itself on for ?plakat would still have to ship inside the
+// animal page, and the sheet is a different document from the one a visitor
+// browses. It is named in the reader's language for the same reason the rest
+// of the path is.
+const POSTER_SEGMENT: Record<Locale, string> = {
+  sl: "plakat",
+  en: "poster",
+};
+
+/** The animal's A4 sheet, one segment past its own page. */
+export function posterPath(animal: AnimalFields, locale: Locale): string {
+  return `${animalPath(animal, locale)}/${POSTER_SEGMENT[locale]}`;
+}
+
+// Three segments and no more, so a poster's address is not read as an
+// animal's. The dialog host runs this over the live location, and a fourth
+// segment means the visitor is on the sheet rather than in the list.
 const PATHNAME = new RegExp(
   `^(?:${Object.values(PREFIX).join("|")})/([^/]+)/([^/]+)/([^/]+)/?$`,
 );

@@ -5,6 +5,7 @@ import {
   animalPathParts,
   animalSlugFromPath,
   findAnimalBySlug,
+  posterPath,
   slugify,
 } from "@/lib/animal-path";
 
@@ -96,6 +97,25 @@ describe("animalPath", () => {
     expect(animalPath(animal(), "en")).toBe(
       `/en/animal/${parts.animal}/ljubljana/zavetisce-horjul`,
     );
+  });
+});
+
+describe("posterPath", () => {
+  it("hangs the sheet off the animal's own address in each language", () => {
+    expect(posterPath(animal(), "sl")).toBe(
+      `${animalPath(animal(), "sl")}/plakat`,
+    );
+    expect(posterPath(animal(), "en")).toBe(
+      `${animalPath(animal(), "en")}/poster`,
+    );
+  });
+
+  // The dialog host reads the live location through animalSlugFromPath. A
+  // poster's address naming an animal there would have the index open that
+  // animal's dialog behind a sheet nobody asked it to.
+  it("is not read back as an animal's own page", () => {
+    expect(animalSlugFromPath(posterPath(animal(), "sl"))).toBeNull();
+    expect(animalSlugFromPath(posterPath(animal(), "en"))).toBeNull();
   });
 });
 

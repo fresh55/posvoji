@@ -7,6 +7,7 @@ import {
   photoAvifUrl,
   photoDotWindow,
   photoSrcSet,
+  posterPhoto,
   thumbnailUrl,
 } from "./animal-images";
 
@@ -254,6 +255,69 @@ describe("photoAvifUrl", () => {
     expect(photoAvifUrl({ src: "/media/animals/luna.webp" })).toBeUndefined();
     expect(
       photoAvifUrl({ src: "https://shelter.example/luna.jpg", avif: true }),
+    ).toBeUndefined();
+  });
+});
+
+describe("posterPhoto", () => {
+  // The legal rule the printed sheet turns on. display-permitted is a
+  // hotlink: the shelter let us show its file in a browser, not print it.
+  it("prints our own cached copy of the lead photo", () => {
+    expect(
+      posterPhoto([
+        {
+          sourceUrl: "https://shelter.example/luna-1.jpg",
+          cachedUrl: "/media/animals/luna-1.webp",
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"])?.src,
+    ).toBe("/media/animals/luna-1.webp");
+  });
+
+  it("prints nothing for a photo we may only link to", () => {
+    expect(
+      posterPhoto([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          rights: "display-permitted",
+        },
+      ] satisfies Animal["images"]),
+    ).toBeUndefined();
+  });
+
+  // Cacheable but not cached: permittedPhotos hands back the shelter's own
+  // URL, which is the file we have no copy of and no right to print.
+  it("prints nothing while a cacheable photo has not been cached", () => {
+    expect(
+      posterPhoto([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"]),
+    ).toBeUndefined();
+  });
+
+  it("prints nothing for an animal with no images at all", () => {
+    expect(posterPhoto([])).toBeUndefined();
+  });
+
+  // The lead drawable photo and no other. An animal whose first photo is a
+  // hotlink gets the typographic sheet even if a later one is cached, the
+  // same way the share card does (photoSourceFor in share-cards.ts).
+  it("reads the lead photo and does not look past it", () => {
+    expect(
+      posterPhoto([
+        {
+          sourceUrl: "https://shelter.example/luna-1.jpg",
+          rights: "display-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-2.jpg",
+          cachedUrl: "/media/animals/luna-2.webp",
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"]),
     ).toBeUndefined();
   });
 });

@@ -33,15 +33,6 @@ export type PortalBulkState =
   | { status: "done"; total: number }
   | { status: "failed"; failed: number; total: number };
 
-/**
- * How many confirmations are in flight at once. There is no bulk route on the
- * API, so a shelter with 150 unconfirmed statuses means 150 PUTs. One at a
- * time, on purpose: the API writes to SQLite, and on 2026-09-06 three at a
- * time made 39 of 185 PUTs fail with "database is locked". A run of 186 takes
- * about ten seconds this way, and the banner counts them up as they land.
- */
-const CONFIRM_CONCURRENCY = 1;
-
 /** What one PUT settled as. A 401 is neither: nothing was stored and nothing
  *  more can be, so it is the caller who decides what happens next. */
 type SaveOutcome = "saved" | "failed" | "unauthorized";
@@ -60,7 +51,7 @@ export function usePortalAnimals(
   saveStates: Record<string, PortalSaveState>;
   reload: () => void;
   save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
-  confirmStatuses: (animalIds: string[]) => Promise<void>;
+  confirmStatuses: () => Promise<void>;
   bulk: PortalBulkState;
   publicName: (animal: PortalAnimal) => string | null;
 } {
@@ -77,12 +68,11 @@ export function usePortalAnimals(
   const [bulk, setBulk] = useState<PortalBulkState>({ status: "idle" });
   const [attempt, setAttempt] = useState(0);
   const timers = useRef(new Map<string, number>());
-  const bulkTimer = useRef<number | null>(null);
   // One run at a time, read synchronously: a second tap on "Potrdi vse"
   // arrives long before any state from the first has rendered.
   const confirming = useRef(false);
-  // The list as it is right now, for a caller that hands us ids and expects us
-  // to know what each animal's status currently says.
+  // The list as it is right now, so a run started from a button drawn one
+  // render ago still sends what each animal's status says today.
   const latest = useRef(animals);
   latest.current = animals;
   // Kept in a ref so save() does not have to be rebuilt on every redirect
@@ -95,9 +85,22 @@ export function usePortalAnimals(
     return () => {
       for (const timer of pending.values()) window.clearTimeout(timer);
       pending.clear();
-      if (bulkTimer.current) window.clearTimeout(bulkTimer.current);
     };
   }, []);
+
+  // A finished run has long enough to be read that the last row's own
+  // "Shranjeno" has gone, and then the banner has nothing left to say. Owned
+  // by an effect rather than by a timer every early return has to remember to
+  // clear: leaving "done" for any reason, a new shelter and an unmount
+  // included, is this effect being cleaned up.
+  useEffect(() => {
+    if (bulk.status !== "done") return;
+    const timer = window.setTimeout(
+      () => setBulk({ status: "idle" }),
+      SAVED_FLASH_MS * 2,
+    );
+    return () => window.clearTimeout(timer);
+  }, [bulk.status]);
 
   useEffect(() => {
     if (!slug) return;
@@ -106,10 +109,6 @@ export function usePortalAnimals(
     setSaveStates({});
     // A run belongs to the list it was started over. A new list, whether
     // another shelter's or this one reloaded, answers for itself.
-    if (bulkTimer.current) {
-      window.clearTimeout(bulkTimer.current);
-      bulkTimer.current = null;
-    }
     setBulk({ status: "idle" });
 
     fetchAnimals(slug).then(
@@ -217,89 +216,60 @@ export function usePortalAnimals(
    * it is. Each row therefore flashes its own saving and saved, and the list
    * is replaced from each response, exactly as a single tap would leave it.
    *
-   * An id whose status the shelter has already answered for is skipped rather
-   * than re-sent, so a stale banner count cannot overwrite an edit.
+   * The set is read here rather than handed in: an animal the shelter has
+   * already answered for is never resent, so a banner drawn a render ago
+   * cannot write over an edit made since.
+   *
+   * One PUT at a time. The API writes to SQLite, and on 2026-09-06 three at a
+   * time made 39 of 185 fail with "database is locked". A run of 186 takes
+   * about ten seconds this way, and the banner counts them up as they land.
    */
-  const confirmStatuses = useCallback(
-    async (animalIds: string[]): Promise<void> => {
-      if (confirming.current) return;
+  const confirmStatuses = useCallback(async (): Promise<void> => {
+    if (confirming.current) return;
 
-      const known = new Map(
-        latest.current.map((animal) => [animal.id, animal] as const),
-      );
-      const pending: { id: string; status: PortalStatus }[] = [];
-      for (const id of animalIds) {
-        const animal = known.get(id);
-        if (!animal || !hasUnconfirmedStatus(animal)) continue;
-        const { status } = statusOf(animal);
-        if (status) pending.push({ id: animal.id, status });
+    const pending: { id: string; status: PortalStatus }[] = [];
+    for (const animal of latest.current) {
+      if (!hasUnconfirmedStatus(animal)) continue;
+      const { status } = statusOf(animal);
+      if (status) pending.push({ id: animal.id, status });
+    }
+    if (pending.length === 0) {
+      setBulk({ status: "idle" });
+      return;
+    }
+
+    confirming.current = true;
+    const total = pending.length;
+    setBulk({ status: "running", done: 0, total });
+
+    let failed = 0;
+    let gone = false;
+    for (const [index, animal] of pending.entries()) {
+      const outcome = await runSave(animal.id, { status: animal.status });
+      // The session is over. Whatever is left would only fail the same way,
+      // and the page is about to be replaced anyway.
+      if (outcome === "unauthorized") {
+        gone = true;
+        break;
       }
+      if (outcome === "failed") failed += 1;
+      setBulk({ status: "running", done: index + 1, total });
+    }
+    confirming.current = false;
 
-      if (bulkTimer.current) {
-        window.clearTimeout(bulkTimer.current);
-        bulkTimer.current = null;
-      }
-      if (pending.length === 0) {
-        setBulk({ status: "idle" });
-        return;
-      }
-
-      confirming.current = true;
-      const total = pending.length;
-      setBulk({ status: "running", done: 0, total });
-
-      let settled = 0;
-      let failed = 0;
-      let gone = false;
-      let next = 0;
-
-      const worker = async (): Promise<void> => {
-        while (!gone) {
-          const index = next++;
-          if (index >= total) return;
-          const animal = pending[index];
-          const outcome = await runSave(animal.id, { status: animal.status });
-          // The session is over. Whatever is still queued would only fail the
-          // same way, and the page is about to be replaced anyway.
-          if (outcome === "unauthorized") {
-            gone = true;
-            return;
-          }
-          if (outcome === "failed") failed += 1;
-          settled += 1;
-          setBulk({ status: "running", done: settled, total });
-        }
-      };
-
-      await Promise.all(
-        Array.from({ length: Math.min(CONFIRM_CONCURRENCY, total) }, () =>
-          worker(),
-        ),
-      );
-      confirming.current = false;
-
-      if (gone) {
-        setBulk({ status: "idle" });
-        unauthorized.current();
-        return;
-      }
-      if (failed > 0) {
-        // Left standing: the banner is the only place that says some of it did
-        // not go through, and it carries the retry.
-        setBulk({ status: "failed", failed, total });
-        return;
-      }
-      setBulk({ status: "done", total });
-      // Long enough to be read after the last row's own "Shranjeno" has gone,
-      // then the banner has nothing left to say and there is nothing left to
-      // confirm.
-      bulkTimer.current = window.setTimeout(() => {
-        bulkTimer.current = null;
-        setBulk({ status: "idle" });
-      }, SAVED_FLASH_MS * 2);
-    },
-    [runSave],
-  );
+    if (gone) {
+      setBulk({ status: "idle" });
+      unauthorized.current();
+      return;
+    }
+    // A failure is left standing: the banner is the only place that says some
+    // of it did not go through, and it carries the retry.
+    setBulk(
+      failed > 0
+        ? { status: "failed", failed, total }
+        : { status: "done", total },
+    );
+  }, [runSave]);
 
   /**
    * The name to build this animal's public address from.

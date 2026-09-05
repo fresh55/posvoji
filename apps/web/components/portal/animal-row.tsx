@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import {
   Check,
   Ellipsis,
@@ -23,6 +23,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { StatusMenu } from "@/components/portal/status-menu";
 import type { PortalSaveState } from "@/hooks/portal-list";
 import { portalAnimalPath } from "@/hooks/use-portal-session";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,8 +46,14 @@ import type {
  *
  * The row draws no border of its own. The list stacks the rows in one divided
  * container, so a border here would double every line between two animals.
+ *
+ * Memoised, because the list around it is long and re-renders for reasons
+ * that belong to one row or to none: a keystroke in the search box, and the
+ * saving and saved states of a bulk confirm walking down 186 animals. Every
+ * prop is therefore something the workspace can hand over unchanged, which is
+ * why the save is `save` plus an id rather than a closure built per render.
  */
-export function PortalAnimalRow({
+export const PortalAnimalRow = memo(function PortalAnimalRow({
   animal,
   shelter,
   publicName = animal.name,
@@ -66,10 +73,15 @@ export function PortalAnimalRow({
   /** This tab is holding typed work for this animal that was never saved. */
   hasDraft?: boolean;
   saveState: PortalSaveState;
-  onSave: (patch: PortalAnimalPatch) => Promise<boolean>;
+  /** The list's own save, which the row calls with this animal's id. */
+  onSave: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const now = useMemo(() => new Date(), []);
+  const save = useCallback(
+    (patch: PortalAnimalPatch) => void onSave(animal.id, patch),
+    [animal.id, onSave],
+  );
 
   const name = animal.name ?? portalText.unnamed;
   const overrideCount = Object.keys(animal.overrides).length;
@@ -141,11 +153,7 @@ export function PortalAnimalRow({
           its last three columns. */}
       <div className="col-span-2 col-start-2 flex items-center justify-end gap-2 sm:contents">
         <div className="flex items-center gap-2">
-          <StatusMenu
-            animal={animal}
-            busy={saving}
-            onSave={(patch) => void onSave(patch)}
-          />
+          <StatusMenu animal={animal} busy={saving} onSave={save} />
           {/* One quiet place for the outcome of a save. Nothing is said while
               it runs, because the pill itself is spinning. Nothing animates on
               the way out either, so a stalled exit cannot leave a stale label
@@ -159,10 +167,11 @@ export function PortalAnimalRow({
                 }
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
-                className="inline-flex items-center gap-1 rounded-4xl border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-1.5 py-0.5 text-2xs font-medium whitespace-nowrap text-[var(--filter-accent-foreground)]"
               >
-                <Check className="size-3" strokeWidth={2.6} aria-hidden />
-                {portalText.saved}
+                <Badge variant="accent" className="whitespace-nowrap">
+                  <Check className="size-3" strokeWidth={2.6} aria-hidden />
+                  {portalText.saved}
+                </Badge>
               </m.span>
             )}
           </div>
@@ -250,4 +259,4 @@ export function PortalAnimalRow({
       )}
     </article>
   );
-}
+});

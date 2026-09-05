@@ -137,12 +137,7 @@ describe("confirming every status the crawl read", () => {
 
     let run: Promise<void> = Promise.resolve();
     act(() => {
-      run = result.current.confirmStatuses([
-        "testno:1",
-        "testno:2",
-        "testno:3",
-        "testno:4",
-      ]);
+      run = result.current.confirmStatuses();
     });
 
     // One at a time: the API writes to SQLite, which locks under parallel
@@ -203,11 +198,7 @@ describe("confirming every status the crawl read", () => {
 
     let run: Promise<void> = Promise.resolve();
     act(() => {
-      run = result.current.confirmStatuses([
-        "testno:1",
-        "testno:2",
-        "testno:3",
-      ]);
+      run = result.current.confirmStatuses();
     });
 
     await act(async () => {
@@ -249,13 +240,7 @@ describe("confirming every status the crawl read", () => {
 
     let run: Promise<void> = Promise.resolve();
     act(() => {
-      run = result.current.confirmStatuses([
-        "testno:1",
-        "testno:2",
-        "testno:3",
-        "testno:5",
-        "testno:6",
-      ]);
+      run = result.current.confirmStatuses();
     });
 
     await act(async () => {

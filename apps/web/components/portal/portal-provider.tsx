@@ -75,7 +75,7 @@ export type PortalContextValue = {
    * sentence that used to sit on every card is said there once, and this is
    * the button under it.
    */
-  confirmStatuses: (animalIds: string[]) => Promise<void>;
+  confirmStatuses: () => Promise<void>;
   /** How far that run has got, for the banner to say so. */
   bulk: PortalBulkState;
   /**

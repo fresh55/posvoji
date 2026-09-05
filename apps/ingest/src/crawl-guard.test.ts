@@ -27,7 +27,10 @@ function policy(excludePaths: string[]): ProviderPolicy {
 class StubClient {
   calls: string[] = [];
 
-  async get(url: string): Promise<PoliteResponse> {
+  async get(
+    url: string,
+    _options?: GetBytesOptions,
+  ): Promise<PoliteResponse> {
     this.calls.push(url);
     return { status: 200, body: "<html></html>", notModified: false, headers: {} };
   }
@@ -43,6 +46,33 @@ class StubClient {
       notModified: false,
       headers: {},
     };
+  }
+}
+
+// Stands in for PoliteClient's internal redirect follow: it asks the caller's
+// hook about the target the way requestWithRetries does, and records the URLs
+// it would have gone on to request.
+class RedirectingClient extends StubClient {
+  constructor(private readonly location: string) {
+    super();
+  }
+
+  override async get(
+    url: string,
+    options?: GetBytesOptions,
+  ): Promise<PoliteResponse> {
+    this.calls.push(url);
+    const target = new URL(this.location, url);
+    if (options?.allowRedirect?.(target, new URL(url)) === false) {
+      return {
+        status: 302,
+        body: null,
+        notModified: false,
+        headers: { location: this.location },
+      };
+    }
+    this.calls.push(target.href);
+    return { status: 200, body: "<html></html>", notModified: false, headers: {} };
   }
 }
 
@@ -160,6 +190,54 @@ describe("guardProviderRequests", () => {
       ),
     ).rejects.toThrow(/refusing to fetch/);
     expect(client.calls).toEqual(["https://shelter.si/animals/rex"]);
+  });
+
+  it("refuses a redirect into an excluded path before it is followed", async () => {
+    const client = new RedirectingClient("/posvoji-zival/oddajo-lastniki/rex");
+    const guarded = guardProviderRequests(client, excluded);
+    const url = "https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu";
+
+    await expect(guarded.get(url)).rejects.toThrow(
+      /oddajo-lastniki.*refusing to fetch it/,
+    );
+    // The listing itself was fetched; the excluded target never was.
+    expect(client.calls).toEqual([url]);
+  });
+
+  it("refuses a redirect that leaves the policy origin", async () => {
+    const client = new RedirectingClient("https://unrelated.example/rex");
+    const guarded = guardProviderRequests(client, policy([]));
+    const url = "https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu";
+
+    await expect(guarded.get(url)).rejects.toThrow(
+      /refusing to fetch https:\/\/unrelated\.example\/rex/,
+    );
+    expect(client.calls).toEqual([url]);
+  });
+
+  it("follows a redirect that stays inside the policy origin", async () => {
+    const client = new RedirectingClient("/posvoji-zival/rex");
+    const guarded = guardProviderRequests(client, excluded);
+    const url = "https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu";
+
+    const res = await guarded.get(url);
+
+    expect(res.status).toBe(200);
+    expect(client.calls).toEqual([
+      url,
+      "https://www.zavetisce-ljubljana.si/posvoji-zival/rex",
+    ]);
+  });
+
+  it("keeps a caller's own redirect hook", async () => {
+    const client = new RedirectingClient("/posvoji-zival/rex");
+    const guarded = guardProviderRequests(client, excluded);
+    const url = "https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu";
+
+    const res = await guarded.get(url, { allowRedirect: () => false });
+
+    expect(res.status).toBe(302);
+    expect(client.calls).toEqual([url]);
   });
 
   it("keeps a custom port fixed across an HTTP to HTTPS upgrade", async () => {

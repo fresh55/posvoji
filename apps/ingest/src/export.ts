@@ -42,6 +42,7 @@ import {
   type PortalListingsPayload,
 } from "./portal-overrides";
 import { answeredProviders, buildListingAnimals } from "./portal-listings";
+import { applyPublicationPolicy } from "./publication-policy";
 import { providers } from "./registry";
 import { loadShelters } from "./shelters";
 import {
@@ -479,7 +480,27 @@ for (const drop of dropped) {
 // by a targeted run that does not re-crawl its provider.
 const seeded = [...preserved, ...refreshed].map(normalizeAnimalOrigin);
 
-guardUniqueAnimalIds(seeded);
+// What each shelter's policy.yaml permits right now, applied to the crawled
+// and the carried-over records alike. A carried record holds the policy as it
+// stood when it was fetched: the incremental crawl re-fetches a provider whose
+// policy fingerprint moved, but only one this run crawled. On a targeted run,
+// and after a failed crawl, this is the only thing that brings an excluded
+// page, an image, a description and an attribution back to what the shelter
+// grants today. It only ever narrows.
+const published = applyPublicationPolicy(seeded, policyById);
+for (const { providerId, count, reason } of published.dropped) {
+  console.warn(
+    `publication policy: ${providerId}: dropped ${count} animal(s) ${reason}`,
+  );
+}
+for (const { providerId, field, applied, count } of published.adjusted) {
+  console.warn(
+    `publication policy: ${providerId}: ${field} set to ` +
+      `${JSON.stringify(applied)} on ${count} animal(s)`,
+  );
+}
+
+guardUniqueAnimalIds(published.animals);
 
 // The portal keys every override by the shelter slug of the account that
 // recorded it and ships that slug as providerId; this pipeline matches an
@@ -490,7 +511,7 @@ guardUniqueAnimalIds(seeded);
 // A manual listing is built with both read off the same providerId, and its
 // sourceUrl is the shelter page that slug routes to, so the check covers the
 // listings feed for free.
-const misattributed = seeded.filter(
+const misattributed = published.animals.filter(
   (a) => a.shelter.id !== a.source.providerId,
 );
 if (misattributed.length > 0) {
@@ -517,7 +538,7 @@ if (misattributed.length > 0) {
 //   itself, which is a stronger grant than the crawl permission this list
 //   records; the same is already true of descriptions, where an override
 //   sets shortDescription whatever the policy's descriptions grant says.
-const restricted = applyAllowedFields(seeded, policyById);
+const restricted = applyAllowedFields(published.animals, policyById);
 for (const { providerId, field, count } of restricted.stripped) {
   console.warn(
     `allowedFields: ${providerId}: field ${field} is not in allowedFields, ` +

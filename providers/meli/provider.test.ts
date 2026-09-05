@@ -48,6 +48,12 @@ describe("parseApproximateAgeMonths", () => {
     ["6-letni mešanček", 72],
     ["star 3 leta", 36],
     ["stara sta 18 mesecev", 18],
+    // The trailing half of "1,5 leta" is not the age.
+    ["stara 1,5 leta", 18],
+    ["stara 2.5 leti", 30],
+    ["star 1,5 meseca", 2],
+    // A number with no unit is not an age.
+    ["teža 10,5", undefined],
     ["mlad pes", undefined],
   ])("%s → %s", (input, expected) => {
     expect(parseApproximateAgeMonths(input)).toBe(expected);

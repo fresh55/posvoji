@@ -8,6 +8,7 @@ import provider, {
   parseDetail,
   parseList,
   parseSlovenianDate,
+  parseVeterinaryCare,
   resolveAgeMonths,
 } from "./provider";
 
@@ -67,6 +68,42 @@ describe("fact parsers", () => {
     ["Nekaj ur", undefined],
   ])("parses intake age %s conservatively", (input, expected) => {
     expect(parseAgeMonths(input)).toBe(expected);
+  });
+});
+
+describe("parseVeterinaryCare", () => {
+  it.each([
+    [
+      "Sterilizirana, cepljena, čipirana",
+      { neutered: true, vaccinated: true, microchipped: true },
+    ],
+    [
+      "Kastriran, cepljen, mikročipiran",
+      { neutered: true, vaccinated: true, microchipped: true },
+    ],
+    // A "ne" prefix used to read straight through as the positive claim.
+    ["Nekastriran", { neutered: false }],
+    ["Necepljen", { vaccinated: false }],
+    ["Nečipiran", { microchipped: false }],
+    ["Nesterilizirana", { neutered: false }],
+    // Mixed lines are what a substring match got most wrong.
+    [
+      "kastriran, necepljen, čipiran",
+      { neutered: true, vaccinated: false, microchipped: true },
+    ],
+    // A negating word standing on its own before the term.
+    [
+      "Ni kastriran, ni cepljen, ni čipiran",
+      { neutered: false, vaccinated: false, microchipped: false },
+    ],
+    ["Sterilizirana, še ni cepljena", { neutered: true, vaccinated: false }],
+    // Nothing the shelter wrote here maps to a field.
+    ["Veterinarsko urejena", {}],
+    ["", {}],
+    // The line asserts and denies the same term, so it settles neither.
+    ["cepljena, necepljena", {}],
+  ])("reads %s as %o", (input, expected) => {
+    expect(parseVeterinaryCare(input)).toEqual(expected);
   });
 });
 

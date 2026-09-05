@@ -255,6 +255,8 @@ export function reuseAnimal(previous: Animal, seenAt: string): Animal {
 }
 
 export interface ProviderCrawlResult {
+  // Actual discovery time, including a successfully empty shelter listing.
+  checkedAt: string;
   animals: Animal[];
   listed: number;
   fetched: number;
@@ -445,5 +447,6 @@ export async function crawlProviderIncrementally(
     // this is already false whenever any ref failed; said outright because
     // the crawl state and the bootstrap check both hang off it.
     fullRefresh: failedRefs.length === 0 && fetched === refs.length,
+    checkedAt: seenAt,
   };
 }

@@ -1,0 +1,26 @@
+[Unit]
+Description=Refresh and publish the Posvoji index
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=posvoji
+Group=caddy
+WorkingDirectory=/srv/posvoji/app
+ExecStart=/bin/bash /srv/posvoji/app/scripts/run-host-crawl.sh
+TimeoutStartSec=10h
+KillMode=control-group
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/posvoji
+Environment=PNPM_HOME=/srv/posvoji/.local/share/pnpm
+Environment=XDG_CACHE_HOME=/srv/posvoji/.cache
+CPUQuota=100%
+MemoryHigh=50%
+MemoryMax=65%
+IOWeight=25
+Nice=10

@@ -10,8 +10,23 @@ next-env.d.ts
 
 # ingest output (dataset is an artifact, not source)
 data/dist/
+.artifact-lock/
+.artifact-lock.candidate-*/
+.artifact-lock.retired-*/
 *.db
 *.sqlite
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.netrc
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*.env
+!*.env.example
 
 # cached shelter photos (shelter content, not repository content)
 apps/web/public/media/
@@ -34,6 +49,7 @@ playwright-report/
 .idea/
 
 # misc
+scripts/__pycache__/
 .DS_Store
 Thumbs.db
 *.log

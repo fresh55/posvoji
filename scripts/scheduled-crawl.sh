@@ -80,13 +80,7 @@ LOG_DIR="${REPO_ROOT}-logs"
 # machine with no portal configured still has a crawl to do: ingest skips the
 # override and listing feeds when PORTAL_EXPORT_URL and PORTAL_EXPORT_TOKEN
 # are unset. Documented in docs/CRAWL-SCHEDULING.md.
-CRAWL_ENV="${HOME}/.posvoji-crawl.env"
-if [ -f "${CRAWL_ENV}" ]; then
-  set -a
-  # shellcheck disable=SC1090
-  . "${CRAWL_ENV}"
-  set +a
-fi
+
 
 NOTIFY_PS1="${REPO_ROOT}/scripts/crawl-notify.ps1"
 KEEPAWAKE_PS1="${REPO_ROOT}/scripts/crawl-keepawake.ps1"
@@ -221,15 +215,24 @@ main() {
 
   if [ ! -d "${REPO_ROOT}/.git" ]; then
     abort "Crawl could not start" \
-      "${REPO_ROOT} is not a git clone. Run setup-crawl-task.ps1 first."
+      "${REPO_ROOT} is not a git clone. Run setup-crawl-task.ps1 first. Log: ${log_file}"
   fi
 
   if ! wait_for_network; then
     abort "Crawl could not start" \
-      "No network after ${NETWORK_WAIT_SECONDS}s. Nothing was crawled or deployed."
+      "No network after ${NETWORK_WAIT_SECONDS}s. Nothing was crawled or deployed. Log: ${log_file}"
   fi
 
   cd "${REPO_ROOT}"
+  # Private configuration is outside the checkout and survives its update.
+  # Missing portal settings stay disabled; a half-configured portal fails the
+  # existing export gate instead of silently dropping shelter corrections.
+  local run_config="${POSVOJI_CRAWL_CONFIG:-${HOME}/.posvoji-crawl.env}"
+  if [ -f "${run_config}" ]; then
+    set -a
+    source "${run_config}"
+    set +a
+  fi
 
   # --- update the clone ------------------------------------------------------
   #
@@ -238,10 +241,12 @@ main() {
   log "--- updating to origin/main ---"
 
   git fetch --prune origin ||
-    abort "Crawl could not start" "git fetch failed. Nothing was deployed."
+    abort "Crawl could not start" \
+      "git fetch failed. Nothing was deployed. Log: ${log_file}"
 
   git reset --hard origin/main ||
-    abort "Crawl could not start" "git reset --hard origin/main failed. Nothing was deployed."
+    abort "Crawl could not start" \
+      "git reset --hard origin/main failed. Nothing was deployed. Log: ${log_file}"
 
   # No -x, deliberately and permanently. The dataset in data/dist and the
   # 270 MB of cached photos under apps/web/public/media are gitignored build
@@ -258,7 +263,7 @@ main() {
   log "--- pnpm install --frozen-lockfile ---"
   pnpm install --frozen-lockfile ||
     abort "Crawl could not start" \
-      "pnpm install --frozen-lockfile failed. Nothing was crawled or deployed."
+      "pnpm install --frozen-lockfile failed. Nothing was crawled or deployed. Log: ${log_file}"
 
   # --- export ----------------------------------------------------------------
   #
@@ -297,7 +302,7 @@ main() {
 
   if [ "${deploy_status}" -ne 0 ]; then
     abort "Deploy failed" \
-      "The dataset exported but scripts/deploy.sh exited ${deploy_status}. The site still serves the previous release. See ${log_file}."
+      "The dataset exported but scripts/deploy.sh exited ${deploy_status}. Its flip transaction normally restores the previous release on failure, but verify /srv/posvoji/current because a lost connection at the commit boundary can make the outcome uncertain. See ${log_file}."
   fi
 
   # --- done ------------------------------------------------------------------

@@ -270,25 +270,23 @@ export class PoliteClient {
         options,
         maxBytes,
       );
-      const next =
+      const redirect =
         hop < MAX_REDIRECTS ? redirectTarget(current, res) : undefined;
       // A cross-origin redirect is handed back untouched: the caller decides
       // whether that other site is one we are allowed to crawl at all.
-      if (!next) return res;
+      if (!redirect) return res;
+      const { target, from } = redirect;
       // A same-host redirect can still land somewhere the caller must not
       // fetch, so it gets the same say before the request for the target is
       // made. A refusal ends the follow and hands the redirect back.
-      if (
-        options.allowRedirect &&
-        !options.allowRedirect(next, new URL(current))
-      ) {
+      if (options.allowRedirect && !options.allowRedirect(target, from)) {
         return res;
       }
-      await this.ensureRobots(next.origin);
-      if (!this.isAllowed(next.origin, next.href)) {
-        throw new Error(`robots.txt disallows fetching ${next.href}`);
+      await this.ensureRobots(target.origin);
+      if (!this.isAllowed(target.origin, target.href)) {
+        throw new Error(`robots.txt disallows fetching ${target.href}`);
       }
-      current = next.href;
+      current = target.href;
     }
   }
 
@@ -498,18 +496,21 @@ function resolve(location: string, base: string): URL | undefined {
 function redirectTarget(
   current: string,
   res: PoliteBytesResponse,
-): URL | undefined {
+): { target: URL; from: URL } | undefined {
   if (!REDIRECT_STATUSES.has(res.status)) return undefined;
   const location = headerValue(res.headers["location"]);
   if (location === undefined) return undefined;
-  const next = resolve(location, current);
-  if (!next) return undefined;
+  const target = resolve(location, current);
+  if (!target) return undefined;
   const from = new URL(current);
-  if (next.host !== from.host) return undefined;
-  if (next.protocol !== from.protocol) {
-    if (from.protocol !== "http:" || next.protocol !== "https:") {
+  if (target.host !== from.host) return undefined;
+  if (target.protocol !== from.protocol) {
+    if (from.protocol !== "http:" || target.protocol !== "https:") {
       return undefined;
     }
   }
-  return next;
+  // The parsed origin is handed back with the target: the caller needs it to
+  // tell a hook where the redirect came from, and parsing it again there was
+  // the same string twice.
+  return { target, from };
 }

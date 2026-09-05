@@ -130,6 +130,10 @@ interface CrawlOutcome {
   // previous dataset.
   crawled: Set<string>;
   failed: string[];
+  // Animals a finished provider could not refresh. Their previous record was
+  // carried forward where we held one; where we did not, the listing was
+  // skipped this run.
+  failedAnimals: { providerId: string; sourceUrl: string }[];
   // Providers that re-fetched every listed animal, so every record they just
   // produced came from the current parsers under the current policy. Only
   // these advance the crawl state.
@@ -165,6 +169,7 @@ async function crawl(
   const animals: Animal[] = [];
   const crawled = new Set<string>();
   const failed: string[] = [];
+  const failedAnimals: { providerId: string; sourceUrl: string }[] = [];
   const fullyRefreshed: ProviderPolicy[] = [];
   let fetched = 0;
   let reused = 0;
@@ -177,6 +182,9 @@ async function crawl(
       fetched += result.value.fetched;
       reused += result.value.reused;
       if (result.value.fullRefresh) fullyRefreshed.push(policy);
+      for (const ref of result.value.failedRefs) {
+        failedAnimals.push({ providerId, sourceUrl: ref.sourceUrl });
+      }
       continue;
     }
     failed.push(providerId);
@@ -186,7 +194,15 @@ async function crawl(
         : String(result.reason);
     console.error(`crawl ${providerId} FAILED: ${reason}`);
   }
-  return { animals, crawled, failed, fullyRefreshed, fetched, reused };
+  return {
+    animals,
+    crawled,
+    failed,
+    failedAnimals,
+    fullyRefreshed,
+    fetched,
+    reused,
+  };
 }
 
 // What the listings feed left this run with: a payload, a fetch that threw,
@@ -290,6 +306,7 @@ const {
   animals: crawled,
   crawled: crawledProviderIds,
   failed,
+  failedAnimals,
   fullyRefreshed,
   fetched: detailsFetched,
   reused: detailsReused,
@@ -302,6 +319,14 @@ const {
 console.log(
   `detail pages: ${detailsFetched} fetched, ${detailsReused} reused`,
 );
+if (failedAnimals.length > 0) {
+  console.error(
+    `detail pages: ${failedAnimals.length} could not be refreshed`,
+  );
+  for (const { providerId, sourceUrl } of failedAnimals) {
+    console.error(`  ${providerId}: ${sourceUrl}`);
+  }
+}
 
 // The manual providers this run is responsible for: enabled, ingestion:
 // manual, and inside the --provider filter when there is one. crawlPolicies
@@ -786,4 +811,15 @@ if (failed.length > 0) {
       `written, but this run is not a clean one.`,
   );
 }
-process.exitCode = exitCodeForRun(failed.length);
+if (failedAnimals.length > 0) {
+  console.error(
+    `${failedAnimals.length} animal(s) could not be refreshed. The record we ` +
+      `already held was carried forward for each one we hold, and the ` +
+      `listing was skipped for each one we do not, so this run is not a ` +
+      `clean one either.`,
+  );
+}
+process.exitCode = exitCodeForRun({
+  failedProviders: failed.length,
+  failedAnimals: failedAnimals.length,
+});

@@ -270,6 +270,15 @@ export interface ProviderCrawlResult {
   listed: number;
   fetched: number;
   reused: number;
+  // Refs whose detail page could not be turned into a record this run. The
+  // previous record was carried forward for each of them where there was one,
+  // and the ref was dropped where there was not, so the rest of the provider
+  // still ships. Empty on a clean crawl.
+  failedRefs: SourceAnimalRef[];
+  // Listed refs under a path policy.yaml excludes. Never fetched, never
+  // reused, never published, and not a failure: the list page names them,
+  // the policy says no, and the policy wins quietly.
+  excluded: number;
   // Every listed animal was fetched, so all of this provider's records were
   // produced by the current parsers under the current policy.
   fullRefresh: boolean;
@@ -287,18 +296,21 @@ export interface IncrementalCrawlOptions {
   now?: () => Date;
 }
 
-// A ref we do not fetch never reaches the client, and the client's guard is
-// what enforces policy.crawl.excludePaths (private-owner listings live behind
-// those paths). Republishing one from the previous dataset would slip past it,
-// so the same rule is applied before anything is reused. It throws, which is
-// what fetching an excluded url does today.
-function refuseExcluded(ref: SourceAnimalRef, policy: ProviderPolicy): void {
+// A listed ref under a path policy.yaml excludes (private-owner listings live
+// behind those paths) is dropped before anything happens to it. The client's
+// guard would refuse the fetch anyway; this also keeps the record we may hold
+// for it from being republished, and it keeps the drop from reading as a
+// failure. A shelter's list page linking into an excluded section is the
+// adapter's business, not a degraded run: the policy is applied and said so.
+function isExcluded(ref: SourceAnimalRef, policy: ProviderPolicy): boolean {
   const excluded = excludedPathFor(ref.sourceUrl, policy.crawl.excludePaths);
-  if (excluded === undefined) return;
-  throw new Error(
+  if (excluded === undefined) return false;
+  console.warn(
     `${policy.providerId}: ${ref.sourceUrl} is under "${excluded}", which ` +
-      `policy.yaml excludes from the crawl; refusing to reuse it`,
+      `policy.yaml excludes from the crawl; not fetched, not reused, not ` +
+      `published`,
   );
+  return true;
 }
 
 // An adapter owns exactly the provider and source reference being crawled.
@@ -358,8 +370,16 @@ export async function crawlProviderIncrementally(
   const nowMs = now.getTime();
 
   const animals: Animal[] = [];
+  const failedRefs: SourceAnimalRef[] = [];
+  const failures: string[] = [];
   let fetched = 0;
+  let reused = 0;
+  let excluded = 0;
   for (const ref of refs) {
+    if (isExcluded(ref, ctx.policy)) {
+      excluded++;
+      continue;
+    }
     const previous = held.get(refKey(ref));
     const decision = decideRefresh({
       previous,
@@ -368,24 +388,53 @@ export async function crawlProviderIncrementally(
       windowDays: options.windowDays,
     });
     if (!decision.fetch && previous) {
-      refuseExcluded(ref, ctx.policy);
       animals.push(reuseAnimal(previous, seenAt));
+      reused++;
       continue;
     }
-    const raw = await provider.fetch(ctx, ref);
-    const animal = Animal.parse(await provider.normalize(ctx, raw));
-    assertNormalizedIdentity(animal, ctx.policy, ref);
-    animals.push(animal);
-    fetched++;
+    // One listing the shelter left behind, whose page 404s on every run, used
+    // to reject the whole provider: every finished refresh was thrown away,
+    // export carried the entire previous dataset forward and the run exited 2
+    // again the next time, indefinitely. The failure is per animal, so it is
+    // contained per animal.
+    try {
+      const raw = await provider.fetch(ctx, ref);
+      const animal = Animal.parse(await provider.normalize(ctx, raw));
+      assertNormalizedIdentity(animal, ctx.policy, ref);
+      animals.push(animal);
+      fetched++;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`${providerId}: ${ref.sourceUrl} FAILED: ${message}`);
+      failedRefs.push(ref);
+      failures.push(message);
+      // A ref we have never held is dropped: there is nothing to carry
+      // forward, and the listing comes back next run.
+      if (previous) {
+        animals.push(reuseAnimal(previous, seenAt));
+        reused++;
+      }
+    }
   }
 
-  const reused = refs.length - fetched;
+  // A site that answers nothing is not a listing with one bad page in it. Its
+  // provider fails the way it did before, so export carries the whole previous
+  // dataset forward rather than shipping a listing we could not read.
+  if (fetched === 0 && failedRefs.length > 0) {
+    throw new Error(
+      `${providerId}: every detail fetch failed (${failedRefs.length} of ` +
+        `${failedRefs.length} attempted), so the provider is treated as ` +
+        `failed rather than partially stale: ${failures.join("; ")}`,
+    );
+  }
+
   const because = options.forcedBecause
     ? ` (full refresh: ${options.forcedBecause})`
     : "";
   console.log(
     `${providerId}: ${refs.length} listed, ${fetched} fetched, ` +
-      `${reused} reused${because}`,
+      `${reused} reused, ${failedRefs.length} failed, ${excluded} ` +
+      `excluded${because}`,
   );
 
   return {
@@ -393,6 +442,13 @@ export async function crawlProviderIncrementally(
     listed: refs.length,
     fetched,
     reused,
-    fullRefresh: fetched === refs.length,
+    failedRefs,
+    excluded,
+    // Every ref this run publishes was fetched. A failed ref is not a fetched
+    // one, so this is already false whenever any ref failed; said outright
+    // because the crawl state and the bootstrap check both hang off it. An
+    // excluded ref publishes nothing, so it does not count against it.
+    fullRefresh:
+      failedRefs.length === 0 && fetched + excluded === refs.length,
   };
 }

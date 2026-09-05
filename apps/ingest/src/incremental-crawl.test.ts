@@ -128,6 +128,32 @@ function stubProvider(refs: SourceAnimalRef[]): {
   return { provider, fetched };
 }
 
+// The same stub with a detail page that will not come back: a listing the
+// shelter left behind whose page 404s, or a url the guarded client refuses.
+function failingProvider(
+  refs: SourceAnimalRef[],
+  failing: Record<string, string>,
+  where: "fetch" | "normalize" = "fetch",
+): { provider: AdoptionProvider; fetched: string[] } {
+  const { provider, fetched } = stubProvider(refs);
+  if (where === "fetch") {
+    const inner = provider.fetch;
+    provider.fetch = async (ctx, target) => {
+      const message = failing[target.sourceAnimalId];
+      if (message !== undefined) throw new Error(message);
+      return inner(ctx, target);
+    };
+  } else {
+    const inner = provider.normalize;
+    provider.normalize = async (ctx, raw) => {
+      const message = failing[raw.ref.sourceAnimalId];
+      if (message !== undefined) throw new Error(message);
+      return inner(ctx, raw);
+    };
+  }
+  return { provider, fetched };
+}
+
 function context(overrides: Record<string, unknown> = {}): ProviderContext {
   return {
     client: {} as ProviderContext["client"],
@@ -372,6 +398,8 @@ describe("indexPrevious", () => {
 describe("crawlProviderIncrementally", () => {
   beforeEach(() => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -442,13 +470,18 @@ describe("crawlProviderIncrementally", () => {
       { sourceAnimalId: "1", sourceUrl: "https://example.si/privat-oddaja/1" },
     ]);
 
-    await expect(
-      crawlProviderIncrementally(
-        provider,
-        context({ crawl: { intervalHours: 12, excludePaths: ["/privat-oddaja/"] } }),
-        { previous: [excluded], now },
-      ),
-    ).rejects.toThrow(/refusing to reuse it/);
+    const result = await crawlProviderIncrementally(
+      provider,
+      context({ crawl: { intervalHours: 12, excludePaths: ["/privat-oddaja/"] } }),
+      { previous: [excluded], now },
+    );
+
+    expect(result.animals).toEqual([]);
+    expect(result.excluded).toBe(1);
+    expect(result.failedRefs).toEqual([]);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("not fetched, not reused, not published"),
+    );
   });
 
   it("counts a listing it fetched in full as a full refresh", async () => {
@@ -460,6 +493,144 @@ describe("crawlProviderIncrementally", () => {
     expect(result.fullRefresh).toBe(true);
   });
 
+  it("carries one failed animal forward and refreshes the rest", async () => {
+    const { provider, fetched } = failingProvider(
+      [ref("1"), ref("2"), ref("3")],
+      { "2": "404 Not Found" },
+    );
+    const result = await crawlProviderIncrementally(provider, context(), {
+      previous: [animal("1"), animal("2"), animal("3")],
+      forcedBecause: "--refresh-all",
+      now,
+    });
+
+    expect(fetched).toEqual(["1", "3"]);
+    expect(result).toMatchObject({ listed: 3, fetched: 2, reused: 1 });
+    expect(result.failedRefs).toEqual([ref("2")]);
+    // The failed one ships from the record we already held, with only
+    // lastSeenAt moved on, and the other two from this run's parse.
+    expect(result.animals.map((a) => a.name)).toEqual([
+      "Luna (fetched)",
+      "Luna",
+      "Luna (fetched)",
+    ]);
+    expect(result.animals[1]!.source.fetchedAt).toBe(CRAWLED_AT);
+    expect(result.animals[1]!.source.lastSeenAt).toBe(RUN_AT);
+  });
+
+  it("is not a full refresh when a ref failed", async () => {
+    const { provider } = failingProvider([ref("1"), ref("2")], {
+      "2": "404 Not Found",
+    });
+    const result = await crawlProviderIncrementally(provider, context(), {
+      previous: [animal("1"), animal("2")],
+      forcedBecause: "--refresh-all",
+      now,
+    });
+
+    expect(result.fullRefresh).toBe(false);
+  });
+
+  it("skips a failed ref it has never held", async () => {
+    const { provider } = failingProvider([ref("1"), ref("2")], {
+      "2": "404 Not Found",
+    });
+    const result = await crawlProviderIncrementally(provider, context(), {
+      previous: [animal("1")],
+      forcedBecause: "--refresh-all",
+      now,
+    });
+
+    expect(result.animals.map((a) => a.id)).toEqual([`${PROVIDER_ID}:1`]);
+    expect(result).toMatchObject({ listed: 2, fetched: 1, reused: 0 });
+    expect(result.failedRefs).toEqual([ref("2")]);
+  });
+
+  it("drops a listed ref under an excluded path without calling it a failure", async () => {
+    const excludedRef = {
+      sourceAnimalId: "2",
+      sourceUrl: "https://example.si/privat-oddaja/2",
+    };
+    const held = animal("2", {
+      source: { sourceUrl: excludedRef.sourceUrl },
+    });
+    const { provider, fetched } = stubProvider([ref("1"), excludedRef]);
+
+    const result = await crawlProviderIncrementally(
+      provider,
+      context({
+        crawl: { intervalHours: 12, excludePaths: ["/privat-oddaja/"] },
+      }),
+      {
+        previous: [animal("1"), held],
+        forcedBecause: "--refresh-all",
+        now,
+      },
+    );
+
+    expect(fetched).toEqual(["1"]);
+    expect(result.animals.map((a) => a.id)).toEqual([`${PROVIDER_ID}:1`]);
+    expect(result.reused).toBe(0);
+    expect(result.failedRefs).toEqual([]);
+    expect(result.excluded).toBe(1);
+    // Nothing the provider publishes was carried, so the crawl state may
+    // advance.
+    expect(result.fullRefresh).toBe(true);
+  });
+
+  it("fails the whole provider when every detail fetch failed", async () => {
+    const { provider } = failingProvider([ref("1"), ref("2")], {
+      "1": "socket hang up",
+      "2": "socket hang up",
+    });
+
+    await expect(
+      crawlProviderIncrementally(provider, context(), {
+        previous: [animal("1"), animal("2")],
+        forcedBecause: "--refresh-all",
+        now,
+      }),
+    ).rejects.toThrow(/every detail fetch failed \(2 of 2 attempted\)/);
+  });
+
+  it("isolates a normalize failure the way it isolates a fetch failure", async () => {
+    const { provider } = failingProvider(
+      [ref("1"), ref("2")],
+      { "2": "no name on the page" },
+      "normalize",
+    );
+    const result = await crawlProviderIncrementally(provider, context(), {
+      previous: [animal("1"), animal("2")],
+      forcedBecause: "--refresh-all",
+      now,
+    });
+
+    expect(result).toMatchObject({ fetched: 1, reused: 1, fullRefresh: false });
+    expect(result.failedRefs).toEqual([ref("2")]);
+    expect(result.animals.map((a) => a.name)).toEqual([
+      "Luna (fetched)",
+      "Luna",
+    ]);
+  });
+
+  it("does not read a listing it reused in full as a failed provider", async () => {
+    const { provider, fetched } = stubProvider([ref("1"), ref("2")]);
+    const result = await crawlProviderIncrementally(provider, context(), {
+      previous: [
+        animal("1", { source: { fetchedAt: readThisWindow("1") } }),
+        animal("2", { source: { fetchedAt: readThisWindow("2") } }),
+      ],
+      now,
+    });
+
+    expect(fetched).toEqual([]);
+    expect(result).toMatchObject({ fetched: 0, reused: 2, fullRefresh: false });
+    expect(result.failedRefs).toEqual([]);
+  });
+
+  // A misattributed animal is contained per ref like any other failure, so a
+  // single-ref listing whose one animal fails identity is a provider whose
+  // every detail fetch failed. It still rejects, and with the reason.
   it.each([
     {
       label: "provider",

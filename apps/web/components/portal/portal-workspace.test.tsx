@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PortalProvider } from "@/components/portal/portal-provider";
 import { PortalWorkspace } from "@/components/portal/portal-workspace";
 import { portalText } from "@/components/portal/portal-text";
 import {
@@ -116,6 +117,18 @@ function animal(over: Partial<PortalAnimal> = {}): PortalAnimal {
   };
 }
 
+/**
+ * The workspace as the route serves it: the (app) layout mounts the provider,
+ * which holds the session and the list, and the page reads them off it.
+ */
+function renderWorkspace() {
+  return render(
+    <PortalProvider>
+      <PortalWorkspace />
+    </PortalProvider>,
+  );
+}
+
 function signIn(shelter: PortalShelter) {
   vi.mocked(fetchSession).mockResolvedValue({
     email: "info@zavetisce.si",
@@ -135,7 +148,7 @@ describe("what a failure tells the shelter", () => {
   it("says what failed and what to do, never the same sentence twice", async () => {
     vi.mocked(fetchSession).mockRejectedValue(new PortalError(500));
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.sessionErrorTitle)).toBeTruthy();
@@ -150,7 +163,7 @@ describe("what a failure tells the shelter", () => {
   it("names the connection when that is what went wrong", async () => {
     vi.mocked(fetchSession).mockRejectedValue(new PortalError(0));
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.networkError)).toBeTruthy();
@@ -162,7 +175,7 @@ describe("what a failure tells the shelter", () => {
     vi.mocked(fetchSession).mockResolvedValue(SESSION);
     vi.mocked(fetchAnimals).mockRejectedValue(new PortalError(500));
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.listErrorTitle)).toBeTruthy();
@@ -177,7 +190,7 @@ describe("the page's own heading", () => {
   it("is there while the session is still being read", () => {
     vi.mocked(fetchSession).mockReturnValue(new Promise(() => {}));
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     expect(headings()).toHaveLength(1);
     expect(headings()[0].textContent).toBe(portalText.brand);
@@ -186,7 +199,7 @@ describe("the page's own heading", () => {
   it("is there when the session cannot be read", async () => {
     vi.mocked(fetchSession).mockRejectedValue(new PortalError(500));
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.sessionErrorTitle)).toBeTruthy();
@@ -198,7 +211,7 @@ describe("the page's own heading", () => {
   it("is there when the account has no shelter yet", async () => {
     vi.mocked(fetchSession).mockResolvedValue({ ...SESSION, shelters: [] });
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.noSheltersTitle)).toBeTruthy();
@@ -210,7 +223,7 @@ describe("the page's own heading", () => {
     vi.mocked(fetchSession).mockResolvedValue(SESSION);
     vi.mocked(fetchAnimals).mockResolvedValue([animal()]);
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.animalsTitle)).toBeTruthy();
@@ -225,7 +238,7 @@ describe("the page's own heading", () => {
     signIn(MANUAL);
     vi.mocked(fetchListings).mockResolvedValue([LISTING]);
 
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
@@ -239,7 +252,7 @@ describe("a shelter that writes its own listings", () => {
   it("reads listings, never animals, and offers to add the first", async () => {
     signIn(MANUAL);
     vi.mocked(fetchListings).mockResolvedValue([]);
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.listingsEmptyLead)).toBeTruthy();
@@ -253,7 +266,7 @@ describe("a shelter that writes its own listings", () => {
   it("lists its animals as listing cards under the add button", async () => {
     signIn(MANUAL);
     vi.mocked(fetchListings).mockResolvedValue([LISTING]);
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
@@ -272,7 +285,7 @@ describe("a shelter that writes its own listings", () => {
   it("opens the new listing form from the header", async () => {
     signIn(MANUAL);
     vi.mocked(fetchListings).mockResolvedValue([LISTING]);
-    render(<PortalWorkspace />);
+    renderWorkspace();
     await waitFor(() => expect(addButton()).toBeTruthy());
 
     fireEvent.click(addButton() as HTMLElement);
@@ -287,7 +300,7 @@ describe("a shelter that writes its own listings", () => {
       LISTING,
       { ...LISTING, id: "b", name: "Bine" },
     ]);
-    render(<PortalWorkspace />);
+    renderWorkspace();
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Bine" })).toBeTruthy();
     });
@@ -307,7 +320,7 @@ describe("a crawled shelter", () => {
     vi.mocked(fetchAnimals).mockResolvedValue([
       animal({ id: "ljubljana:1", species: "dog", name: "Rex", sex: null }),
     ]);
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
@@ -326,7 +339,7 @@ describe("a crawled shelter", () => {
   it("keeps the crawl's empty state", async () => {
     signIn(CRAWLED);
     vi.mocked(fetchAnimals).mockResolvedValue([]);
-    render(<PortalWorkspace />);
+    renderWorkspace();
 
     await waitFor(() => {
       expect(screen.getByText(portalText.emptyLead)).toBeTruthy();

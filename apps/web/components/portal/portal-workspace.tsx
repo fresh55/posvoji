@@ -1,15 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ExternalLink,
-  Inbox,
-  LoaderCircle,
-  LogOut,
-  Plus,
-  SearchX,
-  TriangleAlert,
-} from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Inbox, LoaderCircle, Plus, SearchX, TriangleAlert } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import { PortalAnimalCard } from "@/components/portal/animal-card";
 import {
@@ -19,22 +11,13 @@ import {
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
 import { ListingForm } from "@/components/portal/listing-form";
-import { PortalShell } from "@/components/portal/portal-shell";
+import { usePortal } from "@/components/portal/portal-provider";
 import { portalText } from "@/components/portal/portal-text";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePortalAnimals } from "@/hooks/use-portal-animals";
-import {
-  NEW_LISTING,
-  usePortalListings,
-} from "@/hooks/use-portal-listings";
-import {
-  PORTAL_LOGIN_PATH,
-  usePortalSession,
-} from "@/hooks/use-portal-session";
+import { NEW_LISTING } from "@/hooks/use-portal-listings";
 import { animalCount } from "@/lib/labels";
-import { isManualShelter, type PortalStatus } from "@/lib/portal-api";
 
 function CardSkeleton() {
   return (
@@ -84,60 +67,36 @@ function Notice({
 
 export function PortalWorkspace() {
   const shouldReduceMotion = useReducedMotion();
-  const { state, reload: reloadSession, signOut } = usePortalSession();
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [leaving, setLeaving] = useState(false);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<PortalStatus | null>(null);
+  const {
+    session: state,
+    reloadSession,
+    shelters,
+    active,
+    activeShelter,
+    manual,
+    setActive,
+    animals,
+    animalState,
+    saveStates,
+    reloadAnimals,
+    save,
+    publicName,
+    listings,
+    listingState,
+    listingSaveStates,
+    reloadListings,
+    listingActions,
+    query,
+    setQuery,
+    status,
+    setStatus,
+    clearFilters,
+  } = usePortal();
   // The "Dodaj žival" dialog, and the listing it made once it has: the form
   // keeps editing that one while its photos go up, so it is read back off
   // the live list rather than off the answer to the POST.
   const [adding, setAdding] = useState(false);
   const [newListingId, setNewListingId] = useState<string | null>(null);
-
-  const shelters = state.status === "ready" ? state.session.shelters : [];
-  const active = chosen ?? shelters[0]?.slug ?? null;
-  // The card needs the whole shelter, not its slug: the public link it draws
-  // is built from the name and the town as well.
-  const activeShelter = shelters.find((shelter) => shelter.slug === active);
-  // A shelter with no catalogue of its own writes its animals here, so it
-  // gets the listing form instead of the override editor. No mode means a
-  // crawled shelter, which is what every shelter was before the field.
-  const manual = activeShelter ? isManualShelter(activeShelter) : false;
-
-  const clearFilters = useCallback(() => {
-    setQuery("");
-    setStatus(null);
-  }, []);
-
-  // The guard: no session, no workspace. replace() so the back button does
-  // not walk into a page that will only bounce again.
-  useEffect(() => {
-    if (state.status === "anonymous")
-      window.location.replace(PORTAL_LOGIN_PATH);
-  }, [state.status]);
-
-  const onUnauthorized = useCallback(() => {
-    window.location.replace(PORTAL_LOGIN_PATH);
-  }, []);
-
-  // Both hooks always run, as hooks must; the one the shelter does not use
-  // gets no slug and stays idle without a request.
-  const {
-    animals,
-    state: animalState,
-    saveStates,
-    reload: reloadAnimals,
-    save,
-    publicName,
-  } = usePortalAnimals(manual ? null : active, onUnauthorized);
-  const {
-    listings,
-    state: listingState,
-    saveStates: listingSaveStates,
-    reload: reloadListings,
-    actions: listingActions,
-  } = usePortalListings(manual ? active : null, onUnauthorized);
 
   const listState = manual ? listingState : animalState;
   const reloadList = manual ? reloadListings : reloadAnimals;
@@ -161,46 +120,6 @@ export function PortalWorkspace() {
     setAdding(true);
   }, []);
 
-  const actions =
-    state.status === "ready" ? (
-      <div className="flex items-center gap-2">
-        <span className="hidden max-w-56 truncate text-xs text-muted-foreground sm:inline">
-          {state.session.email}
-        </span>
-        {active && (
-          <Button asChild variant="outline" size="sm">
-            {/* A new tab, so a shelter checking the public page does not
-                lose the workspace it was halfway through. */}
-            <a
-              href={`/zavetisca/${active}`}
-              target="_blank"
-              rel="noreferrer"
-              title={portalText.publicPage}
-            >
-              <ExternalLink aria-hidden />
-              {/* The label collapses on a phone but stays readable to a
-                  screen reader, so the icon is never the only name. */}
-              <span className="sr-only sm:not-sr-only">
-                {portalText.publicPage}
-              </span>
-            </a>
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={leaving}
-          onClick={() => {
-            setLeaving(true);
-            void signOut();
-          }}
-        >
-          <LogOut aria-hidden />
-          {portalText.logout}
-        </Button>
-      </div>
-    ) : null;
-
   // The workspace names itself "Vaše živali" below, and that is the page's
   // heading once there is a list to name. Every state before it is the same
   // page with nothing to name yet, and the header's brand line is a link, not
@@ -208,7 +127,7 @@ export function PortalWorkspace() {
   const hasOwnHeading = state.status === "ready" && shelters.length > 0;
 
   return (
-    <PortalShell actions={actions}>
+    <>
       {!hasOwnHeading && (
         <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
           {portalText.brand}
@@ -259,10 +178,11 @@ export function PortalWorkspace() {
               shelters={shelters}
               active={active}
               onSelect={(slug) => {
-                // A filter set over one shelter's list means nothing over the
-                // next one's, so switching starts from the whole list again.
-                setChosen(slug);
-                clearFilters();
+                if (slug === active) return;
+                // The provider drops the filters with the shelter; the half
+                // that is this page's own is the add form, which is about a
+                // listing that would belong to the shelter being left.
+                setActive(slug);
                 setAdding(false);
                 setNewListingId(null);
               }}
@@ -460,6 +380,6 @@ export function PortalWorkspace() {
           )}
         </>
       )}
-    </PortalShell>
+    </>
   );
 }

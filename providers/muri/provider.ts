@@ -88,6 +88,15 @@ export function parseList(html: string): SourceAnimalRef[] {
   return [...refs.values()];
 }
 
+// discover() reads one page per species, so an HTTP 200 page that is not a
+// species page silently removes that whole species. The theme renders the
+// cards into its portfolio grid; that wrapper is what says the page is the
+// listing. The cards themselves are never required, so a species with nothing
+// to show still passes.
+export function hasListingMarkup(html: string): boolean {
+  return cheerio.load(html)(".portfolio").length > 0;
+}
+
 // The theme has changed labels and punctuation over time. Normalize cosmetic
 // differences once, then map only explicitly equivalent shelter facts. Exact
 // aliases prevent a publication/update date from becoming an intake date.
@@ -385,6 +394,12 @@ export function fullSizeSrc(
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const article = $("article.project").first();
+  // The listing is the project article. Without it the page carries no facts:
+  // parsed anyway the record would normalize into a nameless "other" animal
+  // with no photos, written over the real one.
+  if (article.length === 0) {
+    throw new Error(`${PROVIDER_ID}: detail page has no project article`);
+  }
   const features = readFeatureTable($);
 
   const imageUrls: string[] = [];
@@ -513,6 +528,9 @@ const provider: AdoptionProvider = {
         throw new Error(
           `${PROVIDER_ID}: list fetch failed with HTTP ${res.status} for ${url}`,
         );
+      }
+      if (!hasListingMarkup(res.body)) {
+        throw new Error(`${PROVIDER_ID}: list page ${url} has no listing markup`);
       }
       for (const ref of parseList(res.body)) refs.set(ref.sourceAnimalId, ref);
     }

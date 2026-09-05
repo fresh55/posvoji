@@ -57,6 +57,13 @@ describe("detail facts", () => {
     ["8 let", 96],
     ["1 leto", 12],
     ["4 mesece", 4],
+    ["star 3 leta", 36],
+    // The trailing half of "1,5 leta" is not the age.
+    ["1,5 leta", 18],
+    ["2.5 leti", 30],
+    ["1,5 meseca", 2],
+    // A number with no unit is not an age.
+    ["10,5", undefined],
     ["mlad", undefined],
   ])("maps age %s to months", (value, expected) => {
     expect(parseApproximateAgeMonths(value)).toBe(expected);

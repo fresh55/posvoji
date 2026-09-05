@@ -83,12 +83,26 @@ export function parseSlovenianDate(value: string): string | undefined {
     : undefined;
 }
 
+// The shelter writes half years as "1,5 leta". Matching only `\d+` on a word
+// boundary takes the "5" and publishes five years, so the count has to take
+// the separator and its decimals with it, and the lookbehind has to stop the
+// pattern from starting in the middle of a number.
+const AGE_COUNT = "(?<![\\d,.])(\\d+(?:[.,]\\d+)?)";
+
+function ageCount(raw: string | undefined): number {
+  return Number((raw ?? "").replace(",", "."));
+}
+
 export function parseApproximateAgeMonths(value: string | undefined): number | undefined {
   if (!value) return undefined;
-  const years = value.match(/\b(\d+)\s*(?:leto|leti|leta|let)\b/i);
-  if (years) return Number(years[1]) * 12;
-  const months = value.match(/\b(\d+)\s*(?:mesec|meseca|mesece|mesecev)\b/i);
-  return months ? Number(months[1]) : undefined;
+  const years = value.match(
+    new RegExp(`${AGE_COUNT}\\s*(?:leto|leti|leta|let)\\b`, "i"),
+  );
+  if (years) return Math.round(ageCount(years[1]) * 12);
+  const months = value.match(
+    new RegExp(`${AGE_COUNT}\\s*(?:mesec|meseca|mesece|mesecev)\\b`, "i"),
+  );
+  return months ? Math.round(ageCount(months[1])) : undefined;
 }
 
 function parseSex(value: string | undefined): Sex | undefined {

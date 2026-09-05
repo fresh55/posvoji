@@ -76,6 +76,20 @@ export function parseList(html: string): SourceAnimalRef[] {
   return [...refs.values()];
 }
 
+// discover() reads one archive page per species, so an HTTP 200 page that is
+// not the archive silently removes that whole species. Both archives render
+// through the same jkit_post_block widget, and its wrapper is the container
+// the cards sit in. The cards themselves are never required: the cat archive
+// is genuinely empty whenever no cat is up for adoption.
+// Checked the live section pages 2026-09-05. Both render the jkit_post_block
+// widget as div.jkit-postblock wrapping div.jkit-block-container. With posts,
+// the container holds div.jkit-posts and the cards; with none, it holds only
+// div.jeg_empty_module ("No Content Available") and .jkit-posts is absent. The
+// container is what marks the archive either way.
+export function hasListingMarkup(html: string): boolean {
+  return cheerio.load(html)(".jkit-block-container").length > 0;
+}
+
 function normalizedText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -88,18 +102,26 @@ export function parseApproximateAgeMonths(
     return undefined;
   }
 
-  const yearAdjective = value.match(/\b(\d+)\s*[- ]\s*letn(?:i|a|o)\b/iu);
-  if (yearAdjective) return Number(yearAdjective[1]) * 12;
+  // "1,5 letna" is one and a half years. The lookbehind keeps a bare \b from
+  // matching the "5" after the comma and reading it as five.
+  const yearAdjective = value.match(
+    /(?<![\d,.])(\d+(?:[.,]\d+)?)\s*[- ]\s*letn(?:i|a|o)\b/iu,
+  );
+  if (yearAdjective) return Math.round(ageCount(yearAdjective[1]) * 12);
 
   const years = value.match(
-    /\bstar(?:a|o)?\s+(?:približno\s+)?(\d+)\s*(?:let|leta)\b/iu,
+    /\bstar(?:a|o)?\s+(?:približno\s+)?(\d+(?:[.,]\d+)?)\s*(?:let|leta)\b/iu,
   );
-  if (years) return Number(years[1]) * 12;
+  if (years) return Math.round(ageCount(years[1]) * 12);
 
   const months = value.match(
-    /\bstar(?:a|o)?\s+(?:približno\s+)?(\d+)\s*(?:mesec|meseca|mesece|mesecev)\b/iu,
+    /\bstar(?:a|o)?\s+(?:približno\s+)?(\d+(?:[.,]\d+)?)\s*(?:mesec|meseca|mesece|mesecev)\b/iu,
   );
-  return months ? Number(months[1]) : undefined;
+  return months ? Math.round(ageCount(months[1])) : undefined;
+}
+
+function ageCount(raw: string | undefined): number {
+  return Number((raw ?? "").replace(",", "."));
 }
 
 // "samec"/"samica" mean "male"/"female" in general, not one species, so a
@@ -296,6 +318,9 @@ const provider: AdoptionProvider = {
         throw new Error(
           `${PROVIDER_ID}: list fetch failed with HTTP ${response.status} for ${url}`,
         );
+      }
+      if (!hasListingMarkup(response.body)) {
+        throw new Error(`${PROVIDER_ID}: list page ${url} has no listing markup`);
       }
       for (const ref of parseList(response.body)) {
         refs.set(ref.sourceAnimalId, ref);

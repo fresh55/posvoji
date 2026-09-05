@@ -121,6 +121,9 @@ describe("detail facts", () => {
     expect(parseApproximateAgeMonths("star približno 8–10 let")).toBeUndefined();
     expect(parseApproximateAgeMonths("stara približno 5-6 mesecev")).toBeUndefined();
     expect(parseApproximateAgeMonths("10-letni srnin pinč")).toBe(120);
+    expect(parseApproximateAgeMonths("1,5 letna psička")).toBe(18);
+    expect(parseApproximateAgeMonths("stara 2.5 leta")).toBe(30);
+    expect(parseApproximateAgeMonths("star približno 1,5 meseca")).toBe(2);
   });
 
   it("does not read a dog as male from a sentence about a male cat companion", () => {
@@ -178,6 +181,33 @@ describe("provider", () => {
       "https://zavetisce-malahisa.si/muce-za-oddajo/",
     ]);
     expect(refs).toHaveLength(3);
+  });
+
+  it("refuses a section page that is not the archive", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 200, body: dogList })
+      .mockResolvedValueOnce({
+        status: 200,
+        body: "<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>",
+      });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow(
+      "list page https://zavetisce-malahisa.si/muce-za-oddajo/ has no listing markup",
+    );
+  });
+
+  it("accepts an archive with nothing up for adoption right now", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 200, body: dogList })
+      .mockResolvedValueOnce({
+        status: 200,
+        body: loadFixture(import.meta.url, "list-cats-empty.html"),
+      });
+    const refs = await provider.discover({ client: { get } as never, policy });
+    expect(refs).toHaveLength(2);
   });
 
   it("rejects a detail ref whose URL falls outside the two adoption paths", async () => {

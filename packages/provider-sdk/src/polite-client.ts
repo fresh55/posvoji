@@ -55,6 +55,13 @@ export interface GetBytesOptions {
   // Overrides the default response-body limit. Must be a positive safe
   // integer; the read is aborted as soon as this many bytes are exceeded.
   maxBytes?: number;
+  // Consulted once per same-host redirect hop, before the request for the
+  // target is made. Returning false hands the redirect response back to the
+  // caller unfollowed, the way a cross-origin redirect already is; throwing
+  // aborts the request. The client cannot judge a target on its own: only the
+  // caller knows which paths its provider policy excludes from the crawl.
+  // Without the hook every same-host redirect is followed, as before.
+  allowRedirect?: (target: URL, from: URL) => boolean;
 }
 
 export class ResponseBodyTooLargeError extends Error {
@@ -222,8 +229,8 @@ export class PoliteClient {
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }
 
-  async get(url: string): Promise<PoliteResponse> {
-    const res = await this.getBytes(url);
+  async get(url: string, options?: GetBytesOptions): Promise<PoliteResponse> {
+    const res = await this.getBytes(url, options);
     const contentType = headerValue(res.headers["content-type"]);
     return {
       ...res,
@@ -268,6 +275,15 @@ export class PoliteClient {
       // A cross-origin redirect is handed back untouched: the caller decides
       // whether that other site is one we are allowed to crawl at all.
       if (!next) return res;
+      // A same-host redirect can still land somewhere the caller must not
+      // fetch, so it gets the same say before the request for the target is
+      // made. A refusal ends the follow and hands the redirect back.
+      if (
+        options.allowRedirect &&
+        !options.allowRedirect(next, new URL(current))
+      ) {
+        return res;
+      }
       await this.ensureRobots(next.origin);
       if (!this.isAllowed(next.origin, next.href)) {
         throw new Error(`robots.txt disallows fetching ${next.href}`);

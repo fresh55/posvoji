@@ -295,6 +295,80 @@ describe("PoliteClient", () => {
       expect(res.headers["location"]).toBe("https://other.example/cat.jpg");
     });
 
+    it("hands back a redirect the caller's hook refuses", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(302, "", { headers: { location: "/privat-oddaja/cat.jpg" } });
+
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`, {
+        allowRedirect: (target) => !target.pathname.startsWith("/privat-"),
+      });
+
+      // The target was never requested: the mock agent has no interceptor for
+      // it and disableNetConnect would have thrown.
+      expect(res.status).toBe(302);
+      expect(res.headers["location"]).toBe("/privat-oddaja/cat.jpg");
+    });
+
+    it("propagates what the caller's hook throws", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(302, "", { headers: { location: "/privat-oddaja/cat.jpg" } });
+
+      await expect(
+        client().getBytes(`${ORIGIN}/cat.jpg`, {
+          allowRedirect: () => {
+            throw new Error("refusing to fetch an excluded path");
+          },
+        }),
+      ).rejects.toThrow(/refusing to fetch an excluded path/);
+    });
+
+    it("shows the hook every hop it is about to follow", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/cat.jpg" })
+        .reply(301, "", { headers: { location: "/photos/cat.jpg" } });
+      pool
+        .intercept({ path: "/photos/cat.jpg" })
+        .reply(301, "", { headers: { location: "/photos/2/cat.jpg" } });
+      pool.intercept({ path: "/photos/2/cat.jpg" }).reply(200, "cat");
+
+      const hops: string[] = [];
+      const res = await client().getBytes(`${ORIGIN}/cat.jpg`, {
+        allowRedirect: (target, from) => {
+          hops.push(`${from.pathname} -> ${target.pathname}`);
+          return true;
+        },
+      });
+
+      expect(res.status).toBe(200);
+      expect(hops).toEqual([
+        "/cat.jpg -> /photos/cat.jpg",
+        "/photos/cat.jpg -> /photos/2/cat.jpg",
+      ]);
+    });
+
+    it("passes the hook through get() as well", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(200, "");
+      pool
+        .intercept({ path: "/rex" })
+        .reply(302, "", { headers: { location: "/privat-oddaja/rex" } });
+
+      const res = await client().get(`${ORIGIN}/rex`, {
+        allowRedirect: () => false,
+      });
+
+      expect(res.status).toBe(302);
+      expect(res.headers["location"]).toBe("/privat-oddaja/rex");
+    });
+
     it("serializes requests to one host", async () => {
       const pool = agent.get(ORIGIN);
       pool.intercept({ path: "/robots.txt" }).reply(200, "");

@@ -94,6 +94,10 @@ describe("parseList", () => {
 describe("parseApproximateAgeMonths", () => {
   it.each([
     ["stara cca 1 leto išče dom", 12],
+    // The trailing half of "1,5 leta" is not the age.
+    ["Ocenjena starost je 1,5 leta", 18],
+    ["stara 2.5 leti", 30],
+    ["Stara cca 1,5 meseca", 2],
     ["Mešanka stara 3 leta, tehta 22kg", 36],
     ["Star je cca 2 leti, je kastriran", 24],
     ["Ocenjena starost je 6 let", 72],
@@ -286,6 +290,62 @@ describe("discover", () => {
     await expect(
       provider.discover({ client: { get } as never, policy }),
     ).rejects.toThrow(/list fetch failed with HTTP 404/);
+  });
+
+  // A page of exactly per_page posts, which is what the API returns whenever
+  // another page follows. Built here rather than saved as a fixture: only the
+  // count matters, and a hundred real listings is a page mirror.
+  const fullPage = JSON.stringify(
+    Array.from({ length: 100 }, (_, index) => ({
+      id: 5000 + index,
+      link: `https://zavetisceturk.com/index.php/2026/07/18/pes-${index}/`,
+      title: { rendered: `Pes ${index}` },
+      content: { rendered: "<p>Mešanec, star cca 2 leti.</p>" },
+      categories: [4],
+    })),
+  );
+
+  it("refuses a full page whose X-WP-TotalPages header went missing", async () => {
+    // A proxy stripping the header used to default the count to one page,
+    // which cuts a 150-animal catalogue at 100 quietly enough for the removal
+    // guard downstream to accept the loss as adoptions.
+    const get = client({ [LIST_URLS.dogsPage1]: { body: fullPage } });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow(
+      /returned a full page without a usable X-WP-TotalPages header/,
+    );
+  });
+
+  it("keeps reading a full page that does carry the header", async () => {
+    const get = client({
+      [LIST_URLS.dogsPage1]: { body: fullPage, totalPages: 1 },
+      [LIST_URLS.cats]: { body: cats, totalPages: 1 },
+    });
+    const refs = await provider.discover({ client: { get } as never, policy });
+    expect(refs).toHaveLength(102);
+  });
+
+  it("treats a short page without the header as the only page", async () => {
+    const get = client({
+      [LIST_URLS.dogsPage1]: { body: dogsPage1 },
+      [LIST_URLS.cats]: { body: cats },
+    });
+    const refs = await provider.discover({ client: { get } as never, policy });
+    expect(get.mock.calls.map(([url]) => url)).toEqual([
+      LIST_URLS.dogsPage1,
+      LIST_URLS.cats,
+    ]);
+    expect(refs.map((r) => r.sourceAnimalId)).toEqual(["4162", "4159", "3909"]);
+  });
+
+  it("refuses a 200 body that is not a list of posts", async () => {
+    const get = client({
+      [LIST_URLS.dogsPage1]: { body: "{}", totalPages: 1 },
+    });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow(/not an array of posts/);
   });
 });
 

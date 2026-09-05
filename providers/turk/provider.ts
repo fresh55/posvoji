@@ -153,7 +153,16 @@ function postRef(post: WpPost): SourceAnimalRef | undefined {
   return { sourceAnimalId: String(post.id), sourceUrl: url };
 }
 
-export function parsePosts(body: string): WpPost[] {
+export interface ListPage {
+  // Every entry the API returned, counted before the category filter runs.
+  // Whether another page can follow is a fact about the page WordPress sent,
+  // not about how many of its posts we keep, so a page of a hundred adopted
+  // animals still has to count as full.
+  count: number;
+  posts: WpPost[];
+}
+
+export function parsePage(body: string): ListPage {
   let payload: unknown;
   try {
     payload = JSON.parse(body);
@@ -169,7 +178,11 @@ export function parsePosts(body: string): WpPost[] {
     if (!post || !postSpecies(post.categories)) continue;
     posts.push(post);
   }
-  return posts;
+  return { count: payload.length, posts };
+}
+
+export function parsePosts(body: string): WpPost[] {
+  return parsePage(body).posts;
 }
 
 export function parseList(body: string): SourceAnimalRef[] {
@@ -185,11 +198,19 @@ export function parseList(body: string): SourceAnimalRef[] {
 // wording the shelter uses consistently. Anything short of an explicit
 // statement is left unset; parseSex is the one case that answers "unknown".
 
+// The count has to take the whole number, decimals included. Reading only the
+// digits after the separator turns "stara 1,5 leta" into five years, and the
+// lookbehind is what stops the pattern from starting mid-number.
+const AGE_COUNT = "(?<![\\d,.])(\\d+(?:[.,]\\d+)?)";
+
 const AGE_PATTERNS = [
   // "stara cca 1 leto", "Star je cca 2 leti", "Ocenjena starost je 6 let"
-  /\bstar(?:a|ost)?\b[^.!?]{0,20}?\b(\d+)\s*(let\w*|mesec\w*)\b/iu,
+  new RegExp(
+    `\\bstar(?:a|ost)?\\b[^.!?]{0,20}?${AGE_COUNT}\\s*(let\\w*|mesec\\w*)\\b`,
+    "iu",
+  ),
   // "cca 3 leta stara"
-  /\b(\d+)\s*(let\w*|mesec\w*)\b[^.!?]{0,12}?\bstar\w*/iu,
+  new RegExp(`${AGE_COUNT}\\s*(let\\w*|mesec\\w*)\\b[^.!?]{0,12}?\\bstar\\w*`, "iu"),
 ];
 
 export function parseApproximateAgeMonths(value: string): number | undefined {
@@ -197,9 +218,9 @@ export function parseApproximateAgeMonths(value: string): number | undefined {
   for (const pattern of AGE_PATTERNS) {
     const match = normalized.match(pattern);
     if (!match) continue;
-    const count = Number(match[1]);
+    const count = Number((match[1] ?? "").replace(",", "."));
     if (!Number.isFinite(count)) continue;
-    return /^mesec/iu.test(match[2] ?? "") ? count : count * 12;
+    return Math.round(/^mesec/iu.test(match[2] ?? "") ? count : count * 12);
   }
   return undefined;
 }
@@ -388,11 +409,26 @@ const provider: AdoptionProvider = {
             `${PROVIDER_ID}: list fetch failed with HTTP ${res.status} for ${url}`,
           );
         }
-        // Read on every page: the shelter can publish mid-crawl, and a total
-        // that grew is the one case where trusting the first page's count
-        // would drop animals without a trace.
-        totalPages = Math.max(totalPages, parseTotalPages(res.headers) ?? 1);
-        for (const post of parsePosts(res.body)) {
+        const listPage = parsePage(res.body);
+        const reported = parseTotalPages(res.headers);
+        if (reported === undefined) {
+          // A proxy or a security plugin can strip X-WP-TotalPages. Without
+          // it a full page says nothing about what follows, and defaulting to
+          // one page would cut the catalogue at a page boundary quietly
+          // enough for the removal guard to accept the loss. A short page is
+          // its own proof that no further page exists.
+          if (listPage.count >= PER_PAGE) {
+            throw new Error(
+              `${PROVIDER_ID}: ${url} returned a full page without a usable X-WP-TotalPages header, cannot tell whether more animals follow`,
+            );
+          }
+        } else {
+          // Read on every page: the shelter can publish mid-crawl, and a total
+          // that grew is the one case where trusting the first page's count
+          // would drop animals without a trace.
+          totalPages = Math.max(totalPages, reported);
+        }
+        for (const post of listPage.posts) {
           const ref = postRef(post);
           if (!ref) continue;
           discovered.set(ref.sourceAnimalId, post);

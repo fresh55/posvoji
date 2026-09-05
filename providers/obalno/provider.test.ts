@@ -125,6 +125,58 @@ describe("provider", () => {
     expect(refs.map(({ sourceAnimalId }) => sourceAnimalId)).toEqual(["ruby", "orion"]);
   });
 
+  it("refuses a species page that is not the archive", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 200, body: dogList })
+      .mockResolvedValueOnce({
+        status: 200,
+        body: "<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>",
+      });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow(
+      "list page https://obalnozavetisce.si/iscejo-nov-dom/macke/ has no listing markup",
+    );
+  });
+
+  it("accepts an archive with nothing to show right now", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 200, body: dogList })
+      .mockResolvedValueOnce({
+        status: 200,
+        body:
+          '<main class="site-main"><article class="main-content page">' +
+          '<div class="fl-module fl-module-ebb-post-grid">' +
+          '<div class="bb-post-grid layout-grid-4"></div></div>' +
+          "</article></main>",
+      });
+    const refs = await provider.discover({ client: { get } as never, policy });
+    expect(refs.map(({ sourceAnimalId }) => sourceAnimalId)).toEqual(["ruby"]);
+  });
+
+  it("refuses a page that keeps the site frame but lost the post grid", async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 200, body: dogList })
+      .mockResolvedValueOnce({
+        status: 200,
+        body:
+          '<main class="site-main"><article class="main-content page">' +
+          "<h1>Vzdrževanje</h1></article></main>",
+      });
+    await expect(
+      provider.discover({ client: { get } as never, policy }),
+    ).rejects.toThrow("has no listing markup");
+  });
+
+  it("refuses a detail page with no listing article", () => {
+    expect(() =>
+      parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
+    ).toThrow("detail page has no listing article");
+  });
+
   it("normalizes the permitted description and cacheable photos", async () => {
     const ref = {
       sourceAnimalId: "ruby",

@@ -51,6 +51,26 @@ export function parseList(html: string): SourceAnimalRef[] {
   return [...refs.values()];
 }
 
+// discover() reads one archive page per species, so a page that is served with
+// HTTP 200 but is not the archive silently removes that whole species. The
+// saved archives carry the page's <main> wrapper around the cards, and nothing
+// else that names the listing, so those are the two signals there are: a page
+// with neither is not an archive. The cards are never required on their own,
+// because a species with nothing to show is a real state the site can be in.
+// Checked the live archive pages 2026-09-05: both species pages are a
+// Beaver Builder page (article.main-content inside main.site-main) whose
+// cards sit in a post-grid module, div.fl-module-ebb-post-grid wrapping
+// div.bb-post-grid. The module wrapper is rendered whether or not the grid
+// has posts, so it is what separates an empty archive from a page that is not
+// the archive at all.
+export function hasListingMarkup(html: string): boolean {
+  const $ = cheerio.load(html);
+  return (
+    $("article.main-content").length > 0 &&
+    $(".fl-module-ebb-post-grid, .bb-post-grid").length > 0
+  );
+}
+
 function labelValue(
   $: cheerio.CheerioAPI,
   label: string,
@@ -149,6 +169,12 @@ function parseDaysInShelter($: cheerio.CheerioAPI): number | undefined {
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const root = $("article.main-content").first();
+  // Without the listing article there are no facts on the page. Parsed
+  // anyway it would yield an empty name and species "other", which
+  // normalize() turns into an available animal and writes over the real one.
+  if (root.length === 0) {
+    throw new Error(`${PROVIDER_ID}: detail page has no listing article`);
+  }
   const birthRaw = labelValue($, "ROJSTVO");
   const imageUrls: string[] = [];
   const addImage = (value: string | undefined) => {
@@ -216,6 +242,9 @@ const provider: AdoptionProvider = {
       const res = await ctx.client.get(url);
       if (res.status !== 200 || res.body === null) {
         throw new Error(`${PROVIDER_ID}: list fetch failed with HTTP ${res.status}`);
+      }
+      if (!hasListingMarkup(res.body)) {
+        throw new Error(`${PROVIDER_ID}: list page ${url} has no listing markup`);
       }
       for (const ref of parseList(res.body)) refs.set(ref.sourceAnimalId, ref);
     }

@@ -29,8 +29,12 @@ export function PortalShell({
       <LazyMotion features={domAnimation}>
         <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
           <header className="bleed flex items-center justify-between gap-3 border-b py-4">
-            {/* The site is a static export and navigates with plain anchors
-                everywhere; next/link is not used in this repo. */}
+            {/* The public site is a static export and navigates with plain
+                anchors: a document load costs nothing there and next/link
+                would ship a router for it. The portal's own two pages are the
+                exception and do use next/link, because the session and the
+                loaded list have to survive the step between them. This link
+                leaves the portal, so it is an anchor. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"

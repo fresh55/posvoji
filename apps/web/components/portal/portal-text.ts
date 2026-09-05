@@ -147,6 +147,49 @@ export const portalText = {
   discardLead: "Če zdaj zaprete okno, se vpisano izgubi.",
   keepEditing: "Nadaljuj urejanje",
   discardChanges: "Zavrzi popravke",
+
+  // The editor page. Leaving it is a navigation and not a closed window, and
+  // the status buttons on it have already saved by the time anyone asks, so
+  // the question names both halves: what is lost and what is not.
+  leaveTitle: "Popravki niso shranjeni",
+  leaveLead:
+    "Če zdaj odprete seznam, se vpisano izgubi. Stanje se je shranilo takoj, ko ste ga izbrali, in ostane.",
+  // The nav above the form. "Kje ste" rather than "Drobtinice": the portal
+  // says things in words a shelter uses.
+  breadcrumbLabel: "Kje ste",
+  editorNotFoundTitle: "Te živali ni mogoče odpreti",
+  editorNotFoundLead:
+    "Povezava vodi do živali, ki ni na vašem seznamu. Odprite seznam in izberite žival na njem.",
+  backToList: "Nazaj na seznam",
+  // The four sections of the form, in the order the animal gets the most out
+  // of them.
+  sectionSearchable: "Za iskalnik",
+  sectionBasics: "Osnovno",
+  sectionAge: "Starost",
+  sectionDescription: "Opis",
+  // The checklist beside the form, said in whichever of its two states the
+  // animal is actually in.
+  searchableLead:
+    "Neizpolnjena polja so filtri, po katerih posvojitelji iščejo. Dokler so prazna, se žival v teh iskanjih ne pojavi.",
+  searchableDone: "Vsa polja za iskalnik so izpolnjena.",
+  // What is left of a form the shelter walked away from. The draft is kept
+  // for the tab's lifetime, so a Back, a Forward and a reload all land back
+  // on the same typed work and this line says why the boxes are not empty.
+  draftResumed: "Nadaljujete neshranjene popravke.",
+  draftDiscard: "Zavrzi",
+  // The visible word starts the label, so voice control can say it
+  // (WCAG 2.5.3) and a screen reader still hears what would go.
+  draftDiscardLabel: "Zavrzi neshranjene popravke",
+  // The same fact on the card in the list, so the shelter can see which
+  // animal they left half-written without opening it.
+  draftBadge: "Neshranjeno",
+  draftBadgeHint:
+    "Na strani te živali so popravki, ki še niso shranjeni. Odprite jo in jih shranite ali zavrzite.",
+  // A save can move an animal out of the filter the shelter is looking
+  // through, and the card they just worked on would simply be gone. The
+  // notice names it and offers the whole list back. "Shranjeno" and "žival"
+  // rather than "je shranjen", so the sentence agrees for every animal's name.
+  savedHidden: "Shranjeno. Trenutni filter skrije žival {name}.",
   saveError: "Shranjevanje ni uspelo. Poskusite znova.",
   invalidError: "Podatek ni v pravi obliki. Preverite vnos.",
   edited: "Urejeno",

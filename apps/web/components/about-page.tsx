@@ -8,7 +8,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
-import { AboutCatCard } from "@/components/about-cat-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
@@ -193,15 +192,17 @@ export function AboutPage({ locale }: { locale: Locale }) {
               than the figure, so without this it anchors to the top: measured
               at 1280, the cat ended 240px above the last thing in the column.
               Below lg it is one block in the flow and centring says nothing. */}
-          {/* The card goes under the cat, because that is where the reader
-              already is when they wonder why there is a cat on this page.
-              Both are one block, so the pair centres together rather than the
-              figure centring and the card hanging off it. */}
+          {/* Nothing under him. A caption sat here for a while and went
+              through every shape it had: a sentence, a shorter sentence, his
+              listing card, then a passport of labelled fields. Each one was
+              read and each one earned the same verdict, that it added
+              nothing, and the passport was the proof: by the time a caption
+              needs a document layout to look like it means something, the
+              text was never the problem. The page already says what the site
+              is, the dedication at the foot says who it is for, and between
+              them a cat needs no label. */}
           <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
-            <div className="mx-auto w-full max-w-md space-y-4">
-              <AboutCat locale={locale} />
-              <AboutCatCard locale={locale} />
-            </div>
+            <AboutCat locale={locale} />
           </div>
 
           {/* A rule between facts and nothing else. Each fact is an Item on

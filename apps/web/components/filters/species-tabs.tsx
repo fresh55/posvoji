@@ -20,6 +20,11 @@ import {
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  CAT_GLYPH,
+  DOG_GLYPH,
+  RABBIT_GLYPH,
+} from "@/components/filters/animal-glyph-paths";
 import { useOneShotCelebration } from "@/components/filters/use-filter-motion";
 import { cn } from "@/lib/utils";
 
@@ -36,8 +41,14 @@ const LABELS: Record<"sl" | "en", Record<SpeciesFilter, string>> = {
 
 // The dark pill travels between tabs instead of being repainted on the new
 // one, and it travels on measured numbers rather than on layout projection.
-// Projection is the domMax bundle, about 10KB more than domAnimation, and
-// this row has exactly one element that moves.
+//
+// Not for the bundle: filter-chips.tsx already opens domMax on this route and
+// measured it at 169 bytes over domAnimation, because AnimatePresence pulls
+// the projection engine in anyway. The reason is what projection does at
+// runtime. It gives every participating element a projection node and
+// re-measures it as the tree changes, and this strip is mounted twice at once
+// (a desktop copy and a phone copy, one of them display:none) inside a
+// horizontal scroll box. Two numbers on one element ask nothing of the tree.
 //
 // Stiff enough to settle in roughly 250ms, and damped hard because the width
 // is animated too: a width that overshoots does not read as a spring, it
@@ -49,36 +60,18 @@ const SLIDE_SPRING = {
   mass: 0.7,
 } as const;
 
-// lucide's own path data for the three tab icons, copied out of lucide-react
-// 1.31.0 so the outline can be inked in; a lucide component draws in one
-// piece and gives nothing to animate. The tab keyed "other" wears the rabbit
-// for the reason SPECIES_TAB_ICONS gives: the bucket is rabbits today, and a
-// paw print would repeat the mark "Vse" already spends.
+// The tab keyed "other" wears the rabbit because the bucket is rabbits today,
+// and a paw print would repeat the mark "Vse" already spends.
 //
-// An upgrade that redraws one of these icons has to be noticed rather than
-// left to drift, so species-tabs.test.tsx compares this table against the
-// lucide components it was copied from.
-const SPECIES_GLYPHS: Record<SpeciesTab, string[]> = {
-  dog: [
-    "M11.25 16.25h1.5L12 17z",
-    "M16 14v.5",
-    "M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444a11.702 11.702 0 0 0-.493-3.309",
-    "M8 14v.5",
-    "M8.5 8.5c-.384 1.05-1.083 2.028-2.344 2.5-1.931.722-3.576-.297-3.656-1-.113-.994 1.177-6.53 4-7 1.923-.321 3.651.845 3.651 2.235A7.497 7.497 0 0 1 14 5.277c0-1.39 1.844-2.598 3.767-2.277 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5",
-  ],
-  cat: [
-    "M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z",
-    "M8 14v.5",
-    "M16 14v.5",
-    "M11.25 16.25h1.5L12 17l-.75-.75Z",
-  ],
-  other: [
-    "M13 16a3 3 0 0 1 2.24 5",
-    "M18 12h.01",
-    "M18 21h-8a4 4 0 0 1-4-4 7 7 0 0 1 7-7h.2L9.6 6.4a1 1 0 1 1 2.8-2.8L15.8 7h.2c3.3 0 6 2.7 6 6v1a2 2 0 0 1-2 2h-1a3 3 0 0 0-3 3",
-    "M20 8.54V4a2 2 0 1 0-4 0v3",
-    "M7.612 12.524a3 3 0 1 0-1.6 4.3",
-  ],
+// The geometry itself is shared (animal-glyph-paths.ts): the "dobro z" cards
+// draw the same dog and the same cat, and one data module is what keeps the
+// two in step. An upgrade that redraws one of these icons has to be noticed
+// rather than left to drift, so species-tabs.test.tsx compares that module
+// against the lucide components it was copied from.
+const SPECIES_GLYPHS: Record<SpeciesTab, readonly string[]> = {
+  dog: DOG_GLYPH,
+  cat: CAT_GLYPH,
+  other: RABBIT_GLYPH,
 };
 
 type Beat = {
@@ -136,8 +129,9 @@ const DRAW_DURATION = 0.28;
 const BEAT_DELAY = 0.2;
 const BEAT_DURATION = 0.55;
 // The celebration state is what holds the glyph away from rest, so it clears
-// a frame or two after the slowest tail, which is 0.2 + 0.55.
-const BEAT_MS = 850;
+// a frame or two after the slowest tail. Derived rather than written down, so
+// that retuning the beat above cannot leave the hold behind it.
+const BEAT_MS = Math.round((BEAT_DELAY + BEAT_DURATION) * 1000) + 100;
 
 // Nothing to subscribe to: the answer changes exactly once, when React swaps
 // the server snapshot for the client one at the end of hydration.
@@ -172,11 +166,39 @@ function SpeciesGlyph({
   /** The celebration running on this tab, or null when it is at rest. */
   beatId: number | null;
 }) {
+  const paths = SPECIES_GLYPHS[tab];
+
+  // A plain svg while nothing is happening, and not an m.svg holding still.
+  // Six of these sit on the page at rest (three species, two mounted copies),
+  // and a motion element costs a visual element and a resolved origin each
+  // even when it is animating nothing. The key below remounts the glyph for a
+  // beat anyway, so there is nothing to carry across the swap.
+  if (beatId === null) {
+    return (
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        className="size-4 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {paths.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </svg>
+    );
+  }
+
   const beat = BEATS[tab];
 
   return (
     <m.svg
-      key={beatId ?? "rest"}
+      key={beatId}
       aria-hidden
       viewBox="0 0 24 24"
       width="24"
@@ -188,28 +210,24 @@ function SpeciesGlyph({
       strokeLinecap="round"
       strokeLinejoin="round"
       style={{ originX: beat.originX, originY: beat.originY }}
-      animate={beatId === null ? undefined : beat.keyframes}
-      transition={
-        beatId === null
-          ? undefined
-          : { delay: BEAT_DELAY, duration: BEAT_DURATION, ...beat.transition }
-      }
+      animate={beat.keyframes}
+      transition={{
+        delay: BEAT_DELAY,
+        duration: BEAT_DURATION,
+        ...beat.transition,
+      }}
     >
-      {SPECIES_GLYPHS[tab].map((d) =>
-        beatId === null ? (
-          <path key={d} d={d} />
-        ) : (
-          // All of them at once. Drawing an animal part by part turns a beat
-          // into an assembly; the sweep is what the tap earns.
-          <m.path
-            key={d}
-            d={d}
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: DRAW_DURATION, ease: "easeOut" }}
-          />
-        ),
-      )}
+      {/* All of them at once. Drawing an animal part by part turns a beat
+          into an assembly; the sweep is what the tap earns. */}
+      {paths.map((d) => (
+        <m.path
+          key={d}
+          d={d}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: DRAW_DURATION, ease: "easeOut" }}
+        />
+      ))}
     </m.svg>
   );
 }
@@ -345,13 +363,20 @@ export function SpeciesTabs({
     [fillHeight, fillWidth, fillX, fillY, shouldReduceMotion],
   );
 
-  // After every render and not on a dependency list. The roster, the counts
-  // and the locale all move the tabs without changing which one is pressed,
-  // and a fill left at the previous tab's width is the one wrong thing this
-  // row can draw.
+  // The pressed tab, and how many tabs there are to press. Everything else
+  // that moves a pill moves its box too, which is what the ResizeObserver
+  // below is watching for: a count going from 99 to 100, a locale swapping
+  // every label, a font arriving late. Those all reach the fill through the
+  // observer, whose callback runs after layout and before paint, so the fill
+  // never draws a frame at the old width.
+  //
+  // Without a dependency list this read runs after every render of a row that
+  // re-renders on scroll, and reading offsetLeft on a render that changed
+  // text forces a layout flush of the whole page, 500-card grid included,
+  // once per mounted copy.
   useLayoutEffect(() => {
     measure(value);
-  });
+  }, [measure, value, drawn.length]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
@@ -360,10 +385,17 @@ export function SpeciesTabs({
     if (!el) return;
 
     const update = () => {
-      setEdgeFade({
-        left: el.scrollLeft > EDGE_SLACK_PX,
-        right: el.scrollLeft + el.clientWidth < el.scrollWidth - EDGE_SLACK_PX,
-      });
+      const left = el.scrollLeft > EDGE_SLACK_PX;
+      const right =
+        el.scrollLeft + el.clientWidth < el.scrollWidth - EDGE_SLACK_PX;
+      // Same answer, same object. This fires on every frame of a touch scroll
+      // and on every resize of every tab, and a fresh object would re-render
+      // the whole row each time even though the mask is unchanged.
+      setEdgeFade((current) =>
+        current.left === left && current.right === right
+          ? current
+          : { left, right },
+      );
     };
     update();
     el.addEventListener("scroll", update, { passive: true });

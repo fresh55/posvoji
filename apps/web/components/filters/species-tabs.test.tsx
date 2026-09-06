@@ -124,9 +124,11 @@ describe("SpeciesTabs", () => {
   });
 
   it("draws each species with the paths its lucide icon is drawn from", () => {
-    // The paths are copied into species-tabs.tsx so they can be inked in. A
-    // lucide upgrade that redraws an animal has to fail here rather than
-    // leave the tabs drawing last year's icon.
+    // The paths are copied into animal-glyph-paths.ts so they can be inked
+    // in. A lucide upgrade that redraws an animal has to fail here rather
+    // than leave the tabs drawing last year's icon, and because the "dobro z"
+    // cards read the dog and the cat from that same module, this guards their
+    // drawing too.
     const lucide = render(
       <div>
         {SPECIES.map(({ name, Icon }) => (
@@ -175,6 +177,7 @@ describe("SpeciesTabs", () => {
     const dogs = tab("Dogs");
     const before = dogs.querySelector("svg");
     const drawnBefore = pathData(dogs);
+    const catGlyphBefore = tab("Cats").querySelector("svg");
 
     fireEvent.click(dogs);
 
@@ -182,8 +185,9 @@ describe("SpeciesTabs", () => {
     // nothing. The animal it inks in is the same one.
     expect(dogs.querySelector("svg")).not.toBe(before);
     expect(pathData(dogs)).toEqual(drawnBefore);
-    // And it is the pressed tab alone that moves.
-    expect(tab("Cats").querySelector("svg")).toBeTruthy();
+    // And it is the pressed tab alone that moves: the cat keeps the very
+    // glyph it had, not merely one that looks like it.
+    expect(tab("Cats").querySelector("svg")).toBe(catGlyphBefore);
   });
 
   it("does not beat for Vse, which has no animal to move", () => {

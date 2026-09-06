@@ -50,10 +50,10 @@ const SLIDE_SPRING = {
 } as const;
 
 // lucide's own path data for the three tab icons, copied out of lucide-react
-// 1.31.0 so the outline can be inked in stroke by stroke; a lucide component
-// draws in one piece and gives nothing to animate. The tab keyed "other"
-// wears the rabbit for the reason SPECIES_TAB_ICONS gives: the bucket is
-// rabbits today, and a paw print would repeat the mark "Vse" already spends.
+// 1.31.0 so the outline can be inked in; a lucide component draws in one
+// piece and gives nothing to animate. The tab keyed "other" wears the rabbit
+// for the reason SPECIES_TAB_ICONS gives: the bucket is rabbits today, and a
+// paw print would repeat the mark "Vse" already spends.
 //
 // An upgrade that redraws one of these icons has to be noticed rather than
 // left to drift, so species-tabs.test.tsx compares this table against the
@@ -270,7 +270,10 @@ export function SpeciesTabs({
     // never scrolls the page to bring the row itself into view.
     // jsdom (unit tests) has no scrollIntoView; guarded rather than polyfilled
     // everywhere just for this one effect.
-    activeRef.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    activeRef.current?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+    });
   }, [value]);
 
   // Where the fill is, as four motion values rather than as state. A slide is
@@ -437,7 +440,12 @@ export function SpeciesTabs({
           <m.span
             aria-hidden
             data-slot="species-fill"
-            className="pointer-events-none absolute left-0 top-0 rounded-ui bg-foreground"
+            className={cn(
+              "pointer-events-none absolute left-0 top-0 rounded-ui bg-foreground",
+              // The tabs fade to half when there is no dataset, and the fill
+              // used to be part of the pressed tab, so it fades with them.
+              disabled && "opacity-50",
+            )}
             style={{
               x: fillX,
               y: fillY,

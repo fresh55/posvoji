@@ -100,6 +100,10 @@ describe("SpeciesTabs", () => {
       const button = screen.getByRole("button", { name });
       expect(button.hasAttribute("disabled")).toBe(true);
     }
+    // The fill dims with the tabs it stands under.
+    expect(
+      document.querySelector('[data-slot="species-fill"]')?.className,
+    ).toContain("opacity-50");
   });
 
   it("hands the pressed tab's background to the one fill in the row", () => {
@@ -120,9 +124,9 @@ describe("SpeciesTabs", () => {
   });
 
   it("draws each species with the paths its lucide icon is drawn from", () => {
-    // The paths are copied into species-tabs.tsx so they can be inked in one
-    // stroke at a time. A lucide upgrade that redraws an animal has to fail
-    // here rather than leave the tabs drawing last year's icon.
+    // The paths are copied into species-tabs.tsx so they can be inked in. A
+    // lucide upgrade that redraws an animal has to fail here rather than
+    // leave the tabs drawing last year's icon.
     const lucide = render(
       <div>
         {SPECIES.map(({ name, Icon }) => (

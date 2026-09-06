@@ -23,10 +23,16 @@ import { preloadPhotos } from "@/lib/preload-photos";
 import { declareAxis, swipeVerdict } from "@/lib/swipe";
 import { cn } from "@/lib/utils";
 
-// Shared with the dialog's photo spread, so both sets of chevrons behave and
-// look the same. The spread drives its own reveal off its own ancestor, so the
-// group here is unqualified and this constant carries no pointer-events of its
-// own; see OWN_BUTTON_CLASS below for what this component uses.
+// The dialog's photo fan's chevrons, kept beside this component's own so the
+// two sets behave and look the same. The fan drives its reveal off its own
+// stage, so the group here is unqualified.
+//
+// Pointer events are gated on the same conditions as the opacity, for the
+// reason OWN_BUTTON_CLASS below gives: opacity 0 does not remove hit-testing,
+// and a touch tablet wide enough for the desktop fan has no hover, so these
+// were two invisible, tappable 32px discs on the front print's edges, taking
+// the tap meant to open the photo and turning the fan instead. pointer-events
+// never blocks focus, so the keyboard is unaffected.
 //
 // A near-solid ground and no backdrop filter. These sit on the fan, whose
 // photos move under them every frame of a drag, and a backdrop filter has to
@@ -35,7 +41,7 @@ import { cn } from "@/lib/utils";
 // chevron legible over a photograph of any colour. The card's own chevrons
 // below keep theirs, because their photo stands still.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-focus-within:opacity-100";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
 
 // This component's own chevrons, which differ from the shared constant in two
 // ways.

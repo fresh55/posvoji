@@ -21,8 +21,8 @@ const BLOOM_FADE = { delay: 0.18, duration: 0.2 } as const;
 // the real one, which happens while it is already fading out.
 const SETTLE_MS = 220;
 
-// Both stages are in the tree and CSS shows one per breakpoint, so the slot
-// is whichever active photo actually has a box.
+// The fan mounts one stage for the breakpoint it read, under one of two slot
+// names; the copy lands on the active photo of whichever is there.
 const SLOT =
   '[data-slot="photo-fan"] button[aria-pressed="true"], [data-slot="photo-spread"] button[aria-pressed="true"]';
 

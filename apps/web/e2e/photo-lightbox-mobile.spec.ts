@@ -174,7 +174,7 @@ test("draws the photo after one that could not be fetched", async ({
   try {
     await cdp.send("Network.setBlockedURLs", { urls: ["*/media/animals/*"] });
 
-    // Nine of fourteen: past the five prints the fan seats, so this photo has
+    // Nine of thirteen: past the five prints the fan seats, so this photo has
     // not been fetched yet and the block is what it meets.
     await page.keyboard.press("9");
     await expect(counter(page)).toHaveText(`9 / ${KLOPKA_PHOTOS}`);

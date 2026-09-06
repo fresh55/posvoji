@@ -23,13 +23,15 @@ const FAN_SLOT: Record<FanLayout, string> = {
 // and because a dataset that has stopped carrying one should fail in one
 // obvious place rather than as a dozen unexplained assertions.
 //
-// Klopka is the register's longest gallery: fourteen photos of mixed shapes,
-// which is past FAN_LIMIT (five prints on stage) and past SHEET_FROM (the
-// lightbox offers its contact sheet).
+// Klopka is the register's longest gallery: fourteen listed photos of mixed
+// shapes, which is past FAN_LIMIT (five prints on stage) and past SHEET_FROM
+// (the lightbox offers its contact sheet).
 export const KLOPKA = "horjul:862";
-// The size of that gallery, which four specs count against. Here for the same
-// reason the id is: one obvious place to fail when the dataset changes.
-export const KLOPKA_PHOTOS = 14;
+// The size of that gallery as the fan draws it, which four specs count
+// against. One of the fourteen is listed twice, and a file is drawn once
+// (permittedPhotos in lib/animal-images.ts). Here for the same reason the id
+// is: one obvious place to fail when the dataset changes.
+export const KLOPKA_PHOTOS = 13;
 // Ten photos, every one of them 3:4. The fan's portrait case: a narrower print
 // of the same height, seated so it still tucks under the front one.
 export const FRODO = "ljubljana:15a044ff-1262-4693-96dc-aaa3619c1055";

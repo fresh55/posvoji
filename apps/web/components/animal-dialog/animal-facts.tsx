@@ -245,10 +245,6 @@ function ApartmentFact({
   );
 }
 
-// A stay this long is the animal's story, not a data point, so it gets its own
-// line instead of a pill. The threshold lives in labels.ts, shared with the
-// card's quiet mark.
-
 // Past this length a description starts to bury the shelter box, so it opens
 // clamped. The threshold is characters rather than measured lines to keep the
 // server and the client rendering the same thing.
@@ -360,8 +356,7 @@ export function AnimalFacts({
   const medical = applicable.filter((toggle) => toggle.matches(animal));
   const hasIdentity =
     sex !== undefined || months !== undefined || animal.size !== undefined;
-  const fullRecord =
-    medical.length === applicable.length && applicable.length >= 3;
+  const fullRecord = medical.length === applicable.length;
   // One answered question is enough to show the row, and the row then answers
   // all three. A shelter that has recorded nothing says nothing here.
   const hasGoodWith = GOOD_WITH_KEYS.some(
@@ -434,7 +429,6 @@ export function AnimalFacts({
                 <li>
                   <button
                     type="button"
-                    aria-expanded={false}
                     onClick={(event) => {
                       // Only where the press really holds focus. A mouse click
                       // in Safari leaves focus where it was, and moving it then

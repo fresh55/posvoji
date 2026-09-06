@@ -10,6 +10,9 @@ import { AboutPage } from "./about-page";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { ABOUT_PATHS } from "@/lib/site-links";
 
+// The viewer's browser lifecycle is exercised separately in about-cat.test.tsx.
+vi.mock("./about-cat", () => ({ AboutCat: () => null }));
+
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
   value: vi.fn().mockImplementation((media: string) => ({
@@ -27,7 +30,7 @@ describe("the about page", () => {
   // wiring and not the wording: a copy change moves both and this stays
   // green, while a page that named itself something the roster does not
   // would fail. The five facts are counted rather than quoted, for the same
-  // reason - their words live in one place.
+  // reason: their words live in one place.
   it.each<Locale>(["sl", "en"])(
     "names itself the way the roster does (%s)",
     (locale) => {
@@ -65,11 +68,19 @@ describe("the about page", () => {
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
   });
 
-  it("prints the contact address as the link", () => {
-    render(<AboutPage locale="sl" />);
+  // Two buttons under the closing line: the address, printed as itself so it
+  // can be read off the page, and the repository the open-source fact names.
+  it.each<[Locale, string]>([
+    ["sl", "Koda na GitHubu"],
+    ["en", "Code on GitHub"],
+  ])("offers the address and the code as buttons (%s)", (locale, code) => {
+    render(<AboutPage locale={locale} />);
 
     expect(
       screen.getByRole("link", { name: "info@posvoji.si" }).getAttribute("href"),
     ).toBe("mailto:info@posvoji.si");
+    const repo = screen.getByRole("link", { name: code });
+    expect(repo.getAttribute("href")).toBe("https://github.com/fresh55/posvoji");
+    expect(repo.getAttribute("rel")).toBe("noreferrer");
   });
 });

@@ -19,6 +19,7 @@ import {
   waitingLabel,
 } from "@/lib/labels";
 import { shelterCensus } from "@/lib/shelter-census";
+import { REPO_URL } from "@/lib/site";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import {
@@ -34,8 +35,7 @@ import { siteLinks } from "@/lib/site-links";
  *  only answers to an address already on file, so this is the only real way
  *  in. Named here rather than inside the copy, so the two locales point at one
  *  destination. */
-const JOIN_URL =
-  "https://github.com/fresh55/posvoji/issues/new?template=predlagaj-zavetisce.yml";
+const JOIN_URL = `${REPO_URL}/issues/new?template=predlagaj-zavetisce.yml`;
 
 const pageText = {
   sl: {

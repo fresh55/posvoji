@@ -78,3 +78,31 @@ def test_trusted_proxy_count_must_be_a_non_negative_integer(value):
 
     assert result.returncode != 0
     assert "PORTAL_TRUSTED_PROXY_COUNT must be a non-negative integer" in result.stderr
+
+
+@pytest.mark.parametrize("value", ["0", "-5", "soon"])
+def test_db_timeout_must_be_a_positive_integer(value):
+    env = os.environ.copy()
+    env["PORTAL_DB_TIMEOUT"] = value
+
+    result = import_settings(env)
+
+    assert result.returncode != 0
+    assert "PORTAL_DB_TIMEOUT must be a positive integer" in result.stderr
+
+
+def test_the_database_queues_writers_instead_of_failing():
+    env = os.environ.copy()
+    env.pop("PORTAL_DB_TIMEOUT", None)
+    env.pop("PORTAL_DB_INIT_COMMAND", None)
+    expression = (
+        "import portal.settings as s; o = s.DATABASES['default']['OPTIONS']; "
+        "print(o['transaction_mode'], o['timeout'], o['init_command'])"
+    )
+
+    result = import_settings(env, expression)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == (
+        "IMMEDIATE 20 PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;"
+    )

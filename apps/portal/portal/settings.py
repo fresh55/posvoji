@@ -44,6 +44,19 @@ def _env_optional_nonnegative_int(name: str) -> int | None:
     return value
 
 
+def _env_positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ImproperlyConfigured(f"{name} must be a positive integer") from error
+    if value <= 0:
+        raise ImproperlyConfigured(f"{name} must be a positive integer")
+    return value
+
+
 DEBUG = _env_bool("PORTAL_DEBUG", True)
 _PUBLISHED_DEVELOPMENT_SECRET_KEY = "dev-only-insecure-secret-key"
 _configured_secret_key = os.environ.get("PORTAL_SECRET_KEY", "").strip()
@@ -102,10 +115,29 @@ TEMPLATES = [
 WSGI_APPLICATION = "portal.wsgi.application"
 ASGI_APPLICATION = "portal.asgi.application"
 
+# SQLite takes one writer at a time, and every request thread has its own
+# connection. A deferred transaction asks for the write lock at its first
+# write, and two requests that both read first then collide with "database
+# is locked". IMMEDIATE takes the lock at BEGIN instead, so a second writer
+# waits on the busy timeout and then runs, and the read-modify-write in
+# upsert_override is serialized by the transaction itself, because SQLite
+# ignores select_for_update. Not configurable: the routes are written
+# against it.
+#
+# WAL lets readers go on while a writer holds the lock, and synchronous=NORMAL
+# is durable across process crashes in WAL mode at a fraction of the fsyncs.
+# On the in-memory test database the journal pragma is a no-op.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.environ.get("PORTAL_DB_PATH") or str(BASE_DIR / "db.sqlite3"),
+        "OPTIONS": {
+            "transaction_mode": "IMMEDIATE",
+            # Seconds a writer waits for the lock before it gives up.
+            "timeout": _env_positive_int("PORTAL_DB_TIMEOUT", 20),
+            "init_command": os.environ.get("PORTAL_DB_INIT_COMMAND")
+            or "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+        },
     }
 }
 
@@ -216,9 +248,18 @@ DEFAULT_FROM_EMAIL = os.environ.get("PORTAL_FROM_EMAIL", "portal@posvoji.si")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 MAGIC_LINK_PATH = "/portal/prijava"
 
-# Read only inputs from the rest of the repo.
+# Read only inputs from the rest of the repo. One ingest run writes both
+# datasets: animals.json with the shelters' overrides merged in, which is
+# what the site and the listing read, and animals.crawled.json as the crawl
+# produced it, which is what a baseline and a conflict compare against. A
+# data/dist from before the split has only the first, and the portal falls
+# back to it (core/dataset.py).
 DATASET_PATH = Path(
     os.environ.get("DATASET_PATH") or REPO_ROOT / "data" / "dist" / "animals.json"
+)
+CRAWLED_DATASET_PATH = Path(
+    os.environ.get("CRAWLED_DATASET_PATH")
+    or REPO_ROOT / "data" / "dist" / "animals.crawled.json"
 )
 SHELTERS_YAML_PATH = Path(
     os.environ.get("SHELTERS_YAML") or REPO_ROOT / "data" / "shelters.yaml"

@@ -41,6 +41,12 @@ type PageText = {
    *  and are not translated. */
   report: string;
   code: string;
+  /**
+   * The last line on the page, and the only one that says why any of it
+   * exists. Everything above it is what the site is and what it refuses to
+   * be; this is the reason there is a site at all.
+   */
+  dedication: string;
 };
 
 // One glyph per fact, keyed rather than stored in each locale so the two
@@ -99,6 +105,7 @@ const pageText: Record<Locale, PageText> = {
     report:
       "Napačen podatek, zastarela objava ali žival, ki je že našla dom? Pišite nam.",
     code: "Koda na GitHubu",
+    dedication: "Ta stran je v spomin na Srečka.",
   },
   en: {
     lead: "Posvoji.si is an open, free index of animals waiting for a home in Slovenian shelters.",
@@ -132,6 +139,7 @@ const pageText: Record<Locale, PageText> = {
     report:
       "Wrong detail, stale listing or an animal that already found a home? Write to us.",
     code: "Code on GitHub",
+    dedication: "This site is in memory of Srečko.",
   },
 };
 
@@ -268,6 +276,20 @@ export function AboutPage({ locale }: { locale: Locale }) {
               </Button>
             </div>
           </div>
+
+          {/* The dedication, and it is the last thing on the page on purpose.
+              A dedication takes its weight from being alone and from coming
+              at the end, the way a book carries one; set beside his card it
+              would have been read as a caption and would have had a status
+              badge for company.
+
+              Spanning both columns rather than sitting in the text one, so
+              nothing shares its line and the page finishes on it. Small and
+              muted, because it does not need to be loud to be the reason for
+              everything above it. */}
+          <p className="border-t pt-6 text-sm leading-relaxed text-muted-foreground lg:col-span-2 lg:row-start-4">
+            {text.dedication}
+          </p>
         </main>
 
         {/* The one footer that does not link to this page, because it is on

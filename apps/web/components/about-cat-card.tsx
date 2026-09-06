@@ -4,8 +4,8 @@ import type { Locale } from "@/lib/i18n";
 import { META_DOT_CLASS, statusLabel } from "@/lib/labels";
 
 const copy = {
-  sl: { name: "Srečko", meta: ["Maček", "iz zavetišča"] },
-  en: { name: "Srečko", meta: ["Cat", "from a shelter"] },
+  sl: { name: "Srečko", meta: ["Maček", "s FeLV"] },
+  en: { name: "Srečko", meta: ["Cat", "with FeLV"] },
 } satisfies Record<Locale, { name: string; meta: string[] }>;
 
 /**
@@ -29,6 +29,14 @@ const copy = {
  * and an adopted animal's badge cannot drift apart. Two facts and no more,
  * the rule the real card keeps for its own reasons; the colour of his coat is
  * in the picture above and does not need saying.
+ *
+ * The second fact is FeLV, and it is the one that had to be here. The site
+ * models the virus as a field on a cat and offers "Brez FeLV" as a filter,
+ * which matches only the cats that tested negative: a positive cat is the one
+ * that filter hides, and the one a shelter has the hardest time placing.
+ * Saying he had it is the whole argument for a list nobody can buy a better
+ * position on, made as a fact about one animal rather than as a claim about
+ * ourselves. The page's dedication finishes the thought.
  *
  * No shelter named: the page promises a row below that nobody buys a place on
  * this list. Nothing about the household either, for the reason the fourth

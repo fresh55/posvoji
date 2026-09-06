@@ -30,7 +30,7 @@ describe("the cat's passport", () => {
     const { container } = render(<AboutCatCard locale="sl" />);
 
     const meta = container.querySelectorAll("p")[1];
-    expect(meta?.textContent).toBe("Maček · iz zavetišča");
+    expect(meta?.textContent).toBe("Maček · s FeLV");
   });
 
   // Both promises the page makes a row or two below: nobody buys a place on

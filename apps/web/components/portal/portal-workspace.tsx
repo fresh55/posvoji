@@ -5,11 +5,11 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 import { Inbox, LoaderCircle, Plus, SearchX, TriangleAlert } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
+import Link from "next/link";
 import {
   hasMissingSearchableFields,
   hasUnconfirmedStatus,
@@ -22,7 +22,6 @@ import {
   type PortalListEntry,
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
-import { ListingForm } from "@/components/portal/listing-form";
 import { PortalNotice } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
@@ -31,7 +30,7 @@ import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IDLE } from "@/hooks/portal-list";
-import { NEW_LISTING } from "@/hooks/use-portal-listings";
+import { portalNewListingPath } from "@/hooks/use-portal-session";
 import { animalCount } from "@/lib/labels";
 import { draftIds, subscribeDrafts } from "@/lib/portal-drafts";
 
@@ -43,6 +42,20 @@ const EMPTY_DRAFTS: ReadonlySet<string> = new Set();
  *  The id travels through an attribute, and a crawled one holds a colon. */
 function cardDomId(animalId: string): string {
   return `animal-${encodeURIComponent(animalId)}`;
+}
+
+/** The one action a manual shelter has up here, drawn wherever it is offered. */
+function AddListing({ shelter }: { shelter: string }) {
+  return (
+    <Button asChild size="sm">
+      {/* A page, not a dialog: the new listing is written on the same frame
+          an existing one is edited on. */}
+      <Link href={portalNewListingPath(shelter)}>
+        <Plus aria-hidden />
+        {portalText.listingAdd}
+      </Link>
+    </Button>
+  );
 }
 
 // The manual listing cards keep their own shape, so their placeholder does.
@@ -114,11 +127,6 @@ export function PortalWorkspace() {
     setStatus,
     clearFilters,
   } = usePortal();
-  // The "Dodaj žival" dialog, and the listing it made once it has: the form
-  // keeps editing that one while its photos go up, so it is read back off
-  // the live list rather than off the answer to the POST.
-  const [adding, setAdding] = useState(false);
-  const [newListingId, setNewListingId] = useState<string | null>(null);
 
   const listState = manual ? listingState : animalState;
   const reloadList = manual ? reloadListings : reloadAnimals;
@@ -148,15 +156,16 @@ export function PortalWorkspace() {
     () => filterPortalAnimals(listings, query, status),
     [listings, query, status],
   );
-  const visibleCount = manual ? visibleListings.length : visibleAnimals.length;
-  const newListing =
-    listings.find((listing) => listing.id === newListingId) ?? null;
+  const visible = manual ? visibleListings : visibleAnimals;
+  const visibleCount = visible.length;
 
   // The animal the last save went to, when the filters no longer let it
-  // through. Read off the whole list, because that is where it still is.
-  const hiddenSave =
-    lastSaved && !visibleAnimals.some((animal) => animal.id === lastSaved)
-      ? (animals.find((animal) => animal.id === lastSaved) ?? null)
+  // through. Read off the whole list, because that is where it still is. Both
+  // lists answer this the same way: a created listing the current search hides
+  // would be as gone as a crawled animal saved out of its filter.
+  const hiddenSave: PortalListEntry | null =
+    lastSaved && !visible.some((entry) => entry.id === lastSaved)
+      ? (all.find((entry) => entry.id === lastSaved) ?? null)
       : null;
   const hidden = hiddenSave !== null;
 
@@ -183,7 +192,7 @@ export function PortalWorkspace() {
     };
   }, []);
   const readDrafts = useCallback((): ReadonlySet<string> => {
-    if (!account || !active || manual) return EMPTY_DRAFTS;
+    if (!account || !active) return EMPTY_DRAFTS;
     const ids = draftIds(account, active);
     // Ids never carry a newline, so it is a safe separator for the join.
     const signature = [...ids].sort().join("\n");
@@ -191,7 +200,7 @@ export function PortalWorkspace() {
       draftCache.current = { signature, ids };
     }
     return draftCache.current.ids;
-  }, [account, active, manual]);
+  }, [account, active]);
   const drafts = useSyncExternalStore(
     subscribeToDrafts,
     readDrafts,
@@ -207,11 +216,6 @@ export function PortalWorkspace() {
       .getElementById(cardDomId(lastSaved))
       ?.scrollIntoView({ block: "center" });
   }, [hidden, lastSaved]);
-
-  const openAdd = useCallback(() => {
-    setNewListingId(null);
-    setAdding(true);
-  }, []);
 
   // The workspace names itself "Vaše živali" below, and that is the page's
   // heading once there is a list to name. Every state before it is the same
@@ -272,12 +276,7 @@ export function PortalWorkspace() {
               active={active}
               onSelect={(slug) => {
                 if (slug === active) return;
-                // The provider drops the filters with the shelter; the half
-                // that is this page's own is the add form, which is about a
-                // listing that would belong to the shelter being left.
                 setActive(slug);
-                setAdding(false);
-                setNewListingId(null);
               }}
             />
           )}
@@ -290,7 +289,7 @@ export function PortalWorkspace() {
                 </h1>
                 {listState.status === "ready" &&
                   all.length > 0 &&
-                  (manual ? (
+                  (manual && active ? (
                     // The count and the one action a manual shelter has up
                     // here. While the list is empty the notice below carries
                     // the same button, so it is never on screen twice.
@@ -298,10 +297,7 @@ export function PortalWorkspace() {
                       <p className="text-sm text-muted-foreground">
                         {animalCount(all.length, "sl")}
                       </p>
-                      <Button size="sm" onClick={openAdd}>
-                        <Plus aria-hidden />
-                        {portalText.listingAdd}
-                      </Button>
+                      <AddListing shelter={active} />
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -352,16 +348,11 @@ export function PortalWorkspace() {
 
             {listState.status === "ready" &&
               all.length === 0 &&
-              (manual ? (
+              (manual && active ? (
                 <PortalNotice
                   icon={Inbox}
                   title={portalText.emptyTitle}
-                  action={
-                    <Button size="sm" onClick={openAdd}>
-                      <Plus aria-hidden />
-                      {portalText.listingAdd}
-                    </Button>
-                  }
+                  action={<AddListing shelter={active} />}
                 >
                   {portalText.listingsEmptyLead}
                 </PortalNotice>
@@ -441,6 +432,7 @@ export function PortalWorkspace() {
 
             {listState.status === "ready" &&
               manual &&
+              active &&
               visibleListings.length > 0 && (
                 <div className="space-y-3">
                   {visibleListings.map((listing, index) => (
@@ -455,11 +447,16 @@ export function PortalWorkspace() {
                         ease: "easeOut",
                         delay: Math.min(index, 8) * 0.03,
                       }}
+                      // Named so a save made on the listing's own page can
+                      // bring the shelter back to the card it belonged to.
+                      id={cardDomId(listing.id)}
                     >
                       <PortalListingCard
                         listing={listing}
+                        shelter={active}
+                        hasDraft={drafts.has(listing.id)}
                         saveState={
-                          listingSaveStates[listing.id] ?? { status: "idle" }
+                          listingSaveStates[listing.id] ?? IDLE
                         }
                         actions={listingActions}
                       />
@@ -505,28 +502,6 @@ export function PortalWorkspace() {
                 </div>
               )}
           </section>
-
-          {/* One form for every new listing, kept mounted so its dialog can
-              close on its own terms. Once the POST has gone through it edits
-              what came back, read off the live list so the photos it uploads
-              next show up as they land. */}
-          {manual && (
-            <ListingForm
-              listing={newListing}
-              open={adding}
-              onOpenChange={(open) => {
-                setAdding(open);
-                if (!open) setNewListingId(null);
-              }}
-              actions={listingActions}
-              saveState={
-                listingSaveStates[newListingId ?? NEW_LISTING] ?? {
-                  status: "idle",
-                }
-              }
-              onCreated={(saved) => setNewListingId(saved.id)}
-            />
-          )}
         </>
       )}
     </>

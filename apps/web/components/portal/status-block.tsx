@@ -6,7 +6,50 @@ import { RevertButton } from "@/components/portal/override-mark";
 import { portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
 import { Button } from "@/components/ui/button";
-import type { PortalAnimal, PortalAnimalPatch } from "@/lib/portal-api";
+import type {
+  PortalAnimal,
+  PortalAnimalPatch,
+  PortalStatus,
+} from "@/lib/portal-api";
+
+/**
+ * The same four buttons over a manual listing, which is the half of the block
+ * below that a listing has: there is no site the value could have been read
+ * from, so nothing is inherited, nothing needs confirming and there is nothing
+ * to give back.
+ *
+ * The card and the listing's own page both draw this, and both save the moment
+ * a button is tapped.
+ */
+export function ListingStatusBlock({
+  status,
+  busy,
+  onSelect,
+}: {
+  status: PortalStatus | null;
+  busy: boolean;
+  onSelect: (status: PortalStatus) => void;
+}) {
+  return (
+    // A container, so the row can count its own width: it is drawn full width
+    // on the list and in the narrow summary column beside the form.
+    <div className="@container">
+      <div className="mb-2 flex min-h-6 items-center justify-between gap-2">
+        {/* Not a heading, for the same reason as below: StatusActions is a
+            group that already carries "Stanje" as its name. */}
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          {portalText.statusLegend}
+        </p>
+      </div>
+      <StatusActions
+        value={status}
+        source="shelter"
+        busy={busy}
+        onSelect={onSelect}
+      />
+    </div>
+  );
+}
 
 /**
  * The four status buttons with everything that explains them: whose answer

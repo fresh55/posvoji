@@ -79,9 +79,9 @@ export type PortalContextValue = {
   /** How far that run has got, for the banner to say so. */
   bulk: PortalBulkState;
   /**
-   * The animal the last save went to, so the list can take the shelter back
-   * to the card they were working on. Null until something has been saved,
-   * and dropped again the moment the shelter touches the filters.
+   * The animal or listing the last save went to, so the list can take the
+   * shelter back to the card they were working on. Null until something has
+   * been saved, and dropped again the moment the shelter touches the filters.
    */
   lastSaved: string | null;
   clearLastSaved: () => void;
@@ -91,6 +91,8 @@ export type PortalContextValue = {
   listingSaveStates: Record<string, PortalSaveState>;
   reloadListings: () => void;
   listingActions: PortalListingActions;
+  /** The name a listing's public page is filed under, or null when it has none. */
+  listingPublicName: (listing: PortalListing) => string | null;
   query: string;
   setQuery: (query: string) => void;
   /** The one chip that is on: a status, the review queue, or nothing. */
@@ -101,8 +103,8 @@ export type PortalContextValue = {
 
 const PortalContext = createContext<PortalContextValue | null>(null);
 
-// One array for every state that has no shelters, so the context value is not
-// rebuilt on each render only because a fresh [] was allocated for it.
+// One array for every state that has no shelters, so a consumer that keys an
+// effect or a memo on the list is not woken by a fresh [] each render.
 const NO_SHELTERS: PortalShelter[] = [];
 
 export function usePortal(): PortalContextValue {
@@ -211,7 +213,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     state: listingState,
     saveStates: listingSaveStates,
     reload: reloadListings,
-    actions: listingActions,
+    actions: writeListing,
+    publicName: listingPublicName,
   } = usePortalListings(manual ? active : null, onUnauthorized);
 
   // Whatever was saved last is where the list should take the shelter back
@@ -227,6 +230,26 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     [saveAnimalFields],
   );
 
+  // The same for a manual shelter, whose animals are listings. Only the two
+  // calls that leave a card behind to go back to: a photo or an archive is
+  // either not a card of its own or not a card any more.
+  const listingActions = useMemo<PortalListingActions>(
+    () => ({
+      ...writeListing,
+      create: async (input) => {
+        const saved = await writeListing.create(input);
+        if (saved) setLastSaved(saved.id);
+        return saved;
+      },
+      update: async (listingId, input) => {
+        const saved = await writeListing.update(listingId, input);
+        if (saved) setLastSaved(listingId);
+        return saved;
+      },
+    }),
+    [writeListing],
+  );
+
   const clearLastSaved = useCallback(() => setLastSaved(null), []);
 
   const leave = useCallback(() => {
@@ -238,70 +261,44 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     void signOut();
   }, [account, signOut]);
 
-  const value = useMemo<PortalContextValue>(
-    () => ({
-      session,
-      reloadSession,
-      account,
-      leaving,
-      signOut: leave,
-      shelters,
-      active,
-      activeShelter,
-      manual,
-      setActive,
-      animals,
-      animalState,
-      saveStates,
-      reloadAnimals,
-      save,
-      confirmStatuses,
-      bulk,
-      lastSaved,
-      clearLastSaved,
-      publicName,
-      listings,
-      listingState,
-      listingSaveStates,
-      reloadListings,
-      listingActions,
-      query,
-      setQuery,
-      status,
-      setStatus,
-      clearFilters,
-    }),
-    [
-      session,
-      reloadSession,
-      account,
-      leaving,
-      leave,
-      shelters,
-      active,
-      activeShelter,
-      manual,
-      setActive,
-      animals,
-      animalState,
-      saveStates,
-      reloadAnimals,
-      save,
-      confirmStatuses,
-      bulk,
-      lastSaved,
-      clearLastSaved,
-      publicName,
-      listings,
-      listingState,
-      listingSaveStates,
-      reloadListings,
-      listingActions,
-      query,
-      status,
-      clearFilters,
-    ],
-  );
+  // Not memoised on purpose. This provider re-renders only when its own
+  // state or one of its two list hooks changes, which is exactly when a
+  // dependency would have changed anyway, so a memo here can never prevent a
+  // rebuild. What it would add is a twenty-five entry dependency list that
+  // goes silently out of date the first time a field is added below.
+  const value: PortalContextValue = {
+    session,
+    reloadSession,
+    account,
+    leaving,
+    signOut: leave,
+    shelters,
+    active,
+    activeShelter,
+    manual,
+    setActive,
+    animals,
+    animalState,
+    saveStates,
+    reloadAnimals,
+    save,
+    confirmStatuses,
+    bulk,
+    lastSaved,
+    clearLastSaved,
+    publicName,
+    listings,
+    listingState,
+    listingSaveStates,
+    reloadListings,
+    listingActions,
+    listingPublicName,
+    query,
+    setQuery,
+    status,
+    setStatus,
+    clearFilters,
+  };
 
   return (
     <PortalContext value={value}>

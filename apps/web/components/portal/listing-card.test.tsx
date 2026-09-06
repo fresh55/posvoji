@@ -17,10 +17,6 @@ import type { PortalListing } from "@/lib/portal-api";
 
 afterEach(cleanup);
 
-// jsdom lays nothing out and has no Element.scrollTo. The form scrolls the
-// dialog panel to the field it opens at and focuses it right after.
-Element.prototype.scrollTo = vi.fn();
-
 const IDLE = { status: "idle" } as const;
 
 const PHOTO = {
@@ -75,6 +71,7 @@ function show(
   render(
     <PortalListingCard
       listing={subject}
+      shelter="johanca"
       saveState={saveState}
       actions={actions}
     />,
@@ -89,7 +86,7 @@ function statusButton(name: string): HTMLElement {
 
 /** The "manjka" line, found by the text it shows: that is its whole name. */
 function missingLine(): HTMLElement {
-  return screen.getByRole("button", {
+  return screen.getByRole("link", {
     name: (name) => name.startsWith(portalText.missingTitle),
   });
 }
@@ -199,20 +196,12 @@ describe("fields the public filters need", () => {
     expect(screen.queryByText(portalText.missingTitle)).toBeNull();
   });
 
-  it("opens the form at the first field it names", async () => {
+  it("links to the editor page at the first field it names", () => {
     show(listing({ energy: "calm" }));
 
-    fireEvent.click(missingLine());
-
-    const dialog = screen.getByRole("dialog");
-    expect(
-      within(dialog).getByText(fill(portalText.editTitle, { name: "Luna" })),
-    ).toBeTruthy();
-    const row = dialog.querySelector('[data-field="goodWithKids"]');
-    expect(row).toBeTruthy();
-    await waitFor(() => {
-      expect(row?.contains(document.activeElement)).toBe(true);
-    });
+    expect(missingLine().getAttribute("href")).toBe(
+      `/portal/zival?zavetisce=johanca&id=${listing().id}&polje=goodWithKids`,
+    );
   });
 
   it("names the line by what it says, not by a hidden label", () => {
@@ -225,12 +214,26 @@ describe("fields the public filters need", () => {
 });
 
 describe("the way into the form", () => {
-  it("opens the editor from Uredi podatke", () => {
+  it("links Uredi podatke to the listing's own page", () => {
     show();
 
-    fireEvent.click(screen.getByRole("button", { name: portalText.edit }));
+    expect(
+      screen.getByRole("link", { name: portalText.edit }).getAttribute("href"),
+    ).toBe(`/portal/zival?zavetisce=johanca&id=${listing().id}`);
+  });
 
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByText(portalText.listingEditLead)).toBeTruthy();
+  it("marks a listing this tab holds unsaved work for", () => {
+    const actions = fakeActions();
+    render(
+      <PortalListingCard
+        listing={listing()}
+        shelter="johanca"
+        hasDraft
+        saveState={IDLE}
+        actions={actions}
+      />,
+    );
+
+    expect(screen.getByText(portalText.draftBadge)).toBeTruthy();
   });
 });

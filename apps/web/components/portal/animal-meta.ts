@@ -18,9 +18,23 @@ import { isOverridden } from "@/components/portal/animal-form";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type {
   PortalAnimal,
+  PortalListing,
   PortalShelter,
   PortalStatus,
 } from "@/lib/portal-api";
+
+/**
+ * What the line under the name is read off. A crawled animal and a manual
+ * listing both carry these five under the same names, so both go through the
+ * one function and the two cards cannot drift apart.
+ */
+type MetaFields = {
+  species: string | null;
+  breed: string | null;
+  sex: string | null;
+  birthDate: string | null;
+  approximateAgeMonths: number | null;
+};
 
 // The public site's arithmetic, read through the API's nulls, so the same
 // birth date turns into the same number of months on both sides.
@@ -31,7 +45,7 @@ import type {
 // list they were filtered into. The portal is looking at live records, so
 // today is the honest answer here, and at a month boundary the two can differ
 // by one month for the same animal.
-function ageMonths(animal: PortalAnimal, now: Date): number | undefined {
+function ageMonths(animal: MetaFields, now: Date): number | undefined {
   return ageInMonths(
     {
       birthDate: animal.birthDate ?? undefined,
@@ -41,7 +55,7 @@ function ageMonths(animal: PortalAnimal, now: Date): number | undefined {
   );
 }
 
-export function portalMetaLine(animal: PortalAnimal, now: Date): string {
+export function portalMetaLine(animal: MetaFields, now: Date): string {
   const months = ageMonths(animal, now);
   return [
     portalSpeciesLabel(animal.species),
@@ -76,21 +90,59 @@ export function portalPublicPath(
   shelter: PortalShelter,
   name: string | null,
 ): string {
+  return publicPath(animal.id, name, animal.species ?? "zival", shelter);
+}
+
+/** The one call, so the cast above is written once. */
+function publicPath(
+  id: string,
+  name: string | null,
+  species: string,
+  shelter: PortalShelter,
+): string {
   const fields = {
-    id: animal.id,
+    id,
     name: name ?? undefined,
-    species: animal.species ?? "zival",
+    species,
     shelter: { id: shelter.slug, city: shelter.city ?? "" },
   } as unknown as AnimalFields;
   return animalPath(fields, "sl");
 }
 
 /**
+ * The public address of one manual listing's page.
+ *
+ * The id is the one the public site knows the animal by, and that is not the
+ * uuid the portal minted: ingest enters a listing at the crawl phase as
+ * `<providerId>:<uuid>` (see docs/MANUAL-LISTINGS.md), and the address carries
+ * a hash of it.
+ *
+ * The name is handed in for the same reason as above: a listing renamed here
+ * names a page the last build did not generate, so the link keeps the name the
+ * list loaded with.
+ */
+export function portalListingPublicPath(
+  listing: PortalListing,
+  shelter: PortalShelter,
+  name: string,
+): string {
+  return publicPath(
+    `${listing.providerId}:${listing.id}`,
+    name,
+    listing.species,
+    shelter,
+  );
+}
+
+/**
  * The searchable fields this animal still has no answer for, keys and all.
  * The line under the card prints the labels; the keys are what lets it link
- * to the editor at the first of them.
+ * to the editor at the first of them. A listing answers the same five, so
+ * both cards ask this.
  */
-export function missingSearchableFields(animal: PortalAnimal) {
+export function missingSearchableFields(
+  animal: Record<(typeof SEARCHABLE_FIELDS)[number]["key"], string | null>,
+) {
   return SEARCHABLE_FIELDS.filter((field) => animal[field.key] === null);
 }
 

@@ -196,6 +196,33 @@ export function isCount(value: number): boolean {
 export type AgeBox = "years" | "months";
 
 /**
+ * The two age boxes as the one month count the wire carries.
+ *
+ * An empty half counts as zero, so "2 let" alone is two years; only two empty
+ * boxes mean no age at all, which is what clears an override. The months box
+ * is not capped at eleven: "18 mesecev" adds up to the same age. A box holding
+ * something that is not a count yields no number and names itself, so the form
+ * can point at the one the shelter has to fix.
+ *
+ * Both forms ask this, so the crawled editor and the listing form cannot come
+ * to different answers about the same two boxes.
+ */
+export function parseAgeBoxes(
+  years: string,
+  months: string,
+): { months: number | null; error: AgeBox | null } {
+  const rawYears = years.trim();
+  const rawMonths = months.trim();
+  if (rawYears === "" && rawMonths === "") return { months: null, error: null };
+
+  const wholeYears = rawYears === "" ? 0 : Number(rawYears);
+  const wholeMonths = rawMonths === "" ? 0 : Number(rawMonths);
+  if (!isCount(wholeYears)) return { months: null, error: "years" };
+  if (!isCount(wholeMonths)) return { months: null, error: "months" };
+  return { months: wholeYears * 12 + wholeMonths, error: null };
+}
+
+/**
  * The hint a field renders, named so its control can point aria at it. The
  * field is a plain string: the listing form names two rows the crawled editor
  * has no field for.
@@ -334,3 +361,29 @@ export const SPECIES_META: Record<
   rabbit: { label: speciesLabel("rabbit", "sl"), icon: SPECIES_ICONS.rabbit },
   other: { label: speciesLabel("other", "sl"), icon: SPECIES_ICONS.other },
 };
+
+/**
+ * The row one field draws in.
+ *
+ * Both forms mark their rows with data-field and their controls with
+ * data-field-control, and three paths look them up: an address that opens at a
+ * named row, a submit that moves the focus onto a box it refused, and the
+ * card's "manjka za iskalnik" line arriving at the field it named. The two
+ * selectors live here so a change to the markup cannot silently break the
+ * lookup in the other form.
+ */
+export function fieldRow(
+  form: HTMLFormElement | null,
+  field: string,
+): HTMLElement | null {
+  return form?.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? null;
+}
+
+/** The controls inside one row, in the order they are read. */
+export function fieldControls(row: HTMLElement): HTMLElement[] {
+  return Array.from(
+    row.querySelectorAll<HTMLElement>(
+      "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
+    ),
+  );
+}

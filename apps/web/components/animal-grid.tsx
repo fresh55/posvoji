@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -123,8 +122,29 @@ const STEP_MARGIN = "1200px 0px";
 export const ROWS_PER_STEP = 15;
 export const TARGET_ROWS = 40;
 
-// Keep background commits small while the visitor interacts with a dialog.
-// Each step still advances toward the same grid budget.
+// What a step adds instead while a dialog stands over the grid. Three rows is
+// about twelve cards at four columns. A step lands as one commit, and what
+// that commit costs grows with the cards in it: sixty cards mounted behind a
+// dialog is work nobody can see, done while the visitor may be dragging the
+// dialog's photo fan, where a long task is a dropped frame. Twelve is a
+// commit that fits in a frame.
+//
+// Not measured as a fix for any one hitch. A trace taken on 4 September 2026
+// while dragging the fan behind a deep-linked dialog showed one long task,
+// and invalidation tracking put it down to Chrome re-evaluating the
+// display-locked cards below the fold (card-paint) some two seconds after the
+// open, drag or no drag; the grid takes no step at all behind a deep-linked
+// dialog, its sentinel being 4,500px down and outside the margin. The small
+// stride matters where the grid does step behind a dialog: a visitor who
+// scrolled before opening one.
+//
+// Three rows is deliberately short of the 1200px STEP_MARGIN, so the rule
+// above runs the other way here: a small step leaves the sentinel inside the
+// watched band, the re-arm delivers another entry, and the grid walks to the
+// same TARGET_ROWS budget a dozen cards per task instead of sixty. Nothing is
+// held back and nothing pauses, so the dialog's own previous and next arrows,
+// which walk the cards that are drawn, keep gaining reach exactly as they do
+// with the dialog closed.
 export const ROWS_PER_STEP_BEHIND_DIALOG = 3;
 
 // A press is a stronger signal than a scroll, so it buys more. At 120 a full
@@ -307,9 +327,9 @@ export function AnimalGrid({
   // which is the moment the answer has to be true for.
   //
   // Kept current by an effect rather than written during the render. A render
-  // is not a commit here: the step below is a transition, so React is free to
-  // start a render, drop it and start again, and a ref moved by a render that
-  // was thrown away would be answering for a dialog that never appeared.
+  // is not a commit: React can throw one away before it lands, and a ref
+  // moved by a render that was thrown away would be answering for a dialog
+  // that never appeared.
   const dialogOpen = useRef(false);
   useEffect(() => {
     dialogOpen.current = selected !== undefined;
@@ -414,21 +434,22 @@ export function AnimalGrid({
             const rows = dialogOpen.current
               ? ROWS_PER_STEP_BEHIND_DIALOG
               : ROWS_PER_STEP;
-            // A transition, so React renders the step's cards in slices it can
-            // yield between rather than in one task. Nobody is waiting on this
-            // render: the sentinel is below the viewport, and when the dialog
-            // is open the whole step lands behind it. It is only half the
-            // answer, which is why the step above narrows as well: the render
-            // yields, the commit those cards make does not.
-            startTransition(() => {
-              setChunk((previous) => {
-                const drawn = Math.min(
-                  (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                    rows * columns,
-                  budget,
-                );
-                return { of: sorted, drawn, settled: drawn >= budget };
-              });
+            // A plain update, not a transition, on purpose. A transition
+            // would let React yield partway through rendering the step, but
+            // the re-arm below is measured at the next frame against wherever
+            // the sentinel stands by then. With the step still rendering it
+            // stands where it was, inside the band, and that entry would take
+            // a second step nobody scrolled for. A plain update renders in
+            // one task, ahead of that frame, so the fresh observation sees
+            // the sentinel the step moved. What bounds the commit behind a
+            // dialog is the small stride above, which needs no slicing.
+            setChunk((previous) => {
+              const drawn = Math.min(
+                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
+                  rows * columns,
+                budget,
+              );
+              return { of: sorted, drawn, settled: drawn >= budget };
             });
             // The re-arm. Nothing else asks this observer for another entry.
             observer.unobserve(node);

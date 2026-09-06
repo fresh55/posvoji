@@ -587,6 +587,11 @@ describe("how much of the grid is drawn", () => {
 
   it("steps by fewer rows while a dialog stands over the grid", () => {
     // The same observer entry mounts fewer cards while the dialog is open.
+    // Traced on the production build on 4 September 2026 with the CPU
+    // throttled four times, the commit of a sixty-card step was a 50ms task,
+    // and behind a dialog that is a dropped frame in the middle of a drag of
+    // the photo fan. The step behind a dialog is a dozen cards instead, which
+    // commits inside a frame.
     const closed = oneStep("/");
     const behind = oneStep("/?zival=dog-0");
 

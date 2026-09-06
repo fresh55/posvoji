@@ -25,7 +25,7 @@ export const STAGE_WIDTH = "w-full sm:w-[80%]";
 // The radius is half the box, so the gradient runs out exactly where the clip
 // does. A radius wider than the box ends the fade early and leaves the wash
 // standing as a rectangle that only softens at its corners.
-export const WASH_MASK =
+const WASH_MASK =
   "radial-gradient(50% 50% at 50% 50%, black 65%, transparent 100%)";
 
 // One animal's colour fading into the next one's. Inside an animal there is no
@@ -59,7 +59,7 @@ const QUIET_TONE =
 // The lightbox ground is the scrim, which is near black whichever theme is on.
 const LIGHTBOX_TONE = "opacity-[0.10] contrast-50 saturate-[440%]";
 
-export function washTone(status: AdoptionStatus): string {
+function washTone(status: AdoptionStatus): string {
   return status === "adopted" || status === "hold" ? QUIET_TONE : STAGE_TONE;
 }
 

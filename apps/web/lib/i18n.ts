@@ -74,12 +74,10 @@ const sl = {
   // "Brez imena v zavetišču čaka" reads as a phrase, not as a subject, so an
   // animal the shelter left unnamed keeps the sentence it had.
   longStayUnnamed: "V zavetišču čaka že {duration}.",
-  longStayLink: "Poglej vse, ki čakajo najdlje",
   // A label, not a plea. The dialog's longStay above is the plea, and it has a
-  // sentence, the animal's name and a link to act on: that is where it can do
-  // something. On
-  // a card the same words repeat twenty times a screen and decay into
-  // wallpaper.
+  // sentence, the animal's name and the listing button beside it: that is
+  // where it can do something. On a card the same words repeat twenty times a
+  // screen and decay into wallpaper.
   //
   // The verb is the part that cannot come off. Those same 54 of 101 cards are
   // an animal that grew up in the shelter, where the age and the wait are one
@@ -455,7 +453,6 @@ const en: Messages = {
   factOrigin: "Found in",
   longStay: "{name} has been waiting in the shelter for {duration}.",
   longStayUnnamed: "At the shelter for {duration} now.",
-  longStayLink: "See who has waited longest",
   longStayMark: "Waiting {duration}",
   healthAllClear: "Full health record ({count}/{count})",
   showHealthDetails: "Show details",

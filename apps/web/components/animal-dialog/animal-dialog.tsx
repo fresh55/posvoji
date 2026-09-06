@@ -154,20 +154,18 @@ export function AnimalDialog({
   reference,
   onNavigate,
   onClose,
-  onSeeLongestWaiting,
 }: {
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
   logos: ShelterLogos;
   origin?: DialogOrigin;
-  /** The ids on screen, in the order they are shown. */
+  /** What the dialog steps through: the list as filtered and sorted, whole
+   *  rather than the page of it the grid has drawn so far. */
   siblingIds: string[];
   /** The dataset's build time, shared with the cards behind the dialog. */
   reference: Date;
   onNavigate: (id: string) => void;
   onClose: () => void;
-  /** Hands the long-stay callout a way to the longest-waiting sort. */
-  onSeeLongestWaiting?: () => void;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -207,33 +205,9 @@ export function AnimalDialog({
     dragY.set(0);
   }, [animal, dragY]);
 
-  // Android's back gesture calls history.back(), same as the routing hook's
-  // own close button. A dialog opened by a card click already has an entry
-  // pushed for it (window.history.state.animal) and the gesture closes it
-  // correctly. A dialog reached straight by a link has nothing local to pop,
-  // and the gesture leaves the site instead of closing the dialog. Pushing a
-  // throwaway entry here guarantees there is always one to consume, whatever
-  // way the dialog was opened.
-  useEffect(() => {
-    if (!open) return;
-    if (typeof window === "undefined") return;
-    if (!window.matchMedia(PHONE_LAYOUT).matches) return;
-    if (window.history.state?.animal) return;
-
-    window.history.pushState(
-      { ...window.history.state, mobileDialogGesture: true },
-      "",
-    );
-
-    function handlePopState() {
-      onClose();
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [open, onClose]);
-
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
-  // none. What the visitor left behind is the card they clicked.
+  // none. What the visitor left behind is the card they clicked, kept for the
+  // close that finds no card to go back to (see onCloseAutoFocus).
   const returnFocus = useRef<HTMLElement | null>(null);
   // The closing animation still needs something to draw, and by then the
   // selection is already gone, so the last animal shown stays behind for it.
@@ -315,10 +289,9 @@ export function AnimalDialog({
   // animal has none: the shelter block replaces the call to action with the
   // good news and a quiet text link, while this bar went on giving a settled
   // animal a full-width primary "open the listing" the phone could not miss.
-  // The two conditions are shelter-block.tsx's own, so the pair agree: when
-  // the bar is absent the box keeps its own element.
-  const stickyCta =
-    lastAnimal.status !== "adopted" && Boolean(lastAnimal.source.sourceUrl);
+  // The condition is shelter-block.tsx's own, so the pair agree: when the bar
+  // is absent the box keeps its own element.
+  const stickyCta = lastAnimal.status !== "adopted";
 
   // An animal the current filters hide is still reachable by link, and then
   // there is no list to step through, so the arrows stay away. Closing counts
@@ -331,12 +304,14 @@ export function AnimalDialog({
       : undefined;
 
   // Page keys walk animals. The arrows belong to the photos, and taking them
-  // here would fight the fan.
+  // here would fight the fan. At either end of the list the key is the
+  // browser's again, so the card can still scroll on it.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "PageUp" && event.key !== "PageDown") return;
-    event.preventDefault();
     const target = event.key === "PageUp" ? previousId : nextId;
-    if (target) onNavigate(target);
+    if (!target) return;
+    event.preventDefault();
+    onNavigate(target);
   }
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
@@ -432,9 +407,23 @@ export function AnimalDialog({
             returnFocus.current = document.activeElement as HTMLElement | null;
           }}
           onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            returnFocus.current?.focus();
+            // The card of the animal the dialog closed on, which after a
+            // step through the list is not the one it opened from, and after
+            // a link is the only card there is: what was focused then was
+            // the body. Failing that, whatever was focused at open, as long
+            // as it is still in the document; a card the filters have since
+            // taken away is not, and focusing a detached node leaves focus on
+            // the body with the dialog's keys dead. Otherwise Radix keeps its
+            // own default.
+            const card = document.querySelector<HTMLElement>(
+              `a[data-slot="card-link"][href="${animalPath(lastAnimal, locale)}"]`,
+            );
+            const saved = returnFocus.current;
             returnFocus.current = null;
+            const target = card ?? (saved?.isConnected ? saved : null);
+            if (!target) return;
+            event.preventDefault();
+            target.focus();
           }}
         >
           {/* Mounted empty for as long as the dialog is open, so the name of
@@ -638,7 +627,6 @@ export function AnimalDialog({
                     // The sticky bar below repeats this box's button on the
                     // phone, so the box keeps its own for sm and up only.
                     ctaMirrored
-                    onSeeLongestWaiting={onSeeLongestWaiting}
                   />
                 </m.div>
               </div>

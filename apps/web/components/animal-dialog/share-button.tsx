@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Check, Copy, Mail, MoreHorizontal, Share2 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,24 @@ import { cn } from "@/lib/utils";
 
 const CONFIRM_MS = 2000;
 
+// The layout whose share is the platform's own sheet. The same cutoff the
+// dialog's phone layout is drawn at.
+const PHONE_LAYOUT = "(max-width: 639px)";
+
 // The snapshot below is a capability, not a state: nothing ever notifies.
 const subscribeToNothing = () => () => {};
+
+// The phone layout can change while the page is open: a phone turned on its
+// side crosses the cutoff. The query itself says when.
+function subscribeToPhoneLayout(notify: () => void): () => void {
+  const query = window.matchMedia(PHONE_LAYOUT);
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+}
 
 const shareText = {
   sl: {
     heading: "Deli to žival",
-    intro: "Povezava odpre stran te živali, s fotografijo in zavetiščem.",
-    introPhoto: "Povezava odpre stran te živali na tej fotografiji.",
     link: "Povezava",
     copy: "Kopiraj povezavo",
     copied: "Kopirano",
@@ -34,8 +44,6 @@ const shareText = {
   },
   en: {
     heading: "Share this animal",
-    intro: "The link opens this animal's page, with its photo and shelter.",
-    introPhoto: "The link opens this animal's page on this photo.",
     link: "Link",
     copy: "Copy link",
     copied: "Copied",
@@ -90,11 +98,15 @@ function Target({
   const wrapper = "flex w-16 flex-col items-center gap-1.5 text-center";
 
   if (href) {
+    // A web endpoint opens beside the page. A mailto: opened the same way
+    // hands the mail client an empty tab to leave behind, so it stays in
+    // this one, which the mail client never navigates anyway.
+    const external = !href.startsWith("mailto:");
     return (
       <a
         href={href}
-        target="_blank"
-        rel="noreferrer"
+        target={external ? "_blank" : undefined}
+        rel={external ? "noreferrer" : undefined}
         aria-label={label}
         className={wrapper}
       >
@@ -114,9 +126,14 @@ function Target({
  * the same animal, but only the page carries a link preview: a query on the
  * index cannot have its own title, description and card in a static export.
  *
- * The sheet is plain links to each network's own share endpoint, so opening
- * the popover tells nobody anything; only a click the visitor makes leaves
- * the site. The native share sheet joins the row where the platform has one.
+ * On a phone the share is the platform's own sheet, opened straight from the
+ * button: it lists every app the visitor has and copying is one of its rows,
+ * so a popover of our own in front of it was one tap more for less. The
+ * popover stays for the wider layouts, where the platform's dialog is either
+ * absent or a poor one. It is plain links to each network's own share
+ * endpoint, so opening it tells nobody anything; only a click the visitor
+ * makes leaves the site. The native sheet joins the row there too, where the
+ * platform has one.
  */
 export function ShareButton({
   path,
@@ -132,6 +149,7 @@ export function ShareButton({
   const { locale, messages } = useI18n();
   const text = shareText[locale];
   const [copied, setCopied] = useState(false);
+  const linkField = useRef<HTMLInputElement>(null);
   // Whether the platform has a share sheet never changes while the page is
   // open, but the prerendered HTML cannot know it. Read as a client snapshot
   // rather than in an effect, so the native target simply is not there on the
@@ -139,6 +157,13 @@ export function ShareButton({
   const canShare = useSyncExternalStore(
     subscribeToNothing,
     () => Boolean(navigator.share),
+    () => false,
+  );
+  // Read the same way, so the server renders the popover's trigger and the
+  // phone swaps it for the plain button with hydration.
+  const phone = useSyncExternalStore(
+    subscribeToPhoneLayout,
+    () => window.matchMedia(PHONE_LAYOUT).matches,
     () => false,
   );
 
@@ -155,12 +180,20 @@ export function ShareButton({
   const invite = text.invite(name);
 
   async function copy() {
-    try {
-      await navigator.clipboard?.writeText(url);
-      setCopied(true);
-    } catch {
-      // A browser that refuses the clipboard still shows the link to select.
+    // The API is absent on a page served over plain http, and a browser may
+    // refuse it. Either way nothing was copied, so nothing says it was: the
+    // field holds the same link, and selecting it is the copy that is left.
+    const clipboard = navigator.clipboard;
+    if (clipboard) {
+      try {
+        await clipboard.writeText(url);
+        setCopied(true);
+        return;
+      } catch {
+        // Refused: on to the field.
+      }
     }
+    linkField.current?.select();
   }
 
   async function shareNatively() {
@@ -171,32 +204,29 @@ export function ShareButton({
     }
   }
 
+  // size-11 under sm: icon-sm is 32px, which is under the 44px floor every
+  // other control on the phone layout was already held to. The close button
+  // beside this one carries the same override.
+  const trigger = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={messages.share}
+      className="size-11 sm:size-8"
+      onClick={phone && canShare ? shareNatively : undefined}
+    >
+      <Share2 aria-hidden />
+    </Button>
+  );
+
+  if (phone && canShare) return trigger;
+
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        {/* size-11 under sm: icon-sm is 32px, which is under the 44px floor
-            every other control on the phone layout was already held to. The
-            close button beside this one carries the same override. */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={messages.share}
-          className="size-11 sm:size-8"
-        >
-          <Share2 aria-hidden />
-        </Button>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{text.heading}</p>
-          {/* What the link does, which is not the same sentence once it names
-              a photo: somebody sharing the fourth picture should be told that
-              is what arrives, rather than left to read the URL. */}
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {shared === path ? text.intro : text.introPhoto}
-          </p>
-        </div>
+        <p className="text-sm font-medium">{text.heading}</p>
 
         <div className="flex flex-wrap justify-center gap-2">
           <Target
@@ -226,6 +256,7 @@ export function ShareButton({
 
         <div className="flex items-center gap-2">
           <Input
+            ref={linkField}
             readOnly
             value={url}
             aria-label={text.link}

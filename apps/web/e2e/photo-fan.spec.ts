@@ -115,6 +115,10 @@ test("opens on the first photo, with five prints on stage", async ({ page }) => 
 
 test("re-seats every print on a step", async ({ page }) => {
   const fan = await openFan(page, KLOPKA);
+  // The chevrons take the pointer only while the stage is hovered, the way a
+  // mouse always arrives at them; Playwright's hit test does not hover, so the
+  // stage is hovered first, as a hand would have.
+  await fan.hover();
   await fan.getByRole("button", { name: "Naslednja fotografija" }).click();
   await expectPhoto(fan, 2, KLOPKA_PHOTOS);
 
@@ -449,6 +453,8 @@ test("writes the photo on show into the share link", async ({ page }) => {
   await expect(link).toBeHidden();
   await expect(dialog(page)).toBeVisible();
 
+  // Hovered first: the chevrons take the pointer only while the stage is.
+  await fan.hover();
   await fan.getByRole("button", { name: "Naslednja fotografija" }).click();
   await expectPhoto(fan, 2, KLOPKA_PHOTOS);
 

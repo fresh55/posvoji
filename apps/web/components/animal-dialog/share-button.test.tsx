@@ -14,30 +14,42 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { SITE_URL } from "@/lib/site";
 
 // I18nProvider wraps everything in MotionConfig, which reads matchMedia when
-// it resolves reducedMotion="user", and jsdom ships none.
+// it resolves reducedMotion="user", and jsdom ships none. The share button
+// asks it for the phone layout, which is off unless a test turns it on.
+let phone = false;
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
   value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
+    matches: media === "(max-width: 639px)" && phone,
     media,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   })),
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  phone = false;
+  Reflect.deleteProperty(navigator, "share");
+  Reflect.deleteProperty(navigator, "clipboard");
+});
 
 const PATH = "/zival/rex-abc123/ljubljana/test-shelter";
 const PAGE = `${SITE_URL}${PATH}`;
 
-async function openSheet(photo?: number) {
+function renderButton(photo?: number) {
   render(
     <I18nProvider locale="sl">
       <ShareButton path={PATH} name="Rex" photo={photo} />
     </I18nProvider>,
   );
+  return screen.getByRole("button", { name: "Deli" });
+}
+
+async function openSheet(photo?: number) {
+  const button = renderButton(photo);
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Deli" }));
+    fireEvent.click(button);
   });
   const heading = await screen.findByText("Deli to žival");
   return within(heading.closest("[data-slot=popover-content]") as HTMLElement);
@@ -56,9 +68,6 @@ describe("the share sheet's link", () => {
     expect(
       panel.getByRole("link", { name: "Facebook" }).getAttribute("href"),
     ).toContain(encodeURIComponent(`${PAGE}?foto=3`));
-    expect(
-      panel.getByText("Povezava odpre stran te živali na tej fotografiji."),
-    ).toBeTruthy();
   });
 
   it("leaves the first photo unnamed", async () => {
@@ -67,16 +76,106 @@ describe("the share sheet's link", () => {
     // The page opens on its first photo anyway, so saying so would only make
     // the link longer than it has to be to be read out.
     expect(panel.getByLabelText("Povezava")).toHaveProperty("value", PAGE);
-    expect(
-      panel.getByText(
-        "Povezava odpre stran te živali, s fotografijo in zavetiščem.",
-      ),
-    ).toBeTruthy();
   });
 
   it("leaves the link bare where no photo is named at all", async () => {
     const panel = await openSheet();
 
     expect(panel.getByLabelText("Povezava")).toHaveProperty("value", PAGE);
+  });
+
+  // A mailto: in a new tab hands the mail client an empty tab to leave behind.
+  it("opens the email target in the same tab", async () => {
+    const panel = await openSheet();
+
+    const email = panel.getByRole("link", { name: "E-pošta" });
+    expect(email.getAttribute("href")).toMatch(/^mailto:/);
+    expect(email.getAttribute("target")).toBeNull();
+    expect(
+      panel.getByRole("link", { name: "Facebook" }).getAttribute("target"),
+    ).toBe("_blank");
+  });
+});
+
+describe("copying the link", () => {
+  it("confirms a copy the clipboard took", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    const panel = await openSheet();
+
+    await act(async () => {
+      fireEvent.click(panel.getByRole("button", { name: "Kopiraj povezavo" }));
+    });
+
+    expect(writeText).toHaveBeenCalledWith(PAGE);
+    expect(panel.getByRole("status").textContent).toBe("Povezava kopirana");
+  });
+
+  // A page served over plain http has no clipboard API at all. Awaiting the
+  // optional call resolved anyway, and the sheet said "copied" over a link
+  // that had gone nowhere.
+  it("does not claim a copy where there is no clipboard", async () => {
+    const panel = await openSheet();
+
+    await act(async () => {
+      fireEvent.click(panel.getByRole("button", { name: "Kopiraj povezavo" }));
+    });
+
+    expect(panel.getByRole("status").textContent).toBe("");
+    // The field is what is left, selected so a manual copy is one keystroke.
+    const field = panel.getByLabelText("Povezava") as HTMLInputElement;
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(0);
+    expect(field.selectionEnd).toBe(PAGE.length);
+  });
+
+  it("stays quiet when the clipboard refuses", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
+    const panel = await openSheet();
+
+    await act(async () => {
+      fireEvent.click(panel.getByRole("button", { name: "Kopiraj povezavo" }));
+    });
+
+    expect(panel.getByRole("status").textContent).toBe("");
+  });
+});
+
+describe("on a phone", () => {
+  // The platform's sheet lists every app the visitor has, and copying is one
+  // of its rows: a popover of our own in front of it was one tap more for
+  // less. So the button is the share.
+  it("opens the platform's own sheet straight from the button", async () => {
+    phone = true;
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: share,
+    });
+    const button = renderButton(2);
+
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    expect(share).toHaveBeenCalledWith({
+      title: "Rex išče dom",
+      url: `${PAGE}?foto=3`,
+    });
+    expect(screen.queryByText("Deli to žival")).toBeNull();
+  });
+
+  it("keeps the popover where the platform has no sheet", async () => {
+    phone = true;
+    const panel = await openSheet();
+
+    expect(panel.getByLabelText("Povezava")).toHaveProperty("value", PAGE);
+    expect(panel.queryByRole("button", { name: "Več" })).toBeNull();
   });
 });

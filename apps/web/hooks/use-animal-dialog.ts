@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import type { AnimalFields } from "@/lib/animal";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -74,20 +80,34 @@ export function useAnimalDialog({
     return new URLSearchParams(query).get("zival");
   }, [animals, location]);
 
-  // Having opened it, the address bar is corrected to the animal's own page,
-  // so the link shared on from here is the one search engines are told is
-  // canonical. Replacing rather than pushing keeps the back button pointing
-  // wherever the visitor came from.
+  // A dialog reached by address rather than by a card click stands on an
+  // entry nothing pushed: an old ?zival= link, or the animal's own path with
+  // the list mounted under it. Closing one of those used to mean different
+  // things on different layouts, and a phone's back gesture left the site.
+  // The entry is rewritten into the two a card click makes, the list under
+  // the animal, so back closes and close pops whatever the layout, and
+  // nothing is left behind for the next back to reopen.
+  //
+  // The list entry is written with the bare API rather than commitLocation,
+  // so no subscriber sees the dialog closed between the two writes: the push
+  // right after it is the one that notifies, and by then the address is the
+  // animal's again, now its own page rather than the alias.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const aliased = params.get("zival");
-    if (!aliased) return;
-    const animal = animals.find((candidate) => candidate.id === aliased);
-    // An id no animal answers to is left alone; the list strips it instead.
+    if (!openId || window.history.state?.animal) return;
+    const animal = animals.find((candidate) => candidate.id === openId);
+    // An id no animal answers to is the host's to clean up.
     if (!animal) return;
-    params.delete("zival");
-    commitLocation(animalPath(animal, locale), params.toString(), "replace");
-  }, [animals, locale, location]);
+    // Both read before anything is written, because each reads the address
+    // bar. The photo stays with the animal it names and leaves the list.
+    const query = queryWithout("zival");
+    const list = mergeOwnedParams(query, [PHOTO_PARAM], "");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      list ? `${basePath}?${list}` : basePath,
+    );
+    commitLocation(animalPath(animal, locale), query, "push", PUSHED_BY_DIALOG);
+  }, [animals, basePath, locale, openId]);
 
   const open = useCallback(
     (id: string) => {
@@ -119,11 +139,22 @@ export function useAnimalDialog({
     [animals, locale],
   );
 
+  // Whether a pop is already on its way. Between history.back() and the
+  // popstate it lands with, the dialog is still on screen and its address is
+  // still the animal's, so a second close in that window, a doubled Escape,
+  // would pop again and walk past the list. Cleared once the address moves.
+  const popping = useRef(false);
+  useEffect(() => {
+    popping.current = false;
+  }, [location]);
+
   // Pushed opens get a real history entry so the back button (and this close
-  // button) can pop it; deep links have nothing to pop back to, so they go to
+  // button) can pop it. An id no animal answers to never got one and goes to
   // the list in place instead.
   const close = useCallback(() => {
+    if (popping.current) return;
     if (window.history.state?.animal) {
+      popping.current = true;
       history.back();
       return;
     }

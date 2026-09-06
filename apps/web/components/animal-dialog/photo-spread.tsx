@@ -1098,6 +1098,15 @@ function Fan({
     [washProgress],
   );
   useMotionValueEvent(progress, "change", mirrorWash);
+  // The fan is remounted per animal and per geometry, and a walk the remount
+  // interrupted would otherwise leave the shared progress standing where it
+  // was abandoned: this fan's own progress starts at zero, and the mirror
+  // above only writes on a change, so the wash went on blending against the
+  // old walk until the next step. Before the first paint, so the wash never
+  // draws the stale value over the new fan.
+  useLayoutEffect(() => {
+    washProgress?.jump(0);
+  }, [washProgress]);
 
   // The walk commits by re-seating the window and zeroing the progress in the
   // same breath. The zero has to wait for the new window to be in the tree, or
@@ -1443,6 +1452,18 @@ function Fan({
     settleWalk();
   }
 
+  // A mouse press that leaves the stage before its axis is known has no
+  // capture to bring its release back: the pointerup lands wherever the
+  // cursor is by then, and the press stood here with data-dragging on and a
+  // caught walk parked between seats until the next gesture. The leave is
+  // that release. A drag that declared itself horizontal holds the capture
+  // and never leaves, and a finger is implicitly captured to the print it
+  // pressed, so neither arrives here mid-gesture.
+  function leaveSwipe(event: PointerEvent<HTMLDivElement>) {
+    if (swipeAxis.current === "x") return;
+    cancelSwipe(event);
+  }
+
   function swallowSwipedTap(event: MouseEvent<HTMLDivElement>) {
     if (!suppressTap.current) return;
     suppressTap.current = false;
@@ -1480,11 +1501,18 @@ function Fan({
   // The element has two owners: the wheel hook attaches its own non-passive
   // listener to it as it arrives, and the drag writes data-dragging on it.
   // Stable, or React would take the listener down and put it back up on every
-  // render.
+  // render. The hook's cleanup is handed back rather than dropped: without it
+  // React falls back to calling this with null, which the hook ignores, and
+  // the settle timer of a swipe still in its tail outlived the fan and turned
+  // a photo on the one mounted after it.
   const stage = useCallback(
     (element: HTMLDivElement | null) => {
       stageRef.current = element;
-      attachWheel(element);
+      const detach = attachWheel(element);
+      return () => {
+        detach?.();
+        stageRef.current = null;
+      };
     },
     [attachWheel, stageRef],
   );
@@ -1521,6 +1549,7 @@ function Fan({
       onPointerMove={moveSwipe}
       onPointerUp={endSwipe}
       onPointerCancel={cancelSwipe}
+      onPointerLeave={leaveSwipe}
       onClickCapture={swallowSwipedTap}
       // The browser's own image drag would otherwise start a ghost of the
       // photograph the moment a mouse drag passes the slop, and the fan would
@@ -1645,7 +1674,7 @@ function Fan({
             size="icon-sm"
             onClick={() => step(-1)}
             aria-label={messages.previousPhoto}
-            className={`${GALLERY_BUTTON_CLASS} pointer-events-auto left-1.5`}
+            className={`${GALLERY_BUTTON_CLASS} left-1.5`}
           >
             <ChevronLeft className="size-4" aria-hidden />
           </Button>
@@ -1655,7 +1684,7 @@ function Fan({
             size="icon-sm"
             onClick={() => step(1)}
             aria-label={messages.nextPhoto}
-            className={`${GALLERY_BUTTON_CLASS} pointer-events-auto right-1.5`}
+            className={`${GALLERY_BUTTON_CLASS} right-1.5`}
           >
             <ChevronRight className="size-4" aria-hidden />
           </Button>
@@ -1762,12 +1791,6 @@ export const PhotoSpread = memo(function PhotoSpread({
     () => frontPrintOf(stageRef.current),
     [stageRef],
   );
-
-  // The fan is remounted per animal, and a walk the step interrupted would
-  // otherwise leave the shared progress standing where it was abandoned.
-  useLayoutEffect(() => {
-    washProgress?.jump(0);
-  }, [washProgress]);
 
   // Reported rather than read from above, because which photos are on stage is
   // this component's business. An animal with nothing to show reports nothing

@@ -51,13 +51,20 @@ export function useAnimalDialogHost<T extends AnimalFields>({
     [open],
   );
 
-  const handleNavigate = useCallback((id: string) => swap(id), [swap]);
-
   const shownIds = useMemo(() => shown.map((animal) => animal.id), [shown]);
 
   // The zoom belongs to the card that was clicked, not to a step through the
   // list, so any other animal grows from the middle instead.
   const origin = zoomFrom?.id === openId ? zoomFrom.at : undefined;
 
-  return { selected, origin, shownIds, handleOpen, handleNavigate, close };
+  // A step is a swap of the address and nothing more, so the hook's own
+  // callback is the handler.
+  return {
+    selected,
+    origin,
+    shownIds,
+    handleOpen,
+    handleNavigate: swap,
+    close,
+  };
 }

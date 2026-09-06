@@ -90,16 +90,19 @@ describe("the photo a shared link named", () => {
   });
 
   it("goes back to the list with the dialog", async () => {
-    // No pushed entry, so closing rewrites the address in place rather than
-    // popping one: this is the deep-link path.
+    // Reached by address, so nothing had pushed an entry for it. The hook
+    // makes the two a card click would have made, and closing pops the top
+    // one back to the list, which never had the photo.
     const { result } = at(`${animalPath(REX, "sl")}?vrsta=pes&foto=3`);
+    await waitFor(() => expect(window.history.state?.animal).toBe(true));
 
     await act(async () => {
       result.current.close();
     });
 
-    expect(window.location.pathname).toBe("/");
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
     expect(window.location.search).toBe("?vrsta=pes");
+    expect(result.current.openId).toBeNull();
   });
 
   it("survives the rewrite of an old ?zival= link", async () => {
@@ -111,5 +114,19 @@ describe("the photo a shared link named", () => {
     );
     expect(window.location.search).toBe("?foto=3");
     expect(result.current.openId).toBe("rex");
+  });
+});
+
+// A filter value is not this hook's to re-encode. The old rewrite went through
+// URLSearchParams, which turned a "+" into "%2B" and a "%2C" into "," on a
+// query it had only been asked to take one parameter out of.
+describe("the rest of the query", () => {
+  it("survives an old ?zival= link byte for byte", async () => {
+    at("/?kraj=a+b&x=%41&zival=rex");
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(REX, "sl")),
+    );
+    expect(window.location.search).toBe("?kraj=a+b&x=%41");
   });
 });

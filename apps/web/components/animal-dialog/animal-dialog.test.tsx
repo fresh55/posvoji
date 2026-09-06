@@ -464,6 +464,39 @@ describe("animal dialog", () => {
     await waitFor(() => expect(document.activeElement).toBe(link));
   });
 
+  // After stepping through the list the card the dialog opened from is not
+  // where the visitor is any more. Focus goes to the card of the animal the
+  // dialog closed on, so the keyboard carries on from there.
+  it("returns focus to the card of the animal it closed on", async () => {
+    renderGrid();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.keyDown(dialog, { key: "PageDown" });
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(MURI, "sl")),
+    );
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" });
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(cardLink("Muri")));
+  });
+
+  // Nothing was focused when a link opened the dialog, and Radix's own
+  // restore would have put focus on the body, at the top of the page.
+  it("hands focus to the animal's card when a link opened the dialog", async () => {
+    window.history.replaceState(null, "", "/?zival=muri");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    await act(async () => {
+      fireEvent.click(slot(dialog, "dialog-close-card"));
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(cardLink("Muri")));
+  });
+
   it("falls back to the shelter photo note when nothing may be shown", async () => {
     window.history.replaceState(null, "", "/?zival=muri");
     renderGrid();
@@ -582,7 +615,6 @@ describe("animal dialog", () => {
     const summary = within(dialog).getByRole("button", {
       name: /Vse zdravstveno urejeno \(5\/5\)/,
     });
-    expect(summary.getAttribute("aria-expanded")).toBe("false");
     expect(within(dialog).queryByText("Sterilizacija")).toBeNull();
 
     fireEvent.click(summary);
@@ -615,42 +647,6 @@ describe("animal dialog", () => {
       within(dialog).getByText("Cufi v zavetišču čaka že 4 leta."),
     ).toBeTruthy();
     expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
-    // The list already leads with the longest waits by default, so the
-    // callout has nowhere to send anyone.
-    expect(
-      within(dialog).queryByText("Poglej vse, ki čakajo najdlje"),
-    ).toBeNull();
-  });
-
-  it("offers the longest-waiting sort from the callout when it would change something", async () => {
-    // Rendered on its own rather than through the grid, so the projection the
-    // grid would have run is run here.
-    const longtimer = animalsForClient([
-      animal("cufi", "Cufi", { intakeDate: "2022-06-15" }),
-    ])[0]!;
-    const onSeeLongestWaiting = vi.fn();
-    render(
-      <I18nProvider locale="sl">
-        <AnimalDialog
-          animal={longtimer}
-          logos={{}}
-          siblingIds={[]}
-          reference={new Date(REFERENCE)}
-          onNavigate={() => {}}
-          onClose={() => {}}
-          onSeeLongestWaiting={onSeeLongestWaiting}
-        />
-      </I18nProvider>,
-    );
-
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.click(
-      within(dialog).getByRole("button", {
-        name: "Poglej vse, ki čakajo najdlje",
-      }),
-    );
-
-    expect(onSeeLongestWaiting).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the plea away from a reserved animal", async () => {
@@ -1353,6 +1349,77 @@ describe("animal dialog", () => {
     expect(fan.dataset.dragging).toBeUndefined();
   });
 
+  // A mouse press that has not declared the horizontal holds no capture, so
+  // a release outside the stage never reaches it. The press used to stand
+  // with data-dragging on until the next gesture. React reads a leave off
+  // pointerout with nothing of the stage's under the pointer.
+  it("puts a mouse drag down when it leaves the stage undeclared", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-spread");
+
+    await act(async () => {
+      pointer(fan, "pointerdown", { x: 300, y: 200, pointerType: "mouse" });
+      // Down the page: the vertical, which is the dialog's, not the fan's.
+      pointer(fan, "pointermove", { x: 302, y: 240, pointerType: "mouse" });
+    });
+    expect(fan.dataset.dragging).toBe("true");
+
+    await act(async () => {
+      const out = new MouseEvent("pointerout", {
+        bubbles: true,
+        relatedTarget: document.body,
+      });
+      Object.defineProperty(out, "pointerType", { value: "mouse" });
+      Object.defineProperty(out, "pointerId", { value: 1 });
+      fireEvent(fan, out);
+    });
+
+    expect(fan.dataset.dragging).toBeUndefined();
+    // And the next press is a fresh one rather than the stale start's.
+    await act(async () => {
+      pointer(fan, "pointerdown", { x: 300, y: 200, pointerType: "mouse" });
+      pointer(fan, "pointermove", { x: 160, y: 204, pointerType: "mouse" });
+      pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "mouse" });
+    });
+    await waitFor(() =>
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+        .toBe("true"),
+    );
+  });
+
+  // The stage ref used to call the wheel hook and drop the cleanup it handed
+  // back, so the settle timer of a swipe still in its tail outlived the fan.
+  // What is pinned is the contract: the timer the wheel armed is cleared when
+  // the fan goes.
+  it("clears the wheel's settle timer with the fan", async () => {
+    window.history.replaceState(null, "", "/?zival=pika");
+    renderGrid([MANY]);
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-spread");
+    const armed = vi.spyOn(window, "setTimeout");
+    const cleared = vi.spyOn(window, "clearTimeout");
+
+    await act(async () => {
+      // Short of a step, so the tail has a settle to run and something to
+      // put back when it does.
+      fireEvent.wheel(fan, { deltaX: 40, deltaY: 0 });
+    });
+    const settle = armed.mock.calls.findIndex(([, delay]) => delay === 250);
+    expect(settle).toBeGreaterThanOrEqual(0);
+    const timer = armed.mock.results[settle]!.value;
+
+    await act(async () => {
+      fireEvent.click(slot(dialog, "dialog-close-card"));
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    expect(cleared).toHaveBeenCalledWith(timer);
+    armed.mockRestore();
+    cleared.mockRestore();
+  });
+
   it("keeps a short mouse press on a photo a click, not a drag", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
@@ -1660,6 +1727,25 @@ describe("animal dialog", () => {
       .toBeTruthy();
   });
 
+  // opacity 0 does not remove hit-testing. On a touch tablet wide enough for
+  // the desktop fan nothing hovers, so the chevrons were invisible and still
+  // took the tap meant to open the photo under them. They take the pointer
+  // only once they can be seen; focus is never gated, so the keyboard keeps
+  // them. jsdom applies no Tailwind, so the classes are the assertion.
+  it("keeps the chevrons off the pointer until they show", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    const next = region(dialog, "photo-spread").getByRole("button", {
+      name: "Naslednja fotografija",
+    });
+    expect(next.className).toContain("pointer-events-none");
+    expect(next.className).toContain("group-hover:pointer-events-auto");
+    expect(next.className).toContain("group-focus-within:pointer-events-auto");
+    expect(next.className).not.toMatch(/(^|\s)pointer-events-auto(\s|$)/);
+  });
+
   // The keys reach the stage by bubbling from the print that holds focus, and
   // a walk moves that print: three steps and it is more than two seats out,
   // dropped from the window, and unmounted with focus on it. Focus fell to the
@@ -1937,14 +2023,19 @@ describe("animal dialog", () => {
       within(dialog).queryByRole("button", { name: "Prejšnja žival" }),
     ).toBeNull();
 
-    fireEvent.keyDown(dialog, { key: "PageDown" });
+    const walk = createEvent.keyDown(dialog, { key: "PageDown" });
+    fireEvent(dialog, walk);
     await waitFor(() =>
       expect(window.location.pathname).toBe(animalPath(MURI, "sl")),
     );
+    expect(walk.defaultPrevented).toBe(true);
 
-    // Muri is last, so PageDown from here does nothing.
-    fireEvent.keyDown(animalDialog(), { key: "PageDown" });
+    // Muri is last, so PageDown from here does nothing, and the key is left
+    // to the browser: swallowed, it could not scroll the card either.
+    const end = createEvent.keyDown(animalDialog(), { key: "PageDown" });
+    fireEvent(animalDialog(), end);
     expect(window.location.pathname).toBe(animalPath(MURI, "sl"));
+    expect(end.defaultPrevented).toBe(false);
 
     fireEvent.keyDown(animalDialog(), { key: "PageUp" });
     await waitFor(() =>
@@ -2096,7 +2187,11 @@ describe("animal dialog", () => {
     expect(status.textContent).toBe("Povezava kopirana");
   });
 
-  it("offers the platform's own share sheet when there is one", async () => {
+  // The phone query is answered yes in this suite (see the top of the file),
+  // so with a share sheet on the platform the button is the share and no
+  // popover opens. The popover with its own "Več" target is the wider
+  // layout's, and share-button.test.tsx covers it.
+  it("opens the platform's own share sheet straight from the button on a phone", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", {
       configurable: true,
@@ -2109,14 +2204,12 @@ describe("animal dialog", () => {
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
     });
-    await act(async () => {
-      fireEvent.click(await screen.findByRole("button", { name: "Več" }));
-    });
 
     expect(share).toHaveBeenCalledWith({
       title: "Rex išče dom",
       url: `https://posvoji.si${animalPath(REX, "sl")}`,
     });
+    expect(screen.queryByText("Deli to žival")).toBeNull();
     Reflect.deleteProperty(navigator, "share");
   });
 
@@ -2414,32 +2507,15 @@ describe("animal dialog", () => {
     ).toBe("sl");
   });
 
-  it("hides the sticky bar when there is no listing to send anyone to", async () => {
-    const noListing = animal("brez", "Brez", {
-      source: {
-        providerId: "test-shelter",
-        sourceAnimalId: "brez",
-        sourceUrl: "",
-        fetchedAt: "2026-01-01T00:00:00.000Z",
-        firstSeenAt: "2026-01-01T00:00:00.000Z",
-        lastSeenAt: "2026-01-01T00:00:00.000Z",
-      },
-    });
-    window.history.replaceState(null, "", "/?zival=brez");
-    renderGrid([noListing]);
-    const dialog = await screen.findByRole("dialog");
-
-    expect(dialog.querySelector('[data-slot="sticky-cta"]')).toBeNull();
-  });
-
   it("closes instead of leaving the site when a deep-linked dialog is popped", async () => {
     window.history.replaceState(null, "", animalPath(REX, "sl"));
     renderGrid();
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toBeTruthy();
     // Opened straight from a URL, so nothing pushed a marker for this entry;
-    // the effect has to have pushed its own throwaway one instead.
-    expect(window.history.state?.mobileDialogGesture).toBe(true);
+    // the hook has to have rewritten it into the two a card click makes, the
+    // list under the animal, and marked the animal's the way it marks its own.
+    await waitFor(() => expect(window.history.state?.animal).toBe(true));
 
     await act(async () => {
       window.history.back();
@@ -2447,6 +2523,52 @@ describe("animal dialog", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(window.location.pathname).toBe("/");
+  });
+
+  // Closing a deep link over the photo used to replace the entry in place and
+  // leave the animal's own address standing behind it, so the next back
+  // reopened the dialog the visitor had just closed.
+  it("leaves nothing behind for back to reopen once a deep link is closed", async () => {
+    window.history.replaceState(null, "", "/?vrsta=pes&zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(window.history.state?.animal).toBe(true));
+
+    await act(async () => {
+      fireEvent.click(slot(dialog, "dialog-close-photo"));
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // The list keeps the filters the link carried, and no photo.
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.search).toBe("?vrsta=pes");
+
+    // Back now goes wherever the visitor came from, not into the dialog. jsdom
+    // has no earlier entry to go to, so the address simply stays put.
+    await act(async () => {
+      window.history.back();
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.location.pathname).toBe("/");
+  });
+
+  // Two closes in one breath: Escape held a moment, or the X double-tapped.
+  // The first pop is still in flight when the second arrives, and a second
+  // history.back() would walk past the list.
+  it("pops once for two closes in the same tick", async () => {
+    renderGrid();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+    const entries = window.history.length;
+
+    await act(async () => {
+      fireEvent.click(slot(dialog, "dialog-close-card"));
+      fireEvent.click(slot(dialog, "dialog-close-card"));
+    });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.pathname).toBe("/");
+    // One entry popped, not two: the list's own entry is still the current one.
+    expect(window.history.length).toBe(entries);
   });
 
   it("advances the card gallery without opening the dialog", () => {

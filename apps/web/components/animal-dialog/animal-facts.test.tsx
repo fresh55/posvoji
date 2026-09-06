@@ -71,6 +71,22 @@ describe("the zdravje row", () => {
       screen.getByRole("button", { name: /Vse zdravstveno urejeno \(3\/3\)/ }),
     ).toBeTruthy();
   });
+
+  // The summary is replaced by the itemized row when pressed and never comes
+  // back, so it is not a disclosure: an aria-expanded that could only ever say
+  // "false" told a screen reader there was a section to collapse again.
+  it("does not describe the summary as a collapsed section", () => {
+    renderFacts({
+      species: "dog",
+      medical: { neutered: true, vaccinated: true, microchipped: true },
+    });
+
+    expect(
+      screen
+        .getByRole("button", { name: /Vse zdravstveno urejeno/ })
+        .hasAttribute("aria-expanded"),
+    ).toBe(false);
+  });
 });
 
 describe("the družba row", () => {

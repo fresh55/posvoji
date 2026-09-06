@@ -63,7 +63,7 @@ import {
 } from "@/lib/prehydration-script";
 import { summarizeShelters } from "@/lib/shelter-summary";
 import type { LookupEntry } from "@/lib/municipality-coverage";
-import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
+import { sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 
@@ -1079,16 +1079,6 @@ export function AnimalGrid({
         reference={reference}
         onNavigate={handleNavigate}
         onClose={close}
-        // The default sort already leads with the longest waits, so the
-        // callout's link only exists while some other order is on.
-        onSeeLongestWaiting={
-          sort === DEFAULT_ANIMAL_SORT
-            ? undefined
-            : () => {
-                setSort(DEFAULT_ANIMAL_SORT);
-                close();
-              }
-        }
       />
     </section>
   );

@@ -6,6 +6,8 @@ import {
   animalSlugFromPath,
   findAnimalBySlug,
   posterPath,
+  pathWithPhoto,
+  photoFromSearch,
   slugify,
 } from "@/lib/animal-path";
 
@@ -33,6 +35,35 @@ function animal(overrides: Partial<Animal> = {}): Animal {
     ...overrides,
   };
 }
+
+describe("the photo a link names", () => {
+  it("reads the parameter as a position, counted from one", () => {
+    expect(photoFromSearch("?foto=3")).toBe(2);
+    expect(photoFromSearch("?vrsta=pes&foto=1")).toBe(0);
+  });
+
+  it("reads anything that is not a position as no photo at all", () => {
+    // A link nobody can act on should open the page it would have opened
+    // anyway, rather than the first photo by accident of rounding.
+    for (const search of ["", "?vrsta=pes", "?foto=", "?foto=0", "?foto=-2", "?foto=2.5", "?foto=jutri"]) {
+      expect(photoFromSearch(search)).toBeUndefined();
+    }
+  });
+
+  it("writes the photo into the address, and the first one not at all", () => {
+    expect(pathWithPhoto("/zival/luna-abc123/ljubljana/horjul", 2)).toBe(
+      "/zival/luna-abc123/ljubljana/horjul?foto=3",
+    );
+    // The page opens on its first photo without being told to.
+    expect(pathWithPhoto("/zival/luna", 0)).toBe("/zival/luna");
+    expect(pathWithPhoto("/zival/luna", undefined)).toBe("/zival/luna");
+  });
+
+  it("round-trips what it wrote", () => {
+    const written = pathWithPhoto("/zival/luna", 5);
+    expect(photoFromSearch(written.slice(written.indexOf("?")))).toBe(5);
+  });
+});
 
 describe("slugify", () => {
   it("folds Slovenian letters to ascii", () => {

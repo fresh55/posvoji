@@ -348,12 +348,17 @@ describe("AnimalCard keyboard", () => {
 
     // The visible marker is a row of dots with no text, so where the gallery
     // is gets read from the sr-only line the same index drives.
-    const spoken = () => document.querySelector('[data-slot="photo-position"]')?.textContent;
+    const position = () =>
+      document.querySelector('[data-slot="photo-position"]');
+    const spoken = () => position()?.textContent;
     const link = screen.getByText("Rex").closest("a")!;
     expect(spoken()).toContain("1 od 3");
+    expect(position()?.getAttribute("aria-live")).toBeNull();
 
     fireEvent.keyDown(link, { key: "ArrowRight" });
     expect(spoken()).toContain("2 od 3");
+    expect(position()?.getAttribute("aria-live")).toBe("polite");
+    expect(position()?.getAttribute("aria-atomic")).toBe("true");
 
     // And it wraps backwards past the first photo.
     fireEvent.keyDown(link, { key: "ArrowLeft" });

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -121,6 +122,10 @@ const STEP_MARGIN = "1200px 0px";
 // the browser does not reliably report the leave that used to do the job.
 export const ROWS_PER_STEP = 15;
 export const TARGET_ROWS = 40;
+
+// Keep background commits small while the visitor interacts with a dialog.
+// Each step still advances toward the same grid budget.
+export const ROWS_PER_STEP_BEHIND_DIALOG = 3;
 
 // A press is a stronger signal than a scroll, so it buys more. At 120 a full
 // unfiltered dataset is three or four presses end to end, without the grid
@@ -276,6 +281,40 @@ export function AnimalGrid({
     [visible, sort, locale, reference, nearby],
   );
 
+  // What the dialog steps through is what the visitor is looking at: the list
+  // as filtered and sorted on screen, in that order. Read here, above the
+  // chunking, because the step below is one of the things that asks whether a
+  // dialog is open.
+  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
+    useAnimalDialogHost({
+      animals,
+      shown: sorted,
+      basePath: locale === "sl" ? "/" : "/en",
+    });
+
+  // Whether a dialog stands over the grid, which is the automatic step's own
+  // question: behind one, a step commits fewer rows
+  // (ROWS_PER_STEP_BEHIND_DIALOG above).
+  //
+  // A ref, and not a dependency of watchSentinel below. That callback's
+  // lifetime is one sorted list on purpose, because the callback is the
+  // sentinel's own ref: rebuilding it takes the observation down and puts a
+  // fresh one up, and a fresh observation is always delivered an initial entry.
+  // Closed over the open animal, the callback would be rebuilt on every open
+  // and every close, so opening a dialog would itself ask for a step nobody
+  // scrolled for, and it would ask with the sentinel sitting wherever the last
+  // step left it. The callback reads the ref at the moment it computes a step,
+  // which is the moment the answer has to be true for.
+  //
+  // Kept current by an effect rather than written during the render. A render
+  // is not a commit here: the step below is a transition, so React is free to
+  // start a render, drop it and start again, and a ref moved by a render that
+  // was thrown away would be answering for a dialog that never appeared.
+  const dialogOpen = useRef(false);
+  useEffect(() => {
+    dialogOpen.current = selected !== undefined;
+  }, [selected]);
+
   // How much of that list is on the page. The count is held together with the
   // list it was counted against, so it answers for that list and no other: any
   // filter, sort or species move hands down a different array, the count stops
@@ -304,10 +343,11 @@ export function AnimalGrid({
 
   // The sentinel's own ref is the observer's lifetime, and that lifetime is one
   // sorted list rather than one step: the callback closes over the list alone,
-  // so a step does not take the observer down and put a new one up. The step is
-  // a functional update for the same reason: it reads the count off the state
-  // it is updating rather than off a closure that would have to be rebuilt to
-  // stay current.
+  // so a step does not take the observer down and put a new one up, and neither
+  // does a dialog opening over the grid, which is why the open state is the ref
+  // above and not a dependency here. The step is a functional update for the
+  // same reason: it reads the count off the state it is updating rather than
+  // off a closure that would have to be rebuilt to stay current.
   //
   // What a step does have to do is re-arm the observation, which is the
   // unobserve and observe pair at the end of the callback. This used to be left
@@ -332,6 +372,12 @@ export function AnimalGrid({
   // delivered an initial entry, measured against wherever the sentinel stands
   // by then, so the grid either takes the next step or waits for a real scroll,
   // and neither of those is something the browser has to volunteer.
+  //
+  // Behind an open dialog the re-arm is the whole of what carries the grid on.
+  // A three-row step is shorter than the watched band rather than several times
+  // it, so the sentinel never leaves the band at all, and every fresh
+  // observation delivers the entry that takes the next small step. The grid
+  // reaches the same budget it always does, in more steps and one task each.
   const watchSentinel = useCallback(
     (node: HTMLDivElement | null) => {
       if (!node) return;
@@ -356,16 +402,33 @@ export function AnimalGrid({
             // promised forty-five, and some 1,500px of page nobody asked for.
             // A short last step is nothing for the re-arm below to worry
             // about either, because a step that reaches the budget settles,
-            // and settling unmounts the sentinel. Only the full-size steps
-            // before it have a sentinel left to deliver anything.
+            // and settling unmounts the sentinel. Only a step that stops short
+            // of the budget has a sentinel left to deliver anything, whichever
+            // of the two strides it took.
             const budget = TARGET_ROWS * columns;
-            setChunk((previous) => {
-              const drawn = Math.min(
-                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                  ROWS_PER_STEP * columns,
-                budget,
-              );
-              return { of: sorted, drawn, settled: drawn >= budget };
+            // How wide this step is. Behind an open dialog it is the small
+            // one, so what commits while somebody is dragging the photo fan is
+            // a dozen cards rather than sixty. Read off the ref as the entry
+            // arrives, rather than closed over when the observer was made,
+            // which is the whole reason the ref exists (dialogOpen above).
+            const rows = dialogOpen.current
+              ? ROWS_PER_STEP_BEHIND_DIALOG
+              : ROWS_PER_STEP;
+            // A transition, so React renders the step's cards in slices it can
+            // yield between rather than in one task. Nobody is waiting on this
+            // render: the sentinel is below the viewport, and when the dialog
+            // is open the whole step lands behind it. It is only half the
+            // answer, which is why the step above narrows as well: the render
+            // yields, the commit those cards make does not.
+            startTransition(() => {
+              setChunk((previous) => {
+                const drawn = Math.min(
+                  (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
+                    rows * columns,
+                  budget,
+                );
+                return { of: sorted, drawn, settled: drawn >= budget };
+              });
             });
             // The re-arm. Nothing else asks this observer for another entry.
             observer.unobserve(node);
@@ -415,15 +478,6 @@ export function AnimalGrid({
   useEffect(() => {
     delete document.documentElement.dataset[PREHYDRATION_DATASET_KEY];
   }, []);
-
-  // What the dialog steps through is what the visitor is looking at: the list
-  // as filtered and sorted on screen, in that order.
-  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
-    useAnimalDialogHost({
-      animals,
-      shown: sorted,
-      basePath: locale === "sl" ? "/" : "/en",
-    });
 
   const isEmpty = animals.length === 0;
 

@@ -15,6 +15,7 @@ import {
   CARDS_PER_CLICK,
   INITIAL_CARDS,
   ROWS_PER_STEP,
+  ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
   UNDO_WINDOW_MS,
 } from "./animal-grid";
@@ -51,6 +52,16 @@ Object.defineProperty(window, "matchMedia", {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   })),
+});
+
+// motion measures a keyframe by reading the page's scroll position and putting
+// it back afterwards, and jsdom has no window.scrollTo to put it back with: the
+// call goes to the virtual console as "Not implemented" and prints a stack over
+// the run. The dialog renders in this file now, which is what reaches that code
+// path, so the no-op belongs here rather than the noise.
+Object.defineProperty(window, "scrollTo", {
+  configurable: true,
+  value: () => {},
 });
 
 function animal(id: string, species: Species, shelterId: string): Animal {
@@ -103,6 +114,7 @@ type ObserverEntries = { isIntersecting: boolean }[];
 // them. The registrations matter as much as the callbacks: a step has to
 // re-arm its observation, and re-arming is the observe call.
 type ObserverStub = {
+  /** The live observers, in the order they were made. */
   callbacks: ((entries: ObserverEntries) => void)[];
   calls: { method: "observe" | "unobserve"; node: Element }[];
 };
@@ -114,7 +126,9 @@ function stubIntersectionObserver(): ObserverStub {
     configurable: true,
     writable: true,
     value: class {
+      callback: (entries: ObserverEntries) => void;
       constructor(callback: (entries: ObserverEntries) => void) {
+        this.callback = callback;
         callbacks.push(callback);
       }
       observe(node: Element) {
@@ -123,7 +137,18 @@ function stubIntersectionObserver(): ObserverStub {
       unobserve(node: Element) {
         calls.push({ method: "unobserve", node });
       }
-      disconnect() {}
+      // A disconnected observer is done, and the list has to say so. The grid
+      // makes a new one whenever the sorted list changes identity and React
+      // hands the sentinel's ref callback over, which takes the old observer
+      // down with it (watchSentinel's cleanup). Left in the list, that dead
+      // observer still answered a hand-fired entry, and its step wrote the
+      // count against the list it had closed over, which the next render then
+      // read as a count for another list and threw away. A grid that was
+      // stepping fine froze on one step's worth of cards, in the test alone.
+      disconnect() {
+        const at = callbacks.indexOf(this.callback);
+        if (at !== -1) callbacks.splice(at, 1);
+      }
     },
   });
   return { callbacks, calls };
@@ -534,6 +559,83 @@ describe("how much of the grid is drawn", () => {
       { method: "unobserve", node: sentinel },
       { method: "observe", node: sentinel },
     ]);
+  });
+
+  // One automatic step, at four columns, with the dialog either closed or
+  // opened over the grid by the address the render starts at. Both answers are
+  // measured the same way and inside one call, because what the step behind a
+  // dialog is worth is only sayable against the one in front of it.
+  //
+  // Counted off the grid element rather than by role: radix hides the rest of
+  // the page from the accessibility tree while a modal dialog is open, so the
+  // cards behind it answer no role query at all.
+  function oneStep(at: string) {
+    window.history.replaceState(null, "", at);
+    stubGridColumns(columnTracks(4));
+    const { callbacks } = stubIntersectionObserver();
+    const { container } = renderGrid(pastTheBudget(4, 0));
+    const dialog = document.querySelector('[role="dialog"]') !== null;
+
+    act(() => {
+      for (const callback of callbacks) callback([{ isIntersecting: true }]);
+    });
+
+    const drawn = container.querySelectorAll("[data-card-grid] article").length;
+    cleanup();
+    return { drawn, dialog };
+  }
+
+  it("steps by fewer rows while a dialog stands over the grid", () => {
+    // The same observer entry mounts fewer cards while the dialog is open.
+    const closed = oneStep("/");
+    const behind = oneStep("/?zival=dog-0");
+
+    expect(closed.dialog).toBe(false);
+    expect(closed.drawn).toBe(INITIAL_CARDS + ROWS_PER_STEP * 4);
+    expect(behind.dialog).toBe(true);
+    expect(behind.drawn).toBe(INITIAL_CARDS + ROWS_PER_STEP_BEHIND_DIALOG * 4);
+  });
+
+  it("reaches the same budget behind an open dialog, in more steps", () => {
+    // Nothing is held back behind the dialog, only sliced: the grid walks to
+    // the same TARGET_ROWS budget and settles there the same way, so the
+    // dialog's own previous and next arrows, which walk the drawn cards, keep
+    // gaining reach exactly as they do with it closed.
+    window.history.replaceState(null, "", "/?zival=dog-0");
+    stubGridColumns(columnTracks(4));
+    const spare = 10;
+    const beyond = pastTheBudget(4, spare);
+    const { callbacks } = stubIntersectionObserver();
+    const { container } = renderGrid(beyond);
+
+    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+
+    // A three-row step is shorter than the watched band, so in the browser
+    // every step re-arms straight into the next one. Here that is a delivered
+    // entry per step, and the sentinel going is the budget being spent.
+    let steps = 0;
+    while (container.querySelector("[data-grid-sentinel]")) {
+      expect(steps).toBeLessThan(TARGET_ROWS);
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
+      steps += 1;
+    }
+
+    expect(steps).toBe(
+      Math.ceil(
+        (TARGET_ROWS * 4 - INITIAL_CARDS) / (ROWS_PER_STEP_BEHIND_DIALOG * 4),
+      ),
+    );
+    expect(container.querySelectorAll("[data-card-grid] article")).toHaveLength(
+      TARGET_ROWS * 4,
+    );
+    // Settled, and settled the way a closed-dialog grid settles: the last step
+    // is the short one the clamp makes of it, the sentinel is gone, and the way
+    // on is the button with the remainder on it.
+    expect(container.querySelector("[data-card-grid] button")?.textContent).toBe(
+      `Prikaži še ${spare}`,
+    );
   });
 
   it("charges an unmeasurable grid for two columns", () => {

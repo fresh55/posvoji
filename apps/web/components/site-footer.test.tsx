@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
+import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
 
 afterEach(() => cleanup());
@@ -39,19 +40,30 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("link", { name: "Zavetišča" })).toBeTruthy();
   });
 
-  // Two links and no more. The shelter login is the header's, as a button
+  // Three links and no more. The shelter login is the header's, as a button
   // from lg and in the dropdown below it, and repeating it at the bottom of a
   // page the length of the grid bought nothing. The resources page is hidden
   // in lib/site-links.ts while it waits for a pass over its contents; it
   // still builds and still answers on /viri.
-  it("lists the two pages and nothing else", () => {
+  it("lists the three pages and nothing else", () => {
     const { container } = render(<SiteFooter locale="sl" />);
 
     const nav = container.querySelector("nav");
     const hrefs = Array.from(nav?.querySelectorAll("a") ?? []).map((a) =>
       a.getAttribute("href"),
     );
-    expect(hrefs).toEqual(["/zavetisca", FOUND_ANIMAL_PATHS.sl]);
+    expect(hrefs).toEqual([
+      "/zavetisca",
+      FOUND_ANIMAL_PATHS.sl,
+      ABOUT_PATHS.sl,
+    ]);
+  });
+
+  it("passes the about link off on the page it points at", () => {
+    render(<SiteFooter locale="sl" showAboutLink={false} />);
+
+    expect(screen.queryByRole("link", { name: "O nas" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Zavetišča" })).toBeTruthy();
   });
 
   // The header nav carries moreInformation, and on the shelters page both

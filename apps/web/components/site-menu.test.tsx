@@ -39,11 +39,13 @@ describe("the header menu", () => {
     expect(items.map((item) => item.textContent)).toEqual([
       "Zavetišča",
       "Najdena žival",
+      "O nas",
       "Prijava za zavetišča",
     ]);
     expect(items.map((item) => item.getAttribute("href"))).toEqual([
       "/zavetisca",
       "/najdena-zival",
+      "/o-nas",
       "/portal/prijava",
     ]);
   });
@@ -55,6 +57,7 @@ describe("the header menu", () => {
     expect(items.map((item) => item.getAttribute("href"))).toEqual([
       "/en/shelters",
       "/en/found-animal",
+      "/en/about",
       "/portal/prijava",
     ]);
   });

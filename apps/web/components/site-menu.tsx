@@ -40,10 +40,11 @@ function isCurrent(
   return paths?.[locale] === href;
 }
 
-// Inline links for lg and up. Two of them, which is the whole roster a
-// visitor can see: "Viri" is hidden for now in lib/site-links.ts, and the
-// login to the far right is a door to a different site rather than a
-// destination on this one. "Zavetišča" and "Najdena žival" are both pages of
+// Inline links for lg and up: the roster entries flagged `inline`, which is
+// fewer than the roster a visitor can see. The rest of the visible ones are
+// reached from the footer and from the dropdown below; "Viri" is hidden
+// altogether in lib/site-links.ts, and the login to the far right is a door
+// to a different site rather than a destination on this one. "Zavetišča" and "Najdena žival" are both pages of
 // their own, and the header is the shortest way to either from anywhere in
 // the grid - the hero line only offers the second one on the homepage, and
 // the footer is the length of the grid away. Muted until hovered, so the

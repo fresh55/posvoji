@@ -152,10 +152,8 @@ function parseSpecies(pet: CmsPet): Species {
   const slug = stringValue(pet.type?.slug);
   if (slug === "pes") return "dog";
   if (slug === "macka") return "cat";
-  // Ljubljana groups rabbits under its third, "Ostali" tab. This mapping is
-  // provider-specific and follows the shelter catalogue audit confirmed by
-  // the project owner; unknown future type slugs still remain "other".
-  if (slug === "ostali") return "rabbit";
+  // "Ostali" includes rabbits, pigeons and other animals. The category
+  // alone does not identify a species; preserve any breed separately.
   return "other";
 }
 

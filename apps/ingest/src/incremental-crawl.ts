@@ -50,7 +50,8 @@ const DAY_MS = 24 * 60 * 60_000;
 // state means "generation unknown", which forces the full crawl.
 //
 // v1 = the parsers as of the run this file was added.
-export const CRAWL_GENERATION = 1;
+// v2 = Ljubljana's broad Ostali category no longer implies rabbit.
+export const CRAWL_GENERATION = 2;
 
 // Sidecar next to animals.json. Not a schema change, and not something the
 // site reads.

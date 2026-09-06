@@ -103,11 +103,11 @@ describe("parseDetail", () => {
     }
   });
 
-  it("recognises the rabbit and the complete-care medical bundle", () => {
+  it("keeps the broad Ostali category and the complete-care medical bundle", () => {
     expect(parseDetail(rabbitHtml)).toEqual({
       sourceAnimalId: "rabbit-uuid",
       name: "Peter Z.",
-      species: "rabbit",
+      species: "other",
       sex: "male",
       breed: undefined,
       birthDate: "2025-10-20",
@@ -123,6 +123,28 @@ describe("parseDetail", () => {
       imageUrls: [
         "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030015.jpg",
       ],
+    });
+  });
+
+  it("does not label an ornamental pigeon in Ostali as a rabbit", () => {
+    const html =
+      '<script id="__NEXT_DATA__" type="application/json">' +
+      JSON.stringify({
+        props: {
+          pageProps: {
+            pet: {
+              id: "pigeon-uuid",
+              title: "Oto",
+              type: { slug: "ostali", title: "Druga žival" },
+              breed: "okrasni golob",
+            },
+          },
+        },
+      }) +
+      "</script>";
+    expect(parseDetail(html)).toMatchObject({
+      species: "other",
+      breed: "okrasni golob",
     });
   });
 
@@ -200,11 +222,11 @@ describe("provider", () => {
   };
   const ctx = { client: new PoliteClient({ userAgent: "test" }), policy };
 
-  it("normalizes a schema-valid rabbit with cacheable photos", async () => {
+  it("normalizes a schema-valid Ostali animal with cacheable photos", async () => {
     const animal = Animal.parse(await provider.normalize(ctx, raw));
     expect(animal).toMatchObject({
       id: "ljubljana:rabbit-uuid",
-      species: "rabbit",
+      species: "other",
       medical: {
         neutered: true,
         microchipped: true,

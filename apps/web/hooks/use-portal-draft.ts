@@ -1,7 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { clearDraft, readDraft, writeDraft } from "@/lib/portal-drafts";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  clearDraft,
+  draftDiff,
+  keepKnownDraftKeys,
+  readDraft,
+  resumeDraft,
+  writeDraft,
+  type DraftSanitizer,
+} from "@/lib/portal-drafts";
 
 /**
  * The typed half of an editor page, mirrored to this tab's storage.
@@ -18,12 +26,20 @@ import { clearDraft, readDraft, writeDraft } from "@/lib/portal-drafts";
  * over a fresh draft rather than used as it is, because a deploy can change
  * the shape of a draft while a tab is still open on the old one, and a missing
  * key would turn its box into an uncontrolled input halfway through the form.
+ *
+ * Only the stored keys are laid over, and only after `sanitize` has checked
+ * each one. Storage is not trusted: a key can hold anything, and a value of
+ * the wrong type would reach a controlled input and throw out of the render
+ * with nothing left to clear it. What survives and still differs from the
+ * record is what `resumed` reports; a key that changes nothing is dropped on
+ * mount so the list stops marking the animal.
  */
 export function usePortalDraft<Draft extends object>(
   account: string,
   shelter: string,
   id: string,
   fromRecord: () => Draft,
+  sanitize: DraftSanitizer<Draft> = keepKnownDraftKeys,
 ): {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -34,25 +50,46 @@ export function usePortalDraft<Draft extends object>(
   /** The work is saved or given up: the key has nothing left to hold. */
   clear: () => void;
 } {
-  const [stored] = useState(() => {
-    const kept = readDraft<Partial<Draft>>(account, shelter, id);
-    return kept ? { ...fromRecord(), ...kept } : null;
+  const [initial] = useState(() => {
+    const base = fromRecord();
+    const stored = readDraft<unknown>(account, shelter, id);
+    if (stored === null) return { draft: base, resumed: false, stale: false };
+    const changes = resumeDraft(stored, base, sanitize);
+    const resumed = Object.keys(changes).length > 0;
+    return {
+      draft: resumed ? { ...base, ...changes } : base,
+      resumed,
+      // The key held something, and nothing of it was worth keeping.
+      stale: !resumed,
+    };
   });
-  const [draft, setDraft] = useState<Draft>(() => stored ?? fromRecord());
-  const [resumed, setResumed] = useState(stored !== null);
+  const [draft, setDraft] = useState<Draft>(initial.draft);
+  const [resumed, setResumed] = useState(initial.resumed);
+  // The record can change under a mounted form: a status tapped in the
+  // summary saves at once and hands the form a new record. Kept in a ref,
+  // brought up to date after every render, so reset() rebuilds from the
+  // record as it is now, not as it was on mount.
+  const latest = useRef(fromRecord);
+  useEffect(() => {
+    latest.current = fromRecord;
+  }, [fromRecord]);
 
   const clear = useCallback(
     () => clearDraft(account, shelter, id),
     [account, id, shelter],
   );
 
+  // Storage is written after the render, never during it: the write notifies
+  // the list's subscribers, and a state update from inside another
+  // component's render is what React refuses.
+  useEffect(() => {
+    if (initial.stale) clear();
+  }, [clear, initial.stale]);
+
   const reset = useCallback(() => {
     clear();
-    setDraft(fromRecord());
+    setDraft(latest.current());
     setResumed(false);
-    // fromRecord closes over the record this form is editing, which cannot
-    // change under a mounted form: the page keys the form by the record's id.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clear]);
 
   return { draft, setDraft, resumed, reset, clear };
@@ -67,16 +104,36 @@ export function usePortalDraft<Draft extends object>(
  * apart from the hook above because what counts as work is the one thing the
  * two editors do not agree on, and each can only say it once it has read its
  * own draft.
+ *
+ * Given `fromRecord`, only the keys that differ from the record are written,
+ * text compared trimmed, and the key is dropped when none does even while the
+ * editor still counts the form as work. Without it the whole draft is
+ * written, which is the older rule and resumes every field.
  */
-export function usePortalDraftMirror(
+export function usePortalDraftMirror<Draft extends object>(
   account: string,
   shelter: string,
   id: string,
-  draft: unknown,
+  draft: Draft,
   unsaved: boolean,
+  fromRecord?: () => Draft,
 ): void {
+  // A fresh closure every render; read through a ref so the mirror runs on a
+  // change to the draft, not on every render of the page. Its own effect
+  // comes first, so the mirror below always reads the closure of this render.
+  const latest = useRef(fromRecord);
   useEffect(() => {
-    if (unsaved) writeDraft(account, shelter, id, draft);
-    else clearDraft(account, shelter, id);
+    latest.current = fromRecord;
+  }, [fromRecord]);
+
+  useEffect(() => {
+    if (!unsaved) {
+      clearDraft(account, shelter, id);
+      return;
+    }
+    const base = latest.current;
+    const kept = base === undefined ? draft : draftDiff(draft, base());
+    if (Object.keys(kept).length === 0) clearDraft(account, shelter, id);
+    else writeDraft(account, shelter, id, kept);
   }, [account, draft, id, shelter, unsaved]);
 }

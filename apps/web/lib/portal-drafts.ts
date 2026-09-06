@@ -59,6 +59,92 @@ function notifyAll(): void {
   for (const listener of listeners) listener();
 }
 
+// What a key holds: a plain object with only the draft keys the shelter has
+// changed from the saved record, each with its typed value. Never the whole
+// draft. A whole draft would carry every field back over the record on
+// resume, so a name typed in one tab would resend the breed that another tab,
+// or a crawl in between, had changed since. A key written before this rule
+// holds every field; it is a superset of the same shape and goes through the
+// same path, resuming every field that still differs from the record.
+//
+// Text is compared trimmed on both sides. Crawled text can carry trailing
+// whitespace the form trims away on save, and without this an untouched form
+// would read as changed and leave a key behind.
+
+/** Checks a stored value against the draft the record produces and returns
+ *  the keys worth keeping, each with a value of the right type. Anything it
+ *  leaves out is dropped. */
+export type DraftSanitizer<T extends object> = (
+  stored: unknown,
+  base: T,
+) => Partial<T>;
+
+/** Whether one draft value differs from another. Text is compared trimmed;
+ *  everything else by Object.is, since a draft holds only primitives. */
+export function draftValueDiffers(a: unknown, b: unknown): boolean {
+  if (typeof a === "string" && typeof b === "string") {
+    return a.trim() !== b.trim();
+  }
+  return !Object.is(a, b);
+}
+
+/** The keys of the draft whose value differs from the base, with the
+ *  draft's value. Empty when the form is back to what the record says. */
+export function draftDiff<T extends object>(draft: T, base: T): Partial<T> {
+  const diff: Partial<T> = {};
+  for (const key of Object.keys(draft) as (keyof T)[]) {
+    if (draftValueDiffers(draft[key], base[key])) diff[key] = draft[key];
+  }
+  return diff;
+}
+
+/** The sanitizer for an editor without one of its own: keeps a plain object's
+ *  keys that the base draft has, and where the base holds text keeps only
+ *  text, since a text box handed anything else throws. It cannot tell a wrong
+ *  enum from a right one, or check a key the base holds as null, so an editor
+ *  with either should pass its own. */
+export function keepKnownDraftKeys<T extends object>(
+  stored: unknown,
+  base: T,
+): Partial<T> {
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
+    return {};
+  }
+  const kept: Partial<T> = {};
+  const values = stored as Record<string, unknown>;
+  for (const key of Object.keys(base) as (keyof T & string)[]) {
+    if (!Object.prototype.hasOwnProperty.call(values, key)) continue;
+    const value: unknown = values[key];
+    if (typeof base[key] === "string" && typeof value !== "string") continue;
+    kept[key] = value as T[keyof T & string];
+  }
+  return kept;
+}
+
+/** What a stored value changes about the fresh draft: the sanitized keys
+ *  whose value differs from the base. Empty when the value is malformed, of
+ *  the wrong shape, or says nothing the record does not already say. Never
+ *  throws, whatever the sanitizer does with what it is given. */
+export function resumeDraft<T extends object>(
+  stored: unknown,
+  base: T,
+  sanitize: DraftSanitizer<T>,
+): Partial<T> {
+  let kept: Partial<T>;
+  try {
+    kept = sanitize(stored, base);
+  } catch {
+    return {};
+  }
+  if (typeof kept !== "object" || kept === null) return {};
+  const changes: Partial<T> = {};
+  for (const key of Object.keys(kept) as (keyof T)[]) {
+    if (!(key in base)) continue;
+    if (draftValueDiffers(kept[key], base[key])) changes[key] = kept[key];
+  }
+  return changes;
+}
+
 /** Returns the parsed draft, or null when there is none, the stored value is
  *  not valid JSON, or storage cannot be read at all. Never throws: a form
  *  that cannot restore its draft should fall back to a blank one, not crash

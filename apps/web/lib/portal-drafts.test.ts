@@ -5,12 +5,38 @@ import {
   PORTAL_DRAFT_PREFIX,
   clearAccountDrafts,
   clearDraft,
+  draftDiff,
   draftIds,
   draftKey,
+  draftValueDiffers,
+  keepKnownDraftKeys,
   readDraft,
+  resumeDraft,
   subscribeDrafts,
   writeDraft,
 } from "./portal-drafts";
+
+type Draft = {
+  name: string;
+  breed: string;
+  sex: "male" | "female" | null;
+};
+
+const BASE: Draft = { name: "Rex", breed: "labradorec", sex: null };
+
+/** Keeps a string name, a string breed and a known sex; drops the rest. */
+function sanitizeStrict(stored: unknown, base: Draft): Partial<Draft> {
+  const kept: Partial<Draft> = {};
+  if (typeof stored !== "object" || stored === null) return kept;
+  const value = stored as Record<string, unknown>;
+  if (typeof value.name === "string") kept.name = value.name;
+  if (typeof value.breed === "string") kept.breed = value.breed;
+  if (value.sex === "male" || value.sex === "female" || value.sex === null) {
+    kept.sex = value.sex;
+  }
+  void base;
+  return kept;
+}
 
 beforeEach(() => {
   window.sessionStorage.clear();
@@ -176,5 +202,122 @@ describe("subscribeDrafts", () => {
     expect(listener).toHaveBeenCalledTimes(2);
 
     unsubscribe();
+  });
+});
+
+describe("draftValueDiffers", () => {
+  it("compares text trimmed on both sides", () => {
+    expect(draftValueDiffers("Rex ", "Rex")).toBe(false);
+    expect(draftValueDiffers("Rex", "\tRex\n")).toBe(false);
+    expect(draftValueDiffers("Rex", "Max")).toBe(true);
+  });
+
+  it("compares everything else by identity", () => {
+    expect(draftValueDiffers(null, null)).toBe(false);
+    expect(draftValueDiffers(null, "male")).toBe(true);
+    expect(draftValueDiffers("male", null)).toBe(true);
+    expect(draftValueDiffers(NaN, NaN)).toBe(false);
+    expect(draftValueDiffers(0, -0)).toBe(true);
+  });
+});
+
+describe("draftDiff", () => {
+  it("holds only the keys that differ from the base", () => {
+    expect(draftDiff({ ...BASE, name: "Max" }, BASE)).toEqual({ name: "Max" });
+    expect(draftDiff({ ...BASE, sex: "male" }, BASE)).toEqual({ sex: "male" });
+  });
+
+  it("is empty when the draft is the base", () => {
+    expect(draftDiff({ ...BASE }, BASE)).toEqual({});
+  });
+
+  it("is empty when only whitespace differs", () => {
+    expect(draftDiff({ ...BASE, name: " Rex " }, BASE)).toEqual({});
+    expect(draftDiff(BASE, { ...BASE, breed: "labradorec  " })).toEqual({});
+  });
+
+  it("keeps the draft's own value, untrimmed", () => {
+    expect(draftDiff({ ...BASE, name: " Max " }, BASE)).toEqual({
+      name: " Max ",
+    });
+  });
+});
+
+describe("keepKnownDraftKeys", () => {
+  it("returns nothing for a value that is not a plain object", () => {
+    expect(keepKnownDraftKeys(1, BASE)).toEqual({});
+    expect(keepKnownDraftKeys("abc", BASE)).toEqual({});
+    expect(keepKnownDraftKeys([1], BASE)).toEqual({});
+    expect(keepKnownDraftKeys(null, BASE)).toEqual({});
+    expect(keepKnownDraftKeys(undefined, BASE)).toEqual({});
+  });
+
+  it("drops keys the base does not have", () => {
+    expect(keepKnownDraftKeys({ name: "Max", colour: "black" }, BASE)).toEqual({
+      name: "Max",
+    });
+  });
+
+  it("drops anything but text where the base holds text", () => {
+    expect(
+      keepKnownDraftKeys({ name: null, breed: 1, sex: "male" }, BASE),
+    ).toEqual({ sex: "male" });
+  });
+
+  it("keeps a key the base holds as null whatever it holds", () => {
+    expect(keepKnownDraftKeys({ sex: "female" }, BASE)).toEqual({
+      sex: "female",
+    });
+    expect(keepKnownDraftKeys({ sex: null }, BASE)).toEqual({ sex: null });
+  });
+});
+
+describe("resumeDraft", () => {
+  it("returns the sanitized keys that differ from the base", () => {
+    expect(
+      resumeDraft({ name: "Max", breed: "labradorec" }, BASE, sanitizeStrict),
+    ).toEqual({ name: "Max" });
+  });
+
+  it("is empty for a value that changes nothing", () => {
+    expect(resumeDraft({ ...BASE }, BASE, sanitizeStrict)).toEqual({});
+    expect(resumeDraft({ name: "Rex " }, BASE, sanitizeStrict)).toEqual({});
+  });
+
+  it("is empty for a non-object value and for one of wrongly typed keys", () => {
+    for (const stored of [1, "abc", [1], true, { name: null }, { name: 1 }]) {
+      expect(resumeDraft(stored, BASE, sanitizeStrict)).toEqual({});
+    }
+  });
+
+  it("keeps the good keys of a value that also has bad ones", () => {
+    expect(resumeDraft({ name: null, sex: "male" }, BASE, sanitizeStrict)).toEqual(
+      { sex: "male" },
+    );
+  });
+
+  it("drops keys the sanitizer lets through that the base does not have", () => {
+    expect(
+      resumeDraft({ colour: "black" }, BASE, (stored) => stored as Partial<Draft>),
+    ).toEqual({});
+  });
+
+  it("does not throw when the sanitizer throws or returns garbage", () => {
+    expect(
+      resumeDraft({ name: "Max" }, BASE, () => {
+        throw new Error("bad");
+      }),
+    ).toEqual({});
+    expect(
+      resumeDraft({ name: "Max" }, BASE, () => null as unknown as Partial<Draft>),
+    ).toEqual({});
+    expect(
+      resumeDraft({ name: "Max" }, BASE, () => 1 as unknown as Partial<Draft>),
+    ).toEqual({});
+  });
+
+  it("lays every field of a whole draft over the base, as keys written before the diff hold one", () => {
+    const legacy: Draft = { name: "Max", breed: "pudelj", sex: "male" };
+    expect(resumeDraft(legacy, BASE, sanitizeStrict)).toEqual(legacy);
   });
 });

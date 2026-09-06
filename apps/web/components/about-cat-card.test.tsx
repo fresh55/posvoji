@@ -4,7 +4,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AboutCatCard } from "./about-cat-card";
 import type { Locale } from "@/lib/i18n";
-import { shelterPath } from "@/lib/shelter-path";
 
 afterEach(cleanup);
 
@@ -15,28 +14,26 @@ describe("the cat's card", () => {
     expect(screen.getByText("Srečko")).not.toBeNull();
   });
 
-  // The point of the card. The shelter is a destination on this site rather
-  // than a mention, so the sentence ends on a way into its animals, and the
-  // address comes from the same helper the rest of the site routes through
-  // rather than being written out here a second time.
-  it.each<Locale>(["sl", "en"])(
-    "links the shelter he came from (%s)",
-    (locale) => {
-      render(<AboutCatCard locale={locale} />);
+  it.each<Locale>(["sl", "en"])("says he was adopted (%s)", (locale) => {
+    const { container } = render(<AboutCatCard locale={locale} />);
 
-      const link = screen.getByRole("link");
-      expect(link.getAttribute("href")).toBe(shelterPath("macja-hisa", locale));
-    },
-  );
+    expect(container.textContent).toMatch(
+      locale === "sl" ? /Posvojili smo ga/ : /We adopted him/,
+    );
+  });
 
-  // The page's fourth fact is that personal details do not belong on the
-  // site. The card sits two rows above that sentence, so it stays about the
-  // cat and the shelter.
-  it("keeps the household out of it", () => {
-    const { container } = render(<AboutCatCard locale="sl" />);
+  // The two lines this card is not allowed to cross, both of them the page's
+  // own promises. It sits a row above "nobody pays for a place or a better
+  // position on the list", so it names no shelter and links to none: the
+  // site's about page picking one out of seventeen is the nearest thing to
+  // breaking that. And the page's fourth fact is that personal details do not
+  // belong here, so the household stays out of it too.
+  it.each<Locale>(["sl", "en"])("advertises nobody (%s)", (locale) => {
+    const { container } = render(<AboutCatCard locale={locale} />);
 
-    const text = container.textContent ?? "";
-    expect(text).toContain("Mačji hiši");
-    expect(text).not.toMatch(/@|\+386|Bruno/);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(container.textContent ?? "").not.toMatch(
+      /Mačja|Mačji|hiša|hiši|Celje|@|\+386/,
+    );
   });
 });

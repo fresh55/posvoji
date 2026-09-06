@@ -1,57 +1,57 @@
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { Locale } from "@/lib/i18n";
+import { META_DOT_CLASS, statusLabel } from "@/lib/labels";
 
 const copy = {
-  sl: {
-    name: "Srečko",
-    body: "Posvojili smo ga iz zavetišča.",
-  },
-  en: {
-    name: "Srečko",
-    body: "Lucky, in Slovenian. We adopted him from a shelter.",
-  },
-} satisfies Record<Locale, Record<string, string>>;
+  sl: { name: "Srečko", meta: ["Maček", "iz zavetišča"] },
+  en: { name: "Srečko", meta: ["Cat", "from a shelter"] },
+} satisfies Record<Locale, { name: string; meta: string[] }>;
 
 /**
- * Who the cat is.
+ * Srečko as the site would list him.
  *
- * Without it the model is decoration: a reader meets a cat on a page that
- * never mentions one, and the only text about him is a licence credit in the
- * footer, which answers a question nobody asked. Named, he is the one
- * concrete thing on a page whose five facts are otherwise abstractions, and
- * four of those are denials - no ads, no tracking, no accounts, no personal
- * data. He is also the only proof on it that any of this works.
+ * A caption under the cat kept trying to be prose and kept saying nothing: at
+ * its worst it told the reader that every animal on the list is waiting for a
+ * home, which the lede beside it had already said. The fix is not better
+ * sentences. It is to stop writing about him and describe him the way this
+ * site describes an animal, because the page is on a site that does exactly
+ * one thing and this is what that thing looks like.
  *
- * Two clauses, and it stops. It carried a third for a while, that every
- * animal on the list is waiting for what he already got, which sounded like
- * the point and was not: the lede four inches to the left already says the
- * site is a list of animals looking for a home, so the sentence spent the
- * reader's attention telling them something they had just read. What a
- * visitor could not get anywhere else on this page is that the cat can be
- * turned and touched, and that line belongs with the viewer that makes it
- * true, not here. See about-cat.tsx.
+ * So it is a card with a name, a badge and a two-fact line, the anatomy every
+ * card in the grid has. What it does that no other card can is carry
+ * "posvojeno" as a settled fact rather than a hope, and that is the whole
+ * argument for the site made without a word of argument: the reader has just
+ * scrolled a grid of animals waiting for this, and here is the one where it
+ * already happened.
  *
- * No shelter named, and no link to one. The card sits one row above the page
- * promising that nobody pays for a place or a better position on the list,
- * and the site's own about page sending its readers to one shelter out of
- * seventeen is the nearest thing to breaking that promise. "Iz zavetišča"
- * carries the part that matters, which is that he was waiting somewhere.
+ * The word comes from labels.ts rather than being typed here, so his badge
+ * and an adopted animal's badge cannot drift apart. Two facts and no more,
+ * the rule the real card keeps for its own reasons; the colour of his coat is
+ * in the picture above and does not need saying.
  *
- * About the cat, and not about the household that adopted him, for the same
- * reason: the page's fourth fact is that personal details do not belong here.
+ * No shelter named: the page promises a row below that nobody buys a place on
+ * this list. Nothing about the household either, for the reason the fourth
+ * fact gives.
  */
 export function AboutCatCard({ locale }: { locale: Locale }) {
   const text = copy[locale];
 
   return (
     <Card className="p-4">
-      {/* A caption, so it names the figure above it rather than announcing
-          itself as a section. text-sm: it sits opposite the facts and must
-          not out-rank them. */}
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        <b className="font-medium text-foreground">{text.name}</b>
-        {". "}
-        {text.body}
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-medium leading-snug">{text.name}</p>
+        {/* The treatment globals.css records for a settled animal: muted
+            ground, no colour. He is not news, he is the outcome. */}
+        <Badge variant="quiet">{statusLabel("adopted", locale)}</Badge>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {text.meta.map((part, index) => (
+          <span key={part}>
+            {index > 0 && <span className={META_DOT_CLASS}> · </span>}
+            {part}
+          </span>
+        ))}
       </p>
     </Card>
   );

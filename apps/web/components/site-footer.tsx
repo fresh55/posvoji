@@ -6,6 +6,7 @@ export function SiteFooter({
   locale,
   showSheltersLink = true,
   showFoundAnimalLink = true,
+  showAboutLink = true,
   docked = false,
 }: {
   locale: Locale;
@@ -24,6 +25,8 @@ export function SiteFooter({
    * page itself switches it off, being the destination.
    */
   showFoundAnimalLink?: boolean;
+  /** The about page passes its own link off, the same as the two above. */
+  showAboutLink?: boolean;
   /**
    * Set on a page that floats the filter dock over its bottom edge. The grid
    * carried this clearance, but the grid is not what ends the document: the
@@ -39,14 +42,15 @@ export function SiteFooter({
   // key in it has to have an opinion recorded here, so a destination added
   // there cannot reach the dropdown and quietly miss the footer: the two
   // surfaces drifting apart is the thing the shared roster exists to stop.
-  // For the two links this page can show, what is decided is only whether it
-  // shows them, because a page passes its own link off rather than linking to
-  // itself. `resources` is unlisted everywhere and never reaches this filter;
+  // For the three links this page can show, what is decided is only whether
+  // it shows them, because a page passes its own link off rather than linking
+  // to itself. `resources` is unlisted everywhere and never reaches this filter;
   // the shelter login is the header's now, a button from lg and a dropdown
   // item below it.
   const shown: Record<SiteLinkKey, boolean> = {
     shelters: showSheltersLink,
     foundAnimal: showFoundAnimalLink,
+    about: showAboutLink,
     resources: false,
     portal: false,
   };

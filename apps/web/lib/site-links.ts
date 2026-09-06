@@ -1,7 +1,12 @@
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import type { Locale, Messages } from "@/lib/i18n";
 
-export type SiteLinkKey = "shelters" | "foundAnimal" | "resources" | "portal";
+export type SiteLinkKey =
+  | "shelters"
+  | "foundAnimal"
+  | "about"
+  | "resources"
+  | "portal";
 
 /** The resources page in both locales, the same contract FOUND_ANIMAL_PATHS
  *  keeps for the lookup. The pair had been written out by hand in three
@@ -10,6 +15,13 @@ export type SiteLinkKey = "shelters" | "foundAnimal" | "resources" | "portal";
 export const RESOURCES_PATHS = {
   sl: "/viri",
   en: "/en/resources",
+} as const;
+
+/** The about page in both locales, kept the same way and for the same
+ *  reason. */
+export const ABOUT_PATHS = {
+  sl: "/o-nas",
+  en: "/en/about",
 } as const;
 
 export type SiteLink = {
@@ -63,6 +75,16 @@ export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
       href: FOUND_ANIMAL_PATHS[locale],
       label: messages.muniTab,
       inline: true,
+    },
+    // What the site is and what it is not, in one screen. Listed in the
+    // footer and the dropdown, not in the header's inline row: it is a page
+    // of its own, but nobody in the grid is looking for the shortest way to
+    // it, and the row is two destinations for the reasons written on
+    // `inline`.
+    {
+      key: "about",
+      href: ABOUT_PATHS[locale],
+      label: messages.about,
     },
     // Hidden on purpose while the page waits for a pass over its contents.
     // /viri and /en/resources still build and still answer; the link is only

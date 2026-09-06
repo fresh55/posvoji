@@ -33,6 +33,7 @@ const sl = {
   tryAgain: "Poskusi znova",
   resources: "Strokovno preverjeni viri",
   shelters: "Zavetišča",
+  about: "O nas",
   // Not "Za zavetišča", which names an audience and leaves the shelter to
   // guess whether there is a way in behind it. The word they scan a header
   // for is "Prijava"; "za zavetišča" is what keeps a visitor from reading it
@@ -425,6 +426,7 @@ const en: Messages = {
   tryAgain: "Try again",
   resources: "Trusted animal-care resources",
   shelters: "Shelters",
+  about: "About",
   shelterLogin: "Login for shelters",
   chooseLanguage: "Choose language",
   // A statement, matching the Slovenian. It used to read "See photo on the

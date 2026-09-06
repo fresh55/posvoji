@@ -10,7 +10,7 @@ import {
 } from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
-import { RESOURCES_PATHS } from "@/lib/site-links";
+import { ABOUT_PATHS, RESOURCES_PATHS } from "@/lib/site-links";
 
 /**
  * Every public page, in both languages, with each one naming the other.
@@ -102,6 +102,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       paths: { sl: RESOURCES_PATHS.sl, en: RESOURCES_PATHS.en },
       changeFrequency: "monthly",
+    },
+    // Five facts about the site, which change when the site does and not
+    // before.
+    {
+      paths: ABOUT_PATHS,
+      changeFrequency: "yearly",
     },
     ...shelters.map((shelter) => ({
       paths: {

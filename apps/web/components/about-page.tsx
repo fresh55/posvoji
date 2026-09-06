@@ -8,6 +8,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
+import { AboutCatCard } from "@/components/about-cat-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
@@ -184,8 +185,15 @@ export function AboutPage({ locale }: { locale: Locale }) {
               than the figure, so without this it anchors to the top: measured
               at 1280, the cat ended 240px above the last thing in the column.
               Below lg it is one block in the flow and centring says nothing. */}
+          {/* The card goes under the cat, because that is where the reader
+              already is when they wonder why there is a cat on this page.
+              Both are one block, so the pair centres together rather than the
+              figure centring and the card hanging off it. */}
           <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
-            <AboutCat locale={locale} />
+            <div className="mx-auto w-full max-w-md space-y-4">
+              <AboutCat locale={locale} />
+              <AboutCatCard locale={locale} />
+            </div>
           </div>
 
           {/* A rule between facts and nothing else. Each fact is an Item on

@@ -300,11 +300,9 @@ test.describe("the shelters register", () => {
         providers: group("providers"),
         animals: group("animals"),
         cards: document.querySelectorAll(cardSelector).length,
-        pills: [
-          ...document.querySelectorAll(
-            '[data-animals]:not([data-animals="none"])',
-          ),
-        ].map((pill) => Number(pill.getAttribute("data-animals"))),
+        pills: [...document.querySelectorAll("[data-animals]")].map((pill) =>
+          Number(pill.getAttribute("data-animals")),
+        ),
       };
     }, CARD);
 

@@ -5,7 +5,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/prune-dev-output.mjs",
+    "build": "next build && node scripts/drop-dev-output.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",

@@ -4,11 +4,11 @@ import type { Locale } from "@/lib/i18n";
 const copy = {
   sl: {
     name: "Srečko",
-    body: "Posvojili smo ga iz zavetišča. Vsaka žival na tem seznamu čaka na isto.",
+    body: "Posvojili smo ga iz zavetišča.",
   },
   en: {
     name: "Srečko",
-    body: "Lucky, in Slovenian. We adopted him from a shelter. Every animal on this list is waiting for the same.",
+    body: "Lucky, in Slovenian. We adopted him from a shelter.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -22,11 +22,14 @@ const copy = {
  * four of those are denials - no ads, no tracking, no accounts, no personal
  * data. He is also the only proof on it that any of this works.
  *
- * The last sentence is the one that earns the card its place. His name and
- * his adoption are a fact about one cat, and a fact about one cat is a nice
- * caption and nothing more; what the page needs is the reason he is on it.
- * He got the thing every animal in the register is still waiting for, so the
- * card ends by saying so, and the reader looks back at the list differently.
+ * Two clauses, and it stops. It carried a third for a while, that every
+ * animal on the list is waiting for what he already got, which sounded like
+ * the point and was not: the lede four inches to the left already says the
+ * site is a list of animals looking for a home, so the sentence spent the
+ * reader's attention telling them something they had just read. What a
+ * visitor could not get anywhere else on this page is that the cat can be
+ * turned and touched, and that line belongs with the viewer that makes it
+ * true, not here. See about-cat.tsx.
  *
  * No shelter named, and no link to one. The card sits one row above the page
  * promising that nobody pays for a place or a better position on the list,

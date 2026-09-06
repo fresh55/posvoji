@@ -4,24 +4,27 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import type { Locale } from "@/lib/i18n";
+import { createCatInteraction } from "@/lib/cat-interaction";
 
-const MODEL = "/models/our-cat/cat.glb?v=5.0";
-// 5.1: re-rendered at the camera below. The still and the model have to agree
-// on how big the cat is, or the handover is a jump rather than a swap. Framed
-// at 1.15m against a model now drawn at 1.45m, the cat shrank 37% the moment
-// the viewer took over.
-const POSTER = "/models/our-cat/poster.webp?v=5.1";
+const MODEL = "/models/our-cat/cat.glb?v=8.0";
+// The poster uses the same resting pose and camera as the interactive model.
+const POSTER = "/models/our-cat/poster.webp?v=8.0";
 
 const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
-    keyboard: "Za obračanje uporabi miško, dotik ali smerne tipke.",
+    keyboard: "Povleci ali uporabi smerne tipke za obračanje. Dotakni se mačka ali pritisni Enter oziroma preslednico za počasen mežik.",
+    /** The printed version of the line above, and shorter: what is spoken
+     *  to a screen reader names every key, where this only has to get a
+     *  visitor's hand onto the cat. */
+    rotate: "Povleci, da ga obrneš. Dotakni se ga za mežik.",
     loading: "Nalaganje mačka v 3D …",
     unavailable: "3D-ogled trenutno ni na voljo. Prikazana je slika mačka.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
-    keyboard: "Use mouse, touch or arrow keys to rotate.",
+    keyboard: "Drag or use arrow keys to rotate. Tap the cat or press Enter or Space for a slow blink.",
+    rotate: "Drag to turn him. Tap him for a blink.",
     loading: "Loading the cat in 3D …",
     unavailable: "The 3D view is unavailable. A still image of the cat is shown.",
   },
@@ -38,6 +41,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
     if (!container) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let viewer: ModelViewerElement | undefined;
+    let interaction: ReturnType<typeof createCatInteraction> | undefined;
     let disposed = false;
     let started = false;
     let visible = false;
@@ -47,8 +51,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
     // Resting, licking and both transitions are baked into one continuous clip.
     const syncPlayback = () => {
       if (!viewer || !ready || disposed) return;
-      if (canAnimate()) viewer.play();
-      else viewer.pause();
+      interaction?.syncPlayback();
     };
     const onLoad = () => {
       // Apply the seated first frame even when reduced motion starts paused.
@@ -132,6 +135,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
         };
         viewer.addEventListener("load", onLoad);
         viewer.addEventListener("error", onError);
+        interaction = createCatInteraction(viewer, canAnimate);
         container.append(viewer);
       } catch {
         if (!disposed) onError();
@@ -155,6 +159,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
       observer?.disconnect();
       document.removeEventListener("visibilitychange", syncPlayback);
       motion.removeEventListener("change", syncPlayback);
+      interaction?.dispose();
       viewer?.removeEventListener("load", onLoad);
       viewer?.removeEventListener("error", onError);
       viewer?.pause();
@@ -179,6 +184,21 @@ export function AboutCat({ locale }: { locale: Locale }) {
           className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
         />
       </div>
+      {/* Only once the viewer is up, and that is the whole reason this line
+          lives here rather than in the card below. It describes something the
+          page can do, and the page can only do it when the model actually
+          loaded: printed unconditionally it would sit under a flat poster
+          telling a visitor with no WebGL, or no JavaScript, to drag a picture.
+
+          Nothing else says the cat can be turned. interaction-prompt is off,
+          so there is no hand, and the a11y orbit labels are read only to
+          screen readers. Without this the only visitors who find out are the
+          ones who happen to drag a photo. */}
+      {status === "ready" && (
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          {text.rotate}
+        </p>
+      )}
       <figcaption className="sr-only" role="status">
         {status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading}
       </figcaption>

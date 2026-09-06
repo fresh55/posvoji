@@ -65,6 +65,22 @@ describe("the about cat", () => {
     expect(viewer.getAttribute("touch-action")).toBe("pan-y");
   });
 
+  // The only printed line that says the cat can be handled at all: the
+  // interaction prompt is off and the orbit labels are spoken to screen
+  // readers, so without it the two gestures are found by accident or not at
+  // all. It is tied to the viewer being up because it describes what the
+  // viewer does, and a visitor left on the poster can drag it all day.
+  it("offers the gestures once the viewer is up, and not before", async () => {
+    render(<AboutCat locale="en" />);
+    expect(screen.queryByText(/Drag to turn him/)).toBeNull();
+
+    const viewer = await loadViewer();
+    expect(screen.getByText(/Drag to turn him\. Tap him for a blink\./)).not.toBeNull();
+
+    fireEvent(viewer, new Event("error"));
+    expect(screen.queryByText(/Drag to turn him/)).toBeNull();
+  });
+
   it("pauses offscreen and in a hidden tab, resuming only when visible", async () => {
     render(<AboutCat locale="en" />);
     const viewer = await loadViewer();

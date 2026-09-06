@@ -7,7 +7,8 @@ import type { ShelterPin } from "@/lib/map-layout";
 
 // Every visual state the map can be in, side by side, so a marker or region
 // style change can be eyeballed in one glance instead of hunting real data
-// for each case. Dev-only: page.tsx 404s this route in a production build.
+// for each case. Dev-only: page.tsx renders the 404 in a production build,
+// and the build then removes the exported file (scripts/drop-dev-output.mjs).
 //
 // Its own client file because ShelterMap takes an onPick handler, which a
 // server component cannot hand it. That leaves page.tsx a server component,

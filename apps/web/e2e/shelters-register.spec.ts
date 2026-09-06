@@ -456,24 +456,36 @@ test.describe("the shelters register", () => {
   // takes 84 to 92 of it rather than the 80 the calibration assumed. Two of
   // the seventeen marks have six pixels of slack there.
   test("draws every mark at its own proportions at 320px", async ({ page }) => {
+    const hydrationErrors: string[] = [];
+    page.on("console", (message) => {
+      if (
+        message.type() === "error" &&
+        message.text().includes("hydrated but some attributes")
+      ) {
+        hydrationErrors.push(message.text());
+      }
+    });
+
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto(REGISTER);
     await expect(page.locator(CARD).first()).toBeVisible();
 
     // The marks are lazy and this page is seven screens deep, so most of them
     // are not fetched at all on arrival: their natural size is zero and the
-    // ratio below would divide by it. Asking for them eagerly changes when the
-    // page loads them and not how it draws them, which is what is asserted
-    // here. Waiting on `complete` rather than decode(), because a lazy image
-    // that never enters the viewport never settles its decode promise and the
-    // measurement would hang instead of failing.
-    await page.evaluate((cardSelector) => {
-      for (const image of document.querySelectorAll<HTMLImageElement>(
-        `${cardSelector} img`,
-      )) {
-        image.loading = "eager";
-      }
-    }, CARD);
+    // ratio below would divide by it. Bring each one through the viewport so
+    // the browser loads it by the same lazy-loading path a reader uses. Do not
+    // rewrite `loading` on the live DOM: React can still be hydrating the
+    // off-screen cards after navigation, and changing that attribute first
+    // creates a test-authored hydration mismatch (`eager` in the DOM, `lazy`
+    // in the component) even though the application rendered consistently.
+    const images = page.locator(`${CARD} img`);
+    const imageCount = await images.count();
+    for (let index = 0; index < imageCount; index += 1) {
+      await images.nth(index).scrollIntoViewIfNeeded();
+    }
+    // Waiting on `complete` rather than decode(), because a lazy image that
+    // never settles its decode promise would make the measurement hang
+    // instead of fail.
     // Settled, not loaded. A 404 sets `complete` and leaves naturalWidth at 0,
     // so requiring a natural size here waits for something that will never
     // arrive: apps/web/public/media is gitignored and written by the ingest
@@ -520,5 +532,6 @@ test.describe("the shelters register", () => {
       (mark) => Math.abs(mark.drawn / mark.natural - 1) > 0.03,
     );
     expect(distorted).toEqual([]);
+    expect(hydrationErrors).toEqual([]);
   });
 });

@@ -65,10 +65,9 @@ function missingLogoFiles(manifestPath: string, logosDir: string): string[] {
 }
 
 /**
- * What a build without `pnpm dataset:export` looks like: no cached photos,
- * no share-card or logo manifest. Neither one fails the build, so this is the
- * only thing that says so out loud. Pure and side-effect free, so it is
- * cheap to test against a temp directory instead of the real repo tree.
+ * Surfaces suspicious generated-media state without treating a legitimate
+ * zero-photo dataset as invalid. Pure and side-effect free, so it is cheap to
+ * test against a temp directory instead of the real repo tree.
  */
 export function buildMediaWarnings(paths?: {
   animalsMediaDir?: string;
@@ -80,11 +79,13 @@ export function buildMediaWarnings(paths?: {
 
   if (isEmptyDir(paths?.animalsMediaDir ?? animalsMediaDir)) {
     warnings.push(
-      "[build] public/media/animals is missing or empty: this site will " +
-        "ship with no animal photos. Expected in CI, which never runs the " +
-        "export; must not happen in a production build. Run " +
-        "`pnpm dataset:export` (or `pnpm images:derive` after a schema-only " +
-        "change) before building.",
+      "[build] public/media/animals is missing or empty. This is valid when " +
+        "the generated dataset references no cached animal photos; otherwise " +
+        "run `pnpm dataset:export` before building. `pnpm images:derive` can " +
+        "repair receipt-named missing derivatives from verified masters, but " +
+        "a missing master or any other receipt failure needs a full export. " +
+        "The check that counts is scripts/verify-media.mjs, which the deploy " +
+        "runs; this warning only points at it.",
     );
   }
 
@@ -110,7 +111,8 @@ export function buildMediaWarnings(paths?: {
           `not in public/media/shelter-logos: ${missing.join(", ")}. Those ` +
           "shelters will ship a broken image rather than fall back to a " +
           "letter. The manifest and the files came from different runs; " +
-          "re-run `pnpm --filter @posvoji/ingest fetch:logos` before building.",
+          "re-run `pnpm dataset:export` to establish a complete generation. " +
+          "The partial logos:fetch job intentionally refuses an invalid receipt.",
       );
     }
   }

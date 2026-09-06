@@ -103,6 +103,9 @@ test("moves the naming to another region instead of picking the first", async ({
 });
 
 test("forgets an arming the finger has dragged away from", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
   const dialog = await openPicker(page);
   const centre = region(dialog, CENTRE);
   const before = await scopeLabel(page);
@@ -112,11 +115,71 @@ test("forgets an arming the finger has dragged away from", async ({ page }) => {
   // across it is the page or the sheet under it moving, and the mark the
   // finger started on is no longer the mark it is over. Dispatched rather
   // than dragged, because what is being pinned is the rule the plate keeps,
-  // not the browser's gesture recognition.
-  await dialog.locator('svg[role="group"]').dispatchEvent("touchmove");
+  // not the browser's gesture recognition. It is still a complete touch
+  // event: an empty synthetic touchmove makes browser and sheet listeners
+  // reach for changedTouches[0] that does not exist, which tests malformed
+  // input and leaves an uncaught error behind instead of testing this rule.
+  await dialog.locator('svg[role="group"]').evaluate((plate) => {
+    const box = plate.getBoundingClientRect();
+    const clientX = box.left + box.width / 2;
+    const clientY = box.top + box.height / 2;
+    // WebKit exposes the modern Touch constructor but throws when it is
+    // called. Its legacy createTouch produces the same browser-owned object;
+    // Chromium implements the constructor and has no createTouch.
+    const touchDocument = document as Document & {
+      createTouch?: (
+        view: Window,
+        target: EventTarget,
+        identifier: number,
+        pageX: number,
+        pageY: number,
+        screenX: number,
+        screenY: number,
+      ) => Touch;
+      createTouchList?: (...touches: Touch[]) => TouchList;
+    };
+    const touch = touchDocument.createTouch
+      ? touchDocument.createTouch(
+          window,
+          plate,
+          1,
+          clientX + window.scrollX,
+          clientY + window.scrollY,
+          clientX,
+          clientY,
+        )
+      : new Touch({
+          identifier: 1,
+          target: plate,
+          clientX,
+          clientY,
+          radiusX: 1,
+          radiusY: 1,
+          rotationAngle: 0,
+          force: 0.5,
+        });
+    const touches = touchDocument.createTouchList
+      ? touchDocument.createTouchList(touch)
+      : [touch];
+    // WebKit also rejects touch lists passed to the constructor. Start with
+    // its real TouchEvent, then attach the browser-created TouchList; the
+    // resulting event has the same interface listeners receive from hardware.
+    const move = new TouchEvent("touchmove", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    Object.defineProperties(move, {
+      touches: { value: touches },
+      targetTouches: { value: touches },
+      changedTouches: { value: touches },
+    });
+    plate.dispatchEvent(move);
+  });
 
   await centre.tap();
 
   // The tap after the drag is a fresh first tap, so nothing is committed.
   expect(await scopeLabel(page)).toBe(before);
+  expect(pageErrors).toEqual([]);
 });

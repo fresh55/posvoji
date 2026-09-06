@@ -79,7 +79,7 @@ describe("buildMediaWarnings", () => {
     expect(buildMediaWarnings(paths)).toEqual([]);
   });
 
-  it("warns once about photos when public/media/animals does not exist", () => {
+  it("flags missing animal media without calling a zero-photo dataset invalid", () => {
     const paths = makeTempTree();
     writeFileSync(paths.shareCardManifestPath, "{}");
     writeFileSync(paths.shelterLogoManifestPath, "{}");
@@ -87,6 +87,7 @@ describe("buildMediaWarnings", () => {
     const warnings = buildMediaWarnings(paths);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/public\/media\/animals/);
+    expect(warnings[0]).toMatch(/valid when.*references no cached animal photos/);
   });
 
   it("warns about photos when the directory exists but is empty", () => {

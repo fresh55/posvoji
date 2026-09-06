@@ -7,9 +7,10 @@ import { SITE_URL } from "@/lib/site";
  * The site had no robots.txt, which is not a permissive default so much as an
  * absent one: nothing pointed at the sitemap.
  *
- * /dev is a drawing tool for the map, linked from nowhere and 404 in
- * production, and it carries no noindex of its own. A Disallow is the whole
- * answer for it.
+ * /dev is a drawing tool for the map that exists for a dev machine. The build
+ * removes its exported files (scripts/drop-dev-output.mjs), so a request for
+ * /dev/map in production falls through to 404.html, and Disallow keeps
+ * well-behaved crawlers from asking in the first place.
  *
  * /portal is not listed, and that is deliberate. It is a shelter's own
  * workspace behind a magic link, and both of its pages already answer

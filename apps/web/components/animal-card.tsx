@@ -77,6 +77,7 @@ export function AnimalCard({
   const cardRef = useRef<HTMLElement>(null);
   const headingId = useId();
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [announcePhotoChanges, setAnnouncePhotoChanges] = useState(false);
   // Every photo here is one the card may draw: the projection that built this
   // animal dropped the rest.
   const photoCount = animal.images.length;
@@ -140,6 +141,7 @@ export function AnimalCard({
       event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
     if (direction === 0) return;
     event.preventDefault();
+    setAnnouncePhotoChanges(true);
     setPhotoIndex((current) => (current + direction + photoCount) % photoCount);
   }
 
@@ -196,6 +198,7 @@ export function AnimalCard({
             onNavigate={openDialog}
             index={photoIndex}
             onIndexChange={setPhotoIndex}
+            announceChanges={announcePhotoChanges}
             eager={eager}
           />
           {/* One copy, on the photo, at every width. A status disqualifies the

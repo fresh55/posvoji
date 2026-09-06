@@ -118,6 +118,36 @@ describe("permittedPhotos", () => {
     ).toEqual(["https://shelter.example/luna.jpg"]);
   });
 
+  // Some shelters list the same picture twice, and two sources can cache to
+  // the same copy. A file is drawn once, in the place it first appears.
+  it("draws a file once however many times the listing names it", () => {
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna-1.jpg",
+          cachedUrl: "/media/animals/luna.webp",
+          rights: "cache-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-2.jpg",
+          rights: "display-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-1-again.jpg",
+          cachedUrl: "/media/animals/luna.webp",
+          rights: "cache-permitted",
+        },
+        {
+          sourceUrl: "https://shelter.example/luna-2.jpg",
+          rights: "display-permitted",
+        },
+      ] satisfies Animal["images"]).map((photo) => photo.src),
+    ).toEqual([
+      "/media/animals/luna.webp",
+      "https://shelter.example/luna-2.jpg",
+    ]);
+  });
+
   it("carries the derived fields a surface draws with", () => {
     expect(
       permittedPhotos([

@@ -40,7 +40,7 @@ export const FAN_PHOTO_SIZES = "(max-width: 639px) 80vw, 24rem";
 export const PRINT_ASPECT = 4 / 3;
 /** The tallest print the fan draws. A photo taller than this is cropped to it,
  *  which is where the crop bias in AnimalPhoto earns its keep. */
-export const PRINT_ASPECT_MIN = 3 / 4;
+const PRINT_ASPECT_MIN = 3 / 4;
 
 /** A photo's ratio as a print would show it: clamped between 3:4 and 4:3, and
  *  rounded so it serializes short. Undefined when it is 4:3 within the
@@ -71,30 +71,44 @@ function isDrawableImage(image: Animal["images"][number]): boolean {
 // the client boundary gets its result from animalsForClient in lib/dataset.ts,
 // which is what keeps `rights` and `sourceUrl` off the wire without a second
 // idea of which photo is drawn from which file.
+//
+// A file is drawn once, however many times a listing names it. Some shelters
+// list the same picture twice, and two sources can cache to one copy; the
+// fan then showed the same print twice, and the wash, which keys its layers by
+// file, dropped one of them. Decided here so every surface counts the same.
 export function permittedPhotos(images: Animal["images"]): PermittedPhoto[] {
+  const drawn = new Set<string>();
   return images.flatMap((image) => {
     if (!isDrawableImage(image)) return [];
-    if (image.rights === "cache-permitted") {
-      // The derived fields describe our own copy. A cache that failed leaves
-      // the shelter's file hotlinked, and none of them apply to it.
-      if (!image.cachedUrl) return [{ src: image.sourceUrl }];
-      // Only the fields ingest actually derived, and no key for the ones it
-      // did not. These photos are serialized into the page for the client
-      // components that draw them, and React writes an undefined value out as
-      // "$undefined": a key standing for an absent field costs more on the
-      // wire than the field would have.
-      const photo: PermittedPhoto = { src: image.cachedUrl };
-      if (image.widths !== undefined) photo.widths = image.widths;
-      if (image.avif !== undefined) photo.avif = image.avif;
-      if (image.blurDataURL !== undefined) photo.blurDataURL = image.blurDataURL;
-      if (image.width !== undefined && image.height !== undefined) {
-        const aspect = printAspect(image.width, image.height);
-        if (aspect !== undefined) photo.aspect = aspect;
-      }
-      return [photo];
-    }
-    return [{ src: image.sourceUrl }];
+    const photo = resolvePhoto(image);
+    if (drawn.has(photo.src)) return [];
+    drawn.add(photo.src);
+    return [photo];
   });
+}
+
+/** The file a drawable image is drawn from, with what ingest derived of it. */
+function resolvePhoto(image: Animal["images"][number]): PermittedPhoto {
+  // The derived fields describe our own copy. An image we may only display
+  // never had one, and a cache that failed leaves the shelter's file
+  // hotlinked, so none of them apply to either.
+  if (image.rights !== "cache-permitted" || !image.cachedUrl) {
+    return { src: image.sourceUrl };
+  }
+  // Only the fields ingest actually derived, and no key for the ones it did
+  // not. These photos are serialized into the page for the client components
+  // that draw them, and React writes an undefined value out as "$undefined":
+  // a key standing for an absent field costs more on the wire than the field
+  // would have.
+  const photo: PermittedPhoto = { src: image.cachedUrl };
+  if (image.widths !== undefined) photo.widths = image.widths;
+  if (image.avif !== undefined) photo.avif = image.avif;
+  if (image.blurDataURL !== undefined) photo.blurDataURL = image.blurDataURL;
+  if (image.width !== undefined && image.height !== undefined) {
+    const aspect = printAspect(image.width, image.height);
+    if (aspect !== undefined) photo.aspect = aspect;
+  }
+  return photo;
 }
 
 /**

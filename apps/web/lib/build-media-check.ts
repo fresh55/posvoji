@@ -84,8 +84,8 @@ export function buildMediaWarnings(paths?: {
         "run `pnpm dataset:export` before building. `pnpm images:derive` can " +
         "repair receipt-named missing derivatives from verified masters, but " +
         "a missing master or any other receipt failure needs a full export. " +
-        "The deployment reference " +
-        "verifier is authoritative.",
+        "The check that counts is scripts/verify-media.mjs, which the deploy " +
+        "runs; this warning only points at it.",
     );
   }
 

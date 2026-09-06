@@ -10,6 +10,11 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PortalLogin } from "@/components/portal/portal-login";
 import { portalText } from "@/components/portal/portal-text";
+import {
+  PORTAL_PATH,
+  PORTAL_RETURN_KEY,
+  rememberPortalReturn,
+} from "@/hooks/use-portal-session";
 import { PortalError, requestLoginLink, verifyToken } from "@/lib/portal-api";
 
 // Only the two calls the login page makes are stubbed; PortalError and
@@ -39,6 +44,7 @@ afterEach(() => {
   cleanup();
   vi.mocked(requestLoginLink).mockReset();
   vi.mocked(verifyToken).mockReset();
+  window.sessionStorage.clear();
   window.history.replaceState(null, "", "/portal");
 });
 
@@ -156,6 +162,101 @@ describe("a token that arrives in the address bar", () => {
     expect(alert.textContent).toContain(portalText.unknownError);
     expect(window.location.search).toBe("");
     expect(emailBox().getAttribute("aria-invalid")).toBeNull();
+  });
+});
+
+describe("where a login that went through lands", () => {
+  const SESSION = { email: "info@zavetisce.si", shelters: [] };
+  const DEEP_LINK = "/portal/zival?zavetisce=testno&id=1";
+  const realLocation = window.location;
+
+  /**
+   * jsdom cannot navigate, and its Location will not let one method be
+   * stubbed on its own, so the whole object is stood in for. The stand-in
+   * carries the address the test arrived on, frozen: the page reads the
+   * token off it, and what it writes back goes to the real history.
+   */
+  function arriveWithToken(): ReturnType<typeof vi.fn> {
+    window.history.replaceState(null, "", "/portal/prijava?token=abc123");
+    const replace = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        pathname: "/portal/prijava",
+        search: "?token=abc123",
+        href: "http://localhost/portal/prijava?token=abc123",
+        replace,
+      },
+    });
+    return replace;
+  }
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: realLocation,
+    });
+  });
+
+  it("goes back to the page the shelter was sent away from", async () => {
+    // The provider, on finding no session, keeps the page it is leaving.
+    window.history.replaceState(null, "", DEEP_LINK);
+    rememberPortalReturn();
+    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBe(DEEP_LINK);
+
+    const replace = arriveWithToken();
+    vi.mocked(verifyToken).mockResolvedValue(SESSION);
+    render(<PortalLogin />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(DEEP_LINK);
+    });
+    // Used once: a later login in this tab starts on the list again.
+    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBeNull();
+  });
+
+  it("lands on the list when nothing was remembered", async () => {
+    const replace = arriveWithToken();
+    vi.mocked(verifyToken).mockResolvedValue(SESSION);
+    render(<PortalLogin />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(PORTAL_PATH);
+    });
+  });
+
+  it.each([
+    "https://evil.example/portal",
+    "//evil.example/portal",
+    "/portalx",
+    "/zavetisca/ljubljana",
+    "/portal/prijava?token=abc",
+    "/portal\\@evil.example",
+    "/portal/zival?x=1\nlocation:https://evil.example",
+  ])("never leaves the portal for a remembered %s", async (planted) => {
+    window.sessionStorage.setItem(PORTAL_RETURN_KEY, planted);
+
+    const replace = arriveWithToken();
+    vi.mocked(verifyToken).mockResolvedValue(SESSION);
+    render(<PortalLogin />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(PORTAL_PATH);
+    });
+    expect(replace).not.toHaveBeenCalledWith(planted);
+    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBeNull();
+  });
+
+  it("remembers only a page inside the portal", () => {
+    for (const path of ["/zavetisca/ljubljana", "/portal/prijava", "/"]) {
+      window.history.replaceState(null, "", path);
+      rememberPortalReturn();
+      expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBeNull();
+    }
+
+    window.history.replaceState(null, "", PORTAL_PATH);
+    rememberPortalReturn();
+    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBe(PORTAL_PATH);
   });
 });
 

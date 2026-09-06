@@ -48,6 +48,62 @@ export function portalNewListingPath(shelter: string): string {
   return `${PORTAL_ANIMAL_PATH}?${query}`;
 }
 
+/**
+ * Where a shelter sent to the login page was going, so the login can take
+ * them back there rather than to the list. sessionStorage, so it lives as
+ * long as the tab and no longer, and a key of its own so clearing the drafts
+ * leaves it alone.
+ */
+export const PORTAL_RETURN_KEY = "posvoji.portal.return";
+
+/**
+ * Whether `path` is an address inside the portal that a login may send the
+ * browser to. Same-origin by construction: it starts with /portal, so it can
+ * be neither an absolute URL nor a protocol-relative one, and the login page
+ * itself is out, or a login could bounce straight back to a login.
+ */
+export function isPortalReturnPath(path: string): boolean {
+  if (/[\s\\]/.test(path)) return false;
+  if (
+    path === PORTAL_LOGIN_PATH ||
+    path.startsWith(`${PORTAL_LOGIN_PATH}?`) ||
+    path.startsWith(`${PORTAL_LOGIN_PATH}/`)
+  ) {
+    return false;
+  }
+  return (
+    path === PORTAL_PATH ||
+    path.startsWith(`${PORTAL_PATH}/`) ||
+    path.startsWith(`${PORTAL_PATH}?`)
+  );
+}
+
+/** Keeps the page the browser is on, for the login to come back to. */
+export function rememberPortalReturn(): void {
+  const path = window.location.pathname + window.location.search;
+  if (!isPortalReturnPath(path)) return;
+  try {
+    window.sessionStorage.setItem(PORTAL_RETURN_KEY, path);
+  } catch {
+    // Storage blocked. The shelter lands on the list instead, as before.
+  }
+}
+
+/**
+ * The remembered page, taken so it is used once, or the list when there is
+ * none or what is there is not a portal address.
+ */
+export function takePortalReturn(): string {
+  try {
+    const stored = window.sessionStorage.getItem(PORTAL_RETURN_KEY);
+    window.sessionStorage.removeItem(PORTAL_RETURN_KEY);
+    if (stored && isPortalReturnPath(stored)) return stored;
+  } catch {
+    // Storage blocked. Nothing could have been remembered either.
+  }
+  return PORTAL_PATH;
+}
+
 export type PortalSessionState =
   | { status: "loading" }
   | { status: "anonymous" }

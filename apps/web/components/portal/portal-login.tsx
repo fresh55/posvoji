@@ -23,7 +23,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import { takePortalReturn } from "@/hooks/use-portal-session";
 import {
   commitSearch,
   getSearchSnapshot,
@@ -172,8 +172,9 @@ export function PortalLogin() {
     verifyToken(checking).then(
       () => {
         // replace, not assign: the token never becomes a history entry the
-        // back button can walk into.
-        if (live) window.location.replace(PORTAL_PATH);
+        // back button can walk into. Back to the page the shelter was sent
+        // here from, when there is one, else to the list.
+        if (live) window.location.replace(takePortalReturn());
       },
       (error: unknown) => {
         if (!live) return;

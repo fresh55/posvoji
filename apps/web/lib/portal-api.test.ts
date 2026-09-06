@@ -27,14 +27,25 @@ type FetchArgs = [input: string, init: RequestInit];
 
 const fetchMock = vi.fn();
 
+// The page a proxy answers with when the API is down. Not JSON, on purpose.
+const HTML_BODY = "<!doctype html><title>502 Bad Gateway</title><h1>502</h1>";
+
 function respond(
   status: number,
   body?: unknown,
   { json = true }: { json?: boolean } = {},
 ) {
+  // No body at all is the empty string, which is what a real Response reads
+  // for a 204 or a 200 that carries nothing.
+  const text = json
+    ? body === undefined
+      ? ""
+      : JSON.stringify(body)
+    : HTML_BODY;
   fetchMock.mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
+    text: () => Promise.resolve(text),
     json: json
       ? () => Promise.resolve(body)
       : () => Promise.reject(new SyntaxError("not json")),
@@ -184,11 +195,11 @@ describe("requests", () => {
     });
   });
 
-  it("does not retry a second 403", async () => {
+  it("does not retry a second 403, even one that names the check again", async () => {
     respond(200, { csrfToken: "stale" });
-    respond(403, { detail: "CSRF failed" });
+    respond(403, { detail: "CSRF check Failed" });
     respond(200, { csrfToken: "fresh" });
-    respond(403, { detail: "still forbidden" });
+    respond(403, { detail: "CSRF check Failed" });
 
     const error = await saveAnimal("zonzani", "rex", { name: "Rex" }).catch(
       (reason) => reason,
@@ -197,6 +208,39 @@ describe("requests", () => {
     expect(error).toBeInstanceOf(PortalError);
     expect(error.status).toBe(403);
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not retry a 403 that is a permission, not a stale token", async () => {
+    respond(200, { csrfToken: "abc123" });
+    respond(403, { detail: "not a member of this shelter" });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "Rex" }).catch(
+      (reason) => reason,
+    );
+
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.kind).toBe("forbidden");
+    expect(error.detail).toBe("not a member of this shelter");
+    // The CSRF bootstrap and the one refused PUT. No second bootstrap and
+    // no second PUT: the token was never the problem.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // And the token it had is kept for the next request.
+    respond(200, { id: "rex", overrides: {} });
+    await saveAnimal("zonzani", "rex", { name: "Rex" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(lastCall()[1].headers).toMatchObject({ "X-CSRFToken": "abc123" });
+  });
+
+  it("does not retry a 403 whose body says nothing", async () => {
+    respond(200, { csrfToken: "abc123" });
+    respond(403, undefined, { json: false });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "Rex" }).catch(
+      (reason) => reason,
+    );
+
+    expect(error.kind).toBe("forbidden");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("resolves a 204 with no body to parse", async () => {
@@ -307,6 +351,107 @@ describe("errors", () => {
     const error = await fetchSession().catch((reason) => reason);
     expect(error.kind).toBe("server");
     expect(error.detail).toBeUndefined();
+    expect(error.fields).toEqual([]);
+  });
+
+  it("survives a crash page on a 500", async () => {
+    // The bootstrap answered JSON; the PUT answered Django's HTML crash page.
+    respond(200, { csrfToken: "abc123" });
+    respond(500, undefined, { json: false });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "Rex" }).catch(
+      (reason) => reason,
+    );
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.kind).toBe("server");
+    expect(error.status).toBe(500);
+    expect(error.detail).toBeUndefined();
+    expect(error.fields).toEqual([]);
+    expect(error.message).not.toContain("[object Object]");
+  });
+
+  it("keeps a string detail as it came", async () => {
+    respond(404, { detail: "shelter not found" });
+
+    const error = await fetchAnimals("nobody").catch((reason) => reason);
+    expect(error.kind).toBe("notFound");
+    expect(error.detail).toBe("shelter not found");
+    expect(error.fields).toEqual([]);
+  });
+
+  it("names the fields a validation failure points at", async () => {
+    // django-ninja's shape, with the same field refused twice and one entry
+    // that points at nothing in particular.
+    respondWithCsrf(422, {
+      detail: [
+        {
+          type: "string_too_long",
+          loc: ["body", "payload", "name"],
+          msg: "String should have at most 80 characters",
+        },
+        {
+          type: "date_from_datetime_parsing",
+          loc: ["body", "payload", "birthDate"],
+          msg: "Input should be a valid date",
+        },
+        {
+          type: "value_error",
+          loc: ["body", "payload", "name"],
+          msg: "Value error, blank",
+        },
+        { type: "missing", loc: ["body", "payload"], msg: "Field required" },
+      ],
+    });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "x" }).catch(
+      (reason) => reason,
+    );
+
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.kind).toBe("invalid");
+    expect(error.fields).toEqual(["name", "birthDate"]);
+    expect(error.detail).toBe(
+      "name: String should have at most 80 characters; birthDate: Input should be a valid date; name: Value error, blank; Field required",
+    );
+    expect(error.message).not.toContain("[object Object]");
+  });
+
+  it("reads a nested field off a list detail and skips the index", async () => {
+    respondWithCsrf(422, {
+      detail: [{ loc: ["body", "payload", "photos", 0, "url"], msg: "bad" }],
+    });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "x" }).catch(
+      (reason) => reason,
+    );
+    expect(error.fields).toEqual(["url"]);
+    expect(error.detail).toBe("url: bad");
+  });
+
+  it("does not choke on a detail of some other shape", async () => {
+    respondWithCsrf(422, { detail: { name: ["blank"] } });
+
+    const error = await saveAnimal("zonzani", "rex", { name: "" }).catch(
+      (reason) => reason,
+    );
+    expect(error.kind).toBe("invalid");
+    expect(error.detail).toBeUndefined();
+    expect(error.fields).toEqual([]);
+    expect(error.message).not.toContain("[object Object]");
+  });
+
+  it("resolves a 200 with no body, as a DELETE may answer", async () => {
+    respondWithCsrf(200);
+
+    await expect(archiveListing("johanca", "6d1c")).resolves.toBeUndefined();
+  });
+
+  it("reports a 200 whose body is not JSON as the server's fault", async () => {
+    respond(200, undefined, { json: false });
+
+    const error = await fetchSession().catch((reason) => reason);
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.kind).toBe("server");
   });
 
   it("rejects a malformed CSRF bootstrap response", async () => {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, FlaskConical, LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import { takePortalReturn } from "@/hooks/use-portal-session";
 import { slugify } from "@/lib/animal-path";
 import {
   clearCsrfToken,
@@ -115,7 +115,9 @@ export function PortalDevLogin() {
     setError(null);
     try {
       await devLogin(slug);
-      window.location.replace(PORTAL_PATH);
+      // The same landing as the real login: the page the shelter was sent
+      // away from, or the list.
+      window.location.replace(takePortalReturn());
     } catch {
       setOpening(null);
       setError(`Prijava kot ${slug} ni uspela. Teče portal na vratih 8000?`);

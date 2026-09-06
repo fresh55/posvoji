@@ -262,16 +262,27 @@ function kindFor(status: number): PortalErrorKind {
 export class PortalError extends Error {
   readonly status: number;
   readonly kind: PortalErrorKind;
-  /** The API's own `detail`, when it sent one. Not shown to shelters. */
+  /**
+   * The API's own `detail`, when it sent one, as a single line. A validation
+   * failure's list of entries is flattened to "field: message" pairs. Not
+   * shown to shelters as it is.
+   */
   readonly detail?: string;
+  /**
+   * The payload fields a validation failure pointed at, in the API's own
+   * keys and without repeats. Empty for every other failure, so the message
+   * built from it can name what to fix rather than say "a value".
+   */
+  readonly fields: readonly string[];
 
-  constructor(status: number, detail?: string) {
+  constructor(status: number, detail?: string, fields: readonly string[] = []) {
     const kind = kindFor(status);
     super(detail ? `${kind} (${status}): ${detail}` : `${kind} (${status})`);
     this.name = "PortalError";
     this.status = status;
     this.kind = kind;
     this.detail = detail;
+    this.fields = fields;
   }
 }
 
@@ -279,18 +290,72 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof PortalError && error.kind === "unauthorized";
 }
 
-async function readDetail(response: Response): Promise<string | undefined> {
+type Failure = { detail?: string; fields: string[] };
+
+// django-ninja answers a 422 with one entry per rejected value:
+// { type, loc: ["body", "payload", "<field>"], msg }. The field is the last
+// segment of loc that is not one of these wrappers; a segment that is a list
+// index is a number and is skipped the same way.
+const LOC_WRAPPERS = new Set(["body", "payload"]);
+
+function fieldOf(loc: unknown): string | undefined {
+  if (!Array.isArray(loc)) return undefined;
+  for (let index = loc.length - 1; index >= 0; index -= 1) {
+    const segment: unknown = loc[index];
+    if (typeof segment === "string" && !LOC_WRAPPERS.has(segment)) {
+      return segment;
+    }
+  }
+  return undefined;
+}
+
+/** A string detail as it came; a list detail as fields and one line of text. */
+function parseDetail(detail: unknown): Failure {
+  if (typeof detail === "string") return { detail, fields: [] };
+  if (!Array.isArray(detail)) return { fields: [] };
+
+  const fields: string[] = [];
+  const lines: string[] = [];
+  for (const entry of detail as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const { loc, msg } = entry as { loc?: unknown; msg?: unknown };
+    const field = fieldOf(loc);
+    const text = typeof msg === "string" ? msg : undefined;
+    if (field && !fields.includes(field)) fields.push(field);
+    if (field && text) lines.push(`${field}: ${text}`);
+    else if (field) lines.push(field);
+    else if (text) lines.push(text);
+  }
+  return { detail: lines.length > 0 ? lines.join("; ") : undefined, fields };
+}
+
+/**
+ * The body as JSON. Undefined when there is none: a DELETE may answer 200
+ * with nothing to say. Throws when there is a body and it is not JSON.
+ */
+async function readJson(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (text.trim() === "") return undefined;
+  return JSON.parse(text) as unknown;
+}
+
+async function readFailure(response: Response): Promise<Failure> {
   try {
-    const body: unknown = await response.json();
+    const body = await readJson(response);
     if (body && typeof body === "object" && "detail" in body) {
-      const detail = (body as { detail: unknown }).detail;
-      if (typeof detail === "string") return detail;
+      return parseDetail((body as { detail: unknown }).detail);
     }
   } catch {
     // A proxy or a crash answers with something that is not JSON. The status
     // is enough to tell the shelter what happened.
   }
-  return undefined;
+  return { fields: [] };
+}
+
+// Django's text for a stale or missing proof is "CSRF check Failed", and
+// nothing else the API refuses with a 403 mentions the check.
+function isCsrfFailure(failure: Failure): boolean {
+  return failure.detail !== undefined && /csrf/i.test(failure.detail);
 }
 
 type PortalRequestInit = {
@@ -350,15 +415,33 @@ async function request<T>(
   };
 
   let response = await send();
-  if (init.csrf && response.status === 403) {
+  let failure = response.ok ? null : await readFailure(response);
+  // A 403 on an unsafe request is either a stale proof or a shelter the
+  // account is not a member of, and only the first is worth a second try.
+  // Once: a retry that fails the same way has nothing left to refresh.
+  if (
+    failure &&
+    init.csrf &&
+    response.status === 403 &&
+    isCsrfFailure(failure)
+  ) {
     clearCsrfTokenIfCurrent(headers["X-CSRFToken"]);
     headers["X-CSRFToken"] = await fetchCsrfToken();
     response = await send();
+    failure = response.ok ? null : await readFailure(response);
   }
 
-  if (!response.ok) throw new PortalError(response.status, await readDetail(response));
+  if (failure) {
+    throw new PortalError(response.status, failure.detail, failure.fields);
+  }
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  try {
+    return (await readJson(response)) as T;
+  } catch {
+    // A 200 whose body is not JSON is not the API answering: a captive
+    // portal or a misrouted proxy is. Reported as the server fault it is.
+    throw new PortalError(response.status, "body is not JSON");
+  }
 }
 
 /**

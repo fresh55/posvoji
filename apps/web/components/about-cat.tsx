@@ -5,8 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import type { Locale } from "@/lib/i18n";
 
-const MODEL = "/models/our-cat/cat.glb?v=4.2";
-const POSTER = "/models/our-cat/poster.webp?v=4.1";
+const MODEL = "/models/our-cat/cat.glb?v=5.0";
+// 5.1: re-rendered at the camera below. The still and the model have to agree
+// on how big the cat is, or the handover is a jump rather than a swap. Framed
+// at 1.15m against a model now drawn at 1.45m, the cat shrank 37% the moment
+// the viewer took over.
+const POSTER = "/models/our-cat/poster.webp?v=5.1";
 
 const copy = {
   sl: {
@@ -78,7 +82,22 @@ export function AboutCat({ locale }: { locale: Locale }) {
           "disable-tap": "",
           "touch-action": "pan-y",
           "interaction-prompt": "none",
-          "camera-orbit": "-19deg 81deg 1.15m",
+          // 1.45m, not the 1.15m this was framed at. The canvas draws nothing
+          // outside itself, so a pose that reaches past the element edge is
+          // cut there, and the visitor can orbit freely: measured at 1280,
+          // 65 of 216 sampled angle-and-time combinations lost part of the
+          // cat, the worst of them 39px of ear and haunch. It is not a band
+          // that can be fenced off either. Sampling every 30 degrees, the
+          // clipped headings alternate with clean ones (-120 and -90 bad, -60
+          // clean, -30 bad, 0 clean, 30 and 60 bad), because what reaches the
+          // edge depends on the pose as much as the heading.
+          //
+          // Pulling back is the one move that answers all of them at once. At
+          // 1.45m nothing touches an edge at any heading, at either end of the
+          // 55-95deg tilt, anywhere in the clip, at 1280, 1024 or 375. The cat
+          // draws about a fifth smaller for it, which is the price of never
+          // cutting him.
+          "camera-orbit": "-19deg 81deg 1.45m",
           "camera-target": "0m 0.25m 0m",
           "min-camera-orbit": "auto 55deg 0.65m",
           "max-camera-orbit": "auto 95deg 2m",

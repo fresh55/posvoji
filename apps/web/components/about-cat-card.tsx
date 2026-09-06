@@ -4,11 +4,11 @@ import type { Locale } from "@/lib/i18n";
 const copy = {
   sl: {
     name: "Srečko",
-    body: "Posvojili smo ga iz zavetišča.",
+    body: "Posvojili smo ga iz zavetišča. Vsaka žival na tem seznamu čaka na isto.",
   },
   en: {
     name: "Srečko",
-    body: "His name means Lucky. We adopted him from a shelter.",
+    body: "Lucky, in Slovenian. We adopted him from a shelter. Every animal on this list is waiting for the same.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -21,6 +21,12 @@ const copy = {
  * concrete thing on a page whose five facts are otherwise abstractions, and
  * four of those are denials - no ads, no tracking, no accounts, no personal
  * data. He is also the only proof on it that any of this works.
+ *
+ * The last sentence is the one that earns the card its place. His name and
+ * his adoption are a fact about one cat, and a fact about one cat is a nice
+ * caption and nothing more; what the page needs is the reason he is on it.
+ * He got the thing every animal in the register is still waiting for, so the
+ * card ends by saying so, and the reader looks back at the list differently.
  *
  * No shelter named, and no link to one. The card sits one row above the page
  * promising that nobody pays for a place or a better position on the list,

@@ -17,18 +17,11 @@ export function ShelterBlock({
   logos,
   reference,
   ctaMirrored = false,
-  onSeeLongestWaiting,
 }: {
   animal: AnimalFields;
   logos: ShelterLogos;
   /** The dataset's own build time, so the wait agrees with the cards. */
   reference: Date;
-  /**
-   * Re-sorts the list by longest wait and closes the dialog. Absent while
-   * that sort is already on, which it is by default, so the link only shows
-   * when it would actually change something.
-   */
-  onSeeLongestWaiting?: () => void;
   /**
    * Set when the phone layout repeats this box's call to action somewhere it
    * can always be reached. The dialog's sticky bar does, which left two
@@ -59,22 +52,11 @@ export function ShelterBlock({
               strokeWidth={1.75}
               aria-hidden
             />
-            <div className="space-y-0.5">
-              <p className="font-medium">
-                {animal.name
-                  ? t("longStay", { name: animal.name, duration: stay })
-                  : t("longStayUnnamed", { duration: stay })}
-              </p>
-              {onSeeLongestWaiting && (
-                <button
-                  type="button"
-                  onClick={onSeeLongestWaiting}
-                  className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                >
-                  {messages.longStayLink}
-                </button>
-              )}
-            </div>
+            <p className="font-medium">
+              {animal.name
+                ? t("longStay", { name: animal.name, duration: stay })
+                : t("longStayUnnamed", { duration: stay })}
+            </p>
           </div>
         )}
         <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
@@ -82,10 +64,15 @@ export function ShelterBlock({
         <div className="min-w-0 flex-1">
           {/* The name goes to the shelter's own page, which holds its other
               contacts, the občine it answers for and the rest of its animals.
-              Until now the only way out of this box left the site. */}
+              Until now the only way out of this box left the site.
+
+              title, because the line truncates: a long name such as "Obalno
+              zavetišče (Marjetica Koper)" is cut, and the tooltip is the only
+              place the rest of it can be read without leaving. */}
           <p className="truncate font-medium">
             <a
               href={shelterPath(shelter.id, locale)}
+              title={shelter.name}
               className="rounded-ui underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring"
             >
               {shelter.name}
@@ -117,34 +104,29 @@ export function ShelterBlock({
             </a>
           </div>
         ) : (
-          <>
-            {/* The mirror only exists where there is a listing to open, so
-                this reads the same condition the sticky bar is gated on.
-                Without it an animal with no source URL would lose its button
-                on the phone rather than have it repeated. The bar's other
-                condition is the branch above: an adopted animal never reaches
-                this button, and the bar does not draw one for it either. */}
-            <Button
-              asChild
-              size="sm"
-              className={cn(
-                // max-sm:h-11, because size="sm" is 32px and on the animal's
-                // own page, which has no sticky bar to mirror this, it is the
-                // button a thumb actually goes for.
-                "w-full max-sm:h-11 sm:w-auto",
-                ctaMirrored && animal.source.sourceUrl && "max-sm:hidden",
-              )}
+          // The mirror is the sticky bar's, and the bar is gated the same
+          // way: an adopted animal never reaches this button, and the bar
+          // draws none for it either.
+          <Button
+            asChild
+            size="sm"
+            className={cn(
+              // max-sm:h-11, because size="sm" is 32px and on the animal's
+              // own page, which has no sticky bar to mirror this, it is the
+              // button a thumb actually goes for.
+              "w-full max-sm:h-11 sm:w-auto",
+              ctaMirrored && "max-sm:hidden",
+            )}
+          >
+            <a
+              href={animal.source.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
             >
-              <a
-                href={animal.source.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {messages.viewOriginalListing}
-                <ExternalLink aria-hidden />
-              </a>
-            </Button>
-          </>
+              {messages.viewOriginalListing}
+              <ExternalLink aria-hidden />
+            </a>
+          </Button>
         )}
       </div>
 

@@ -1,9 +1,15 @@
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from django.conf import settings
 from django.db import models
+
+# Every control character except tab, newline and carriage return: the C0
+# range, DEL and the C1 range. Nothing a shelter types on purpose, and a NUL
+# in a name has reached the public dataset through here before.
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 
 
 def iso_utc(value: datetime) -> str:
@@ -17,8 +23,15 @@ def clean_text(value: Any) -> Any:
     For an override that clears the correction and the crawled value stands
     again; for a listing it is the shelter not stating the field. Both
     routers write what comes off the wire through this.
+
+    Control characters are dropped on the way, apart from tab and the line
+    ends, and the line ends become a bare newline, so text pasted out of a
+    document does not carry the document's bytes into the dataset. Anything
+    that is not a string, a date or a number or a flag, passes untouched.
     """
     if isinstance(value, str):
+        value = _CONTROL_CHARACTERS.sub("", value)
+        value = value.replace("\r\n", "\n").replace("\r", "\n")
         return value.strip() or None
     return value
 

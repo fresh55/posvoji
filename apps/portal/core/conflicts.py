@@ -42,6 +42,11 @@ def conflicts_for(
 ) -> list[Conflict]:
     """Every overridden field whose crawled value has moved off its baseline.
 
+    animal is the record from the crawled dataset (dataset.find_animal or
+    animal_index with crawled=True), never the merged one: that already
+    carries the override, so every correction would read as the crawl
+    having caught up.
+
     An animal that is not in the dataset has no crawled value to compare, so
     it produces no conflicts. That is a separate state (see orphaned) and not
     something a shelter can resolve.

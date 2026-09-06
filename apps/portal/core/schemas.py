@@ -8,6 +8,7 @@ avoids an alias layer between the two sides.
 from datetime import date
 from typing import Any
 
+from django.utils import timezone
 from ninja import Schema
 from pydantic import ConfigDict, Field, field_validator
 
@@ -19,6 +20,24 @@ from .models import (
     OverrideSize,
     OverrideStatus,
 )
+
+# A hundred years. The web client caps the age field at the same value, and
+# anything near the integer limit used to overflow the column.
+MAX_AGE_MONTHS = 1200
+# No animal a shelter lists today was born before this, and the bound keeps
+# a mistyped year out of the dataset.
+EARLIEST_BIRTH_DATE = date(1900, 1, 1)
+
+
+def bounded_birth_date(value: date | None) -> date | None:
+    """A birth date that is neither in the future nor before 1900."""
+    if value is None:
+        return None
+    if value < EARLIEST_BIRTH_DATE:
+        raise ValueError(f"birthDate must not be before {EARLIEST_BIRTH_DATE}")
+    if value > timezone.localdate():
+        raise ValueError("birthDate must not be in the future")
+    return value
 
 
 class ErrorOut(Schema):
@@ -114,7 +133,7 @@ class AnimalOverrideIn(Schema):
     sex: OverrideSex | None = None
     breed: str | None = Field(default=None, max_length=200)
     birthDate: date | None = None
-    approximateAgeMonths: int | None = Field(default=None, ge=0)
+    approximateAgeMonths: int | None = Field(default=None, ge=0, le=MAX_AGE_MONTHS)
     size: OverrideSize | None = None
     energy: OverrideEnergy | None = None
     goodWithKids: OverrideCompatibility | None = None
@@ -122,6 +141,11 @@ class AnimalOverrideIn(Schema):
     goodWithCats: OverrideCompatibility | None = None
     apartmentOk: OverrideCompatibility | None = None
     specialNeeds: bool | None = None
+
+    @field_validator("birthDate")
+    @classmethod
+    def birth_date_is_plausible(cls, value: date | None) -> date | None:
+        return bounded_birth_date(value)
 
 
 class ListingIn(Schema):
@@ -149,7 +173,7 @@ class ListingIn(Schema):
     sex: OverrideSex | None = None
     breed: str | None = Field(default=None, max_length=200)
     birthDate: date | None = None
-    approximateAgeMonths: int | None = Field(default=None, ge=0)
+    approximateAgeMonths: int | None = Field(default=None, ge=0, le=MAX_AGE_MONTHS)
     size: OverrideSize | None = None
     energy: OverrideEnergy | None = None
     goodWithKids: OverrideCompatibility | None = None
@@ -158,6 +182,11 @@ class ListingIn(Schema):
     apartmentOk: OverrideCompatibility | None = None
     specialNeeds: bool | None = None
     shortDescription: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("birthDate")
+    @classmethod
+    def birth_date_is_plausible(cls, value: date | None) -> date | None:
+        return bounded_birth_date(value)
 
     @field_validator("name")
     @classmethod

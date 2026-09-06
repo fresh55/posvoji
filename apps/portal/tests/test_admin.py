@@ -82,6 +82,28 @@ def test_the_filter_narrows_to_the_review_queue(admin_client, conflicted):
 
 
 @pytest.mark.django_db
+def test_the_crawl_state_reads_the_crawled_dataset(admin_client, shelter, dataset_file):
+    # The merged file carries the override, so read off it every correction
+    # would look like a crawl that caught up. The crawl itself moved.
+    dataset_file(
+        [make_animal("testno:1", shelter, status="reserved")],
+        crawled=[make_animal("testno:1", shelter, status="adopted")],
+    )
+    AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        status="reserved",
+        baseline={"status": "available"},
+    )
+
+    moved = admin_client.get(CHANGELIST, {"crawl": "moved"}).content.decode()
+    caught_up = admin_client.get(CHANGELIST, {"crawl": "caught-up"}).content.decode()
+
+    assert "testno:1" in moved
+    assert "testno:1" not in caught_up
+
+
+@pytest.mark.django_db
 def test_the_filter_finds_overrides_with_no_matching_animal(
     admin_client, shelter, dataset_file
 ):

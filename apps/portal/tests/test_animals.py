@@ -1,12 +1,26 @@
 import json
+import logging
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
 import pytest
+from django.utils import timezone
 
 from core.dataset import animals_for_shelter
 from core.models import AnimalOverride, IngestionMode
 
 from .conftest import make_animal
+
+
+class SteppedClock:
+    """A now() that moves one whole second per reading."""
+
+    def __init__(self) -> None:
+        self.readings = 0
+
+    def now(self) -> datetime:
+        self.readings += 1
+        return datetime(2026, 8, 18, 12, 0, self.readings, tzinfo=UTC)
 
 
 def animals_url(slug: str) -> str:
@@ -654,14 +668,304 @@ def test_only_the_fields_in_the_body_are_baselined(
 
 @pytest.mark.django_db
 def test_clearing_a_field_drops_its_baseline(member_client, shelter, dataset_file):
-    dataset_file([make_animal("testno:1", shelter, status="available")])
+    dataset_file([make_animal("testno:1", shelter, status="available", name="Bela")])
 
-    put(member_client, shelter.slug, "testno:1", {"status": "reserved"})
+    put(
+        member_client, shelter.slug, "testno:1", {"status": "reserved", "name": "Belka"}
+    )
     put(member_client, shelter.slug, "testno:1", {"status": None})
 
     override = AnimalOverride.objects.get()
-    assert override.baseline == {}
-    assert override.baseline_at is None
+    assert override.baseline == {"name": "Bela"}
+    assert override.baseline_at is not None
+
+
+@pytest.mark.django_db
+def test_clearing_the_last_field_removes_the_row(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter, name="Bela")])
+    put(member_client, shelter.slug, "testno:1", {"name": "Belka"})
+
+    response = put(member_client, shelter.slug, "testno:1", {"name": None})
+
+    # Nothing stated is nothing overridden: the crawled name is back and no
+    # row is left to say the shelter edited this animal.
+    assert response.status_code == 200
+    assert response.json()["name"] == "Bela"
+    assert response.json()["overrides"] == {}
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_empty_put_creates_no_row(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter, name="Bela")])
+
+    response = put(member_client, shelter.slug, "testno:1", {})
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Bela"
+    assert response.json()["overrides"] == {}
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_empty_put_leaves_a_row_as_it_was(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter, status="available")])
+    put(member_client, shelter.slug, "testno:1", {"status": "reserved"})
+    before = AnimalOverride.objects.get()
+
+    response = put(member_client, shelter.slug, "testno:1", {})
+
+    assert response.status_code == 200
+    assert response.json()["overrides"] == {"status": "reserved"}
+    after = AnimalOverride.objects.get()
+    assert after.baseline_at == before.baseline_at
+    assert after.updated_at == before.updated_at
+
+
+@pytest.mark.django_db
+def test_an_empty_row_goes_on_the_next_put(member_client, shelter, dataset_file):
+    # A row with no stated value, such as one created by hand in the admin.
+    dataset_file([make_animal("testno:1", shelter)])
+    AnimalOverride.objects.create(shelter=shelter, animal_id="testno:1")
+
+    response = put(member_client, shelter.slug, "testno:1", {})
+
+    assert response.status_code == 200
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_saying_a_field_again_keeps_the_baseline_time(
+    member_client, shelter, dataset_file, monkeypatch
+):
+    clock = SteppedClock()
+    monkeypatch.setattr("core.api.animals.timezone", clock)
+    dataset_file([make_animal("testno:1", shelter, status="available")])
+    put(member_client, shelter.slug, "testno:1", {"status": "reserved"})
+    first = AnimalOverride.objects.get().baseline_at
+
+    # The crawl stands still, so the reading is the same reading. recordedAt
+    # in the export is when that reading was taken, not when it was last
+    # repeated.
+    put(member_client, shelter.slug, "testno:1", {"status": "reserved"})
+
+    assert AnimalOverride.objects.get().baseline_at == first
+
+
+@pytest.mark.django_db
+def test_a_new_baseline_entry_moves_the_baseline_time(
+    member_client, shelter, dataset_file, monkeypatch
+):
+    clock = SteppedClock()
+    monkeypatch.setattr("core.api.animals.timezone", clock)
+    dataset_file([make_animal("testno:1", shelter, status="available", breed="kuža")])
+    put(member_client, shelter.slug, "testno:1", {"status": "reserved"})
+    first = AnimalOverride.objects.get().baseline_at
+
+    put(member_client, shelter.slug, "testno:1", {"breed": "mešanec"})
+
+    assert AnimalOverride.objects.get().baseline_at > first
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("months", [1201, 2**63, 2**64])
+def test_put_rejects_an_age_beyond_a_lifetime(
+    member_client, shelter, dataset_file, months
+):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(
+        member_client, shelter.slug, "testno:1", {"approximateAgeMonths": months}
+    )
+
+    assert response.status_code == 422
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_accepts_an_age_at_the_cap(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(
+        member_client, shelter.slug, "testno:1", {"approximateAgeMonths": 1200}
+    )
+
+    assert response.status_code == 200
+    assert AnimalOverride.objects.get().approximate_age_months == 1200
+
+
+@pytest.mark.django_db
+def test_put_rejects_a_birth_date_in_the_future(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+    tomorrow = (timezone.localdate() + timedelta(days=1)).isoformat()
+
+    response = put(member_client, shelter.slug, "testno:1", {"birthDate": tomorrow})
+
+    assert response.status_code == 422
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_rejects_a_birth_date_before_1900(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(member_client, shelter.slug, "testno:1", {"birthDate": "1899-12-31"})
+
+    assert response.status_code == 422
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_accepts_a_birth_date_at_either_bound(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    for value in (timezone.localdate().isoformat(), "1900-01-01"):
+        response = put(member_client, shelter.slug, "testno:1", {"birthDate": value})
+
+        assert response.status_code == 200, value
+        assert response.json()["overrides"]["birthDate"] == value
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "animal_id", ["ljubljana:123", "1", "..", "testno:", "testno", "Testno:1"]
+)
+def test_put_rejects_an_id_outside_the_shelters_namespace(
+    member_client, shelter, dataset_file, animal_id
+):
+    dataset_file([])
+
+    response = put(member_client, shelter.slug, animal_id, {"name": "Novinec"})
+
+    # Every id is <shelter slug>:<local id>. Another prefix is another
+    # shelter's namespace, whichever shelter's route it arrives on.
+    assert response.status_code == 404
+    assert response.json() == {"detail": "animal not found"}
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("animal_id", ["testno:1\x00", "testno:1\x1f2", "testno:\x85"])
+def test_put_rejects_an_id_with_a_control_character(
+    member_client, shelter, dataset_file, animal_id
+):
+    dataset_file([])
+
+    response = put(
+        member_client, shelter.slug, quote(animal_id, safe=""), {"name": "Novinec"}
+    )
+
+    assert response.status_code == 404
+    assert AnimalOverride.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_put_drops_control_characters_from_text(member_client, shelter, dataset_file):
+    dataset_file([make_animal("testno:1", shelter)])
+
+    response = put(
+        member_client,
+        shelter.slug,
+        "testno:1",
+        {
+            "name": "Bel\x00ka",
+            "shortDescription": "Prva vrstica.\r\nDruga\x07 vrstica.\x1b",
+        },
+    )
+
+    assert response.status_code == 200
+    override = AnimalOverride.objects.get()
+    assert override.name == "Belka"
+    assert override.short_description == "Prva vrstica.\nDruga vrstica."
+
+
+@pytest.mark.django_db
+def test_the_baseline_reads_what_the_crawl_said_not_the_merged_dataset(
+    member_client, shelter, dataset_file
+):
+    # The last ingest run merged the shelter's "reserved" into animals.json.
+    # The crawl itself still says "available", and that is the baseline.
+    dataset_file(
+        [make_animal("testno:1", shelter, status="reserved")],
+        crawled=[make_animal("testno:1", shelter, status="available")],
+    )
+    AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        status="reserved",
+        baseline={"status": "available"},
+    )
+
+    response = put(member_client, shelter.slug, "testno:1", {"status": "hold"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "hold"
+    assert AnimalOverride.objects.get().baseline == {"status": "available"}
+
+
+@pytest.mark.django_db
+def test_the_listing_shows_the_merged_dataset(member_client, shelter, dataset_file):
+    dataset_file(
+        [make_animal("testno:1", shelter, status="reserved")],
+        crawled=[make_animal("testno:1", shelter, status="available")],
+    )
+    AnimalOverride.objects.create(
+        shelter=shelter, animal_id="testno:1", status="reserved"
+    )
+
+    item = member_client.get(animals_url(shelter.slug)).json()[0]
+
+    assert item["status"] == "reserved"
+    assert item["overrides"] == {"status": "reserved"}
+
+
+@pytest.mark.django_db
+def test_without_a_crawled_file_the_merged_dataset_stands_in(
+    member_client, shelter, dataset_file, caplog
+):
+    # A data/dist from before ingest wrote animals.crawled.json.
+    dataset_file([make_animal("testno:1", shelter, status="available")])
+    dataset_file.crawled_path.unlink()
+
+    with caplog.at_level(logging.WARNING, logger="core.dataset"):
+        put(member_client, shelter.slug, "testno:1", {"status": "reserved"})
+        put(member_client, shelter.slug, "testno:1", {"breed": "mešanec"})
+
+    assert AnimalOverride.objects.get().baseline == {
+        "status": "available",
+        "breed": None,
+    }
+    fallbacks = [
+        record for record in caplog.records if "no crawled dataset" in record.message
+    ]
+    assert len(fallbacks) == 1
+
+
+@pytest.mark.django_db
+def test_a_malformed_record_is_left_out_of_the_list(
+    member_client, shelter, dataset_file, caplog
+):
+    nameless = make_animal("testno:2", shelter)
+    del nameless["id"]
+    dataset_file(
+        [
+            make_animal("testno:1", shelter),
+            nameless,
+            make_animal("testno:3", shelter, approximateAgeMonths=2.5),
+            make_animal("testno:4", shelter, name=5),
+        ]
+    )
+
+    with caplog.at_level(logging.WARNING, logger="core.api.animals"):
+        response = member_client.get(animals_url(shelter.slug))
+
+    # One bad record used to fail the whole list. It is left out and logged,
+    # not repaired: ingest validates what it writes, so this is a damaged
+    # file, and guessing at it would put the guess on the site.
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == ["testno:1"]
+    skipped = [record for record in caplog.records if "skipping" in record.message]
+    assert len(skipped) == 3
 
 
 @pytest.mark.django_db

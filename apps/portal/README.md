@@ -55,10 +55,17 @@ uv run ruff format .
 uv run ruff check .
 ```
 
-The tests run offline. They never read the real registry, the real dataset or
+The tests run offline. They never read the real registry, the real datasets or
 the real provider policies, and they never write into the checkout:
 `tests/fixtures/shelters.yaml` stands in for the registry, and a temporary
-directory stands in for the dataset file, `providers/` and `MEDIA_ROOT`.
+directory stands in for the two dataset files, `providers/` and `MEDIA_ROOT`.
+
+The test database is a SQLite file in that temporary directory rather than
+pytest-django's in-memory default, so the journal and transaction settings
+apply to the tests too. `tests/test_concurrency.py` needs it: it starts the
+live server and sends ten `PUT`s at once, on one animal and on ten, and on an
+in-memory database every server thread would share one connection and nothing
+would run in parallel.
 
 ## How login works
 
@@ -170,9 +177,21 @@ this is where it comes from. The three good-with fields take `yes`, `no` or
 `unknown`;
 `unknown` is the shelter answering, an absent field is not. A field that is
 absent from the body is left alone, an explicit `null` clears the override and
-the crawled value applies again. Unknown fields are rejected with 422. The
-animal does not have to exist in the dataset yet, because the shelter can be
-ahead of the crawl.
+the crawled value applies again. Unknown fields are rejected with 422, and so
+are `approximateAgeMonths` above 1200 (a hundred years, the web client's cap)
+and a `birthDate` in the future or before 1900-01-01. Control characters
+other than tab and newline are dropped from text, and line ends become `\n`.
+The animal does not have to exist in the dataset yet, because the shelter
+can be ahead of the crawl.
+
+The id has to be one of the shelter's own: ingest names every animal
+`<shelter slug>:<local id>`, so an id with another prefix, an empty local id
+or a control character anywhere in it answers 404 `animal not found` and
+writes nothing, whichever shelter's route it arrives on.
+
+An override with no stated value does not exist. A body that clears the last
+field deletes the row, and an empty body on an animal without one creates
+nothing, so `updated_at` never says a shelter edited an animal it did not.
 
 The listing flattens the dataset's nested `goodWith` block into
 `goodWithKids`, `goodWithDogs` and `goodWithCats`, one key per group, the same
@@ -206,7 +225,9 @@ TypeScript side, so changing them means changing `apps/ingest` in the same
 commit.
 
 `baseline` holds what the crawl said for those same fields at the moment the
-shelter set them, and `recordedAt` is when that reading was taken. A value of
+shelter set them, and `recordedAt` is when that reading was taken. It moves
+only when the reading does: a shelter saying the same thing again while the
+crawl stands still, or sending an empty body, leaves both alone. A value of
 `null` means the crawl stated nothing for that field then, which is a
 reading; a field missing from `baseline` means nothing was read at all,
 because the animal was not in the dataset yet. Both keys are left out
@@ -253,6 +274,25 @@ the fields in that request only. Clearing a field drops its baseline with it,
 and setting a field again re-takes the baseline, which is how a shelter says
 "I still mean this". An animal that is not in the dataset yet gets no
 baseline, because there is nothing to read.
+
+### The two dataset files
+
+One ingest run writes two files. `data/dist/animals.json` is what the site
+reads: the crawl with the overrides merged in. `data/dist/animals.crawled.json`
+is the same run's records before any override was merged. The portal reads
+both, for different questions:
+
+- `GET /api/shelters/{slug}/animals` reads `DATASET_PATH`, the merged file,
+  and applies the shelter's overrides on top. That is the view the shelter
+  expects, and an override set or cleared since the last run lands on it.
+- The baseline in `PUT` and the crawl state in the admin read
+  `CRAWLED_DATASET_PATH`. Read off the merged file, the baseline of an
+  override the last run applied would be that override's own value, and
+  every correction would look like a crawl that caught up.
+
+A `data/dist` from before ingest wrote the crawled file has only the merged
+one. The portal then reads baselines from it, as it always did, and logs one
+warning per process saying so.
 
 `core/conflicts.py` compares the three and reports two kinds:
 
@@ -396,9 +436,12 @@ variables.
 | `PORTAL_DEBUG` | `true` | Set to `false` in production. |
 | `PORTAL_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma separated hosts. |
 | `PORTAL_DB_PATH` | `apps/portal/db.sqlite3` | SQLite file. |
+| `PORTAL_DB_TIMEOUT` | `20` | Seconds a writer waits for the database lock before it fails. |
+| `PORTAL_DB_INIT_COMMAND` | `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;` | Statements run on every new connection, `;` separated. |
 | `FRONTEND_URL` | `http://localhost:3000` | Base of the magic link. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma separated origins allowed to send credentials. |
-| `DATASET_PATH` | `data/dist/animals.json` | Crawled dataset, read only. |
+| `DATASET_PATH` | `data/dist/animals.json` | The merged dataset the site reads, read only. What the listing shows. |
+| `CRAWLED_DATASET_PATH` | `data/dist/animals.crawled.json` | The same run's records before any override was merged, read only. What baselines and the crawl state compare against; `DATASET_PATH` stands in when it is missing. |
 | `SHELTERS_YAML` | `data/shelters.yaml` | Registry read by `seed_shelters`. |
 | `PROVIDERS_DIR` | `providers/` | Where `seed_shelters` reads each `<slug>/policy.yaml` for its `ingestion` mode. |
 | `PORTAL_MEDIA_ROOT` | `apps/portal/media` | Uploaded listing photographs. Served by nginx in production. |
@@ -417,6 +460,13 @@ variables.
 | `PORTAL_EMAIL_PASSWORD` | empty | SMTP password. |
 | `PORTAL_EMAIL_USE_TLS` | `false` | STARTTLS for SMTP. |
 | `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. |
+
+Every transaction opens `IMMEDIATE`, which takes SQLite's write lock at
+`BEGIN` rather than at the first write. That is what makes two requests that
+edit at once queue on `PORTAL_DB_TIMEOUT` instead of one of them failing with
+"database is locked", and it is not configurable: the override route relies
+on it to serialize its read-modify-write, because SQLite ignores
+`select_for_update`. WAL lets reads go on while a writer holds the lock.
 
 In production set at least `PORTAL_SECRET_KEY`, `PORTAL_DEBUG=false`,
 `PORTAL_ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ORIGINS`, `PORTAL_EXPORT_TOKEN`,

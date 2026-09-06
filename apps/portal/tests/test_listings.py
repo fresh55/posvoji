@@ -57,6 +57,37 @@ def test_another_shelter_is_403(member_client, other_shelter):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("months", [1201, 2**63])
+def test_a_listing_rejects_an_age_beyond_a_lifetime(
+    member_client, manual_shelter, months
+):
+    response = post(
+        member_client, manual_shelter.slug, {**LUNA, "approximateAgeMonths": months}
+    )
+
+    assert response.status_code == 422
+    assert Listing.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_listing_accepts_an_age_at_the_cap(member_client, manual_shelter):
+    created = create(member_client, manual_shelter.slug, approximateAgeMonths=1200)
+
+    assert created["approximateAgeMonths"] == 1200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("value", ["2999-01-01", "1899-12-31"])
+def test_a_listing_rejects_an_implausible_birth_date(
+    member_client, manual_shelter, value
+):
+    response = post(member_client, manual_shelter.slug, {**LUNA, "birthDate": value})
+
+    assert response.status_code == 422
+    assert Listing.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_a_crawled_shelter_has_no_listing_routes(member_client, shelter):
     # The member is a member. The routes are still not there, because the
     # crawl is the origin of this shelter's animals and a listing would

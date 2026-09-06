@@ -166,6 +166,10 @@ class CrawlStateFilter(admin.SimpleListFilter):
     cannot be a plain field filter: the rows are resolved in Python and fed
     back to the queryset as a list of primary keys. That holds at this size,
     and the dataset is read once for the whole page.
+
+    Everything here reads the crawled dataset, not the merged one. The merged
+    file carries the overrides already, so against it every correction would
+    look like a crawl that caught up.
     """
 
     title = "crawl state"
@@ -180,7 +184,7 @@ class CrawlStateFilter(admin.SimpleListFilter):
         wanted = self.value()
         if wanted is None:
             return queryset
-        index = animal_index()
+        index = animal_index(crawled=True)
         matching = [
             override.pk
             for override in queryset.select_related("shelter")
@@ -218,8 +222,8 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
     @admin.display(description="crawl")
     def crawl_state(self, obj: AnimalOverride) -> str:
         # Called once per row. The dataset is parsed once per version of the
-        # file, so this is an index build, not a re-read of animals.json.
-        animal = animal_index().get((obj.shelter.slug, obj.animal_id))
+        # file, so this is an index build, not a re-read of the file.
+        animal = animal_index(crawled=True).get((obj.shelter.slug, obj.animal_id))
         return STATE_LABELS[override_state(obj, animal)]
 
     @admin.display(description="crawl report")
@@ -227,7 +231,7 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
         """What the crawl says about this animal now, on the change form."""
         if obj.pk is None:
             return "not saved yet"
-        animal = animal_index().get((obj.shelter.slug, obj.animal_id))
+        animal = animal_index(crawled=True).get((obj.shelter.slug, obj.animal_id))
         if animal is None:
             return "no matching animal in the dataset"
         conflicts = conflicts_for(obj, animal)
@@ -246,7 +250,7 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
 
         Returns the number of fields it touched.
         """
-        index = animal_index()
+        index = animal_index(crawled=True)
         touched = 0
         for override in queryset.select_related("shelter"):
             animal = index.get((override.shelter.slug, override.animal_id))

@@ -348,7 +348,9 @@ function ListingEditor({
   // touched must not leave a key behind, or the list would mark every listing
   // that was ever opened.
   const typedWork = dirty || badAgeBox !== null;
-  usePortalDraftMirror(account, shelter.slug, draftId, draft, typedWork);
+  usePortalDraftMirror(account, shelter.slug, draftId, draft, typedWork, () =>
+    draftFrom(listing),
+  );
 
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));

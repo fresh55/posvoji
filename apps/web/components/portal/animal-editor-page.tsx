@@ -10,9 +10,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AnimalForm,
+  READ_BOX_IDS,
   buildPatch,
   draftFrom,
+  sanitizeDraft,
   type Draft,
+  type ReadBox,
 } from "@/components/portal/animal-form";
 import {
   portalMetaLine,
@@ -38,6 +41,7 @@ import {
   fieldRow,
   isPortalField,
   portalSpeciesIcon,
+  type AgeBox,
 } from "@/components/portal/portal-fields";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
@@ -222,6 +226,8 @@ export function AnimalEditorPage() {
   );
 }
 
+const ALL_READ_BOXES: readonly ReadBox[] = ["birthDate", "ageYears", "ageMonths"];
+
 function AnimalEditor({
   animal,
   account,
@@ -249,15 +255,34 @@ function AnimalEditor({
 }) {
   const now = useMemo(() => new Date(), []);
   // The typed half, and whatever this tab still holds of an earlier visit to
-  // this animal. See the hook for what is kept and when it is dropped.
+  // this animal. See the hook for what is kept and when it is dropped, and
+  // sanitizeDraft for what of the stored half this form takes back.
   const {
     draft,
     setDraft,
     resumed,
     reset: resetDraft,
     clear: clearOwnDraft,
-  } = usePortalDraft(account, shelter, animal.id, () => draftFrom(animal));
-  const [ageError, setAgeError] = useState(false);
+  } = usePortalDraft(
+    account,
+    shelter,
+    animal.id,
+    () => draftFrom(animal),
+    sanitizeDraft,
+  );
+  // The box the last submit refused, if any. One message under one box.
+  const [ageError, setAgeError] = useState<AgeBox | null>(null);
+  const [dateError, setDateError] = useState(false);
+  // The boxes the browser could not read a value out of. "2-1" in a number
+  // box and a year of 0001 in the date box both reach the change handler as
+  // an empty value with validity.badInput set, so the draft says "" while
+  // the box still shows what was typed. Kept apart from the draft on
+  // purpose: a sentinel in the controlled value would be written back over
+  // the shelter's text. While any box is here, the page has work it cannot
+  // read and must neither save nor drop silently.
+  const [unreadable, setUnreadable] = useState<ReadonlySet<ReadBox>>(
+    () => new Set(),
+  );
   const [confirming, setConfirming] = useState(false);
   // A save that failed on the card keeps its message until the next attempt,
   // which is what the card needs: the shelter has to be able to look away and
@@ -268,14 +293,30 @@ function AnimalEditor({
   const [openedOn] = useState<PortalSaveState | null>(
     saveState.status === "error" ? saveState : null,
   );
+  // The failure the shelter has already answered, by changing a field or by
+  // starting another save. Same identity test: the slot holds the failure
+  // until the next save replaces it, and the page has no other way to take
+  // the line down.
+  const [dismissed, setDismissed] = useState<PortalSaveState | null>(null);
+  // Which control started the save the slot is reporting on. The status
+  // buttons and Shrani share one slot per animal, and each failure has to be
+  // said next to the control that was pressed.
+  const [origin, setOrigin] = useState<"form" | "status">("form");
+  // A save this page has started and not yet heard back from. The slot says
+  // the same thing one render later; this is for a second submit fired in
+  // code before that render.
+  const inFlight = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   // The confirm is opened in code, from Prekliči or the breadcrumb, so it
   // puts the focus back itself.
   const confirmFocus = useReturnFocus();
 
   const uid = useId();
   const errorId = `${uid}-error`;
+  const statusErrorId = `${uid}-status-error`;
   const ageErrorId = `${uid}-age-error`;
+  const dateErrorId = `${uid}-date-error`;
 
   // Coming in at a named row: the shelter tapped the card's "manjka" line, so
   // that row has to be what the page shows first, not the top of a form they
@@ -294,31 +335,79 @@ function AnimalEditor({
 
   const saving = saveState.status === "saving";
   // The same patch the submit will send: what the form would change, and
-  // which age box, if either, holds something that is not a count.
-  const { patch, ageError: badAgeBox } = buildPatch(draft, animal);
+  // which box, if any, holds something that is not a value.
+  const {
+    patch,
+    ageError: badAgeBox,
+    dateError: badDate,
+  } = buildPatch(draft, animal, now);
   const dirty = Object.keys(patch).length > 0;
-  // An unusable age produces no patch, but it is still work the shelter typed
-  // and the page must not throw it away silently.
-  const unsaved = dirty || badAgeBox !== null;
+  // An unusable age or date produces no patch, but it is still work the
+  // shelter typed and the page must not throw it away silently.
+  const typedWork = dirty || badAgeBox !== null || badDate;
+  // Plus the boxes the browser could not read. Their text is not in the
+  // draft, so it is not mirrored, but it is the shelter's work all the same:
+  // leaving asks, and Shrani stays enabled so the submit can point at the box.
+  const unsaved = typedWork || unreadable.size > 0;
   // Mirrored on every change, so a Back, a Forward and a reload all come back
   // to the same typed work. Only while there is work: a form nobody has
   // touched must not leave a key behind, or the list would mark every animal
   // that was ever opened.
-  usePortalDraftMirror(account, shelter, animal.id, draft, unsaved);
+  usePortalDraftMirror(account, shelter, animal.id, draft, typedWork, () =>
+    draftFrom(animal),
+  );
 
   const name = animal.name ?? portalText.unnamed;
   const overrideCount = Object.keys(animal.overrides).length;
   const speciesIcon = portalSpeciesIcon(animal.species);
-  // The age has its own message, beside the boxes it is about. What is left
-  // for the foot of the form is the save that did not go through, and only
-  // once it is this page's own doing.
-  const errorText =
-    saveState.status === "error" && saveState !== openedOn
-      ? saveState.message
+  // The age and the date have their own messages, beside the boxes they are
+  // about. What is left is the save that did not go through, and only once
+  // it is this page's own doing and has not been answered since.
+  const failed =
+    saveState.status === "error" &&
+    saveState !== openedOn &&
+    saveState !== dismissed
+      ? saveState
       : null;
+  const formFailure = failed && origin === "form" ? failed : null;
+  const statusFailure = failed && origin === "status" ? failed : null;
+
+  // A failed Shrani is said in the bar, which is on screen wherever the
+  // shelter pressed from; the focus follows so a keyboard user lands on the
+  // reason and a screen reader has it announced from where they are. Every
+  // failure is a new state object, so this runs once per failure.
+  useEffect(() => {
+    if (!formFailure) return;
+    const line = errorRef.current;
+    if (!line) return;
+    line.scrollIntoView({ block: "nearest" });
+    line.focus({ preventScroll: true });
+  }, [formFailure]);
+
+  /** The failed save has been answered: the shelter changed something. */
+  function touched() {
+    if (formFailure) setDismissed(formFailure);
+  }
+
+  /** A new save replaces whatever the slot said about the last one. */
+  function startSave(from: "form" | "status") {
+    setOrigin(from);
+    if (failed) setDismissed(failed);
+  }
 
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
+    touched();
+  }
+
+  function mark(box: ReadBox, bad: boolean) {
+    setUnreadable((current) => {
+      if (current.has(box) === bad) return current;
+      const next = new Set(current);
+      if (bad) next.add(box);
+      else next.delete(box);
+      return next;
+    });
   }
 
   /**
@@ -326,14 +415,57 @@ function AnimalEditor({
    * else in the form can, or picking a size would clear a message about a
    * number the shelter has not corrected.
    */
-  function setAge(key: "ageYears" | "ageMonths", value: string) {
+  function setAge(
+    key: "ageYears" | "ageMonths",
+    value: string,
+    unreadableNow: boolean,
+  ) {
     setDraft((current) => ({ ...current, [key]: value }));
-    setAgeError(false);
+    mark(key, unreadableNow);
+    setAgeError(null);
+    touched();
+  }
+
+  function setBirthDate(value: string, unreadableNow: boolean) {
+    setDraft((current) => ({ ...current, birthDate: value }));
+    mark("birthDate", unreadableNow);
+    setDateError(false);
+    touched();
+  }
+
+  /**
+   * Empties the boxes the browser could not read. Their text lives in the
+   * DOM alone: the draft only ever held "" for them, so setting it to ""
+   * again is no change React would write back, and the text would stay.
+   */
+  function emptyUnreadable(boxes: readonly ReadBox[]) {
+    const stale = boxes.filter((box) => unreadable.has(box));
+    if (stale.length === 0) return;
+    for (const box of stale) {
+      const control = formRef.current?.querySelector<HTMLInputElement>(
+        `#${READ_BOX_IDS[box]}`,
+      );
+      if (control) control.value = "";
+    }
+    setUnreadable((current) => {
+      const next = new Set(current);
+      for (const box of stale) next.delete(box);
+      return next;
+    });
   }
 
   function revertAge() {
     setDraft((current) => ({ ...current, ageYears: "", ageMonths: "" }));
-    setAgeError(false);
+    emptyUnreadable(["ageYears", "ageMonths"]);
+    setAgeError(null);
+    touched();
+  }
+
+  function revertBirthDate() {
+    setDraft((current) => ({ ...current, birthDate: "" }));
+    emptyUnreadable(["birthDate"]);
+    setDateError(false);
+    touched();
   }
 
   /**
@@ -371,25 +503,51 @@ function AnimalEditor({
   /** The line's own button: keep the animal, drop what was typed before. */
   function discardStored() {
     resetDraft();
-    setAgeError(false);
+    emptyUnreadable(ALL_READ_BOXES);
+    setAgeError(null);
+    setDateError(false);
+  }
+
+  /** The box the submit has to refuse, in the order the form reads them. */
+  function firstFault(): ReadBox | null {
+    if (unreadable.has("birthDate") || badDate) return "birthDate";
+    if (unreadable.has("ageYears") || badAgeBox === "years") return "ageYears";
+    if (unreadable.has("ageMonths") || badAgeBox === "months") {
+      return "ageMonths";
+    }
+    return null;
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (badAgeBox) {
-      setAgeError(true);
+    // The bar is disabled while a save is on its way, so a tap cannot reach
+    // here twice; a submit fired in code can, and must not send the patch
+    // again.
+    if (saving || inFlight.current) return;
+
+    const fault = firstFault();
+    if (fault) {
+      if (fault === "birthDate") setDateError(true);
+      else setAgeError(fault === "ageYears" ? "years" : "months");
       // A submit from the bar at the foot of the page leaves the reason off
       // screen, so the box that cannot be read takes the focus with it.
       const box = formRef.current?.querySelector<HTMLElement>(
-        badAgeBox === "years" ? "#portal-age-years" : "#portal-age-months",
+        `#${READ_BOX_IDS[fault]}`,
       );
       box?.scrollIntoView({ block: "center" });
       box?.focus({ preventScroll: true });
       return;
     }
-    if (await onSave(patch)) {
-      clearOwnDraft();
-      onDone();
+
+    startSave("form");
+    inFlight.current = true;
+    try {
+      if (await onSave(patch)) {
+        clearOwnDraft();
+        onDone();
+      }
+    } finally {
+      inFlight.current = false;
     }
   }
 
@@ -398,14 +556,21 @@ function AnimalEditor({
       <EditorBreadcrumb
         name={name}
         blocked={unsaved}
+        saving={saving}
         onBlocked={() => setConfirming(true)}
       />
 
       {/* One form over both columns, so the bar in the summary submits the
           rows beside it without a form attribute to tie them together. */}
       <form ref={formRef} onSubmit={submit} noValidate>
+        {/* min-w-0 on both grid items. Below lg the column is auto-sized and
+            a grid item's minimum is its content's, so a long name with no
+            space in it (the h1 truncates, which is nowrap) would widen the
+            column past the viewport and the page would scroll sideways. With
+            the minimum at zero the column stays the viewport's width and the
+            truncate on the h1 and the two lines under it can do its job. */}
         <div className="grid gap-8 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-          <aside className="space-y-4 lg:sticky lg:top-6">
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">
             <div className="flex items-start gap-3">
               {animal.thumbnailUrl ? (
                 // Same reasoning as the card: a cache-permitted photo can
@@ -457,7 +622,17 @@ function AnimalEditor({
             <StatusBlock
               animal={animal}
               busy={saving}
-              onSave={(patch) => void onSave(patch)}
+              error={
+                statusFailure && (
+                  <FieldError id={statusErrorId}>
+                    {statusFailure.message}
+                  </FieldError>
+                )
+              }
+              onSave={(patch) => {
+                startSave("status");
+                void onSave(patch);
+              }}
             />
 
             <div className="space-y-1">
@@ -494,11 +669,18 @@ function AnimalEditor({
               saving={saving}
               cancelDisabled={saving}
               saveDisabled={saving || !unsaved}
+              error={
+                formFailure && (
+                  <FieldError ref={errorRef} id={errorId} focusable>
+                    {formFailure.message}
+                  </FieldError>
+                )
+              }
               onCancel={requestLeave}
             />
           </aside>
 
-          <div className="space-y-6 max-lg:pb-28">
+          <div className="min-w-0 space-y-6 max-lg:pb-28">
             {/* Above the rows it is about, and quiet: the shelter came back
                 to a form that is not the animal's saved state, and nothing
                 else on the page would say why. */}
@@ -513,13 +695,16 @@ function AnimalEditor({
               set={set}
               setAge={setAge}
               revertAge={revertAge}
+              setBirthDate={setBirthDate}
+              revertBirthDate={revertBirthDate}
+              markBox={mark}
               reverting={reverting}
               saving={saving}
               ageError={ageError}
               ageErrorId={ageErrorId}
+              dateError={dateError}
+              dateErrorId={dateErrorId}
             />
-
-            {errorText && <FieldError id={errorId}>{errorText}</FieldError>}
           </div>
         </div>
       </form>

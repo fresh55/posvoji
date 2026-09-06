@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { LoaderCircle, TriangleAlert, type LucideIcon } from "lucide-react";
 import { portalText } from "@/components/portal/portal-text";
+import { cn } from "@/lib/utils";
 
 /**
  * The portal's own name, standing in as the page's heading while there is no
@@ -33,19 +34,33 @@ export function PortalPending({ label }: { label: string }) {
 /**
  * A save that did not go through, said where the shelter would try it again.
  * Announced, because the button they pressed is often off screen by then.
+ *
+ * A focusable one can also be given the focus by the page that shows it, so
+ * a keyboard user lands on the reason and not on a button that did nothing.
+ * It is a programmatic stop only, tabIndex -1, and draws no ring: the text
+ * itself is what the focus is for.
  */
 export function FieldError({
+  ref,
   id,
+  focusable = false,
   children,
 }: {
+  ref?: Ref<HTMLParagraphElement>;
   id?: string;
+  focusable?: boolean;
   children: ReactNode;
 }) {
   return (
     <p
+      ref={ref}
       id={id}
       role="alert"
-      className="flex items-start gap-1.5 text-sm text-destructive"
+      tabIndex={focusable ? -1 : undefined}
+      className={cn(
+        "flex items-start gap-1.5 text-sm text-destructive",
+        focusable && "outline-none",
+      )}
     >
       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       {children}

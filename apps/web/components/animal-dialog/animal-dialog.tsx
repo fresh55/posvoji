@@ -23,6 +23,7 @@ import {
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { DialogShareButton } from "@/components/animal-dialog/dialog-share-button";
 import { PhotoBloom } from "@/components/animal-dialog/photo-bloom";
+import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { useI18n } from "@/components/i18n-provider";
@@ -329,12 +330,33 @@ export function AnimalDialog({
   // Page keys walk animals. The arrows belong to the photos, and taking them
   // here would fight the fan. At either end of the list the key is the
   // browser's again, so the card can still scroll on it.
+  //
+  // Only the keys pressed inside the dialog's own box. React bubbles a
+  // portal's events up the component tree rather than the DOM one, so every
+  // layer opened from in here sends its keys through this handler while
+  // standing outside it: the lightbox, the share sheet, the fact popovers. A
+  // page key in the share sheet's link field stepped to the next animal and
+  // took the sheet down with it.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "PageUp" && event.key !== "PageDown") return;
+    if (!event.currentTarget.contains(event.target as Node)) return;
     const target = event.key === "PageUp" ? previousId : nextId;
     if (!target) return;
     event.preventDefault();
     onNavigate(target);
+  }
+
+  // Radix would hand the open to the first focusable child, which since the
+  // arrows moved to the end is the leftmost print. The front print is the
+  // animal, the thing the dialog is about, and from it the arrow keys walk the
+  // fan without a Tab first. Only a fan with photos has one; an animal without
+  // keeps Radix's choice.
+  function openOnFrontPrint(event: Event) {
+    returnFocus.current = document.activeElement as HTMLElement | null;
+    const front = frontPrintOf(contentRef.current);
+    if (!front) return;
+    event.preventDefault();
+    front.focus({ preventScroll: true });
   }
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
@@ -426,20 +448,7 @@ export function AnimalDialog({
           className={CONTENT_CLASS}
           style={{ transformOrigin: zoomOrigin(origin) }}
           onKeyDown={handleKeyDown}
-          onOpenAutoFocus={(event) => {
-            returnFocus.current = document.activeElement as HTMLElement | null;
-            // Radix would hand the open to the first focusable child, which
-            // since the arrows moved to the end is the leftmost print. The
-            // front print is the animal, the thing the dialog is about, and
-            // from it the arrow keys walk the fan without a Tab first. Only a
-            // fan with photos has one; an animal without keeps Radix's choice.
-            const front = contentRef.current?.querySelector<HTMLElement>(
-              'button[aria-pressed="true"]',
-            );
-            if (!front) return;
-            event.preventDefault();
-            front.focus({ preventScroll: true });
-          }}
+          onOpenAutoFocus={openOnFrontPrint}
           onCloseAutoFocus={(event) => {
             // The card of the animal the dialog closed on, which after a
             // step through the list is not the one it opened from, and after

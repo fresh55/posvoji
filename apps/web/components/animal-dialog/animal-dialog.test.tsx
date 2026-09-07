@@ -2150,6 +2150,32 @@ describe("animal dialog", () => {
     expect(onNavigate).toHaveBeenCalledTimes(2);
   });
 
+  // React bubbles a portal's keys up the component tree, so every layer the
+  // dialog opens sends them through the handler that walks the list. A page
+  // key in the share sheet's link field stepped to the next animal and took
+  // the sheet down with it.
+  it("leaves the page keys alone inside the layers it opens", async () => {
+    const onNavigate = renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
+    });
+    const sheet = await screen.findByText("Deli to žival");
+    const panel = sheet.closest("[data-slot=popover-content]") as HTMLElement;
+
+    fireEvent.keyDown(within(panel).getByLabelText("Povezava"), {
+      key: "PageDown",
+    });
+    fireEvent.keyDown(panel, { key: "PageUp" });
+
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    // The dialog's own box still walks the list on the same key.
+    fireEvent.keyDown(dialog, { key: "PageDown" });
+    expect(onNavigate).toHaveBeenCalledWith(MURI.id);
+  });
+
   it("hands out the animal's own page, not the address bar", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

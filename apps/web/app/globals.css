@@ -477,6 +477,39 @@
   );
 }
 
+/* The same fade, with a thin scrollbar left in. The desktop filter sidebar
+   uses this one: it is the only fade-scroll container a visitor has not just
+   opened for themselves, it stands still while the page scrolls past it, and
+   at 1280x720 it keeps two whole sections below its fold. The mask alone was
+   not enough to say there was more.
+
+   A class of its own rather than a modifier next to fade-scroll: Chrome
+   ignores scrollbar-width and scrollbar-color on an element whose
+   ::-webkit-scrollbar is styled, and fade-scroll styles it. Carrying one class
+   or the other also leaves nothing for the cascade to decide. Below lg the
+   sidebar is display:none, so no phone ever draws this.
+
+   The thumb is muted-foreground at a third, not --border: in dark mode the
+   border token is white at 10%, and a thumb drawn in it measured as barely
+   there on the built page. The mix lands near --border in light and stays a
+   visible grey in dark, from the one token that already reads well on both
+   grounds. */
+@utility fade-scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 30%, transparent)
+    transparent;
+  transition:
+    --scroll-fade-top 0.25s ease,
+    --scroll-fade-bottom 0.25s ease;
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / calc(1 - var(--scroll-fade-top, 0))) 0,
+    black calc(var(--scroll-fade-top, 0) * 2.5rem),
+    black calc(100% - var(--scroll-fade-bottom, 0) * 2.5rem),
+    rgb(0 0 0 / calc(1 - var(--scroll-fade-bottom, 0))) 100%
+  );
+}
+
 /* Horizontal counterpart to fade-scroll, for a strip that scrolls sideways
    rather than up and down (the photo thumbnails under the phone hero). */
 @property --scroll-fade-start {

@@ -342,3 +342,80 @@ describe("collapsible filter sections", () => {
     expect(summary?.classList.contains("tracking-normal")).toBe(true);
   });
 });
+
+describe("the sidebar's own scroll", () => {
+  // A sidebar taller than the viewport cuts its last sections off with nothing
+  // but a faint fade to say so, so this one container keeps its scrollbar.
+  // Carrying fade-scroll as well would hide it again: see globals.css.
+  it("keeps a scrollbar where the fade alone stands in everywhere else", () => {
+    const { container } = renderSidebar();
+    const aside = container.querySelector("aside");
+
+    expect(aside?.classList.contains("fade-scroll-thin")).toBe(true);
+    expect(aside?.classList.contains("fade-scroll")).toBe(false);
+  });
+});
+
+describe("remembered folds", () => {
+  it("stores only what departs from the defaults", () => {
+    renderSidebar();
+
+    fireEvent.click(header("Zdravje"));
+    expect(stored()).toEqual({ health: true });
+
+    fireEvent.click(header("Spol"));
+    expect(stored()).toEqual({ health: true, sex: false });
+  });
+
+  it("restores the stored folds in a fresh render", () => {
+    const { unmount } = renderSidebar();
+    fireEvent.click(header("Zdravje"));
+    fireEvent.click(header("Spol"));
+    unmount();
+
+    // A new tab reads the same storage and starts from nothing else.
+    resetFilterSectionsStore();
+    renderSidebar();
+
+    expect(expanded("Zdravje")).toBe("true");
+    expect(expanded("Spol")).toBe("false");
+    expect(expanded("Starost")).toBe("true");
+  });
+});
+
+describe("the sidebar heading", () => {
+  it("counts selected values, not the sections holding them", () => {
+    const { unmount } = renderStatic(EMPTY_FILTERS, NOOP);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri");
+    unmount();
+
+    // Two sections, three values. The chips row below this heading draws
+    // three pills, so the badge that outlives it has to say three.
+    renderStatic(
+      {
+        ...EMPTY_FILTERS,
+        sex: ["male", "female"],
+        toggles: ["sterilizacija"],
+      },
+      NOOP,
+    );
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri3");
+  });
+
+  it("keeps the clear out of reach while nothing is active", () => {
+    renderStatic(EMPTY_FILTERS, NOOP);
+
+    expect(screen.queryByRole("button", { name: "Počisti vse" })).toBeNull();
+    expect(
+      screen.getByText("Počisti vse").getAttribute("aria-hidden"),
+    ).toBe("true");
+  });
+
+  it("clears every section from the heading", () => {
+    const onClearAll = vi.fn();
+    renderStatic({ ...EMPTY_FILTERS, sex: ["male"] }, onClearAll);
+
+    fireEvent.click(screen.getByRole("button", { name: "Počisti vse" }));
+    expect(onClearAll).toHaveBeenCalledTimes(1);
+  });
+});

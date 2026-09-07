@@ -81,8 +81,14 @@ export function FilterSidebar({
       ref={scrollRef}
       // The negative margin and padding give focus rings room inside the
       // overflow clip. Hairlines between sections read the stack as one list.
+      //
+      // fade-scroll-thin and not fade-scroll: the picker lists this fade is
+      // shared with sit inside a dialog the visitor has just opened and are
+      // read as scrollable, while this panel is fixed beside the results and
+      // silently cut its last sections off on a short screen. It keeps the
+      // same edge mask and adds a thin scrollbar (globals.css).
       className={cn(
-        "fade-scroll -mx-1 space-y-3 px-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
+        "fade-scroll-thin -mx-1 space-y-3 px-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
         className,
       )}
     >

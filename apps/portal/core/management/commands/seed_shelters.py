@@ -92,10 +92,9 @@ class Command(BaseCommand):
                 f"stale registry login removed: {shelter.slug} "
                 f"({membership.user.email})"
             )
-        if rows:
-            ShelterMembership.objects.filter(
-                pk__in=[membership.pk for membership in rows]
-            ).delete()
+        # delete() drops the select_related itself, so the queryset that was
+        # just listed is also the one to delete through.
+        stale.delete()
         return len(rows)
 
     @transaction.atomic

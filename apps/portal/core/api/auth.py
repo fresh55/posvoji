@@ -5,7 +5,6 @@ day, and posting that token back opens a normal Django session.
 """
 
 import logging
-from email.utils import formataddr
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -19,6 +18,7 @@ from ninja import Router, Status
 from sesame.utils import get_token as get_login_token
 from sesame.utils import get_user
 
+from ..mail import portal_message
 from ..models import Shelter, has_control_character
 from ..schemas import CsrfOut, ErrorOut, MeOut, RequestLinkIn, VerifyIn
 from ..security import address_send_allowed, csrf_auth, request_link_throttle
@@ -129,28 +129,31 @@ def build_login_url(user, next_path: str | None) -> str:
 
 
 def build_login_message(user, next_path: str | None) -> EmailMessage:
-    """The login mail: plain text, UTF-8, a name on the From, a live Reply-To.
-
-    DEFAULT_FROM_EMAIL is a send-only mailbox, so a shelter that answers this
-    message has to reach a person some other way.
-    """
-    reply_to = settings.PORTAL_REPLY_TO_EMAIL
-    message = EmailMessage(
+    """The login mail. Its envelope is the one every portal message carries."""
+    return portal_message(
         subject=EMAIL_SUBJECT,
         body=EMAIL_BODY.format(
             email=user.email,
             url=build_login_url(user, next_path),
-            reply_to=reply_to,
+            reply_to=settings.PORTAL_REPLY_TO_EMAIL,
         ),
-        from_email=formataddr((settings.PORTAL_FROM_NAME, settings.DEFAULT_FROM_EMAIL)),
-        to=[user.email],
-        reply_to=[reply_to],
+        to=user.email,
     )
-    message.encoding = "utf-8"
-    return message
 
 
 def send_login_link(user, next_path: str | None) -> None:
+    """Mails the link, unless this mailbox has had its share of them.
+
+    The limit is checked here rather than in the view because it is a property
+    of sending to a mailbox, not of one route. A second path that mails a
+    token, an admin action that resends a shelter's link, would otherwise look
+    correct and quietly skip the protection.
+    """
+    if not address_send_allowed(user.email):
+        # The caller still gets its 204: the limit guards the shelter's inbox
+        # and must not become a way to learn which addresses exist.
+        logger.info("%s recipient=%s", ADDRESS_THROTTLED, user.email)
+        return
     try:
         build_login_message(user, next_path).send()
     except Exception:
@@ -194,12 +197,7 @@ def request_link(request, payload: RequestLinkIn):
             .first()
         )
         if user is not None:
-            if address_send_allowed(user.email):
-                send_login_link(user, next_path)
-            else:
-                # Still 204: the caller learns nothing either way, and the
-                # shelter's inbox is what the limit protects.
-                logger.info("%s recipient=%s", ADDRESS_THROTTLED, user.email)
+            send_login_link(user, next_path)
     return Status(204, None)
 
 

@@ -223,6 +223,12 @@ class MembershipSource(models.TextChoices):
     the registry does not carry, and only a person removes it. "dev" is the
     <slug>@dev.invalid login the development shelter picker mints, which
     exists only in a development database.
+
+    Moving a row to "admin" is one way and permanent. The seed only ever fills
+    this in on a row it creates, so an address handed to a person to keep
+    stays theirs even if the registry later names it again, and withdrawing it
+    is then a person's job too. That is the safe direction: the alternative
+    silently takes back a login somebody deliberately kept.
     """
 
     REGISTRY = "registry", "registry"

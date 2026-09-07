@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { statusOf } from "@/components/portal/animal-meta";
 import { RevertButton } from "@/components/portal/override-mark";
@@ -65,10 +66,17 @@ export function ListingStatusBlock({
 export function StatusBlock({
   animal,
   busy,
+  error,
   onSave,
 }: {
   animal: PortalAnimal;
   busy: boolean;
+  /**
+   * The failed status save's own line. Under the buttons that were tapped,
+   * where the shelter is looking, not at the foot of a form they did not
+   * submit.
+   */
+  error?: ReactNode;
   onSave: (patch: PortalAnimalPatch) => void;
 }) {
   const { status, source } = statusOf(animal);
@@ -142,6 +150,7 @@ export function StatusBlock({
           )}
         </div>
       )}
+      {error && <div className="mt-3">{error}</div>}
     </div>
   );
 }

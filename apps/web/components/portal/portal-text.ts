@@ -2,6 +2,8 @@
 // here rather than in lib/i18n.ts, which carries the bilingual public site.
 // The placeholder syntax is shared with it.
 
+import { CONTACT_EMAIL } from "@/lib/site";
+
 export { interpolate as fill } from "@/lib/i18n";
 
 export const portalText = {
@@ -17,18 +19,40 @@ export const portalText = {
   sending: "Pošiljam …",
   sentTitle: "Povezava je na poti",
   sentLead:
-    "Če je naslov {email} vpisan pri nas, je povezava za prijavo že v predalu. Velja eno uro.",
-  sentHint: "Če je ni, poglejte še med vsiljeno pošto.",
-  sendAgain: "Pošlji na drug naslov",
+    "Če je naslov {email} vpisan pri nas, je povezava za prijavo že v predalu. Velja 24 ur.",
+  sentHint: "Če je ni, poglejte med vsiljeno pošto ali jo pošljite znova.",
+  // Going back keeps the address that was typed, so the same button covers
+  // both a link that never arrived and a second address to try.
+  sendAgain: "Pošlji znova",
   emailRequired: "Vpišite e-naslov.",
   emailInvalid: "E-naslov ni v pravi obliki. Preverite vnos.",
   verifying: "Preverjam povezavo …",
   expiredTitle: "Povezava ne velja več",
+  // A link is single use, so a shelter with a shared inbox burns the older
+  // link the moment a colleague opens a newer one. That is the common way to
+  // land here, and it is what the sentence names.
   expiredLead:
-    "Povezava za prijavo velja eno uro in samo za en račun. Zahtevajte novo, pa gremo naprej.",
+    "Vsaka povezava deluje samo enkrat in velja 24 ur. Če ste se medtem že prijavili z novejšo povezavo, ta ne velja več. Zahtevajte novo.",
   requestNewLink: "Zahtevaj novo povezavo",
   networkError: "Strežnik se ni odzval. Preverite povezavo in poskusite znova.",
+  // The API allows a handful of link requests an hour from one network. The
+  // wait is the whole answer, so it is said in minutes when the API states it.
+  throttledMinutes: "Preveč zahtev. Poskusite znova čez {minutes} min.",
+  // The same, when the API sent no wait we could read. An hour is the window
+  // it counts in, so it is the honest upper bound.
+  throttledHour: "Preveč zahtev s te povezave. Poskusite znova čez eno uro.",
+  // Verification worked and the browser kept nothing, so the workspace answers
+  // as if nobody signed in. The burnt link cannot be reused, hence the last
+  // sentence.
+  sessionNotStored:
+    "Prijava je uspela, a brskalnik ni shranil seje. Dovolite piškotke za posvoji.si in zahtevajte novo povezavo.",
   unknownError: "Nekaj je šlo narobe. Poskusite znova.",
+  // The address a shelter writes to when the login itself is the problem.
+  contactEmail: CONTACT_EMAIL,
+  // Under the form. A shelter whose inbox is not the one we hold has no way
+  // through this page at all, so the way out is on the page they are stuck on.
+  helpLine:
+    "Nimate dostopa ali zavetišče uporablja drug naslov? Pišite na {email}.",
 
   // Workspace
   loading: "Nalagam …",
@@ -37,8 +61,10 @@ export const portalText = {
   publicPage: "Javna stran zavetišča",
   chooseShelter: "Izberite zavetišče",
   noSheltersTitle: "Račun še ni povezan z zavetiščem",
+  // "Pišite nam" named no address, which left the shelter with a notice and
+  // nowhere to write to.
   noSheltersLead:
-    "Prijava je uspela, dostopa do zavetišča pa ta naslov še nima. Pišite nam in uredimo.",
+    "Prijava je uspela, dostopa do zavetišča pa ta naslov še nima. Pišite na {email} in uredimo.",
   // The workspace draws a failure as a notice with a title and a body. The
   // title names what did not work, the body says what to do about it. They
   // are never the same sentence, or the notice prints it twice.
@@ -135,11 +161,7 @@ export const portalText = {
   reviewBannerFailed:
     "Nekaterih stanj ni bilo mogoče potrditi. Poskusite znova.",
   edit: "Uredi podatke",
-  editTitle: "Uredi {name}",
-  // True of every row, which "Prazno polje pomeni …" was not: a row the
-  // shelter has already changed holds their own value, not a blank.
-  editLead: "Kar vpišete tukaj, obvelja namesto podatka z vaše spletne strani.",
-  // The other half, under the control of a row the shelter has changed. The
+  // Under the control of a row the shelter has changed. The
   // pair matches statusOwnLine and statusFromSiteLine on the card: a sentence
   // at the point of use, because the revert button's hover title is something
   // a touch user never opens.
@@ -178,9 +200,6 @@ export const portalText = {
   saving: "Shranjujem …",
   saved: "Shranjeno",
   cancel: "Prekliči",
-  // Every way out of the editor passes through this once something is typed.
-  discardTitle: "Popravki niso shranjeni",
-  discardLead: "Če zdaj zaprete okno, se vpisano izgubi.",
   keepEditing: "Nadaljuj urejanje",
   discardChanges: "Zavrzi popravke",
 
@@ -233,6 +252,18 @@ export const portalText = {
   savedHidden: "Shranjeno. Trenutni filter skrije žival {name}.",
   saveError: "Shranjevanje ni uspelo. Poskusite znova.",
   invalidError: "Podatek ni v pravi obliki. Preverite vnos.",
+  // What a refused value says when the API named the field. One form each
+  // for one, two and more fields, because the verb and the noun both change
+  // with the count.
+  invalidFieldOne: "Podatek v polju {fields} ni v pravi obliki. Preverite vnos.",
+  invalidFieldTwo:
+    "Podatka v poljih {fields} nista v pravi obliki. Preverite vnos.",
+  invalidFieldMany:
+    "Podatki v poljih {fields} niso v pravi obliki. Preverite vnos.",
+  // Under the date box. One sentence for all three ways a date can be wrong:
+  // the browser could not read it, it is before 1900, or it is after today.
+  birthDateError:
+    "Datum rojstva ni v pravi obliki ali ni med 1. 1. 1900 in danes. Preverite vnos.",
   edited: "Urejeno",
   editedCount: "Urejena polja: {count}",
   willRevert: "Bo povrnjeno",

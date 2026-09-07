@@ -62,8 +62,8 @@ and requires no Chrome executable or system font installation.
 ## Cat interaction
 
 The branch includes the interaction and attention modules, their unit tests,
-the model and matching still. The source worktree's separate experimental
-browser-test harness is not required by these pages.
+the model and matching still. The dedicated cat browser suite and its
+measurements are documented in `docs/CAT-HARDENING.md`.
 
 A quiet dedication beneath the model links to the memorial in both languages.
 It stays visible while loading and when the still-image fallback is used.

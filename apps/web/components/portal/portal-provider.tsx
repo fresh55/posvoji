@@ -24,7 +24,8 @@ import {
   type PortalListingActions,
 } from "@/hooks/use-portal-listings";
 import {
-  PORTAL_LOGIN_PATH,
+  bounceToLogin,
+  takeVerified,
   usePortalSession,
   type PortalSessionState,
 } from "@/hooks/use-portal-session";
@@ -151,9 +152,22 @@ function HeaderActions() {
   );
 }
 
+/**
+ * The shelter a deep link names, read once when the provider mounts on the
+ * client. Without it a cold load of the second shelter's editor starts on
+ * the first shelter, fetches its list, and drops it the moment the page
+ * corrects the choice from the address. The prerendered page has no query,
+ * so the server reads nothing here; the value is not drawn until the session
+ * has arrived, so the first client render matches the server's.
+ */
+function linkedShelter(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("zavetisce");
+}
+
 export function PortalProvider({ children }: { children: ReactNode }) {
   const { state: session, reload: reloadSession, signOut } = usePortalSession();
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(linkedShelter);
   const [leaving, setLeaving] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PortalListFilter | null>(null);
@@ -162,7 +176,14 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const account = session.status === "ready" ? session.session.email : null;
   const shelters =
     session.status === "ready" ? session.session.shelters : NO_SHELTERS;
-  const active = chosen ?? shelters[0]?.slug ?? null;
+  // A choice the session does not cover is no choice: the address may name
+  // a shelter the account never had, and a session read again may no longer
+  // list the one it was working under. Either way the first shelter stands
+  // in, rather than a slug no list can be fetched for.
+  const active =
+    chosen !== null && shelters.some((shelter) => shelter.slug === chosen)
+      ? chosen
+      : (shelters[0]?.slug ?? null);
   const activeShelter =
     shelters.find((shelter) => shelter.slug === active) ?? null;
   // No mode means a crawled shelter, which is what every shelter was before
@@ -185,16 +206,21 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     [clearFilters],
   );
 
-  // The guard: no session, no portal. replace() so the back button does not
-  // walk into a page that will only bounce again.
+  // The guard: no session, no portal.
   useEffect(() => {
-    if (session.status === "anonymous")
-      window.location.replace(PORTAL_LOGIN_PATH);
+    // The hand over worked, so the note has nothing left to explain and must
+    // not be read by a bounce hours later, when the session simply ran out.
+    if (session.status === "ready") {
+      takeVerified();
+      return;
+    }
+    if (session.status !== "anonymous") return;
+    bounceToLogin();
   }, [session.status]);
 
-  const onUnauthorized = useCallback(() => {
-    window.location.replace(PORTAL_LOGIN_PATH);
-  }, []);
+  // A list the API refuses is the same bounce: the session went while the
+  // page was open. A module function, so the hooks below see one identity.
+  const onUnauthorized = bounceToLogin;
 
   // Both hooks always run, as hooks must; the one the shelter does not use
   // gets no slug and stays idle without a request.

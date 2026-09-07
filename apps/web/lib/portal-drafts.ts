@@ -59,6 +59,139 @@ function notifyAll(): void {
   for (const listener of listeners) listener();
 }
 
+// What a key holds: a plain object with only the draft keys the shelter has
+// changed from the saved record, each with its typed value. Never the whole
+// draft. A whole draft would carry every field back over the record on
+// resume, so a name typed in one tab would resend the breed that another tab,
+// or a crawl in between, had changed since. A key written before this rule
+// holds every field; it is a superset of the same shape and goes through the
+// same path, resuming every field that still differs from the record.
+//
+// Text is compared trimmed on both sides. Crawled text can carry trailing
+// whitespace the form trims away on save, and without this an untouched form
+// would read as changed and leave a key behind.
+
+/** Checks a stored value against the draft the record produces and returns
+ *  the keys worth keeping, each with a value of the right type. Anything it
+ *  leaves out is dropped. */
+export type DraftSanitizer<T extends object> = (
+  stored: unknown,
+  base: T,
+) => Partial<T>;
+
+/** Whether one draft value differs from another. Text is compared trimmed;
+ *  everything else by Object.is, since a draft holds only primitives. */
+export function draftValueDiffers(a: unknown, b: unknown): boolean {
+  if (typeof a === "string" && typeof b === "string") {
+    return a.trim() !== b.trim();
+  }
+  return !Object.is(a, b);
+}
+
+/** The keys of the draft whose value differs from the base, with the
+ *  draft's value. Empty when the form is back to what the record says. */
+export function draftDiff<T extends object>(draft: T, base: T): Partial<T> {
+  const diff: Partial<T> = {};
+  for (const key of Object.keys(draft) as (keyof T)[]) {
+    if (draftValueDiffers(draft[key], base[key])) diff[key] = draft[key];
+  }
+  return diff;
+}
+
+/**
+ * What each key of one form's draft may hold. A text key holds a string; a
+ * choice key holds one of its answers or null, for a row nobody has answered;
+ * a key under `answered` holds one of its answers and never null, which is
+ * what a manual listing's status is.
+ */
+export type DraftFields = {
+  text: readonly string[];
+  choices: Readonly<Record<string, readonly string[]>>;
+  answered?: Readonly<Record<string, readonly string[]>>;
+};
+
+function declared(
+  table: Readonly<Record<string, readonly string[]>> | undefined,
+  key: string,
+): readonly string[] | null {
+  if (!table) return null;
+  if (!Object.prototype.hasOwnProperty.call(table, key)) return null;
+  return table[key] ?? null;
+}
+
+/**
+ * The check one form runs over what the tab stored, from the table of what its
+ * draft holds.
+ *
+ * The draft in sessionStorage was written by whatever version of the form the
+ * tab last ran, and by anything else that can write to the tab's storage. Only
+ * keys the base draft has are kept, and only with a value the key can hold.
+ * Anything else (a null name, a number, an object, an answer the row does not
+ * offer, a stored value that is not an object at all) is dropped and the base's
+ * own value stands. A missing key would otherwise turn its box into an
+ * uncontrolled input halfway through the form, and a wrong value would reach
+ * the wire as a patch the API refuses.
+ */
+export function draftSanitizer<T extends object>(
+  fields: DraftFields,
+): DraftSanitizer<T> {
+  const text = new Set(fields.text);
+  return (stored, base) => {
+    if (
+      typeof stored !== "object" ||
+      stored === null ||
+      Array.isArray(stored)
+    ) {
+      return {};
+    }
+    const kept: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(stored)) {
+      if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
+      const choice = declared(fields.choices, key);
+      const answered = declared(fields.answered, key);
+      if (text.has(key)) {
+        if (typeof value === "string") kept[key] = value;
+      } else if (choice) {
+        if (
+          value === null ||
+          (typeof value === "string" && choice.includes(value))
+        ) {
+          kept[key] = value;
+        }
+      } else if (answered) {
+        if (typeof value === "string" && answered.includes(value)) {
+          kept[key] = value;
+        }
+      }
+    }
+    return kept as Partial<T>;
+  };
+}
+
+/** What a stored value changes about the fresh draft: the sanitized keys
+ *  whose value differs from the base. Empty when the value is malformed, of
+ *  the wrong shape, or says nothing the record does not already say. Never
+ *  throws, whatever the sanitizer does with what it is given. */
+export function resumeDraft<T extends object>(
+  stored: unknown,
+  base: T,
+  sanitize: DraftSanitizer<T>,
+): Partial<T> {
+  let kept: Partial<T>;
+  try {
+    kept = sanitize(stored, base);
+  } catch {
+    return {};
+  }
+  if (typeof kept !== "object" || kept === null) return {};
+  const changes: Partial<T> = {};
+  for (const key of Object.keys(kept) as (keyof T)[]) {
+    if (!(key in base)) continue;
+    if (draftValueDiffers(kept[key], base[key])) changes[key] = kept[key];
+  }
+  return changes;
+}
+
 /** Returns the parsed draft, or null when there is none, the stored value is
  *  not valid JSON, or storage cannot be read at all. Never throws: a form
  *  that cannot restore its draft should fall back to a blank one, not crash

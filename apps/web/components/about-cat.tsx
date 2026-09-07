@@ -61,6 +61,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
     };
     const onError = () => {
       ready = false;
+      interaction?.syncPlayback();
       viewer?.pause();
       setStatus("failed");
     };

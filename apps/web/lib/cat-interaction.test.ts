@@ -561,4 +561,19 @@ describe("cat reactions", () => {
     vi.advanceTimersByTime(1000);
     expect(viewer.play).not.toHaveBeenCalled();
   });
+
+  it("releases a reserved camera, all timers and window listeners on disposal", async () => {
+    viewer.availableAnimations.push("Head pet", "Drowse", "Sleep", "Wake");
+    viewer.materialFromPoint.mockReturnValue({ name: "Head touch region" });
+    Object.assign(viewer, { cameraControls: true });
+    controller.syncPlayback();
+    pointer("pointerdown"); await vi.advanceTimersByTimeAsync(450);
+    expect((viewer as unknown as ModelViewerElement).cameraControls).toBe(false);
+    const remove = vi.spyOn(window, "removeEventListener");
+    controller.dispose();
+    expect((viewer as unknown as ModelViewerElement).cameraControls).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    for (const name of ["pointerup", "pointercancel", "blur"]) expect(remove).toHaveBeenCalledWith(name, expect.any(Function));
+    expect(viewer.pause).toHaveBeenCalled();
+  });
 });

@@ -25,6 +25,7 @@ import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalPath } from "@/lib/animal-path";
+import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
 
@@ -59,6 +60,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   fanLayout("desktop");
   window.history.replaceState(null, "", "/");
+  // The description store caches its one fetch for the life of the module, so
+  // without this the first dialog in this file to ask for a description
+  // decides the answer for every test after it, whatever each of them stubs.
+  resetAnimalDescriptionsStore();
 });
 
 function animal(id: string, name: string, rest: Partial<Animal> = {}): Animal {
@@ -575,14 +580,23 @@ describe("animal dialog", () => {
   });
 
   it("clamps a long description behind a read-more toggle", async () => {
-    const chatty = animal("tia", "Tia", {
-      shortDescription: "Zelo prijazna muca. ".repeat(20).trim(),
-    });
+    const text = "Zelo prijazna muca. ".repeat(20).trim();
+    const chatty = animal("tia", "Tia", { shortDescription: text });
+    // The grid's own animals arrive without their descriptions:
+    // animalsForClient leaves the text behind and the dialog fetches it
+    // (lib/animal-descriptions.ts), which is what keeps 503 shelter
+    // paragraphs out of a payload that prints one. So the file the store
+    // reads has to be served here, where the real page serves it from
+    // public/generated.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ tia: text }) })),
+    );
     window.history.replaceState(null, "", "/?zival=tia");
     renderGrid([chatty]);
 
     const dialog = await screen.findByRole("dialog");
-    const description = within(dialog).getByText(/Zelo prijazna muca/);
+    const description = await within(dialog).findByText(/Zelo prijazna muca/);
     expect(description.className).toContain("line-clamp-5");
 
     const toggle = within(dialog).getByRole("button", {
@@ -1742,7 +1756,9 @@ describe("animal dialog", () => {
     });
     expect(next.className).toContain("pointer-events-none");
     expect(next.className).toContain("group-hover:pointer-events-auto");
-    expect(next.className).toContain("group-focus-within:pointer-events-auto");
+    expect(next.className).toContain(
+      "group-has-[:focus-visible]:pointer-events-auto",
+    );
     expect(next.className).not.toMatch(/(^|\s)pointer-events-auto(\s|$)/);
   });
 
@@ -2073,6 +2089,43 @@ describe("animal dialog", () => {
     );
   });
 
+  // The edge arrows are drawn at the edges but written last. Standing first,
+  // they were the first focusable child, which is what Radix hands the open
+  // to: the dialog announced itself as the way out of the animal, and the
+  // first Tab step led away from it. The phone's close button is still ahead
+  // of the photos, which is deliberate and is hidden from sm up, where these
+  // arrows are the ones on screen.
+  it("writes the animal steps after the animal itself", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+
+    const previous = edgeNav(dialog, "Prejšnja žival");
+    const next = edgeNav(dialog, "Naslednja žival");
+    const print = photoButton(dialog, "photo-spread", 1);
+
+    expect(
+      print.compareDocumentPosition(previous) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // Last of everything the dialog can focus, not just of the photos.
+    const buttons = Array.from(dialog.querySelectorAll("button"));
+    expect(buttons.at(-2)).toBe(previous);
+    expect(buttons.at(-1)).toBe(next);
+    expect(buttons[0]).not.toBe(previous);
+  });
+
+  // With the arrows last, the first focusable child is the leftmost print,
+  // and Radix would open on it. The front print is the animal, so the open
+  // lands there, and the arrow keys walk the fan from the first key.
+  it("opens on the front print", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+    const front = dialog.querySelector('button[aria-pressed="true"]');
+    expect(front).not.toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(front));
+  });
+
   it("offers the first animal the next step and nothing before it", async () => {
     renderDialog(REX, [REX.id, MURI.id]);
     const dialog = await screen.findByRole("dialog");
@@ -2109,6 +2162,32 @@ describe("animal dialog", () => {
     fireEvent.click(phoneNav(dialog, "previous")!);
     expect(onNavigate).toHaveBeenLastCalledWith(REX.id);
     expect(onNavigate).toHaveBeenCalledTimes(2);
+  });
+
+  // React bubbles a portal's keys up the component tree, so every layer the
+  // dialog opens sends them through the handler that walks the list. A page
+  // key in the share sheet's link field stepped to the next animal and took
+  // the sheet down with it.
+  it("leaves the page keys alone inside the layers it opens", async () => {
+    const onNavigate = renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
+    });
+    const sheet = await screen.findByText("Deli to žival");
+    const panel = sheet.closest("[data-slot=popover-content]") as HTMLElement;
+
+    fireEvent.keyDown(within(panel).getByLabelText("Povezava"), {
+      key: "PageDown",
+    });
+    fireEvent.keyDown(panel, { key: "PageUp" });
+
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    // The dialog's own box still walks the list on the same key.
+    fireEvent.keyDown(dialog, { key: "PageDown" });
+    expect(onNavigate).toHaveBeenCalledWith(MURI.id);
   });
 
   it("hands out the animal's own page, not the address bar", async () => {
@@ -2207,6 +2286,7 @@ describe("animal dialog", () => {
 
     expect(share).toHaveBeenCalledWith({
       title: "Rex išče dom",
+      text: "Rex išče dom",
       url: `https://posvoji.si${animalPath(REX, "sl")}`,
     });
     expect(screen.queryByText("Deli to žival")).toBeNull();

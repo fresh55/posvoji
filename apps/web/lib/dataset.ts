@@ -90,12 +90,28 @@ export function loadDataset(): Dataset | null {
 }
 
 /**
+ * Every animal the dataset holds for one shelter.
+ *
+ * The shelter's own page asks this to draw its list, and both locales' routes
+ * ask it again to decide whether the page's description may promise animals.
+ * Written once here rather than three times as a filter over
+ * `loadDataset()?.animals`, so the head and the body of a shelter page cannot
+ * come to different answers about the same shelter. loadDataset caches, so the
+ * repeat costs a walk of the array and no second read.
+ */
+export function shelterAnimals(shelterId: string): Animal[] {
+  return (loadDataset()?.animals ?? []).filter(
+    (animal) => animal.shelter.id === shelterId,
+  );
+}
+
+/**
  * The same animals, with every photo resolved to the file a surface draws it
  * from and nothing else on the wire.
  *
  * The grid and its dialog are client components, so every animal handed to
  * them is serialized into the page's flight payload whether or not a card for
- * it is ever drawn. Three things were paid for there and never read:
+ * it is ever drawn. What was paid for there and never read:
  *
  * The blur placeholders. Ingest derives one per photo, the grid draws sixty
  * cards, and both the card and the dialog only ever blur the photo they open
@@ -117,38 +133,43 @@ export function loadDataset(): Dataset | null {
  * background, which is the path animal-photo.tsx already takes for a hotlinked
  * image that never had one.
  *
+ * The `source` bookkeeping: `providerId`, `sourceAnimalId`, `fetchedAt`,
+ * `firstSeenAt` and `lastSeenAt`. Two ids and three ISO timestamps that say
+ * how the crawl found this listing, which is a question no surface asks.
+ * app/sitemap.ts reads `lastSeenAt`, on the server, off the dataset animal.
+ * Only the shelter's own listing URL crosses; see ClientAnimalSource.
+ *
+ * `shortDescription`, the shelter's own words. One component renders it,
+ * AnimalFacts, for the one animal a dialog is open on, and it is the longest
+ * field an animal has. Shipping five hundred of them so that at most one is
+ * read is the whole of the home page's weight problem: it alone is a third of
+ * the payload. AnimalFacts fetches the text it needs when a dialog opens, so
+ * the field stays optional on the type and simply goes unset here.
+ *
+ * Measured on the built home page, out/index.txt at 503 animals, gzip level 6:
+ * 148,363 bytes down to 82,043, of which the bookkeeping is 13,420 and
+ * shortDescription 53,918. Raw, 814,650 down to 576,334.
+ *
  * Only for what crosses into a client component. Server-rendered surfaces read
  * loadDataset directly and resolve their own photos through permittedPhotos,
  * keeping every placeholder: the animal page carries one animal, and its
  * gallery blurs whichever photo the visitor steps to.
  */
-/**
- * Every animal the dataset holds for one shelter.
- *
- * The shelter's own page asks this to draw its list, and both locales' routes
- * ask it again to decide whether the page's description may promise animals.
- * Written once here rather than three times as a filter over
- * `loadDataset()?.animals`, so the head and the body of a shelter page cannot
- * come to different answers about the same shelter. loadDataset caches, so the
- * repeat costs a walk of the array and no second read.
- */
-export function shelterAnimals(shelterId: string): Animal[] {
-  return (loadDataset()?.animals ?? []).filter(
-    (animal) => animal.shelter.id === shelterId,
-  );
-}
-
 export function animalsForClient(animals: Animal[]): ClientAnimal[] {
-  return animals.map((animal) => ({
-    ...animal,
-    // permittedPhotos has already dropped the images no surface may draw, so
-    // the first photo left is the one that leads: what a card shows and what a
-    // dialog opens on.
-    images: permittedPhotos(animal.images).map((photo, index) => {
-      if (index === 0 || photo.blurDataURL === undefined) return photo;
-      const stripped = { ...photo };
-      delete stripped.blurDataURL;
-      return stripped;
+  return animals.map(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
+    ({ source, shortDescription, ...animal }) => ({
+      ...animal,
+      source: { sourceUrl: source.sourceUrl },
+      // permittedPhotos has already dropped the images no surface may draw, so
+      // the first photo left is the one that leads: what a card shows and what
+      // a dialog opens on.
+      images: permittedPhotos(animal.images).map((photo, index) => {
+        if (index === 0 || photo.blurDataURL === undefined) return photo;
+        const stripped = { ...photo };
+        delete stripped.blurDataURL;
+        return stripped;
+      }),
     }),
-  }));
+  );
 }

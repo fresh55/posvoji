@@ -83,4 +83,38 @@ describe("the language switcher", () => {
 
     expect(english.getAttribute("href")).toBe("/en/zavetisce/muri?vrsta=pes");
   });
+
+  it("leaves a phone the other language and nothing else", () => {
+    // Both halves came to 96x48 in a 390px header, against a 119x40 brand.
+    // The language the reader is already on is the press that does nothing,
+    // so below lg it is the one that goes. Read off the class and not the
+    // layout: this is a media query, and jsdom does not run one, so both
+    // anchors are here either way. aria-current stays on the current one for
+    // anything reading the markup, though not for a screen reader below lg,
+    // which honours display:none the same as the eye does; what says which
+    // language the page is in there is lang on the document.
+    renderSwitcher();
+
+    const slovenian = screen.getByRole("link", { name: "Slovenščina" });
+    const english = screen.getByRole("link", { name: "English" });
+
+    expect(slovenian.getAttribute("aria-current")).toBe("page");
+    expect(slovenian.className.split(" ")).toContain("max-lg:hidden");
+    expect(english.className.split(" ")).not.toContain("max-lg:hidden");
+  });
+
+  it("keeps the well and the raised half off the phone", () => {
+    // The one that survives below lg is a ghost button on the header's own
+    // background, so nothing here may paint at a width where the well that
+    // the paint belongs to is not drawn.
+    renderSwitcher();
+
+    const well = screen.getByRole("navigation");
+    const slovenian = screen.getByRole("link", { name: "Slovenščina" });
+
+    expect(well.className.split(" ")).not.toContain("bg-muted");
+    expect(well.className.split(" ")).toContain("lg:bg-muted");
+    expect(slovenian.className.split(" ")).not.toContain("bg-background");
+    expect(slovenian.className.split(" ")).toContain("lg:bg-background");
+  });
 });

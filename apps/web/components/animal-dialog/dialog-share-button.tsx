@@ -18,11 +18,14 @@ export function DialogShareButton({
   path,
   name,
   photo,
+  className,
 }: {
   path: string;
   name: string;
   /** Where the fan reports the photo on show, counted from zero. */
   photo: MotionValue<number>;
+  /** Passed straight through to the button. */
+  className?: string;
 }) {
   const shown = useSyncExternalStore(
     useCallback((notify: () => void) => photo.on("change", notify), [photo]),
@@ -31,5 +34,12 @@ export function DialogShareButton({
     () => 0,
   );
 
-  return <ShareButton path={path} name={name} photo={shown} />;
+  return (
+    <ShareButton
+      path={path}
+      name={name}
+      photo={shown}
+      className={className}
+    />
+  );
 }

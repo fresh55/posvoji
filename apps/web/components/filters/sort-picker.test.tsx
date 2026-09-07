@@ -54,12 +54,17 @@ function GrantOrigin({ resolved }: { resolved: ResolvedOrigin }) {
   return null;
 }
 
-// The two placements, by the props each one is mounted with: the desktop
-// toolbar's quiet trigger and the mobile sheet header's full-width control.
-// See the component's own "Two placements, one control" note.
+// The two dresses, by the props each one is mounted with: the quiet trigger
+// the toolbar wears (on the desktop row and on the md-to-lg one, which mount
+// it identically) and the sheet header's full-width control, which is drawn
+// below md only. See the component's own "Three placements, two dresses"
+// note.
 const PLACEMENTS = {
-  "desktop toolbar": {},
-  "mobile sheet header": { quiet: false, className: "mt-3 h-11 w-full" },
+  "toolbar row": {},
+  "mobile sheet header": {
+    quiet: false,
+    className: "mt-3 h-11 w-full",
+  },
 } as const;
 
 function mount(
@@ -116,6 +121,33 @@ describe("SortPicker nearest option", () => {
 
     expect(with_).toEqual([...without, sl.sortNearest]);
   });
+});
+
+describe("SortPicker label placement", () => {
+  for (const [placement, props] of Object.entries(PLACEMENTS)) {
+    it(`gives the label the room between the icons in the ${placement}`, () => {
+      mount(NOTHING, props);
+
+      // The trigger is justify-between and the label is the middle of its
+      // three children, so a trigger given a width to spread over -- w-full in
+      // the sheet -- sent the icons to the ends and left the name floating in
+      // the middle, reading as a caption. The value takes the room instead.
+      // jsdom lays nothing out, so this is asserted on the classes, and on the
+      // trigger rather than on the value: Radix drops the className handed to
+      // SelectValue, so the rule has to come down the child variant the same
+      // way ui/select.tsx dresses the value. Both placements carry it, and the
+      // toolbar's w-fit trigger has no spare width for flex-1 to claim.
+      const trigger = screen.getByRole("combobox");
+      expect(trigger.className).toContain("*:data-[slot=select-value]:flex-1");
+      expect(trigger.className).toContain("*:data-[slot=select-value]:min-w-0");
+      expect(trigger.className).toContain(
+        "*:data-[slot=select-value]:text-left",
+      );
+      // And the name still gives way rather than pushing the chevron off.
+      const value = trigger.querySelector('[data-slot="select-value"]');
+      expect(value?.querySelector("span")?.className).toContain("truncate");
+    });
+  }
 });
 
 describe("SortPicker fallback for a link with no origin", () => {

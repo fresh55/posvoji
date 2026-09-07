@@ -151,7 +151,6 @@ function SidebarHarness() {
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
-    clearAll,
   } = useAnimalFilters();
   const props = sidebarProps(filters);
 
@@ -168,7 +167,6 @@ function SidebarHarness() {
         onToggleMany={toggleMany}
         onToggleProperty={toggleProperty}
         onToggleManyProperties={toggleManyProperties}
-        onClearAll={clearAll}
       />
     </I18nProvider>
   );
@@ -180,7 +178,7 @@ function renderSidebar() {
 
 // The heading tests care about what the sidebar is handed, not where it came
 // from, so they state the filters outright.
-function renderStatic(filters: Filters, onClearAll: () => void) {
+function renderStatic(filters: Filters) {
   return render(
     <I18nProvider locale="sl">
       <FilterSidebar
@@ -189,7 +187,6 @@ function renderStatic(filters: Filters, onClearAll: () => void) {
         onToggleMany={NOOP}
         onToggleProperty={NOOP}
         onToggleManyProperties={NOOP}
-        onClearAll={onClearAll}
       />
     </I18nProvider>,
   );
@@ -316,6 +313,44 @@ describe("collapsible filter sections", () => {
     fireEvent.keyDown(header("Zdravje"), { key: "Home" });
     expect(document.activeElement).toBe(header("Spol"));
   });
+
+  // The classes and not the computed style: jsdom ships no browser stylesheet,
+  // so the button rules that reset text-transform and letter-spacing, the
+  // whole reason a folding heading printed in sentence case, are not there to
+  // measure against.
+  it("prints a folding heading in the case every other heading uses", () => {
+    renderSidebar();
+
+    expect(header("Zdravje").classList.contains("uppercase")).toBe(true);
+    expect(header("Zdravje").classList.contains("tracking-wide")).toBe(true);
+  });
+
+  it("leaves the folded summary in its own case", () => {
+    renderSidebar();
+
+    fireEvent.click(header("Zdravje"));
+    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
+    fireEvent.click(header("Zdravje"));
+
+    const summary = [...header("Zdravje").querySelectorAll("span")].find(
+      (span) => span.textContent === "Sterilizacija",
+    );
+    expect(summary?.classList.contains("normal-case")).toBe(true);
+    expect(summary?.classList.contains("tracking-normal")).toBe(true);
+  });
+});
+
+describe("the sidebar's own scroll", () => {
+  // A sidebar taller than the viewport cuts its last sections off with nothing
+  // but a faint fade to say so, so this one container keeps its scrollbar.
+  // Carrying fade-scroll as well would hide it again: see globals.css.
+  it("keeps a scrollbar where the fade alone stands in everywhere else", () => {
+    const { container } = renderSidebar();
+    const aside = container.querySelector("aside");
+
+    expect(aside?.classList.contains("fade-scroll-thin")).toBe(true);
+    expect(aside?.classList.contains("fade-scroll")).toBe(false);
+  });
 });
 
 describe("remembered folds", () => {
@@ -347,37 +382,28 @@ describe("remembered folds", () => {
 
 describe("the sidebar heading", () => {
   it("counts selected values, not the sections holding them", () => {
-    const { unmount } = renderStatic(EMPTY_FILTERS, NOOP);
+    const { unmount } = renderStatic(EMPTY_FILTERS);
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri");
     unmount();
 
     // Two sections, three values. The chips row below this heading draws
     // three pills, so the badge that outlives it has to say three.
-    renderStatic(
-      {
-        ...EMPTY_FILTERS,
-        sex: ["male", "female"],
-        toggles: ["sterilizacija"],
-      },
-      NOOP,
-    );
+    renderStatic({
+      ...EMPTY_FILTERS,
+      sex: ["male", "female"],
+      toggles: ["sterilizacija"],
+    });
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri3");
   });
 
-  it("keeps the clear out of reach while nothing is active", () => {
-    renderStatic(EMPTY_FILTERS, NOOP);
+  it("leaves the clearing to the chips row", () => {
+    // The head used to carry its own "Počisti vse" on the same handler as the
+    // row's, 47px from it on a 1440 screen with both drawn at lg. The row is
+    // the one that stayed: it sits among the pills it removes, and it is on
+    // screen whenever this head is, because every value has a pill there but
+    // the species tab, which undoes itself.
+    renderStatic({ ...EMPTY_FILTERS, sex: ["male"] });
 
-    expect(screen.queryByRole("button", { name: "Počisti vse" })).toBeNull();
-    expect(
-      screen.getByText("Počisti vse").getAttribute("aria-hidden"),
-    ).toBe("true");
-  });
-
-  it("clears every section from the heading", () => {
-    const onClearAll = vi.fn();
-    renderStatic({ ...EMPTY_FILTERS, sex: ["male"] }, onClearAll);
-
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse" }));
-    expect(onClearAll).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Počisti vse")).toBeNull();
   });
 });

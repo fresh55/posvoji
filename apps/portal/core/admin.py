@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from .conflicts import CAUGHT_UP, MOVED, Conflict, conflicts_for
 from .dataset import animal_index, crawled_values
+from .db import serialized_write
 from .models import (
     COLUMN_BY_JSON_KEY,
     AnimalOverride,
@@ -93,8 +94,15 @@ class ShelterAdmin(admin.ModelAdmin):
 
 @admin.register(ShelterMembership)
 class ShelterMembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "user_email", "shelter", "created_at")
-    list_filter = ("shelter",)
+    """Who signs in for which shelter, and where each row came from.
+
+    source stays editable. Changing a row from "registry" to "admin" is how a
+    login the registry no longer names is kept, because the seed only removes
+    the registry ones.
+    """
+
+    list_display = ("user", "user_email", "shelter", "source", "created_at")
+    list_filter = ("shelter", "source")
     search_fields = (
         "user__username",
         "user__email",
@@ -166,6 +174,10 @@ class CrawlStateFilter(admin.SimpleListFilter):
     cannot be a plain field filter: the rows are resolved in Python and fed
     back to the queryset as a list of primary keys. That holds at this size,
     and the dataset is read once for the whole page.
+
+    Everything here reads the crawled dataset, not the merged one. The merged
+    file carries the overrides already, so against it every correction would
+    look like a crawl that caught up.
     """
 
     title = "crawl state"
@@ -180,7 +192,7 @@ class CrawlStateFilter(admin.SimpleListFilter):
         wanted = self.value()
         if wanted is None:
             return queryset
-        index = animal_index()
+        index = animal_index(crawled=True)
         matching = [
             override.pk
             for override in queryset.select_related("shelter")
@@ -190,6 +202,48 @@ class CrawlStateFilter(admin.SimpleListFilter):
             == wanted
         ]
         return queryset.filter(pk__in=matching)
+
+
+def resolve_one_override(request, pk: int, index: dict, resolve) -> int:
+    """Applies one resolution to one override, in a transaction of its own.
+
+    Per row rather than per action, so the write queues behind a shelter's
+    PUT on the same row instead of racing it, and a row the shelter deleted
+    meanwhile is simply gone. Returns the number of conflicting fields it
+    touched, which is zero for a row that no longer needs either action.
+    """
+    with serialized_write():
+        override = (
+            AnimalOverride.objects.select_related("shelter")
+            .select_for_update()
+            .filter(pk=pk)
+            .first()
+        )
+        if override is None:
+            return 0
+        animal = index.get((override.shelter.slug, override.animal_id))
+        conflicts = conflicts_for(override, animal)
+        # No conflicts also covers an override with no matching animal, which
+        # is not something either action can resolve.
+        if not conflicts:
+            return 0
+        crawled = crawled_values(animal)
+        baseline = dict(override.baseline)
+        for conflict in conflicts:
+            resolve(override, conflict, crawled, baseline)
+        # An override with no stated value does not exist, the same rule the
+        # shelter's own route follows. The fields were still resolved, so they
+        # are counted either way.
+        if override.is_empty():
+            override.delete()
+            return len(conflicts)
+        override.baseline = baseline
+        # An override with nothing left in its baseline has nothing recorded
+        # against the crawl, so it carries no time either.
+        override.baseline_at = timezone.now() if baseline else None
+        override.updated_by = request.user
+        override.save()
+        return len(conflicts)
 
 
 @admin.register(AnimalOverride)
@@ -218,8 +272,8 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
     @admin.display(description="crawl")
     def crawl_state(self, obj: AnimalOverride) -> str:
         # Called once per row. The dataset is parsed once per version of the
-        # file, so this is an index build, not a re-read of animals.json.
-        animal = animal_index().get((obj.shelter.slug, obj.animal_id))
+        # file, so this is an index build, not a re-read of the file.
+        animal = animal_index(crawled=True).get((obj.shelter.slug, obj.animal_id))
         return STATE_LABELS[override_state(obj, animal)]
 
     @admin.display(description="crawl report")
@@ -227,7 +281,7 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
         """What the crawl says about this animal now, on the change form."""
         if obj.pk is None:
             return "not saved yet"
-        animal = animal_index().get((obj.shelter.slug, obj.animal_id))
+        animal = animal_index(crawled=True).get((obj.shelter.slug, obj.animal_id))
         if animal is None:
             return "no matching animal in the dataset"
         conflicts = conflicts_for(obj, animal)
@@ -244,29 +298,14 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
         per conflict with the override, the conflict, the crawl's current
         values and the baseline being rebuilt, and changes those in place.
 
-        Returns the number of fields it touched.
+        Returns the number of fields it touched. The dataset is read once for
+        the whole selection; each row is then resolved on its own.
         """
-        index = animal_index()
-        touched = 0
-        for override in queryset.select_related("shelter"):
-            animal = index.get((override.shelter.slug, override.animal_id))
-            conflicts = conflicts_for(override, animal)
-            # No conflicts also covers an override with no matching animal,
-            # which is not something either action can resolve.
-            if not conflicts:
-                continue
-            crawled = crawled_values(animal)
-            baseline = dict(override.baseline)
-            for conflict in conflicts:
-                resolve(override, conflict, crawled, baseline)
-            override.baseline = baseline
-            # An override with nothing left in its baseline has nothing
-            # recorded against the crawl, so it carries no time either.
-            override.baseline_at = timezone.now() if baseline else None
-            override.updated_by = request.user
-            override.save()
-            touched += len(conflicts)
-        return touched
+        index = animal_index(crawled=True)
+        return sum(
+            resolve_one_override(request, pk, index, resolve)
+            for pk in list(queryset.values_list("pk", flat=True))
+        )
 
     @admin.action(description="Accept the crawl for conflicting fields")
     def accept_the_crawl(self, request, queryset):

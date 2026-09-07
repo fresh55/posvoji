@@ -2,6 +2,19 @@
 
 `cat.glb` is revision 19: revision 15's likeness with twenty full-body clips and four isolated gaze layers for affection, attention and sleep interactions. `poster.webp` is recaptured from the page's own renderer at device pixel ratio 2 to match the first live frame.
 
+## Browser hardening after revision 19
+
+The model, poster and lighting are unchanged by this pass. Immediate drags now
+perform no application mesh picks; a labelled anatomical tap needs one pick on
+release, and a deliberate head/chin hold reuses its pick. Gaze batches coordinate
+reads and stops resending settled weights. Queued back touches are counted once;
+outside release, blur, pausing, errors and disposal clear interaction safely.
+
+The dedicated `pnpm --filter web test:e2e:cat` suite covers desktop Chromium,
+mobile Chromium and WebKit behaviour, plus eight reviewed desktop pose snapshots.
+See [the hardening report](../../../../../docs/CAT-HARDENING.md) for measurements,
+test procedures and remaining physical-device and mesh-picking limits.
+
 ## Affection, attention and sleep, revision 19
 
 - Head and chin touches select `Head pet` and `Chin scratch` (3.25 seconds each). Identically shaded head/chin material regions follow the actual surface. Tap directly, or hold still for 420 ms before a stroke: only this deliberate hold temporarily reserves camera controls. Immediate drags keep orbiting; cancellation, leaving, multiple contacts, visibility changes and cleanup restore the camera. Strokes are bounded to 100 px and five seconds. H/C are equivalent keyboard shortcuts.

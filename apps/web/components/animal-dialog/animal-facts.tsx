@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Building2,
   CalendarClock,
@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { AnimalFields } from "@/lib/animal";
+import { useAnimalDescription } from "@/lib/animal-descriptions";
 import { GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
 import {
   ageGroup,
@@ -250,6 +251,19 @@ function ApartmentFact({
 // server and the client rendering the same thing.
 const CLAMP_DESCRIPTION_CHARS = 320;
 
+// Length is not the only way a description gets tall. The text is printed
+// whitespace-pre-line, so every break the shelter wrote is a line on screen,
+// and a listing set out as a short line each for age, sex and character ran
+// past the clamp's five lines at half the character count. Breaks are
+// counted, not measured, for the same reason the length is: the server and
+// the client have to decide this the same way.
+const CLAMP_DESCRIPTION_BREAKS = 5;
+
+function clampsDescription(description: string): boolean {
+  if (description.length > CLAMP_DESCRIPTION_CHARS) return true;
+  return description.split("\n").length - 1 >= CLAMP_DESCRIPTION_BREAKS;
+}
+
 // The icon carries the meaning on screen; a screen reader gets the same
 // meaning from the prefix instead. Facts that read as a full sentence on their
 // own (the sex) need no prefix. A fact whose symbol is not a plain Lucide icon
@@ -323,6 +337,10 @@ export function AnimalFacts({
   // so the component is keyed by animal where it is used.
   const [showHealthDetails, setShowHealthDetails] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  // What the read-more button expands, named so aria-expanded has something
+  // to point at. Two animals can be in the tree at once while the dialog
+  // steps from one to the next, so the id cannot be a constant.
+  const descriptionId = useId();
   // The summary pill is the control and the whole of what it replaces: it goes
   // out of the tree the moment it is pressed, and focus went to the body with
   // it, which drops a keyboard visitor back at the top of the document. The
@@ -367,8 +385,19 @@ export function AnimalFacts({
       ? animal.apartmentOk
       : undefined;
   const animalName = animal.name ?? messages.unnamed;
-  const clampDescription =
-    (animal.shortDescription?.length ?? 0) > CLAMP_DESCRIPTION_CHARS;
+  // Two ways in, one paragraph. The animal's own page is server-rendered from
+  // a whole dataset animal, so it carries its description and asks the store
+  // for nothing. The grid's dialog gets an animal without one, because the
+  // home page stopped shipping 503 descriptions to print at most one, and the
+  // text is fetched instead. Passing no id is what keeps the page's side from
+  // fetching. See lib/animal-descriptions.ts.
+  const fetched = useAnimalDescription(
+    animal.shortDescription ? undefined : animal.id,
+  );
+  const description = animal.shortDescription || fetched;
+  // Whichever way it arrived, the same measure decides whether it opens
+  // clamped: length or the breaks the shelter wrote.
+  const clampDescription = clampsDescription(description ?? "");
 
   return (
     <div className="space-y-3">
@@ -527,9 +556,14 @@ export function AnimalFacts({
         </p>
       )}
 
-      {animal.shortDescription && (
+      {/* Nothing here until the fetch lands, which is what an animal with no
+          description draws too. No spinner and no skeleton: it is one
+          paragraph inside a dialog that is already open and already full, and
+          a placeholder for it would be more noticeable than the wait. */}
+      {description && (
         <div className="space-y-1">
           <p
+            id={descriptionId}
             // The shelter wrote this and we print it verbatim, so it is
             // Slovenian on an English page too. See quotedLang in lib/i18n.ts.
             lang={quotedLang("sl", locale)}
@@ -542,12 +576,13 @@ export function AnimalFacts({
               clampDescription && !showFullDescription && "line-clamp-5",
             )}
           >
-            {animal.shortDescription}
+            {description}
           </p>
           {clampDescription && (
             <button
               type="button"
               aria-expanded={showFullDescription}
+              aria-controls={descriptionId}
               onClick={() => setShowFullDescription((open) => !open)}
               className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >

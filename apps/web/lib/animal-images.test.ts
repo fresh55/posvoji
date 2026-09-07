@@ -8,6 +8,7 @@ import {
   photoDotWindow,
   photoSrcSet,
   posterPhoto,
+  printAspect,
   thumbnailUrl,
 } from "./animal-images";
 
@@ -227,6 +228,28 @@ describe("permittedPhotos", () => {
       { src: "https://shelter.example/luna.jpg" },
       { src: "https://shelter.example/bine.jpg" },
     ]);
+  });
+
+  it("carries the shape of a photo that is not 4:3, clamped to a print", () => {
+    const shaped = (width: number, height: number) =>
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          cachedUrl: "/media/animals/luna.webp",
+          width,
+          height,
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"])[0].aspect;
+
+    // A portrait phone photo keeps its shape.
+    expect(shaped(600, 800)).toBe(0.75);
+    expect(shaped(800, 800)).toBe(1);
+    // Wider than 4:3 is still drawn at 4:3, so 3:2 says nothing new.
+    expect(shaped(900, 600)).toBeUndefined();
+    // Taller than 3:4 is cropped to 3:4, which is what the value says.
+    expect(shaped(300, 800)).toBe(0.75);
+    expect(printAspect(0, 800)).toBeUndefined();
   });
 });
 

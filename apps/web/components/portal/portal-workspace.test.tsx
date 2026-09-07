@@ -10,8 +10,14 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortalProvider } from "@/components/portal/portal-provider";
+import { captureNavigation, restoreNavigation } from "@/test/location";
 import { PortalWorkspace } from "@/components/portal/portal-workspace";
 import { fill, portalText } from "@/components/portal/portal-text";
+import {
+  PORTAL_LOGIN_NO_SESSION_PATH,
+  PORTAL_LOGIN_PATH,
+  PORTAL_VERIFIED_KEY,
+} from "@/hooks/use-portal-session";
 import {
   PortalError,
   fetchAnimals,
@@ -53,7 +59,10 @@ Element.prototype.scrollTo = vi.fn();
 // out to scroll.
 Element.prototype.scrollIntoView = vi.fn();
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  restoreNavigation();
+});
 
 beforeEach(() => {
   // A draft outlives the page it was typed on, so every test starts in a tab
@@ -263,6 +272,64 @@ describe("the page's own heading", () => {
     });
     expect(headings()).toHaveLength(1);
     expect(headings()[0].textContent).toBe(portalText.animalsTitle);
+  });
+});
+
+describe("the guard over a workspace with no session", () => {
+  it("sends an ordinary visitor to the login page and says nothing", async () => {
+    vi.mocked(fetchSession).mockRejectedValue(new PortalError(401));
+    const replace = captureNavigation();
+
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(PORTAL_LOGIN_PATH);
+    });
+  });
+
+  // Verification worked, the browser kept no cookie, and the link is spent.
+  // Without this the shelter is bounced back to an empty form with nothing to
+  // read and one dead link in their inbox.
+  it("tells the login page when a verification left no session behind", async () => {
+    window.sessionStorage.setItem(PORTAL_VERIFIED_KEY, "1");
+    vi.mocked(fetchSession).mockRejectedValue(new PortalError(401));
+    const replace = captureNavigation();
+
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(PORTAL_LOGIN_NO_SESSION_PATH);
+    });
+    // Read once. A later bounce is a plain anonymous one and reads as one.
+    expect(window.sessionStorage.getItem(PORTAL_VERIFIED_KEY)).toBeNull();
+  });
+
+  // Otherwise the note would sit in the tab until some later session ran out,
+  // and that bounce would blame the browser for a cookie it did store.
+  it("drops the note as soon as a session is read", async () => {
+    window.sessionStorage.setItem(PORTAL_VERIFIED_KEY, "1");
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([]);
+
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(screen.getByText(portalText.emptyTitle)).toBeTruthy();
+    });
+    expect(window.sessionStorage.getItem(PORTAL_VERIFIED_KEY)).toBeNull();
+  });
+});
+
+describe("an account with no shelter behind it", () => {
+  it("names the address to write to", async () => {
+    vi.mocked(fetchSession).mockResolvedValue({ ...SESSION, shelters: [] });
+
+    renderWorkspace();
+
+    const lead = await screen.findByText(
+      fill(portalText.noSheltersLead, { email: portalText.contactEmail }),
+    );
+    expect(lead.textContent).toContain(portalText.contactEmail);
   });
 });
 

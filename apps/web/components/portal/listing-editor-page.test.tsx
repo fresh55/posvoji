@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -11,8 +12,15 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
 import {
+  confirmShown,
+  fieldRow,
+  makeUnreadable,
+  typeUnreadable,
+} from "@/components/portal/editor-test-helpers";
+import {
   COMPATIBILITY_META,
   ENERGY_META,
+  SEX_META,
   SPECIES_META,
   STATUS_META,
 } from "@/components/portal/portal-fields";
@@ -234,12 +242,6 @@ function breadcrumb(): HTMLElement {
   return screen.getByRole("link", { name: portalText.animalsTitle });
 }
 
-function fieldRow(name: string): HTMLElement {
-  const found = document.querySelector<HTMLElement>(`[data-field="${name}"]`);
-  if (!found) throw new Error(`no row for ${name}`);
-  return found;
-}
-
 function fileBox(): HTMLInputElement {
   return screen.getByLabelText(portalText.photoAdd) as HTMLInputElement;
 }
@@ -257,8 +259,37 @@ function photoImages(): HTMLImageElement[] {
   return Array.from(document.querySelectorAll<HTMLImageElement>("figure img"));
 }
 
-function confirmShown(): boolean {
-  return screen.queryByText(portalText.leaveTitle) !== null;
+function yearsBox(): HTMLInputElement {
+  return screen.getByLabelText(portalText.fieldAgeYearsUnit) as HTMLInputElement;
+}
+
+function monthsBox(): HTMLInputElement {
+  return screen.getByLabelText(
+    portalText.fieldAgeMonthsUnit,
+  ) as HTMLInputElement;
+}
+
+function dateBox(): HTMLInputElement {
+  return screen.getByLabelText(portalText.fieldBirthDate) as HTMLInputElement;
+}
+
+function saveBar(): HTMLElement {
+  const bar = document.querySelector<HTMLElement>("[data-save-bar]");
+  if (!bar) throw new Error("no save bar");
+  return bar;
+}
+
+/** A save that never answers, for the page while it is waiting. */
+function saveHangs() {
+  vi.mocked(updateListing).mockReturnValue(new Promise(() => {}));
+}
+
+function tomorrow(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 describe("finding the listing the address names", () => {
@@ -690,6 +721,27 @@ describe("photos on an existing listing", () => {
     await waitFor(() => {
       expect(screen.getByText(portalText.photoRemoveError)).toBeTruthy();
     });
+    // Once, beside the grid. The remove writes the listing's save slot, and
+    // the bar must not repeat what the grid already says.
+    expect(
+      fieldRow("photos").contains(screen.getByText(portalText.photoRemoveError)),
+    ).toBe(true);
+    expect(saveBar().textContent).not.toContain(portalText.photoRemoveError);
+  });
+
+  it("says a failed upload beside the file alone, not in the bar", async () => {
+    vi.mocked(uploadListingPhoto).mockRejectedValue(new PortalError(500));
+    await open({ photos: [PHOTO] });
+
+    pick(jpeg("new.jpg"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(fill(portalText.photoUploadFailed, { name: "new.jpg" })),
+      ).toBeTruthy();
+    });
+    expect(saveBar().textContent).not.toContain(portalText.photoUploadError);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 });
 
@@ -1105,5 +1157,409 @@ describe("work the shelter typed and did not save", () => {
     await open();
 
     expect(window.sessionStorage.length).toBe(0);
+  });
+});
+
+describe("a box the browser could not read", () => {
+  // Chromium reports "2-1" in a number box as an empty value with
+  // validity.badInput set. Read as empty, "2-1 let, 3 mesece" would go out as
+  // three months, and a year of 0001 in the date box would clear the date.
+  it("does not save the rest of the age as the whole of it", async () => {
+    await open({ approximateAgeMonths: 24 });
+    fireEvent.change(monthsBox(), { target: { value: "3" } });
+
+    typeUnreadable(yearsBox());
+    fireEvent.click(saveButton());
+
+    expect(updateListing).not.toHaveBeenCalled();
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toContain(portalText.invalidError);
+    expect(fieldRow("approximateAgeMonths").contains(message)).toBe(true);
+    // The box at fault, and only that one.
+    expect(yearsBox().getAttribute("aria-invalid")).toBe("true");
+    expect(yearsBox().getAttribute("aria-errormessage")).toBe(message.id);
+    expect(monthsBox().getAttribute("aria-invalid")).toBeNull();
+    expect(document.activeElement).toBe(yearsBox());
+    expect(yearsBox().scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("is work: Shrani stays on and leaving asks", async () => {
+    await open({ approximateAgeMonths: 24 });
+
+    typeUnreadable(yearsBox());
+
+    // Nothing the PUT could carry, but something the shelter typed.
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(cancelButton());
+    expect(confirmShown()).toBe(true);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("does not clear a birth date it could not read", async () => {
+    await open({ birthDate: "2020-05-01" });
+
+    typeUnreadable(dateBox());
+    fireEvent.click(saveButton());
+
+    expect(updateListing).not.toHaveBeenCalled();
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toContain(portalText.birthDateError);
+    expect(fieldRow("birthDate").contains(message)).toBe(true);
+    expect(dateBox().getAttribute("aria-invalid")).toBe("true");
+    expect(dateBox().getAttribute("aria-errormessage")).toBe(message.id);
+    expect(yearsBox().getAttribute("aria-invalid")).toBeNull();
+    expect(document.activeElement).toBe(dateBox());
+  });
+
+  it("is not a change and is not mirrored", async () => {
+    await open({ approximateAgeMonths: 27, birthDate: "2020-05-01" });
+
+    typeUnreadable(yearsBox());
+    typeUnreadable(dateBox());
+
+    // Nothing stored for the next visit to send as an emptied box, and no
+    // row claims a value is going anywhere.
+    expect(screen.queryByText(portalText.willRevert)).toBeNull();
+    expect(window.sessionStorage.length).toBe(0);
+
+    // Reading again with the record's own values is not a change either.
+    makeUnreadable(yearsBox(), false);
+    fireEvent.change(yearsBox(), { target: { value: "2" } });
+    makeUnreadable(dateBox(), false);
+    fireEvent.change(dateBox(), { target: { value: "2020-05-01" } });
+
+    expect(window.sessionStorage.length).toBe(0);
+    expect(saveButton().disabled).toBe(true);
+    fireEvent.click(cancelButton());
+    expect(confirmShown()).toBe(false);
+  });
+
+  it("saves again once the box reads", async () => {
+    await open({ approximateAgeMonths: 24 });
+    typeUnreadable(yearsBox());
+    fireEvent.click(saveButton());
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    makeUnreadable(yearsBox(), false);
+    fireEvent.change(yearsBox(), { target: { value: "3" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      expect(updateListing).toHaveBeenCalledWith("johanca", ID, {
+        ...LUNA,
+        approximateAgeMonths: 36,
+      });
+    });
+  });
+
+  it("is noticed from the input event when the value does not move", async () => {
+    // "e" typed into the empty months box: "" before and "" after, so React
+    // fires no change event. The input event still carries the flag.
+    await open();
+    makeUnreadable(monthsBox());
+
+    fireEvent.input(monthsBox(), { target: { value: "" } });
+    fireEvent.click(saveButton());
+
+    expect(updateListing).not.toHaveBeenCalled();
+    expect(monthsBox().getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(monthsBox());
+  });
+
+  it("is emptied by the line's Zavrzi along with the stored draft", async () => {
+    const view = await open();
+    fireEvent.change(nameBox(), { target: { value: "Lunica" } });
+    view.unmount();
+    await open();
+    makeUnreadable(monthsBox());
+    fireEvent.input(monthsBox(), { target: { value: "" } });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: portalText.draftDiscardLabel }),
+    );
+
+    expect(nameBox().value).toBe("Luna");
+    expect(saveButton().disabled).toBe(true);
+    fireEvent.click(cancelButton());
+    expect(confirmShown()).toBe(false);
+  });
+});
+
+describe("a value the animal could not have", () => {
+  it("refuses a birth date in the future at the box", async () => {
+    await open();
+
+    fireEvent.change(dateBox(), { target: { value: tomorrow() } });
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(saveButton());
+
+    expect(updateListing).not.toHaveBeenCalled();
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toContain(portalText.birthDateError);
+    expect(fieldRow("birthDate").contains(message)).toBe(true);
+    expect(dateBox().getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(dateBox());
+  });
+
+  it("refuses a birth date before 1900", async () => {
+    await open();
+
+    fireEvent.change(dateBox(), { target: { value: "1899-12-31" } });
+    fireEvent.click(saveButton());
+
+    expect(updateListing).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      portalText.birthDateError,
+    );
+  });
+
+  it("takes the date's message down once the date is typed again", async () => {
+    await open();
+    fireEvent.change(dateBox(), { target: { value: "1899-12-31" } });
+    fireEvent.click(saveButton());
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    // Another field is not an answer to a date that is still wrong.
+    fireEvent.change(nameBox(), { target: { value: "Lunica" } });
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    fireEvent.change(dateBox(), { target: { value: "2020-05-01" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("refuses an age past a hundred years at the years box", async () => {
+    await open();
+
+    fireEvent.change(yearsBox(), { target: { value: "150" } });
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(saveButton());
+
+    expect(updateListing).not.toHaveBeenCalled();
+    expect(yearsBox().getAttribute("aria-invalid")).toBe("true");
+    expect(monthsBox().getAttribute("aria-invalid")).toBeNull();
+    expect(document.activeElement).toBe(yearsBox());
+  });
+
+  it("refuses the same on a listing that does not exist yet", async () => {
+    await openNew();
+    fireEvent.click(card(portalText.fieldSpecies, SPECIES_META.cat.label));
+    fireEvent.change(nameBox(), { target: { value: "Luna" } });
+
+    fireEvent.change(dateBox(), { target: { value: tomorrow() } });
+    fireEvent.click(saveButton());
+
+    expect(createListing).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      portalText.birthDateError,
+    );
+  });
+});
+
+describe("what the text boxes take", () => {
+  it("carries the API's limits as maxLength", async () => {
+    // The same numbers as ListingIn in apps/portal/core/schemas.py.
+    await open();
+
+    expect(nameBox().maxLength).toBe(200);
+    expect(
+      (screen.getByLabelText(portalText.fieldBreed) as HTMLInputElement)
+        .maxLength,
+    ).toBe(200);
+    expect(
+      (
+        screen.getByLabelText(
+          portalText.fieldDescription,
+        ) as HTMLTextAreaElement
+      ).maxLength,
+    ).toBe(2000);
+  });
+});
+
+describe("a stored draft this form cannot use", () => {
+  it("falls back to the record for the parts it drops", async () => {
+    // A deploy can change the shape of a draft while a tab is still open on
+    // the old one, and the tab's storage is not ours alone.
+    writeDraft(ACCOUNT, "johanca", ID, {
+      name: null,
+      sex: "banana",
+      ageYears: "3",
+      photos: [PHOTO],
+      pending: [{ key: 1 }],
+    });
+
+    await open({ sex: "female" });
+
+    expect(nameBox().value).toBe("Luna");
+    expect(
+      card(portalText.fieldSex, SEX_META.female.label).getAttribute(
+        "aria-checked",
+      ),
+    ).toBe("true");
+    expect(yearsBox().value).toBe("3");
+    expect(photoImages()).toHaveLength(0);
+  });
+});
+
+describe("a save that did not go through", () => {
+  async function failOnce() {
+    vi.mocked(updateListing).mockRejectedValue(new PortalError(500));
+    await open();
+    fireEvent.change(nameBox(), { target: { value: "Lunica" } });
+    fireEvent.click(saveButton());
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        portalText.saveError,
+      );
+    });
+    return screen.getByRole("alert");
+  }
+
+  it("is said in the save bar, beside Shrani, and takes the focus", async () => {
+    const message = await failOnce();
+
+    // The bar is on screen wherever the shelter pressed from, on both
+    // layouts; the foot of the form was a screen away from the fixed bar.
+    expect(saveBar().contains(message)).toBe(true);
+    expect(saveBar().contains(saveButton())).toBe(true);
+    expect(message.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(message);
+    expect(message.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("is taken down once the shelter edits a field", async () => {
+    await failOnce();
+
+    fireEvent.change(
+      screen.getByLabelText(portalText.fieldBreed),
+      { target: { value: "mešanec" } },
+    );
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("comes back for a second failure", async () => {
+    await failOnce();
+    fireEvent.change(
+      screen.getByLabelText(portalText.fieldBreed),
+      { target: { value: "mešanec" } },
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        portalText.saveError,
+      );
+    });
+    expect(document.activeElement).toBe(screen.getByRole("alert"));
+  });
+
+  it("is said under the status buttons when a status tap fails", async () => {
+    await open();
+    vi.mocked(updateListing).mockRejectedValue(new PortalError(500));
+
+    const statuses = screen.getByRole("group", {
+      name: portalText.statusLegend,
+    });
+    fireEvent.click(
+      within(statuses).getByRole("button", {
+        name: STATUS_META.reserved.label,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        portalText.saveError,
+      );
+    });
+    const message = screen.getByRole("alert");
+    expect(statuses.closest("aside")?.contains(message)).toBe(true);
+    expect(saveBar().contains(message)).toBe(false);
+    // The Shrani that was never pressed did not fail.
+    expect(saveButton().disabled).toBe(true);
+  });
+
+  it("is said under Odstrani objavo when the archive fails, not in the bar", async () => {
+    vi.mocked(archiveListing).mockRejectedValue(new PortalError(500));
+    await open();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: portalText.listingArchive }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: portalText.listingArchive,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(portalText.listingArchiveError)).toBeTruthy();
+    });
+    expect(saveBar().textContent).not.toContain(portalText.listingArchiveError);
+  });
+});
+
+describe("the breadcrumb", () => {
+  it("goes inert while a save is on its way", async () => {
+    await open();
+    saveHangs();
+    fireEvent.change(nameBox(), { target: { value: "Lunica" } });
+    fireEvent.click(saveButton());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: portalText.saving }),
+      ).toBeTruthy(),
+    );
+
+    const link = breadcrumb();
+    expect(link.getAttribute("aria-disabled")).toBe("true");
+    const proceeded = fireEvent.click(link);
+
+    expect(proceeded).toBe(false);
+    expect(confirmShown()).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+  });
+});
+
+describe("a submit while a save is on its way", () => {
+  it("does not send the body twice", async () => {
+    await open();
+    saveHangs();
+    fireEvent.change(nameBox(), { target: { value: "Lunica" } });
+
+    // Two submits in one task, before React has drawn the saving state: the
+    // bar is not disabled yet, so only the page's own guard stands between
+    // the second one and the wire.
+    const form = nameBox().closest("form") as HTMLFormElement;
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+
+    expect(updateListing).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("taking an icon answer back", () => {
+  it("reaches the wire as not stated", async () => {
+    // A listing has no crawled value under a row, so tapping the chosen card
+    // off is a real answer: the PUT carries the null.
+    await open({ goodWithKids: "yes" });
+
+    const yes = card(portalText.fieldGoodWithKids, COMPATIBILITY_META.yes.label);
+    fireEvent.click(yes);
+
+    expect(yes.getAttribute("aria-checked")).toBe("false");
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      expect(updateListing).toHaveBeenCalledWith("johanca", ID, {
+        ...LUNA,
+        goodWithKids: null,
+      });
+    });
   });
 });

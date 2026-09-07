@@ -31,7 +31,10 @@ const COLUMNS: Record<number, string> = {
  * the row radiogroup/radio with aria-checked and one tab stop, and a tap on
  * the chosen card deselects it. That deselect is the only way back out of a
  * mis-tap on an animal with nothing saved yet, where there is no override to
- * revert and so no Povrni to press.
+ * revert and so no Povrni to press. Where the caller says the row is not
+ * clearable, the tap is ignored and the card stays on: the crawled editor
+ * does that for a row whose answer came off the shelter's site, because an
+ * emptied grid there would show a change the patch never sends.
  */
 export function ChoiceGrid<Value extends string>({
   label,
@@ -39,6 +42,7 @@ export function ChoiceGrid<Value extends string>({
   meta,
   value,
   onPick,
+  clearable = true,
   disabled,
   describedBy,
 }: {
@@ -49,6 +53,8 @@ export function ChoiceGrid<Value extends string>({
   value: Value | null;
   /** null is the answer taken back: the card that was on has been tapped off. */
   onPick: (value: Value | null) => void;
+  /** Whether a tap on the chosen card may take the answer back. */
+  clearable?: boolean;
   disabled: boolean;
   /** The field's hint, so the group carries it as its description. */
   describedBy?: string;
@@ -58,7 +64,13 @@ export function ChoiceGrid<Value extends string>({
       type="single"
       // Radix carries "no answer" as the empty string on both sides.
       value={value ?? ""}
-      onValueChange={(next) => onPick(next === "" ? null : (next as Value))}
+      onValueChange={(next) => {
+        if (next === "") {
+          if (clearable) onPick(null);
+          return;
+        }
+        onPick(next as Value);
+      }}
       aria-label={label}
       aria-describedby={describedBy}
       disabled={disabled}

@@ -23,8 +23,22 @@ import { cn } from "@/lib/utils";
 // Where the filter panels ask the question the map answers. Two surfaces draw
 // it: the sidebar, where the press opens the picker in place, and the sheet,
 // where the press closes the drawer first and the dock's picker opens after
-// it. Both get the same header, the same live glyph and the same sentence, so
-// a phone and a desktop cannot disagree about what is currently in scope.
+// it. Both get the same header, the same sentence, the same live map of the
+// picks and the same press, so a phone and a desktop cannot disagree about
+// what is currently in scope.
+//
+// What the two surfaces do not share is how much room the row may take, and
+// so how big that map is drawn: 96px of plate with the region seams and the
+// town dots on one, a 32px glyph inside the sentence's own line on the other,
+// which also costs the sheet the invitation line under it.
+//
+// The sidebar scrolls on its own and keeps the plate, where the country is worth
+// looking at before the map is ever opened. The sheet is 608px of drawer at
+// 390x844, and the plate spent 164px of it on a picture of the control the
+// visitor had just pressed to get here: with the title and the sort select
+// above it, Spol was the only filter section left above the fold. There the
+// same row folds onto one 52px line and hands the difference to the sections
+// under it.
 //
 // It is not a collapsible section. Every other section in the panel folds
 // behind its header and remembers the fold; this one holds a single control
@@ -86,6 +100,7 @@ export function LocationScopeRow({
    *  the press to the dock's picker, and two visible copies would leave the
    *  specs with two things to click. */
   isPickerTrigger = false,
+  layout = "plate",
   children,
 }: {
   options: FilterOption[];
@@ -96,6 +111,12 @@ export function LocationScopeRow({
   onOpen: () => void;
   onReset: () => void;
   isPickerTrigger?: boolean;
+  /** How much of the panel the row is allowed to spend. "plate" is the card
+   *  with the 96px country on it, which the sidebar keeps: a column that
+   *  scrolls on its own has the room, and the plate is what makes the map
+   *  worth opening. "row" is the same row folded onto one 52px line, which is
+   *  what the sheet asks for; see the fold budget above the glyph below. */
+  layout?: "plate" | "row";
   /** The chips under the row, where a surface has them to draw. */
   children?: ReactNode;
 }) {
@@ -109,11 +130,14 @@ export function LocationScopeRow({
   // is the roster the dialog lists and the total its own label counts against.
   const total = options.length + (offSite?.length ?? 0);
   const label = shelterScopeLabel(selected.length, total, locale);
+  const oneRow = layout === "row";
 
   const shouldReduceMotion = useReducedMotion();
   // Nothing picked is the one state where the sentence alone does not say the
   // row can be pressed, so that is the only state carrying the invitation.
-  const inviting = selected.length === 0;
+  // The folded row has nowhere to put it: it is a second line, and there is
+  // no room beside the caption either (the measurement is above the glyph).
+  const inviting = !oneRow && selected.length === 0;
 
   // The pick lands in the map dialog, a different component entirely, so this
   // row only ever learns about it the way any other prop change arrives: by
@@ -158,43 +182,83 @@ export function LocationScopeRow({
           "flex w-full flex-col gap-1.5 rounded-ui border bg-background p-2 text-sm outline-none transition-colors",
           "hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted",
           "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring",
-          // The strip alone already clears 44px below lg; kept explicit
-          // anyway so the reach never depends on how tall the strip ends up.
-          "max-lg:min-h-11",
+          // 52px, the same height the sheet pays for its sort select. It is a
+          // floor and not a height, so it is one rule for both layouts rather
+          // than one each: the folded row's glyph and sentence come to 48px
+          // with the padding and take the floor, while the plate stands at
+          // about 146px and never reaches it. Past the 44px a finger needs
+          // either way, so the reach never depends on how tall the drawing
+          // above the sentence ends up.
+          "min-h-13 justify-center",
         )}
       >
         {/* The wash the silhouette stands on. Against the button's own ground
             the country floated and read as a logo; a muted panel behind it
             reads as a place. A tint and nothing else: the border stays on the
-            button, so the row keeps its single outline. */}
-        <span className="flex justify-center rounded-md bg-muted/40 py-1">
-          {/* The same live preview the toolbar trigger draws, from the same
-              region shapes and the same density computation, grown from a
-              glyph into a centered plate so the row shows what is behind it
-              before it is ever pressed. The country keeps its own shape: a
-              silhouette every Slovene knows stretched to fill the row's width
-              stops being the country. celebration flashes the region the
-              newest pick landed in, once, the moment that pick reaches this
-              row. */}
-          {/* The rim frames the country, it does not draw it. At 2.5 units of
-              foreground/70 the border was the loudest thing on the plate and
-              the shape inside it read as a colouring book; now that the
-              regions carry their own seams there is nothing left for a heavy
-              rim to hold together. Both halves come down a step, to 2 units
-              and /60, which is a third less ink: thin enough to stop reading
-              as a drawn line, still unbroken where the pale west of the
-              country meets the ground. */}
-          <MiniMap
-            pins={pins}
-            selected={selected}
-            celebration={celebration}
-            outlineWidth={2}
-            detail="plate"
-            className="h-24 w-auto self-center text-foreground/60"
-          />
-        </span>
+            button, so the row keeps its single outline.
+
+            Not drawn at all in the one-row layout: there the glyph moves down
+            into the sentence's own line and the plate, the wash and the whole
+            96px card go with it. */}
+        {!oneRow && (
+          <span className="flex justify-center rounded-md bg-muted/40 py-1">
+            {/* The same live preview the toolbar trigger draws, from the same
+                region shapes and the same density computation, grown from a
+                glyph into a centered plate so the row shows what is behind it
+                before it is ever pressed. The country keeps its own shape: a
+                silhouette every Slovene knows stretched to fill the row's width
+                stops being the country. celebration flashes the region the
+                newest pick landed in, once, the moment that pick reaches this
+                row. */}
+            {/* The rim frames the country, it does not draw it. At 2.5 units of
+                foreground/70 the border was the loudest thing on the plate and
+                the shape inside it read as a colouring book; now that the
+                regions carry their own seams there is nothing left for a heavy
+                rim to hold together. Both halves come down a step, to 2 units
+                and /60, which is a third less ink: thin enough to stop reading
+                as a drawn line, still unbroken where the pale west of the
+                country meets the ground. */}
+            <MiniMap
+              pins={pins}
+              selected={selected}
+              celebration={celebration}
+              outlineWidth={2}
+              detail="plate"
+              className="h-24 w-auto self-center text-foreground/60"
+            />
+          </span>
+        )}
         <LazyMotion features={domAnimation}>
           <span className="flex items-center gap-2">
+            {/* The one-row layout's glyph, at the detail the dock trigger
+                already draws: 32px tall is 49px of country, where a seam is a
+                quarter of a pixel and a town dot half of one, so both would
+                land as dirt rather than as reading. Only the size changes, so
+                what the sheet shows is the dock's own glyph one step up.
+                celebration stays wired, which is the whole reason the row can
+                afford to lose the plate: the region the newest pick landed in
+                still flashes here.
+
+                The fold budget this row exists for, measured in the app's own
+                Inter at 320px, the narrowest phone the sheet is built for. The
+                scroller pays px-5 and the button a border and p-2, so the line
+                has 262px: glyph 49, gap 8, the longest Slovene sentence
+                "3 od 17 zavetišč" 106, gap 8, and the "Zemljevid" caption with
+                its pin 73. That is 244, and it still fits at 262. The
+                invitation is what does not: 170px of "Izberi zavetišča na
+                zemljevidu" puts the line 160px over at 320 and 90px over at
+                390, so the one-row layout drops it and the plate keeps it.
+                Against the plate's 164px card this row costs 52, so the
+                sections under Spol get about 112px of the first screen back.
+                */}
+            {oneRow && (
+              <MiniMap
+                pins={pins}
+                selected={selected}
+                celebration={celebration}
+                className="h-8 w-auto text-foreground/60"
+              />
+            )}
             <span className="min-w-0 flex-1 text-left">
               {/* One cell holding whichever sentence is current, so the
                   outgoing one fades out over the incoming one instead of
@@ -226,7 +290,9 @@ export function LocationScopeRow({
               </span>
               {/* The line is only ever there before the first pick, so nothing
                   is reserved for it: it takes its height with it on the way in
-                  and on the way out, and the fade covers the change. */}
+                  and on the way out, and the fade covers the change. Which
+                  layout may draw it at all is decided with `inviting` itself,
+                  above. */}
               <AnimatePresence initial={false}>
                 {inviting ? (
                   <m.span

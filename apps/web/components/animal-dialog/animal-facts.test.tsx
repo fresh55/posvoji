@@ -1,13 +1,37 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { I18nProvider } from "@/components/i18n-provider";
+import {
+  prefetchAnimalDescriptions,
+  resetAnimalDescriptionsStore,
+} from "@/lib/animal-descriptions";
 import type { Locale } from "@/lib/i18n";
 
-afterEach(cleanup);
+// The dialog fetches the shelter's text for an animal that arrived without
+// one, so every render here has a file to read. Empty by default: a test that
+// wants the fallback says so.
+function serving(descriptions: Record<string, string> = {}) {
+  const fetch = vi.fn(async () => ({
+    ok: true,
+    json: async () => descriptions,
+  }));
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
+beforeEach(() => {
+  serving();
+});
+
+afterEach(() => {
+  cleanup();
+  resetAnimalDescriptionsStore();
+  vi.unstubAllGlobals();
+});
 
 const REFERENCE = new Date("2026-08-15T00:00:00Z");
 
@@ -198,6 +222,105 @@ describe("the shelter's own description", () => {
     // The document already declares it, and repeating it here would be one
     // more attribute on 466 pages saying what the html element says.
     expect(screen.getByText(DESCRIPTION).getAttribute("lang")).toBeNull();
+  });
+
+  it("prints a short description whole", () => {
+    renderFacts({ shortDescription: DESCRIPTION });
+
+    expect(screen.getByText(DESCRIPTION).className).not.toContain(
+      "line-clamp-5",
+    );
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  it("clamps a long one", () => {
+    const long = DESCRIPTION.repeat(8);
+    renderFacts({ shortDescription: long });
+
+    expect(screen.getByText(long).className).toContain("line-clamp-5");
+    expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
+  });
+
+  // The clamp is five lines, and the text is printed whitespace-pre-line, so
+  // a listing set out a line at a time is over that long before it is over
+  // the character count. It used to be measured by length alone and stood
+  // there at full height.
+  it("clamps a short one the shelter set out in lines", () => {
+    const lines = "Muri\nMuca\n3 leta\nSamica\nCepljena\nSterilizirana";
+    renderFacts({ shortDescription: lines });
+
+    const paragraph = screen.getByText(/Sterilizirana/);
+    expect(paragraph.className).toContain("line-clamp-5");
+    expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
+  });
+
+  it("leaves four lines alone", () => {
+    const lines = "Muri\nMuca\n3 leta\nSamica";
+    renderFacts({ shortDescription: lines });
+
+    expect(screen.getByText(/Samica/).className).not.toContain("line-clamp-5");
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  // The button says nothing about what it opens on its own, and the sentence
+  // it opens is not its own text.
+  it("names the paragraph the read-more button expands", () => {
+    const long = DESCRIPTION.repeat(8);
+    renderFacts({ shortDescription: long });
+
+    const button = screen.getByRole("button", { name: "Preberi več" });
+    expect(button.getAttribute("aria-controls")).toBe(
+      screen.getByText(long).id,
+    );
+    expect(screen.getByText(long).id).not.toBe("");
+  });
+
+  // The animal's own page is server-rendered from a whole dataset animal, so
+  // the text is already in the markup and there is nothing to go and get.
+  it("prints the animal's own description without fetching", () => {
+    const fetch = serving({ a1: "Kar je prišlo iz datoteke." });
+
+    renderFacts({ shortDescription: DESCRIPTION });
+
+    expect(screen.getByText(DESCRIPTION)).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  // The grid's dialog, where the home page no longer ships 503 descriptions
+  // to print at most one. See lib/animal-descriptions.ts.
+  it("fetches the text for an animal that arrived without one", async () => {
+    serving({ a1: DESCRIPTION });
+
+    renderFacts();
+
+    expect(screen.queryByText(DESCRIPTION)).toBeNull();
+    expect(await screen.findByText(DESCRIPTION)).toBeTruthy();
+  });
+
+  it("draws no paragraph when neither the animal nor the file has one", async () => {
+    serving({ a2: DESCRIPTION });
+
+    renderFacts();
+    // Awaited, so this is the answer after the file landed and not the same
+    // nothing the render started with.
+    await act(async () => {
+      await prefetchAnimalDescriptions();
+    });
+
+    expect(screen.queryByText(DESCRIPTION)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  // The clamp measures whatever is on screen, wherever it came from.
+  it("clamps a long fetched description the same as an inline one", async () => {
+    const long = "Zelo prijazna muca. ".repeat(20).trim();
+    serving({ a1: long });
+
+    renderFacts();
+
+    const paragraph = await screen.findByText(/Zelo prijazna muca/);
+    expect(paragraph.className).toContain("line-clamp-5");
+    expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
   });
 });
 

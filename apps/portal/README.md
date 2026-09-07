@@ -33,8 +33,14 @@ The API is then on `http://localhost:8000/api/`, the admin on
 
 `seed_shelters` reads `data/shelters.yaml` and upserts one shelter per entry,
 plus a login and a membership for every entry that carries an institutional
-address. It is safe to run again after the registry changes: nothing is
-duplicated and nothing is deleted. Pass `--path` to read another file.
+address. Nothing is duplicated when it runs again. The memberships it makes
+carry the source `registry` and follow the registry: when an entry names
+another address, or none at all, the membership for the old address is deleted
+and that address loses portal access. A membership added by hand in `/admin`
+or minted by the development login carries a different source and is never
+touched. The login row itself stays, without access, because both
+`/auth/request-link` and `/auth/verify` require a membership. Pass `--path` to
+read another file.
 
 It also reads `ingestion` out of `providers/<slug>/policy.yaml`, which is what
 decides whether a shelter writes its own listings. A shelter with no policy
@@ -55,10 +61,17 @@ uv run ruff format .
 uv run ruff check .
 ```
 
-The tests run offline. They never read the real registry, the real dataset or
+The tests run offline. They never read the real registry, the real datasets or
 the real provider policies, and they never write into the checkout:
 `tests/fixtures/shelters.yaml` stands in for the registry, and a temporary
-directory stands in for the dataset file, `providers/` and `MEDIA_ROOT`.
+directory stands in for the two dataset files, `providers/` and `MEDIA_ROOT`.
+
+The test database is a SQLite file in that temporary directory rather than
+pytest-django's in-memory default, so the journal and transaction settings
+apply to the tests too. `tests/test_concurrency.py` needs it: it starts the
+live server and sends ten `PUT`s at once, on one animal and on ten, and on an
+in-memory database every server thread would share one connection and nothing
+would run in parallel.
 
 ## How login works
 
@@ -67,7 +80,15 @@ directory stands in for the dataset file, `providers/` and `MEDIA_ROOT`.
    always 204, so the endpoint cannot be used to find out which addresses
    exist.
 2. The link points at `FRONTEND_URL + /portal/prijava?token=...`. The token is
-   signed by django-sesame, is valid for one hour and can be used only once.
+   signed by django-sesame, is valid for 24 hours and can be used only once.
+   The address it goes to is a shared institutional inbox somebody reads once
+   a working day, so an hour would expire before the first reading.
+   The request may carry `next`, the portal page the shelter was on; the link
+   then carries it URL-encoded as `nazaj`, so a tab the mail opens lands on
+   that page after the login. Only a path under `/portal` that is not the
+   login page and has no whitespace or control characters is taken; anything
+   else is dropped without changing the response, and the value is never
+   logged or stored.
 3. The frontend posts the token to `POST /api/auth/verify`, which opens a
    normal Django session and sets the session cookie.
 
@@ -77,11 +98,24 @@ addresses. The direct network peer (`REMOTE_ADDR`) supplies the identity. When
 that peer is loopback, the default same-host nginx/Caddy deployment trusts the
 rightmost address in `X-Forwarded-For`. Other proxy topologies must explicitly
 configure how many rightmost proxy hops they trust; direct non-loopback callers
-cannot select their rate-limit identity with a forwarding header.
+cannot select their rate-limit identity with a forwarding header. A refused
+request answers 429 with `Retry-After` in seconds, which is named in
+`CORS_EXPOSE_HEADERS` so the login page on the other origin can read it and
+say how long the wait is.
 
-With Django's default local-memory cache, this is a best-effort per-process
-guard. Configure a shared Django cache or an upstream rate limit when the
-limit must apply across multiple application processes.
+A second limit counts the recipient rather than the caller: three links per
+address per hour by default, `PORTAL_LOGIN_LINK_ADDRESS_RATE`. The IP limit
+does not cover this, because a caller who changes network can still make the
+portal deliver to a shelter's published address again and again. Over the
+limit the endpoint still answers 204 and nothing is sent, so the caller learns
+nothing about the address either way. The suppressed send is written to the
+log as `portal.mail.address_throttled`.
+
+Both counters live in a file-based cache, so every process on the host sees
+the same ones. `PORTAL_CACHE_DIR` is the directory, `apps/portal/cache` when
+it is unset. The deployment runs gunicorn with three workers, and Django's
+default local-memory cache is per process, which would multiply both limits by
+the worker count.
 
 In development the mail goes to the console, so the link is printed in the
 `runserver` output.
@@ -95,6 +129,38 @@ responses; it does not stop a request from reaching the server. Before a
 `credentials: "include"` so the matching CSRF and session cookies travel with
 it. Django rotates the CSRF secret when a login succeeds, so the frontend gets
 a fresh token after login.
+
+### Mail
+
+The link is the login, so a portal that cannot send mail lets nobody in, and
+the API never says so: `POST /api/auth/request-link` answers 204 whether the
+message left or not. One command sends a test message through the configured
+backend and prints the backend, host and port it used:
+
+```bash
+uv run python manage.py check_mail --to you@example.com
+```
+
+Exit 0 with the message received is the proof. A refused or unreachable host
+is a `CommandError` carrying the backend's own message.
+
+Two markers make the rest visible in the log, because the response cannot:
+
+| Marker | What happened |
+|---|---|
+| `portal.mail.delivery_failed` | The backend raised. The shelter was told a link is on its way and none was sent. |
+| `portal.mail.address_throttled` | The per-address limit suppressed the send. Nothing is wrong. |
+
+[docs/DEPLOY-PORTAL.md](../../docs/DEPLOY-PORTAL.md) has the alert recipe for
+the first one.
+
+The From address is send-only. The mail carries `PORTAL_FROM_NAME` as its
+display name and `PORTAL_REPLY_TO_EMAIL` as `Reply-To`, and prints that same
+address as the one to write to with questions. `PORTAL_EMAIL_USE_TLS` is
+STARTTLS on port 587 and `PORTAL_EMAIL_USE_SSL` is implicit TLS on 465;
+setting both fails at startup rather than at the first send. Which of the
+two the deployment uses, and why, is in
+[docs/DEPLOY-PORTAL.md](../../docs/DEPLOY-PORTAL.md); it is not repeated here.
 
 ### Signing in as a shelter in development
 
@@ -170,9 +236,21 @@ this is where it comes from. The three good-with fields take `yes`, `no` or
 `unknown`;
 `unknown` is the shelter answering, an absent field is not. A field that is
 absent from the body is left alone, an explicit `null` clears the override and
-the crawled value applies again. Unknown fields are rejected with 422. The
-animal does not have to exist in the dataset yet, because the shelter can be
-ahead of the crawl.
+the crawled value applies again. Unknown fields are rejected with 422, and so
+are `approximateAgeMonths` above 1200 (a hundred years, the web client's cap)
+and a `birthDate` in the future or before 1900-01-01. Control characters
+other than tab and newline are dropped from text, and line ends become `\n`.
+The animal does not have to exist in the dataset yet, because the shelter
+can be ahead of the crawl.
+
+The id has to be one of the shelter's own: ingest names every animal
+`<shelter slug>:<local id>`, so an id with another prefix, an empty local id
+or a control character anywhere in it answers 404 `animal not found` and
+writes nothing, whichever shelter's route it arrives on.
+
+An override with no stated value does not exist. A body that clears the last
+field deletes the row, and an empty body on an animal without one creates
+nothing, so `updated_at` never says a shelter edited an animal it did not.
 
 The listing flattens the dataset's nested `goodWith` block into
 `goodWithKids`, `goodWithDogs` and `goodWithCats`, one key per group, the same
@@ -206,7 +284,9 @@ TypeScript side, so changing them means changing `apps/ingest` in the same
 commit.
 
 `baseline` holds what the crawl said for those same fields at the moment the
-shelter set them, and `recordedAt` is when that reading was taken. A value of
+shelter set them, and `recordedAt` is when that reading was taken. It moves
+only when the reading does: a shelter saying the same thing again while the
+crawl stands still, or sending an empty body, leaves both alone. A value of
 `null` means the crawl stated nothing for that field then, which is a
 reading; a field missing from `baseline` means nothing was read at all,
 because the animal was not in the dataset yet. Both keys are left out
@@ -253,6 +333,25 @@ the fields in that request only. Clearing a field drops its baseline with it,
 and setting a field again re-takes the baseline, which is how a shelter says
 "I still mean this". An animal that is not in the dataset yet gets no
 baseline, because there is nothing to read.
+
+### The two dataset files
+
+One ingest run writes two files. `data/dist/animals.json` is what the site
+reads: the crawl with the overrides merged in. `data/dist/animals.crawled.json`
+is the same run's records before any override was merged. The portal reads
+both, for different questions:
+
+- `GET /api/shelters/{slug}/animals` reads `DATASET_PATH`, the merged file,
+  and applies the shelter's overrides on top. That is the view the shelter
+  expects, and an override set or cleared since the last run lands on it.
+- The baseline in `PUT` and the crawl state in the admin read
+  `CRAWLED_DATASET_PATH`. Read off the merged file, the baseline of an
+  override the last run applied would be that override's own value, and
+  every correction would look like a crawl that caught up.
+
+A `data/dist` from before ingest wrote the crawled file has only the merged
+one. The portal then reads baselines from it, as it always did, and logs one
+warning per process saying so.
 
 `core/conflicts.py` compares the three and reports two kinds:
 
@@ -396,9 +495,12 @@ variables.
 | `PORTAL_DEBUG` | `true` | Set to `false` in production. |
 | `PORTAL_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma separated hosts. |
 | `PORTAL_DB_PATH` | `apps/portal/db.sqlite3` | SQLite file. |
+| `PORTAL_DB_TIMEOUT` | `20` | Seconds a writer waits for the database lock before it fails. |
+| `PORTAL_DB_INIT_COMMAND` | `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;` | Statements run on every new connection, `;` separated. |
 | `FRONTEND_URL` | `http://localhost:3000` | Base of the magic link. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma separated origins allowed to send credentials. |
-| `DATASET_PATH` | `data/dist/animals.json` | Crawled dataset, read only. |
+| `DATASET_PATH` | `data/dist/animals.json` | The merged dataset the site reads, read only. What the listing shows. |
+| `CRAWLED_DATASET_PATH` | `data/dist/animals.crawled.json` | The same run's records before any override was merged, read only. What baselines and the crawl state compare against; `DATASET_PATH` stands in when it is missing. |
 | `SHELTERS_YAML` | `data/shelters.yaml` | Registry read by `seed_shelters`. |
 | `PROVIDERS_DIR` | `providers/` | Where `seed_shelters` reads each `<slug>/policy.yaml` for its `ingestion` mode. |
 | `PORTAL_MEDIA_ROOT` | `apps/portal/media` | Uploaded listing photographs. Served by nginx in production. |
@@ -408,15 +510,28 @@ variables.
 | `PORTAL_SECURE_COOKIES` | `false` when `PORTAL_DEBUG` is on | Marks the session cookie secure. |
 | `PORTAL_SESSION_COOKIE_DOMAIN` | unset | Set only if the cookie has to span subdomains. |
 | `PORTAL_SESSION_AGE` | `1209600` | Session lifetime in seconds. |
-| `PORTAL_LOGIN_LINK_RATE` | `5/hour` | Maximum accepted login-link requests per client IP. Uses Django's configured cache. |
+| `PORTAL_LOGIN_LINK_RATE` | `5/hour` | Maximum accepted login-link requests per client IP. Counted in the cache below. |
+| `PORTAL_LOGIN_LINK_ADDRESS_RATE` | `3/hour` | Maximum login links sent to one address. Over it the endpoint still answers 204 and sends nothing. Read at startup, so a rate that is malformed or allows nothing stops the process rather than the login. |
+| `PORTAL_CACHE_DIR` | `apps/portal/cache` | File-based cache holding both counters. Shared by every worker process on the host, and must be writable by the service. |
 | `PORTAL_TRUSTED_PROXY_COUNT` | unset | Number of trusted rightmost proxy hops in `X-Forwarded-For`. Unset trusts one hop only when `REMOTE_ADDR` is loopback; `0` always uses `REMOTE_ADDR`. |
 | `PORTAL_EMAIL_BACKEND` | console when `PORTAL_DEBUG` is on, otherwise SMTP | Django email backend. |
 | `PORTAL_EMAIL_HOST` | `localhost` | SMTP host. |
 | `PORTAL_EMAIL_PORT` | `25` | SMTP port. |
 | `PORTAL_EMAIL_USER` | empty | SMTP user. |
 | `PORTAL_EMAIL_PASSWORD` | empty | SMTP password. |
-| `PORTAL_EMAIL_USE_TLS` | `false` | STARTTLS for SMTP. |
-| `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. |
+| `PORTAL_EMAIL_USE_TLS` | `false` | STARTTLS, port 587. |
+| `PORTAL_EMAIL_USE_SSL` | `false` | Implicit TLS, port 465. Setting this and `PORTAL_EMAIL_USE_TLS` together fails at startup. |
+| `PORTAL_EMAIL_TIMEOUT` | `10` | Seconds each socket operation of a send waits, not the send as a whole. Sending is synchronous inside the request. Must be a positive integer. |
+| `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. Must be the mailbox `PORTAL_EMAIL_USER` authenticates as. |
+| `PORTAL_FROM_NAME` | `Posvoji.si` | Display name on the From address. |
+| `PORTAL_REPLY_TO_EMAIL` | `info@posvoji.si` | `Reply-To`, and the address the mail prints for questions. The From address is send-only. |
+
+Every transaction opens `IMMEDIATE`, which takes SQLite's write lock at
+`BEGIN` rather than at the first write. That is what makes two requests that
+edit at once queue on `PORTAL_DB_TIMEOUT` instead of one of them failing with
+"database is locked", and it is not configurable: the override route relies
+on it to serialize its read-modify-write, because SQLite ignores
+`select_for_update`. WAL lets reads go on while a writer holds the lock.
 
 In production set at least `PORTAL_SECRET_KEY`, `PORTAL_DEBUG=false`,
 `PORTAL_ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ORIGINS`, `PORTAL_EXPORT_TOKEN`,

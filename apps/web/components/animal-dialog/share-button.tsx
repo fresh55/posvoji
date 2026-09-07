@@ -139,12 +139,16 @@ export function ShareButton({
   path,
   name,
   photo,
+  className,
 }: {
   path: string;
   name: string;
   /** The photo on show, counted from zero. A shared link opens on it, unless
    *  it is the first, which is where the page opens anyway. */
   photo?: number;
+  /** Extra classes for the button, whichever of the two it is. The caller
+   *  dresses it for the row it stands in; see the dialog's title row. */
+  className?: string;
 }) {
   const { locale, messages } = useI18n();
   const text = shareText[locale];
@@ -198,7 +202,12 @@ export function ShareButton({
 
   async function shareNatively() {
     try {
-      await navigator.share?.({ title: invite, url });
+      // text as well as title: an Android app is handed the two separately
+      // and most of them, WhatsApp among them, print only the text and the
+      // url. Without it the message that leaves is a bare link, which says
+      // nothing about the animal it opens. The web share endpoints in the
+      // popover already carry the same sentence.
+      await navigator.share?.({ title: invite, text: invite, url });
     } catch {
       // A cancelled share sheet is not a failure worth reporting.
     }
@@ -206,14 +215,15 @@ export function ShareButton({
 
   // size-11 under sm: icon-sm is 32px, which is under the 44px floor every
   // other control on the phone layout was already held to. The close button
-  // beside this one carries the same override.
+  // beside this one carries the same override. The caller's classes come
+  // last, so a row can dress this button without losing the floor.
   const trigger = (
     <Button
       type="button"
       variant="ghost"
       size="icon-sm"
       aria-label={messages.share}
-      className="size-11 sm:size-8"
+      className={cn("size-11 sm:size-8", className)}
       onClick={phone && canShare ? shareNatively : undefined}
     >
       <Share2 aria-hidden />

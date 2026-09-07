@@ -8,7 +8,10 @@ import type { ShelterPin } from "@/lib/map-layout";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { FoundAnimalAtlas } from "./found-animal-atlas";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, "", "/");
+});
 
 const ENTRIES: LookupEntry[] = [
   {
@@ -78,7 +81,7 @@ describe("the found-animal atlas", () => {
         '[role="button"], [aria-pressed], [tabindex], [data-map-commit]',
       ),
     ).toBeNull();
-    expect(screen.getByRole("searchbox")).toBeTruthy();
+    expect(screen.getByRole("combobox")).toBeTruthy();
     // Nothing on the plate but the map and the credit its boundaries are
     // licensed under: no instruction chip, and no legend, because the regions
     // are flat here and there is no ramp to read.
@@ -99,10 +102,10 @@ describe("the found-animal atlas", () => {
   it("rings the responsible shelter on the map once an občina is named", () => {
     const { container } = renderAtlas();
 
-    fireEvent.change(screen.getByRole("searchbox"), {
+    fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "Ljubljana" },
     });
-    fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
 
     // The finder's answer reached the map: a spotlight ring, and a callout
     // naming the shelter and what it is: the responsible one.

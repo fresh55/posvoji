@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -24,10 +25,13 @@ import { Input } from "@/components/ui/input";
 import { useNearby } from "@/hooks/use-nearby";
 import { FOUND_ANIMAL_PLACE_PARAMS } from "@/lib/found-animal";
 import {
+  commitSearch,
   getSearchSnapshot,
   getServerSearchSnapshot,
+  mergeOwnedParams,
   subscribeToLocation,
 } from "@/lib/location-search";
+import { looksLikePostcode } from "@/lib/postal-lookup";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   municipalitiesForInput,
@@ -71,9 +75,7 @@ const NOT_ASKED: Ask = { query: "", picked: null };
 // takes no selection and offers none: the coverage card links to the shelter's
 // own page, which is where its animals already are.
 //
-// Emergency numbers remain available before a location is known. Practical
-// guidance follows the contact result; reporting alone does not make the
-// finder responsible for shelter care costs under the amended Article 31.
+// Practical guidance stays available before a location is known.
 export function MunicipalityFinder({
   entries,
   onActiveShelters,
@@ -98,7 +100,24 @@ export function MunicipalityFinder({
   // derived rather than assigned from an effect.
   const [asked, setAsked] = useState<Ask | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { state, toggle: locate } = useNearby();
+  const listRef = useRef<HTMLUListElement>(null);
+  const listId = useId();
+  const statusId = useId();
+  const keyboardHintId = useId();
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const { state, toggle: locate, turnOff } = useNearby();
+
+  useEffect(() => {
+    const restoreLocation = () => {
+      setAsked(null);
+      setHighlighted(null);
+      setDismissed(false);
+      turnOff();
+    };
+    window.addEventListener("popstate", restoreLocation);
+    return () => window.removeEventListener("popstate", restoreLocation);
+  }, [turnOff]);
 
   const byName = useMemo(
     () => new Map(entries.map((entry) => [entry.name, entry])),
@@ -122,9 +141,7 @@ export function MunicipalityFinder({
   // derived value rather than an effect that writes state on mount: the
   // prerendered HTML carries no query, the server snapshot is "", and the
   // client snapshot arrives at hydration without a mismatch. Deriving it also
-  // means a link reached with back or forward is read again, for as long as
-  // the visitor has asked nothing of their own; once they have, their
-  // question stands and a history move does not take their text away.
+  // means a link reached with back or forward is read again.
   //
   // A name spelled in full is a pick, which is what a link from that občina
   // is; anything else is left to the ordinary lookup below, so a postcode
@@ -136,13 +153,12 @@ export function MunicipalityFinder({
   );
   const seed = useMemo<Ask>(() => {
     const params = new URLSearchParams(linked);
-    const place = FOUND_ANIMAL_PLACE_PARAMS.map((key) =>
-      params.get(key)?.trim(),
-    ).find(Boolean);
+    const municipality = params.get(FOUND_ANIMAL_PLACE_PARAMS[0])?.trim();
+    const place = municipality || params.get(FOUND_ANIMAL_PLACE_PARAMS[1])?.trim();
     if (!place) return NOT_ASKED;
     const needle = fold(place);
     const exact = folded.find(({ key }) => key === needle);
-    return { query: place, picked: exact ? exact.entry.name : null };
+    return { query: place, picked: municipality && exact ? exact.entry.name : null };
   }, [folded, linked]);
 
   // The visitor's own question once there is one, the link's until then.
@@ -150,8 +166,19 @@ export function MunicipalityFinder({
 
   // Typing, clearing and asking the device are all the same move: a new
   // question, with nothing settled yet.
-  const askFor = (next: string) => setAsked({ query: next, picked: null });
-  const pick = (name: string) => setAsked({ query, picked: name });
+  const askFor = (next: string) => {
+    setAsked({ query: next, picked: null });
+    setHighlighted(null);
+    setDismissed(false);
+    turnOff();
+  };
+  const pick = (name: string) => {
+    setAsked({ query: name, picked: name });
+    setHighlighted(null);
+    setDismissed(false);
+    turnOff();
+    searchRef.current?.focus();
+  };
 
   // A postcode or town in the box, and the device's position, both answer
   // "which občina" through the same postal table. What was typed wins: it is
@@ -213,6 +240,45 @@ export function MunicipalityFinder({
     (picked ? byName.get(picked) : undefined) ??
     (matches.length === 1 ? matches[0] : undefined);
 
+  const suggestions = matches.slice(0, MAX_MATCHES);
+  const showSuggestions = !dismissed && !active && matches.length > 1;
+  const highlightedIndex = suggestions.findIndex(
+    (entry) => entry.name === highlighted,
+  );
+
+  useEffect(() => {
+    if (!showSuggestions || highlightedIndex < 0) return;
+    // aria-activedescendant keeps focus in the input; scroll its option
+    // into view explicitly when the phone keyboard leaves little room.
+    const option = listRef.current?.children[highlightedIndex]?.firstElementChild;
+    option?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [highlightedIndex, showSuggestions]);
+  const noMatch =
+    query.trim() && !guess && nameMatches.length === 0
+      ? looksLikePostcode(query) || /^\d+$/.test(query.trim())
+        ? messages.postcodeNotFound
+        : `${messages.muniNoMatch} »${query.trim()}«`
+      : "";
+
+  // The current answer travels with reloads, copied links and language
+  // changes. Replace both legacy place keys, preserving unrelated params.
+  // A chosen municipality is saved by name, even when a partial query or
+  // device position produced it. Do not rewrite an untouched incoming link.
+  useEffect(() => {
+    if (asked === null) return;
+    const place = active?.name ?? query.trim();
+    const own = new URLSearchParams();
+    // An ambiguous search is not a confirmed municipality. Saving it as
+    // kraj would silently pick an exact name on reload (e.g. Križevci).
+    if (place) own.set(FOUND_ANIMAL_PLACE_PARAMS[active ? 0 : 1], place);
+    const merged = mergeOwnedParams(
+      linked,
+      FOUND_ANIMAL_PLACE_PARAMS,
+      own.toString(),
+    );
+    if (merged !== linked.replace(/^\?/, "")) commitSearch(merged, "replace");
+  }, [active, asked, linked, query]);
+
   useEffect(() => {
     onActiveShelters(
       active ? active.coverage.map((coverage) => coverage.shelterId) : null,
@@ -238,39 +304,60 @@ export function MunicipalityFinder({
           <Input
             ref={searchRef}
             type="search"
+            role="combobox"
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+            aria-controls={showSuggestions ? listId : undefined}
+            aria-activedescendant={
+              showSuggestions && highlightedIndex >= 0
+                ? `${listId}-${highlightedIndex}`
+                : undefined
+            }
+            aria-describedby={`${statusId} ${keyboardHintId}`}
             value={query}
             // A new search is a new question, so askFor drops the old pick:
             // it would otherwise sit on top of its answer.
             onChange={(event) => askFor(event.target.value)}
+            onFocus={() => setDismissed(false)}
+            onBlur={() => {
+              setDismissed(true);
+              setHighlighted(null);
+            }}
             onKeyDown={(event) => {
-              // Enter takes the answer when there is one answer, and does
-              // nothing when there are several.
-              //
-              // It used to take matches[0] whenever the list held anything at
-              // all, which on an ambiguous query picked whichever občina the
-              // table happened to list first: "Slovenska" is six of them and
-              // Enter chose Slovenska Bistrica for everybody, then drew that
-              // shelter's card as the answer to a question about a stray found
-              // somewhere else. A wrong shelter confidently named is worse than
-              // no shelter named, because nothing on screen says to look again.
-              //
-              // Two things count as one answer. A single match is the obvious
-              // one. An exact name is the other: typing "Ljubljana" in full,
-              // where "Ljubljana" and every "Ljubljana - something" match the
-              // prefix, is somebody naming their own občina and not browsing a
-              // list, so the entry they spelled out wins over the ones that
-              // merely contain it. Folded on both sides, the same as the
-              // filter above, so "sencur" is still Šenčur.
-              //
-              // Anything else leaves the list up, which is the whole of what
-              // the visitor has to act on: it is a list of buttons, one of them
-              // is theirs, and a keypress that cannot know which must not guess.
+              if (event.nativeEvent.isComposing) return;
+              if (
+                !active &&
+                suggestions.length > 1 &&
+                (event.key === "ArrowDown" || event.key === "ArrowUp")
+              ) {
+                const direction = event.key === "ArrowDown" ? 1 : -1;
+                const index =
+                  !showSuggestions || highlightedIndex < 0
+                    ? direction === 1 ? 0 : suggestions.length - 1
+                    : (highlightedIndex + direction + suggestions.length) % suggestions.length;
+                setHighlighted(suggestions[index].name);
+                setDismissed(false);
+                event.preventDefault();
+                return;
+              }
+              if (event.key === "Escape") {
+                setDismissed(true);
+                setHighlighted(null);
+                // Prevent the native search input from clearing the query.
+                event.preventDefault();
+                return;
+              }
+              // An ambiguous query never chooses a shelter without an
+              // explicit arrow-key selection or a complete municipality name.
               if (event.key !== "Enter") return;
               const typed = fold(query.trim());
               const answer =
-                matches.length === 1
-                  ? matches[0]
-                  : matches.find((entry) => fold(entry.name) === typed);
+                showSuggestions && highlightedIndex >= 0
+                  ? suggestions[highlightedIndex]
+                  : matches.length === 1
+                    ? matches[0]
+                    : matches.find((entry) => fold(entry.name) === typed);
               if (!answer) return;
               pick(answer.name);
               event.preventDefault();
@@ -291,8 +378,11 @@ export function MunicipalityFinder({
             // Room on the right for the two trailing controls, and Chrome's
             // own clear button on a search field switched off: it drew a
             // second X under ours.
-            className="h-11 pl-9 pr-24 text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none"
+            className="h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none"
           />
+          <p id={keyboardHintId} className="sr-only">
+            {messages.muniKeyboard}
+          </p>
           {/* The field's trailing controls, in the order they are worth
               reaching for: clear what was typed, then ask the device instead.
               The location button lives in the field because it is another way
@@ -322,7 +412,11 @@ export function MunicipalityFinder({
               variant="ghost"
               size="icon-sm"
               onClick={() => {
-                clearQuery();
+                // Let the location toggle cancel an active or pending fix;
+                // typing's turnOff would reset it before toggle reads it.
+                setAsked(NOT_ASKED);
+                setHighlighted(null);
+                setDismissed(false);
                 locate();
               }}
               aria-pressed={state.status === "on"}
@@ -379,8 +473,13 @@ export function MunicipalityFinder({
             together with its first message is one nothing was listening to.
             Sighted readers see the card appear; without this line a screen
             reader typing a postcode heard nothing happen. */}
-        <p aria-live="polite" className="text-sm empty:hidden">
-          {active && (
+        <p
+          id={statusId}
+          aria-live="polite"
+          aria-atomic="true"
+          className="text-sm empty:hidden"
+        >
+          {active ? (
             <>
               <span className="font-medium">{active.name}</span>
               <span className="text-muted-foreground">
@@ -393,7 +492,11 @@ export function MunicipalityFinder({
                     : messages.muniUnverified}
               </span>
             </>
-          )}
+          ) : noMatch || showSuggestions ? (
+            <span className="text-muted-foreground">
+              {noMatch || (showSuggestions ? t("muniMatches", { count: matches.length }) : "")}
+            </span>
+          ) : null}
         </p>
 
         {state.status === "error" && (
@@ -423,26 +526,34 @@ export function MunicipalityFinder({
           </p>
         )}
 
-        {query.trim() && !guess && nameMatches.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            {messages.muniNoMatch} »{query.trim()}«
-          </p>
-        )}
-
-        {!active && matches.length > 1 && (
+        {showSuggestions && (
           <div className="space-y-1.5">
             {guess && (
               <p className="text-sm text-muted-foreground">
                 {messages.muniWhichOne}
               </p>
             )}
-            <ul className="space-y-0.5">
-              {matches.slice(0, MAX_MATCHES).map((entry) => (
-                <li key={entry.name}>
+            <ul
+              ref={listRef}
+              id={listId}
+              role="listbox"
+              aria-label={messages.muniSuggestions}
+              className="space-y-0.5"
+            >
+              {suggestions.map((entry, index) => (
+                <li key={entry.name} role="presentation">
                   <button
+                    id={`${listId}-${index}`}
                     type="button"
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={highlightedIndex === index}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => pick(entry.name)}
-                    className="flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 max-lg:min-h-11 max-lg:items-center"
+                    className={cn(
+                      "flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 max-lg:min-h-11 max-lg:items-center",
+                      highlightedIndex === index && "bg-muted",
+                    )}
                   >
                     <span className="font-medium">{entry.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
@@ -457,10 +568,12 @@ export function MunicipalityFinder({
                   </button>
                 </li>
               ))}
-              {matches.length > MAX_MATCHES && (
-                <li className="px-2 py-1 text-xs text-muted-foreground">…</li>
-              )}
             </ul>
+            {matches.length > MAX_MATCHES && (
+              <p className="px-2 py-1 text-xs text-muted-foreground">
+                {messages.muniMoreMatches}
+              </p>
+            )}
           </div>
         )}
 

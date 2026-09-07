@@ -61,6 +61,6 @@ test("sends an old /?najdena link on to the found-animal page", async ({
   // The page itself, not just its address: the finder's own field is what the
   // link was opened for.
   await expect(
-    page.getByRole("searchbox", { name: "Občina ali poštna številka …" }),
+    page.getByRole("combobox", { name: "Občina ali poštna številka …" }),
   ).toBeVisible();
 });

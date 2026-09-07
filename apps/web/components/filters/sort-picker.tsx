@@ -131,8 +131,12 @@ export function SortPicker({
           //
           // Set here and through the child variant ui/select.tsx dresses the
           // value with, because Radix's SelectValue drops the className it is
-          // handed. min-w-0 is what lets the truncate below actually bite.
-          "*:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:justify-start *:data-[slot=select-value]:text-left",
+          // handed. min-w-0 is what lets the truncate below actually bite,
+          // and text-left is the one that undoes the centring: a trigger is a
+          // button, and a button's text is centred by the browser. No
+          // justify-* here, since the value's own flex row already starts at
+          // the start.
+          "*:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:text-left",
           quiet && cn(QUIET_TRIGGER_CLASS, "data-[state=open]:border-border"),
           className,
         )}

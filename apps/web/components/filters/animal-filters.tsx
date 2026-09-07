@@ -22,7 +22,10 @@ import type {
   GoodWithSection,
   HomeSection,
 } from "@/components/filters/filter-groups";
-import { FilterSheet } from "@/components/filters/filter-sheet";
+import {
+  FilterSheet,
+  filterSheetWorthOpening,
+} from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
@@ -136,23 +139,18 @@ export function AnimalFilters({
   // same screen; a badge reading 1 over a row of two pills was two answers to
   // one question.
   const activeCount = activeFilterCount(filters);
-  const hasFilterSheet =
-    groups.length > 0 ||
-    toggles.length > 0 ||
-    (goodWith?.options.length ?? 0) > 0 ||
-    (home?.options.length ?? 0) > 0 ||
-    (care?.options.length ?? 0) > 0 ||
-    // Sort lives inside this sheet too (filter-sheet.tsx), and a homogeneous
-    // multi-animal result set has nothing left to filter but still has an
-    // order to pick, so the sheet must not vanish just because every facet
-    // count is flat.
-    resultCount > 1 ||
-    // Zero results is the other state where every facet is flat, and it is the
-    // state a visitor most needs the sheet in: the Ostale tab with a shelter
-    // picked matches nothing, so resultCount is 0 and the sheet used to go,
-    // taking the sort control and the shelter chips inside it off the page
-    // until the visitor cleared. Anything the sheet can undo keeps it open.
-    activeCount > 0;
+  // Asked of the sheet rather than worked out here: what is inside it is its
+  // own business, and this file only needs to know whether to hang a button
+  // on the dock for it (filter-sheet.tsx).
+  const hasFilterSheet = filterSheetWorthOpening({
+    groups,
+    toggles,
+    goodWith,
+    home,
+    care,
+    resultCount,
+    activeCount,
+  });
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker

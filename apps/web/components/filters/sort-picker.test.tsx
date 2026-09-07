@@ -136,7 +136,7 @@ describe("SortPicker label placement", () => {
       expect(trigger.className).toContain("*:data-[slot=select-value]:flex-1");
       expect(trigger.className).toContain("*:data-[slot=select-value]:min-w-0");
       expect(trigger.className).toContain(
-        "*:data-[slot=select-value]:justify-start",
+        "*:data-[slot=select-value]:text-left",
       );
       // And the name still gives way rather than pushing the chevron off.
       const value = trigger.querySelector('[data-slot="select-value"]');

@@ -67,39 +67,59 @@ function renderSheet(overrides: SheetProps = {}) {
   };
 }
 
+type FiltersProps = Partial<ComponentProps<typeof AnimalFilters>>;
+
+/** One AnimalFilters with every prop no test cares about already filled in,
+ *  the same bargain renderSheet above strikes and for the same reason: the
+ *  four tests below each vary two or three things, and spelling the other
+ *  fifteen out per test hid which ones those were. One dog at one shelter,
+ *  nothing filtered, which is the smallest state the dock still draws.
+ *
+ *  The roster and the tally start as the same numbers because nothing is
+ *  filtered here; a test that filters something says so by overriding both. */
+function renderFilters(overrides: FiltersProps = {}) {
+  return render(
+    <I18nProvider locale="en">
+      <AnimalFilters
+        isEmpty={false}
+        filters={EMPTY_FILTERS}
+        speciesTally={{ all: 1, dog: 1, cat: 0, other: 0 }}
+        speciesRoster={{ all: 1, dog: 1, cat: 0, other: 0 }}
+        groups={[]}
+        counts={emptyCounts}
+        toggles={[]}
+        toggleTally={new Map()}
+        shelters={[{ value: "test", label: "Test shelter" }]}
+        shelterTally={new Map([["test", 1]])}
+        chips={[]}
+        resultCount={1}
+        sort="longest-in-shelter"
+        onSpeciesChange={vi.fn()}
+        onClearAll={vi.fn()}
+        onSortChange={vi.fn()}
+        {...filterActions}
+        {...overrides}
+      />
+    </I18nProvider>,
+  );
+}
+
+/** The one sex facet the dock tests lean on, as a group and its count. */
+const SEX_GROUP: FiltersProps = {
+  groups: [{ group: "sex", options: [{ value: "male", label: "Male" }] }],
+  counts: { ...emptyCounts, sex: new Map([["male", 1]]) },
+};
+
 describe("mobile filter hardening", () => {
   it("spans the 320px viewport and shares the dock between both actions", () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       value: 320,
     });
-    const { container } = render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={{ ...EMPTY_FILTERS, sex: ["male"] }}
-          speciesTally={{ all: 1, dog: 1, cat: 0, other: 0 }}
-          // No filters on in this harness, so the roster and the
-          // tally are the same numbers.
-          speciesRoster={{ all: 1, dog: 1, cat: 0, other: 0 }}
-          groups={[
-            { group: "sex", options: [{ value: "male", label: "Male" }] },
-          ]}
-          counts={{ ...emptyCounts, sex: new Map([["male", 1]]) }}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={[{ value: "test", label: "Test shelter" }]}
-          shelterTally={new Map([["test", 1]])}
-          chips={[]}
-          resultCount={1}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    const { container } = renderFilters({
+      filters: { ...EMPTY_FILTERS, sex: ["male"] },
+      ...SEX_GROUP,
+    });
 
     const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
@@ -137,29 +157,13 @@ describe("mobile filter hardening", () => {
     // roster produces. hasFilterSheet used to read only those facets, so the
     // dock (and the sort control living inside its sheet) vanished here even
     // though there was still an order to pick.
-    render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={EMPTY_FILTERS}
-          speciesTally={{ all: 3, dog: 3, cat: 0, other: 0 }}
-          speciesRoster={{ all: 3, dog: 3, cat: 0, other: 0 }}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={undefined}
-          shelterTally={new Map()}
-          chips={[]}
-          resultCount={3}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderFilters({
+      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
+      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+      shelters: undefined,
+      shelterTally: new Map(),
+      resultCount: 3,
+    });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
@@ -176,29 +180,13 @@ describe("mobile filter hardening", () => {
     // and with the sheet went the sort control and the shelter chips inside
     // it, in the one state a visitor is looking for a way back out. A filter
     // is on here, so there is something in the sheet to take off.
-    render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={{ ...EMPTY_FILTERS, shelter: ["test"] }}
-          speciesTally={{ all: 0, dog: 0, cat: 0, other: 0 }}
-          speciesRoster={{ all: 1, dog: 0, cat: 0, other: 1 }}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={[{ value: "test", label: "Test shelter" }]}
-          shelterTally={new Map([["test", 0]])}
-          chips={[]}
-          resultCount={0}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderFilters({
+      filters: { ...EMPTY_FILTERS, shelter: ["test"] },
+      speciesTally: { all: 0, dog: 0, cat: 0, other: 0 },
+      speciesRoster: { all: 1, dog: 0, cat: 0, other: 1 },
+      shelterTally: new Map([["test", 0]]),
+      resultCount: 0,
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
 
@@ -206,33 +194,13 @@ describe("mobile filter hardening", () => {
   });
 
   it("keeps the species tabs and a 44px sort control in the mobile toolbar", () => {
-    render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={EMPTY_FILTERS}
-          speciesTally={{ all: 2, dog: 1, cat: 1, other: 0 }}
-          // No filters on in this harness, so the roster and the
-          // tally are the same numbers.
-          speciesRoster={{ all: 2, dog: 1, cat: 1, other: 0 }}
-          groups={[
-            { group: "sex", options: [{ value: "male", label: "Male" }] },
-          ]}
-          counts={{ ...emptyCounts, sex: new Map([["male", 1]]) }}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={[{ value: "test", label: "Test shelter" }]}
-          shelterTally={new Map([["test", 2]])}
-          chips={[]}
-          resultCount={2}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderFilters({
+      speciesTally: { all: 2, dog: 1, cat: 1, other: 0 },
+      speciesRoster: { all: 2, dog: 1, cat: 1, other: 0 },
+      ...SEX_GROUP,
+      shelterTally: new Map([["test", 2]]),
+      resultCount: 2,
+    });
 
     // The tabs live in the same sticky row as sort, not only behind the sheet.
     const mobileToolbar = document.querySelector(

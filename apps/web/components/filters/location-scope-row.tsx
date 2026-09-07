@@ -23,11 +23,16 @@ import { cn } from "@/lib/utils";
 // Where the filter panels ask the question the map answers. Two surfaces draw
 // it: the sidebar, where the press opens the picker in place, and the sheet,
 // where the press closes the drawer first and the dock's picker opens after
-// it. Both get the same header, the same live glyph and the same sentence, so
-// a phone and a desktop cannot disagree about what is currently in scope.
+// it. Both get the same header, the same sentence, the same live map of the
+// picks and the same press, so a phone and a desktop cannot disagree about
+// what is currently in scope.
 //
-// What the two surfaces do not share is how much room the row may take. The
-// sidebar scrolls on its own and keeps the plate, where the country is worth
+// What the two surfaces do not share is how much room the row may take, and
+// so how big that map is drawn: 96px of plate with the region seams and the
+// town dots on one, a 32px glyph inside the sentence's own line on the other,
+// which also costs the sheet the invitation line under it.
+//
+// The sidebar scrolls on its own and keeps the plate, where the country is worth
 // looking at before the map is ever opened. The sheet is 608px of drawer at
 // 390x844, and the plate spent 164px of it on a picture of the control the
 // visitor had just pressed to get here: with the title and the sort select
@@ -130,7 +135,9 @@ export function LocationScopeRow({
   const shouldReduceMotion = useReducedMotion();
   // Nothing picked is the one state where the sentence alone does not say the
   // row can be pressed, so that is the only state carrying the invitation.
-  const inviting = selected.length === 0;
+  // The folded row has nowhere to put it: it is a second line, and there is
+  // no room beside the caption either (the measurement is above the glyph).
+  const inviting = !oneRow && selected.length === 0;
 
   // The pick lands in the map dialog, a different component entirely, so this
   // row only ever learns about it the way any other prop change arrives: by
@@ -175,18 +182,14 @@ export function LocationScopeRow({
           "flex w-full flex-col gap-1.5 rounded-ui border bg-background p-2 text-sm outline-none transition-colors",
           "hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted",
           "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring",
-          oneRow
-            ? // 52px, the same height the sheet already pays for its sort
-              // select. It is a floor and not a height: the glyph and the
-              // sentence come to 48px with the padding, and the two spare
-              // pixels are what keeps the row from reading as tighter than
-              // the control above it. Well past the 44px the plate spells
-              // out below, so the touch target is covered by this alone.
-              "min-h-13 justify-center"
-            : // The strip alone already clears 44px below lg; kept explicit
-              // anyway so the reach never depends on how tall the strip ends
-              // up.
-              "max-lg:min-h-11",
+          // 52px, the same height the sheet pays for its sort select. It is a
+          // floor and not a height, so it is one rule for both layouts rather
+          // than one each: the folded row's glyph and sentence come to 48px
+          // with the padding and take the floor, while the plate stands at
+          // about 146px and never reaches it. Past the 44px a finger needs
+          // either way, so the reach never depends on how tall the drawing
+          // above the sentence ends up.
+          "min-h-13 justify-center",
         )}
       >
         {/* The wash the silhouette stands on. Against the button's own ground
@@ -287,14 +290,11 @@ export function LocationScopeRow({
               </span>
               {/* The line is only ever there before the first pick, so nothing
                   is reserved for it: it takes its height with it on the way in
-                  and on the way out, and the fade covers the change.
-
-                  A second line is the one thing a one-row layout cannot have,
-                  and the sentence does not fit beside the caption either (the
-                  measurement is above the glyph), so the sheet asks for the
-                  map with the pin and the caption alone. */}
+                  and on the way out, and the fade covers the change. Which
+                  layout may draw it at all is decided with `inviting` itself,
+                  above. */}
               <AnimatePresence initial={false}>
-                {inviting && !oneRow ? (
+                {inviting ? (
                   <m.span
                     key="invite"
                     className="block overflow-hidden text-xs text-muted-foreground"

@@ -49,6 +49,15 @@ import {
   PANEL_TRANSITION_CLASS,
 } from "./motion";
 
+// How many shelters are picked, as a pill. Three places in this file say it:
+// the peek bar, the panel head beside it, and the folded rail. Written out at
+// each of them the three had already drifted apart, so the shape lives here
+// and each site adds only the colour its own surround asks for. Shape only for
+// that reason: the rail's pill sits inside a control that brightens on hover
+// and inherits that, while the two heads state their own muted ink.
+const COUNT_PILL_CLASS =
+  "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums";
+
 export function LocationPickerView({
   controller,
 }: {
@@ -125,6 +134,23 @@ export function LocationPickerView({
     label,
     doneLabel,
   } = controller;
+
+  // What is in scope, and how many shelters that is. Both head rows print it:
+  // the peek bar below lg and the panel head from lg. They cannot share an
+  // element, because one is the button that folds the sheet and the other
+  // stands beside a button that folds the panel, but there is no reason for
+  // them to hold two copies of what goes inside. A fragment adds no node, so
+  // each head keeps its own box exactly as it was.
+  const scopeHeadLabel = (
+    <>
+      <span className="min-w-0 truncate text-sm font-medium">{label}</span>
+      {selected.length > 0 && (
+        <span className={cn(COUNT_PILL_CLASS, "shrink-0 text-muted-foreground")}>
+          {selected.length}
+        </span>
+      )}
+    </>
+  );
 
   const offGroupList = (
     <ShelterRows
@@ -809,14 +835,7 @@ export function LocationPickerView({
               onClick={() => setSheetOpen((current) => !current)}
               className="flex h-13 shrink-0 items-center gap-2 px-4 text-left lg:hidden"
             >
-              <span className="min-w-0 truncate text-sm font-medium">
-                {label}
-              </span>
-              {selected.length > 0 && (
-                <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums text-muted-foreground">
-                  {selected.length}
-                </span>
-              )}
+              {scopeHeadLabel}
               <ChevronUp
                 className={cn(
                   "ml-auto size-4 text-muted-foreground transition-transform motion-reduce:transition-none",
@@ -840,10 +859,10 @@ export function LocationPickerView({
               >
                 <ChevronLeft className="size-4" aria-hidden />
                 <List className="size-4" aria-hidden />
+                {/* No ink of its own: this pill sits inside a control that
+                    brightens on hover, and it goes with it. */}
                 {selected.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums">
-                    {selected.length}
-                  </span>
+                  <span className={COUNT_PILL_CLASS}>{selected.length}</span>
                 )}
               </button>
             )}
@@ -862,29 +881,23 @@ export function LocationPickerView({
                 only from lg, and why the column below pays its own top gap at
                 the smaller sizes.
 
-                The sentence is printed twice in this component, once here and
-                once in the peek bar above, because there are two head rows and
-                only one is ever on screen: below lg the head is a button that
-                folds the sheet, from lg it is this plain row beside a control
-                that folds the panel. One shared element cannot be both, so
-                each width draws its own and both read `label`. Without it this
-                row was 52px of empty band with a lone chevron in it, which
-                left the desktop list unheaded and made the glyph read as
-                "next" rather than as "hide the list". */}
+                The head is drawn twice in this component, once here and once
+                in the peek bar above, because only one of them is ever on
+                screen and they cannot be one element: below lg the head is
+                itself the button that folds the sheet, from lg it is this
+                plain row beside a control that folds the panel. What goes
+                inside is shared (scopeHeadLabel above), so only the box
+                differs. Without it this row was 52px of empty band with a
+                lone chevron in it, which left the desktop list unheaded and
+                made the glyph read as "next" rather than as "hide the
+                list". */}
             {panelOpen && (
               <div
                 data-picker-panel-head
                 className="hidden shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2 lg:flex"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="min-w-0 truncate text-sm font-medium">
-                    {label}
-                  </span>
-                  {selected.length > 0 && (
-                    <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums text-muted-foreground">
-                      {selected.length}
-                    </span>
-                  )}
+                  {scopeHeadLabel}
                 </span>
                 <button
                   type="button"

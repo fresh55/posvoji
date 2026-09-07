@@ -128,6 +128,14 @@ async function openSheet() {
   return screen.findByRole("dialog");
 }
 
+/** The Kje row as the sheet draws it: mount, open the drawer, and hand back
+ *  the press itself. Two describes below want it, so it is written once. */
+async function sheetRow() {
+  renderSheet();
+  const dialog = await openSheet();
+  return within(dialog).getByRole("button", { name: /Zavetišče:/ });
+}
+
 describe("Kje scope row in the sidebar", () => {
   it("names the whole country until a shelter is picked", () => {
     const trigger = renderSidebar();
@@ -230,12 +238,10 @@ describe("Kje scope row in the filter sheet", () => {
   });
 
   it("does not nest the picker's own dialog inside the drawer", async () => {
-    renderSheet();
-    const dialog = await openSheet();
+    const row = await sheetRow();
 
-    const row = within(dialog).getByRole("button", { name: /Zavetišče:/ });
     expect(row.hasAttribute("data-picker-trigger")).toBe(false);
-    expect(dialog.querySelector("[data-picker-stage]")).toBeNull();
+    expect(screen.getByRole("dialog").querySelector("[data-picker-stage]")).toBeNull();
   });
 
   it("takes a picked shelter off through its chip", async () => {
@@ -448,12 +454,6 @@ describe("Kje strip celebration pulse", () => {
 // what the tests above assert; these are the differences the drawer's fold
 // budget pays for, and everything a press promises has to survive them.
 describe("Kje row folded onto one line in the sheet", () => {
-  async function sheetRow() {
-    renderSheet();
-    const dialog = await openSheet();
-    return within(dialog).getByRole("button", { name: /Zavetišče:/ });
-  }
-
   it("draws the glyph inline instead of the plate card", async () => {
     const row = await sheetRow();
 

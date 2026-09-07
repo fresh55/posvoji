@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { AnimalFields } from "@/lib/animal";
+import { useAnimalDescription } from "@/lib/animal-descriptions";
 import { GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
 import {
   ageGroup,
@@ -384,7 +385,19 @@ export function AnimalFacts({
       ? animal.apartmentOk
       : undefined;
   const animalName = animal.name ?? messages.unnamed;
-  const clampDescription = clampsDescription(animal.shortDescription ?? "");
+  // Two ways in, one paragraph. The animal's own page is server-rendered from
+  // a whole dataset animal, so it carries its description and asks the store
+  // for nothing. The grid's dialog gets an animal without one, because the
+  // home page stopped shipping 503 descriptions to print at most one, and the
+  // text is fetched instead. Passing no id is what keeps the page's side from
+  // fetching. See lib/animal-descriptions.ts.
+  const fetched = useAnimalDescription(
+    animal.shortDescription ? undefined : animal.id,
+  );
+  const description = animal.shortDescription || fetched;
+  // Whichever way it arrived, the same measure decides whether it opens
+  // clamped: length or the breaks the shelter wrote.
+  const clampDescription = clampsDescription(description ?? "");
 
   return (
     <div className="space-y-3">
@@ -543,7 +556,11 @@ export function AnimalFacts({
         </p>
       )}
 
-      {animal.shortDescription && (
+      {/* Nothing here until the fetch lands, which is what an animal with no
+          description draws too. No spinner and no skeleton: it is one
+          paragraph inside a dialog that is already open and already full, and
+          a placeholder for it would be more noticeable than the wait. */}
+      {description && (
         <div className="space-y-1">
           <p
             id={descriptionId}
@@ -559,7 +576,7 @@ export function AnimalFacts({
               clampDescription && !showFullDescription && "line-clamp-5",
             )}
           >
-            {animal.shortDescription}
+            {description}
           </p>
           {clampDescription && (
             <button

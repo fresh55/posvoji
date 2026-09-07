@@ -21,6 +21,7 @@ import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { ClientAnimal } from "@/lib/animal";
+import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
 import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -71,6 +72,11 @@ import type { ShelterLogos } from "@/lib/shelter-logos";
 // read the row and reach for it, short enough that the offer is gone before
 // it becomes part of the furniture.
 export const UNDO_WINDOW_MS = 7000;
+
+// When a browser with no requestIdleCallback fetches the shelter descriptions
+// instead. Behind hydration and the first cards' photos, and well ahead of the
+// time it takes anyone to pick a card and open it.
+const DESCRIPTIONS_IDLE_MS = 2000;
 
 // How many cards play the entrance animation. Roughly the first three rows at
 // the widest layout, which is everything a visitor can see when the grid
@@ -499,6 +505,28 @@ export function AnimalGrid({
   useEffect(() => {
     delete document.documentElement.dataset[PREHYDRATION_DATASET_KEY];
   }, []);
+
+  // The shelter descriptions no longer travel with the animals (see
+  // animalsForClient in lib/dataset.ts and lib/animal-descriptions.ts), so the
+  // first dialog that wants one would open and wait. Idle time once the grid
+  // is on screen costs nothing, and the file usually lands long before anyone
+  // opens a card. It waits for idle rather than going in the document head
+  // because the visitor who opens no card at all is who the saving is for.
+  useEffect(() => {
+    if (animals.length === 0) return;
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(() => {
+        void prefetchAnimalDescriptions();
+      });
+      return () => window.cancelIdleCallback(handle);
+    }
+    // Safari has no requestIdleCallback. A plain timer, set late enough to be
+    // behind hydration and the first cards' photos.
+    const timer = window.setTimeout(() => {
+      void prefetchAnimalDescriptions();
+    }, DESCRIPTIONS_IDLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [animals.length]);
 
   const isEmpty = animals.length === 0;
 

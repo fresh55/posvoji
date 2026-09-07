@@ -50,7 +50,6 @@
   --page-y: 2rem;
   --section-gap: 1.5rem;
   --column-gap: 1.5rem;
-  --sticky-top: 0px;
   /* Where the back-to-top control sits, and the one place that distance is
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
@@ -87,7 +86,6 @@
     --page-y: 3rem;
     --section-gap: 2.5rem;
     --column-gap: 2rem;
-    --sticky-top: 1.5rem;
     /* The dock is gone from here up, so the button drops to the corner it
        would have had all along. The footer stops deriving its run-off from
        this at the same width (lg:pb-6 in site-footer.tsx), so the shorter

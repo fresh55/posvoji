@@ -4,6 +4,17 @@
 
 export { interpolate as fill } from "@/lib/i18n";
 
+/**
+ * A sentence with {email} in it, cut in two around the placeholder, so the
+ * caller can put a mail link where the address goes. Shelter staff read these
+ * on a phone, where an address that is only text has to be copied out by hand.
+ */
+export function splitOnEmail(sentence: string): [string, string] {
+  const at = sentence.indexOf("{email}");
+  if (at === -1) return [sentence, ""];
+  return [sentence.slice(0, at), sentence.slice(at + "{email}".length)];
+}
+
 export const portalText = {
   brand: "Portal za zavetišča",
 
@@ -17,18 +28,40 @@ export const portalText = {
   sending: "Pošiljam …",
   sentTitle: "Povezava je na poti",
   sentLead:
-    "Če je naslov {email} vpisan pri nas, je povezava za prijavo že v predalu. Velja eno uro.",
-  sentHint: "Če je ni, poglejte še med vsiljeno pošto.",
-  sendAgain: "Pošlji na drug naslov",
+    "Če je naslov {email} vpisan pri nas, je povezava za prijavo že v predalu. Velja 24 ur.",
+  sentHint: "Če je ni, poglejte med vsiljeno pošto ali jo pošljite znova.",
+  // Going back keeps the address that was typed, so the same button covers
+  // both a link that never arrived and a second address to try.
+  sendAgain: "Pošlji znova",
   emailRequired: "Vpišite e-naslov.",
   emailInvalid: "E-naslov ni v pravi obliki. Preverite vnos.",
   verifying: "Preverjam povezavo …",
   expiredTitle: "Povezava ne velja več",
+  // A link is single use, so a shelter with a shared inbox burns the older
+  // link the moment a colleague opens a newer one. That is the common way to
+  // land here, and it is what the sentence names.
   expiredLead:
-    "Povezava za prijavo velja eno uro in samo za en račun. Zahtevajte novo, pa gremo naprej.",
+    "Vsaka povezava deluje samo enkrat in velja 24 ur. Če ste se medtem že prijavili z novejšo povezavo, ta ne velja več. Zahtevajte novo.",
   requestNewLink: "Zahtevaj novo povezavo",
   networkError: "Strežnik se ni odzval. Preverite povezavo in poskusite znova.",
+  // The API allows a handful of link requests an hour from one network. The
+  // wait is the whole answer, so it is said in minutes when the API states it.
+  throttledMinutes: "Preveč zahtev. Poskusite znova čez {minutes} min.",
+  // The same, when the API sent no wait we could read. An hour is the window
+  // it counts in, so it is the honest upper bound.
+  throttledHour: "Preveč zahtev s te povezave. Poskusite znova čez eno uro.",
+  // Verification worked and the browser kept nothing, so the workspace answers
+  // as if nobody signed in. The burnt link cannot be reused, hence the last
+  // sentence.
+  sessionNotStored:
+    "Prijava je uspela, a brskalnik ni shranil seje. Dovolite piškotke za posvoji.si in zahtevajte novo povezavo.",
   unknownError: "Nekaj je šlo narobe. Poskusite znova.",
+  // The address a shelter writes to when the login itself is the problem.
+  contactEmail: "info@posvoji.si",
+  // Under the form. A shelter whose inbox is not the one we hold has no way
+  // through this page at all, so the way out is on the page they are stuck on.
+  helpLine:
+    "Nimate dostopa ali zavetišče uporablja drug naslov? Pišite na {email}.",
 
   // Workspace
   loading: "Nalagam …",
@@ -37,8 +70,10 @@ export const portalText = {
   publicPage: "Javna stran zavetišča",
   chooseShelter: "Izberite zavetišče",
   noSheltersTitle: "Račun še ni povezan z zavetiščem",
+  // "Pišite nam" named no address, which left the shelter with a notice and
+  // nowhere to write to.
   noSheltersLead:
-    "Prijava je uspela, dostopa do zavetišča pa ta naslov še nima. Pišite nam in uredimo.",
+    "Prijava je uspela, dostopa do zavetišča pa ta naslov še nima. Pišite na {email} in uredimo.",
   // The workspace draws a failure as a notice with a title and a body. The
   // title names what did not work, the body says what to do about it. They
   // are never the same sentence, or the notice prints it twice.

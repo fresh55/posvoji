@@ -243,6 +243,7 @@ export type PortalErrorKind =
   | "forbidden"
   | "notFound"
   | "invalid"
+  | "throttled"
   | "server";
 
 function kindFor(status: number): PortalErrorKind {
@@ -251,6 +252,9 @@ function kindFor(status: number): PortalErrorKind {
   if (status === 403) return "forbidden";
   if (status === 404) return "notFound";
   if (status === 400 || status === 422) return "invalid";
+  // The login link is rate limited per address and per network. Kept apart
+  // from "server": nothing is broken, and the shelter only has to wait.
+  if (status === 429) return "throttled";
   return "server";
 }
 
@@ -264,14 +268,21 @@ export class PortalError extends Error {
   readonly kind: PortalErrorKind;
   /** The API's own `detail`, when it sent one. Not shown to shelters. */
   readonly detail?: string;
+  /**
+   * How long the API asked the caller to wait, in seconds. Present only when
+   * it sent a Retry-After the client could read, so a message built from it
+   * needs a wording for the case where there is none.
+   */
+  readonly retryAfterSeconds?: number;
 
-  constructor(status: number, detail?: string) {
+  constructor(status: number, detail?: string, retryAfterSeconds?: number) {
     const kind = kindFor(status);
     super(detail ? `${kind} (${status}): ${detail}` : `${kind} (${status})`);
     this.name = "PortalError";
     this.status = status;
     this.kind = kind;
     this.detail = detail;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -291,6 +302,24 @@ async function readDetail(response: Response): Promise<string | undefined> {
     // is enough to tell the shelter what happened.
   }
   return undefined;
+}
+
+/**
+ * The wait a Retry-After header states, in seconds.
+ *
+ * Only the delta form is read. The header may also carry an HTTP date, which
+ * is measured against the visitor's clock rather than the server's, and a wait
+ * computed from a clock that is off is worse than no number at all. A header
+ * the CORS policy did not expose reads as absent here, which is why every
+ * caller has to have something to say without one.
+ */
+function retryAfterSeconds(response: Response): number | undefined {
+  const raw = response.headers?.get("Retry-After");
+  if (typeof raw !== "string") return undefined;
+  const value = raw.trim();
+  if (!/^\d+$/.test(value)) return undefined;
+  const seconds = Number(value);
+  return Number.isSafeInteger(seconds) ? seconds : undefined;
 }
 
 type PortalRequestInit = {
@@ -356,7 +385,10 @@ async function request<T>(
     response = await send();
   }
 
-  if (!response.ok) throw new PortalError(response.status, await readDetail(response));
+  if (!response.ok) {
+    const wait = retryAfterSeconds(response);
+    throw new PortalError(response.status, await readDetail(response), wait);
+  }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }

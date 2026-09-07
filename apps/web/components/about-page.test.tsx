@@ -27,6 +27,13 @@ Object.defineProperty(window, "matchMedia", {
 afterEach(cleanup);
 
 describe("the about page", () => {
+  it("explains shelter adoption before open source in Slovenian", () => {
+    render(<AboutPage locale="sl" />);
+    expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
+      "Brezplačno", "Posvojitev pri zavetišču", "Podatki zavetišč", "Odprta koda", "Brez osebnih podatkov",
+    ]);
+    expect(screen.getByRole("link", { name: "Živali, ki iščejo dom" }).getAttribute("href")).toBe("/");
+  });
   // The heading and the crumb above it read one string, so this pins the
   // wiring and not the wording: a copy change moves both and this stays
   // green, while a page that named itself something the roster does not

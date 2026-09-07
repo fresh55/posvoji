@@ -613,3 +613,11 @@
     display: none !important;
   }
 }
+
+/* Memorial identity stays visible before the portrait. */
+.poster-memorial-head { flex: none; margin-bottom: calc(4 * var(--u)); }
+.poster-memorial-label { margin: 0 0 calc(2 * var(--u)); font-size: calc(6 * var(--u)); color: #57534e; }
+.poster-memorial-story { flex: none; margin: calc(5 * var(--u)) 0; font-size: calc(6 * var(--u)); }
+.poster-scan-invitation { margin: calc(3 * var(--u)) 0 0; font-size: calc(4.2 * var(--u)); color: #57534e; }
+.poster-sheet--memorial .poster-timeline { margin: 0 0 calc(4 * var(--u)); }
+.poster-sheet--memorial .poster-photo { min-height: calc(60 * var(--u)); }

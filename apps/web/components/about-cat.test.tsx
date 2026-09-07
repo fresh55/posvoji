@@ -6,6 +6,7 @@ import { AboutCat } from "./about-cat";
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
+    availableAnimations: string[] = [];
     paused = true;
     currentTime = 0;
     play = vi.fn(() => { this.paused = false; });
@@ -65,18 +66,12 @@ describe("the about cat", () => {
     expect(viewer.getAttribute("touch-action")).toBe("pan-y");
   });
 
-  // Nothing is printed beside the cat, in any state. The gestures are named
-  // to screen readers through the viewer's own interaction prompt and are
-  // left for a sighted visitor to find or not; a line that named them sat
-  // here for a while and went the way the caption under it went.
-  it("prints nothing beside the cat", async () => {
+  it("offers a short hint and optional instructions without a long accessible name", async () => {
     const { container } = render(<AboutCat locale="en" />);
     await loadViewer();
-
-    const printed = [...container.querySelectorAll("p, figcaption")].filter(
-      (node) => !node.className.includes("sr-only"),
-    );
-    expect(printed).toHaveLength(0);
+    expect(screen.getByText("Pet him. Drag to look around.")).toBeTruthy();
+    expect(container.querySelector("details")?.hasAttribute("open")).toBe(false);
+    expect(container.querySelector("summary")?.textContent).toBe("How to interact with the cat");
   });
 
   it("pauses offscreen and in a hidden tab, resuming only when visible", async () => {

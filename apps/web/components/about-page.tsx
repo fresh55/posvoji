@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   Building2,
   CodeXml,
   EyeOff,
@@ -28,7 +29,7 @@ import { MUTED_LINK } from "@/lib/link-styles";
 import { homePath } from "@/lib/shelter-path";
 import { REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
-import { SRECKO_PATHS } from "@/lib/srecko";
+import { SRECKO_PATHS, SRECKO_TEXT } from "@/lib/srecko";
 import { cn } from "@/lib/utils";
 
 // Where a correction goes. Printed as the address itself rather than behind
@@ -43,17 +44,6 @@ type PageText = {
    *  and are not translated. */
   report: string;
   code: string;
-  /**
-   * The last line on the page, and the only one that says why any of it
-   * exists. Everything above it is what the site is and what it refuses to
-   * be; this is the reason there is a site at all.
-   *
-   * In three parts because his name inside it is a link to his page, and the
-   * sentence has to stay one sentence: split around the name rather than
-   * assembled from words, so a translation is still read and written as the
-   * line it is. The name declines, which is why it is stored and not derived.
-   */
-  dedication: { before: string; name: string; after: string };
 };
 
 // One glyph per fact, keyed rather than stored in each locale so the two
@@ -112,7 +102,6 @@ const pageText: Record<Locale, PageText> = {
     report:
       "Napačen podatek, zastarela objava ali žival, ki je že našla dom? Pišite nam.",
     code: "Koda na GitHubu",
-    dedication: { before: "Ta stran je v spomin na ", name: "Srečka", after: "." },
   },
   en: {
     lead: "Posvoji.si is an open, free index of animals waiting for a home in Slovenian shelters.",
@@ -146,7 +135,6 @@ const pageText: Record<Locale, PageText> = {
     report:
       "Wrong detail, stale listing or an animal that already found a home? Write to us.",
     code: "Code on GitHub",
-    dedication: { before: "This site is in memory of ", name: "Srečko", after: "." },
   },
 };
 
@@ -172,6 +160,8 @@ export function AboutPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = homePath(locale);
+  const memorial = SRECKO_TEXT[locale];
+  const pointOrder: PointKey[] = ["free", "shelterDecides", "shelterData", "openSource", "noPersonalData"];
 
   return (
     <I18nProvider locale={locale}>
@@ -185,43 +175,17 @@ export function AboutPage({ locale }: { locale: Locale }) {
               <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
                 {messages.about}
               </h1>
-              {/* The page's one sentence, and a step above the facts rather
-                  than level with them. At 18px it sat two pixels off the
-                  bodies below it and the whole column read as one size. */}
               <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
                 {text.lead}
               </p>
             </div>
           </div>
-
-          {/* The cat spans all three text rows and centres against them, so
-              its mass sits opposite the facts rather than floating level with
-              the heading and leaving a hole under itself. The cell is taller
-              than the figure, so without this it anchors to the top: measured
-              at 1280, the cat ended 240px above the last thing in the column.
-              Below lg it is one block in the flow and centring says nothing. */}
-          {/* Nothing under him. A caption sat here for a while and went
-              through every shape it had: a sentence, a shorter sentence, his
-              listing card, then a passport of labelled fields. Each one was
-              read and each one earned the same verdict, that it added
-              nothing, and the passport was the proof: by the time a caption
-              needs a document layout to look like it means something, the
-              text was never the problem. The page already says what the site
-              is, the dedication at the foot says who it is for, and between
-              them a cat needs no label. */}
           <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
             <AboutCat locale={locale} />
           </div>
-
-          {/* A rule between facts and nothing else. Each fact is an Item on
-              the row layout: the glyph names it at a glance, and only the
-              padding is this page's, so the rules run edge to edge.
-
-              mt-px on the media, measured: the title is text-base under
-              leading-snug, a 22px line box, and the glyph is 20px, so one
-              pixel centres it on the first line. */}
           <div className="divide-y border-y lg:col-start-1 lg:row-start-2">
-            {text.points.map((point) => {
+            {pointOrder.map((key) => {
+              const point = text.points.find((point) => point.key === key)!;
               const Icon = pointIcons[point.key];
               return (
                 <Item
@@ -239,11 +203,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
                     <ItemTitle asChild className="text-base font-medium">
                       <h2>{point.title}</h2>
                     </ItemTitle>
-                    {/* A step under the title rather than the same size in a
-                        lighter ink. Title and body were both 16px, so five
-                        facts read as one block of text and the glyph was
-                        doing all the work of telling them apart. The same
-                        pairing the resources cards use. */}
                     <ItemDescription className="text-sm leading-relaxed">
                       {point.body}
                     </ItemDescription>
@@ -252,15 +211,14 @@ export function AboutPage({ locale }: { locale: Locale }) {
               );
             })}
           </div>
-
-          {/* The sentence stays beside the buttons rather than inside them:
-              it says what to write about, and a button label that is a full
-              sentence stops reading as a control. */}
           <div className="space-y-3 lg:col-start-1 lg:row-start-3">
             <p className="text-sm leading-relaxed text-muted-foreground">
               {text.report}
             </p>
             <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm" className={THUMB_BUTTON}>
+                <a href={homeHref}><ArrowRight aria-hidden />{locale === "sl" ? "Živali, ki iščejo dom" : "Animals waiting for a home"}</a>
+              </Button>
               <Button
                 asChild
                 variant="outline"
@@ -285,42 +243,17 @@ export function AboutPage({ locale }: { locale: Locale }) {
               </Button>
             </div>
           </div>
-
-          {/* The dedication, and it is the last thing on the page on purpose.
-              A dedication takes its weight from being alone and from coming
-              at the end, the way a book carries one; set beside his card it
-              would have been read as a caption and would have had a status
-              badge for company.
-
-              Spanning both columns rather than sitting in the text one, so
-              nothing shares its line and the page finishes on it. Small and
-              muted, because it does not need to be loud to be the reason for
-              everything above it. */}
           <p className="border-t pt-6 text-sm leading-relaxed text-muted-foreground lg:col-span-2 lg:row-start-4">
-            {text.dedication.before}
-            {/* His name is the way to his page, and the only way to it: the
-                page is in no menu and in no footer, because a reader who has
-                not read this line has no reason to be sent there.
-
-                The site's quiet link, underlined from the start rather than on
-                hover. MUTED_LINK is muted-until-hovered, which works where it
-                normally sits, on its own line in the page's own ink; inside
-                this paragraph the link and the sentence are both
-                muted-foreground and the only way to it was invisible. The
-                underline is what model-credit.tsx gives its own inline links
-                and the least a link inside a sentence can wear. */}
+            {memorial.dedicationBefore}
             <a
               href={SRECKO_PATHS[locale]}
               className={cn(MUTED_LINK, "underline")}
             >
-              {text.dedication.name}
+              {memorial.dedicationName}
             </a>
-            {text.dedication.after}
+            {"."}
           </p>
         </main>
-
-        {/* The one footer that does not link to this page, because it is on
-            it. */}
         <SiteFooter locale={locale} showAboutLink={false}>
           <ModelCredit locale={locale} />
         </SiteFooter>

@@ -1,213 +1,107 @@
-import type { AdoptionStatus, Sex, Species } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
 
-/**
- * Srečko, the cat on the about page, as data.
- *
- * One place for what the site says about him. His page, his poster and the
- * share cards all read from here, so a fact cannot be stated one way on the
- * sheet and another way on the page.
- *
- * Nothing here names the shelter he came from or the household he went to.
- * The about page promises that nobody buys a place on the list, and sending
- * every reader to one shelter out of seventeen is the nearest thing to
- * breaking that promise. The household is out for the page's fourth fact:
- * personal details do not belong on this site.
- */
-
-/** His page in both languages, canonical and hreflangs both, the contract
- *  ABOUT_PATHS keeps in lib/site-links.ts. Not in the roster: the page is
- *  reached from the about page's dedication and from nowhere else. */
-export const SRECKO_PATHS = {
-  sl: "/o-nas/srecko",
-  en: "/en/about/srecko",
-} as const;
-
-/** His A4 sheet, the same shape every animal's poster route has. */
-export const SRECKO_POSTER_PATHS = {
-  sl: "/o-nas/srecko/plakat",
-  en: "/en/about/srecko/poster",
-} as const;
-
-/**
- * The 1200x630 preview a shared link to the about page or to his page shows.
- * Drawn once, from the same render the page shows before the model loads,
- * and committed beside it.
- */
-export const SRECKO_SHARE_IMAGE = {
-  url: "/models/our-cat/share.jpg",
-  width: 1200,
-  height: 630,
-  alt: {
-    sl: "Srečko, bel maček s sivimi lisami in enim očesom.",
-    en: "Srečko, a white cat with grey patches and one eye.",
-  },
-} as const satisfies {
-  url: string;
-  width: number;
-  height: number;
-  alt: Record<Locale, string>;
-};
-
-/** The three dates his page tells. "home", the years between the second and
- *  the third, is derived rather than stored. */
 export type SreckoEventKey = "listed" | "adopted" | "died";
-
-export type SreckoEvent = {
-  key: SreckoEventKey;
-  /**
-   * "YYYY-MM-DD", "YYYY-MM" or "YYYY". Absent until it is known; an event
-   * without a date is still told, without one. Filled in by the person who
-   * knows, not guessed.
-   */
-  date?: string;
-};
-
+export type SreckoEvent = { key: SreckoEventKey; date?: string };
 export type SreckoPhoto = {
-  /** Under public/. EXIF stripped before it is committed, longest side no
-   *  more than 1600px, and checked for anything in the background that
-   *  identifies a person or a home. */
-  src: string;
-  width: number;
-  height: number;
-  alt: Record<Locale, string>;
+  /** Local public/ path: permission-cleared, EXIF-free, longest edge <= 1600px. */
+  src: string; width: number; height: number; alt: Record<Locale, string>;
 };
+/** Owner-confirmed facts only. Add prepared photographs and dates here. */
+export const SRECKO = {
+  name: "Srečko", species: "cat", sex: "male", felv: "positive", eyes: "one",
+  timeline: [{ key: "listed" }, { key: "adopted" }, { key: "died" }] as SreckoEvent[],
+  photos: [] as SreckoPhoto[],
+  /** A genuine memory supplied by his owner, in both languages. */
+  memory: undefined as Record<Locale, string> | undefined,
+} as const;
+export const SRECKO_PATHS = { sl: "/o-nas/srecko", en: "/en/about/srecko" } as const;
+export const SRECKO_POSTER_PATHS = { sl: "/o-nas/srecko/plakat", en: "/en/about/srecko/poster" } as const;
+export const SRECKO_RENDER = {
+  src: "/models/our-cat/poster.webp", width: 896, height: 992,
+  alt: {
+    sl: "Upodobitev Srečka, belega mačka s sivimi lisami in zaprtim desnim očesom.",
+    en: "An illustration of Srečko, a white cat with grey patches and a closed right eye.",
+  },
+} as const;
+export const SRECKO_TEXT = {
+  sl: {
+    memorial: "V spomin na Srečka",
+    intro: "Srečko je prišel iz zavetišča in našel dom. Posvoji.si je posvečen njegovemu spominu.",
+    purpose: "V njegov spomin pomagamo drugim živalim iz zavetišč, da jih ljudje, ki iščejo družabnika, lažje najdejo.",
+    dedication: "Ta stran je v spomin na Srečka.",
+    dedicationBefore: "Ta stran je v spomin na ", dedicationName: "Srečka",
+    cats: "Mačke, ki še čakajo", poster: "Spominski plakat", facts: "Nekaj o Srečku",
+    eye: { title: "Eno oko", body: "Desnega očesa ni imel. Rana se je zacelila." },
+    felv: { title: "FeLV pozitiven", body: "Test na virus mačje levkemije je bil pozitiven." },
+    dates: "Pomembni trenutki", home: "Doma",
+    events: { listed: "V zavetišču", adopted: "Posvojen", died: "Umrl" },
+    posterStory: "Iz zavetišča je prišel v svoj dom.",
+    scan: "Spoznaj njegovo zgodbo in mačke, ki še čakajo na dom.",
+    credit: "Upodobitev: Cat [Murdered: Soul Suspect], mark2580, CC BY 4.0, prilagojeno.",
+    shareCredit: "Upodobitev: mark2580 · CC BY 4.0 · prilagojeno",
+    aboutShare: "Živali, ki iščejo dom",
+    aboutShareBody: "Odprt in brezplačen seznam živali iz slovenskih zavetišč.",
+  },
+  en: {
+    memorial: "In memory of Srečko",
+    intro: "Srečko came from a shelter and found a home. Posvoji.si is dedicated to his memory.",
+    purpose: "In his memory, we help people looking for a companion discover other animals in shelters.",
+    dedication: "This site is in memory of Srečko.",
+    dedicationBefore: "This site is in memory of ", dedicationName: "Srečko",
+    cats: "Cats still waiting", poster: "Memorial poster", facts: "A little about Srečko",
+    eye: { title: "One eye", body: "He had no right eye. The wound had healed over." },
+    felv: { title: "FeLV positive", body: "He tested positive for feline leukemia virus." },
+    dates: "Milestones", home: "At home",
+    events: { listed: "In the shelter", adopted: "Adopted", died: "Died" },
+    posterStory: "He came from a shelter and found a home.",
+    scan: "Discover his story and the cats still waiting for a home.",
+    credit: "Render: Cat [Murdered: Soul Suspect] by mark2580, CC BY 4.0, adapted.",
+    shareCredit: "Render: mark2580 · CC BY 4.0 · adapted",
+    aboutShare: "Animals waiting for a home",
+    aboutShareBody: "An open, free index of animals in Slovenian shelters.",
+  },
+} as const;
 
-export type Srecko = {
-  name: string;
-  species: Species;
-  sex: Sex;
-  status: AdoptionStatus;
-  /** The site models the virus as a field on a cat and offers "Brez FeLV" as
-   *  a filter, which matches only the cats that tested negative. A positive
-   *  cat is the one that filter hides and the one a shelter has the hardest
-   *  time placing. */
-  felv: "positive";
-  /** The right eye was missing and had healed over. When he lost it is not
-   *  recorded, so nothing says. */
-  eyes: "one";
-  timeline: readonly SreckoEvent[];
-  /** Oldest first. Empty until the photographs are chosen and prepared. */
-  photos: readonly SreckoPhoto[];
-};
-
-export const SRECKO: Srecko = {
-  name: "Srečko",
-  species: "cat",
-  sex: "male",
-  status: "adopted",
-  felv: "positive",
-  eyes: "one",
-  timeline: [{ key: "listed" }, { key: "adopted" }, { key: "died" }],
-  photos: [],
-};
-
-// The three date shapes a SreckoEvent is allowed to carry, as the one place
-// that decides what is a date and what is a typo. Both readers below go
-// through them, so a value his page prints is a value the span arithmetic can
-// also read.
-const YEAR = /^\d{4}$/u;
-const YEAR_MONTH = /^\d{4}-\d{2}$/u;
-const YEAR_MONTH_DAY = /^\d{4}-\d{2}-\d{2}$/u;
-
-// Built once rather than per call. Constructing an Intl.DateTimeFormat is the
-// expensive half of formatting a date, and the shapes never vary.
-//
-// Slovenian is numeric for a full date, the same choice lib/labels.ts argues
-// for registerDateLabel, and a month name where there is no day to carry:
-// "marec 2019" stands on its own in a list, where "3. 2019" reads as a broken
-// date rather than as a month.
-//
-// registerDateLabel itself is not reused. It handles the full date only, and
-// importing it would pull lib/labels.ts, and through it the whole filter
-// engine, into a module the poster route and the share card also read.
-const MONTH_FORMAT: Record<Locale, Intl.DateTimeFormat> = {
-  sl: new Intl.DateTimeFormat("sl-SI", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }),
-  en: new Intl.DateTimeFormat("en-GB", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }),
-};
-
-const DAY_FORMAT: Record<Locale, Intl.DateTimeFormat> = {
-  sl: new Intl.DateTimeFormat("sl-SI", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }),
-  en: new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }),
-};
-
-/** The first instant a stored date can mean, read in UTC. A date-only string
- *  parses as UTC midnight and reading it locally moves it into the previous
- *  day west of Greenwich. */
-function startOf(date: string): Date | undefined {
-  const iso = YEAR.test(date)
-    ? `${date}-01-01`
-    : YEAR_MONTH.test(date)
-      ? `${date}-01`
-      : YEAR_MONTH_DAY.test(date)
-        ? date
-        : undefined;
-  if (iso === undefined) return undefined;
+/** Shared choice for the memorial, sheet and generated share art. */
+export function sreckoPortrait() { return SRECKO.photos[0] ?? SRECKO_RENDER; }
+export function sreckoShareImage(locale: Locale, surface: "about" | "memorial" = "memorial") {
+  const file = surface === "about" ? "about-share" : "share";
+  return {
+    url: `/models/our-cat/${file}${locale === "en" ? "-en" : ""}.jpg`,
+    width: 1200, height: 630,
+    alt: `${surface === "about" ? SRECKO_TEXT[locale].aboutShare : SRECKO_TEXT[locale].memorial} · posvoji.si`,
+  };
+}
+function dateStart(date: string): Date | undefined {
+  if (!/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/u.test(date)) return;
+  const iso = date.length === 4 ? `${date}-01-01` : date.length === 7 ? `${date}-01` : date;
   const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return undefined;
-  // The round trip is not decoration. A day past the end of its month is not
-  // rejected, it is rolled over: "2019-02-30" parses as 2 March and would have
-  // printed as a date he could be said to have. Only a value that reads back
-  // as it was written is a date.
-  return parsed.toISOString().startsWith(iso) ? parsed : undefined;
+  if (Number.isNaN(parsed.getTime()) || !parsed.toISOString().startsWith(iso)) return;
+  return parsed;
 }
-
-/**
- * One of his dates as the locale writes it, at the precision it was recorded
- * at: a year stays a year, a month prints as a month, a full date as a date.
- *
- * Undefined for anything this file does not recognise as a date, because the
- * timeline is written to read without one. A line that lost its date says
- * less; a line that printed "Invalid Date" would say something false.
- */
-export function sreckoDateLabel(
-  date: string,
-  locale: Locale,
-): string | undefined {
-  if (YEAR.test(date)) return date;
-  const start = startOf(date);
-  if (!start) return undefined;
-  return YEAR_MONTH.test(date)
-    ? MONTH_FORMAT[locale].format(start)
-    : DAY_FORMAT[locale].format(start);
+export function sreckoDateLabel(date: string, locale: Locale): string | undefined {
+  const parsed = dateStart(date);
+  if (!parsed) return;
+  if (date.length === 4) return date;
+  return new Intl.DateTimeFormat(locale === "sl" ? "sl-SI" : "en-GB", {
+    year: "numeric", month: date.length === 7 ? "long" : locale === "sl" ? "numeric" : "long",
+    ...(date.length === 10 ? { day: "numeric" as const } : {}), timeZone: "UTC",
+  }).format(parsed);
 }
-
-/**
- * Whole months between the adoption and the death, or undefined while either
- * date is missing.
- *
- * Derived rather than stored, so the one number on his page that is a claim
- * about how long he had cannot disagree with the two dates above it. The same
- * arithmetic monthsInShelter uses in lib/labels.ts: both ends read in UTC,
- * days ignored, and a span that runs backwards is refused rather than shown
- * as zero.
- */
-export function sreckoMonthsAtHome(
-  timeline: readonly SreckoEvent[],
-): number | undefined {
-  const dateOf = (key: SreckoEventKey) =>
-    timeline.find((event) => event.key === key)?.date;
-  const adopted = dateOf("adopted");
-  const died = dateOf("died");
-  if (adopted === undefined || died === undefined) return undefined;
-  const from = startOf(adopted);
-  const to = startOf(died);
-  if (!from || !to) return undefined;
-  const months =
-    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
-    (to.getUTCMonth() - from.getUTCMonth());
-  return months < 0 ? undefined : months;
+/** Missing dates never become empty timeline rows. */
+export function sreckoMilestones(locale: Locale, timeline = SRECKO.timeline) {
+  return timeline.flatMap(event => {
+    const date = event.date && sreckoDateLabel(event.date, locale);
+    return date ? [{ key: event.key, label: SRECKO_TEXT[locale].events[event.key], date, iso: event.date! }] : [];
+  });
+}
+/** Show the recorded range, never an exact duration inferred from partial dates. */
+export function sreckoHomeDateRange(locale: Locale, timeline = SRECKO.timeline): string | undefined {
+  const from = timeline.find(event => event.key === "adopted")?.date;
+  const to = timeline.find(event => event.key === "died")?.date;
+  if (!from || !to) return;
+  const start = dateStart(from), end = dateStart(to);
+  if (!start || !end || start > end) return;
+  const a = sreckoDateLabel(from, locale), b = sreckoDateLabel(to, locale);
+  return a === b ? a : `${a} – ${b}`;
 }

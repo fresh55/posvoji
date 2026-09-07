@@ -89,40 +89,42 @@ export function FilterSidebar({
         className,
       )}
     >
-      {/* h-8, because the species tabs row across the gutter measures 32px:
-          py-1 around a text-sm line box. The toolbar that carries it pins at
-          top-0 with py-3 above the tabs, and the aside answers that with
-          lg:top-0 and lg:pt-3 of its own (animal-grid.tsx), so the two columns
-          start their content on one line both at rest and stuck, and the
-          hairline over the first section below lands on the toolbar's border-b
-          rather than 16px above it.
+      {/* h-8 to match the results row across the gutter, which states the same
+          height for itself (min-h-8 in animal-filters.tsx). The toolbar that
+          carries it pins at top-0 and pads itself with --rail-pad, and the
+          aside answers with lg:top-0 and the same padding (animal-grid.tsx),
+          so the two columns start their content on one line both at rest and
+          stuck, and the hairline over the first section below lands on the
+          toolbar's border-b rather than 16px above it.
+
+          The height is on the heading and not on a box around it. There were
+          two children here until the clear went, and one child that is itself
+          a flex row does not need a flex row around it.
 
           No clear in here. At lg the chips row beside the toolbar owns
           clearing, next to the pills it clears, and it is on screen whenever
           this head is: every active value draws a pill there except the
           species tab, which undoes itself in a press of its own. Each section
           keeps its Ponastavi for the one facet it holds. */}
-      <div className="flex h-8 items-center">
-        <h2 className="flex items-center gap-2 text-sm font-medium">
-          {messages.filters}
-          {activeValues > 0 && (
-            // Same badge the mobile sheet already shows next to "Filtri". Its
-            // own LazyMotion: unlike the sections below, nothing here already
-            // opens one for CountRoll to read domAnimation from.
-            <LazyMotion features={domAnimation}>
-              <Badge
-                variant="secondary"
-                // motion-reduce:duration-0, not motion-reduce:animate-none:
-                // see the comment on DialogOverlay in ui/dialog.tsx for why
-                // the animate-none guard does not actually take effect here.
-                className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
-              >
-                <CountRoll value={activeValues} />
-              </Badge>
-            </LazyMotion>
-          )}
-        </h2>
-      </div>
+      <h2 className="flex h-8 items-center gap-2 text-sm font-medium">
+        {messages.filters}
+        {activeValues > 0 && (
+          // Same badge the mobile sheet already shows next to "Filtri". Its
+          // own LazyMotion: unlike the sections below, nothing here already
+          // opens one for CountRoll to read domAnimation from.
+          <LazyMotion features={domAnimation}>
+            <Badge
+              variant="secondary"
+              // motion-reduce:duration-0, not motion-reduce:animate-none:
+              // see the comment on DialogOverlay in ui/dialog.tsx for why
+              // the animate-none guard does not actually take effect here.
+              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
+            >
+              <CountRoll value={activeValues} />
+            </Badge>
+          </LazyMotion>
+        )}
+      </h2>
 
       {/* Kje first, above every folding section. It is the question a visitor
           answers before any of the others -- how far they are willing to go --

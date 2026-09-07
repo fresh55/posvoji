@@ -74,7 +74,14 @@ const DRAWER_CLOSE_MS = 500;
  *  itself: what `orderWorthPicking` holds the sheet open for there is the
  *  scope row and the way back out, not the sort row it names. Narrowing it by
  *  width would take a media query in JS, and the sheet is worth more open
- *  than a tablet is worth a trigger less. */
+ *  than a tablet is worth a trigger less.
+ *
+ *  The state that buys: between md and lg, a dataset with no facet sections,
+ *  no active filters and no shelters to choose between opens on a title, an
+ *  empty body and a footer, because this clause alone was true and the row it
+ *  was named for is not drawn. It takes a shelterless dataset to reach, which
+ *  no live build has, and the honest fix is one boolean read from a width and
+ *  passed in here rather than a fourth clause guessing at one. */
 export function filterSheetWorthOpening({
   groups,
   toggles,

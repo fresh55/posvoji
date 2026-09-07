@@ -50,6 +50,18 @@
   --page-y: 2rem;
   --section-gap: 1.5rem;
   --column-gap: 1.5rem;
+  /* The air above and below the sticky results bar, and the one place that
+     distance is written. Two elements have to agree on it and they live in
+     different files: the bar pads itself with it (animal-filters.tsx), and
+     the filter panel beside it pins to the same edge and carries the same
+     amount as top padding so the two columns start their content on one line
+     (animal-grid.tsx). Spelled twice as a plain length, the panel head drifted
+     off the species tabs by exactly this much, which is the drift this token
+     exists to make impossible. The panel's height budget reads it as well, at
+     twice the value, so the rail keeps the same gap at the bottom of the
+     viewport that it leaves at the top.
+     No breakpoint of its own: the bar wears it at every width. */
+  --rail-pad: 0.75rem;
   /* Where the back-to-top control sits, and the one place that distance is
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
@@ -100,6 +112,7 @@
   --spacing-page-y: var(--page-y);
   --spacing-section-gap: var(--section-gap);
   --spacing-column-gap: var(--column-gap);
+  --spacing-rail-pad: var(--rail-pad);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);

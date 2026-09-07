@@ -63,7 +63,7 @@ const PLACEMENTS = {
   "toolbar row": {},
   "mobile sheet header": {
     quiet: false,
-    className: "mt-3 h-11 w-full md:hidden",
+    className: "mt-3 h-11 w-full",
   },
 } as const;
 

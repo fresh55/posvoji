@@ -65,8 +65,9 @@ export function ShelterDetails({
               <span
                 key={kind}
                 data-pick-species={kind}
-                className="inline-flex items-center gap-1"
+                role="img"
                 aria-label={`${speciesLabel(kind, locale)}: ${count}`}
+                className="inline-flex items-center gap-1"
               >
                 <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
                 {count}

@@ -20,6 +20,7 @@ const LEGEND_SWATCH_GROUND =
  * dialog at all.
  */
 export function MapLegend({
+  showDensity = true,
   highlightedDensity,
   onHoverDensity,
   onLeaveDensity,
@@ -29,6 +30,7 @@ export function MapLegend({
   origin,
   messages,
 }: {
+  showDensity?: boolean;
   highlightedDensity: number | null;
   onHoverDensity: (index: number) => void;
   onLeaveDensity: () => void;
@@ -58,23 +60,24 @@ export function MapLegend({
       data-map-legend
       className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-3xs leading-none text-muted-foreground lg:gap-x-4 lg:gap-y-1.5 lg:text-2xs"
     >
-      <span className="flex items-center gap-2">
-        <span>{messages.fewerAnimals}</span>
-        <span
-          className="flex items-center gap-0.5"
-          aria-hidden
-          onPointerLeave={onLeaveDensity}
-        >
-          {DENSITY_STEPS.map((opacity, index) => (
-            <span
-              key={opacity}
-              className="lg:cursor-help lg:p-0.5"
-              onPointerEnter={(event) => {
-                if (event.pointerType !== "mouse") return;
-                onHoverDensity(index);
-              }}
-            >
-              {/* Two layers, not one. A region's fill composites over the
+      {showDensity && (
+        <span className="flex items-center gap-2">
+          <span>{messages.fewerAnimals}</span>
+          <span
+            className="flex items-center gap-0.5"
+            aria-hidden
+            onPointerLeave={onLeaveDensity}
+          >
+            {DENSITY_STEPS.map((opacity, index) => (
+              <span
+                key={opacity}
+                className="lg:cursor-help lg:p-0.5"
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "mouse") return;
+                  onHoverDensity(index);
+                }}
+              >
+                {/* Two layers, not one. A region's fill composites over the
                   land it sits on, not over whatever happens to be behind the
                   legend; painting the ramp's alpha straight onto this panel
                   used its own near-black dark background as the ground
@@ -84,24 +87,25 @@ export function MapLegend({
                   opaque stand-in for that land; the map's own ink and alpha
                   ride on top of it unchanged, --map-density-fill at the
                   DENSITY_STEPS opacity. */}
-              <span
-                className={cn(
-                  "relative block size-2 overflow-hidden rounded-[2px] transition-shadow",
-                  highlightedDensity === index && "ring-1 ring-foreground/30",
-                )}
-                style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
-              >
                 <span
-                  aria-hidden
-                  className="absolute inset-0 bg-[var(--map-density-fill)]"
-                  style={{ opacity }}
-                />
+                  className={cn(
+                    "relative block size-2 overflow-hidden rounded-[2px] transition-shadow",
+                    highlightedDensity === index && "ring-1 ring-foreground/30",
+                  )}
+                  style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
+                >
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 bg-[var(--map-density-fill)]"
+                    style={{ opacity }}
+                  />
+                </span>
               </span>
-            </span>
-          ))}
+            ))}
+          </span>
+          <span>{messages.moreAnimals}</span>
         </span>
-        <span>{messages.moreAnimals}</span>
-      </span>
+      )}
       {/* The solid selection green, the moment a region first wears it. The
           ramp and the selected state share one hue on purpose, so the legend
           has to say which green is the answer the visitor gave: without this

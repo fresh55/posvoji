@@ -125,9 +125,7 @@ function getRegionStats(
   return {
     values,
     animals,
-    live:
-      values.length > 0 &&
-      (animals > 0 || values.some((value) => selected.includes(value))),
+    live: values.length > 0,
     state: selectionState(values, selected),
   };
 }
@@ -403,16 +401,12 @@ export function mapStateName(
 }
 
 // Whether a town's marker is a control or only a place: it needs something a
-// click may toggle, and either an animal listed or a pick already made. Shared
+// click may toggle, irrespective of the active animal filters. Shared
 // by the marker, which draws the hollow "nothing listed" disc off it, and by
 // the legend helper, which decides from the same answer whether that shape is
 // on the map at all.
-export function townIsLive(town: Town, selected: string[]): boolean {
-  const values = townSelectableValues(town);
-  return (
-    values.length > 0 &&
-    (townCount(town) > 0 || selectionState(values, selected) !== false)
-  );
+export function townIsLive(town: Town): boolean {
+  return townSelectableValues(town).length > 0;
 }
 
 // One source of truth for the visible and accessible town label. A cluster is

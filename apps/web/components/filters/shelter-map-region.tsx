@@ -2,7 +2,7 @@
 
 import { memo, type CSSProperties } from "react";
 import { useI18n } from "@/components/i18n-provider";
-import { animalCount, shelterCount } from "@/lib/labels";
+import { filteredAnimalCount, shelterCount } from "@/lib/labels";
 import {
   DENSITY_STEPS,
   mapStateName,
@@ -305,14 +305,16 @@ export const Region = memo(function Region({
       aria-label={
         interactive
           ? armedNote
-            ? `${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}. ${armedNote}.`
-            : `${region.name}: ${shelterCount(stats.values.length, locale)}, ${animalCount(stats.animals, locale)}`
+            ? `${region.name}: ${shelterCount(stats.values.length, locale)}, ${filteredAnimalCount(stats.animals, locale)}. ${armedNote}.`
+            : `${region.name}: ${shelterCount(stats.values.length, locale)}, ${filteredAnimalCount(stats.animals, locale)}`
           : undefined
       }
       // Attribute and not a class, because a pattern reference cannot be
       // written as a Tailwind fill utility.
       fill={stateName === "mixed" ? `url(#${hatchId})` : undefined}
       data-region-state={stateName}
+      data-region-armed={Boolean(armedNote) || undefined}
+      strokeDasharray={armedNote ? "3 2" : undefined}
       // Only on this branch, which is the only one with a click to commit: an
       // empty region returns above and carries none. See commitKey.
       data-map-commit={
@@ -385,7 +387,8 @@ export const Region = memo(function Region({
         "outline-none transition-[fill,stroke,fill-opacity,stroke-width] motion-reduce:transition-none",
         interactive ? "cursor-pointer" : "pointer-events-none",
         MAP_MORPH,
-        REGION_LOOK[stateName][lit ? "highlighted" : "rest"],
+        REGION_LOOK[stateName][lit || armedNote ? "highlighted" : "rest"],
+        armedNote && "stroke-[var(--filter-accent-strong)] [stroke-width:1.8]",
         // 2.1: the selected region's own hover/highlighted stroke now runs at
         // 1.8, so the old 1.75 focus ring would have tied it rather than
         // outranked it. Keyboard focus has to stay the single heaviest line

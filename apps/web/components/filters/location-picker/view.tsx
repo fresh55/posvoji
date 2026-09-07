@@ -1,3 +1,5 @@
+import { filteredAnimalCount } from "@/lib/labels";
+import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import {
   ChevronLeft,
   ChevronRight,
@@ -88,12 +90,10 @@ export function LocationPickerView({
     listRef,
     dropNote,
     spotlitShelterId,
-    setSpotlitShelterId,
     panelOpen,
     setPanelOpen,
     sheetOpen,
     setSheetOpen,
-    resetDocks,
     searchRef,
     placeMode,
     searching,
@@ -145,7 +145,10 @@ export function LocationPickerView({
     <>
       <span className="min-w-0 truncate text-sm font-medium">{label}</span>
       {selected.length > 0 && (
-        <span className={cn(COUNT_PILL_CLASS, "shrink-0 text-muted-foreground")}>
+        <span
+          aria-hidden
+          className={cn(COUNT_PILL_CLASS, "shrink-0 text-muted-foreground")}
+        >
           {selected.length}
         </span>
       )}
@@ -171,38 +174,7 @@ export function LocationPickerView({
   );
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) {
-          // The box empties on the way out, unless what is in it resolved to a
-          // place. A half-typed shelter name is scratch from one visit and has
-          // no business narrowing the next one's list; a town is not, because
-          // it is the origin the whole page measures from. The grid's
-          // Najbližje sort reads it through the nearby-origin store (see
-          // usePublishNearbyOrigin), so clearing it here would quietly take the
-          // sort order away from a page the visitor is on their way back to,
-          // with nothing on screen admitting it had gone.
-          //
-          // One field, one rule, and the rule is the same one the field itself
-          // keeps: what the text is decides what happens to it.
-          if (!placeMode) setQuery("");
-          setExpandedShelter(null);
-          setSpotlitShelterId(null);
-          // The off-roster fold goes back to shut with everything else here.
-          // It is the same kind of state as the query and the open shelter,
-          // something the last visit did rather than something about the
-          // filter, and a reopened picker that kept one visit's fold while
-          // dropping that visit's search is remembering half a session.
-          setOffGroupOpen(false);
-          // Neither dock's fold survives a close: reopening always lands with
-          // both docks out, the panel beside the map at lg and the sheet over
-          // it below lg.
-          resetDocks();
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       {dress === "sidebar" ? (
         // The panel's own way in, and no DialogTrigger: the row is a header, a
         // reset and a press target, and only the last of the three opens
@@ -345,7 +317,10 @@ export function LocationPickerView({
           if (target === searchRef.current && query !== "") {
             setQuery("");
             event.preventDefault();
-          } else if (expandedShelter) {
+          } else if (
+            expandedShelter &&
+            (window.matchMedia(DESKTOP_QUERY).matches ? panelOpen : sheetOpen)
+          ) {
             setExpandedShelter(null);
             event.preventDefault();
           }
@@ -396,17 +371,8 @@ export function LocationPickerView({
             running total and a total cannot say that twelve shelters just came
             off.
 
-            The search result follows it in the same region rather than in a
-            third one: this region is already the dialog's answer to "what does
-            the list hold now", and a live region per fact would have three of
-            them competing for the same moment. The clauses are assembled in
-            reading order, and every one of them can be absent.
-
-            The running result count is the third clause, because filtering is
-            live: a click on a region changes the URL on that click, and this
-            is the only place the consequence is spoken. It reads as a
-            statement rather than as the promise the footer button used to
-            carry. */}
+            Search changes have their own live region so typing does not
+            repeat the selection and animal totals. */}
         <p aria-live="polite" className="sr-only">
           {[
             dropNote && sameValues(dropNote.after, selected)
@@ -414,10 +380,13 @@ export function LocationPickerView({
               : undefined,
             label,
             `${pickerText[locale].showing}: ${animalCount(resultCount, locale)}`,
-            searchNews,
           ]
             .filter(Boolean)
             .join(" ")}
+        </p>
+
+        <p data-picker-search-news aria-live="polite" className="sr-only">
+          {searchNews}
         </p>
 
         {/* The stage. Everything below is absolutely placed against one of its
@@ -640,19 +609,20 @@ export function LocationPickerView({
                 thing in the band that can be reached. 10px, where the two of
                 them together took 49. */}
             <div className="z-10 w-full shrink-0">
-                <MapLegend
-                  highlightedDensity={highlightedDensity}
-                  onHoverDensity={setHighlightedDensity}
-                  onLeaveDensity={() => setHighlightedDensity(null)}
-                  hasSelectedRegion={hasSelected}
-                  hasMixedRegion={hasMixed}
-                  // Both halves of the same question: there is a hollow circle
-                  // to explain only where the roster draws one and the plate
-                  // is drawing markers at all.
-                  hasEmptyMarker={hasEmpty && markersVisible}
-                  origin={origin}
-                  messages={messages}
-                />
+              <MapLegend
+                showDensity={pins.some((pin) => pin.count > 0)}
+                highlightedDensity={highlightedDensity}
+                onHoverDensity={setHighlightedDensity}
+                onLeaveDensity={() => setHighlightedDensity(null)}
+                hasSelectedRegion={hasSelected}
+                hasMixedRegion={hasMixed}
+                // Both halves of the same question: there is a hollow circle
+                // to explain only where the roster draws one and the plate
+                // is drawing markers at all.
+                hasEmptyMarker={hasEmpty && markersVisible}
+                origin={origin}
+                messages={messages}
+              />
             </div>
           </div>
 
@@ -690,9 +660,11 @@ export function LocationPickerView({
                   and was being told to click one. See markersVisible above, and
                   onMarkersVisible in shelter-map.tsx for who measures it. */}
               <DialogDescription className="text-xs leading-tight">
-                {markersVisible
-                  ? messages.mapInstructionsDesktop
-                  : messages.mapInstructionsMobile}
+                {options.length === 0
+                  ? messages.noAnimalsListed
+                  : markersVisible
+                    ? messages.mapInstructionsDesktop
+                    : messages.mapInstructionsMobile}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -848,69 +820,46 @@ export function LocationPickerView({
             {/* The rail: everything the folded panel still has to say, which is
                 that there is a list behind it and how much has been picked.
                 One control, so the whole rail head takes the click. */}
-            {!panelOpen && (
-              <button
-                type="button"
-                data-picker-rail
-                aria-expanded={false}
-                aria-label={messages.expandPanel}
-                onClick={() => setPanelOpen(true)}
-                className="hidden shrink-0 flex-col items-center gap-2 p-2 text-muted-foreground transition-colors hover:text-foreground lg:flex"
-              >
-                <ChevronLeft className="size-4" aria-hidden />
-                <List className="size-4" aria-hidden />
-                {/* No ink of its own: this pill sits inside a control that
-                    brightens on hover, and it goes with it. */}
-                {selected.length > 0 && (
-                  <span className={COUNT_PILL_CLASS}>{selected.length}</span>
-                )}
-              </button>
-            )}
-
-            {/* The panel's head, and the fold control is all of it. There used
-                to be a tab row here, "Zavetišča" beside "Najdena žival", back
-                when one dialog answered both questions; the lookup has a page
-                of its own now (found-animal-page.tsx) and this dialog picks
-                shelters. A single tab is not a tab, so nothing is left standing
-                where the row was.
-
-                lg only, on the same rule the control inside it already kept:
-                below lg the peek bar is what folds the dock, so a head row
-                there would have been an empty band of chrome above the search
-                box. That is why it is drawn only while the panel is out and
-                only from lg, and why the column below pays its own top gap at
-                the smaller sizes.
-
-                The head is drawn twice in this component, once here and once
-                in the peek bar above, because only one of them is ever on
-                screen and they cannot be one element: below lg the head is
-                itself the button that folds the sheet, from lg it is this
-                plain row beside a control that folds the panel. What goes
-                inside is shared (scopeHeadLabel above), so only the box
-                differs. Without it this row was 52px of empty band with a
-                lone chevron in it, which left the desktop list unheaded and
-                made the glyph read as "next" rather than as "hide the
-                list". */}
-            {panelOpen && (
-              <div
-                data-picker-panel-head
-                className="hidden shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2 lg:flex"
-              >
+            <div
+              data-picker-panel-head={panelOpen || undefined}
+              className={cn(
+                "hidden shrink-0 lg:flex",
+                panelOpen
+                  ? "items-center justify-between gap-2 px-4 pt-4 pb-2"
+                  : "flex-col items-center p-2",
+              )}
+            >
+              {panelOpen && (
                 <span className="flex min-w-0 items-center gap-2">
                   {scopeHeadLabel}
                 </span>
-                <button
-                  type="button"
-                  data-picker-collapse
-                  aria-expanded
-                  aria-label={messages.collapsePanel}
-                  onClick={() => setPanelOpen(false)}
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
+              )}
+              <button
+                type="button"
+                data-picker-rail={!panelOpen || undefined}
+                data-picker-collapse={panelOpen || undefined}
+                aria-expanded={panelOpen}
+                aria-label={
+                  panelOpen ? messages.collapsePanel : messages.expandPanel
+                }
+                onClick={() => setPanelOpen((current) => !current)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                {panelOpen ? (
                   <ChevronRight className="size-4" aria-hidden />
-                </button>
-              </div>
-            )}
+                ) : (
+                  <ChevronLeft className="size-4" aria-hidden />
+                )}
+                {!panelOpen && selected.length > 0 && (
+                  <span aria-hidden className={COUNT_PILL_CLASS}>
+                    {selected.length}
+                  </span>
+                )}
+              </button>
+              {!panelOpen && (
+                <List className="size-4 text-muted-foreground" aria-hidden />
+              )}
+            </div>
 
             {/* Mounted while either dock is out, and hidden at the breakpoint
                 whose dock is folded. One copy of the list and one search box,
@@ -1040,27 +989,20 @@ export function LocationPickerView({
                       // The top row a key may act on: the first match that has
                       // something to toggle. Both branches below mean the same
                       // row, so it is found once.
-                      const first = visibleRows.find(
-                        (row) =>
-                          (counts.get(row.value) ?? 0) > 0 ||
-                          selected.includes(row.value),
-                      );
+                      const first = visibleRows[0];
                       if (event.key === "Enter") {
                         event.preventDefault();
-                        // Enter means the same thing in both modes, "I am
-                        // done with this box", and the modes differ in what
-                        // that leaves to do. On a name there is a list of
-                        // matches and the top one is what was being aimed
-                        // at, so Enter takes it and search-and-pick stays
-                        // one gesture; selection and nothing else, the same
-                        // as clicking the row, because a row click asks
-                        // about nothing. On a place there is nothing to
-                        // submit, the sort having already followed the
-                        // typing, so the focus comes off the field and the
-                        // dialog is left alone. An empty box is the second
-                        // case with less in it.
+                        // Only a unique name match can be committed from the
+                        // field. Ambiguous matches hand focus to the list.
+                        // A place already sorted the rows as it was typed.
                         if (searching) {
-                          if (first) onToggle(first.value);
+                          if (
+                            first &&
+                            visibleRows.length + visibleOffRows.length === 1
+                          )
+                            onToggle(first.value);
+                          else if (first)
+                            rowRefs.current.get(first.value)?.focus();
                         } else {
                           event.currentTarget.blur();
                         }
@@ -1082,13 +1024,15 @@ export function LocationPickerView({
                     enterKeyHint="done"
                     placeholder={messages.placeOrShelter}
                     aria-label={messages.placeOrShelter}
-                    aria-describedby={statusId}
+                    aria-describedby={
+                      state.status === "error" ? undefined : statusId
+                    }
                     // 44px tall below lg, the same touch-target rule the rest of
                     // this dialog's mobile chrome keeps; lg and up gets the
                     // denser h-8 back. text-base below lg because iOS Safari
                     // zooms the page whenever a focused input sets type under
                     // 16px, and this dialog is a map: a zoom leaves it unaimable.
-                    className="h-11 pl-8 pr-8 text-base lg:h-8 lg:text-sm"
+                    className="h-11 pl-8 pr-8 text-base md:text-base lg:h-8 lg:text-sm"
                   />
                   {query !== "" && (
                     <button
@@ -1133,6 +1077,9 @@ export function LocationPickerView({
                       type="button"
                       onClick={toggleNearby}
                       aria-pressed={nearbyOn}
+                      aria-describedby={
+                        state.status === "error" ? statusId : undefined
+                      }
                       className={cn(
                         // max-lg:min-h-9 rather than the full 44px: this row sits
                         // beside the Clear button and a full min-h-11 on both
@@ -1288,7 +1235,14 @@ export function LocationPickerView({
                         // screen reader: the digits are the row's own mark
                         // and the noun beside "· 113 km" is what stopped
                         // two numbers in one row from reading alike.
-                        countLabel={(count) => animalCount(count, locale)}
+                        countLabel={(count) =>
+                          filteredAnimalCount(count, locale)
+                        }
+                        waitLabel={(duration) =>
+                          locale === "sl"
+                            ? `Najdlje čaka: ${duration}`
+                            : `Longest wait: ${duration}`
+                        }
                         // Two columns from sm up to lg, one column from lg: the
                         // single column is the narrow panel's shape, and the panel
                         // only exists from lg now. In the sheet the list has the

@@ -412,7 +412,11 @@ export function MunicipalityFinder({
               variant="ghost"
               size="icon-sm"
               onClick={() => {
-                clearQuery();
+                // Let the location toggle cancel an active or pending fix;
+                // typing's turnOff would reset it before toggle reads it.
+                setAsked(NOT_ASKED);
+                setHighlighted(null);
+                setDismissed(false);
                 locate();
               }}
               aria-pressed={state.status === "on"}

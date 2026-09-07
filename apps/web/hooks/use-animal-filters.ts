@@ -53,8 +53,32 @@ const SMOOTH_SCROLL_LIMIT = 2;
  * returning to the top of the results, and that is where the toolbar and the
  * count are too. Somebody already at or above the results is left alone.
  */
-function scrollToResults(): void {
+let pendingScroll: MutationObserver | undefined;
+
+export function scrollToResults(): void {
   if (typeof window === "undefined") return;
+  if (
+    document.body.hasAttribute("data-scroll-locked") ||
+    getComputedStyle(document.body).overflow === "hidden"
+  ) {
+    if (!pendingScroll) {
+      pendingScroll = new MutationObserver(() => {
+        if (
+          document.body.hasAttribute("data-scroll-locked") ||
+          getComputedStyle(document.body).overflow === "hidden"
+        )
+          return;
+        pendingScroll?.disconnect();
+        pendingScroll = undefined;
+        requestAnimationFrame(scrollToResults);
+      });
+      pendingScroll.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["data-scroll-locked", "style", "class"],
+      });
+    }
+    return;
+  }
   const results = document.querySelector(RESULTS_ANCHOR);
   if (!results) return;
   const top = results.getBoundingClientRect().top + window.scrollY;

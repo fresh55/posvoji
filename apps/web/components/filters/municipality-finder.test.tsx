@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { resetNearbyStore } from "@/hooks/use-nearby";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -11,6 +12,7 @@ import { MunicipalityFinder } from "./municipality-finder";
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
+  resetNearbyStore();
 });
 
 // Three občine from different corners of the country, each with real coverage,
@@ -524,6 +526,19 @@ describe("MunicipalityFinder typed text against the device position", () => {
     fireEvent.click(screen.getByRole("button", { name: "Počisti iskanje" }));
     expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
     expect(window.location.search).toBe("");
+  });
+
+  it("turns off an active fix with a second press of the location button", () => {
+    stubGeolocationAt(46.0569, 14.5058);
+    renderReal();
+    const locate = screen.getByRole("button", { name: "Uporabi mojo lokacijo" });
+    fireEvent.click(locate);
+    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    fireEvent.click(locate);
+    expect(locate.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
+    expect(window.location.search).toBe("");
+    expect(navigator.geolocation.getCurrentPosition).toHaveBeenCalledTimes(1);
   });
 });
 

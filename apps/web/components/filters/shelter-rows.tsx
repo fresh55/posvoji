@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
-import { Check, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Hourglass,
+} from "lucide-react";
 import { ShelterDetails } from "@/components/filters/shelter-details";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -83,6 +89,7 @@ export function ShelterRows({
   onExitTop,
   lessThanOneKm,
   countLabel,
+  waitLabel,
   labelledBy,
   scrollTo,
   summaries = EMPTY_SUMMARIES,
@@ -130,6 +137,7 @@ export function ShelterRows({
    *  said what it counted. Given, the digits go aria-hidden and this speaks in
    *  their place. Same caller-supplies-the-words idiom as lessThanOneKm. */
   countLabel?: (count: number) => string;
+  waitLabel?: (duration: string) => string;
   /** Ties the rows to the heading that explains them, by that heading's id. A
    *  screen reader walking this list otherwise hears row after row with
    *  nothing saying which list it is in, which matters most for the off-roster
@@ -207,10 +215,8 @@ export function ShelterRows({
       ?.scrollIntoView({ block: "nearest", behavior: "auto" });
   }, [scrollTo]);
 
-  // Arrow keys walk the enabled toggle rows only. A link row takes the tab
-  // order's own focus instead and never joins this walk, and a disabled
-  // toggle row cannot take focus, so skipping both is what keeps the walk
-  // from dead-ending.
+  // Arrow keys walk the roster toggle rows. A registry link uses the tab
+  // order instead; a zero filtered animal count does not disable a shelter.
   //
   // The info control stays out of the walk, and the walk stays one stop per
   // shelter. Every control in this list is in the tab order already, so the
@@ -224,11 +230,7 @@ export function ShelterRows({
   const moveFocus = (event: KeyboardEvent, value: string) => {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const enabled = rows.filter(
-      (row) =>
-        !row.href &&
-        ((counts.get(row.value) ?? 0) > 0 || selected.includes(row.value)),
-    );
+    const enabled = rows.filter((row) => !row.href);
     const index = enabled.findIndex((row) => row.value === value);
     if (index < 0) return;
     if (event.key === "ArrowUp" && index === 0) {
@@ -330,7 +332,6 @@ export function ShelterRows({
 
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
-          const disabled = count === 0 && !checked;
           const summary = summaries.get(value);
           const isExpanded = expanded === value;
           // Selection puts nothing on the row's surface at all: any shared fill,
@@ -374,22 +375,7 @@ export function ShelterRows({
                 // take. What is left on this side is the gutter the info
                 // control sits against, which is its own target's business.
                 "flex w-full items-center gap-1 rounded-ui pr-2 transition-colors",
-                // The cursor a disabled row shows over that gutter, said here
-                // because the div is the only thing covering it. The dimming is
-                // not here any more: it used to sit on this wrapper and took
-                // the info control down with it, and that control is live on a
-                // disabled row on purpose, since a row reading zero is exactly
-                // the row whose details say why. It dims the toggle instead,
-                // which is the part that is actually barred.
-                //
-                // Hover is the one that had to be taken away rather than
-                // repeated: CSS :hover reaches a div whatever the disabled
-                // button inside it does, so a dead row would have started
-                // tinting under the pointer.
-                disabled && "cursor-not-allowed",
-                isHighlighted
-                  ? "bg-muted/50"
-                  : !disabled && "hover:bg-muted/50",
+                isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
               )}
             >
               <button
@@ -397,7 +383,6 @@ export function ShelterRows({
                 ref={setRef}
                 onClick={() => onToggle?.(value)}
                 onKeyDown={(event) => moveFocus(event, value)}
-                disabled={disabled}
                 aria-pressed={checked}
                 data-highlighted={isHighlighted || undefined}
                 className={cn(
@@ -409,9 +394,7 @@ export function ShelterRows({
                   // ring is drawn inside the button's own box, because the row
                   // leaves no room outside it; animal-card.tsx already uses an
                   // inset outline for the same reason.
-                  "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-1.5 pl-2 text-left max-lg:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-[-2px] disabled:cursor-not-allowed",
-                  // The dimming the wrapper used to do for the whole row.
-                  disabled && "opacity-40",
+                  "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-1.5 pl-2 text-left max-lg:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
                 )}
               >
                 {/* Always laid out, so selecting a row doesn't shift the list. */}
@@ -471,11 +454,20 @@ export function ShelterRows({
                       )}
                     </Badge>
                   </span>
-                  {sublabel && (
-                    <span className="block truncate text-2xs text-muted-foreground">
-                      {sublabel}
-                    </span>
-                  )}
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-muted-foreground">
+                    {sublabel && (
+                      <span className="min-w-0 truncate">{sublabel}</span>
+                    )}
+                    {count > 0 && summary?.longestWaiting && waitLabel && (
+                      <span
+                        data-row-wait
+                        className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400"
+                      >
+                        <Hourglass className="size-3 shrink-0" aria-hidden />
+                        {waitLabel(summary.longestWaiting.duration)}
+                      </span>
+                    )}
+                  </span>
                 </span>
               </button>
 
@@ -488,19 +480,8 @@ export function ShelterRows({
                 width, so gating it would take shelter inspection away from
                 phones for no reason left standing.
 
-                A disabled row keeps its control, at full strength. Its panel
-                is measured against every animal in the shelter, never against
-                the active filters, so a row reading zero is exactly the row
-                whose details answer why, and dimming the one live control on
-                that row along with the dead one was both a contrast failure
-                and a lie about what could be pressed. The opacity sits on the
-                toggle now. cursor-pointer is stated here because the wrapper
-                hands down cursor-not-allowed over its gutter and this control
-                is not the part that is barred.
-
-                A shelter with nothing to say gets no control at all: see the
-                hasDetails gate below, which is the same test the panel's fill
-                is drawn behind.
+                Details describe the full shelter roster, including when the
+                current filters match no animals there.
 
                 A chevron, not a circled i. The two glyphs promise different
                 things: an i is the mark for a tip or a popover, something small

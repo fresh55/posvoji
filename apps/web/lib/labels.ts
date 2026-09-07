@@ -490,3 +490,10 @@ export function sizeLabel(size: AnimalSize, locale: Locale): string {
     ] ?? size
   );
 }
+
+/** A facet count, explicitly distinguished from the shelter’s full roster. */
+export function filteredAnimalCount(n: number, locale: Locale): string {
+  return n > 0
+    ? animalCount(n, locale)
+    : `${animalCount(n, locale)} ${locale === "sl" ? "s temi filtri" : "with these filters"}`;
+}

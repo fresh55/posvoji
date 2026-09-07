@@ -10,7 +10,6 @@ one would give a single record two editing authorities. Those shelters get
 import logging
 from typing import Annotated
 
-from django.db import transaction
 from django.utils import timezone
 from ninja import Path, Router
 from ninja.errors import HttpError
@@ -23,6 +22,7 @@ from ..dataset import (
     is_animal_id_of,
     merge_animal,
 )
+from ..db import serialized_write
 from ..models import COLUMN_BY_JSON_KEY, AnimalOverride, clean_text
 from ..schemas import AnimalOut, AnimalOverrideIn
 from ..security import require_shelter
@@ -92,12 +92,10 @@ def upsert_override(
     crawled_animal = find_animal(shelter.slug, animal_id, crawled=True)
     crawled = crawled_values(crawled_animal) if crawled_animal is not None else None
 
-    # Serialize the whole read-modify-write cycle. save() writes every model
-    # field, so without it two partial requests can each overwrite the other
-    # request's unrelated field and baseline entry. On SQLite the transaction
-    # is what does this: it opens IMMEDIATE (settings.py), so a second writer
-    # waits at BEGIN, and select_for_update is a no-op there.
-    with transaction.atomic():
+    # The whole read-modify-write cycle is one write. save() writes every
+    # model field, so without this two partial requests can each overwrite the
+    # other request's unrelated field and baseline entry.
+    with serialized_write():
         override = (
             AnimalOverride.objects.select_for_update()
             .filter(shelter=shelter, animal_id=animal_id)
@@ -128,12 +126,13 @@ def upsert_override(
 
         # No stated value is no override. A row with nothing in it would only
         # carry an updated_at saying the shelter edited an animal it did not.
-        if not override.overridden_fields():
+        # Dropping the local reference as well is what makes the answer below
+        # the one an animal without an override gets.
+        if override.is_empty():
             if override.pk is not None:
                 override.delete()
-            return merge_animal(animal or {"id": animal_id}, None)
-
-        if changes:
+            override = None
+        elif changes:
             override.updated_by = request.user
             override.save()
 

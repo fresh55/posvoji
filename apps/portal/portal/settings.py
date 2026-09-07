@@ -31,29 +31,24 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def _env_optional_nonnegative_int(name: str) -> int | None:
-    raw = os.environ.get(name)
-    if raw is None or raw.strip() == "":
-        return None
-    try:
-        value = int(raw)
-    except ValueError as error:
-        raise ImproperlyConfigured(f"{name} must be a non-negative integer") from error
-    if value < 0:
-        raise ImproperlyConfigured(f"{name} must be a non-negative integer")
-    return value
+def _env_int(
+    name: str, *, default: int | None, minimum: int, must_be: str
+) -> int | None:
+    """An integer setting, or the default when the variable is unset or blank.
 
-
-def _env_positive_int(name: str, default: int) -> int:
+    must_be names the bound the way the caller wants it read back, because a
+    misconfigured deployment is told what to write, not which number failed a
+    comparison.
+    """
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
         return default
     try:
         value = int(raw)
     except ValueError as error:
-        raise ImproperlyConfigured(f"{name} must be a positive integer") from error
-    if value <= 0:
-        raise ImproperlyConfigured(f"{name} must be a positive integer")
+        raise ImproperlyConfigured(f"{name} must be {must_be}") from error
+    if value < minimum:
+        raise ImproperlyConfigured(f"{name} must be {must_be}")
     return value
 
 
@@ -133,7 +128,12 @@ DATABASES = {
         "OPTIONS": {
             "transaction_mode": "IMMEDIATE",
             # Seconds a writer waits for the lock before it gives up.
-            "timeout": _env_positive_int("PORTAL_DB_TIMEOUT", 20),
+            "timeout": _env_int(
+                "PORTAL_DB_TIMEOUT",
+                default=20,
+                minimum=1,
+                must_be="a positive integer",
+            ),
             "init_command": os.environ.get("PORTAL_DB_INIT_COMMAND")
             or "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
         },
@@ -170,7 +170,12 @@ SESAME_ONE_TIME = True
 PORTAL_LOGIN_LINK_RATE = (
     os.environ.get("PORTAL_LOGIN_LINK_RATE", "5/hour").strip() or "5/hour"
 )
-PORTAL_TRUSTED_PROXY_COUNT = _env_optional_nonnegative_int("PORTAL_TRUSTED_PROXY_COUNT")
+PORTAL_TRUSTED_PROXY_COUNT = _env_int(
+    "PORTAL_TRUSTED_PROXY_COUNT",
+    default=None,
+    minimum=0,
+    must_be="a non-negative integer",
+)
 
 # Development only: /api/auth/dev/* lists every shelter and opens a session as
 # any of them without a mail round trip. `DEBUG and` is the real guard, so

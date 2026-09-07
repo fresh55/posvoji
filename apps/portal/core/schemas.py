@@ -22,6 +22,11 @@ from .models import (
     clean_text,
 )
 
+# Every bound below is stated twice, here and in the editor that sends the
+# value: apps/web/components/portal/portal-fields.ts. Change one and change
+# the other, or the client refuses what the server takes, or worse offers what
+# the server answers 422 to.
+
 # A hundred years. The web client caps the age field at the same value, and
 # anything near the integer limit used to overflow the column.
 MAX_AGE_MONTHS = 1200
@@ -133,6 +138,8 @@ class AnimalOverrideIn(Schema):
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
+    # 200 for a name or a breed, 2000 for the description. The editor counts
+    # against the same two in apps/web/components/portal/portal-fields.ts.
     name: str | None = Field(default=None, max_length=200)
     shortDescription: str | None = Field(default=None, max_length=2000)
     status: OverrideStatus | None = None
@@ -174,6 +181,8 @@ class ListingIn(Schema):
     )
 
     species: ListingSpecies
+    # The same 200 and 2000 as an override, and the same two the editor holds
+    # in apps/web/components/portal/portal-fields.ts.
     name: str = Field(max_length=200)
     status: OverrideStatus = OverrideStatus.AVAILABLE
     sex: OverrideSex | None = None

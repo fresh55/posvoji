@@ -16,13 +16,12 @@ carried the correction forward would look like a crawl that caught up.
 
 import json
 import logging
-import unicodedata
 from pathlib import Path
 from typing import Any
 
 from django.conf import settings
 
-from .models import OVERRIDE_FIELDS, AnimalOverride
+from .models import OVERRIDE_FIELDS, AnimalOverride, has_control_character
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +165,7 @@ def is_animal_id_of(slug: str, animal_id: str) -> bool:
     local_id = animal_id.removeprefix(f"{slug}:")
     if local_id == animal_id or not local_id:
         return False
-    return not any(unicodedata.category(char) == "Cc" for char in animal_id)
+    return not has_control_character(animal_id)
 
 
 def thumbnail_url(animal: Animal) -> str | None:

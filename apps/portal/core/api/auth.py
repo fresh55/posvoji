@@ -18,7 +18,7 @@ from ninja import Router, Status
 from sesame.utils import get_token as get_login_token
 from sesame.utils import get_user
 
-from ..models import Shelter
+from ..models import Shelter, has_control_character
 from ..schemas import CsrfOut, ErrorOut, MeOut, RequestLinkIn, VerifyIn
 from ..security import csrf_auth, request_link_throttle
 
@@ -76,7 +76,13 @@ def return_path(candidate: str | None) -> str | None:
     rest = candidate[len(PORTAL_PATH) :]
     if rest and rest[0] not in "/?":
         return None
-    if any(c.isspace() or c == "\\" or ord(c) < 32 or ord(c) == 127 for c in candidate):
+    # Two separate rules that used to be spelled as one scan. A control
+    # character is not something a portal address holds at all, and models.py
+    # is where that is defined for the whole app; whitespace and the backslash
+    # are what could break the value out of the query it travels in.
+    if has_control_character(candidate):
+        return None
+    if any(c.isspace() or c == "\\" for c in candidate):
         return None
     login_page = settings.MAGIC_LINK_PATH
     if candidate == login_page or candidate.startswith(

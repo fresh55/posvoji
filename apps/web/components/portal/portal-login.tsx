@@ -23,7 +23,11 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { takePortalReturn } from "@/hooks/use-portal-session";
+import {
+  isPortalReturnPath,
+  peekPortalReturn,
+  takePortalReturn,
+} from "@/hooks/use-portal-session";
 import {
   commitSearch,
   getSearchSnapshot,
@@ -141,20 +145,26 @@ export function PortalLogin() {
     getSearchSnapshot,
     getServerSearchSnapshot,
   );
-  const token = useMemo(
-    () => new URLSearchParams(search).get("token"),
-    [search],
-  );
+  // The link carries the token and, when the shelter was sent to the login
+  // from a page inside the portal, that page as `nazaj`. Both are read in one
+  // go: the address bar is cleaned once the token is captured.
+  const link = useMemo(() => {
+    const params = new URLSearchParams(search);
+    return { token: params.get("token"), back: params.get("nazaj") };
+  }, [search]);
 
   const [state, setState] = useState<LoginState>({ step: "form" });
   const [email, setEmail] = useState("");
-  const [checking, setChecking] = useState<string | null>(null);
+  const [checking, setChecking] = useState<{
+    token: string;
+    back: string | null;
+  } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // A token in the URL switches the card to "verifying" in the same render it
   // becomes visible, so the login form never flashes behind it.
-  if (token && token !== checking) {
-    setChecking(token);
+  if (link.token && link.token !== checking?.token) {
+    setChecking({ token: link.token, back: link.back });
     setState({ step: "verifying" });
   }
 
@@ -166,15 +176,23 @@ export function PortalLogin() {
     let live = true;
 
     // A login link is single use. Once it has been read it has no business in
-    // the address bar, in the history, or in a referer.
+    // the address bar, in the history, or in a referer. The whole query goes,
+    // so the page it named goes with it.
     commitSearch("", "replace");
 
-    verifyToken(checking).then(
+    verifyToken(checking.token).then(
       () => {
+        if (!live) return;
         // replace, not assign: the token never becomes a history entry the
         // back button can walk into. Back to the page the shelter was sent
-        // here from, when there is one, else to the list.
-        if (live) window.location.replace(takePortalReturn());
+        // here from, when there is one, else to the list. The link's answer
+        // comes first: it is what a tab the mail opened has. The remembered
+        // one is taken either way, so it is not left for a later login.
+        const remembered = takePortalReturn();
+        const back = checking.back;
+        window.location.replace(
+          back !== null && isPortalReturnPath(back) ? back : remembered,
+        );
       },
       (error: unknown) => {
         if (!live) return;
@@ -225,7 +243,11 @@ export function PortalLogin() {
 
     setState({ step: "sending" });
     try {
-      await requestLoginLink(address);
+      // Along with the address goes the page the shelter was sent here from,
+      // for the link to bring back: the mail opens it in a tab of its own,
+      // which has no storage of ours to read that page from. Peeked, not
+      // taken: a login that follows in this tab still lands there.
+      await requestLoginLink(address, peekPortalReturn());
       setState({ step: "sent", email: address });
     } catch (cause) {
       // The address is not what failed, so it keeps its valid state and the

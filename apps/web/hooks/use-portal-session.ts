@@ -53,8 +53,9 @@ export function portalNewListingPath(shelter: string): string {
  * them back there rather than to the list. sessionStorage, so it lives as
  * long as the tab and no longer, and a key of its own so clearing the drafts
  * leaves it alone. Same tab only: a magic link clicked in the mail opens a
- * new tab, which has no storage of its own to read this from, and lands on
- * the list as before.
+ * new tab, which has no storage of its own to read this from. For that tab
+ * the login page sends the path along with the request for the link, and the
+ * link brings it back as its `nazaj` parameter.
  */
 export const PORTAL_RETURN_KEY = "posvoji.portal.return";
 
@@ -89,6 +90,22 @@ export function rememberPortalReturn(): void {
   } catch {
     // Storage blocked. The shelter lands on the list instead, as before.
   }
+}
+
+/**
+ * The remembered page, left in place, or null when there is none or what is
+ * there is not a portal address. For the request for a login link, which
+ * sends the page along so the link can carry it into a new tab: the login
+ * that follows in this tab still takes it.
+ */
+export function peekPortalReturn(): string | null {
+  try {
+    const stored = window.sessionStorage.getItem(PORTAL_RETURN_KEY);
+    if (stored && isPortalReturnPath(stored)) return stored;
+  } catch {
+    // Storage blocked. Nothing could have been remembered either.
+  }
+  return null;
 }
 
 /**

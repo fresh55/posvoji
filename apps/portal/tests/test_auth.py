@@ -1,4 +1,5 @@
 import json
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from django.core import mail
@@ -13,6 +14,7 @@ VERIFY = "/api/auth/verify"
 LOGOUT = "/api/auth/logout"
 ME = "/api/me"
 CSRF = "/api/auth/csrf"
+DEEP_LINK = "/portal/zival?zavetisce=testno&id=1"
 
 
 def post(client, url, payload, **request_extra):
@@ -24,6 +26,13 @@ def post(client, url, payload, **request_extra):
         HTTP_X_CSRFTOKEN=csrf_token,
         **request_extra,
     )
+
+
+def link_query(message) -> dict[str, list[str]]:
+    """The query of the one link in a login mail, decoded."""
+    links = [line for line in message.body.splitlines() if line.startswith("http")]
+    assert len(links) == 1
+    return parse_qs(urlsplit(links[0]).query)
 
 
 @pytest.fixture(autouse=True)
@@ -65,6 +74,62 @@ def test_request_link_emails_a_member(client, member):
     assert message.to == [member.email]
     assert "http://localhost:3000/portal/prijava?token=" in message.body
     assert "uporabiti samo enkrat" in message.body
+    assert "nazaj" not in link_query(message)
+
+
+@pytest.mark.django_db
+def test_request_link_carries_the_page_the_shelter_was_on(client, member):
+    response = post(client, REQUEST_LINK, {"email": member.email, "next": DEEP_LINK})
+
+    assert response.status_code == 204
+    assert len(mail.outbox) == 1
+    query = link_query(mail.outbox[0])
+    assert query["token"]
+    assert query["nazaj"] == [DEEP_LINK]
+    # Encoded, so the page's own query does not run into the link's.
+    assert "nazaj=%2Fportal%2Fzival%3Fzavetisce%3Dtestno%26id%3D1" in (
+        mail.outbox[0].body
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "planted",
+    [
+        "https://evil.example/portal",
+        "//evil.example/portal",
+        "javascript:alert(1)",
+        "/portalx",
+        "/zavetisca/ljubljana",
+        "/portal/prijava",
+        "/portal/prijava?token=abc",
+        "/portal\\@evil.example",
+        "/portal/zival?x=1\nlocation:https://evil.example",
+        "/portal/zival?x=1 y",
+        "/portal/zival?x=1\x00",
+        "/portal/zival?id=" + "a" * 500,
+        "",
+    ],
+)
+def test_request_link_drops_a_page_outside_the_portal(client, member, planted):
+    response = post(client, REQUEST_LINK, {"email": member.email, "next": planted})
+
+    assert response.status_code == 204
+    assert len(mail.outbox) == 1
+    query = link_query(mail.outbox[0])
+    assert query["token"]
+    assert "nazaj" not in query
+    assert "evil.example" not in mail.outbox[0].body
+
+
+@pytest.mark.django_db
+def test_request_link_with_a_page_still_tells_nothing_about_the_address(client):
+    response = post(
+        client, REQUEST_LINK, {"email": "kdorkoli@example.si", "next": DEEP_LINK}
+    )
+
+    assert response.status_code == 204
+    assert mail.outbox == []
 
 
 @pytest.mark.django_db

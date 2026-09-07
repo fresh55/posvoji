@@ -67,6 +67,11 @@ class RequestLinkIn(Schema):
     model_config = ConfigDict(extra="forbid")
 
     email: str = Field(max_length=254)
+    # The portal page the shelter was on before the login, to be carried in
+    # the link. No length constraint here on purpose: a value that is too
+    # long or not a portal path is dropped in the view, not answered with a
+    # 422, so the mail still goes out.
+    next: str | None = None
 
 
 class VerifyIn(Schema):

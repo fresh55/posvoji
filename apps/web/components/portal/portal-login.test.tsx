@@ -48,6 +48,21 @@ afterEach(() => {
   window.history.replaceState(null, "", "/portal");
 });
 
+const DEEP_LINK = "/portal/zival?zavetisce=testno&id=1";
+
+// Addresses a login must never send the browser to, whether they were
+// planted in storage or in the link itself.
+const OUTSIDE_THE_PORTAL = [
+  "https://evil.example/portal",
+  "//evil.example/portal",
+  "javascript:alert(1)",
+  "/portalx",
+  "/zavetisca/ljubljana",
+  "/portal/prijava?token=abc",
+  "/portal\\@evil.example",
+  "/portal/zival?x=1\nlocation:https://evil.example",
+];
+
 function emailBox(): HTMLElement {
   return screen.getByLabelText(portalText.emailLabel);
 }
@@ -105,7 +120,7 @@ describe("the address the link is sent to", () => {
     expect(requestLoginLink).not.toHaveBeenCalled();
   });
 
-  it("sends a well formed one", async () => {
+  it("sends a well formed one, with no page to come back to", async () => {
     vi.mocked(requestLoginLink).mockResolvedValue(undefined);
     render(<PortalLogin />);
 
@@ -113,7 +128,38 @@ describe("the address the link is sent to", () => {
     send();
 
     await screen.findByText(portalText.sentTitle);
-    expect(requestLoginLink).toHaveBeenCalledWith("info@zavetisce.si");
+    expect(requestLoginLink).toHaveBeenCalledWith("info@zavetisce.si", null);
+  });
+
+  it("sends the page the shelter was sent away from along with it", async () => {
+    window.history.replaceState(null, "", DEEP_LINK);
+    rememberPortalReturn();
+    window.history.replaceState(null, "", "/portal/prijava");
+    vi.mocked(requestLoginLink).mockResolvedValue(undefined);
+    render(<PortalLogin />);
+
+    type("info@zavetisce.si");
+    send();
+
+    await screen.findByText(portalText.sentTitle);
+    expect(requestLoginLink).toHaveBeenCalledWith(
+      "info@zavetisce.si",
+      DEEP_LINK,
+    );
+    // Peeked, not taken: a login that follows in this tab still lands there.
+    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBe(DEEP_LINK);
+  });
+
+  it("sends no page that is not inside the portal", async () => {
+    window.sessionStorage.setItem(PORTAL_RETURN_KEY, "https://evil.example");
+    vi.mocked(requestLoginLink).mockResolvedValue(undefined);
+    render(<PortalLogin />);
+
+    type("info@zavetisce.si");
+    send();
+
+    await screen.findByText(portalText.sentTitle);
+    expect(requestLoginLink).toHaveBeenCalledWith("info@zavetisce.si", null);
   });
 });
 
@@ -152,6 +198,20 @@ describe("a token that arrives in the address bar", () => {
     expect(window.location.search).toBe("");
   });
 
+  it("takes the page it came with out of the URL as well", () => {
+    vi.mocked(verifyToken).mockReturnValue(new Promise(() => {}));
+    window.history.replaceState(
+      null,
+      "",
+      `/portal/prijava?token=abc123&nazaj=${encodeURIComponent(DEEP_LINK)}`,
+    );
+
+    render(<PortalLogin />);
+
+    expect(verifyToken).toHaveBeenCalledWith("abc123");
+    expect(window.location.search).toBe("");
+  });
+
   it("stays out of it when the check fails on the transport", async () => {
     vi.mocked(verifyToken).mockRejectedValue(new Error("offline"));
     window.history.replaceState(null, "", "/portal?token=abc123");
@@ -167,7 +227,6 @@ describe("a token that arrives in the address bar", () => {
 
 describe("where a login that went through lands", () => {
   const SESSION = { email: "info@zavetisce.si", shelters: [] };
-  const DEEP_LINK = "/portal/zival?zavetisce=testno&id=1";
   const realLocation = window.location;
 
   /**
@@ -176,19 +235,26 @@ describe("where a login that went through lands", () => {
    * carries the address the test arrived on, frozen: the page reads the
    * token off it, and what it writes back goes to the real history.
    */
-  function arriveWithToken(): ReturnType<typeof vi.fn> {
-    window.history.replaceState(null, "", "/portal/prijava?token=abc123");
+  function arriveWithToken(
+    search = "?token=abc123",
+  ): ReturnType<typeof vi.fn> {
+    window.history.replaceState(null, "", `/portal/prijava${search}`);
     const replace = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
         pathname: "/portal/prijava",
-        search: "?token=abc123",
-        href: "http://localhost/portal/prijava?token=abc123",
+        search,
+        href: `http://localhost/portal/prijava${search}`,
         replace,
       },
     });
     return replace;
+  }
+
+  /** A link from the mail, with the page it was asked for in it. */
+  function linkWith(back: string): string {
+    return `?token=abc123&nazaj=${encodeURIComponent(back)}`;
   }
 
   afterEach(() => {
@@ -225,26 +291,84 @@ describe("where a login that went through lands", () => {
     });
   });
 
-  it.each([
-    "https://evil.example/portal",
-    "//evil.example/portal",
-    "/portalx",
-    "/zavetisca/ljubljana",
-    "/portal/prijava?token=abc",
-    "/portal\\@evil.example",
-    "/portal/zival?x=1\nlocation:https://evil.example",
-  ])("never leaves the portal for a remembered %s", async (planted) => {
-    window.sessionStorage.setItem(PORTAL_RETURN_KEY, planted);
+  it.each(OUTSIDE_THE_PORTAL)(
+    "never leaves the portal for a remembered %s",
+    async (planted) => {
+      window.sessionStorage.setItem(PORTAL_RETURN_KEY, planted);
 
-    const replace = arriveWithToken();
+      const replace = arriveWithToken();
+      vi.mocked(verifyToken).mockResolvedValue(SESSION);
+      render(<PortalLogin />);
+
+      await waitFor(() => {
+        expect(replace).toHaveBeenCalledWith(PORTAL_PATH);
+      });
+      expect(replace).not.toHaveBeenCalledWith(planted);
+      expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBeNull();
+    },
+  );
+
+  // The tab the mail opened has no storage of ours: the link is all it has.
+  it("goes where the link says in a tab that remembers nothing", async () => {
+    const replace = arriveWithToken(linkWith(DEEP_LINK));
+    vi.mocked(verifyToken).mockResolvedValue(SESSION);
+    render(<PortalLogin />);
+
+    expect(verifyToken).toHaveBeenCalledWith("abc123");
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(DEEP_LINK);
+    });
+  });
+
+  it("lets the link outrank what the tab remembers", async () => {
+    window.sessionStorage.setItem(PORTAL_RETURN_KEY, "/portal/nastavitve");
+
+    const replace = arriveWithToken(linkWith(DEEP_LINK));
+    vi.mocked(verifyToken).mockResolvedValue(SESSION);
+    render(<PortalLogin />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(DEEP_LINK);
+    });
+    // Taken all the same, so it is not left for a later login.
+    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBeNull();
+  });
+
+  it.each(OUTSIDE_THE_PORTAL)(
+    "never leaves the portal for a link that says %s",
+    async (planted) => {
+      const replace = arriveWithToken(linkWith(planted));
+      vi.mocked(verifyToken).mockResolvedValue(SESSION);
+      render(<PortalLogin />);
+
+      await waitFor(() => {
+        expect(replace).toHaveBeenCalledWith(PORTAL_PATH);
+      });
+      expect(replace).not.toHaveBeenCalledWith(planted);
+    },
+  );
+
+  it("falls back to what the tab remembers when the link's page is bad", async () => {
+    window.history.replaceState(null, "", DEEP_LINK);
+    rememberPortalReturn();
+
+    const replace = arriveWithToken(linkWith("https://evil.example/portal"));
+    vi.mocked(verifyToken).mockResolvedValue(SESSION);
+    render(<PortalLogin />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(DEEP_LINK);
+    });
+  });
+
+  it("lands on the list when the link names an empty page", async () => {
+    const replace = arriveWithToken("?token=abc123&nazaj=");
     vi.mocked(verifyToken).mockResolvedValue(SESSION);
     render(<PortalLogin />);
 
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith(PORTAL_PATH);
     });
-    expect(replace).not.toHaveBeenCalledWith(planted);
-    expect(window.sessionStorage.getItem(PORTAL_RETURN_KEY)).toBeNull();
   });
 
   it("remembers only a page inside the portal", () => {

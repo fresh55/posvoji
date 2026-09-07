@@ -75,6 +75,12 @@ would run in parallel.
    exist.
 2. The link points at `FRONTEND_URL + /portal/prijava?token=...`. The token is
    signed by django-sesame, is valid for one hour and can be used only once.
+   The request may carry `next`, the portal page the shelter was on; the link
+   then carries it URL-encoded as `nazaj`, so a tab the mail opens lands on
+   that page after the login. Only a path under `/portal` that is not the
+   login page and has no whitespace or control characters is taken; anything
+   else is dropped without changing the response, and the value is never
+   logged or stored.
 3. The frontend posts the token to `POST /api/auth/verify`, which opens a
    normal Django session and sets the session cookie.
 

@@ -139,6 +139,20 @@ describe("requests", () => {
     expect(init.body).toBe(JSON.stringify({ email: "info@zavetisce.si" }));
   });
 
+  it("posts the page to come back to only when there is one", async () => {
+    respondWithCsrf(204);
+    await requestLoginLink("info@zavetisce.si", "/portal/zival?id=1");
+    expect(lastCall()[1].body).toBe(
+      JSON.stringify({ email: "info@zavetisce.si", next: "/portal/zival?id=1" }),
+    );
+
+    respondWithCsrf(204);
+    await requestLoginLink("info@zavetisce.si", null);
+    expect(lastCall()[1].body).toBe(
+      JSON.stringify({ email: "info@zavetisce.si" }),
+    );
+  });
+
   it("gets a CSRF token with the API cookie included", async () => {
     respond(200, { csrfToken: "abc123" });
 

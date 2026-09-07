@@ -474,11 +474,19 @@ export function fetchCsrfToken(): Promise<string> {
   return pending;
 }
 
-/** A 204 never reveals whether the account exists; throttling/network errors reject. */
-export function requestLoginLink(email: string): Promise<void> {
+/**
+ * A 204 never reveals whether the account exists; throttling/network errors
+ * reject. `next` is the portal page the shelter was on, for the link to
+ * carry into the tab it opens. The caller vets it, and the field stays out of
+ * the body when there is none.
+ */
+export function requestLoginLink(
+  email: string,
+  next: string | null = null,
+): Promise<void> {
   return request<void>("/api/auth/request-link", {
     method: "POST",
-    body: { email },
+    body: next === null ? { email } : { email, next },
     csrf: true,
   });
 }

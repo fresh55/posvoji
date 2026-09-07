@@ -153,6 +153,42 @@ describe("mobile filter hardening", () => {
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
 
+  it("keeps the sheet mounted at zero results while a filter is on", async () => {
+    // The other flat state, and the worse one: the Ostale tab with a shelter
+    // picked matches nothing, so every facet is empty and resultCount is 0
+    // rather than the >1 the clause above holds on. The sheet went with it,
+    // and with the sheet went the sort control and the shelter chips inside
+    // it, in the one state a visitor is looking for a way back out. A filter
+    // is on here, so there is something in the sheet to take off.
+    render(
+      <I18nProvider locale="en">
+        <AnimalFilters
+          isEmpty={false}
+          filters={{ ...EMPTY_FILTERS, shelter: ["test"] }}
+          speciesTally={{ all: 0, dog: 0, cat: 0, other: 0 }}
+          speciesRoster={{ all: 1, dog: 0, cat: 0, other: 1 }}
+          groups={[]}
+          counts={emptyCounts}
+          toggles={[]}
+          toggleTally={new Map()}
+          shelters={[{ value: "test", label: "Test shelter" }]}
+          shelterTally={new Map([["test", 0]])}
+          chips={[]}
+          resultCount={0}
+          sort="longest-in-shelter"
+          onSpeciesChange={vi.fn()}
+          onClearAll={vi.fn()}
+          onSortChange={vi.fn()}
+          {...filterActions}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+
+    expect(await screen.findByRole("combobox")).toBeTruthy();
+  });
+
   it("keeps the species tabs and a 44px sort control in the mobile toolbar", () => {
     render(
       <I18nProvider locale="en">

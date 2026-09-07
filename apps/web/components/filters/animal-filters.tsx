@@ -121,6 +121,10 @@ export function AnimalFilters({
 } & FilterActionContract) {
   const { locale } = useI18n();
   const reduceMotion = useReducedMotion();
+  // Values, not sections. The chips row counts the same things and sits on the
+  // same screen; a badge reading 1 over a row of two pills was two answers to
+  // one question.
+  const activeCount = activeFilterCount(filters);
   const hasFilterSheet =
     groups.length > 0 ||
     toggles.length > 0 ||
@@ -131,11 +135,13 @@ export function AnimalFilters({
     // multi-animal result set has nothing left to filter but still has an
     // order to pick, so the sheet must not vanish just because every facet
     // count is flat.
-    resultCount > 1;
-  // Values, not sections. The chips row counts the same things and sits on the
-  // same screen; a badge reading 1 over a row of two pills was two answers to
-  // one question.
-  const activeCount = activeFilterCount(filters);
+    resultCount > 1 ||
+    // Zero results is the other state where every facet is flat, and it is the
+    // state a visitor most needs the sheet in: the Ostale tab with a shelter
+    // picked matches nothing, so resultCount is 0 and the sheet used to go,
+    // taking the sort control and the shelter chips inside it off the page
+    // until the visitor cleared. Anything the sheet can undo keeps it open.
+    activeCount > 0;
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker

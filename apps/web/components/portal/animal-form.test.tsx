@@ -188,10 +188,8 @@ describe("AnimalForm", () => {
         draft={draftFrom(subject)}
         reverting={() => false}
         saving={false}
-        ageError={null}
-        ageErrorId="t-age-error"
-        dateError={false}
-        dateErrorId="t-date-error"
+        refused={null}
+        refusedErrorId="t-refused-error"
         {...handlers}
         {...props}
       />,
@@ -261,12 +259,12 @@ describe("AnimalForm", () => {
   });
 
   it("marks only the age box at fault", () => {
-    renderForm(animal(), { ageError: "months" });
+    renderForm(animal(), { refused: "ageMonths" });
 
     expect(box("portal-age-years").getAttribute("aria-invalid")).toBeNull();
     expect(box("portal-age-months").getAttribute("aria-invalid")).toBe("true");
     expect(box("portal-age-months").getAttribute("aria-errormessage")).toBe(
-      "t-age-error",
+      "t-refused-error",
     );
     expect(screen.getByRole("alert").textContent).toContain(
       portalText.invalidError,
@@ -274,13 +272,13 @@ describe("AnimalForm", () => {
   });
 
   it("puts the date's message under the date box", () => {
-    renderForm(animal(), { dateError: true });
+    renderForm(animal(), { refused: "birthDate" });
 
     const date = box("portal-birth-date");
     expect(date.getAttribute("aria-invalid")).toBe("true");
-    expect(date.getAttribute("aria-errormessage")).toBe("t-date-error");
+    expect(date.getAttribute("aria-errormessage")).toBe("t-refused-error");
     const message = screen.getByRole("alert");
-    expect(message.id).toBe("t-date-error");
+    expect(message.id).toBe("t-refused-error");
     expect(message.textContent).toContain(portalText.birthDateError);
     expect(
       document

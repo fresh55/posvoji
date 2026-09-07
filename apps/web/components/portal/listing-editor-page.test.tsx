@@ -12,6 +12,12 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
 import {
+  confirmShown,
+  fieldRow,
+  makeUnreadable,
+  typeUnreadable,
+} from "@/components/portal/editor-test-helpers";
+import {
   COMPATIBILITY_META,
   ENERGY_META,
   SEX_META,
@@ -236,12 +242,6 @@ function breadcrumb(): HTMLElement {
   return screen.getByRole("link", { name: portalText.animalsTitle });
 }
 
-function fieldRow(name: string): HTMLElement {
-  const found = document.querySelector<HTMLElement>(`[data-field="${name}"]`);
-  if (!found) throw new Error(`no row for ${name}`);
-  return found;
-}
-
 function fileBox(): HTMLInputElement {
   return screen.getByLabelText(portalText.photoAdd) as HTMLInputElement;
 }
@@ -257,10 +257,6 @@ function pick(...files: File[]) {
 /** Every photo box in the grid, stored and pending alike. */
 function photoImages(): HTMLImageElement[] {
   return Array.from(document.querySelectorAll<HTMLImageElement>("figure img"));
-}
-
-function confirmShown(): boolean {
-  return screen.queryByText(portalText.leaveTitle) !== null;
 }
 
 function yearsBox(): HTMLInputElement {
@@ -281,24 +277,6 @@ function saveBar(): HTMLElement {
   const bar = document.querySelector<HTMLElement>("[data-save-bar]");
   if (!bar) throw new Error("no save bar");
   return bar;
-}
-
-/**
- * What Chromium reports for "2-1" in a number box or a year of 0001 in the
- * date box: an empty value with validity.badInput set. jsdom reads every
- * value, so the flag is put on the box by hand.
- */
-function makeUnreadable(control: HTMLElement, badInput = true) {
-  Object.defineProperty(control, "validity", {
-    configurable: true,
-    value: { badInput },
-  });
-}
-
-/** Types something the browser cannot read into a box that held a value. */
-function typeUnreadable(control: HTMLElement) {
-  makeUnreadable(control);
-  fireEvent.change(control, { target: { value: "" } });
 }
 
 /** A save that never answers, for the page while it is waiting. */

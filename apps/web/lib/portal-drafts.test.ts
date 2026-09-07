@@ -9,7 +9,6 @@ import {
   draftIds,
   draftKey,
   draftValueDiffers,
-  keepKnownDraftKeys,
   readDraft,
   resumeDraft,
   subscribeDrafts,
@@ -240,35 +239,6 @@ describe("draftDiff", () => {
     expect(draftDiff({ ...BASE, name: " Max " }, BASE)).toEqual({
       name: " Max ",
     });
-  });
-});
-
-describe("keepKnownDraftKeys", () => {
-  it("returns nothing for a value that is not a plain object", () => {
-    expect(keepKnownDraftKeys(1, BASE)).toEqual({});
-    expect(keepKnownDraftKeys("abc", BASE)).toEqual({});
-    expect(keepKnownDraftKeys([1], BASE)).toEqual({});
-    expect(keepKnownDraftKeys(null, BASE)).toEqual({});
-    expect(keepKnownDraftKeys(undefined, BASE)).toEqual({});
-  });
-
-  it("drops keys the base does not have", () => {
-    expect(keepKnownDraftKeys({ name: "Max", colour: "black" }, BASE)).toEqual({
-      name: "Max",
-    });
-  });
-
-  it("drops anything but text where the base holds text", () => {
-    expect(
-      keepKnownDraftKeys({ name: null, breed: 1, sex: "male" }, BASE),
-    ).toEqual({ sex: "male" });
-  });
-
-  it("keeps a key the base holds as null whatever it holds", () => {
-    expect(keepKnownDraftKeys({ sex: "female" }, BASE)).toEqual({
-      sex: "female",
-    });
-    expect(keepKnownDraftKeys({ sex: null }, BASE)).toEqual({ sex: null });
   });
 });
 

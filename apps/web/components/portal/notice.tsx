@@ -1,6 +1,14 @@
 import type { ReactNode, Ref } from "react";
-import { LoaderCircle, TriangleAlert, type LucideIcon } from "lucide-react";
+import {
+  LoaderCircle,
+  SearchX,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
+import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
+import { Button } from "@/components/ui/button";
+import { PORTAL_PATH } from "@/hooks/use-portal-session";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,11 +52,14 @@ export function FieldError({
   ref,
   id,
   focusable = false,
+  className,
   children,
 }: {
   ref?: Ref<HTMLParagraphElement>;
   id?: string;
   focusable?: boolean;
+  /** Spacing the row it sits in needs, where the row does not carry it. */
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -60,6 +71,7 @@ export function FieldError({
       className={cn(
         "flex items-start gap-1.5 text-sm text-destructive",
         focusable && "outline-none",
+        className,
       )}
     >
       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
@@ -102,5 +114,58 @@ export function PortalNotice({
       </div>
       {action}
     </div>
+  );
+}
+
+/**
+ * No animal or listing under this address: a wrong id, a shelter the account
+ * does not have, or an address that names neither.
+ */
+export function EditorNotFound() {
+  return (
+    <>
+      <PortalPageHeading />
+      <PortalNotice
+        icon={SearchX}
+        title={portalText.editorNotFoundTitle}
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
+          </Button>
+        }
+      >
+        {portalText.editorNotFoundLead}
+      </PortalNotice>
+    </>
+  );
+}
+
+/**
+ * The list the editor's subject would be in did not arrive, so the page has no
+ * way of knowing whether the address is a wrong one. `onReload` asks for the
+ * list again, which is the only thing either page can offer.
+ */
+export function EditorListError({
+  message,
+  onReload,
+}: {
+  message: string;
+  onReload: () => void;
+}) {
+  return (
+    <>
+      <PortalPageHeading />
+      <PortalNotice
+        icon={TriangleAlert}
+        title={portalText.listErrorTitle}
+        action={
+          <Button variant="outline" size="sm" onClick={onReload}>
+            {portalText.retry}
+          </Button>
+        }
+      >
+        {message}
+      </PortalNotice>
+    </>
   );
 }

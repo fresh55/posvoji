@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { TriangleAlert } from "lucide-react";
+import { AgeBoxes, BirthDateBox } from "@/components/portal/age-boxes";
 import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
+import { FieldError } from "@/components/portal/notice";
 import {
   MissingMark,
   OverrideMark,
@@ -32,8 +33,10 @@ import {
   trimmed,
   type AgeBox,
   type PortalSpecialNeedsAnswer,
+  type ReadBox,
 } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
+import { draftSanitizer } from "@/lib/portal-drafts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,19 +73,12 @@ export type Draft = {
 };
 
 /**
- * The three boxes the browser reads a value out of for us, and can fail to.
- * A number box holding "2-1" and a date box holding a year of 0001 both
- * report an empty value with validity.badInput set, so the page keeps its own
- * note of which boxes are in that state. See setAge and setBirthDate below.
+ * The DOM ids of the three boxes the browser reads for us. This form's own,
+ * because the listing form draws the same boxes on a page that can hold both.
  */
-export type ReadBox = "ageYears" | "ageMonths" | "birthDate";
-
-/** The DOM id of each such box, for the submit that has to point at one. */
-export const READ_BOX_IDS: Record<ReadBox, string> = {
-  ageYears: "portal-age-years",
-  ageMonths: "portal-age-months",
-  birthDate: "portal-birth-date",
-};
+const BIRTH_DATE_ID = "portal-birth-date";
+const AGE_YEARS_ID = "portal-age-years";
+const AGE_MONTHS_ID = "portal-age-months";
 
 export function draftFrom(animal: PortalAnimal): Draft {
   const age = ageParts(animal.approximateAgeMonths ?? null);
@@ -112,15 +108,6 @@ export function draftFrom(animal: PortalAnimal): Draft {
   };
 }
 
-const TEXT_KEYS = new Set<string>([
-  "name",
-  "breed",
-  "birthDate",
-  "ageYears",
-  "ageMonths",
-  "shortDescription",
-]);
-
 type ChoiceKey =
   | "sex"
   | "size"
@@ -143,40 +130,18 @@ const CHOICES: Record<ChoiceKey, readonly string[]> = {
   specialNeeds: PORTAL_SPECIAL_NEEDS_ANSWERS,
 };
 
-function isChoiceKey(key: string): key is ChoiceKey {
-  return Object.prototype.hasOwnProperty.call(CHOICES, key);
-}
-
-/**
- * What of a stored draft this form can take back.
- *
- * The draft in sessionStorage was written by whatever version of this form
- * the tab last ran, and by anything else that can write to the tab's storage.
- * Only keys the base draft has are kept, and only with a value the key can
- * hold: a string for a text box, one of the row's answers or null for a
- * choice row. Anything else (a null name, a number, an object, an answer the
- * row does not offer, a stored value that is not an object at all) is dropped
- * and the base's own value stands. A missing key would otherwise turn its box
- * into an uncontrolled input halfway through the form, and a wrong value
- * would reach the wire as a patch the API refuses.
- */
-export function sanitizeDraft(stored: unknown, base: Draft): Partial<Draft> {
-  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
-    return {};
-  }
-  const kept: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(stored)) {
-    if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
-    if (TEXT_KEYS.has(key)) {
-      if (typeof value === "string") kept[key] = value;
-    } else if (isChoiceKey(key)) {
-      if (value === null || (typeof value === "string" && CHOICES[key].includes(value))) {
-        kept[key] = value;
-      }
-    }
-  }
-  return kept as Partial<Draft>;
-}
+/** What of a stored draft this form can take back. */
+export const sanitizeDraft = draftSanitizer<Draft>({
+  text: [
+    "name",
+    "breed",
+    "birthDate",
+    "ageYears",
+    "ageMonths",
+    "shortDescription",
+  ],
+  choices: CHOICES,
+});
 
 export function isOverridden(
   animal: PortalAnimal,
@@ -279,20 +244,6 @@ export function buildPatch(
   }
 
   return { patch, ageError: age.error, dateError };
-}
-
-/** The message under a box the submit refused. */
-function BoxError({ id, children }: { id: string; children: string }) {
-  return (
-    <p
-      id={id}
-      role="alert"
-      className="mt-1.5 flex items-start gap-1.5 text-sm text-destructive"
-    >
-      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-      {children}
-    </p>
-  );
 }
 
 /** Label row shared by every field: the name, the edit mark, the way back. */
@@ -422,10 +373,8 @@ export function AnimalForm({
   markBox,
   reverting,
   saving,
-  ageError,
-  ageErrorId,
-  dateError,
-  dateErrorId,
+  refused,
+  refusedErrorId,
 }: {
   /** One prefix per mounted form, for the hints' own ids. */
   uid: string;
@@ -456,13 +405,17 @@ export function AnimalForm({
   /** Whether saving would give this field back to the crawler. */
   reverting: (field: PortalField) => boolean;
   saving: boolean;
-  /** The age box the submit refused, if either. */
-  ageError: AgeBox | null;
-  ageErrorId: string;
-  dateError: boolean;
-  dateErrorId: string;
+  /** The box the last submit refused. One at a time, so one message. */
+  refused: ReadBox | null;
+  /** The rows share the one message id: only one can be refused. */
+  refusedErrorId: string;
 }) {
   const compatibilityHintId = `${uid}-compatibility-hint`;
+
+  /** The message a read box points at, which only the refused one has. */
+  function errorFor(box: ReadBox): string | null {
+    return refused === box ? refusedErrorId : null;
+  }
 
   // Which of the adopter's filters this animal still leaves blank. Read off
   // the saved animal, not the draft, so the row keeps saying what the public
@@ -661,34 +614,27 @@ export function AnimalForm({
             uid={uid}
             field="birthDate"
             label={portalText.fieldBirthDate}
-            htmlFor="portal-birth-date"
+            htmlFor={BIRTH_DATE_ID}
             overridden={isOverridden(animal, "birthDate")}
             reverting={reverting("birthDate")}
             onRevert={revertBirthDate}
             disabled={saving}
           >
-            <Input
-              id={READ_BOX_IDS.birthDate}
-              type="date"
+            <BirthDateBox
+              id={BIRTH_DATE_ID}
               value={draft.birthDate}
               disabled={saving}
-              aria-invalid={dateError || undefined}
-              aria-errormessage={dateError ? dateErrorId : undefined}
-              onChange={(event) =>
-                setBirthDate(event.target.value, event.target.validity.badInput)
-              }
-              onInput={(event) =>
-                markBox("birthDate", event.currentTarget.validity.badInput)
-              }
+              errorFor={errorFor}
+              setBirthDate={setBirthDate}
+              markBox={markBox}
             />
-            {dateError && (
-              <BoxError id={dateErrorId}>{portalText.birthDateError}</BoxError>
+            {refused === "birthDate" && (
+              <FieldError id={refusedErrorId} className="mt-1.5">
+                {portalText.birthDateError}
+              </FieldError>
             )}
           </Field>
 
-          {/* Two inputs, because a shelter knows an age as "two years", not
-              as a month count. The unit next to each box labels it; the
-              field itself is the group above them. */}
           <Field
             uid={uid}
             field="approximateAgeMonths"
@@ -699,82 +645,24 @@ export function AnimalForm({
             disabled={saving}
             hint={portalText.ageHint}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldAgeMonths}
-              aria-describedby={hintId(uid, "approximateAgeMonths")}
-              className="grid grid-cols-2 gap-1.5"
-            >
-              <div className="flex items-center gap-1.5">
-                {/* The age's message is its own and sits right below these
-                    two boxes, so the box at fault points at that. The save
-                    bar at the foot of the page is a screen away. */}
-                <Input
-                  id={READ_BOX_IDS.ageYears}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  value={draft.ageYears}
-                  disabled={saving}
-                  aria-invalid={ageError === "years" || undefined}
-                  aria-errormessage={
-                    ageError === "years" ? ageErrorId : undefined
-                  }
-                  aria-describedby={hintId(uid, "approximateAgeMonths")}
-                  onChange={(event) =>
-                    setAge(
-                      "ageYears",
-                      event.target.value,
-                      event.target.validity.badInput,
-                    )
-                  }
-                  onInput={(event) =>
-                    markBox("ageYears", event.currentTarget.validity.badInput)
-                  }
-                />
-                <Label
-                  htmlFor={READ_BOX_IDS.ageYears}
-                  className="shrink-0 text-xs font-normal text-muted-foreground"
-                >
-                  {portalText.fieldAgeYearsUnit}
-                </Label>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Input
-                  id={READ_BOX_IDS.ageMonths}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  value={draft.ageMonths}
-                  disabled={saving}
-                  aria-invalid={ageError === "months" || undefined}
-                  aria-errormessage={
-                    ageError === "months" ? ageErrorId : undefined
-                  }
-                  aria-describedby={hintId(uid, "approximateAgeMonths")}
-                  onChange={(event) =>
-                    setAge(
-                      "ageMonths",
-                      event.target.value,
-                      event.target.validity.badInput,
-                    )
-                  }
-                  onInput={(event) =>
-                    markBox("ageMonths", event.currentTarget.validity.badInput)
-                  }
-                />
-                <Label
-                  htmlFor={READ_BOX_IDS.ageMonths}
-                  className="shrink-0 text-xs font-normal text-muted-foreground"
-                >
-                  {portalText.fieldAgeMonthsUnit}
-                </Label>
-              </div>
-            </div>
-            {ageError && (
-              <BoxError id={ageErrorId}>{portalText.invalidError}</BoxError>
+            <AgeBoxes
+              uid={uid}
+              yearsId={AGE_YEARS_ID}
+              monthsId={AGE_MONTHS_ID}
+              years={draft.ageYears}
+              months={draft.ageMonths}
+              disabled={saving}
+              errorFor={errorFor}
+              setAge={setAge}
+              markBox={markBox}
+            />
+            {/* The age's message is its own and sits right below the two
+                boxes, so the box at fault points at that. The save bar at the
+                foot of the page is a screen away. */}
+            {(refused === "ageYears" || refused === "ageMonths") && (
+              <FieldError id={refusedErrorId} className="mt-1.5">
+                {portalText.invalidError}
+              </FieldError>
             )}
           </Field>
         </div>

@@ -8,18 +8,12 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import {
-  ExternalLink,
-  SearchX,
-  TriangleAlert,
-} from "lucide-react";
-import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   portalListingPublicPath,
   portalMetaLine,
 } from "@/components/portal/animal-meta";
-import type { ReadBox } from "@/components/portal/animal-form";
 import { ConfirmDialog } from "@/components/portal/confirm-dialog";
 import {
   DraftResumedLine,
@@ -34,7 +28,6 @@ import {
   draftFrom,
   inputOf,
   listingInput,
-  readBoxControl,
   sameShape,
   sanitizeListingDraft,
   shapeOf,
@@ -43,17 +36,20 @@ import {
   type Refused,
 } from "@/components/portal/listing-form";
 import {
+  EditorListError,
+  EditorNotFound,
   FieldError,
-  PortalNotice,
   PortalPageHeading,
   PortalPending,
 } from "@/components/portal/notice";
 import {
+  READ_BOXES,
   fieldControls,
   fieldRow,
   isPortalField,
   isPortalStatus,
   portalSpeciesIcon,
+  readBoxControl,
 } from "@/components/portal/portal-fields";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
@@ -67,7 +63,9 @@ import {
   usePortalDraft,
   usePortalDraftMirror,
 } from "@/hooks/use-portal-draft";
+import { useReadBoxes } from "@/hooks/use-read-boxes";
 import { useReturnFocus } from "@/hooks/use-return-focus";
+import { useSaveSlot } from "@/hooks/use-save-slot";
 import { Button } from "@/components/ui/button";
 import type {
   PortalField,
@@ -128,22 +126,7 @@ export function ListingEditorPage() {
       ? (listings.find((candidate) => candidate.id === wanted) ?? null)
       : null;
 
-  const notFound = (
-    <>
-      <PortalPageHeading />
-      <PortalNotice
-        icon={SearchX}
-        title={portalText.editorNotFoundTitle}
-        action={
-          <Button asChild variant="outline" size="sm">
-            <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
-          </Button>
-        }
-      >
-        {portalText.editorNotFoundLead}
-      </PortalNotice>
-    </>
-  );
+  const notFound = <EditorNotFound />;
 
   // An address that names neither a listing nor a new one is not this page's,
   // and neither is a shelter the account does not have.
@@ -151,20 +134,10 @@ export function ListingEditorPage() {
 
   if (showing && listingState.status === "error") {
     return (
-      <>
-        <PortalPageHeading />
-        <PortalNotice
-          icon={TriangleAlert}
-          title={portalText.listErrorTitle}
-          action={
-            <Button variant="outline" size="sm" onClick={reloadListings}>
-              {portalText.retry}
-            </Button>
-          }
-        >
-          {listingState.message}
-        </PortalNotice>
-      </>
+      <EditorListError
+        message={listingState.message}
+        onReload={reloadListings}
+      />
     );
   }
 
@@ -256,16 +229,6 @@ function ListingEditor({
   );
   /** The field the submit refused. One at a time, so one message at a time. */
   const [refused, setRefused] = useState<Refused | null>(null);
-  // The boxes the browser could not read a value out of. "2-1" in a number
-  // box and a year of 0001 in the date box both reach the change handler as
-  // an empty value with validity.badInput set, so the draft says "" while
-  // the box still shows what was typed. Kept apart from the draft on
-  // purpose: a sentinel in the controlled value would be written back over
-  // the shelter's text. While any box is here, the page has work it cannot
-  // read and must neither save nor drop silently.
-  const [unreadable, setUnreadable] = useState<ReadonlySet<ReadBox>>(
-    () => new Set(),
-  );
   const [confirming, setConfirming] = useState(false);
   const [archiving, setArchiving] = useState(false);
   // Around the POST, the PUT and the archive: the whole form waits on those.
@@ -279,35 +242,24 @@ function ListingEditor({
   const [photoError, setPhotoError] = useState<string | null>(null);
   /** The stored photo whose Odstrani is waiting for its second tap. */
   const [removing, setRemoving] = useState<number | null>(null);
-  // The save slot is shared with the card's status buttons and an error in it
-  // never expires, which is what the card needs: the shelter has to be able
-  // to look away and still find out that the tap did not take. Arriving on
-  // this page is not that attempt, so the failure the page opens on is
-  // remembered here and stays out of the form. Every later save produces a
-  // new state object, so identity is enough to tell the two apart.
-  const [openedOn] = useState<PortalSaveState | null>(
-    saveState.status === "error" ? saveState : null,
-  );
-  // The failure the shelter has already answered, by changing a field or by
-  // starting another save. Same identity test: the slot holds the failure
-  // until the next save replaces it, and the page has no other way to take
-  // the line down.
-  const [dismissed, setDismissed] = useState<PortalSaveState | null>(null);
-  // Which control started the save the slot is reporting on. Shrani, the
-  // status buttons, Odstrani objavo and the photo grid share one slot per
-  // listing, and each failure has to be said next to the control that was
-  // pressed. A photo's failure is the grid's own: a refused remove is said
-  // beside it and a failed upload beside the file with its retry, so the page
-  // says nothing else for it.
-  const [origin, setOrigin] = useState<
-    "form" | "status" | "archive" | "photo"
-  >("form");
   // A save this page has started and not yet heard back from. The bar is
   // disabled one render later; this is for a second submit fired in code
   // before that render.
   const inFlight = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  // The boxes the browser could not read a value out of, and what the page
+  // may do with them.
+  const boxes = useReadBoxes(formRef);
+  // The slot this listing shares with its card. Shrani, the status buttons,
+  // Odstrani objavo and the photo grid all write it, and each failure has to
+  // be said next to the control that was pressed. A photo's failure is the
+  // grid's own: a refused remove is said beside it and a failed upload beside
+  // the file with its retry, so the page says nothing else for it.
+  const slot = useSaveSlot<"status" | "archive" | "photo">(
+    saveState,
+    errorRef,
+  );
   // Both confirms are opened in code, from a button on this page, so both put
   // the focus back themselves. One pair: only one of them can be open.
   const confirmFocus = useReturnFocus();
@@ -351,16 +303,8 @@ function ListingEditor({
   // The draft as far as it can be read. A box the browser could not read
   // holds "" in the draft, which the shape would take for an emptied box and
   // send as the null that clears the shelter's own age or date, and the
-  // mirror would then store that for the next visit to send. Those boxes
-  // count as untouched here; the form still shows the draft, so their text
-  // stays.
-  const readable = useMemo(() => {
-    if (unreadable.size === 0) return draft;
-    const base = draftFrom(listing);
-    const next = { ...draft };
-    for (const box of unreadable) next[box] = base[box];
-    return next;
-  }, [draft, unreadable, listing]);
+  // mirror would then store that for the next visit to send.
+  const readable = boxes.readable(draft, draftFrom(listing));
   const { shape: typed, ageError: badAgeBox } = shapeOf(readable);
   // An existing listing's status belongs to the summary, which saved it the
   // moment it was tapped, so the form sends back whatever the record holds
@@ -384,7 +328,7 @@ function ListingEditor({
   const typedWork = dirty || badAgeBox !== null || badDate;
   // Plus the boxes the browser could not read. Their text is not in the
   // draft, so it is not mirrored, but it is the shelter's work all the same.
-  const unreadableWork = unreadable.size > 0;
+  const unreadableWork = boxes.unreadable.size > 0;
   // Pending files are work too: a failed upload is a photo the shelter still
   // means to add, and a new listing's files have nowhere to be yet.
   //
@@ -404,17 +348,8 @@ function ListingEditor({
   const status = listing && isPortalStatus(listing.status) ? listing.status : null;
   const speciesIcon = portalSpeciesIcon(listing?.species ?? draft.species);
   const photo = listing?.photos[0];
-  // The save that did not go through, and only once it is this page's own
-  // doing and has not been answered since.
-  const failed =
-    saveState.status === "error" &&
-    saveState !== openedOn &&
-    saveState !== dismissed
-      ? saveState
-      : null;
-  const formFailure = failed && origin === "form" ? failed : null;
-  const statusFailure = failed && origin === "status" ? failed : null;
-  const archiveFailure = failed && origin === "archive" ? failed : null;
+  const statusFailure = slot.failureFrom("status");
+  const archiveFailure = slot.failureFrom("archive");
   // The public page is still filed under the name the list loaded with, so the
   // link says so beside it once the two have parted.
   const renamed = listing !== null && publicName !== listing.name;
@@ -432,49 +367,16 @@ function ListingEditor({
     () => draftFrom(listing),
   );
 
-  // A failed Shrani is said in the bar, which is on screen wherever the
-  // shelter pressed from; the focus follows so a keyboard user lands on the
-  // reason and a screen reader has it announced from where they are. Every
-  // failure is a new state object, so this runs once per failure.
-  useEffect(() => {
-    if (!formFailure) return;
-    const line = errorRef.current;
-    if (!line) return;
-    line.scrollIntoView({ block: "nearest" });
-    line.focus({ preventScroll: true });
-  }, [formFailure]);
-
-  /** The failed save has been answered: the shelter changed something. */
-  function touched() {
-    if (formFailure) setDismissed(formFailure);
-  }
-
-  /** A new save replaces whatever the slot said about the last one. */
-  function startSave(from: "form" | "status" | "archive" | "photo") {
-    setOrigin(from);
-    if (failed) setDismissed(failed);
-  }
-
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
     // An answer given to the refused field retires its message, and only its.
     if (key === "species" && value !== null) answered("species");
     if (key === "name" && String(value).trim() !== "") answered("name");
-    touched();
+    slot.touched();
   }
 
   function answered(target: Refused) {
     setRefused((current) => (current === target ? null : current));
-  }
-
-  function mark(box: ReadBox, bad: boolean) {
-    setUnreadable((current) => {
-      if (current.has(box) === bad) return current;
-      const next = new Set(current);
-      if (bad) next.add(box);
-      else next.delete(box);
-      return next;
-    });
   }
 
   /**
@@ -488,31 +390,17 @@ function ListingEditor({
     unreadableNow: boolean,
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
-    mark(key, unreadableNow);
+    boxes.mark(key, unreadableNow);
     answered("ageYears");
     answered("ageMonths");
-    touched();
+    slot.touched();
   }
 
   function setBirthDate(value: string, unreadableNow: boolean) {
     setDraft((current) => ({ ...current, birthDate: value }));
-    mark("birthDate", unreadableNow);
+    boxes.mark("birthDate", unreadableNow);
     answered("birthDate");
-    touched();
-  }
-
-  /**
-   * Empties the boxes the browser could not read. Their text lives in the
-   * DOM alone: the draft only ever held "" for them, so setting it to ""
-   * again is no change React would write back, and the text would stay.
-   */
-  function emptyUnreadable() {
-    if (unreadable.size === 0) return;
-    for (const box of unreadable) {
-      const control = readBoxControl(formRef.current, box);
-      if (control) control.value = "";
-    }
-    setUnreadable(new Set());
+    slot.touched();
   }
 
   /**
@@ -535,9 +423,11 @@ function ListingEditor({
   /** The box the submit has to refuse, in the order the form reads them. */
   function firstFault(): Refused | null {
     if (missing) return missing;
-    if (unreadable.has("birthDate") || badDate) return "birthDate";
-    if (unreadable.has("ageYears") || badAgeBox === "years") return "ageYears";
-    if (unreadable.has("ageMonths") || badAgeBox === "months") {
+    if (boxes.unreadable.has("birthDate") || badDate) return "birthDate";
+    if (boxes.unreadable.has("ageYears") || badAgeBox === "years") {
+      return "ageYears";
+    }
+    if (boxes.unreadable.has("ageMonths") || badAgeBox === "months") {
       return "ageMonths";
     }
     return null;
@@ -564,7 +454,7 @@ function ListingEditor({
   /** The line's own button: keep the listing, drop what was typed before. */
   function discardStored() {
     resetDraft();
-    emptyUnreadable();
+    boxes.empty(READ_BOXES);
     setRefused(null);
   }
 
@@ -585,7 +475,7 @@ function ListingEditor({
   ): Promise<boolean> {
     // Every upload writes the listing's slot; from here its failures are the
     // grid's to say.
-    startSave("photo");
+    slot.startSave("photo");
     let failed = false;
     for (const [index, item] of items.entries()) {
       setUploading({ index: index + 1, total: items.length });
@@ -666,7 +556,7 @@ function ListingEditor({
     }
     setRemoving(null);
     setPhotoError(null);
-    startSave("photo");
+    slot.startSave("photo");
     if (!(await actions.deletePhoto(listing.id, photoId))) {
       setPhotoError(portalText.photoRemoveError);
     }
@@ -678,7 +568,7 @@ function ListingEditor({
   async function archive() {
     if (!listing) return;
     setArchiving(false);
-    startSave("archive");
+    slot.startSave("archive");
     setSubmitting(true);
     try {
       if (await actions.archive(listing.id)) {
@@ -706,7 +596,7 @@ function ListingEditor({
     if (!input) return;
 
     // From here the form owns whatever the shared save slot says next.
-    startSave("form");
+    slot.startSave("form");
     inFlight.current = true;
     setSubmitting(true);
     try {
@@ -809,7 +699,7 @@ function ListingEditor({
                   // The route is a full replace, so the tap sends the whole
                   // listing with the status swapped, exactly as the card does.
                   onSelect={(next) => {
-                    startSave("status");
+                    slot.startSave("status");
                     void actions.update(listing.id, {
                       ...listingInput(listing),
                       status: next,
@@ -873,9 +763,9 @@ function ListingEditor({
               cancelDisabled={busy}
               saveDisabled={busy || !canSave}
               error={
-                formFailure && (
+                slot.formFailure && (
                   <FieldError ref={errorRef} id={errorId} focusable>
-                    {formFailure.message}
+                    {slot.formFailure.message}
                   </FieldError>
                 )
               }
@@ -921,7 +811,7 @@ function ListingEditor({
               set={set}
               setAge={setAge}
               setBirthDate={setBirthDate}
-              markBox={mark}
+              markBox={boxes.mark}
               refused={refused}
               refusedErrorId={refusedErrorId}
               disabled={submitting}

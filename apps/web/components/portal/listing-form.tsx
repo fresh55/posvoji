@@ -5,11 +5,12 @@ import {
   ImagePlus,
   LoaderCircle,
   RefreshCw,
-  TriangleAlert,
 } from "lucide-react";
-import { FormSection, type ReadBox } from "@/components/portal/animal-form";
+import { AgeBoxes, BirthDateBox } from "@/components/portal/age-boxes";
+import { FormSection } from "@/components/portal/animal-form";
 import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
+import { FieldError } from "@/components/portal/notice";
 import { MissingMark } from "@/components/portal/override-mark";
 import {
   COMPATIBILITY_META,
@@ -23,8 +24,6 @@ import {
   TEXT_LIMITS,
   ageParts,
   choiceCard,
-  fieldControls,
-  fieldRow,
   hintId,
   isPlausibleBirthDate,
   isPortalCompatibility,
@@ -40,6 +39,7 @@ import {
   trimmed,
   type AgeBox,
   type PortalSpecialNeedsAnswer,
+  type ReadBox,
 } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ import {
   type PortalSpecies,
   type PortalStatus,
 } from "@/lib/portal-api";
+import { draftSanitizer } from "@/lib/portal-drafts";
 import { SPECIES_ORDER } from "@/lib/species";
 import { cn } from "@/lib/utils";
 
@@ -120,24 +121,6 @@ type Required = "species" | "name";
  * box at a time, so the mark and the message land on that box alone.
  */
 export type Refused = Required | ReadBox;
-
-/**
- * The control of one such box, for the submit that has to point at it and the
- * discard that has to empty it. The two age boxes share a row, in the order
- * the form reads them.
- */
-export function readBoxControl(
-  form: HTMLFormElement | null,
-  box: ReadBox,
-): HTMLInputElement | null {
-  const row = fieldRow(
-    form,
-    box === "birthDate" ? "birthDate" : "approximateAgeMonths",
-  );
-  if (!row) return null;
-  const control = fieldControls(row)[box === "ageMonths" ? 1 : 0];
-  return control instanceof HTMLInputElement ? control : null;
-}
 
 /** A file picked for a listing and not stored yet. */
 export type PendingPhoto = {
@@ -228,15 +211,6 @@ export function draftFrom(listing: PortalListing | null): Draft {
   };
 }
 
-const TEXT_KEYS = new Set<string>([
-  "name",
-  "breed",
-  "birthDate",
-  "ageYears",
-  "ageMonths",
-  "shortDescription",
-]);
-
 type ChoiceKey =
   | "species"
   | "sex"
@@ -261,48 +235,24 @@ const CHOICES: Record<ChoiceKey, readonly string[]> = {
   specialNeeds: PORTAL_SPECIAL_NEEDS_ANSWERS,
 };
 
-function isChoiceKey(key: string): key is ChoiceKey {
-  return Object.prototype.hasOwnProperty.call(CHOICES, key);
-}
-
 /**
- * What of a stored draft this form can take back. The listing's own copy of
- * the crawled editor's sanitizeDraft: the same rule over a draft with two more
- * keys, the species row and the status.
- *
- * Only keys the base draft has are kept, and only with a value the key can
- * hold: a string for a text box, one of the row's answers or null for a
- * choice row, one of the four statuses for the status, which a listing always
- * has. Anything else (a null name, a number, an object, an answer the row does
- * not offer, a stored value that is not an object at all) is dropped and the
- * base's own value stands. Photos are never in the draft: a File is not JSON,
- * and the stored ones belong to the record.
+ * What of a stored draft this form can take back: the same rule the crawled
+ * editor runs, over a draft with two more keys, the species row and the status
+ * a listing always has. Photos are never in the draft: a File is not JSON, and
+ * the stored ones belong to the record.
  */
-export function sanitizeListingDraft(
-  stored: unknown,
-  base: Draft,
-): Partial<Draft> {
-  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
-    return {};
-  }
-  const kept: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(stored)) {
-    if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
-    if (TEXT_KEYS.has(key)) {
-      if (typeof value === "string") kept[key] = value;
-    } else if (isChoiceKey(key)) {
-      if (
-        value === null ||
-        (typeof value === "string" && CHOICES[key].includes(value))
-      ) {
-        kept[key] = value;
-      }
-    } else if (key === "status") {
-      if (typeof value === "string" && isPortalStatus(value)) kept[key] = value;
-    }
-  }
-  return kept as Partial<Draft>;
-}
+export const sanitizeListingDraft = draftSanitizer<Draft>({
+  text: [
+    "name",
+    "breed",
+    "birthDate",
+    "ageYears",
+    "ageMonths",
+    "shortDescription",
+  ],
+  choices: CHOICES,
+  answered: { status: PORTAL_STATUSES },
+});
 
 /**
  * The whole draft as the API would read it. The age stays null while a box
@@ -448,16 +398,7 @@ function Field({
         )}
       </div>
       <div data-field-control>{children}</div>
-      {error && (
-        <p
-          id={errorId}
-          role="alert"
-          className="flex items-start gap-1.5 text-sm text-destructive"
-        >
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          {error}
-        </p>
-      )}
+      {error && <FieldError id={errorId}>{error}</FieldError>}
       {hint && (
         <p id={hintId(uid, field)} className="text-xs text-muted-foreground">
           {hint}
@@ -631,14 +572,7 @@ function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
         )}
       </div>
       {panel.error && (
-        <p
-          id={panel.errorId}
-          role="alert"
-          className="flex items-start gap-1.5 text-sm text-destructive"
-        >
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          {panel.error}
-        </p>
+        <FieldError id={panel.errorId}>{panel.error}</FieldError>
       )}
       <p id={hintId(uid, "photos")} className="text-xs text-muted-foreground">
         {portalText.photosHint} {portalText.photoLimits}
@@ -710,6 +644,11 @@ export function ListingForm({
   const ageMonthsId = `${uid}-age-months`;
   const descriptionId = `${uid}-description`;
   const compatibilityHintId = `${uid}-compatibility-hint`;
+
+  /** The message a read box points at, which only the refused one has. */
+  function errorFor(box: ReadBox): string | null {
+    return refused === box ? refusedErrorId : null;
+  }
 
   // Which of the adopter's filters this listing still leaves blank. Read off
   // the saved listing, not the draft, so the row keeps saying what the public
@@ -911,27 +850,16 @@ export function ListingForm({
           error={refused === "birthDate" ? portalText.birthDateError : null}
           errorId={refusedErrorId}
         >
-          <Input
+          <BirthDateBox
             id={birthDateId}
-            type="date"
             value={draft.birthDate}
             disabled={disabled}
-            aria-invalid={refused === "birthDate" || undefined}
-            aria-errormessage={
-              refused === "birthDate" ? refusedErrorId : undefined
-            }
-            onChange={(event) =>
-              setBirthDate(event.target.value, event.target.validity.badInput)
-            }
-            onInput={(event) =>
-              markBox("birthDate", event.currentTarget.validity.badInput)
-            }
+            errorFor={errorFor}
+            setBirthDate={setBirthDate}
+            markBox={markBox}
           />
         </Field>
 
-        {/* Two inputs, because a shelter knows an age as "two years", not as a
-            month count. The unit next to each box labels it; the field itself
-            is the group above them. */}
         <Field
           uid={uid}
           field="approximateAgeMonths"
@@ -944,77 +872,17 @@ export function ListingForm({
           }
           errorId={refusedErrorId}
         >
-          <div
-            role="group"
-            aria-label={portalText.fieldAgeMonths}
-            aria-describedby={hintId(uid, "approximateAgeMonths")}
-            className="grid grid-cols-2 gap-1.5"
-          >
-            <div className="flex items-center gap-1.5">
-              <Input
-                id={ageYearsId}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                value={draft.ageYears}
-                disabled={disabled}
-                aria-invalid={refused === "ageYears" || undefined}
-                aria-errormessage={
-                  refused === "ageYears" ? refusedErrorId : undefined
-                }
-                aria-describedby={hintId(uid, "approximateAgeMonths")}
-                onChange={(event) =>
-                  setAge(
-                    "ageYears",
-                    event.target.value,
-                    event.target.validity.badInput,
-                  )
-                }
-                onInput={(event) =>
-                  markBox("ageYears", event.currentTarget.validity.badInput)
-                }
-              />
-              <Label
-                htmlFor={ageYearsId}
-                className="shrink-0 text-xs font-normal text-muted-foreground"
-              >
-                {portalText.fieldAgeYearsUnit}
-              </Label>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Input
-                id={ageMonthsId}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                value={draft.ageMonths}
-                disabled={disabled}
-                aria-invalid={refused === "ageMonths" || undefined}
-                aria-errormessage={
-                  refused === "ageMonths" ? refusedErrorId : undefined
-                }
-                aria-describedby={hintId(uid, "approximateAgeMonths")}
-                onChange={(event) =>
-                  setAge(
-                    "ageMonths",
-                    event.target.value,
-                    event.target.validity.badInput,
-                  )
-                }
-                onInput={(event) =>
-                  markBox("ageMonths", event.currentTarget.validity.badInput)
-                }
-              />
-              <Label
-                htmlFor={ageMonthsId}
-                className="shrink-0 text-xs font-normal text-muted-foreground"
-              >
-                {portalText.fieldAgeMonthsUnit}
-              </Label>
-            </div>
-          </div>
+          <AgeBoxes
+            uid={uid}
+            yearsId={ageYearsId}
+            monthsId={ageMonthsId}
+            years={draft.ageYears}
+            months={draft.ageMonths}
+            disabled={disabled}
+            errorFor={errorFor}
+            setAge={setAge}
+            markBox={markBox}
+          />
         </Field>
       </div>
     </FormSection>

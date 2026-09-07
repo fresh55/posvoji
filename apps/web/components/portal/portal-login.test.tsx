@@ -61,6 +61,12 @@ const OUTSIDE_THE_PORTAL = [
   "/portal/prijava?token=abc",
   "/portal\\@evil.example",
   "/portal/zival?x=1\nlocation:https://evil.example",
+  // Control characters that are not whitespace, so only the control rule
+  // catches them: a C0 byte and a C1 one. apps/portal refuses both.
+  "/portal/zival?id=testno:1\u0001",
+  "/portal/zival?id=testno:1\u0085",
+  // Longer than the 500 characters apps/portal will carry.
+  `/portal/zival?id=${"a".repeat(500)}`,
 ];
 
 function emailBox(): HTMLElement {

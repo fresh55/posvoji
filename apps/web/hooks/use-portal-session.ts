@@ -60,12 +60,36 @@ export function portalNewListingPath(shelter: string): string {
 export const PORTAL_RETURN_KEY = "posvoji.portal.return";
 
 /**
+ * Longer than any address the portal writes. The same cap as
+ * MAX_RETURN_PATH_LENGTH in apps/portal/core/api/auth.py.
+ */
+const MAX_RETURN_PATH_LENGTH = 500;
+
+/**
+ * Every control character, which is the whole of Unicode's Cc category: the C0
+ * range, DEL and the C1 range. Tab and the line ends included, unlike in free
+ * text. The same ranges as _ANY_CONTROL_CHARACTER in
+ * apps/portal/core/models.py.
+ */
+const CONTROL_CHARACTER = /[\x00-\x1f\x7f-\x9f]/;
+
+/**
  * Whether `path` is an address inside the portal that a login may send the
  * browser to. Same-origin by construction: it starts with /portal, so it can
  * be neither an absolute URL nor a protocol-relative one, and the login page
  * itself is out, or a login could bounce straight back to a login.
+ *
+ * The same rule as return_path in apps/portal/core/api/auth.py, which is the
+ * other half of this: the link in the mail carries the path back to a tab that
+ * has no storage to read it from, so both sides check it and neither may be
+ * the weaker.
  */
 export function isPortalReturnPath(path: string): boolean {
+  if (path.length > MAX_RETURN_PATH_LENGTH) return false;
+  // Two rules, not one scan. A control character is not something a portal
+  // address holds at all; whitespace and the backslash are what could break
+  // the value out of the query it travels in.
+  if (CONTROL_CHARACTER.test(path)) return false;
   if (/[\s\\]/.test(path)) return false;
   if (
     path === PORTAL_LOGIN_PATH ||

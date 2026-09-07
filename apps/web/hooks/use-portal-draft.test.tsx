@@ -42,11 +42,7 @@ function stored(): unknown {
 }
 
 /** Both hooks the way an editor page wires them. */
-function useEditor(props: {
-  record: Draft;
-  unsaved?: boolean;
-  diff?: boolean;
-}) {
+function useEditor(props: { record: Draft; unsaved?: boolean }) {
   const fromRecord = () => props.record;
   const state = usePortalDraft(ACCOUNT, SHELTER, ID, fromRecord, sanitize);
   usePortalDraftMirror(
@@ -55,7 +51,7 @@ function useEditor(props: {
     ID,
     state.draft,
     props.unsaved ?? true,
-    props.diff === false ? undefined : fromRecord,
+    fromRecord,
   );
   return state;
 }
@@ -162,24 +158,6 @@ describe("usePortalDraft", () => {
     expect(stored()).toEqual({ name: "Max" });
   });
 
-  it("falls back to a sanitizer that drops non-objects and non-text in text keys", () => {
-    seed({ name: null, breed: "pudelj", colour: "black" });
-    const { result } = renderHook(() =>
-      usePortalDraft(ACCOUNT, SHELTER, ID, () => RECORD),
-    );
-    expect(result.current.draft).toEqual({ ...RECORD, breed: "pudelj" });
-    expect(result.current.resumed).toBe(true);
-
-    cleanup();
-    window.sessionStorage.clear();
-    seed("abc");
-    const bare = renderHook(() =>
-      usePortalDraft(ACCOUNT, SHELTER, ID, () => RECORD),
-    );
-    expect(bare.result.current.draft).toEqual(RECORD);
-    expect(bare.result.current.resumed).toBe(false);
-  });
-
   it("resets to the record as it is now, not as it was on mount", () => {
     seed({ name: "Max" });
     const { result, rerender } = renderHook(
@@ -274,16 +252,6 @@ describe("usePortalDraftMirror", () => {
     });
     expect(result.current.draft.name).toBe("Max");
     expect(window.sessionStorage.getItem(KEY)).toBeNull();
-  });
-
-  it("writes the whole draft when it is not given the record", () => {
-    const { result } = renderHook(useEditor, {
-      initialProps: { record: RECORD, diff: false },
-    });
-    act(() =>
-      result.current.setDraft((current) => ({ ...current, name: "Max" })),
-    );
-    expect(stored()).toEqual({ ...RECORD, name: "Max" });
   });
 
   it("diffs against the record as it is now", () => {

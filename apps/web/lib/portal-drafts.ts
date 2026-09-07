@@ -98,27 +98,74 @@ export function draftDiff<T extends object>(draft: T, base: T): Partial<T> {
   return diff;
 }
 
-/** The sanitizer for an editor without one of its own: keeps a plain object's
- *  keys that the base draft has, and where the base holds text keeps only
- *  text, since a text box handed anything else throws. It cannot tell a wrong
- *  enum from a right one, or check a key the base holds as null, so an editor
- *  with either should pass its own. */
-export function keepKnownDraftKeys<T extends object>(
-  stored: unknown,
-  base: T,
-): Partial<T> {
-  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
-    return {};
-  }
-  const kept: Partial<T> = {};
-  const values = stored as Record<string, unknown>;
-  for (const key of Object.keys(base) as (keyof T & string)[]) {
-    if (!Object.prototype.hasOwnProperty.call(values, key)) continue;
-    const value: unknown = values[key];
-    if (typeof base[key] === "string" && typeof value !== "string") continue;
-    kept[key] = value as T[keyof T & string];
-  }
-  return kept;
+/**
+ * What each key of one form's draft may hold. A text key holds a string; a
+ * choice key holds one of its answers or null, for a row nobody has answered;
+ * a key under `answered` holds one of its answers and never null, which is
+ * what a manual listing's status is.
+ */
+export type DraftFields = {
+  text: readonly string[];
+  choices: Readonly<Record<string, readonly string[]>>;
+  answered?: Readonly<Record<string, readonly string[]>>;
+};
+
+function declared(
+  table: Readonly<Record<string, readonly string[]>> | undefined,
+  key: string,
+): readonly string[] | null {
+  if (!table) return null;
+  if (!Object.prototype.hasOwnProperty.call(table, key)) return null;
+  return table[key] ?? null;
+}
+
+/**
+ * The check one form runs over what the tab stored, from the table of what its
+ * draft holds.
+ *
+ * The draft in sessionStorage was written by whatever version of the form the
+ * tab last ran, and by anything else that can write to the tab's storage. Only
+ * keys the base draft has are kept, and only with a value the key can hold.
+ * Anything else (a null name, a number, an object, an answer the row does not
+ * offer, a stored value that is not an object at all) is dropped and the base's
+ * own value stands. A missing key would otherwise turn its box into an
+ * uncontrolled input halfway through the form, and a wrong value would reach
+ * the wire as a patch the API refuses.
+ */
+export function draftSanitizer<T extends object>(
+  fields: DraftFields,
+): DraftSanitizer<T> {
+  const text = new Set(fields.text);
+  return (stored, base) => {
+    if (
+      typeof stored !== "object" ||
+      stored === null ||
+      Array.isArray(stored)
+    ) {
+      return {};
+    }
+    const kept: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(stored)) {
+      if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
+      const choice = declared(fields.choices, key);
+      const answered = declared(fields.answered, key);
+      if (text.has(key)) {
+        if (typeof value === "string") kept[key] = value;
+      } else if (choice) {
+        if (
+          value === null ||
+          (typeof value === "string" && choice.includes(value))
+        ) {
+          kept[key] = value;
+        }
+      } else if (answered) {
+        if (typeof value === "string" && answered.includes(value)) {
+          kept[key] = value;
+        }
+      }
+    }
+    return kept as Partial<T>;
+  };
 }
 
 /** What a stored value changes about the fresh draft: the sanitized keys

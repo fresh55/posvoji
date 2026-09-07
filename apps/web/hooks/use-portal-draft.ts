@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clearDraft,
   draftDiff,
-  keepKnownDraftKeys,
   readDraft,
   resumeDraft,
   writeDraft,
@@ -39,7 +38,7 @@ export function usePortalDraft<Draft extends object>(
   shelter: string,
   id: string,
   fromRecord: () => Draft,
-  sanitize: DraftSanitizer<Draft> = keepKnownDraftKeys,
+  sanitize: DraftSanitizer<Draft>,
 ): {
   draft: Draft;
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
@@ -105,10 +104,9 @@ export function usePortalDraft<Draft extends object>(
  * two editors do not agree on, and each can only say it once it has read its
  * own draft.
  *
- * Given `fromRecord`, only the keys that differ from the record are written,
- * text compared trimmed, and the key is dropped when none does even while the
- * editor still counts the form as work. Without it the whole draft is
- * written, which is the older rule and resumes every field.
+ * Only the keys that differ from the record are written, text compared
+ * trimmed, and the key is dropped when none does even while the editor still
+ * counts the form as work.
  */
 export function usePortalDraftMirror<Draft extends object>(
   account: string,
@@ -116,7 +114,7 @@ export function usePortalDraftMirror<Draft extends object>(
   id: string,
   draft: Draft,
   unsaved: boolean,
-  fromRecord?: () => Draft,
+  fromRecord: () => Draft,
 ): void {
   // A fresh closure every render; read through a ref so the mirror runs on a
   // change to the draft, not on every render of the page. Its own effect
@@ -131,8 +129,7 @@ export function usePortalDraftMirror<Draft extends object>(
       clearDraft(account, shelter, id);
       return;
     }
-    const base = latest.current;
-    const kept = base === undefined ? draft : draftDiff(draft, base());
+    const kept = draftDiff(draft, latest.current());
     if (Object.keys(kept).length === 0) clearDraft(account, shelter, id);
     else writeDraft(account, shelter, id, kept);
   }, [account, draft, id, shelter, unsaved]);

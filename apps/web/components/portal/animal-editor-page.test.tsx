@@ -13,6 +13,12 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
 import {
+  confirmShown,
+  fieldRow,
+  makeUnreadable,
+  typeUnreadable,
+} from "@/components/portal/editor-test-helpers";
+import {
   COMPATIBILITY_META,
   ENERGY_META,
   SEX_META,
@@ -159,12 +165,6 @@ function row(label: string): HTMLElement {
   return screen.getByRole("radiogroup", { name: label });
 }
 
-function fieldRow(name: string): HTMLElement {
-  const found = document.querySelector<HTMLElement>(`[data-field="${name}"]`);
-  if (!found) throw new Error(`no row for ${name}`);
-  return found;
-}
-
 function saveButton(): HTMLButtonElement {
   return screen.getByRole("button", {
     name: portalText.save,
@@ -182,29 +182,6 @@ function breadcrumb(): HTMLElement {
 /** Types something, so the form has work in it that leaving would lose. */
 function makeDirty() {
   fireEvent.change(field("portal-name"), { target: { value: "Murka" } });
-}
-
-function confirmShown(): boolean {
-  return screen.queryByText(portalText.leaveTitle) !== null;
-}
-
-/**
- * What Chromium reports for "2-1" in a number box or a year of 0001 in the
- * date box: an empty value with validity.badInput set. jsdom reads every
- * value, so the flag is put on the box by hand.
- */
-function makeUnreadable(control: HTMLElement, badInput = true) {
-  Object.defineProperty(control, "validity", {
-    configurable: true,
-    value: { badInput },
-  });
-}
-
-/** Types something the browser cannot read into a box. */
-function typeUnreadable(id: string) {
-  const control = field(id);
-  makeUnreadable(control);
-  fireEvent.change(control, { target: { value: "" } });
 }
 
 /** A save that never answers, for the page while it is waiting. */
@@ -471,7 +448,7 @@ describe("a box the browser could not read", () => {
     await open();
     fireEvent.change(field("portal-age-months"), { target: { value: "3" } });
 
-    typeUnreadable("portal-age-years");
+    typeUnreadable(field("portal-age-years"));
     fireEvent.click(saveButton());
 
     expect(saveAnimal).not.toHaveBeenCalled();
@@ -489,7 +466,7 @@ describe("a box the browser could not read", () => {
   it("is work: Shrani stays on and leaving asks", async () => {
     await open();
 
-    typeUnreadable("portal-age-years");
+    typeUnreadable(field("portal-age-years"));
 
     // Nothing the patch could carry, but something the shelter typed.
     expect(saveButton().disabled).toBe(false);
@@ -501,7 +478,7 @@ describe("a box the browser could not read", () => {
   it("does not clear a birth date it could not read", async () => {
     await open({ birthDate: "2020-05-01", overrides: { birthDate: "2020-05-01" } });
 
-    typeUnreadable("portal-birth-date");
+    typeUnreadable(field("portal-birth-date"));
     fireEvent.click(saveButton());
 
     expect(saveAnimal).not.toHaveBeenCalled();
@@ -524,8 +501,8 @@ describe("a box the browser could not read", () => {
       overrides: { approximateAgeMonths: 27, birthDate: "2020-05-01" },
     });
 
-    typeUnreadable("portal-age-years");
-    typeUnreadable("portal-birth-date");
+    typeUnreadable(field("portal-age-years"));
+    typeUnreadable(field("portal-birth-date"));
 
     expect(screen.queryByText(portalText.willRevert)).toBeNull();
     expect(window.sessionStorage.length).toBe(0);
@@ -539,7 +516,7 @@ describe("a box the browser could not read", () => {
 
   it("saves again once the box reads", async () => {
     await open();
-    typeUnreadable("portal-age-years");
+    typeUnreadable(field("portal-age-years"));
     fireEvent.click(saveButton());
     expect(screen.queryByRole("alert")).not.toBeNull();
 

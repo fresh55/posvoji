@@ -3,6 +3,7 @@
 // One copy, because the two hooks answer for the same screen and a fix applied
 // to one and not the other is a silent difference in what a shelter is told.
 
+import { fieldLabel } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { PortalError, type PortalErrorKind } from "@/lib/portal-api";
 
@@ -28,31 +29,6 @@ const MESSAGES: Partial<Record<PortalErrorKind, string>> = {
   network: portalText.networkError,
   invalid: portalText.invalidError,
 };
-
-// The API's keys, as the labels the form shows them under. A key not here is
-// a field the form has no name for yet, and the raw key is still more use to
-// a shelter than no name at all.
-const FIELD_LABELS: Readonly<Record<string, string>> = {
-  name: portalText.fieldName,
-  status: portalText.statusLegend,
-  species: portalText.fieldSpecies,
-  sex: portalText.fieldSex,
-  breed: portalText.fieldBreed,
-  birthDate: portalText.fieldBirthDate,
-  approximateAgeMonths: portalText.fieldAgeMonths,
-  size: portalText.fieldSize,
-  energy: portalText.fieldEnergy,
-  goodWithKids: portalText.fieldGoodWithKids,
-  goodWithDogs: portalText.fieldGoodWithDogs,
-  goodWithCats: portalText.fieldGoodWithCats,
-  apartmentOk: portalText.fieldApartmentOk,
-  specialNeeds: portalText.fieldSpecialNeeds,
-  shortDescription: portalText.fieldDescription,
-};
-
-export function fieldLabel(key: string): string {
-  return FIELD_LABELS[key] ?? key;
-}
 
 /** "Ime", "Ime in Pasma", "Ime, Pasma in Spol". */
 function listFields(labels: readonly string[]): string {

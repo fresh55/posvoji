@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { fieldLabel } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
-import { fieldLabel, invalidMessage, message } from "@/hooks/portal-list";
+import { invalidMessage, message } from "@/hooks/portal-list";
 import { PortalError } from "@/lib/portal-api";
 
 describe("what a refused value tells the shelter", () => {

@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from core.models import Shelter, ShelterMembership
+from core.models import MembershipSource, Shelter, ShelterMembership
 
 SHELTERS = "/api/auth/dev/shelters"
 LOGIN = "/api/auth/dev/login"
@@ -137,3 +137,24 @@ def test_seeded_registry_covers_every_shelter(client, dev_login_on):
 
     for slug in slugs:
         assert post(client, LOGIN, {"slug": slug}).status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_minted_login_is_marked_and_survives_the_seed(client, dev_login_on):
+    """The seed follows the registry, so it must not take a dev login away."""
+    from django.core.management import call_command
+
+    from .conftest import FIXTURES
+
+    registry = str(FIXTURES / "shelters.yaml")
+    call_command("seed_shelters", "--path", registry)
+    # brez-poste has no registry address, so the picker mints one for it.
+    assert post(client, LOGIN, {"slug": "brez-poste"}).status_code == 200
+
+    membership = ShelterMembership.objects.get(shelter__slug="brez-poste")
+    assert membership.source == MembershipSource.DEV
+    assert membership.user.email == "brez-poste@dev.invalid"
+
+    call_command("seed_shelters", "--path", registry)
+
+    assert ShelterMembership.objects.filter(pk=membership.pk).exists()

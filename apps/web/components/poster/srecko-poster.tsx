@@ -112,8 +112,8 @@ function sreckoTiles(locale: Locale): PosterTile[] {
       key: "eyes",
       label: text.oneEye,
       tone: "identity",
-      // The right eye was lost before he was listed and healed closed, which
-      // is how the model on the about page draws him.
+      // The right eye was missing and had healed closed, which is how the
+      // model on the about page draws him.
       glyph: { kind: "lucide", Icon: EyeClosed },
     },
     {

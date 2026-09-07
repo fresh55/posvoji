@@ -84,7 +84,7 @@ const copy: Record<Locale, PageText> = {
       "Upodobitev Srečka: bel maček s sivimi lisami in zaprtim desnim očesom.",
     eyeTitle: "Eno oko",
     eyeBody:
-      "Desnega očesa ni imel. Izgubil ga je, preden je prišel na seznam, in rana se je zacelila.",
+      "Desnega očesa ni imel. Rana se je zacelila.",
     felvTitle: "FeLV pozitiven",
     felvBody:
       "Test na virus mačje levkemije je bil pozitiven. To je vse, kar je o njegovem zdravju zapisano.",
@@ -107,7 +107,7 @@ const copy: Record<Locale, PageText> = {
       "A render of Srečko: a white cat with grey patches and a closed right eye.",
     eyeTitle: "One eye",
     eyeBody:
-      "He had no right eye. He lost it before he was listed, and the wound healed over.",
+      "He had no right eye. The wound had healed over.",
     felvTitle: "FeLV positive",
     felvBody:
       "He tested positive for feline leukemia virus. That is all that is recorded about his health.",

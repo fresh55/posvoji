@@ -83,7 +83,8 @@ export type Srecko = {
    *  cat is the one that filter hides and the one a shelter has the hardest
    *  time placing. */
   felv: "positive";
-  /** The right eye was lost before he was listed and healed over. */
+  /** The right eye was missing and had healed over. When he lost it is not
+   *  recorded, so nothing says. */
   eyes: "one";
   timeline: readonly SreckoEvent[];
   /** Oldest first. Empty until the photographs are chosen and prepared. */

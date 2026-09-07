@@ -1,25 +1,31 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { runBash } from "./operation-shell.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const source = readFileSync(join(root, "scripts", "deploy.sh"), "utf8").replaceAll(
-  "\r\n",
-  "\n",
-);
+const source = readFileSync(
+  join(root, "scripts", "deploy.sh"),
+  "utf8",
+).replaceAll("\r\n", "\n");
 
 // Parse and execute the generated awk programs, not just the outer shell.
 // Unescaped quotes around the slash used to disappear when Bash constructed
 // the host command, so Linux deployment failed after a successful build.
-for (const line of source.split("\n").filter((line) => line.includes("\\$(awk -v root="))) {
+for (const line of source
+  .split("\n")
+  .filter((line) => line.includes("\\$(awk -v root="))) {
   const fragment = line.trim().replace("/proc/self/mountinfo", "/dev/stdin");
-  const checked = spawnSync("bash", ["-s"], {
+  const checked = runBash(["-s"], {
     encoding: "utf8",
     input: `set -eu\nRELEASE_DIR=/safe\nMEDIA_STAGE_DIR=/safe\nRELEASE_STAGE_DIR=/safe\nMEDIA_DIR=/safe\nresolved=/safe\nold=old\nrendered="${fragment}"\nprintf '1 2 3 4 /safe/child 6\\n' | bash -c "$rendered"\n`,
   });
-  assert.equal(checked.status, 0, `generated mount check failed: ${checked.stderr}`);
+  assert.equal(
+    checked.status,
+    0,
+    `generated mount check failed: ${checked.stderr}`,
+  );
 }
 
 assert.ok(
@@ -67,7 +73,7 @@ HEALTH_NETRC=/etc/posvoji/health.netrc
 `;
 
 function run(harness) {
-  const result = spawnSync("bash", ["-s"], {
+  const result = runBash(["-s"], {
     cwd: root,
     encoding: "utf8",
     input: `${base}\n${harness}\n${transaction}\n`,
@@ -133,7 +139,10 @@ remote() {
 {
   const result = run(`EXPECTED_REMOTE_STATUS=1\n${innerHarness(500)}`);
   assert.equal(result.status, 0, result.output);
-  assert.match(result.output, /restored target failed authenticated release verification/);
+  assert.match(
+    result.output,
+    /restored target failed authenticated release verification/,
+  );
   assert.match(result.output, /INNER_STATUS=1/);
   assert.doesNotMatch(result.output, /verified rollback release bytes/);
 }

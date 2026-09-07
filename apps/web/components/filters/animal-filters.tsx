@@ -22,7 +22,10 @@ import type {
   GoodWithSection,
   HomeSection,
 } from "@/components/filters/filter-groups";
-import { FilterSheet } from "@/components/filters/filter-sheet";
+import {
+  FilterSheet,
+  filterSheetWorthOpening,
+} from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
@@ -46,8 +49,19 @@ import type { AnimalSort } from "@/lib/sort";
 // the whole plate. The edges follow env(safe-area-inset-*) with the 0px
 // fallbacks globals.css documents, so the plate clears a notch or a curved
 // corner instead of running under it.
+//
+// Edge to edge is a phone's shape, not a tablet's. Pinned to both edges at
+// every width below lg, a tablet stretched two short controls across the page:
+// measured at 768x1024 the dock was 736px wide and the location pill 639px of
+// that, carrying the 13 characters of "Vsa zavetišča". From sm it is capped at
+// 28rem and centred instead, near the width it has on the phone it was drawn
+// for; a landscape phone at 844px lands on the same 28rem. min() is what keeps
+// 28rem a cap rather than a floor if either that number or the breakpoint
+// moves. Only the horizontal edges move: the bottom keeps the safe-area inset
+// the footer's docked padding is measured against, and BackToTop is positioned
+// on its own and stays at the viewport's right edge.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
 
 // Desktop has enough room for one quiet toolbar. Mobile keeps the species
 // tabs, the result count and sort in the sticky rail while the two primary
@@ -121,21 +135,22 @@ export function AnimalFilters({
 } & FilterActionContract) {
   const { locale } = useI18n();
   const reduceMotion = useReducedMotion();
-  const hasFilterSheet =
-    groups.length > 0 ||
-    toggles.length > 0 ||
-    (goodWith?.options.length ?? 0) > 0 ||
-    (home?.options.length ?? 0) > 0 ||
-    (care?.options.length ?? 0) > 0 ||
-    // Sort lives inside this sheet too (filter-sheet.tsx), and a homogeneous
-    // multi-animal result set has nothing left to filter but still has an
-    // order to pick, so the sheet must not vanish just because every facet
-    // count is flat.
-    resultCount > 1;
   // Values, not sections. The chips row counts the same things and sits on the
   // same screen; a badge reading 1 over a row of two pills was two answers to
   // one question.
   const activeCount = activeFilterCount(filters);
+  // Asked of the sheet rather than worked out here: what is inside it is its
+  // own business, and this file only needs to know whether to hang a button
+  // on the dock for it (filter-sheet.tsx).
+  const hasFilterSheet = filterSheetWorthOpening({
+    groups,
+    toggles,
+    goodWith,
+    home,
+    care,
+    resultCount,
+    activeCount,
+  });
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker

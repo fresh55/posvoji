@@ -128,6 +128,14 @@ async function openSheet() {
   return screen.findByRole("dialog");
 }
 
+/** The Kje row as the sheet draws it: mount, open the drawer, and hand back
+ *  the press itself. Two describes below want it, so it is written once. */
+async function sheetRow() {
+  renderSheet();
+  const dialog = await openSheet();
+  return within(dialog).getByRole("button", { name: /Zavetišče:/ });
+}
+
 describe("Kje scope row in the sidebar", () => {
   it("names the whole country until a shelter is picked", () => {
     const trigger = renderSidebar();
@@ -230,12 +238,10 @@ describe("Kje scope row in the filter sheet", () => {
   });
 
   it("does not nest the picker's own dialog inside the drawer", async () => {
-    renderSheet();
-    const dialog = await openSheet();
+    const row = await sheetRow();
 
-    const row = within(dialog).getByRole("button", { name: /Zavetišče:/ });
     expect(row.hasAttribute("data-picker-trigger")).toBe(false);
-    expect(dialog.querySelector("[data-picker-stage]")).toBeNull();
+    expect(screen.getByRole("dialog").querySelector("[data-picker-stage]")).toBeNull();
   });
 
   it("takes a picked shelter off through its chip", async () => {
@@ -441,6 +447,54 @@ describe("Kje strip celebration pulse", () => {
     rerender(sidebarElement(["jug"]));
 
     expect(pulseRegion(trigger)).toBeNull();
+  });
+});
+
+// The same row, folded onto one line for the sheet. The sidebar's plate is
+// what the tests above assert; these are the differences the drawer's fold
+// budget pays for, and everything a press promises has to survive them.
+describe("Kje row folded onto one line in the sheet", () => {
+  it("draws the glyph inline instead of the plate card", async () => {
+    const row = await sheetRow();
+
+    // The 96px plate and the wash behind it are what the fold budget buys
+    // back; the country stays, at the size the dock trigger draws it.
+    expect(row.querySelector('svg[class*="self-center"]')).toBeNull();
+    expect(row.querySelector('span[class*="bg-muted/40"]')).toBeNull();
+    const glyph = row.querySelector('svg[class*="h-8"]');
+    expect(glyph).not.toBeNull();
+
+    // Icon detail, the dock trigger's own: no seams and no town dots, both of
+    // which are under half a pixel across at 49px of country.
+    expect(glyph?.querySelectorAll("[data-minimap-town-dot]").length).toBe(0);
+    expect(
+      glyph
+        ?.querySelector("[data-minimap-region-state]")
+        ?.getAttribute("class"),
+    ).not.toContain("stroke-background");
+  });
+
+  it("keeps the sentence and the map caption, and drops the invitation", async () => {
+    const row = await sheetRow();
+
+    expect(row.textContent).toContain("Vsa zavetišča");
+    expect(within(row).getByText("Zemljevid")).toBeTruthy();
+    // The only line the row gives up. It does not fit beside the caption
+    // either, so the pin and the word are what ask for the map here.
+    expect(row.textContent).not.toContain("Izberi zavetišča na zemljevidu");
+  });
+
+  it("keeps everything the press promises", async () => {
+    const row = await sheetRow();
+
+    expect(row.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(row.getAttribute("aria-label")).toContain("Odpri zemljevid");
+    // The sheet's row hands the press to the dock's picker, so it is still
+    // not the trigger the browser tests locate.
+    expect(row.hasAttribute("data-picker-trigger")).toBe(false);
+    // 52px, comfortably past the 44px the plate spells out for a thumb.
+    expect(row.className).toContain("min-h-13");
+    expect(row.closest("[data-slot='location-scope-row']")).not.toBeNull();
   });
 });
 

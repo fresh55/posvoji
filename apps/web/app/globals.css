@@ -456,15 +456,18 @@
   initial-value: 0;
 }
 
-/* A scroll container without a scrollbar. use-scroll-edge-fades.ts flips the
-   two variables, and a soft mask on each clipped edge takes over the
-   scrollbar's job of saying there is more. A container that fits stays
-   untouched. */
-@utility fade-scroll {
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+/* The fade itself, shared by the two utilities below. use-scroll-edge-fades.ts
+   flips the two variables and a soft mask on each clipped edge takes over the
+   scrollbar's job of saying there is more; a container that fits stays
+   untouched. The fade depth and the easing live here alone, so the two
+   containers that wear them cannot drift to different numbers.
+
+   It cannot be hoisted into a custom property on :root instead. The two
+   variables are registered non-inheriting with an initial value of 0, and a
+   custom property substitutes its own var() references where it is declared,
+   so a mask written at the root would freeze at the root's zeroes and every
+   element would inherit a fade that never moves. */
+@utility fade-scroll-mask {
   transition:
     --scroll-fade-top 0.25s ease,
     --scroll-fade-bottom 0.25s ease;
@@ -475,6 +478,40 @@
     black calc(100% - var(--scroll-fade-bottom, 0) * 2.5rem),
     rgb(0 0 0 / calc(1 - var(--scroll-fade-bottom, 0))) 100%
   );
+}
+
+/* A scroll container without a scrollbar: the fade is the whole of what says
+   there is more. */
+@utility fade-scroll {
+  @apply fade-scroll-mask;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* The same fade, with a thin scrollbar left in. The desktop filter sidebar
+   uses this one: it is the only fade-scroll container a visitor has not just
+   opened for themselves, it stands still while the page scrolls past it, and
+   at 1280x720 it keeps two whole sections below its fold. The mask alone was
+   not enough to say there was more.
+
+   A class of its own rather than a modifier next to fade-scroll: Chrome
+   ignores scrollbar-width and scrollbar-color on an element whose
+   ::-webkit-scrollbar is styled, and fade-scroll styles it. Carrying one class
+   or the other also leaves nothing for the cascade to decide. Below lg the
+   sidebar is display:none, so no phone ever draws this.
+
+   The thumb is muted-foreground at a third, not --border: in dark mode the
+   border token is white at 10%, and a thumb drawn in it measured as barely
+   there on the built page. The mix lands near --border in light and stays a
+   visible grey in dark, from the one token that already reads well on both
+   grounds. */
+@utility fade-scroll-thin {
+  @apply fade-scroll-mask;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 30%, transparent)
+    transparent;
 }
 
 /* Horizontal counterpart to fade-scroll, for a strip that scrolls sideways

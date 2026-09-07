@@ -955,13 +955,24 @@ export function AnimalGrid({
                 {messages.showFromAllShelters}
               </Button>
             )}
-            <Button
-              variant={shelterOnlyEmpty ? "ghost" : "outline"}
-              size="sm"
-              onClick={handleClearAll}
-            >
-              {messages.clearFilters}
-            </Button>
+            {/* Only when no chips row can carry the clear. Every chips row
+                already ends in "Počisti vse", the row above renders below lg
+                whenever there are chips, and at lg the sticky toolbar's own
+                row does (animal-filters.tsx), with the sidebar header carrying
+                a third copy. That put two clear-all controls under each other
+                on a phone and three on one desktop screen, all calling this.
+                Chips are only absent when the state is a species tab with
+                nothing in it, and then this button is the only way out.
+
+                Which also settles how it is drawn. It used to go quiet beside
+                the shelter button above, and the two can no longer share a
+                screen: a picked shelter is a chip, and a chip takes this
+                button off the page. */}
+            {chips.length === 0 && (
+              <Button variant="outline" size="sm" onClick={handleClearAll}>
+                {messages.clearFilters}
+              </Button>
+            )}
           </EmptyState>
         ) : (
           <div

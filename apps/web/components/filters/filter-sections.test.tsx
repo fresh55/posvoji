@@ -316,6 +316,44 @@ describe("collapsible filter sections", () => {
     fireEvent.keyDown(header("Zdravje"), { key: "Home" });
     expect(document.activeElement).toBe(header("Spol"));
   });
+
+  // The classes and not the computed style: jsdom ships no browser stylesheet,
+  // so the button rules that reset text-transform and letter-spacing, the
+  // whole reason a folding heading printed in sentence case, are not there to
+  // measure against.
+  it("prints a folding heading in the case every other heading uses", () => {
+    renderSidebar();
+
+    expect(header("Zdravje").classList.contains("uppercase")).toBe(true);
+    expect(header("Zdravje").classList.contains("tracking-wide")).toBe(true);
+  });
+
+  it("leaves the folded summary in its own case", () => {
+    renderSidebar();
+
+    fireEvent.click(header("Zdravje"));
+    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
+    fireEvent.click(header("Zdravje"));
+
+    const summary = [...header("Zdravje").querySelectorAll("span")].find(
+      (span) => span.textContent === "Sterilizacija",
+    );
+    expect(summary?.classList.contains("normal-case")).toBe(true);
+    expect(summary?.classList.contains("tracking-normal")).toBe(true);
+  });
+});
+
+describe("the sidebar's own scroll", () => {
+  // A sidebar taller than the viewport cuts its last sections off with nothing
+  // but a faint fade to say so, so this one container keeps its scrollbar.
+  // Carrying fade-scroll as well would hide it again: see globals.css.
+  it("keeps a scrollbar where the fade alone stands in everywhere else", () => {
+    const { container } = renderSidebar();
+    const aside = container.querySelector("aside");
+
+    expect(aside?.classList.contains("fade-scroll-thin")).toBe(true);
+    expect(aside?.classList.contains("fade-scroll")).toBe(false);
+  });
 });
 
 describe("remembered folds", () => {

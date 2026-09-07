@@ -56,6 +56,47 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
+/** Whether there is anything behind the Filtri button worth opening.
+ *
+ *  It lives here rather than in the dock that mounts the sheet, because what
+ *  it answers is what this file draws, and the dock was reconstructing that
+ *  across a file boundary: a flat chain of conditions that grew a clause per
+ *  audit, one for each state somebody noticed the sheet had gone missing
+ *  from. Three things can be inside, so there are three named answers and a
+ *  section added below has one place to be counted.
+ *
+ *  Sorting is the reason the last two exist. The sheet is where a phone
+ *  changes the order, so a result set that no facet can narrow still has
+ *  something to do in here, and so does a filtered-to-nothing one, which is
+ *  where a visitor most needs the way back out. */
+export function filterSheetWorthOpening({
+  groups,
+  toggles,
+  goodWith,
+  home,
+  care,
+  resultCount,
+  activeCount,
+}: {
+  groups: { group: CardGroup; options: FilterOption[] }[];
+  toggles: ToggleDef[];
+  goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
+  resultCount: number;
+  activeCount: number;
+}): boolean {
+  const hasSections =
+    groups.length > 0 ||
+    toggles.length > 0 ||
+    (goodWith?.options.length ?? 0) > 0 ||
+    (home?.options.length ?? 0) > 0 ||
+    (care?.options.length ?? 0) > 0;
+  const orderWorthPicking = resultCount > 1;
+  const somethingToUndo = activeCount > 0;
+  return hasSections || orderWorthPicking || somethingToUndo;
+}
+
 export function FilterSheet({
   filters,
   groups,
@@ -236,6 +277,7 @@ export function FilterSheet({
               selected={scope.selected}
               onOpen={openScope}
               onReset={scope.onReset}
+              layout="row"
             >
               <RemovableChips chips={scope.chips} className="mt-2" />
             </LocationScopeRow>

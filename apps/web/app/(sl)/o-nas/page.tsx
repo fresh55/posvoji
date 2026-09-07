@@ -11,7 +11,7 @@ export const metadata: Metadata = staticPageMetadata({
   // head cannot end up naming the page something the page does not.
   title: getMessages("sl").about,
   description:
-    "Posvoji.si je odprt in brezplačen seznam živali iz slovenskih zavetišč. Brez oglasov, odprta koda, podatki neposredno od zavetišč.",
+    "Kako deluje Posvoji.si: posvojitev pri zavetišču, aktualnost objav in brezplačno sodelovanje zavetišč. Vsebine objavljamo z dovoljenjem.",
 });
 
 export default function About() {

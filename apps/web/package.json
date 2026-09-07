@@ -13,7 +13,8 @@
     "test:e2e:visual": "playwright test --config=playwright.visual.config.ts",
     "generate:postal-districts": "node scripts/generate-postal-districts.mjs",
     "generate:font-subset": "node scripts/generate-font-subset.mjs",
-    "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs"
+    "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs",
+    "generate:srecko-share": "node scripts/draw-srecko-share.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

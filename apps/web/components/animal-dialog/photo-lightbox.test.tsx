@@ -77,6 +77,11 @@ function open(
     show(index: number) {
       rerender(tree({ index }));
     },
+    // The caller coming back with a shorter set, which is what a photo pulled
+    // from under an open lightbox looks like from in here.
+    shrink(count: number) {
+      rerender(tree({ images: photos(count) }));
+    },
   };
 }
 
@@ -132,6 +137,51 @@ function tap(photo: HTMLElement, at: { x: number; y: number; time: number }) {
 
 function zoomed(photo: HTMLElement) {
   return photo.getAttribute("data-zoomed");
+}
+
+/** The ground behind the photograph, which a pull fades on its way out. */
+function scrim() {
+  const found = document.querySelector('[data-slot="dialog-overlay"]');
+  if (!(found instanceof HTMLElement)) throw new Error("no scrim");
+  return found;
+}
+
+/** Where the gestures have left the photograph, as motion wrote it. */
+function pose(photo: HTMLElement) {
+  const box = photo.querySelector("div");
+  if (!box) throw new Error("no photo box");
+  return box.style.transform;
+}
+
+/** Motion writes its values on the next frame, and jsdom runs no frame until
+ *  the test lets go of the thread. */
+async function frame() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+}
+
+/** A box for the photograph to be drawn in. jsdom lays nothing out, and the
+ *  pan is clamped against the box and against the 4:3 photograph inside it. */
+function sizePhoto(photo: HTMLElement, width: number, height: number) {
+  Object.defineProperty(photo, "clientWidth", { configurable: true, value: width });
+  Object.defineProperty(photo, "clientHeight", { configurable: true, value: height });
+  photo.getBoundingClientRect = () =>
+    ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: width,
+      bottom: height,
+      width,
+      height,
+      toJSON: () => ({}),
+    }) as DOMRect;
+  const img = photo.querySelector("img");
+  if (!img) throw new Error("no photograph drawn");
+  Object.defineProperty(img, "naturalWidth", { configurable: true, value: 800 });
+  Object.defineProperty(img, "naturalHeight", { configurable: true, value: 600 });
 }
 
 describe("PhotoLightbox contact sheet", () => {
@@ -234,6 +284,80 @@ describe("PhotoLightbox number keys", () => {
     fireEvent.keyDown(lightbox, { key: "3", ctrlKey: true });
 
     expect(onIndexChange).not.toHaveBeenCalled();
+  });
+});
+
+// The animal dialog the lightbox is mounted in walks animals on the page keys.
+// React bubbles a portal's events up the component tree, so without a stop the
+// key swapped the animal underneath, which unmounted the lightbox mid-visit.
+describe("PhotoLightbox page keys", () => {
+  it("keeps the page keys to itself, away from the dialog it is mounted in", () => {
+    const seen = vi.fn();
+    const onIndexChange = vi.fn();
+    render(
+      <I18nProvider locale="sl">
+        <LazyMotion features={domAnimation}>
+          <div onKeyDown={seen}>
+            <PhotoLightbox
+              open
+              onOpenChange={vi.fn()}
+              images={photos(6)}
+              index={0}
+              onIndexChange={onIndexChange}
+              title="Pika"
+            />
+          </div>
+        </LazyMotion>
+      </I18nProvider>,
+    );
+    const lightbox = screen.getByRole("dialog");
+
+    fireEvent.keyDown(lightbox, { key: "PageDown" });
+    fireEvent.keyDown(lightbox, { key: "PageUp" });
+
+    expect(seen).not.toHaveBeenCalled();
+    expect(onIndexChange).not.toHaveBeenCalled();
+
+    // Only the page keys. The arrows are still the photos' own.
+    fireEvent.keyDown(lightbox, { key: "ArrowRight" });
+
+    expect(onIndexChange).toHaveBeenCalledWith(1);
+  });
+});
+
+// Which photograph is drawn, and how hard the browser is asked to go and get
+// it. The lightbox is the view somebody opened to look closely at one photo,
+// and the set behind it is the caller's and can change under it.
+describe("PhotoLightbox the photograph on show", () => {
+  it("fetches the photograph at once and leaves the sheet's tiles lazy", () => {
+    // The fan behind seats five prints, so a step past them opens on a photo
+    // nothing has asked for yet.
+    const { lightbox } = open();
+
+    const img = photoImage(lightbox);
+    expect(img.getAttribute("loading")).toBe("eager");
+    expect(img.getAttribute("fetchpriority")).toBe("high");
+
+    fireEvent.click(toggle(lightbox));
+
+    // A grid of thumbnails, none of which is the photo being looked at.
+    const tile = tiles(lightbox)[0]?.querySelector("img");
+    expect(tile?.getAttribute("loading")).toBe("lazy");
+    expect(tile?.getAttribute("fetchpriority")).toBeNull();
+  });
+
+  it("draws the last photo when the set shrinks under it", () => {
+    // An open dialog that renders nothing takes the layer away with focus
+    // still inside it, so the index is clamped rather than trusted.
+    const { lightbox, shrink } = open({ index: 5 });
+    expect(within(lightbox).getByText("6 / 6")).toBeTruthy();
+
+    shrink(3);
+
+    expect(within(lightbox).getByText("3 / 3")).toBeTruthy();
+    expect(photoImage(lightbox).getAttribute("src")).toBe(
+      "/media/animals/pika-3.webp",
+    );
   });
 });
 
@@ -462,6 +586,119 @@ describe("PhotoLightbox touch", () => {
     show(1);
 
     expect(zoomed(slot(lightbox, "photo-lightbox-photo"))).toBe("false");
+  });
+
+  it("drops the zoom for good on a step away and back", () => {
+    // The photo went back to its normal size on the step, so a zoom that came
+    // back with the picture would say zoomed over a photograph at rest: the
+    // pan would have the finger, and the swipe, the pull and the double tap
+    // would all be dead.
+    const { lightbox, onOpenChange, show } = open();
+    const photo = slot(lightbox, "photo-lightbox-photo");
+
+    tap(photo, { x: 200, y: 200, time: 0 });
+    tap(photo, { x: 202, y: 201, time: 100 });
+    expect(zoomed(photo)).toBe("true");
+
+    fireEvent.keyDown(lightbox, { key: "ArrowRight" });
+    show(1);
+    fireEvent.keyDown(lightbox, { key: "ArrowLeft" });
+    show(0);
+
+    const back = slot(lightbox, "photo-lightbox-photo");
+    expect(zoomed(back)).toBe("false");
+
+    // And the gestures the zoom turns off are the photo's again.
+    touch(back, "pointerdown", { x: 200, y: 100, time: 400 });
+    touch(back, "pointermove", { x: 200, y: 140, time: 460 });
+    touch(back, "pointermove", { x: 200, y: 260, time: 600 });
+    touch(back, "pointerup", { x: 200, y: 260, time: 620 });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("puts the pull back before a second finger turns it into a pinch", async () => {
+    // The pull had the photo down the screen on a faded scrim, and the pinch
+    // is seeded from wherever the photo is. Left there, a pinch that commits
+    // keeps the fade with nothing pulling it.
+    const { lightbox } = open();
+    const photo = slot(lightbox, "photo-lightbox-photo");
+
+    touch(photo, "pointerdown", { x: 200, y: 100, pointerId: 1, time: 0 });
+    touch(photo, "pointermove", { x: 200, y: 140, pointerId: 1, time: 60 });
+    touch(photo, "pointermove", { x: 200, y: 300, pointerId: 1, time: 200 });
+    await frame();
+    expect(scrim().style.opacity).not.toBe("1");
+
+    touch(photo, "pointerdown", { x: 100, y: 300, pointerId: 2, time: 240 });
+    touch(photo, "pointermove", { x: 50, y: 300, pointerId: 1, time: 300 });
+    touch(photo, "pointermove", { x: 450, y: 300, pointerId: 2, time: 320 });
+    touch(photo, "pointerup", { x: 450, y: 300, pointerId: 2, time: 360 });
+    touch(photo, "pointerup", { x: 50, y: 300, pointerId: 1, time: 380 });
+    await frame();
+
+    expect(zoomed(photo)).toBe("true");
+    expect(scrim().style.opacity).toBe("1");
+  });
+
+  it("leaves the first tap behind when the photo changes under it", () => {
+    // Two taps in the window and in the same place, one on each of two
+    // photographs, are not a double tap on either of them.
+    const { lightbox, show } = open();
+
+    tap(slot(lightbox, "photo-lightbox-photo"), { x: 200, y: 200, time: 0 });
+    show(1);
+    tap(slot(lightbox, "photo-lightbox-photo"), { x: 200, y: 200, time: 100 });
+
+    expect(zoomed(slot(lightbox, "photo-lightbox-photo"))).toBe("false");
+  });
+
+  it("keeps the zoomed photograph inside a window that changed shape", async () => {
+    const { lightbox } = open();
+    const photo = slot(lightbox, "photo-lightbox-photo");
+    sizePhoto(photo, 400, 300);
+
+    // Four times the size, where the photograph overflows its box by 600
+    // either side and 450 above and below.
+    pinch(photo);
+    touch(photo, "pointerup", { x: 450, y: 300, pointerId: 2, time: 100 });
+    touch(photo, "pointerup", { x: 50, y: 300, pointerId: 1, time: 120 });
+    expect(zoomed(photo)).toBe("true");
+
+    // A pan into the corner, which stops at those limits.
+    touch(photo, "pointerdown", { x: 200, y: 150, time: 200 });
+    touch(photo, "pointermove", { x: 1400, y: 1150, time: 260 });
+    touch(photo, "pointerup", { x: 1400, y: 1150, time: 280 });
+    await frame();
+    expect(pose(photo)).toContain("translateX(600px)");
+    expect(pose(photo)).toContain("translateY(450px)");
+
+    // The phone turns: a narrower, taller box, with less room to travel in.
+    sizePhoto(photo, 300, 400);
+    fireEvent(window, new Event("resize"));
+    await frame();
+
+    expect(pose(photo)).toContain("translateX(450px)");
+    expect(pose(photo)).toContain("translateY(250px)");
+  });
+
+  it("measures the pinch again when a third finger leaves it another pair", () => {
+    const { lightbox } = open();
+    const photo = slot(lightbox, "photo-lightbox-photo");
+
+    // Two fingers, four hundred pixels apart, at four times the size.
+    pinch(photo);
+    // A third finger lands and one of the pinching pair lifts, so the two on
+    // the glass are a hundred apart rather than four hundred.
+    touch(photo, "pointerdown", { x: 550, y: 300, pointerId: 3, time: 100 });
+    touch(photo, "pointerup", { x: 50, y: 300, pointerId: 1, time: 120 });
+    touch(photo, "pointermove", { x: 540, y: 300, pointerId: 3, time: 160 });
+    touch(photo, "pointerup", { x: 540, y: 300, pointerId: 3, time: 200 });
+    touch(photo, "pointerup", { x: 450, y: 300, pointerId: 2, time: 220 });
+
+    // Read against the pair that has gone, those ten pixels are the photo
+    // falling back to its normal size and the zoom being dropped.
+    expect(zoomed(photo)).toBe("true");
   });
 });
 

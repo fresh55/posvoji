@@ -234,7 +234,15 @@ export function PhotoLightbox({
   // The photo that was clicked is where focus belongs on the way out, and a
   // dialog opened from the URL has no trigger for Radix to hand it back to.
   const returnFocus = useRef<HTMLElement | null>(null);
-  const image = images[index];
+  // Which photo is on show. The index is the caller's and the set behind it
+  // can shrink while this is open, so it is clamped rather than trusted: an
+  // index past the end draws no photo, and an open dialog that renders nothing
+  // takes the layer away with focus still inside it. In range, which is every
+  // other moment, this is the index itself.
+  const shown = images.length
+    ? Math.min(Math.max(index, 0), images.length - 1)
+    : 0;
+  const image = images[shown];
   const many = images.length > 1;
   const hasSheet = images.length >= SHEET_FROM;
 
@@ -258,10 +266,13 @@ export function PhotoLightbox({
   // Which photo the zoom belongs to, or null for none. A zoom belongs to one
   // picture, and reading the index back rather than a bare boolean is what
   // makes a step to the next photo start unzoomed without an effect that sets
-  // state a render after the step. jsdom cannot see a transform, so this is
-  // also what the tests read, through data-zoomed on the box below.
+  // state a render after the step. Every step clears it as well, in goTo
+  // below: the motion values go back to rest with the photo, and a zoom left
+  // standing would meet them there on the way back to the picture it was
+  // taken on. jsdom cannot see a transform, so this is also what the tests
+  // read, through data-zoomed on the box below.
   const [zoomedAt, setZoomedAt] = useState<number | null>(null);
-  const zoomed = zoomedAt === index;
+  const zoomed = zoomedAt === shown;
 
   // Every live gesture is kept in refs and written from event handlers only.
   // None of it is drawn, and a render per move is a render per frame.
@@ -293,6 +304,9 @@ export function PhotoLightbox({
   const touchAxis = useRef<"x" | "y" | null>(null);
   const lastTap = useRef<{ x: number; y: number; time: number } | null>(null);
   const runs = useRef<ReturnType<typeof animate>[]>([]);
+  // The box the photograph is drawn in, which is what a gesture measures and
+  // what the clamp below re-measures when the window changes shape.
+  const photoBox = useRef<HTMLDivElement | null>(null);
 
   // The four values the photo is drawn from, paired with the part of a pose
   // each one carries. Every write below goes through this rather than naming
@@ -341,6 +355,10 @@ export function PhotoLightbox({
     spent.current = false;
     touchStart.current = null;
     touchAxis.current = null;
+    // The tap half of a double tap belongs to the photo it landed on. Left
+    // here, a tap on one picture and a tap on the next one within the window
+    // would read as a double tap on a photograph the finger only met once.
+    lastTap.current = null;
     writePhoto(PHOTO_REST, "jump");
   }, [stopRuns, writePhoto]);
 
@@ -351,7 +369,32 @@ export function PhotoLightbox({
   useEffect(() => {
     restPhoto();
     return stopRuns;
-  }, [open, index, restPhoto, stopRuns]);
+  }, [open, shown, restPhoto, stopRuns]);
+
+  // A pan is clamped against a box measured when the finger came down, and a
+  // phone turned sideways while zoomed leaves the photograph parked outside
+  // the box it is now drawn in, with ground showing beside it until the next
+  // gesture. The listener is only ever on while there is a zoom to hold, and
+  // the clamp is a jump rather than a spring: the photograph is not travelling
+  // anywhere, it is being put back inside a box that changed under it.
+  useEffect(() => {
+    if (!zoomed) return;
+    function reclamp() {
+      const container = photoBox.current;
+      if (!container) return;
+      const limit = panLimit(measure(container), photoScale.get());
+      photoX.jump(clamp(photoX.get(), limit.x));
+      photoY.jump(clamp(photoY.get(), limit.y));
+    }
+    window.addEventListener("resize", reclamp);
+    // Not every browser reports a turn as a resize of the window, and the
+    // ones that do may report it a frame later than this.
+    window.addEventListener("orientationchange", reclamp);
+    return () => {
+      window.removeEventListener("resize", reclamp);
+      window.removeEventListener("orientationchange", reclamp);
+    };
+  }, [zoomed, photoScale, photoX, photoY]);
 
   // The lightbox stays mounted across visits, so the zoom has to be dropped on
   // the way out or the next visit to the same photo would open into it. Every
@@ -376,13 +419,26 @@ export function PhotoLightbox({
     setChosenView("sheet");
   }
 
-  function showPhoto(next: number) {
+  /** Another photo, however it was asked for: the chevrons, a swipe, a number
+   *  key, a tile in the sheet. The zoom goes with the picture it belonged to.
+   *  Cleared here rather than in the effect above, which puts the motion
+   *  values back: the two have to land in the same render, or the photograph
+   *  sits at its normal size for one frame while every gesture is still read
+   *  as a zoomed one. */
+  function goTo(next: number) {
+    // The number of the photo already in front is not a step, and there is no
+    // zoom to drop: nothing moved out from under it.
+    if (next !== shown) setZoomedAt(null);
     onIndexChange(next);
+  }
+
+  function showPhoto(next: number) {
+    goTo(next);
     setChosenView("photo");
   }
 
   function step(direction: -1 | 1) {
-    onIndexChange((index + direction + images.length) % images.length);
+    goTo((shown + direction + images.length) % images.length);
   }
 
   /** Where the photo lands once the fingers are off it. Reduced motion gets
@@ -403,7 +459,7 @@ export function PhotoLightbox({
     }
     const box = measure(container);
     const limit = panLimit(box, ZOOM_SCALE);
-    setZoomedAt(index);
+    setZoomedAt(shown);
     settle({
       x: clamp((box.width / 2 - (tapX - box.left)) * (ZOOM_SCALE - 1), limit.x),
       y: clamp((box.height / 2 - (tapY - box.top)) * (ZOOM_SCALE - 1), limit.y),
@@ -422,7 +478,26 @@ export function PhotoLightbox({
       settle(PHOTO_REST);
       return;
     }
-    setZoomedAt(index);
+    setZoomedAt(shown);
+  }
+
+  /** The pinch measured from the two fingers on the glass now: how far apart
+   *  they are, and where the photograph is under them. Seeded when the pair
+   *  arrives, and again when the pair itself changes. */
+  function seedPinch(container: HTMLElement) {
+    const [first, second] = [...pointers.current.values()];
+    if (!first || !second) return;
+    const box = measure(container);
+    pinch.current = {
+      distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
+      scale: photoScale.get(),
+      midpoint: {
+        x: (first.x + second.x) / 2 - box.left,
+        y: (first.y + second.y) / 2 - box.top,
+      },
+      offset: { x: photoX.get(), y: photoY.get() },
+      box,
+    };
   }
 
   function startTouch(event: PointerEvent<HTMLDivElement>) {
@@ -439,25 +514,19 @@ export function PhotoLightbox({
 
     if (pointers.current.size >= 2) {
       // A second finger ends whatever the first one was starting.
+      const pulling = touchAxis.current === "y";
       touchStart.current = null;
       touchAxis.current = null;
       lastTap.current = null;
       pan.current = null;
       spent.current = true;
       stopRuns();
-      const [first, second] = [...pointers.current.values()];
-      if (!first || !second) return;
-      const box = measure(container);
-      pinch.current = {
-        distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
-        scale: photoScale.get(),
-        midpoint: {
-          x: (first.x + second.x) / 2 - box.left,
-          y: (first.y + second.y) / 2 - box.top,
-        },
-        offset: { x: photoX.get(), y: photoY.get() },
-        box,
-      };
+      // A pull had the photograph down the screen, smaller, on a faded scrim,
+      // and the pinch is seeded from wherever the photo is. Put back to rest
+      // first, or the pinch inherits the pull's pose and a zoom that commits
+      // keeps it: the scrim stays half faded with nothing pulling it.
+      if (pulling) writePhoto(PHOTO_REST, "jump");
+      seedPinch(container);
       return;
     }
 
@@ -578,7 +647,16 @@ export function PhotoLightbox({
     if (pinch.current) {
       // Down to one finger is the end of a pinch. What is left on the glass
       // belongs to no gesture until it lifts.
-      if (pointers.current.size < 2) endPinch();
+      if (pointers.current.size < 2) {
+        endPinch();
+        return;
+      }
+      // A third finger was down and one of the pair has gone, so the two left
+      // are another pair. Measured again from where they are and from the size
+      // the photograph is at now: the distance the pinch started on belongs to
+      // fingers that are no longer holding it, and read against the new pair
+      // it makes the photo jump.
+      seedPinch(event.currentTarget);
       return;
     }
 
@@ -758,6 +836,9 @@ export function PhotoLightbox({
     onStep: step,
   });
 
+  // An animal with no permitted photo at all. The index is clamped above, so
+  // this is the empty set and nothing else: there is no photograph to open a
+  // full-screen view of, and no caller that asks for one.
   if (!image) return null;
 
   return (
@@ -800,6 +881,18 @@ export function PhotoLightbox({
             target.focus({ preventScroll: true });
           }}
           onKeyDown={(event) => {
+            // The animal dialog this is mounted in walks animals on the page
+            // keys, and React bubbles a portal's events up the component tree:
+            // a page key pressed in here swapped the animal underneath, which
+            // took the lightbox away with it and left focus on the shell. The
+            // key stops here whichever view is showing. Nothing scrolls behind
+            // a full-screen layer either, so the default goes with it; the
+            // sheet keeps its own, which is the container it scrolls.
+            if (event.key === "PageUp" || event.key === "PageDown") {
+              event.stopPropagation();
+              if (!sheet) event.preventDefault();
+              return;
+            }
             // In the sheet the arrows belong to the scroll container: there is
             // no single photo to step, and preventing the default would leave
             // a keyboard visitor unable to scroll the grid. The numbers go the
@@ -874,10 +967,10 @@ export function PhotoLightbox({
                       // The tile the sheet was opened from. aria-current says
                       // it in the tree, the ring says it on the screen, and
                       // neither stands alone.
-                      aria-current={position === index ? "true" : undefined}
+                      aria-current={position === shown ? "true" : undefined}
                       className={cn(
                         "relative aspect-[4/3] overflow-hidden rounded-ui bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        position === index && "ring-2 ring-background",
+                        position === shown && "ring-2 ring-background",
                       )}
                     >
                       <AnimalPhoto
@@ -902,6 +995,7 @@ export function PhotoLightbox({
                  browser to do with a finger here. The contact sheet keeps its
                  own scrolling. */
               <div
+                ref={photoBox}
                 data-slot="photo-lightbox-photo"
                 // jsdom runs no frame loop and so cannot see the transform the
                 // motion values write. This is the fact the gesture tests read
@@ -949,12 +1043,19 @@ export function PhotoLightbox({
                     // title is sr-only and the counter beside it is aria-hidden.
                     alt={t(
                       many ? "photoAlt" : "photoAltSingle",
-                      { name: title, current: index + 1, total: images.length },
+                      { name: title, current: shown + 1, total: images.length },
                     )}
                     // The full screen, which is what puts the top of the ladder
                     // on every phone and most desktops. That is the right answer
                     // here: this is the view somebody opened to look closely.
                     sizes="100vw"
+                    // The photograph somebody is looking at, so it goes for at
+                    // once and at the front of the queue. The fan behind has
+                    // only seated five prints, and a step past them opened on a
+                    // photo the browser was in no hurry to fetch. The tiles in
+                    // the sheet keep their lazy loading: they are a grid of
+                    // thumbnails, and the one being looked at is not among them.
+                    eager
                     // object-contain leaves ground either side of the photo, and
                     // a cover-scaled placeholder would paint into it. The wash
                     // behind is what fills that ground.
@@ -1049,10 +1150,10 @@ export function PhotoLightbox({
                 variant="secondary"
                 className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 h-6 -translate-x-1/2 bg-background/80 px-2 text-xs tabular-nums shadow-xs backdrop-blur-sm sm:bottom-4"
               >
-                {index + 1} / {images.length}
+                {shown + 1} / {images.length}
               </Badge>
               <span className="sr-only" aria-live="polite" aria-atomic="true">
-                {t("photoCount", { current: index + 1, total: images.length })}
+                {t("photoCount", { current: shown + 1, total: images.length })}
               </span>
             </>
           )}

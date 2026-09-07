@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client
 
 from core.dataset import clear_cache
@@ -44,6 +45,25 @@ def fresh_dataset_cache():
     clear_cache()
     yield
     clear_cache()
+
+
+@pytest.fixture(autouse=True)
+def empty_cache(settings):
+    """Rate-limit counters start empty and never touch the deployment's cache.
+
+    The service keeps them in a file cache, which is shared between worker
+    processes. A test does not need that, and it must not leave counters in a
+    directory the next test or the next run reads.
+    """
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "portal-tests",
+        }
+    }
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture
@@ -104,6 +124,18 @@ def member(db, shelter):
     user = get_user_model().objects.create_user(
         username="info@example.si",
         email="info@example.si",
+        password=None,
+    )
+    ShelterMembership.objects.create(user=user, shelter=shelter)
+    return user
+
+
+@pytest.fixture
+def second_member(db, shelter):
+    """A second login on the same shelter, for the per-address send limit."""
+    user = get_user_model().objects.create_user(
+        username="pisarna@example.si",
+        email="pisarna@example.si",
         password=None,
     )
     ShelterMembership.objects.create(user=user, shelter=shelter)

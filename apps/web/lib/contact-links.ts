@@ -44,8 +44,8 @@ const NATIONAL = /^0(\d{8})$/;
  * visitors it already worked for, instead of being guessed into an
  * international number that reaches nobody. Two shapes deliberately fall
  * here: an 080 freephone, which has no international form to convert to, and
- * the "number / number" pair the register's own validator permits, where the
- * digits of two numbers must not be run together into one.
+ * an ambiguous "number / number" pair. The registry rejects the latter;
+ * this formatter preserves the separator so it cannot join two numbers.
  */
 export function telHref(phone: string): string {
   return `tel:${telNumber(phone)}`;
@@ -78,9 +78,9 @@ export function telNumber(phone: string): string {
   return compact;
 }
 
-/** A registry address as a mailto: URL. Nothing is stripped or prefixed: an
- *  address has no local form to expand, and the register validates the shape
- *  before it gets here. */
+/** Keep URL delimiters and percent escapes in an address literal. These can
+ *  occur in a valid mailbox name, but must not become mail headers or another
+ *  recipient when a mail client reads the URL. */
 export function mailtoHref(email: string): string {
-  return `mailto:${email}`;
+  return `mailto:${encodeURIComponent(email).replace(/%40/g, "@")}`;
 }

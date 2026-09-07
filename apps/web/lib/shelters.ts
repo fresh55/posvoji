@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+import { telNumber } from "./contact-links";
 
 const registryPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -56,10 +57,9 @@ function websiteProblem(value: unknown): string | undefined {
   return undefined;
 }
 
-// An address with nothing in it that changes what a mailto: means. The comma,
-// the semicolon and the question mark each turn one recipient into a list or
-// a header, and whitespace and angle brackets do the same by another route.
-const EMAIL = /^[^\s<>()[\]\\,;:@"]+@[^\s<>()[\]\\,;:@"]+\.[a-z]{2,}$/i;
+// One mailbox with a DNS domain. mailtoHref encodes URL delimiters that are
+// legitimate in the mailbox name; headers and URL fragments are not domains.
+const EMAIL = /^[^\s<>()[\]\\,;:@"]+@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
 
 function emailProblem(value: unknown): string | undefined {
   if (typeof value !== "string" || !EMAIL.test(value)) {
@@ -76,6 +76,9 @@ const PHONE = /^[0-9 ()+/-]+$/;
 function phoneProblem(value: unknown): string | undefined {
   if (typeof value !== "string" || !PHONE.test(value)) {
     return `phone has characters a dialler cannot take: ${String(value)}`;
+  }
+  if (!/^\+?\d+$/.test(telNumber(value))) {
+    return `phone is not a single dialable number: ${value}`;
   }
   return undefined;
 }
@@ -117,6 +120,11 @@ function entryProblems(value: unknown, index: number): string[] {
 
   for (const field of ["id", "name", "city"] as const) {
     if (textProblem(entry[field])) problems.push(`${at} has no ${field}`);
+  }
+  // IDs also become route segments, HTML anchors and lookup keys. A nonempty
+  // string alone can escape the shelter route or silently change its query.
+  if (typeof entry.id === "string" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.id)) {
+    problems.push(`${at}: id must be a kebab-case slug`);
   }
 
   // Named by id once there is one to name it by: "shelter zonzani" is what a

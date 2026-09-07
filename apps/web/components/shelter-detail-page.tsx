@@ -33,7 +33,7 @@ const pageText = {
     providerNotice:
       "Vsaka žival je povezana na izvirno objavo pri zavetišču.",
     registryNotice:
-      "Zavetišče je navedeno iz javnega registra UVHVVR. Za zdaj še nima urejenega vira podatkov o živalih na Posvoji.si, zato tukaj ni seznama; za posvojitev se obrnite nanje neposredno.",
+      "Za to zavetišče na Posvoji.si trenutno ni objav živali. To ne pomeni, da v zavetišču ni živali za posvojitev. Za več informacij se obrni neposredno na zavetišče.",
     mapLabel: "Lega zavetišča na zemljevidu Slovenije",
     openInSearch: "Odpri v iskalniku živali",
     source: "Vir: UVHVVR — register zavetišč (gov.si)",
@@ -54,7 +54,7 @@ const pageText = {
     providerNotice:
       "Every animal links back to its original listing at the shelter.",
     registryNotice:
-      "This shelter is listed from the public UVHVVR registry. It does not yet have a data feed on Posvoji.si, so there is no animal list here; contact the shelter directly to ask about adoption.",
+      "There are currently no animal listings from this shelter on Posvoji.si. This does not mean the shelter has no animals for adoption. Contact the shelter directly for more information.",
     mapLabel: "The shelter's location on a map of Slovenia",
     openInSearch: "Open in the animal search",
     source: "Source: UVHVVR — shelter registry (gov.si)",
@@ -78,6 +78,11 @@ type PageText = (typeof pageText)[Locale];
  *  chips still read as one fact about the shelter, the full list reads as a
  *  page of its own. */
 const MUNICIPALITY_PREVIEW = 12;
+
+// Contact text must remain readable at narrow widths and enlarged font sizes.
+// Grow the button when it wraps, and keep each contact large enough to tap.
+const CONTACT_BUTTON =
+  "h-auto min-h-11 min-w-0 max-w-full whitespace-normal py-2";
 
 // Names, not sentences. A municipality carries a species tag only where the
 // registry limits the shelter to one species there, which is a difference
@@ -205,8 +210,9 @@ export function ShelterDetailPage({
                       line fits in that: the page scrolled sideways. With a
                       floor, the row's flex-wrap moves the whole column under
                       the mark instead of crushing it, and the column gets the
-                      full width there. */}
-                  <div className="min-w-40 flex-1 space-y-1">
+                      full width there. Cap the floor at that available width
+                      so enlarged text cannot make the floor wider than the page. */}
+                  <div className="min-w-[min(10rem,100%)] flex-1 space-y-1">
                     {/* break-words is the last resort under it: a name whose
                         longest word is wider than the column breaks the word
                         rather than the page. */}
@@ -239,7 +245,10 @@ export function ShelterDetailPage({
 
                 <div className="flex flex-wrap gap-2">
                   {shelter.website && (
-                    <Button asChild variant="outline" size="sm">
+                    <Button
+                      asChild variant="outline" size="sm"
+                      className={CONTACT_BUTTON}
+                    >
                       <a href={shelter.website} target="_blank" rel="noreferrer">
                         <Globe aria-hidden />
                         {text.website}
@@ -247,18 +256,28 @@ export function ShelterDetailPage({
                     </Button>
                   )}
                   {shelter.email && (
-                    <Button asChild variant="outline" size="sm">
+                    <Button
+                      asChild variant="outline" size="sm"
+                      className={CONTACT_BUTTON}
+                    >
                       <a href={mailtoHref(shelter.email)}>
                         <Mail aria-hidden />
-                        {shelter.email}
+                        <span className="min-w-0 [overflow-wrap:anywhere]">
+                          {shelter.email}
+                        </span>
                       </a>
                     </Button>
                   )}
                   {shelter.phone && (
-                    <Button asChild variant="outline" size="sm">
+                    <Button
+                      asChild variant="outline" size="sm"
+                      className={CONTACT_BUTTON}
+                    >
                       <a href={telHref(shelter.phone)}>
                         <Phone aria-hidden />
-                        {shelter.phone}
+                        <span className="min-w-0 [overflow-wrap:anywhere]">
+                          {shelter.phone}
+                        </span>
                       </a>
                     </Button>
                   )}

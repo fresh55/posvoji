@@ -199,6 +199,57 @@ describe("the shelter's own description", () => {
     // more attribute on 466 pages saying what the html element says.
     expect(screen.getByText(DESCRIPTION).getAttribute("lang")).toBeNull();
   });
+
+  it("prints a short description whole", () => {
+    renderFacts({ shortDescription: DESCRIPTION });
+
+    expect(screen.getByText(DESCRIPTION).className).not.toContain(
+      "line-clamp-5",
+    );
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  it("clamps a long one", () => {
+    const long = DESCRIPTION.repeat(8);
+    renderFacts({ shortDescription: long });
+
+    expect(screen.getByText(long).className).toContain("line-clamp-5");
+    expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
+  });
+
+  // The clamp is five lines, and the text is printed whitespace-pre-line, so
+  // a listing set out a line at a time is over that long before it is over
+  // the character count. It used to be measured by length alone and stood
+  // there at full height.
+  it("clamps a short one the shelter set out in lines", () => {
+    const lines = "Muri\nMuca\n3 leta\nSamica\nCepljena\nSterilizirana";
+    renderFacts({ shortDescription: lines });
+
+    const paragraph = screen.getByText(/Sterilizirana/);
+    expect(paragraph.className).toContain("line-clamp-5");
+    expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
+  });
+
+  it("leaves four lines alone", () => {
+    const lines = "Muri\nMuca\n3 leta\nSamica";
+    renderFacts({ shortDescription: lines });
+
+    expect(screen.getByText(/Samica/).className).not.toContain("line-clamp-5");
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  // The button says nothing about what it opens on its own, and the sentence
+  // it opens is not its own text.
+  it("names the paragraph the read-more button expands", () => {
+    const long = DESCRIPTION.repeat(8);
+    renderFacts({ shortDescription: long });
+
+    const button = screen.getByRole("button", { name: "Preberi več" });
+    expect(button.getAttribute("aria-controls")).toBe(
+      screen.getByText(long).id,
+    );
+    expect(screen.getByText(long).id).not.toBe("");
+  });
 });
 
 describe("the special care line", () => {

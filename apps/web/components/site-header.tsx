@@ -30,11 +30,12 @@ export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
 
           Nothing in this header could shrink. At 200% text on a 320px phone,
           which is what WCAG 1.4.4 asks the page to survive, the brand wanted
-          237px and the controls beside it 155, and the header pushed the
-          document to 460px inside a 320px viewport: the whole site scrolled
-          sideways, every page of it. A flex item's automatic minimum is its
-          own min-content, and "posvoji.si" has no break in it, so the row had
-          no way to be narrower than the word.
+          237px and the controls beside it 155, measured while the language
+          switcher still drew both of its halves at that width, and the header
+          pushed the document to 460px inside a 320px viewport: the whole site
+          scrolled sideways, every page of it. A flex item's automatic minimum
+          is its own min-content, and "posvoji.si" has no break in it, so the
+          row had no way to be narrower than the word.
 
           The wordmark is the right thing to lose. It is the one part of the
           brand that is also written in the tab title, the one the mark beside

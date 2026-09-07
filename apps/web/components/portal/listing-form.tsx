@@ -7,7 +7,7 @@ import {
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
-import { FormSection } from "@/components/portal/animal-form";
+import { FormSection, type ReadBox } from "@/components/portal/animal-form";
 import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
 import { MissingMark } from "@/components/portal/override-mark";
@@ -20,15 +20,20 @@ import {
   SPECIAL_NEEDS_META,
   SPECIES_META,
   STATUS_META,
+  TEXT_LIMITS,
   ageParts,
   choiceCard,
+  fieldControls,
+  fieldRow,
   hintId,
+  isPlausibleBirthDate,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
   isPortalStatus,
   isoDate,
+  limited,
   parseAgeBoxes,
   specialNeedsAnswer,
   specialNeedsValue,
@@ -109,8 +114,30 @@ type Shape = Omit<PortalListingInput, "species" | "name"> & {
 /** The two fields a listing cannot exist without. */
 type Required = "species" | "name";
 
-/** What a submit can refuse: a required field left empty, or an unusable age. */
-export type Refused = Required | "age";
+/**
+ * What a submit can refuse: a required field left empty, or one of the three
+ * boxes the browser reads for us holding something that is not a value. One
+ * box at a time, so the mark and the message land on that box alone.
+ */
+export type Refused = Required | ReadBox;
+
+/**
+ * The control of one such box, for the submit that has to point at it and the
+ * discard that has to empty it. The two age boxes share a row, in the order
+ * the form reads them.
+ */
+export function readBoxControl(
+  form: HTMLFormElement | null,
+  box: ReadBox,
+): HTMLInputElement | null {
+  const row = fieldRow(
+    form,
+    box === "birthDate" ? "birthDate" : "approximateAgeMonths",
+  );
+  if (!row) return null;
+  const control = fieldControls(row)[box === "ageMonths" ? 1 : 0];
+  return control instanceof HTMLInputElement ? control : null;
+}
 
 /** A file picked for a listing and not stored yet. */
 export type PendingPhoto = {
@@ -201,9 +228,88 @@ export function draftFrom(listing: PortalListing | null): Draft {
   };
 }
 
+const TEXT_KEYS = new Set<string>([
+  "name",
+  "breed",
+  "birthDate",
+  "ageYears",
+  "ageMonths",
+  "shortDescription",
+]);
+
+type ChoiceKey =
+  | "species"
+  | "sex"
+  | "size"
+  | "energy"
+  | "goodWithKids"
+  | "goodWithDogs"
+  | "goodWithCats"
+  | "apartmentOk"
+  | "specialNeeds";
+
+/** The answers each choice row can hold, so a stored one can be checked. */
+const CHOICES: Record<ChoiceKey, readonly string[]> = {
+  species: PORTAL_SPECIES,
+  sex: PORTAL_SEXES,
+  size: PORTAL_SIZES,
+  energy: PORTAL_ENERGIES,
+  goodWithKids: PORTAL_COMPATIBILITIES,
+  goodWithDogs: PORTAL_COMPATIBILITIES,
+  goodWithCats: PORTAL_COMPATIBILITIES,
+  apartmentOk: PORTAL_COMPATIBILITIES,
+  specialNeeds: PORTAL_SPECIAL_NEEDS_ANSWERS,
+};
+
+function isChoiceKey(key: string): key is ChoiceKey {
+  return Object.prototype.hasOwnProperty.call(CHOICES, key);
+}
+
+/**
+ * What of a stored draft this form can take back. The listing's own copy of
+ * the crawled editor's sanitizeDraft: the same rule over a draft with two more
+ * keys, the species row and the status.
+ *
+ * Only keys the base draft has are kept, and only with a value the key can
+ * hold: a string for a text box, one of the row's answers or null for a
+ * choice row, one of the four statuses for the status, which a listing always
+ * has. Anything else (a null name, a number, an object, an answer the row does
+ * not offer, a stored value that is not an object at all) is dropped and the
+ * base's own value stands. Photos are never in the draft: a File is not JSON,
+ * and the stored ones belong to the record.
+ */
+export function sanitizeListingDraft(
+  stored: unknown,
+  base: Draft,
+): Partial<Draft> {
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
+    return {};
+  }
+  const kept: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(stored)) {
+    if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
+    if (TEXT_KEYS.has(key)) {
+      if (typeof value === "string") kept[key] = value;
+    } else if (isChoiceKey(key)) {
+      if (
+        value === null ||
+        (typeof value === "string" && CHOICES[key].includes(value))
+      ) {
+        kept[key] = value;
+      }
+    } else if (key === "status") {
+      if (typeof value === "string" && isPortalStatus(value)) kept[key] = value;
+    }
+  }
+  return kept as Partial<Draft>;
+}
+
 /**
  * The whole draft as the API would read it. The age stays null while a box
  * holds something that is not a count, and says which box.
+ *
+ * The text is cut to what the API takes. The inputs carry the same limits as
+ * maxLength, but a draft read back from storage never went through them.
  */
 export function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
   const { months: approximateAgeMonths, error: ageError } = parseAgeBoxes(
@@ -214,10 +320,10 @@ export function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null }
   return {
     shape: {
       species: draft.species,
-      name: trimmed(draft.name),
+      name: limited(draft.name, TEXT_LIMITS.name),
       status: draft.status,
       sex: draft.sex,
-      breed: trimmed(draft.breed),
+      breed: limited(draft.breed, TEXT_LIMITS.breed),
       birthDate: trimmed(draft.birthDate),
       approximateAgeMonths,
       size: draft.size,
@@ -227,10 +333,25 @@ export function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null }
       goodWithCats: draft.goodWithCats,
       apartmentOk: draft.apartmentOk,
       specialNeeds: specialNeedsValue(draft.specialNeeds),
-      shortDescription: trimmed(draft.shortDescription),
+      shortDescription: limited(
+        draft.shortDescription,
+        TEXT_LIMITS.shortDescription,
+      ),
     },
     ageError,
   };
+}
+
+/**
+ * Whether the date box holds a day the animal could not have been born on:
+ * after today, or before 1900. The API refuses the same date, so the box is
+ * refused here, where the message can sit next to it. Empty is no answer, not
+ * a fault. Kept out of shapeOf, which the status buttons also read and which
+ * has no reason to know the time.
+ */
+export function birthDateFault(draft: Draft, now: Date): boolean {
+  const date = trimmed(draft.birthDate);
+  return date !== null && !isPlausibleBirthDate(date, now);
 }
 
 /**
@@ -543,6 +664,8 @@ export function ListingForm({
   draft,
   set,
   setAge,
+  setBirthDate,
+  markBox,
   refused,
   refusedErrorId,
   disabled,
@@ -554,11 +677,28 @@ export function ListingForm({
   listing: PortalListing | null;
   draft: Draft;
   set: <Key extends keyof Draft>(key: Key, value: Draft[Key]) => void;
-  /** Its own setter, because typing in an age box also retires its error. */
-  setAge: (key: "ageYears" | "ageMonths", value: string) => void;
+  /**
+   * The boxes the browser reads for us get their own setters, because the
+   * page has to know when it could not: `unreadable` is validity.badInput,
+   * and a true means the box holds text the value does not carry. Typing in
+   * a box also retires its own error, and only its.
+   */
+  setAge: (
+    key: "ageYears" | "ageMonths",
+    value: string,
+    unreadable: boolean,
+  ) => void;
+  setBirthDate: (value: string, unreadable: boolean) => void;
+  /**
+   * The same note, from the input event. onChange only fires when the value
+   * changed, and "e" typed into an empty number box takes it from "" to ""
+   * with badInput set, as does deleting that "e" again with badInput clear.
+   * The input event fires either way, so the mark is kept current from it.
+   */
+  markBox: (box: ReadBox, unreadable: boolean) => void;
   /** The field the last submit refused. One at a time, so one message. */
   refused: Refused | null;
-  /** The three rows share the one message id: only one can be refused. */
+  /** The rows share the one message id: only one can be refused. */
   refusedErrorId: string;
   disabled: boolean;
   photos: PhotoPanel;
@@ -586,6 +726,13 @@ export function ListingForm({
     </FormSection>
   );
 
+  // Every choice row below keeps ChoiceGrid's default, clearable. The crawled
+  // editor holds a card on when the answer came off the shelter's site,
+  // because the patch would drop the null and show a change it never sends.
+  // A listing has no such value under it: the row is the shelter's own, the
+  // PUT carries the whole record, and a tapped-off card reaches the wire as
+  // the null that means "not stated". Only the status row cannot be emptied,
+  // and it says so where it is.
   const searchableSection = (
     <FormSection title={portalText.sectionSearchable}>
       <Field
@@ -686,6 +833,7 @@ export function ListingForm({
         <Input
           id={nameId}
           value={draft.name}
+          maxLength={TEXT_LIMITS.name}
           disabled={disabled}
           aria-invalid={refused === "name" || undefined}
           aria-errormessage={refused === "name" ? refusedErrorId : undefined}
@@ -733,6 +881,7 @@ export function ListingForm({
         <Input
           id={breedId}
           value={draft.breed}
+          maxLength={TEXT_LIMITS.breed}
           disabled={disabled}
           onChange={(event) => set("breed", event.target.value)}
         />
@@ -759,13 +908,24 @@ export function ListingForm({
           field="birthDate"
           label={portalText.fieldBirthDate}
           htmlFor={birthDateId}
+          error={refused === "birthDate" ? portalText.birthDateError : null}
+          errorId={refusedErrorId}
         >
           <Input
             id={birthDateId}
             type="date"
             value={draft.birthDate}
             disabled={disabled}
-            onChange={(event) => set("birthDate", event.target.value)}
+            aria-invalid={refused === "birthDate" || undefined}
+            aria-errormessage={
+              refused === "birthDate" ? refusedErrorId : undefined
+            }
+            onChange={(event) =>
+              setBirthDate(event.target.value, event.target.validity.badInput)
+            }
+            onInput={(event) =>
+              markBox("birthDate", event.currentTarget.validity.badInput)
+            }
           />
         </Field>
 
@@ -777,7 +937,11 @@ export function ListingForm({
           field="approximateAgeMonths"
           label={portalText.fieldAgeMonths}
           hint={portalText.ageHint}
-          error={refused === "age" ? portalText.invalidError : null}
+          error={
+            refused === "ageYears" || refused === "ageMonths"
+              ? portalText.invalidError
+              : null
+          }
           errorId={refusedErrorId}
         >
           <div
@@ -795,12 +959,21 @@ export function ListingForm({
                 step={1}
                 value={draft.ageYears}
                 disabled={disabled}
-                aria-invalid={refused === "age" || undefined}
+                aria-invalid={refused === "ageYears" || undefined}
                 aria-errormessage={
-                  refused === "age" ? refusedErrorId : undefined
+                  refused === "ageYears" ? refusedErrorId : undefined
                 }
                 aria-describedby={hintId(uid, "approximateAgeMonths")}
-                onChange={(event) => setAge("ageYears", event.target.value)}
+                onChange={(event) =>
+                  setAge(
+                    "ageYears",
+                    event.target.value,
+                    event.target.validity.badInput,
+                  )
+                }
+                onInput={(event) =>
+                  markBox("ageYears", event.currentTarget.validity.badInput)
+                }
               />
               <Label
                 htmlFor={ageYearsId}
@@ -818,12 +991,21 @@ export function ListingForm({
                 step={1}
                 value={draft.ageMonths}
                 disabled={disabled}
-                aria-invalid={refused === "age" || undefined}
+                aria-invalid={refused === "ageMonths" || undefined}
                 aria-errormessage={
-                  refused === "age" ? refusedErrorId : undefined
+                  refused === "ageMonths" ? refusedErrorId : undefined
                 }
                 aria-describedby={hintId(uid, "approximateAgeMonths")}
-                onChange={(event) => setAge("ageMonths", event.target.value)}
+                onChange={(event) =>
+                  setAge(
+                    "ageMonths",
+                    event.target.value,
+                    event.target.validity.badInput,
+                  )
+                }
+                onInput={(event) =>
+                  markBox("ageMonths", event.currentTarget.validity.badInput)
+                }
               />
               <Label
                 htmlFor={ageMonthsId}
@@ -868,6 +1050,7 @@ export function ListingForm({
           id={descriptionId}
           rows={5}
           value={draft.shortDescription}
+          maxLength={TEXT_LIMITS.shortDescription}
           disabled={disabled}
           aria-describedby={hintId(uid, "shortDescription")}
           onChange={(event) => set("shortDescription", event.target.value)}

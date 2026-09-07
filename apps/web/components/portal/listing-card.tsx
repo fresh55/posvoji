@@ -8,7 +8,7 @@ import {
   portalMetaLine,
 } from "@/components/portal/animal-meta";
 import { Glyph } from "@/components/portal/glyph";
-import { listingInput } from "@/components/portal/listing-form";
+import { listingInput } from "@/components/portal/listing-draft";
 import { DraftMark, PORTAL_BADGE } from "@/components/portal/override-mark";
 import {
   STATUS_META,

@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ExternalLink, TriangleAlert } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AnimalForm,
   buildPatch,
   draftFrom,
   sanitizeDraft,
   type Draft,
-} from "@/components/portal/animal-form";
+} from "@/components/portal/animal-draft";
+import { AnimalForm } from "@/components/portal/animal-form";
 import {
   portalMetaLine,
   portalPublicPath,
@@ -33,8 +30,6 @@ import {
 import { OverrideMark } from "@/components/portal/override-mark";
 import {
   READ_BOXES,
-  fieldControls,
-  fieldRow,
   isPortalField,
   portalSpeciesIcon,
   readBoxControl,
@@ -45,22 +40,27 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { StatusBlock } from "@/components/portal/status-block";
+import { Button } from "@/components/ui/button";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
 import {
-  usePortalDraft,
-  usePortalDraftMirror,
-} from "@/hooks/use-portal-draft";
+  firstDateFault,
+  usePortalDateInputs,
+  usePortalFieldFocus,
+} from "@/hooks/use-portal-date-inputs";
+import { usePortalDraft, usePortalDraftMirror } from "@/hooks/use-portal-draft";
+import { PORTAL_PATH } from "@/hooks/use-portal-session";
 import { useReadBoxes } from "@/hooks/use-read-boxes";
 import { useReturnFocus } from "@/hooks/use-return-focus";
 import { useSaveSlot } from "@/hooks/use-save-slot";
-import { PORTAL_PATH } from "@/hooks/use-portal-session";
-import { Button } from "@/components/ui/button";
 import { thumbnailUrl } from "@/lib/animal-images";
 import type {
   PortalAnimal,
   PortalAnimalPatch,
   PortalField,
 } from "@/lib/portal-api";
+import { ExternalLink, TriangleAlert } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 /**
  * One animal, edited on a page of its own.
@@ -263,16 +263,7 @@ function AnimalEditor({
   // that row has to be what the page shows first, not the top of a form they
   // then have to read through. One frame after the mount, which is where the
   // page has finished laying out.
-  useEffect(() => {
-    if (!field) return;
-    const frame = requestAnimationFrame(() => {
-      const row = fieldRow(formRef.current, field);
-      if (!row) return;
-      row.scrollIntoView({ block: "center" });
-      fieldControls(row)[0]?.focus({ preventScroll: true });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [field]);
+  usePortalFieldFocus(formRef, field);
 
   const saving = saveState.status === "saving";
   // The draft as far as it can be read. A box the browser could not read
@@ -326,24 +317,12 @@ function AnimalEditor({
    * nothing else in the form can, or picking a size would clear a message
    * about a number the shelter has not corrected.
    */
-  function setAge(
-    key: "ageYears" | "ageMonths",
-    value: string,
-    unreadableNow: boolean,
-  ) {
-    setDraft((current) => ({ ...current, [key]: value }));
-    boxes.mark(key, unreadableNow);
-    answered("ageYears");
-    answered("ageMonths");
-    slot.touched();
-  }
-
-  function setBirthDate(value: string, unreadableNow: boolean) {
-    setDraft((current) => ({ ...current, birthDate: value }));
-    boxes.mark("birthDate", unreadableNow);
-    answered("birthDate");
-    slot.touched();
-  }
+  const { setAge, setBirthDate } = usePortalDateInputs(
+    setDraft,
+    boxes,
+    answered,
+    slot.touched,
+  );
 
   function revertAge() {
     setDraft((current) => ({ ...current, ageYears: "", ageMonths: "" }));
@@ -401,14 +380,7 @@ function AnimalEditor({
 
   /** The box the submit has to refuse, in the order the form reads them. */
   function firstFault(): ReadBox | null {
-    if (boxes.unreadable.has("birthDate") || badDate) return "birthDate";
-    if (boxes.unreadable.has("ageYears") || badAgeBox === "years") {
-      return "ageYears";
-    }
-    if (boxes.unreadable.has("ageMonths") || badAgeBox === "months") {
-      return "ageMonths";
-    }
-    return null;
+    return firstDateFault(boxes.unreadable, badDate, badAgeBox);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {

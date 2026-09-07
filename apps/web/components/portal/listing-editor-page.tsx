@@ -1,16 +1,6 @@
 "use client";
 
 import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
-import { ExternalLink } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
   portalListingPublicPath,
   portalMetaLine,
 } from "@/components/portal/animal-meta";
@@ -22,8 +12,6 @@ import {
 } from "@/components/portal/editor-chrome";
 import { Glyph } from "@/components/portal/glyph";
 import {
-  ACCEPTED_PHOTO_TYPES,
-  ListingForm,
   birthDateFault,
   draftFrom,
   inputOf,
@@ -32,9 +20,9 @@ import {
   sanitizeListingDraft,
   shapeOf,
   type Draft,
-  type PendingPhoto,
   type Refused,
-} from "@/components/portal/listing-form";
+} from "@/components/portal/listing-draft";
+import { ListingForm } from "@/components/portal/listing-form";
 import {
   EditorListError,
   EditorNotFound,
@@ -56,25 +44,31 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { ListingStatusBlock } from "@/components/portal/status-block";
+import { Button } from "@/components/ui/button";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
-import { NEW_LISTING, type PortalListingActions } from "@/hooks/use-portal-listings";
-import { PORTAL_PATH, portalAnimalPath } from "@/hooks/use-portal-session";
+import { useListingPhotos } from "@/hooks/use-listing-photos";
 import {
-  usePortalDraft,
-  usePortalDraftMirror,
-} from "@/hooks/use-portal-draft";
+  firstDateFault,
+  usePortalDateInputs,
+  usePortalFieldFocus,
+} from "@/hooks/use-portal-date-inputs";
+import { usePortalDraft, usePortalDraftMirror } from "@/hooks/use-portal-draft";
+import {
+  NEW_LISTING,
+  type PortalListingActions,
+} from "@/hooks/use-portal-listings";
+import { PORTAL_PATH, portalAnimalPath } from "@/hooks/use-portal-session";
 import { useReadBoxes } from "@/hooks/use-read-boxes";
 import { useReturnFocus } from "@/hooks/use-return-focus";
 import { useSaveSlot } from "@/hooks/use-save-slot";
-import { Button } from "@/components/ui/button";
 import type {
   PortalField,
   PortalListing,
   PortalShelter,
 } from "@/lib/portal-api";
-
-/** The same cap as PORTAL_MAX_UPLOAD_BYTES in apps/portal. */
-const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
+import { ExternalLink } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useId, useMemo, useRef, useState } from "react";
 
 /**
  * Where a new listing's typed work is filed. A listing id is a uuid, so
@@ -144,7 +138,12 @@ export function ListingEditorPage() {
   // An id with no listing is only a wrong id once the list it would be in has
   // arrived. A new listing needs the same wait: the form is drawn over the
   // shelter, and until the list is ready the page does not have one.
-  if (!showing || listingState.status !== "ready" || !activeShelter || !account) {
+  if (
+    !showing ||
+    listingState.status !== "ready" ||
+    !activeShelter ||
+    !account
+  ) {
     return (
       <>
         <PortalPageHeading />
@@ -166,9 +165,7 @@ export function ListingEditorPage() {
       shelter={activeShelter}
       publicName={listing ? listingPublicName(listing) : null}
       actions={listingActions}
-      saveState={
-        listingSaveStates[listing?.id ?? NEW_LISTING] ?? IDLE
-      }
+      saveState={listingSaveStates[listing?.id ?? NEW_LISTING] ?? IDLE}
       field={polje}
       onCreated={(saved) => {
         setCreatedId(saved.id);
@@ -233,15 +230,6 @@ function ListingEditor({
   const [archiving, setArchiving] = useState(false);
   // Around the POST, the PUT and the archive: the whole form waits on those.
   const [submitting, setSubmitting] = useState(false);
-  const [pending, setPending] = useState<PendingPhoto[]>([]);
-  const [uploading, setUploading] = useState<{
-    index: number;
-    total: number;
-  } | null>(null);
-  /** The sentence beside the photos: a refused file, a failed remove. */
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  /** The stored photo whose Odstrani is waiting for its second tap. */
-  const [removing, setRemoving] = useState<number | null>(null);
   // A save this page has started and not yet heard back from. The bar is
   // disabled one render later; this is for a second submit fired in code
   // before that render.
@@ -256,18 +244,25 @@ function ListingEditor({
   // be said next to the control that was pressed. A photo's failure is the
   // grid's own: a refused remove is said beside it and a failed upload beside
   // the file with its retry, so the page says nothing else for it.
-  const slot = useSaveSlot<"status" | "archive" | "photo">(
-    saveState,
-    errorRef,
-  );
+  const slot = useSaveSlot<"status" | "archive" | "photo">(saveState, errorRef);
   // Both confirms are opened in code, from a button on this page, so both put
   // the focus back themselves. One pair: only one of them can be open.
   const confirmFocus = useReturnFocus();
-  // Every preview URL still outstanding. Object URLs are not garbage
-  // collected, so each is revoked when its file is stored or dropped, and
-  // whatever is left when the page unmounts.
-  const previews = useRef(new Set<string>());
-  const nextKey = useRef(0);
+  const {
+    pending,
+    uploading,
+    photoError,
+    removing,
+    uploadFiles,
+    pickFiles,
+    retry,
+    dropPending,
+    removePhoto,
+  } = useListingPhotos({
+    listingId: listing?.id,
+    actions,
+    startSave: () => slot.startSave("photo"),
+  });
 
   const uid = useId();
   const errorId = `${uid}-error`;
@@ -277,28 +272,10 @@ function ListingEditor({
   const refusedErrorId = `${uid}-refused-error`;
   const photoErrorId = `${uid}-photo-error`;
 
-  // Handed back outside React, because that is how they were handed over.
-  useEffect(() => {
-    const held = previews.current;
-    return () => {
-      for (const url of held) URL.revokeObjectURL(url);
-      held.clear();
-    };
-  }, []);
-
   // Coming in at a named row: the shelter tapped the card's "manjka" line, so
   // that row has to be what the page shows first. One frame after the mount,
   // which is where the page has finished laying out.
-  useEffect(() => {
-    if (!field) return;
-    const frame = requestAnimationFrame(() => {
-      const row = fieldRow(formRef.current, field);
-      if (!row) return;
-      row.scrollIntoView({ block: "center" });
-      fieldControls(row)[0]?.focus({ preventScroll: true });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [field]);
+  usePortalFieldFocus(formRef, field);
 
   // The draft as far as it can be read. A box the browser could not read
   // holds "" in the draft, which the shape would take for an emptied box and
@@ -339,13 +316,12 @@ function ListingEditor({
   const unsaved = typedWork || unreadableWork || pending.length > 0;
   // An unusable box is not a change, but Shrani has to be pressable for the
   // form to point at it and say what is wrong.
-  const canSave = listing
-    ? typedWork || unreadableWork
-    : missing === null;
+  const canSave = listing ? typedWork || unreadableWork : missing === null;
   const busy = submitting || uploading !== null;
   const saving = saveState.status === "saving";
   const name = listing?.name ?? portalText.listingNewTitle;
-  const status = listing && isPortalStatus(listing.status) ? listing.status : null;
+  const status =
+    listing && isPortalStatus(listing.status) ? listing.status : null;
   const speciesIcon = portalSpeciesIcon(listing?.species ?? draft.species);
   const photo = listing?.photos[0];
   const statusFailure = slot.failureFrom("status");
@@ -384,24 +360,12 @@ function ListingEditor({
    * nothing else in the form can, or picking a size would clear a message
    * about a number the shelter has not corrected.
    */
-  function setAge(
-    key: "ageYears" | "ageMonths",
-    value: string,
-    unreadableNow: boolean,
-  ) {
-    setDraft((current) => ({ ...current, [key]: value }));
-    boxes.mark(key, unreadableNow);
-    answered("ageYears");
-    answered("ageMonths");
-    slot.touched();
-  }
-
-  function setBirthDate(value: string, unreadableNow: boolean) {
-    setDraft((current) => ({ ...current, birthDate: value }));
-    boxes.mark("birthDate", unreadableNow);
-    answered("birthDate");
-    slot.touched();
-  }
+  const { setAge, setBirthDate } = usePortalDateInputs(
+    setDraft,
+    boxes,
+    answered,
+    slot.touched,
+  );
 
   /**
    * Puts a refused field back on screen, with the message the submit left on
@@ -423,14 +387,7 @@ function ListingEditor({
   /** The box the submit has to refuse, in the order the form reads them. */
   function firstFault(): Refused | null {
     if (missing) return missing;
-    if (boxes.unreadable.has("birthDate") || badDate) return "birthDate";
-    if (boxes.unreadable.has("ageYears") || badAgeBox === "years") {
-      return "ageYears";
-    }
-    if (boxes.unreadable.has("ageMonths") || badAgeBox === "months") {
-      return "ageMonths";
-    }
-    return null;
+    return firstDateFault(boxes.unreadable, badDate, badAgeBox);
   }
 
   /** Every way back to the list but a finished save: Prekliči and the
@@ -456,110 +413,6 @@ function ListingEditor({
     resetDraft();
     boxes.empty(READ_BOXES);
     setRefused(null);
-  }
-
-  /** Takes the preview of a file that is stored or dropped back from the browser. */
-  function releasePreview(item: PendingPhoto) {
-    URL.revokeObjectURL(item.previewUrl);
-    previews.current.delete(item.previewUrl);
-  }
-
-  /**
-   * Stores `items` one after another, saying which one is going up. A file
-   * that fails stays pending, marked, with its retry; the rest still go.
-   * Answers whether any failed.
-   */
-  async function uploadFiles(
-    listingId: string,
-    items: PendingPhoto[],
-  ): Promise<boolean> {
-    // Every upload writes the listing's slot; from here its failures are the
-    // grid's to say.
-    slot.startSave("photo");
-    let failed = false;
-    for (const [index, item] of items.entries()) {
-      setUploading({ index: index + 1, total: items.length });
-      const photo = await actions.uploadPhoto(listingId, item.file);
-      if (photo) {
-        releasePreview(item);
-        setPending((current) =>
-          current.filter((candidate) => candidate.key !== item.key),
-        );
-      } else {
-        failed = true;
-        setPending((current) =>
-          current.map((candidate) =>
-            candidate.key === item.key
-              ? { ...candidate, failed: true }
-              : candidate,
-          ),
-        );
-      }
-    }
-    setUploading(null);
-    return failed;
-  }
-
-  function pickFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    // So the same file can be picked again after it was dropped.
-    event.target.value = "";
-    setPhotoError(null);
-    setRemoving(null);
-
-    const accepted: PendingPhoto[] = [];
-    let rejected: string | null = null;
-    for (const file of files) {
-      if (!(ACCEPTED_PHOTO_TYPES as readonly string[]).includes(file.type)) {
-        rejected ??= fill(portalText.photoTypeRejected, { name: file.name });
-        continue;
-      }
-      if (file.size > MAX_PHOTO_BYTES) {
-        rejected ??= fill(portalText.photoTooLarge, { name: file.name });
-        continue;
-      }
-      const key = nextKey.current++;
-      const previewUrl = URL.createObjectURL(file);
-      previews.current.add(previewUrl);
-      accepted.push({ key, file, previewUrl, failed: false });
-    }
-    if (rejected) setPhotoError(rejected);
-    if (accepted.length === 0) return;
-
-    setPending((current) => [...current, ...accepted]);
-    // An existing listing has a photo route; a new one gets its id from the
-    // save, and the files wait for that.
-    if (listing) void uploadFiles(listing.id, accepted);
-  }
-
-  function retry(item: PendingPhoto) {
-    if (!listing) return;
-    const again = { ...item, failed: false };
-    setPending((current) =>
-      current.map((candidate) => (candidate.key === item.key ? again : candidate)),
-    );
-    void uploadFiles(listing.id, [again]);
-  }
-
-  function dropPending(item: PendingPhoto) {
-    releasePreview(item);
-    setPending((current) =>
-      current.filter((candidate) => candidate.key !== item.key),
-    );
-  }
-
-  async function removePhoto(photoId: number) {
-    if (!listing) return;
-    if (removing !== photoId) {
-      setRemoving(photoId);
-      return;
-    }
-    setRemoving(null);
-    setPhotoError(null);
-    slot.startSave("photo");
-    if (!(await actions.deletePhoto(listing.id, photoId))) {
-      setPhotoError(portalText.photoRemoveError);
-    }
   }
 
   // The confirm closes on the tap and hands the focus back to Odstrani objavo,

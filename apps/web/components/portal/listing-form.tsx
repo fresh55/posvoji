@@ -1,13 +1,6 @@
 "use client";
 
-import type { ChangeEvent, ReactNode } from "react";
-import {
-  ImagePlus,
-  LoaderCircle,
-  RefreshCw,
-} from "lucide-react";
 import { AgeBoxes, BirthDateBox } from "@/components/portal/age-boxes";
-import { FormSection } from "@/components/portal/animal-form";
 import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
 import { FieldError } from "@/components/portal/notice";
@@ -22,27 +15,10 @@ import {
   SPECIES_META,
   STATUS_META,
   TEXT_LIMITS,
-  ageParts,
-  choiceCard,
   hintId,
-  isPlausibleBirthDate,
-  isPortalCompatibility,
-  isPortalEnergy,
-  isPortalSex,
-  isPortalSize,
-  isPortalStatus,
-  isoDate,
-  limited,
-  parseAgeBoxes,
-  specialNeedsAnswer,
-  specialNeedsValue,
-  trimmed,
-  type AgeBox,
-  type PortalSpecialNeedsAnswer,
   type ReadBox,
 } from "@/components/portal/portal-fields";
-import { fill, portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { portalText } from "@/components/portal/portal-text";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,302 +27,23 @@ import {
   PORTAL_ENERGIES,
   PORTAL_SEXES,
   PORTAL_SIZES,
-  PORTAL_SPECIES,
   PORTAL_STATUSES,
-  type PortalCompatibility,
-  type PortalEnergy,
   type PortalField,
   type PortalListing,
-  type PortalListingInput,
-  type PortalListingPhoto,
-  type PortalSex,
-  type PortalSize,
-  type PortalSpecies,
-  type PortalStatus,
 } from "@/lib/portal-api";
-import { draftSanitizer } from "@/lib/portal-drafts";
 import { SPECIES_ORDER } from "@/lib/species";
-import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
+import { FormSection } from "./form-section";
+import { Draft, Refused } from "./listing-draft";
+import { PhotoPanel, Photos } from "./listing-photos";
 
 /** The rows the form has, for the data-field marks opening at one needs. */
 export type ListingField = PortalField | "species" | "photos";
 
 /**
- * What the API takes. One list, because the picker's own check and the file
- * input's accept attribute have to agree: a type the input offers and the
- * check refuses is a file the shelter can pick and then be told off for.
- */
-export const ACCEPTED_PHOTO_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
-
-export type Draft = {
-  species: PortalSpecies | null;
-  status: PortalStatus;
-  name: string;
-  breed: string;
-  birthDate: string;
-  /** The age is one number on the wire and two inputs here: years and months. */
-  ageYears: string;
-  ageMonths: string;
-  shortDescription: string;
-  sex: PortalSex | null;
-  size: PortalSize | null;
-  energy: PortalEnergy | null;
-  goodWithKids: PortalCompatibility | null;
-  goodWithDogs: PortalCompatibility | null;
-  goodWithCats: PortalCompatibility | null;
-  apartmentOk: PortalCompatibility | null;
-  specialNeeds: PortalSpecialNeedsAnswer | null;
-};
-
-/**
- * The input as the draft reads right now, before the two required fields are
- * enforced. Kept apart from PortalListingInput so "what changed" can be
- * asked of a draft the API would refuse.
- */
-type Shape = Omit<PortalListingInput, "species" | "name"> & {
-  species: PortalSpecies | null;
-  name: string | null;
-};
-
-/** The two fields a listing cannot exist without. */
-type Required = "species" | "name";
-
-/**
- * What a submit can refuse: a required field left empty, or one of the three
- * boxes the browser reads for us holding something that is not a value. One
- * box at a time, so the mark and the message land on that box alone.
- */
-export type Refused = Required | ReadBox;
-
-/** A file picked for a listing and not stored yet. */
-export type PendingPhoto = {
-  key: number;
-  file: File;
-  /** An object URL of the file, revoked once the file is stored or dropped. */
-  previewUrl: string;
-  failed: boolean;
-};
-
-/** Everything the photo section draws and everything a tap on it reaches. */
-type PhotoPanel = {
-  /** The photos the API has, in its own order. */
-  stored: PortalListingPhoto[];
-  pending: PendingPhoto[];
-  uploading: { index: number; total: number } | null;
-  /** A refused file, or a remove that did not go through. */
-  error: string | null;
-  errorId: string;
-  /** The stored photo whose Odstrani is waiting for its second tap. */
-  removing: number | null;
-  busy: boolean;
-  /**
-   * Whether a pending file has somewhere to go yet. A listing that has not
-   * been saved has no id for the photo route, so its files wait as previews.
-   */
-  storable: boolean;
-  onPick: (event: ChangeEvent<HTMLInputElement>) => void;
-  onRetry: (item: PendingPhoto) => void;
-  onDrop: (item: PendingPhoto) => void;
-  onRemove: (photoId: number) => void;
-};
-
-const isPortalSpecies = (value: string | null): value is PortalSpecies =>
-  value !== null && (PORTAL_SPECIES as readonly string[]).includes(value);
-
-/**
  * The form a new listing opens on: nothing chosen but the status, which the
  * API defaults to "available" and the form says out loud.
  */
-const EMPTY_DRAFT: Draft = {
-  species: null,
-  status: "available",
-  name: "",
-  breed: "",
-  birthDate: "",
-  ageYears: "",
-  ageMonths: "",
-  shortDescription: "",
-  sex: null,
-  size: null,
-  energy: null,
-  goodWithKids: null,
-  goodWithDogs: null,
-  goodWithCats: null,
-  apartmentOk: null,
-  specialNeeds: null,
-};
-
-export function draftFrom(listing: PortalListing | null): Draft {
-  if (!listing) return EMPTY_DRAFT;
-  const age = ageParts(listing.approximateAgeMonths);
-  return {
-    species: isPortalSpecies(listing.species) ? listing.species : null,
-    status: isPortalStatus(listing.status) ? listing.status : "available",
-    name: listing.name,
-    breed: listing.breed ?? "",
-    birthDate: isoDate(listing.birthDate) ?? "",
-    ageYears: age.years,
-    ageMonths: age.months,
-    shortDescription: listing.shortDescription ?? "",
-    sex: isPortalSex(listing.sex) ? listing.sex : null,
-    size: isPortalSize(listing.size) ? listing.size : null,
-    energy: isPortalEnergy(listing.energy) ? listing.energy : null,
-    goodWithKids: isPortalCompatibility(listing.goodWithKids)
-      ? listing.goodWithKids
-      : null,
-    goodWithDogs: isPortalCompatibility(listing.goodWithDogs)
-      ? listing.goodWithDogs
-      : null,
-    goodWithCats: isPortalCompatibility(listing.goodWithCats)
-      ? listing.goodWithCats
-      : null,
-    apartmentOk: isPortalCompatibility(listing.apartmentOk)
-      ? listing.apartmentOk
-      : null,
-    specialNeeds: specialNeedsAnswer(listing.specialNeeds),
-  };
-}
-
-type ChoiceKey =
-  | "species"
-  | "sex"
-  | "size"
-  | "energy"
-  | "goodWithKids"
-  | "goodWithDogs"
-  | "goodWithCats"
-  | "apartmentOk"
-  | "specialNeeds";
-
-/** The answers each choice row can hold, so a stored one can be checked. */
-const CHOICES: Record<ChoiceKey, readonly string[]> = {
-  species: PORTAL_SPECIES,
-  sex: PORTAL_SEXES,
-  size: PORTAL_SIZES,
-  energy: PORTAL_ENERGIES,
-  goodWithKids: PORTAL_COMPATIBILITIES,
-  goodWithDogs: PORTAL_COMPATIBILITIES,
-  goodWithCats: PORTAL_COMPATIBILITIES,
-  apartmentOk: PORTAL_COMPATIBILITIES,
-  specialNeeds: PORTAL_SPECIAL_NEEDS_ANSWERS,
-};
-
-/**
- * What of a stored draft this form can take back: the same rule the crawled
- * editor runs, over a draft with two more keys, the species row and the status
- * a listing always has. Photos are never in the draft: a File is not JSON, and
- * the stored ones belong to the record.
- */
-export const sanitizeListingDraft = draftSanitizer<Draft>({
-  text: [
-    "name",
-    "breed",
-    "birthDate",
-    "ageYears",
-    "ageMonths",
-    "shortDescription",
-  ],
-  choices: CHOICES,
-  answered: { status: PORTAL_STATUSES },
-});
-
-/**
- * The whole draft as the API would read it. The age stays null while a box
- * holds something that is not a count, and says which box.
- *
- * The text is cut to what the API takes. The inputs carry the same limits as
- * maxLength, but a draft read back from storage never went through them.
- */
-export function shapeOf(draft: Draft): { shape: Shape; ageError: AgeBox | null } {
-  const { months: approximateAgeMonths, error: ageError } = parseAgeBoxes(
-    draft.ageYears,
-    draft.ageMonths,
-  );
-
-  return {
-    shape: {
-      species: draft.species,
-      name: limited(draft.name, TEXT_LIMITS.name),
-      status: draft.status,
-      sex: draft.sex,
-      breed: limited(draft.breed, TEXT_LIMITS.breed),
-      birthDate: trimmed(draft.birthDate),
-      approximateAgeMonths,
-      size: draft.size,
-      energy: draft.energy,
-      goodWithKids: draft.goodWithKids,
-      goodWithDogs: draft.goodWithDogs,
-      goodWithCats: draft.goodWithCats,
-      apartmentOk: draft.apartmentOk,
-      specialNeeds: specialNeedsValue(draft.specialNeeds),
-      shortDescription: limited(
-        draft.shortDescription,
-        TEXT_LIMITS.shortDescription,
-      ),
-    },
-    ageError,
-  };
-}
-
-/**
- * Whether the date box holds a day the animal could not have been born on:
- * after today, or before 1900. The API refuses the same date, so the box is
- * refused here, where the message can sit next to it. Empty is no answer, not
- * a fault. Kept out of shapeOf, which the status buttons also read and which
- * has no reason to know the time.
- */
-export function birthDateFault(draft: Draft, now: Date): boolean {
-  const date = trimmed(draft.birthDate);
-  return date !== null && !isPlausibleBirthDate(date, now);
-}
-
-/**
- * Both sides come out of the one object literal in shapeOf, so their keys are
- * in the same order and every value is a primitive: comparing the encodings is
- * comparing the shapes.
- */
-export function sameShape(left: Shape, right: Shape): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-/**
- * The draft as the API would take it, or the first required field it leaves
- * empty, in the form's order. One answer for both, so what the form refuses
- * and what it would send cannot disagree.
- */
-export function inputOf(shape: Shape): {
-  input: PortalListingInput | null;
-  missing: Required | null;
-} {
-  if (shape.species === null) return { input: null, missing: "species" };
-  if (shape.name === null) return { input: null, missing: "name" };
-  return {
-    input: { ...shape, species: shape.species, name: shape.name },
-    missing: null,
-  };
-}
-
-/**
- * A saved listing as the PUT body that would leave it unchanged. The status
- * buttons on the card and in the editor's summary send this with one field
- * swapped, because the route is a full replace and a partial body would clear
- * everything it left out.
- *
- * The API's own enums make the fallbacks unreachable: a listing is stored
- * through ListingIn, which only admits these values.
- */
-export function listingInput(listing: PortalListing): PortalListingInput {
-  const { shape } = shapeOf(draftFrom(listing));
-  return {
-    ...shape,
-    species: shape.species ?? "other",
-    name: shape.name ?? listing.name,
-  };
-}
 
 /**
  * Label row shared by every field. The crawled editor's row without the edit
@@ -404,179 +101,6 @@ function Field({
           {hint}
         </p>
       )}
-    </div>
-  );
-}
-
-/**
- * The photos, stored and picked alike, in one grid with the picker at its end.
- *
- * Its own section, because it is the one part of the form that talks to the
- * network on its own: on a saved listing a picked file is stored the moment it
- * is picked, and every state of that has to be readable.
- */
-function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
-  const fileId = `${uid}-file`;
-
-  return (
-    <div data-field="photos" className="space-y-1.5">
-      <div data-field-control>
-        <div
-          role="group"
-          aria-label={portalText.fieldPhotos}
-          aria-describedby={hintId(uid, "photos")}
-          className="grid grid-cols-3 gap-1.5 sm:grid-cols-4"
-        >
-          {panel.stored.map((photo, index) => {
-            const confirm = panel.removing === photo.id;
-            return (
-              <figure key={photo.id} className="space-y-1">
-                {/* The API host is not one next/image knows, and the stored
-                    copy is already capped at 2048px. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.url}
-                  width={photo.width}
-                  height={photo.height}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="aspect-square w-full rounded-ui border bg-muted/40 object-cover"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  disabled={panel.busy}
-                  aria-label={
-                    confirm
-                      ? undefined
-                      : fill(portalText.photoRemoveLabel, {
-                          index: index + 1,
-                        })
-                  }
-                  onClick={() => panel.onRemove(photo.id)}
-                  className={cn(
-                    "w-full font-normal text-muted-foreground hover:text-foreground",
-                    confirm && "text-destructive hover:text-destructive",
-                  )}
-                >
-                  {confirm
-                    ? portalText.photoRemoveConfirm
-                    : portalText.photoRemove}
-                </Button>
-              </figure>
-            );
-          })}
-
-          {panel.pending.map((item) => (
-            <figure key={item.key} className="space-y-1">
-              {/* A local object URL; nothing to optimise. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.previewUrl}
-                alt=""
-                className={cn(
-                  "aspect-square w-full rounded-ui border bg-muted/40 object-cover",
-                  !item.failed && "opacity-60",
-                )}
-              />
-              {item.failed ? (
-                <div className="space-y-1">
-                  <p
-                    role="alert"
-                    className="text-2xs leading-tight text-destructive"
-                  >
-                    {fill(portalText.photoUploadFailed, {
-                      name: item.file.name,
-                    })}
-                  </p>
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      disabled={panel.busy || !panel.storable}
-                      onClick={() => panel.onRetry(item)}
-                      className="flex-1"
-                    >
-                      <RefreshCw aria-hidden />
-                      {portalText.photoRetry}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      disabled={panel.busy}
-                      onClick={() => panel.onDrop(item)}
-                      className="font-normal text-muted-foreground hover:text-foreground"
-                    >
-                      {portalText.photoRemove}
-                    </Button>
-                  </div>
-                </div>
-              ) : panel.storable ? (
-                <p className="text-center text-2xs text-muted-foreground">
-                  {portalText.photoPending}
-                </p>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  disabled={panel.busy}
-                  onClick={() => panel.onDrop(item)}
-                  className="w-full font-normal text-muted-foreground hover:text-foreground"
-                >
-                  {portalText.photoRemove}
-                </Button>
-              )}
-            </figure>
-          ))}
-
-          {/* The picker is an icon card like every other choice in the form.
-              The input itself is what takes the focus, so the card draws the
-              ring for it. */}
-          <label
-            htmlFor={fileId}
-            className={choiceCard(
-              false,
-              cn(
-                "aspect-square cursor-pointer flex-col gap-1 self-start px-1.5 py-1.5 text-center text-xs leading-tight font-medium focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
-                panel.busy && "pointer-events-none opacity-50",
-              ),
-            )}
-          >
-            <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden />
-            <span>{portalText.photoAdd}</span>
-            <input
-              id={fileId}
-              type="file"
-              accept={ACCEPTED_PHOTO_TYPES.join(",")}
-              multiple
-              disabled={panel.busy}
-              aria-describedby={hintId(uid, "photos")}
-              onChange={panel.onPick}
-              className="sr-only"
-            />
-          </label>
-        </div>
-        {panel.uploading && (
-          <p
-            aria-live="polite"
-            className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
-          >
-            <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-            {fill(portalText.photoUploading, panel.uploading)}
-          </p>
-        )}
-      </div>
-      {panel.error && (
-        <FieldError id={panel.errorId}>{panel.error}</FieldError>
-      )}
-      <p id={hintId(uid, "photos")} className="text-xs text-muted-foreground">
-        {portalText.photosHint} {portalText.photoLimits}
-      </p>
     </div>
   );
 }
@@ -654,9 +178,7 @@ export function ListingForm({
   // the saved listing, not the draft, so the row keeps saying what the public
   // site currently knows until the save goes through.
   const missing = new Set<PortalField>(
-    listing
-      ? missingSearchableFields(listing).map((field) => field.key)
-      : [],
+    listing ? missingSearchableFields(listing).map((field) => field.key) : [],
   );
 
   const photoSection = (
@@ -947,3 +469,15 @@ export function ListingForm({
     </div>
   );
 }
+export {
+  birthDateFault,
+  draftFrom,
+  inputOf,
+  listingInput,
+  sameShape,
+  sanitizeListingDraft,
+  shapeOf,
+} from "./listing-draft";
+export type { Draft, Refused } from "./listing-draft";
+export { ACCEPTED_PHOTO_TYPES } from "./listing-photo-rules";
+export type { PendingPhoto } from "./listing-photo-rules";

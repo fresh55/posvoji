@@ -31,7 +31,7 @@ describe("the about page", () => {
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
       "Brezplačno", "Posvojitev pri zavetišču", "Podatki zavetišč", "Odprta koda", "Brez osebnih podatkov",
     ]);
-    expect(screen.getByRole("link", { name: "Živali, ki iščejo dom" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
   // The heading and the crumb above it read one string, so this pins the
   // wiring and not the wording: a copy change moves both and this stays

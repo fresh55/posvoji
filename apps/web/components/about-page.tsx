@@ -1,5 +1,4 @@
 import {
-  ArrowRight,
   Building2,
   CodeXml,
   EyeOff,
@@ -212,9 +211,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
               {text.report}
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm" className={THUMB_BUTTON}>
-                <a href={homeHref}><ArrowRight aria-hidden />{locale === "sl" ? "Živali, ki iščejo dom" : "Animals waiting for a home"}</a>
-              </Button>
               <Button
                 asChild
                 variant="outline"

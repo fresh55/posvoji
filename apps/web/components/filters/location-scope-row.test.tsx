@@ -76,7 +76,6 @@ function renderSidebar({
         toggles={[]}
         toggleTally={new Map()}
         scope={{ options, counts, offSite, resultCount: 11 }}
-        onClearAll={vi.fn()}
         {...filterActions}
         onToggleMany={onToggleMany}
       />
@@ -302,7 +301,6 @@ function sidebarElement(selected: string[]) {
         toggles={[]}
         toggleTally={new Map()}
         scope={{ options, counts, offSite, resultCount: 11 }}
-        onClearAll={vi.fn()}
         {...filterActions}
         onToggleMany={vi.fn()}
       />

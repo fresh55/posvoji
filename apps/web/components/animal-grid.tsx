@@ -849,7 +849,21 @@ export function AnimalGrid({
           // it has a fully opaque background colour. Transparent, every
           // label in here renders greyscale while the rest of the page
           // does not, which reads as blur at the same size.
-          className="hidden lg:sticky lg:top-[var(--sticky-top)] lg:block lg:max-h-[calc(100dvh-var(--sticky-top)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background"
+          //
+          // lg:top-0 with a padding of its own and not an inset: the toolbar
+          // across the gutter pins at top-0 and holds its species tabs down
+          // inside its own padding (animal-filters.tsx). Pinning the aside to
+          // the same edge and carrying the same amount inside it is what puts
+          // the panel head on the tabs' line in both states. An inset moved
+          // the head 12px below the tabs once the two stuck. The padding is
+          // inside the scroll box, so it scrolls away with the head and the
+          // fade mask still starts at the aside's own top edge.
+          //
+          // Both read --rail-pad, which is where that amount is written and
+          // why the two cannot drift apart again (globals.css). The height
+          // spends it twice, so the rail leaves the same gap at the bottom of
+          // the viewport that it takes at the top.
+          className="hidden lg:sticky lg:top-0 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad"
           filters={filters}
           groups={groups}
           counts={counts}
@@ -872,7 +886,6 @@ export function AnimalGrid({
           onToggleMany={toggleMany}
           onToggleProperty={toggleProperty}
           onToggleManyProperties={toggleManyProperties}
-          onClearAll={handleClearAll}
         />
       )}
 

@@ -274,8 +274,8 @@ describe("animal grid empty state", () => {
     // A shelter is picked, so there is a chip, so both chip rows render: the
     // toolbar's at lg and the empty state's own below it. Each already ends in
     // "Počisti vse", and the state used to put a "Počisti filtre" button under
-    // them anyway -- two clear-alls stacked on a phone, three on a desktop
-    // screen once the sidebar header's copy is counted, all of them the same
+    // them anyway -- two clear-alls stacked on a phone, and a third at lg back
+    // when the sidebar head carried its own copy too, all of them the same
     // press.
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);

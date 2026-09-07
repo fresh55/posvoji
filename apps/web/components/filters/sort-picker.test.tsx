@@ -54,12 +54,17 @@ function GrantOrigin({ resolved }: { resolved: ResolvedOrigin }) {
   return null;
 }
 
-// The two placements, by the props each one is mounted with: the desktop
-// toolbar's quiet trigger and the mobile sheet header's full-width control.
-// See the component's own "Two placements, one control" note.
+// The two dresses, by the props each one is mounted with: the quiet trigger
+// the toolbar wears (on the desktop row and on the md-to-lg one, which mount
+// it identically) and the sheet header's full-width control, which is drawn
+// below md only. See the component's own "Three placements, two dresses"
+// note.
 const PLACEMENTS = {
-  "desktop toolbar": {},
-  "mobile sheet header": { quiet: false, className: "mt-3 h-11 w-full" },
+  "toolbar row": {},
+  "mobile sheet header": {
+    quiet: false,
+    className: "mt-3 h-11 w-full",
+  },
 } as const;
 
 function mount(

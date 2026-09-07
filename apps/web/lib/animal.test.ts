@@ -35,7 +35,7 @@ function animal(): Animal {
 }
 
 describe("animalFields", () => {
-  it("drops the photos and keeps everything else", () => {
+  it("drops the photos and the crawl's bookkeeping, and keeps the rest", () => {
     const source = animal();
     const fields = animalFields(source);
 
@@ -48,7 +48,10 @@ describe("animalFields", () => {
       species: source.species,
       status: source.status,
       shelter: source.shelter,
-      source: source.source,
+      // Only the shelter's own listing page survives. The two ids and the
+      // three timestamps beside it say how the crawl found this animal, which
+      // no surface on the site asks.
+      source: { sourceUrl: source.source.sourceUrl },
       attribution: source.attribution,
     });
   });

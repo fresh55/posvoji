@@ -25,6 +25,7 @@ import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalPath } from "@/lib/animal-path";
+import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
 
@@ -59,6 +60,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   fanLayout("desktop");
   window.history.replaceState(null, "", "/");
+  // The description store caches its one fetch for the life of the module, so
+  // without this the first dialog in this file to ask for a description
+  // decides the answer for every test after it, whatever each of them stubs.
+  resetAnimalDescriptionsStore();
 });
 
 function animal(id: string, name: string, rest: Partial<Animal> = {}): Animal {
@@ -575,14 +580,23 @@ describe("animal dialog", () => {
   });
 
   it("clamps a long description behind a read-more toggle", async () => {
-    const chatty = animal("tia", "Tia", {
-      shortDescription: "Zelo prijazna muca. ".repeat(20).trim(),
-    });
+    const text = "Zelo prijazna muca. ".repeat(20).trim();
+    const chatty = animal("tia", "Tia", { shortDescription: text });
+    // The grid's own animals arrive without their descriptions:
+    // animalsForClient leaves the text behind and the dialog fetches it
+    // (lib/animal-descriptions.ts), which is what keeps 503 shelter
+    // paragraphs out of a payload that prints one. So the file the store
+    // reads has to be served here, where the real page serves it from
+    // public/generated.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ tia: text }) })),
+    );
     window.history.replaceState(null, "", "/?zival=tia");
     renderGrid([chatty]);
 
     const dialog = await screen.findByRole("dialog");
-    const description = within(dialog).getByText(/Zelo prijazna muca/);
+    const description = await within(dialog).findByText(/Zelo prijazna muca/);
     expect(description.className).toContain("line-clamp-5");
 
     const toggle = within(dialog).getByRole("button", {

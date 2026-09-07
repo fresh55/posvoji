@@ -22,7 +22,10 @@ import type {
   GoodWithSection,
   HomeSection,
 } from "@/components/filters/filter-groups";
-import { FilterSheet } from "@/components/filters/filter-sheet";
+import {
+  FilterSheet,
+  filterSheetWorthOpening,
+} from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
@@ -46,12 +49,24 @@ import type { AnimalSort } from "@/lib/sort";
 // the whole plate. The edges follow env(safe-area-inset-*) with the 0px
 // fallbacks globals.css documents, so the plate clears a notch or a curved
 // corner instead of running under it.
+//
+// Edge to edge is a phone's shape, not a tablet's. Pinned to both edges at
+// every width below lg, a tablet stretched two short controls across the page:
+// measured at 768x1024 the dock was 736px wide and the location pill 639px of
+// that, carrying the 13 characters of "Vsa zavetišča". From sm it is capped at
+// 28rem and centred instead, near the width it has on the phone it was drawn
+// for; a landscape phone at 844px lands on the same 28rem. min() is what keeps
+// 28rem a cap rather than a floor if either that number or the breakpoint
+// moves. Only the horizontal edges move: the bottom keeps the safe-area inset
+// the footer's docked padding is measured against, and BackToTop is positioned
+// on its own and stays at the viewport's right edge.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
 
-// Desktop has enough room for one quiet toolbar. Mobile keeps the species
-// tabs, the result count and sort in the sticky rail while the two primary
-// discovery actions share a bottom dock that spans the viewport.
+// Desktop has enough room for one quiet toolbar. Below lg the species tabs
+// hold the sticky rail on their own, joined from md by the same quiet sort
+// control, while the two primary discovery actions share a bottom dock that
+// spans the viewport.
 export function AnimalFilters({
   isEmpty,
   hasSidebar = false,
@@ -121,21 +136,22 @@ export function AnimalFilters({
 } & FilterActionContract) {
   const { locale } = useI18n();
   const reduceMotion = useReducedMotion();
-  const hasFilterSheet =
-    groups.length > 0 ||
-    toggles.length > 0 ||
-    (goodWith?.options.length ?? 0) > 0 ||
-    (home?.options.length ?? 0) > 0 ||
-    (care?.options.length ?? 0) > 0 ||
-    // Sort lives inside this sheet too (filter-sheet.tsx), and a homogeneous
-    // multi-animal result set has nothing left to filter but still has an
-    // order to pick, so the sheet must not vanish just because every facet
-    // count is flat.
-    resultCount > 1;
   // Values, not sections. The chips row counts the same things and sits on the
   // same screen; a badge reading 1 over a row of two pills was two answers to
   // one question.
   const activeCount = activeFilterCount(filters);
+  // Asked of the sheet rather than worked out here: what is inside it is its
+  // own business, and this file only needs to know whether to hang a button
+  // on the dock for it (filter-sheet.tsx).
+  const hasFilterSheet = filterSheetWorthOpening({
+    groups,
+    toggles,
+    goodWith,
+    home,
+    care,
+    resultCount,
+    activeCount,
+  });
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker
@@ -146,6 +162,28 @@ export function AnimalFilters({
   // time: the labels there are already stripped by shelterChipLabel and the
   // removals already go through the same toggle.
   const shelterChips = chips.filter((chip) => chip.facet === "shelter");
+  // Whether there is an order left to pick, asked once for the two rows that
+  // offer one. resultCount and not just isEmpty: isEmpty is the whole dataset,
+  // and a filter combination that narrows it to zero results still leaves
+  // nothing for an order to apply to.
+  const canSort = !isEmpty && resultCount > 0;
+  // The species strip, described once and mounted in both rows. Only CSS
+  // separates the two, so both are in the tree at every width and the strip
+  // prices that itself (species-tabs.tsx); what this spares is the five props
+  // going out of step between two call sites, not the second mount. The box
+  // is the strip's, because SpeciesTabs takes no className and the row needs
+  // something that can be told to give way before the sort control does.
+  const speciesStrip = (
+    <div className="min-w-0">
+      <SpeciesTabs
+        value={filters.species}
+        onChange={onSpeciesChange}
+        counts={speciesTally}
+        roster={speciesRoster}
+        disabled={isEmpty}
+      />
+    </div>
+  );
 
   return (
     <>
@@ -166,20 +204,21 @@ export function AnimalFilters({
           A phone's bar is narrow and short enough to be worth the effect;
           a full-width desktop rail is not, and an opaque ground pins just
           as well. */}
-      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm short:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
+      {/* py-rail-pad and not a plain length: the filter panel across the
+          gutter pins to the same edge and carries the same amount as top
+          padding, so the two columns start their content on one line. The
+          number is written once, in globals.css. */}
+      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-rail-pad backdrop-blur-sm short:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
+        {/* min-h-8 states the row's height rather than leaving it to whichever
+            control happens to be tallest. It was the sort trigger's 32px
+            (size="sm"), and that control stands down at zero results, so the
+            row fell to the tabs' own 28px in the one state where nothing else
+            filled it and the panel head across the gutter drifted 4px off. */}
         <div
           data-slot="desktop-toolbar"
-          className="hidden items-center justify-between gap-4 lg:flex"
+          className="hidden min-h-8 items-center justify-between gap-4 lg:flex"
         >
-          <div className="min-w-0">
-            <SpeciesTabs
-              value={filters.species}
-              onChange={onSpeciesChange}
-              counts={speciesTally}
-              roster={speciesRoster}
-              disabled={isEmpty}
-            />
-          </div>
+          {speciesStrip}
 
           <div className="flex shrink-0 items-center gap-2">
             {/* sr-only here for the same reason as the phone's status line
@@ -214,30 +253,51 @@ export function AnimalFilters({
                 />
               </div>
             )}
-            {/* resultCount, not just isEmpty: isEmpty is the whole dataset,
-                and a filter combination that narrows it to zero results
-                still leaves nothing for an order to apply to. */}
-            {!isEmpty && resultCount > 0 && (
-              <SortPicker value={sort} onChange={onSortChange} />
-            )}
+            {canSort && <SortPicker value={sort} onChange={onSortChange} />}
           </div>
         </div>
 
-        {/* One row below lg, and the species tabs are all of it. They refuse
-            to share a 390px row with anything wide: squeezed they cut "Mačke"
-            mid-word and pushed the last tab off the end of a strip nobody had
-            a reason to scroll. The count and the sort that used to sit beside
-            them are gone from this bar entirely, so the tabs get the width
-            without having to be given it. The strip still scrolls and still
-            fades its own edges (species-tabs.tsx). */}
-        <div data-slot="mobile-toolbar" className="lg:hidden">
-          <SpeciesTabs
-            value={filters.species}
-            onChange={onSpeciesChange}
-            counts={speciesTally}
-            roster={speciesRoster}
-            disabled={isEmpty}
-          />
+        {/* One row below lg. Below md the species tabs are all of it: they
+            refuse to share a 390px row with anything wide, and squeezed they
+            cut "Mačke" mid-word and pushed the last tab off the end of a
+            strip nobody had a reason to scroll. The count is gone from this
+            bar entirely, so the tabs get the width without being given it.
+
+            From md that argument runs out. Measured at 768x1024 this row is
+            720px wide and the tabs end at x=384, so 336px of it were empty
+            while the tablet had no sort control anywhere on screen: the
+            order was three taps away inside the filter sheet. The same quiet
+            trigger measures 186px on the desktop row, so from md it takes
+            the right end of this one and the tabs keep the rest, in a
+            min-w-0 box so the strip still scrolls and still fades its own
+            edges (species-tabs.tsx).
+
+            flex from md and not below it. The strip hangs its tap overlays
+            on -my-2/py-2, and this row stands at 44px only while it is a
+            block box those margins can collapse through; made flex at every
+            width it measures the strip's 28px margin box instead and the
+            phone's row loses 16px. Both measured. From md the trigger's own
+            44px (max-lg:min-h-11) sets the line height, and min-h-11 holds
+            the same 44px in the states where the guard drops it. */}
+        <div
+          data-slot="mobile-toolbar"
+          className="md:flex md:min-h-11 md:items-center md:justify-between md:gap-4 lg:hidden"
+        >
+          {speciesStrip}
+
+          {/* max-md:hidden on the control itself, the way the sheet's copy
+              wears md:hidden, rather than a box around it. The trigger's own
+              base is flex (ui/select.tsx), so a wrapper turning it back on at
+              md with md:block would have flattened its icon, label and
+              chevron into a stack. shrink-0 because the strip beside it is
+              min-w-0 and gives way first. */}
+          {canSort && (
+            <SortPicker
+              value={sort}
+              onChange={onSortChange}
+              className="shrink-0 max-md:hidden"
+            />
+          )}
         </div>
 
         {/* From lg only. On a phone this row was the fourth surface stating
@@ -301,14 +361,17 @@ export function AnimalFilters({
           wrapper rather than on the component, so its own layout classes are
           left alone and only the painting stops.
 
-          The sort control that used to share this row is in the filter sheet
-          now (filter-sheet.tsx). It spent a pass pinned in the bar and a pass
-          scrolling away above the grid, and the second was the wrong half of
-          a real finding: sorting is a primary way people find things, often
-          reached for before filtering, so it has to stay reachable while the
-          list is scrolled. The dock is the only thing on this page that is
-          always reachable, and the sheet behind it is where the visitor
-          already goes to change what the grid shows. */}
+          The sort control that used to share this row is not on it at any
+          width. Below md it is in the filter sheet (filter-sheet.tsx). It
+          spent a pass pinned in the bar and a pass scrolling away above the
+          grid, and the second was the wrong half of a real finding: sorting
+          is a primary way people find things, often reached for before
+          filtering, so it has to stay reachable while the list is scrolled.
+          The dock is the only thing on this page that is always reachable,
+          and the sheet behind it is where the visitor already goes to change
+          what the grid shows. From md the toolbar row above carries it
+          instead, on the 336px the tabs leave, and the sheet's copy stands
+          down. */}
       {!isEmpty && (
         <span className="sr-only lg:hidden">
           <ResultCount count={resultCount} locale={locale} />

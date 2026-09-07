@@ -262,9 +262,12 @@ export function PortalWorkspace() {
         </PortalNotice>
       )}
 
+      {/* The one state a shelter cannot work their way out of, so it names the
+          address to write to. PortalNotice takes a string body, which is why
+          the address is text here and a mail link on the login card. */}
       {state.status === "ready" && shelters.length === 0 && (
         <PortalNotice icon={Inbox} title={portalText.noSheltersTitle}>
-          {portalText.noSheltersLead}
+          {fill(portalText.noSheltersLead, { email: portalText.contactEmail })}
         </PortalNotice>
       )}
 

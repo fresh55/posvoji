@@ -67,39 +67,59 @@ function renderSheet(overrides: SheetProps = {}) {
   };
 }
 
+type FiltersProps = Partial<ComponentProps<typeof AnimalFilters>>;
+
+/** One AnimalFilters with every prop no test cares about already filled in,
+ *  the same bargain renderSheet above strikes and for the same reason: the
+ *  four tests below each vary two or three things, and spelling the other
+ *  fifteen out per test hid which ones those were. One dog at one shelter,
+ *  nothing filtered, which is the smallest state the dock still draws.
+ *
+ *  The roster and the tally start as the same numbers because nothing is
+ *  filtered here; a test that filters something says so by overriding both. */
+function renderFilters(overrides: FiltersProps = {}) {
+  return render(
+    <I18nProvider locale="en">
+      <AnimalFilters
+        isEmpty={false}
+        filters={EMPTY_FILTERS}
+        speciesTally={{ all: 1, dog: 1, cat: 0, other: 0 }}
+        speciesRoster={{ all: 1, dog: 1, cat: 0, other: 0 }}
+        groups={[]}
+        counts={emptyCounts}
+        toggles={[]}
+        toggleTally={new Map()}
+        shelters={[{ value: "test", label: "Test shelter" }]}
+        shelterTally={new Map([["test", 1]])}
+        chips={[]}
+        resultCount={1}
+        sort="longest-in-shelter"
+        onSpeciesChange={vi.fn()}
+        onClearAll={vi.fn()}
+        onSortChange={vi.fn()}
+        {...filterActions}
+        {...overrides}
+      />
+    </I18nProvider>,
+  );
+}
+
+/** The one sex facet the dock tests lean on, as a group and its count. */
+const SEX_GROUP: FiltersProps = {
+  groups: [{ group: "sex", options: [{ value: "male", label: "Male" }] }],
+  counts: { ...emptyCounts, sex: new Map([["male", 1]]) },
+};
+
 describe("mobile filter hardening", () => {
   it("spans the 320px viewport and shares the dock between both actions", () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       value: 320,
     });
-    const { container } = render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={{ ...EMPTY_FILTERS, sex: ["male"] }}
-          speciesTally={{ all: 1, dog: 1, cat: 0, other: 0 }}
-          // No filters on in this harness, so the roster and the
-          // tally are the same numbers.
-          speciesRoster={{ all: 1, dog: 1, cat: 0, other: 0 }}
-          groups={[
-            { group: "sex", options: [{ value: "male", label: "Male" }] },
-          ]}
-          counts={{ ...emptyCounts, sex: new Map([["male", 1]]) }}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={[{ value: "test", label: "Test shelter" }]}
-          shelterTally={new Map([["test", 1]])}
-          chips={[]}
-          resultCount={1}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    const { container } = renderFilters({
+      filters: { ...EMPTY_FILTERS, sex: ["male"] },
+      ...SEX_GROUP,
+    });
 
     const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
@@ -113,6 +133,22 @@ describe("mobile filter hardening", () => {
     for (const slot of Array.from(dock?.children ?? [])) {
       expect(slot.querySelector("button") ?? slot.closest("button")).toBeTruthy();
     }
+
+    // Edge to edge is for this width and the phone widths above it. The
+    // classes are asserted rather than measured because jsdom resolves no
+    // breakpoint, and they are the whole of the rule: pinned to both edges up
+    // to lg, a 768px tablet drew a 736px plate with a 639px pill on it for the
+    // 13 characters of "Vsa zavetišča". From sm the plate is capped and
+    // centred instead.
+    expect(dock?.className).toContain("sm:left-1/2");
+    expect(dock?.className).toContain("sm:right-auto");
+    expect(dock?.className).toContain("sm:w-[min(28rem,calc(100vw-2rem))]");
+    expect(dock?.className).toContain("sm:-translate-x-1/2");
+    // The bottom edge is not part of the cap. The footer measures its docked
+    // padding against this inset, so only the horizontal edges may move.
+    expect(dock?.className).toContain(
+      "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]",
+    );
   });
 
   it("keeps the sheet mounted for a homogeneous multi-result set, so the sort control stays reachable", async () => {
@@ -121,29 +157,13 @@ describe("mobile filter hardening", () => {
     // roster produces. hasFilterSheet used to read only those facets, so the
     // dock (and the sort control living inside its sheet) vanished here even
     // though there was still an order to pick.
-    render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={EMPTY_FILTERS}
-          speciesTally={{ all: 3, dog: 3, cat: 0, other: 0 }}
-          speciesRoster={{ all: 3, dog: 3, cat: 0, other: 0 }}
-          groups={[]}
-          counts={emptyCounts}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={undefined}
-          shelterTally={new Map()}
-          chips={[]}
-          resultCount={3}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderFilters({
+      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
+      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+      shelters: undefined,
+      shelterTally: new Map(),
+      resultCount: 3,
+    });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
@@ -153,34 +173,41 @@ describe("mobile filter hardening", () => {
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
 
+  it("keeps the sheet mounted at zero results while a filter is on", async () => {
+    // The other flat state, and the worse one: the Ostale tab with a shelter
+    // picked matches nothing, so every facet is empty and resultCount is 0
+    // rather than the >1 the clause above holds on. The sheet went with it,
+    // and with the sheet went the sort control and the shelter chips inside
+    // it, in the one state a visitor is looking for a way back out. A filter
+    // is on here, so there is something in the sheet to take off.
+    renderFilters({
+      filters: { ...EMPTY_FILTERS, shelter: ["test"] },
+      speciesTally: { all: 0, dog: 0, cat: 0, other: 0 },
+      speciesRoster: { all: 1, dog: 0, cat: 0, other: 1 },
+      shelterTally: new Map([["test", 0]]),
+      resultCount: 0,
+    });
+
+    // The toolbar's own sort is gone with the results, on the same guard the
+    // desktop row keeps: nothing is left for an order to apply to.
+    const mobileToolbar = document.querySelector(
+      '[data-slot="mobile-toolbar"]',
+    ) as HTMLElement;
+    expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+
+    expect(await screen.findByRole("combobox")).toBeTruthy();
+  });
+
   it("keeps the species tabs and a 44px sort control in the mobile toolbar", () => {
-    render(
-      <I18nProvider locale="en">
-        <AnimalFilters
-          isEmpty={false}
-          filters={EMPTY_FILTERS}
-          speciesTally={{ all: 2, dog: 1, cat: 1, other: 0 }}
-          // No filters on in this harness, so the roster and the
-          // tally are the same numbers.
-          speciesRoster={{ all: 2, dog: 1, cat: 1, other: 0 }}
-          groups={[
-            { group: "sex", options: [{ value: "male", label: "Male" }] },
-          ]}
-          counts={{ ...emptyCounts, sex: new Map([["male", 1]]) }}
-          toggles={[]}
-          toggleTally={new Map()}
-          shelters={[{ value: "test", label: "Test shelter" }]}
-          shelterTally={new Map([["test", 2]])}
-          chips={[]}
-          resultCount={2}
-          sort="longest-in-shelter"
-          onSpeciesChange={vi.fn()}
-          onClearAll={vi.fn()}
-          onSortChange={vi.fn()}
-          {...filterActions}
-        />
-      </I18nProvider>,
-    );
+    renderFilters({
+      speciesTally: { all: 2, dog: 1, cat: 1, other: 0 },
+      speciesRoster: { all: 2, dog: 1, cat: 1, other: 0 },
+      ...SEX_GROUP,
+      shelterTally: new Map([["test", 2]]),
+      resultCount: 2,
+    });
 
     // The tabs live in the same sticky row as sort, not only behind the sheet.
     const mobileToolbar = document.querySelector(
@@ -197,15 +224,29 @@ describe("mobile filter hardening", () => {
     // utility that grows the tap target around the drawing.
     expect(mobileTab.className).toContain("max-lg:tap-target");
 
-    // The pinned bar is the species tabs and nothing else: sorting is in the
-    // filter sheet now, behind the dock, which is the one control on a phone
-    // that never scrolls away. It spent a pass pinned in this bar and a pass
-    // scrolling off above the grid; the second lost the property that
-    // mattered, which is being reachable mid-scroll.
+    // Sort is on this row too, from md up. At 768 the row is 720px and the
+    // tabs end at 384, so the 336px after them were empty while the tablet
+    // had no sort control on screen at all; on a phone the tabs still take
+    // the row and the sheet behind the dock keeps the order.
     //
     // Scoped to the mobile branch: only CSS separates the two toolbars, so
     // jsdom renders the desktop one too and its Select is a real combobox.
-    expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
+    // jsdom resolves no breakpoint either, so the band this control is drawn
+    // in is asserted on the classes rather than on what is visible.
+    const mobileSort = within(mobileToolbar).getByRole("combobox");
+    const sortClasses = mobileSort.className.split(" ");
+    expect(sortClasses).toContain("max-md:hidden");
+    expect(sortClasses).toContain("shrink-0");
+    // The row only becomes a flex box at md. Below it the strip's -my-2/py-2
+    // collapse through this block and hold the row at 44px; flex at every
+    // width measures the 28px margin box instead and the phone loses 16px.
+    expect(mobileToolbar.className).toContain("md:flex");
+    expect(mobileToolbar.className).not.toMatch(/(^|\s)flex(\s|$)/);
+    expect(mobileToolbar.className).toContain("md:min-h-11");
+    // And the tabs keep the rest of it, in the same min-w-0 box the desktop
+    // toolbar wraps them in, so the strip can still scroll inside the row.
+    const tabsBox = mobileTab.closest('[data-slot="mobile-toolbar"] > div');
+    expect(tabsBox?.className).toContain("min-w-0");
     // A chips row would be the fourth surface stating the filter state on one
     // screen, so it is not in the bar either.
     expect(
@@ -278,6 +319,20 @@ describe("mobile filter hardening", () => {
     expect(header).toBeTruthy();
     expect(scrollBody).toBeTruthy();
     expect(scrollBody?.contains(header as Node)).toBe(false);
+  });
+
+  it("stands the sheet's sort row down from md, where the toolbar carries it", async () => {
+    // Below md this row is the only way to change the order; from md the
+    // toolbar behind the sheet has 336px spare and carries the same control,
+    // and two triggers for one setting on one screen is one too many. jsdom
+    // resolves no breakpoint, so the band is asserted on the class.
+    renderSheet();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const sort = within(dialog).getByRole("combobox");
+    expect(sort.className.split(" ")).toContain("md:hidden");
   });
 
   it("does not repeat the species tabs inside the sheet", async () => {

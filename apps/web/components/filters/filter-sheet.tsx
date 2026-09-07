@@ -56,6 +56,60 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
+/** Whether there is anything behind the Filtri button worth opening.
+ *
+ *  It lives here rather than in the dock that mounts the sheet, because what
+ *  it answers is what this file draws, and the dock was reconstructing that
+ *  across a file boundary: a flat chain of conditions that grew a clause per
+ *  audit, one for each state somebody noticed the sheet had gone missing
+ *  from. Three things can be inside, so there are three named answers and a
+ *  section added below has one place to be counted.
+ *
+ *  Sorting is the reason the last two exist. Below md the sheet is where the
+ *  order is changed, so a result set that no facet can narrow still has
+ *  something to do in here, and so does a filtered-to-nothing one, which is
+ *  where a visitor most needs the way back out.
+ *
+ *  The answer does not move at md, where the toolbar carries the order
+ *  itself: what `orderWorthPicking` holds the sheet open for there is the
+ *  scope row and the way back out, not the sort row it names. Narrowing it by
+ *  width would take a media query in JS, and the sheet is worth more open
+ *  than a tablet is worth a trigger less.
+ *
+ *  The state that buys: between md and lg, a dataset with no facet sections,
+ *  no active filters and no shelters to choose between opens on a title, an
+ *  empty body and a footer, because this clause alone was true and the row it
+ *  was named for is not drawn. It takes a shelterless dataset to reach, which
+ *  no live build has, and the honest fix is one boolean read from a width and
+ *  passed in here rather than a fourth clause guessing at one. */
+export function filterSheetWorthOpening({
+  groups,
+  toggles,
+  goodWith,
+  home,
+  care,
+  resultCount,
+  activeCount,
+}: {
+  groups: { group: CardGroup; options: FilterOption[] }[];
+  toggles: ToggleDef[];
+  goodWith?: GoodWithSection;
+  home?: HomeSection;
+  care?: CareSection;
+  resultCount: number;
+  activeCount: number;
+}): boolean {
+  const hasSections =
+    groups.length > 0 ||
+    toggles.length > 0 ||
+    (goodWith?.options.length ?? 0) > 0 ||
+    (home?.options.length ?? 0) > 0 ||
+    (care?.options.length ?? 0) > 0;
+  const orderWorthPicking = resultCount > 1;
+  const somethingToUndo = activeCount > 0;
+  return hasSections || orderWorthPicking || somethingToUndo;
+}
+
 export function FilterSheet({
   filters,
   groups,
@@ -90,11 +144,13 @@ export function FilterSheet({
    *  trigger no longer promises a section the sheet does not have. */
   activeCount: number;
   resultCount: number;
-  /** Sorting is offered here on a phone, and only here. It is not a filter
-   *  and does not join `Filters` (lib/sort.ts keeps the two apart on purpose,
-   *  since one orders the list the other has already matched); what it shares
-   *  with them is the sheet, because the sheet is the one surface a visitor
-   *  can always reach to change what the grid shows. */
+  /** Sorting is offered here on a phone, and below md it is offered nowhere
+   *  else. It is not a filter and does not join `Filters` (lib/sort.ts keeps
+   *  the two apart on purpose, since one orders the list the other has
+   *  already matched); what it shares with them is the sheet, because on a
+   *  phone the sheet is the one surface a visitor can always reach to change
+   *  what the grid shows. From md the toolbar has the room for the control
+   *  and the row below stands down. */
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   onClearAll: () => void;
@@ -191,9 +247,18 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
-          {/* Sort on its own full-width row under the title, and inside the
-              header block rather than the scrolling body, so it stays put
-              while the filter list moves under it.
+          {/* Sort on its own full-width row under the title, below md only,
+              and inside the header block rather than the scrolling body, so
+              it stays put while the filter list moves under it.
+
+              From md the toolbar behind this sheet carries the order itself:
+              that row is 720px wide at 768 with the tabs ending at 384, so
+              the control is on screen and one tap away instead of three, and
+              a copy in here would be the same control twice on one screen.
+              The header's own pb-3 is what sits under the title once the row
+              is gone, and the row takes its mt-3 with it, so nothing dangles.
+              The sheet is only reachable below lg, so this is the md-to-lg
+              band and nothing else.
 
               It shared the title's row for one pass and could not: the close
               button is absolutely positioned in that corner at 44px, and the
@@ -216,7 +281,7 @@ export function FilterSheet({
             value={sort}
             onChange={onSortChange}
             quiet={false}
-            className="mt-3 h-11 w-full text-sm"
+            className="mt-3 h-11 w-full text-sm md:hidden"
           />
         </div>
 
@@ -236,6 +301,7 @@ export function FilterSheet({
               selected={scope.selected}
               onOpen={openScope}
               onReset={scope.onReset}
+              layout="row"
             >
               <RemovableChips chips={scope.chips} className="mt-2" />
             </LocationScopeRow>

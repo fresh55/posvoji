@@ -4,8 +4,8 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build && node scripts/drop-dev-output.mjs",
+    "dev": "node scripts/generate-animal-descriptions.mjs && next dev",
+    "build": "node scripts/generate-animal-descriptions.mjs && next build && node scripts/drop-dev-output.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
@@ -14,7 +14,8 @@
     "test:e2e:cat": "playwright test --config=playwright.cat.config.ts",
     "generate:postal-districts": "node scripts/generate-postal-districts.mjs",
     "generate:font-subset": "node scripts/generate-font-subset.mjs",
-    "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs"
+    "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs",
+    "generate:animal-descriptions": "node scripts/generate-animal-descriptions.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

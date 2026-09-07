@@ -12,7 +12,6 @@ import {
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
@@ -53,7 +52,6 @@ export function FilterSidebar({
   onToggleMany,
   onToggleProperty,
   onToggleManyProperties,
-  onClearAll,
   className,
 }: {
   filters: Filters;
@@ -65,15 +63,14 @@ export function FilterSidebar({
   home?: HomeSection;
   care?: CareSection;
   scope?: SidebarScope;
-  onClearAll: () => void;
   className?: string;
 } & FilterActionContract) {
   const { messages } = useI18n();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
-  // The chips row scrolls away with the page while the sidebar stays; this
-  // count and its clear keep the state and the way out in view. Selected
-  // values and not sections, so it agrees with the row it outlives: a badge
-  // reading 1 above two chips was two answers to one question.
+  // The chips row scrolls away with the page while the sidebar stays, so this
+  // count keeps the state in view after the pills have gone. Selected values
+  // and not sections, so it agrees with the row it outlives: a badge reading 1
+  // above two chips was two answers to one question.
   const activeValues = activeFilterCount(filters);
 
   return (
@@ -81,48 +78,53 @@ export function FilterSidebar({
       ref={scrollRef}
       // The negative margin and padding give focus rings room inside the
       // overflow clip. Hairlines between sections read the stack as one list.
+      //
+      // fade-scroll-thin and not fade-scroll: the picker lists this fade is
+      // shared with sit inside a dialog the visitor has just opened and are
+      // read as scrollable, while this panel is fixed beside the results and
+      // silently cut its last sections off on a short screen. It keeps the
+      // same edge mask and adds a thin scrollbar (globals.css).
       className={cn(
-        "fade-scroll -mx-1 space-y-3 px-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
+        "fade-scroll-thin -mx-1 space-y-3 px-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
         className,
       )}
     >
-      {/* h-7 matches the species tabs across the gutter, so both columns
-          start their content on the same line. */}
-      <div className="flex h-7 items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-sm font-medium">
-          {messages.filters}
-          {activeValues > 0 && (
-            // Same badge the mobile sheet already shows next to "Filtri". Its
-            // own LazyMotion: unlike the sections below, nothing here already
-            // opens one for CountRoll to read domAnimation from.
-            <LazyMotion features={domAnimation}>
-              <Badge
-                variant="secondary"
-                // motion-reduce:duration-0, not motion-reduce:animate-none:
-                // see the comment on DialogOverlay in ui/dialog.tsx for why
-                // the animate-none guard does not actually take effect here.
-                className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
-              >
-                <CountRoll value={activeValues} />
-              </Badge>
-            </LazyMotion>
-          )}
-        </h2>
-        <Button
-          type="button"
-          variant="link"
-          size="xs"
-          onClick={onClearAll}
-          aria-hidden={activeValues === 0}
-          tabIndex={activeValues > 0 ? undefined : -1}
-          className={cn(
-            "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
-            activeValues === 0 && "pointer-events-none opacity-0",
-          )}
-        >
-          {messages.clearAll}
-        </Button>
-      </div>
+      {/* h-8 to match the results row across the gutter, which states the same
+          height for itself (min-h-8 in animal-filters.tsx). The toolbar that
+          carries it pins at top-0 and pads itself with --rail-pad, and the
+          aside answers with lg:top-0 and the same padding (animal-grid.tsx),
+          so the two columns start their content on one line both at rest and
+          stuck, and the hairline over the first section below lands on the
+          toolbar's border-b rather than 16px above it.
+
+          The height is on the heading and not on a box around it. There were
+          two children here until the clear went, and one child that is itself
+          a flex row does not need a flex row around it.
+
+          No clear in here. At lg the chips row beside the toolbar owns
+          clearing, next to the pills it clears, and it is on screen whenever
+          this head is: every active value draws a pill there except the
+          species tab, which undoes itself in a press of its own. Each section
+          keeps its Ponastavi for the one facet it holds. */}
+      <h2 className="flex h-8 items-center gap-2 text-sm font-medium">
+        {messages.filters}
+        {activeValues > 0 && (
+          // Same badge the mobile sheet already shows next to "Filtri". Its
+          // own LazyMotion: unlike the sections below, nothing here already
+          // opens one for CountRoll to read domAnimation from.
+          <LazyMotion features={domAnimation}>
+            <Badge
+              variant="secondary"
+              // motion-reduce:duration-0, not motion-reduce:animate-none:
+              // see the comment on DialogOverlay in ui/dialog.tsx for why
+              // the animate-none guard does not actually take effect here.
+              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
+            >
+              <CountRoll value={activeValues} />
+            </Badge>
+          </LazyMotion>
+        )}
+      </h2>
 
       {/* Kje first, above every folding section. It is the question a visitor
           answers before any of the others -- how far they are willing to go --

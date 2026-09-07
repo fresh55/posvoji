@@ -3,9 +3,12 @@
 import hashlib
 import ipaddress
 import secrets
+import time
 from typing import Literal
 
 from django.conf import settings
+from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 from ninja.errors import HttpError
 from ninja.security import APIKeyCookie, SessionAuth
@@ -33,6 +36,16 @@ class CsrfOnlyAuth(APIKeyCookie):
 
 
 csrf_auth = CsrfOnlyAuth()
+
+
+def _hashed(value: str) -> str:
+    """A cache-key-safe stand-in for an identifier.
+
+    Keeps IPv6 punctuation, an address and any fallback identifier out of the
+    cache backend's key restrictions and out of the file names the file cache
+    writes. It is not an attempt to anonymize a low-entropy value.
+    """
+    return hashlib.sha256(value.encode()).hexdigest()
 
 
 def _normalise_ip(value: str | None) -> str | None:
@@ -84,14 +97,90 @@ class RequestLinkRateThrottle(SimpleRateThrottle):
         return direct_peer or "unknown"
 
     def get_cache_key(self, request: HttpRequest) -> str:
-        # Hashing keeps IPv6 punctuation and any fallback identifier out of
-        # cache backend key restrictions. It is not an attempt to anonymize a
-        # low-entropy IP address.
-        ident = hashlib.sha256(self.get_ident(request).encode()).hexdigest()
+        ident = _hashed(self.get_ident(request))
         return self.cache_format % {"scope": self.scope, "ident": ident}
 
 
 request_link_throttle = RequestLinkRateThrottle()
+
+ADDRESS_RATE_CACHE_PREFIX = "login-link-address"
+
+
+class AddressSendLimit:
+    """How many login links one mailbox may be sent, read once at import.
+
+    The IP limit is a ninja throttle built at module scope, so a rate the
+    deployment spelled wrong stops the process. This limit is counted by hand,
+    and without the same construction its two bad values would both surface
+    late and quietly: a typo as a 500 on the login endpoint at the first
+    shelter to ask for a link, and a count of zero as a portal-wide login
+    outage that nobody configured and that logs only at INFO.
+
+    The rate is parsed by ninja, so both limits are written the same way in
+    the environment file.
+    """
+
+    setting = "PORTAL_LOGIN_LINK_ADDRESS_RATE"
+
+    def __init__(self, rate: str) -> None:
+        try:
+            parsed = SimpleRateThrottle(rate=rate)
+        except ValueError as error:
+            raise ImproperlyConfigured(
+                f"{self.setting} is not a rate like 3/hour: {rate!r}"
+            ) from error
+        if not parsed.num_requests or parsed.num_requests < 1:
+            raise ImproperlyConfigured(
+                f"{self.setting} must allow at least one send per period, "
+                f"or no shelter can ever sign in: {rate!r}"
+            )
+        self.num_requests: int = parsed.num_requests
+        self.duration: int = parsed.duration
+
+
+address_send_limit = AddressSendLimit(settings.PORTAL_LOGIN_LINK_ADDRESS_RATE)
+
+
+def address_send_allowed(email: str) -> bool:
+    """Whether another login link may be sent to this address now.
+
+    The IP throttle limits one caller. This limits one mailbox, because the
+    addresses the registry publishes are the ones a shelter cannot stop
+    reading, and nothing else stops a caller who changes network from asking
+    for the same address again.
+
+    The counter lives in the shared cache, so it holds across worker
+    processes. cache.add opens the window and cache.incr counts inside it,
+    which is atomic on the backends that can be; a lost increment under a race
+    lets one extra message through and never blocks a shelter.
+
+    The window is fixed rather than sliding, unlike the IP throttle's, so the
+    limit is per clock period and not per rolling one: three sends at 10:59
+    and three more at 11:00 are allowed. Twice the rate inside a couple of
+    seconds is still two handfuls of mail rather than a flood, and a fixed
+    window is what keeps the entry's life bounded by the window it belongs to,
+    so a caller hammering one address cannot hold its lockout open forever.
+    """
+    limit, period = address_send_limit.num_requests, address_send_limit.duration
+    ident = _hashed(email.strip().lower())
+    # The window is named in the key. The count then cannot outlive the window
+    # it belongs to even if an entry is left behind.
+    window, elapsed = divmod(time.time(), period)
+    remaining = period - elapsed
+    key = f"{ADDRESS_RATE_CACHE_PREFIX}_{int(window)}_{ident}"
+
+    if cache.add(key, 1, remaining):
+        return True
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        # The entry went away between the two calls, so open a window again
+        # rather than refuse.
+        return cache.add(key, 1, remaining)
+    # Backends without a native incr implement it as get plus set, and that
+    # set carries the cache's default expiry rather than this window's.
+    cache.touch(key, remaining)
+    return count <= limit
 
 
 def export_token_auth(request: HttpRequest):

@@ -212,7 +212,13 @@ export function FilterSectionHeader({
       onKeyDown={moveSectionFocus}
       aria-expanded={collapse.open}
       aria-controls={collapse.contentId}
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left outline-none transition-colors duration-150 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground max-lg:tap-target"
+      // uppercase and tracking-wide repeat what the h3 around this button
+      // already sets. The browser's own button rules reset text-transform and
+      // letter-spacing, so without them a folding heading printed in sentence
+      // case while every heading that never folds printed uppercase. The
+      // summary chip below sets its own case and tracking, so it still reads
+      // as a value rather than a heading.
+      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground max-lg:tap-target"
     >
       <span className="truncate">{label}</span>
       {hint ? (

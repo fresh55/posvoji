@@ -458,6 +458,15 @@ export function SpeciesTabs({
           // overlays are cut back to the height of the pills. The matching
           // negative margin keeps the row occupying its old height.
           //
+          // What that costs a caller below lg: the padding and the margin
+          // cancel, so this box draws 44px and measures 28px from outside.
+          // A block parent the margins collapse through stands at 44; a flex
+          // parent measures the 28 and the row loses 16px. The below-lg
+          // toolbar turns flex only from md for exactly this reason
+          // (animal-filters.tsx). Giving the box its own below-lg height
+          // instead would free every caller of it, and is the fix if a second
+          // caller ever needs the strip in a flex row.
+          //
           // relative because the fill is measured against this box and
           // positioned inside it.
           "relative flex min-w-0 gap-1 overflow-x-auto no-scrollbar max-lg:-my-2 max-lg:py-2",

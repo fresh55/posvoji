@@ -40,11 +40,21 @@ import { cn } from "@/lib/utils";
 // GPU. The extra 10% of opacity is what the blur was there for: to keep a
 // chevron legible over a photograph of any colour. The card's own chevrons
 // below keep theirs, because their photo stands still.
+//
+// Shown for a hover and for keyboard focus, but only the kind of focus that is
+// meant to be seen. The dialog opens with its front print focused, and a
+// plain focus-within had the chevrons standing on the photograph of every
+// dialog a mouse opened, until the pointer left the fan.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:pointer-events-auto";
 
-// This component's own chevrons, which differ from the shared constant in two
-// ways.
+// This component's own chevrons, which differ from the constant above in
+// three ways.
+//
+// They show for any focus within the photo rather than for the visible kind
+// only. Nothing focuses a card's gallery on the visitor's behalf, so there is
+// no resting focus here to draw them over a photograph, and a click that
+// lands on a chevron should leave the pair standing under the pointer.
 //
 // They gate pointer events on the same conditions as the opacity. opacity: 0
 // does not remove hit-testing, and touch has no hover, so on a phone these

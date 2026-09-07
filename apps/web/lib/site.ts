@@ -7,3 +7,8 @@ export const SITE_URL = "https://posvoji.si";
 // shelters page's issue link all point at it, and a rename that reached only
 // two of the three would leave the third silently wrong.
 export const REPO_URL = "https://github.com/fresh55/posvoji";
+
+// The address a visitor or a shelter writes to. The about page prints it
+// and the portal login offers it, so it is one value rather than two that
+// have to be changed together.
+export const CONTACT_EMAIL = "info@posvoji.si";

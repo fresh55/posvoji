@@ -270,6 +270,58 @@ describe("animal grid empty state", () => {
     ).toBeNull();
   });
 
+  it("leaves one clear control per surface once chips can carry it", () => {
+    // A shelter is picked, so there is a chip, so both chip rows render: the
+    // toolbar's at lg and the empty state's own below it. Each already ends in
+    // "Počisti vse", and the state used to put a "Počisti filtre" button under
+    // them anyway -- two clear-alls stacked on a phone, and a third at lg back
+    // when the sidebar head carried its own copy too, all of them the same
+    // press.
+    window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    expect(screen.queryByRole("button", { name: "Počisti filtre" })).toBeNull();
+
+    // One per surface, and no surface twice. The class tokens are how the two
+    // rows are told apart, because only one of them is painted at a time and
+    // jsdom paints neither.
+    const clears = screen.getAllByRole("button", {
+      name: "Počisti vse filtre",
+    });
+    expect(clears).toHaveLength(2);
+    expect(
+      clears.filter((clear) => clear.closest('[class~="lg:hidden"]')),
+    ).toHaveLength(1);
+    expect(
+      clears.filter((clear) => clear.closest('[class~="max-lg:hidden"]')),
+    ).toHaveLength(1);
+
+    // The row's own clear is the whole clear: it drops the shelter and the
+    // species tab with it, which is what the button used to be there for.
+    fireEvent.click(
+      clears.find((clear) => clear.closest('[class~="lg:hidden"]'))!,
+    );
+
+    expect(query()).toBe("");
+  });
+
+  it("offers the button where no chip row exists to carry the clear", () => {
+    // The species tab is the one filter that makes no chip (it undoes itself
+    // in a press of its own tab), so an empty tab with nothing else on has no
+    // chips row on either surface and the button is the only way out.
+    window.history.replaceState(null, "", "/?vrsta=ostalo");
+    renderGrid(ANIMALS.filter((a) => a.species !== "rabbit"));
+
+    expect(
+      screen.queryAllByRole("button", { name: "Počisti vse filtre" }),
+    ).toHaveLength(0);
+
+    const clear = screen.getByRole("button", { name: "Počisti filtre" });
+    fireEvent.click(clear);
+
+    expect(query()).toBe("");
+  });
+
   it("keeps the mobile dock and its shelter picker at a single result", () => {
     // One rabbit, at one shelter. Every facet collapses here: no group has two
     // distinct values, so the filter sheet has no sections, and the shelter

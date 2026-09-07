@@ -1662,6 +1662,40 @@ describe("LocationPicker floating panel", () => {
     expect(list.className).toContain("lg:hidden");
   });
 
+  it("heads the list at lg with the sentence the peek bar already carries", async () => {
+    await openPicker();
+
+    // Both heads are in the DOM at once and the breakpoint decides which one
+    // is on screen, so this asserts on the two elements rather than on
+    // visibility: jsdom has no media queries to ask.
+    const head = dialog().querySelector<HTMLElement>(
+      "[data-picker-panel-head]",
+    )!;
+    const peek = dialog().querySelector<HTMLElement>("[data-picker-peek]")!;
+    expect(head.textContent).toContain("Vsa zavetišča");
+    expect(peek.textContent).toContain("Vsa zavetišča");
+    // The fold control stays where it was, at the end of the row. Before the
+    // sentence was printed here this band was 52px of chrome with a lone
+    // chevron in it, which read as "next" rather than as "hide the list".
+    expect(head.lastElementChild?.hasAttribute("data-picker-collapse")).toBe(
+      true,
+    );
+  });
+
+  it("counts the picked shelters beside that heading", async () => {
+    await openPicker({ selected: ["jug"] });
+
+    const head = dialog().querySelector<HTMLElement>(
+      "[data-picker-panel-head]",
+    )!;
+    // The sentence, and the badge beside it: the same pair the peek bar wears
+    // below lg. Nothing picked leaves the badge off entirely, which the test
+    // above pins by finding the fold control as the row's last child.
+    const group = head.firstElementChild!;
+    expect(group.textContent).toContain("1 od 2 zavetišč");
+    expect(group.lastElementChild?.textContent).toBe("1");
+  });
+
   it("puts the list back when the rail is pressed", async () => {
     await openPicker();
 

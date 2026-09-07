@@ -2,13 +2,33 @@ import json
 from pathlib import Path
 
 import pytest
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client
 
 from core.dataset import clear_cache
 from core.models import IngestionMode, Shelter, ShelterMembership
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture(scope="session")
+def django_db_modify_db_settings(
+    django_db_modify_db_settings_parallel_suffix, tmp_path_factory
+):
+    """The test database is a file, not pytest-django's in-memory default.
+
+    A file is what development and production run on, so the journal and
+    transaction settings in portal/settings.py apply to the tests as well. It
+    is also what gives the live server's request threads connections of their
+    own: on an in-memory database they all share one, and a test of parallel
+    writes would prove nothing. Django deletes the file when the session
+    ends, and it sits in pytest's temporary tree, never in the checkout.
+    """
+    # In place: Django has already filled the other TEST keys with defaults.
+    test_settings = django_settings.DATABASES["default"].setdefault("TEST", {})
+    test_settings["NAME"] = str(tmp_path_factory.mktemp("db") / "test.sqlite3")
 
 
 def make_animal(animal_id: str, shelter: Shelter, **overrides) -> dict:
@@ -46,15 +66,57 @@ def fresh_dataset_cache():
     clear_cache()
 
 
-@pytest.fixture
-def dataset_file(settings, tmp_path):
-    """Points DATASET_PATH at a writable file and returns a writer for it."""
-    path = tmp_path / "animals.json"
-    settings.DATASET_PATH = path
+@pytest.fixture(autouse=True)
+def empty_cache(settings):
+    """Rate-limit counters start empty and never touch the deployment's cache.
 
-    def write(animals: list[dict]) -> Path:
-        payload = {"generatedAt": "2026-08-18T08:00:00.000Z", "animals": animals}
-        path.write_text(json.dumps(payload), encoding="utf-8")
+    The service keeps them in a file cache, which is shared between worker
+    processes. A test does not need that, and it must not leave counters in a
+    directory the next test or the next run reads.
+    """
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "portal-tests",
+        }
+    }
+    cache.clear()
+    yield
+    cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def dataset_paths(settings, tmp_path):
+    """Both dataset paths point into tmp_path, where no file exists yet.
+
+    No test reads the repository's real data/dist, and a test that never
+    writes a dataset sees a missing one, which is the state before the first
+    ingest run.
+    """
+    settings.DATASET_PATH = tmp_path / "animals.json"
+    settings.CRAWLED_DATASET_PATH = tmp_path / "animals.crawled.json"
+
+
+@pytest.fixture
+def dataset_file(settings):
+    """A writer for the two dataset files.
+
+    write(animals) writes the same records to both, which is what one ingest
+    run leaves behind when no override applied. write(animals, crawled=...)
+    writes what the crawl said separately, for a run that merged overrides.
+    Deleting write.crawled_path is a data/dist from before the split.
+    """
+    path = Path(settings.DATASET_PATH)
+    crawled_path = Path(settings.CRAWLED_DATASET_PATH)
+
+    def write(animals: list[dict], *, crawled: list[dict] | None = None) -> Path:
+        records = (
+            (path, animals),
+            (crawled_path, animals if crawled is None else crawled),
+        )
+        for target, content in records:
+            payload = {"generatedAt": "2026-08-18T08:00:00.000Z", "animals": content}
+            target.write_text(json.dumps(payload), encoding="utf-8")
         # Two writes in one test can land in the same filesystem timestamp
         # tick, which the mtime-keyed cache cannot see. Real runs rewrite the
         # file minutes apart.
@@ -62,6 +124,7 @@ def dataset_file(settings, tmp_path):
         return path
 
     write.path = path
+    write.crawled_path = crawled_path
     return write
 
 
@@ -104,6 +167,18 @@ def member(db, shelter):
     user = get_user_model().objects.create_user(
         username="info@example.si",
         email="info@example.si",
+        password=None,
+    )
+    ShelterMembership.objects.create(user=user, shelter=shelter)
+    return user
+
+
+@pytest.fixture
+def second_member(db, shelter):
+    """A second login on the same shelter, for the per-address send limit."""
+    user = get_user_model().objects.create_user(
+        username="pisarna@example.si",
+        email="pisarna@example.si",
         password=None,
     )
     ShelterMembership.objects.create(user=user, shelter=shelter)

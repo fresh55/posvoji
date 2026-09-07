@@ -37,10 +37,15 @@ afterEach(() => {
 const PATH = "/zival/rex-abc123/ljubljana/test-shelter";
 const PAGE = `${SITE_URL}${PATH}`;
 
-function renderButton(photo?: number) {
+function renderButton(photo?: number, className?: string) {
   render(
     <I18nProvider locale="sl">
-      <ShareButton path={PATH} name="Rex" photo={photo} />
+      <ShareButton
+        path={PATH}
+        name="Rex"
+        photo={photo}
+        className={className}
+      />
     </I18nProvider>,
   );
   return screen.getByRole("button", { name: "Deli" });
@@ -164,8 +169,12 @@ describe("on a phone", () => {
       fireEvent.click(button);
     });
 
+    // text as well as title: an Android app is handed both and most of them
+    // print only the text, so a title on its own left WhatsApp with a bare
+    // link to send.
     expect(share).toHaveBeenCalledWith({
       title: "Rex išče dom",
+      text: "Rex išče dom",
       url: `${PAGE}?foto=3`,
     });
     expect(screen.queryByText("Deli to žival")).toBeNull();
@@ -177,5 +186,29 @@ describe("on a phone", () => {
 
     expect(panel.getByLabelText("Povezava")).toHaveProperty("value", PAGE);
     expect(panel.queryByRole("button", { name: "Več" })).toBeNull();
+  });
+});
+
+// The dialog dresses this button as the third control of its title row. Both
+// buttons this component can be are the same element, so the classes have to
+// reach whichever one the platform leaves standing, and neither may lose the
+// 44px the phone layout holds every control to.
+describe("the classes the caller passes", () => {
+  it.each([
+    ["the popover's trigger", false],
+    ["the button that opens the platform's sheet", true],
+  ])("reach %s", (_name, native) => {
+    if (native) {
+      phone = true;
+      Object.defineProperty(navigator, "share", {
+        configurable: true,
+        value: vi.fn().mockResolvedValue(undefined),
+      });
+    }
+
+    const button = renderButton(undefined, "max-sm:rounded-full");
+
+    expect(button.className).toContain("max-sm:rounded-full");
+    expect(button.className).toContain("size-11");
   });
 });

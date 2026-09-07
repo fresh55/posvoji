@@ -1,21 +1,11 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { PawPrint } from "lucide-react";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
-import { useI18n } from "@/components/i18n-provider";
 import { AnimalFilters } from "@/components/filters/animal-filters";
+import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
-import type { CardGroup } from "@/components/filters/filter-groups";
-import { FilterChips, type Chip } from "@/components/filters/filter-chips";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
@@ -25,48 +15,30 @@ import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
 import { CARD_GRID } from "@/lib/card-grid";
 import {
   applyFilters,
-  bySpecies,
-  careCounts,
-  careOptions,
-  chipGains,
-  chipKey,
-  facetCounts,
-  goodWithCounts,
-  goodWithOptions,
-  GROUPS,
-  groupOptions,
-  homeCounts,
-  homeOptions,
-  optionLabel,
-  speciesCounts,
-  speciesFacetCounts,
-  toggleCounts,
-  toggleLabel,
-  visibleCare,
-  visibleGoodWith,
-  visibleGroups,
-  visibleHome,
-  visibleToggles,
   type FilterOption,
   type Filters,
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
-import {
-  careLabel,
-  goodWithChipLabel,
-  homeLabel,
-  shelterChipLabel,
-} from "@/lib/labels";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   PREHYDRATION_DATASET_KEY,
   RESULTS_SLOT,
 } from "@/lib/prehydration-script";
-import { summarizeShelters } from "@/lib/shelter-summary";
-import type { LookupEntry } from "@/lib/municipality-coverage";
+import type { ShelterLogos } from "@/lib/shelter-logos";
 import { sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
-import type { ShelterLogos } from "@/lib/shelter-logos";
+import { PawPrint } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { CARDS_PER_CLICK } from "./grid-rendering";
+import { useAnimalFilterModel } from "./use-animal-filter-model";
+import { useIncrementalGrid } from "./use-incremental-grid";
 
 // How long a cleared filter state can still be taken back. Long enough to
 // read the row and reach for it, short enough that the offer is gone before
@@ -83,103 +55,9 @@ const DESCRIPTIONS_IDLE_MS = 2000;
 // changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
 
-// How many cards the first render draws. The grid is not paginated, so Vse
-// used to mount all 503 matches at once: about fourteen thousand nodes, a
-// thousand tab stops and a 66,000px page, all of it in the prerendered HTML as
-// well. Sixty is several screens on the tallest phone and more than a desktop
-// first paint can show, and the steps after it are asked for well before
-// anyone reaches the bottom.
-//
-// Rendering only. Every count on the page, the facet numbers and the dialog's
-// sibling list all still read the whole filtered set.
-export const INITIAL_CARDS = 60;
-
-// How far below the last drawn card the next step is asked for, so the grid is
-// already longer by the time the visitor gets there.
-const STEP_MARGIN = "1200px 0px";
-
-// What each automatic step adds, and how far the grid goes on its own before
-// it starts asking. Unbounded, the sentinel re-armed 1200px ahead of the
-// reader every time, so the document grew faster than anyone could descend it
-// and the footer, which is the only way to any other page, could not be
-// scrolled to at all. Once the budget is spent the sentinel gives way to a
-// button, and the footer stands one press below whatever is drawn.
-//
-// Both figures are rows and not cards, because a row is what scroll distance
-// is made of: one measures 300 to 330px here, and a card count says nothing
-// about how many rows it becomes. The budget used to be a card count with a
-// phone figure and a desktop figure, on the reasoning that 120 cards over two
-// columns and 180 over four come out about the same length. Measured across
-// thirteen viewports on 28 August 2026 they did not: the footer sat anywhere
-// from 9,200px to 19,700px down the page at settle, entirely according to how
-// many columns the viewport happened to draw. Counting rows makes the one
-// number that matters the same everywhere.
-//
-// The column count is measured off the rendered grid rather than read from a
-// breakpoint of its own, so there is no second copy of CARD_GRID's layout
-// (lib/card-grid.ts) here to drift away from it.
-//
-// Fifteen rows is also more than the watched band, being some 4,500px even at
-// two columns against the 1200px STEP_MARGIN above. That is what stops a step
-// from asking for the next one the moment it lands, so the grid grows a step
-// at a time as the reader descends. It is not what keeps the observer alive
-// across a step: the sentinel's ref re-arms it (watchSentinel below), because
-// the browser does not reliably report the leave that used to do the job.
-export const ROWS_PER_STEP = 15;
-export const TARGET_ROWS = 40;
-
-// What a step adds instead while a dialog stands over the grid. Three rows is
-// about twelve cards at four columns. A step lands as one commit, and what
-// that commit costs grows with the cards in it: sixty cards mounted behind a
-// dialog is work nobody can see, done while the visitor may be dragging the
-// dialog's photo fan, where a long task is a dropped frame. Twelve is a
-// commit that fits in a frame.
-//
-// Not measured as a fix for any one hitch. A trace taken on 4 September 2026
-// while dragging the fan behind a deep-linked dialog showed one long task,
-// and invalidation tracking put it down to Chrome re-evaluating the
-// display-locked cards below the fold (card-paint) some two seconds after the
-// open, drag or no drag; the grid takes no step at all behind a deep-linked
-// dialog, its sentinel being 4,500px down and outside the margin. The small
-// stride matters where the grid does step behind a dialog: a visitor who
-// scrolled before opening one.
-//
-// Three rows is deliberately short of the 1200px STEP_MARGIN, so the rule
-// above runs the other way here: a small step leaves the sentinel inside the
-// watched band, the re-arm delivers another entry, and the grid walks to the
-// same TARGET_ROWS budget a dozen cards per task instead of sixty. Nothing is
-// held back and nothing pauses, so the dialog's own previous and next arrows,
-// which walk the cards that are drawn, keep gaining reach exactly as they do
-// with the dialog closed.
-export const ROWS_PER_STEP_BEHIND_DIALOG = 3;
-
-// A press is a stronger signal than a scroll, so it buys more. At 120 a full
-// unfiltered dataset is three or four presses end to end, without the grid
-// ever mounting hundreds of cards nobody asked to see.
-export const CARDS_PER_CLICK = 120;
-
 // Two columns is the narrowest the grid ever draws (CARD_GRID), so it is what
 // an unmeasurable grid is charged for: a miss makes the step short rather than
 // drawing rows nobody asked for.
-const FALLBACK_COLUMNS = 2;
-
-// How many columns the grid is drawing, read off the element that is drawing
-// them. A laid-out grid computes gridTemplateColumns to its resolved track
-// list, so "245px 245px 245px" is three columns and counting the tracks is the
-// whole measurement. Measured at step time rather than held in state, for the
-// same reason the media query used to be: a value captured at mount goes stale
-// across a rotation or a resize.
-//
-// Nothing to measure has two answers. jsdom lays out nothing and returns an
-// empty string; a grid that is not laid out can also hand back the authored
-// repeat() rather than a track list, and the parentheses are how that shows.
-function gridColumns(grid: HTMLElement | null): number {
-  const tracks = grid ? getComputedStyle(grid).gridTemplateColumns : "";
-  if (!tracks || tracks === "none" || tracks.includes("(")) {
-    return FALLBACK_COLUMNS;
-  }
-  return tracks.trim().split(/\s+/).length;
-}
 
 // Which species-absence message key fills the {species} slot of the
 // shelter-absence sentences below. Keyed by the species tab rather than
@@ -202,21 +80,6 @@ function shelterAbsenceKey(count: number): TranslationKey {
   if (count === 1) return "noResultsShelterSingular";
   if (count === 2) return "noResultsShelterDual";
   return "noResultsShelterPlural";
-}
-
-// The card's own link, which is the name link and not simply the first anchor
-// in the article. The photo block comes first and its anchor is decorative,
-// aria-hidden and out of the tab order (photo-gallery.tsx), so focus moved
-// there lands on an element the accessibility tree does not have and the
-// reading position a screen reader should resume from is lost.
-//
-// Found by the marker animal-card.tsx puts on it, the same way the card finds
-// the photo frame it hands the dialog. Asking instead for the first anchor
-// that is neither aria-hidden nor out of the tab order would describe the
-// three anchors a card has today and quietly pick the wrong one the day a
-// card grows a fourth above the name.
-function cardLink(card: Element | undefined): HTMLAnchorElement | null {
-  return card?.querySelector<HTMLAnchorElement>('[data-slot="card-link"]') ?? null;
 }
 
 // The two states that say there is nothing here: no dataset at all, and no
@@ -318,183 +181,8 @@ export function AnimalGrid({
       basePath: locale === "sl" ? "/" : "/en",
     });
 
-  // Whether a dialog stands over the grid, which is the automatic step's own
-  // question: behind one, a step commits fewer rows
-  // (ROWS_PER_STEP_BEHIND_DIALOG above).
-  //
-  // A ref, and not a dependency of watchSentinel below. That callback's
-  // lifetime is one sorted list on purpose, because the callback is the
-  // sentinel's own ref: rebuilding it takes the observation down and puts a
-  // fresh one up, and a fresh observation is always delivered an initial entry.
-  // Closed over the open animal, the callback would be rebuilt on every open
-  // and every close, so opening a dialog would itself ask for a step nobody
-  // scrolled for, and it would ask with the sentinel sitting wherever the last
-  // step left it. The callback reads the ref at the moment it computes a step,
-  // which is the moment the answer has to be true for.
-  //
-  // Kept current by an effect rather than written during the render. A render
-  // is not a commit: React can throw one away before it lands, and a ref
-  // moved by a render that was thrown away would be answering for a dialog
-  // that never appeared.
-  const dialogOpen = useRef(false);
-  useEffect(() => {
-    dialogOpen.current = selected !== undefined;
-  }, [selected]);
-
-  // How much of that list is on the page. The count is held together with the
-  // list it was counted against, so it answers for that list and no other: any
-  // filter, sort or species move hands down a different array, the count stops
-  // applying, and the grid is read from its top again. No effect has to notice
-  // and no render of the new list is ever made against the old one's count.
-  // `settled` is the auto-step budget being spent: from then on the grid only
-  // grows by the button below, and a new list starts the budget over.
-  const [chunk, setChunk] = useState<{
-    of: ClientAnimal[];
-    drawn: number;
-    settled: boolean;
-  }>({
-    of: sorted,
-    drawn: INITIAL_CARDS,
-    settled: false,
-  });
-  const drawn = chunk.of === sorted ? chunk.drawn : INITIAL_CARDS;
-  const settled = chunk.of === sorted && chunk.settled;
-  // slice clamps, so the whole list and a prefix of it are the same call.
-  const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
-  const hasMore = drawn < sorted.length;
-
-  // The grid itself, which two things read: the button's focus move below, and
-  // the step above it, which measures the drawn columns off this element.
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  // The sentinel's own ref is the observer's lifetime, and that lifetime is one
-  // sorted list rather than one step: the callback closes over the list alone,
-  // so a step does not take the observer down and put a new one up, and neither
-  // does a dialog opening over the grid, which is why the open state is the ref
-  // above and not a dependency here. The step is a functional update for the
-  // same reason: it reads the count off the state it is updating rather than
-  // off a closure that would have to be rebuilt to stay current.
-  //
-  // What a step does have to do is re-arm the observation, which is the
-  // unobserve and observe pair at the end of the callback. This used to be left
-  // to the geometry, on the reasoning that a step already delivers the next
-  // entry by moving the sentinel: fifteen rows is some 4,500px even at two
-  // columns, far past the 1200px margin below, so the sentinel leaves the
-  // watched band and comes back. It does leave. Whether the browser says so is
-  // a different question, and an observer reports a change of state and nothing
-  // else, so across a step it is still holding "intersecting" and only a
-  // delivered leave can move it off that.
-  //
-  // A reader who is at the end of the document when a step lands grows the page
-  // entirely below the viewport, where nothing that is painted changes.
-  // Measured on 28 August 2026, Chrome delivered that leave on some loads of
-  // that shape and not others: two of three loads at 1440x900 in a headed
-  // browser missed it, and 1280x800 and 1920x1080 the same. A missed leave was
-  // permanent, because no further entry could ever arrive. The grid stopped at
-  // one step, the sentinel never gave way to the button, and four hundred of
-  // the five hundred animals had no way onto the page at all.
-  //
-  // Re-arming does not depend on a transition. A fresh observation is always
-  // delivered an initial entry, measured against wherever the sentinel stands
-  // by then, so the grid either takes the next step or waits for a real scroll,
-  // and neither of those is something the browser has to volunteer.
-  //
-  // Behind an open dialog the re-arm is the whole of what carries the grid on.
-  // A three-row step is shorter than the watched band rather than several times
-  // it, so the sentinel never leaves the band at all, and every fresh
-  // observation delivers the entry that takes the next small step. The grid
-  // reaches the same budget it always does, in more steps and one task each.
-  const watchSentinel = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      // jsdom, and anything else with no observer, gets the whole list rather
-      // than a grid with no way to grow.
-      if (typeof IntersectionObserver === "undefined") {
-        setChunk({ of: sorted, drawn: sorted.length, settled: true });
-        return;
-      }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
-            // Cards per row, so both the step and the budget below are the
-            // row counts they are written as.
-            const columns = gridColumns(gridRef.current);
-            // The same guard the render reads the count through: a count
-            // counted against another list starts again from the top.
-            //
-            // Clamped at the budget, so the last step is what is left of it
-            // rather than a full stride past it. Unclamped, three columns once
-            // went 60, 105, 150: fifty rows drawn where TARGET_ROWS then
-            // promised forty-five, and some 1,500px of page nobody asked for.
-            // A short last step is nothing for the re-arm below to worry
-            // about either, because a step that reaches the budget settles,
-            // and settling unmounts the sentinel. Only a step that stops short
-            // of the budget has a sentinel left to deliver anything, whichever
-            // of the two strides it took.
-            const budget = TARGET_ROWS * columns;
-            // How wide this step is. Behind an open dialog it is the small
-            // one, so what commits while somebody is dragging the photo fan is
-            // a dozen cards rather than sixty. Read off the ref as the entry
-            // arrives, rather than closed over when the observer was made,
-            // which is the whole reason the ref exists (dialogOpen above).
-            const rows = dialogOpen.current
-              ? ROWS_PER_STEP_BEHIND_DIALOG
-              : ROWS_PER_STEP;
-            // A plain update, not a transition, on purpose. A transition
-            // would let React yield partway through rendering the step, but
-            // the re-arm below is measured at the next frame against wherever
-            // the sentinel stands by then. With the step still rendering it
-            // stands where it was, inside the band, and that entry would take
-            // a second step nobody scrolled for. A plain update renders in
-            // one task, ahead of that frame, so the fresh observation sees
-            // the sentinel the step moved. What bounds the commit behind a
-            // dialog is the small stride above, which needs no slicing.
-            setChunk((previous) => {
-              const drawn = Math.min(
-                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                  rows * columns,
-                budget,
-              );
-              return { of: sorted, drawn, settled: drawn >= budget };
-            });
-            // The re-arm. Nothing else asks this observer for another entry.
-            observer.unobserve(node);
-            observer.observe(node);
-          }
-        },
-        { rootMargin: STEP_MARGIN },
-      );
-      observer.observe(node);
-      return () => observer.disconnect();
-    },
-    [sorted],
-  );
-
-  // The button's step, once the automatic budget above is spent. Focus moves
-  // to the first card the press added: the reading position a screen reader
-  // or a keyboard should resume from, and the button itself can unmount when
-  // the list runs out, which would otherwise drop focus on <body>.
-  //
-  // A ref rather than state: nothing renders from this, it only says which
-  // card the next paint should hand focus to. The effect below runs off the
-  // count the press changed, so it lands after those cards exist.
-  const focusOrdinal = useRef<number | null>(null);
-  const showMore = useCallback(() => {
-    focusOrdinal.current = drawn;
-    setChunk((previous) => ({
-      of: sorted,
-      drawn:
-        (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-        CARDS_PER_CLICK,
-      settled: true,
-    }));
-  }, [drawn, sorted]);
-  useEffect(() => {
-    const ordinal = focusOrdinal.current;
-    if (ordinal === null) return;
-    focusOrdinal.current = null;
-    cardLink(gridRef.current?.querySelectorAll("article")[ordinal])?.focus();
-  }, [drawn]);
+  const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
+    useIncrementalGrid(sorted, selected !== undefined);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
@@ -575,264 +263,38 @@ export function AnimalGrid({
     setCleared(null);
   }, [cleared, restore]);
 
-  // Two numbers, deliberately. `speciesRoster` decides which tabs exist and
-  // ignores the filters; `speciesTally` is what each tab draws and obeys all
-  // of them except species. See speciesFacetCounts in lib/filters.ts for why
-  // the tab counts stopped being the raw dataset, and species-tabs.tsx for
-  // why the roster could not follow them.
-  const speciesRoster = useMemo(() => speciesCounts(animals), [animals]);
-  const speciesTally = useMemo(
-    () => speciesFacetCounts(animals, filters, reference),
-    [animals, filters, reference],
-  );
-  // What the location picker's card says about a shelter beyond its filtered
-  // count: which species live there and who has waited longest. Built from the
-  // whole dataset and not from `visible`, so the card answers "who is this
-  // shelter" rather than "what matches my filter" — the count pill next to the
-  // shelter's name already carries the filtered number. Measured from
-  // `reference`, the same way the age buckets above are.
-  //
-  // summarizeShelters only ever sees animals, so the logo is folded in here:
-  // `logos` is keyed by the same shelter id (see shelter-block.tsx for the
-  // same lookup against an animal's own shelter), and a shelter the fetch
-  // never found a logo for is simply left for ShelterAvatar's initial-letter
-  // fallback to answer.
-  const shelterSummaries = useMemo(() => {
-    const summaries = summarizeShelters(animals, locale, reference);
-    for (const [id, summary] of summaries) {
-      const logo = logos[id];
-      if (logo) summary.logo = logo;
-    }
-    return summaries;
-  }, [animals, locale, logos, reference]);
-  const counts = useMemo(
-    () => facetCounts(animals, filters, reference),
-    [animals, filters, reference],
-  );
-  // The panel follows the species tab: measured against the whole dataset it
-  // would offer groups the animals on screen don't vary on.
-  const pool = useMemo(
-    () => bySpecies(animals, filters.species),
-    [animals, filters.species],
-  );
-  // Zavetisce is split off from the rest. The others are short runs of options
-  // you weigh against each other and belong in a column of small controls;
-  // where you adopt from is a map, and it goes next to the species tabs as the
-  // other question people arrive with.
-  // filters and not just filters.species: a group the visitor has answered stays
-  // on the panel even where the pool has nothing left to narrow, or the
-  // selection goes on working from the URL with no control to switch it off
-  // (visibleGroups in lib/filters.ts). Every visible* call below is passed its
-  // own selection for the same reason.
-  const shown = useMemo(
-    () => visibleGroups(pool, filters, reference),
-    [pool, filters, reference],
-  );
-  const groups = useMemo(
-    () =>
-      GROUPS.filter(
-        (group): group is CardGroup => group !== "shelter" && shown[group],
-      ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
-    [locale, pool, shown],
-  );
-  // Not gated on shown.shelter, unlike every group above. visibleGroups drops a
-  // group with fewer than two distinct values, which is right for a facet: one
-  // value narrows nothing. The shelter picker is not that facet. It is a map of
-  // where every shelter in the country is, the way back out of a narrow result,
-  // and on a phone the mobile dock is built around it. Gating it on two
-  // distinct shelters took the whole dock off the page at /?vrsta=zajcek, where
-  // one rabbit sits at one shelter: the single state where a visitor most needs
-  // to widen the search was the one state with nothing left to press. Absent
-  // only when the dataset has no shelter to show at all.
-  //
-  // Measured against `animals` and not `pool`, which is the same reason. This
-  // is the picker's roster, not a facet of the current query: together with the
-  // off-site registry shelters the page hands down beside it, it is every
-  // shelter that exists, and the species tab may not take one off it. Measured
-  // against the species-filtered pool it did: the trigger read "Vseh 11
-  // zavetišč" over a list of seventeen rows, and at
-  // /?zavetisce=macja-hisa,macji-dol&vrsta=zajcek it read "2 od 1 zavetišč",
-  // because the selection came from the URL and the total came from the facet.
-  // What the species tab moves is each shelter's own number, which is
-  // `counts.shelter` below and is measured with every active filter applied.
-  const shelters = useMemo(() => {
-    const options = groupOptions("shelter", animals, locale);
-    return options.length > 0 ? options : undefined;
-  }, [animals, locale]);
-  // Their names, by id. The chips row used to ask optionLabel for each one,
-  // and optionLabel rebuilds the whole roster from every animal to answer,
-  // so a row of shelter chips walked the dataset once per pill on every
-  // render. The roster above is that same walk, already done.
-  const shelterLabels = useMemo(
-    () => new Map((shelters ?? []).map(({ value, label }) => [value, label])),
-    [shelters],
-  );
-  const toggles = useMemo(
-    () =>
-      visibleToggles(pool, filters.species, filters.toggles).map((toggle) => ({
-        ...toggle,
-        label: toggleLabel(toggle.key, locale),
-      })),
-    [locale, pool, filters.species, filters.toggles],
-  );
-  const toggleTally = useMemo(
-    () => toggleCounts(animals, filters, reference),
-    [animals, filters, reference],
-  );
-  // The section carries its own options, tally and actions, and is left out
-  // entirely while no facet has enough answers to narrow anything.
-  const goodWith = useMemo(() => {
-    const keys = visibleGoodWith(pool, filters.goodWith);
-    if (keys.length === 0) return undefined;
-    return {
-      options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: goodWithCounts(animals, filters, reference),
-      resultCount: visible.length,
-      total: pool.length,
-      onToggle: toggleGoodWith,
-      onToggleMany: toggleManyGoodWith,
-    };
-  }, [
+  const {
+    speciesRoster,
+    speciesTally,
+    shelterSummaries,
+    counts,
+    groups,
+    shelters,
+    toggles,
+    toggleTally,
+    goodWith,
+    home,
+    care,
+    chips,
+    hasSidebar,
+  } = useAnimalFilterModel({
     animals,
-    filters,
-    locale,
+    logos,
     reference,
-    pool,
-    visible.length,
-    toggleGoodWith,
-    toggleManyGoodWith,
-  ]);
-
-  // Same rule as the household section: absent until the shelters have
-  // answered for some animals and not for all of them.
-  const home = useMemo(() => {
-    const keys = visibleHome(pool, filters.home);
-    if (keys.length === 0) return undefined;
-    return {
-      options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: homeCounts(animals, filters, reference),
-      resultCount: visible.length,
-      total: pool.length,
-      onToggle: toggleHome,
-      onToggleMany: toggleManyHome,
-    };
-  }, [
-    animals,
-    filters,
     locale,
-    reference,
-    pool,
-    visible.length,
-    toggleHome,
-    toggleManyHome,
-  ]);
-
-  const care = useMemo(() => {
-    const keys = visibleCare(pool, filters.care);
-    if (keys.length === 0) return undefined;
-    return {
-      options: careOptions(locale).filter(({ key }) => keys.includes(key)),
-      counts: careCounts(animals, filters, reference),
-      resultCount: visible.length,
-      total: pool.length,
-      onToggle: toggleCare,
-      onToggleMany: toggleManyCare,
-    };
-  }, [
-    animals,
-    filters,
-    locale,
-    reference,
-    pool,
-    visible.length,
-    toggleCare,
-    toggleManyCare,
-  ]);
-
-  // What each active value is costing: how many more animals show if it comes
-  // off, everything else left alone. The row spends it two ways: a tooltip on
-  // hover, and, when nothing matches at all, a mark on the single chip that is
-  // the cheapest way out.
-  //
-  // This used to be a full applyFilters pass per chip, on the reasoning that
-  // no one-pass shortcut could answer it: counting the animals that fail
-  // exactly one filter is a different question, and gets every multi-value
-  // facet backwards. True as far as it went. The answer was to stop counting
-  // failures and count the two things that actually move, which chipGains does
-  // in one walk (lib/filters.ts), so a row of chips now costs what one chip
-  // used to.
-  const chipGain = useMemo(
-    () => chipGains(animals, filters, reference),
-    [animals, filters, reference],
-  );
-
-  // The pressed species tab already shows itself, so chips cover only the
-  // sidebar/sheet groups and the shelter picker. The rule is not "everything
-  // that is on": it is "everything with no other one-click way off". A
-  // species goes back to Vse in one press of its own tab; a shelter takes a
-  // dialog, which is why it is here and the species is not.
-  //
-  // Each chip carries the facet that set it, because the row groups by facet
-  // and draws one icon per facet: flat, they were nine questions' answers
-  // wearing the same pill.
-  const chips: Chip[] = [
-    ...GROUPS.flatMap((group) =>
-      filters[group].map((value) => ({
-        key: chipKey(group, value),
-        facet: group,
-        value,
-        label:
-          group === "shelter"
-            ? shelterChipLabel(shelterLabels.get(value) ?? value)
-            : optionLabel(group, value, animals, locale),
-        gain: chipGain.get(chipKey(group, value)),
-        onRemove: () => toggle(group, value),
-      })),
-    ),
-    ...filters.toggles.map((key) => ({
-      key: chipKey("toggles", key),
-      facet: "toggles" as const,
-      value: key,
-      label: toggleLabel(key, locale),
-      gain: chipGain.get(chipKey("toggles", key)),
-      onRemove: () => toggleProperty(key),
-    })),
-    // Not the card label: on a row of chips "Psi" would read as the species
-    // tab, so these name the household instead.
-    ...filters.goodWith.map((key) => ({
-      key: chipKey("goodWith", key),
-      facet: "goodWith" as const,
-      value: key,
-      label: goodWithChipLabel(key, locale),
-      gain: chipGain.get(chipKey("goodWith", key)),
-      onRemove: () => toggleGoodWith(key),
-    })),
-    // Both of these read as whole phrases on the card already, so a chip says
-    // the same words rather than a second wording of them.
-    ...filters.home.map((key) => ({
-      key: chipKey("home", key),
-      facet: "home" as const,
-      value: key,
-      label: homeLabel(key, locale),
-      gain: chipGain.get(chipKey("home", key)),
-      onRemove: () => toggleHome(key),
-    })),
-    ...filters.care.map((key) => ({
-      key: chipKey("care", key),
-      facet: "care" as const,
-      value: key,
-      label: careLabel(key, locale),
-      gain: chipGain.get(chipKey("care", key)),
-      onRemove: () => toggleCare(key),
-    })),
-  ];
-
-  const hasSidebar =
-    groups.length > 0 ||
-    toggles.length > 0 ||
-    goodWith !== undefined ||
-    home !== undefined ||
-    care !== undefined;
+    resultCount: visible.length,
+    actions: {
+      filters,
+      toggle,
+      toggleProperty,
+      toggleGoodWith,
+      toggleManyGoodWith,
+      toggleHome,
+      toggleManyHome,
+      toggleCare,
+      toggleManyCare,
+    },
+  });
 
   return (
     <section
@@ -1135,3 +597,10 @@ export function AnimalGrid({
     </section>
   );
 }
+export {
+  CARDS_PER_CLICK,
+  INITIAL_CARDS,
+  ROWS_PER_STEP,
+  ROWS_PER_STEP_BEHIND_DIALOG,
+  TARGET_ROWS,
+} from "./grid-rendering";

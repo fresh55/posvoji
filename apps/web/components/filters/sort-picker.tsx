@@ -120,6 +120,19 @@ export function SortPicker({
           // trigger keeps its size="sm" height, so the row's geometry is
           // unchanged; only the label grows the 2px.
           "text-sm max-lg:min-h-11",
+          // The label takes the room between the two icons instead of
+          // floating in the middle of it. The trigger is justify-between and
+          // the value is the middle of its three children, so a trigger given
+          // a width to spread over -- w-full, which is what the filter sheet
+          // hands it -- pushed the arrow and the chevron to the ends and left
+          // the name centred between them, reading as a caption rather than
+          // as the value of a control. Growing it costs the toolbar nothing:
+          // that trigger is w-fit, so there is no spare width to claim.
+          //
+          // Set here and through the child variant ui/select.tsx dresses the
+          // value with, because Radix's SelectValue drops the className it is
+          // handed. min-w-0 is what lets the truncate below actually bite.
+          "*:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:justify-start *:data-[slot=select-value]:text-left",
           quiet && cn(QUIET_TRIGGER_CLASS, "data-[state=open]:border-border"),
           className,
         )}
@@ -134,7 +147,8 @@ export function SortPicker({
             had a row of their own since they stopped fitting one, and this
             control no longer shares a row with them at all. Truncation, not
             hiding, is what a long sort name gets: the trigger keeps whatever
-            width its placement gives it and the name gives way inside. */}
+            width its placement gives it and the name gives way inside, on the
+            width the trigger's own classes above give this value. */}
         <SelectValue>
           <span className="truncate">{labels[shown]}</span>
         </SelectValue>

@@ -31,6 +31,10 @@ id_ed25519
 # cached shelter photos (shelter content, not repository content)
 apps/web/public/media/
 
+# derived from data/dist before every build and dev run
+# (apps/web/scripts/generate-animal-descriptions.mjs)
+apps/web/public/generated/
+
 # playwright run artifacts
 test-results/
 playwright-report/

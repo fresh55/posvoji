@@ -69,26 +69,29 @@ def test_development_generates_a_fresh_signing_key_per_process():
     assert first.stdout.strip() != second.stdout.strip()
 
 
-@pytest.mark.parametrize("value", ["-1", "not-an-integer"])
-def test_trusted_proxy_count_must_be_a_non_negative_integer(value):
+# One helper reads all three, and the message it raises is its whole
+# contract: the variable's own name and the bound a deployment has to write.
+@pytest.mark.parametrize(
+    ("name", "value", "phrase"),
+    [
+        ("PORTAL_TRUSTED_PROXY_COUNT", "-1", "a non-negative integer"),
+        ("PORTAL_TRUSTED_PROXY_COUNT", "not-an-integer", "a non-negative integer"),
+        ("PORTAL_DB_TIMEOUT", "0", "a positive integer"),
+        ("PORTAL_DB_TIMEOUT", "-5", "a positive integer"),
+        ("PORTAL_DB_TIMEOUT", "soon", "a positive integer"),
+        ("PORTAL_EMAIL_TIMEOUT", "0", "a positive integer"),
+        ("PORTAL_EMAIL_TIMEOUT", "-5", "a positive integer"),
+        ("PORTAL_EMAIL_TIMEOUT", "not-an-integer", "a positive integer"),
+    ],
+)
+def test_an_integer_setting_outside_its_bound_is_refused_by_name(name, value, phrase):
     env = os.environ.copy()
-    env["PORTAL_TRUSTED_PROXY_COUNT"] = value
+    env[name] = value
 
     result = import_settings(env)
 
     assert result.returncode != 0
-    assert "PORTAL_TRUSTED_PROXY_COUNT must be a non-negative integer" in result.stderr
-
-
-@pytest.mark.parametrize("value", ["0", "-5", "soon"])
-def test_db_timeout_must_be_a_positive_integer(value):
-    env = os.environ.copy()
-    env["PORTAL_DB_TIMEOUT"] = value
-
-    result = import_settings(env)
-
-    assert result.returncode != 0
-    assert "PORTAL_DB_TIMEOUT must be a positive integer" in result.stderr
+    assert f"{name} must be {phrase}" in result.stderr
 
 
 def test_the_database_queues_writers_instead_of_failing():
@@ -106,17 +109,6 @@ def test_the_database_queues_writers_instead_of_failing():
     assert result.stdout.strip() == (
         "IMMEDIATE 20 PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;"
     )
-
-
-@pytest.mark.parametrize("value", ["0", "-5", "not-an-integer"])
-def test_email_timeout_must_be_a_positive_integer(value):
-    env = os.environ.copy()
-    env["PORTAL_EMAIL_TIMEOUT"] = value
-
-    result = import_settings(env)
-
-    assert result.returncode != 0
-    assert "PORTAL_EMAIL_TIMEOUT must be a positive integer" in result.stderr
 
 
 def test_tls_and_ssl_together_are_refused_by_name():

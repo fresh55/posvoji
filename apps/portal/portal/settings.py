@@ -31,15 +31,22 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def _env_int(
-    name: str, *, default: int | None, minimum: int, must_be: str
-) -> int | None:
+def _env_str(name: str, default: str) -> str:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip()
+
+
+def _env_int(name: str, *, default: int | None, minimum: int) -> int | None:
     """An integer setting, or the default when the variable is unset or blank.
 
-    must_be names the bound the way the caller wants it read back, because a
-    misconfigured deployment is told what to write, not which number failed a
-    comparison.
+    The message names the bound a deployment has to write, not which
+    comparison failed. A minimum with no phrase here fails at import rather
+    than describing itself wrongly, and that is when the caller passes the
+    words again.
     """
+    must_be = {0: "a non-negative integer", 1: "a positive integer"}[minimum]
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
         return default
@@ -128,12 +135,7 @@ DATABASES = {
         "OPTIONS": {
             "transaction_mode": "IMMEDIATE",
             # Seconds a writer waits for the lock before it gives up.
-            "timeout": _env_int(
-                "PORTAL_DB_TIMEOUT",
-                default=20,
-                minimum=1,
-                must_be="a positive integer",
-            ),
+            "timeout": _env_int("PORTAL_DB_TIMEOUT", default=20, minimum=1),
             "init_command": os.environ.get("PORTAL_DB_INIT_COMMAND")
             or "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
         },
@@ -170,23 +172,16 @@ SESAME_ONE_TIME = True
 # an identity. Forwarded addresses remain untrusted unless the deployment
 # explicitly states how many rightmost proxy hops it controls. The narrow
 # exception is one same-host proxy hop, identified by a loopback direct peer.
-PORTAL_LOGIN_LINK_RATE = (
-    os.environ.get("PORTAL_LOGIN_LINK_RATE", "5/hour").strip() or "5/hour"
-)
+PORTAL_LOGIN_LINK_RATE = _env_str("PORTAL_LOGIN_LINK_RATE", "5/hour")
 PORTAL_TRUSTED_PROXY_COUNT = _env_int(
-    "PORTAL_TRUSTED_PROXY_COUNT",
-    default=None,
-    minimum=0,
-    must_be="a non-negative integer",
+    "PORTAL_TRUSTED_PROXY_COUNT", default=None, minimum=0
 )
 
 # The IP limit counts one client, this one counts one mailbox. Without it a
 # caller who changes network can still make the portal deliver message after
 # message to a shelter's published address, which is the address the registry
 # publishes and the one a shelter cannot stop reading.
-PORTAL_LOGIN_LINK_ADDRESS_RATE = (
-    os.environ.get("PORTAL_LOGIN_LINK_ADDRESS_RATE", "3/hour").strip() or "3/hour"
-)
+PORTAL_LOGIN_LINK_ADDRESS_RATE = _env_str("PORTAL_LOGIN_LINK_ADDRESS_RATE", "3/hour")
 
 # Both limits are counters in the cache, so every process that answers a
 # request-link call has to see the same ones. The deployment runs gunicorn
@@ -287,19 +282,12 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
 # Sending is synchronous inside the request, so an unreachable or silent mail
 # host holds a worker until the socket gives up. The caller is waiting for a
 # 204 that says nothing about delivery anyway.
-EMAIL_TIMEOUT = _env_int(
-    "PORTAL_EMAIL_TIMEOUT",
-    default=10,
-    minimum=1,
-    must_be="a positive integer",
-)
+EMAIL_TIMEOUT = _env_int("PORTAL_EMAIL_TIMEOUT", default=10, minimum=1)
 DEFAULT_FROM_EMAIL = os.environ.get("PORTAL_FROM_EMAIL", "portal@posvoji.si")
 # The From address is a send-only mailbox, so the mail carries a display name
 # a shelter recognises and a Reply-To that a person reads.
-PORTAL_FROM_NAME = os.environ.get("PORTAL_FROM_NAME", "").strip() or "Posvoji.si"
-PORTAL_REPLY_TO_EMAIL = (
-    os.environ.get("PORTAL_REPLY_TO_EMAIL", "").strip() or "info@posvoji.si"
-)
+PORTAL_FROM_NAME = _env_str("PORTAL_FROM_NAME", "Posvoji.si")
+PORTAL_REPLY_TO_EMAIL = _env_str("PORTAL_REPLY_TO_EMAIL", "info@posvoji.si")
 
 # Where the frontend serves the magic link landing page.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")

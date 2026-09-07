@@ -36,19 +36,26 @@ def link_query(message) -> dict[str, list[str]]:
     return parse_qs(urlsplit(links[0]).query)
 
 
-# The throttle counters are cleared by the autouse empty_cache fixture in
-# conftest.py, which every test in the suite gets.
 @pytest.fixture
-def two_request_link_attempts(monkeypatch):
-    monkeypatch.setattr(request_link_throttle, "num_requests", 2)
-    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+def link_attempts_per_ip(monkeypatch):
+    """Set the per-IP limit on the request-link throttle for one test."""
+
+    def set_limit(count: int, duration: int = 3600) -> None:
+        monkeypatch.setattr(request_link_throttle, "num_requests", count)
+        monkeypatch.setattr(request_link_throttle, "duration", duration)
+
+    return set_limit
 
 
 @pytest.fixture
-def unlimited_per_ip(monkeypatch):
+def two_request_link_attempts(link_attempts_per_ip):
+    link_attempts_per_ip(2)
+
+
+@pytest.fixture
+def unlimited_per_ip(link_attempts_per_ip):
     """The IP limit out of the way, so a test can exercise the address limit."""
-    monkeypatch.setattr(request_link_throttle, "num_requests", 100)
-    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+    link_attempts_per_ip(100)
 
 
 @pytest.mark.django_db
@@ -104,6 +111,8 @@ def test_request_link_carries_the_page_the_shelter_was_on(client, member):
     )
 
 
+# The same corpus as OUTSIDE_THE_PORTAL in
+# apps/web/components/portal/portal-login.test.tsx, the other half of this rule.
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "planted",
@@ -119,6 +128,9 @@ def test_request_link_carries_the_page_the_shelter_was_on(client, member):
         "/portal/zival?x=1\nlocation:https://evil.example",
         "/portal/zival?x=1 y",
         "/portal/zival?x=1\x00",
+        # Control characters that are not a plain space: a C0 byte and a C1 one.
+        "/portal/zival?id=testno:1\u0001",
+        "/portal/zival?id=testno:1\u0085",
         "/portal/zival?id=" + "a" * 500,
         "",
     ],
@@ -242,10 +254,9 @@ def test_request_link_rate_limit_is_independent_per_ip(
 
 @pytest.mark.django_db
 def test_request_link_ignores_forwarded_for_from_a_non_loopback_peer_by_default(
-    client, monkeypatch, settings
+    client, link_attempts_per_ip, settings
 ):
-    monkeypatch.setattr(request_link_throttle, "num_requests", 1)
-    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+    link_attempts_per_ip(1)
     settings.PORTAL_TRUSTED_PROXY_COUNT = None
     request = {"email": "kdorkoli@example.si"}
 
@@ -270,10 +281,9 @@ def test_request_link_ignores_forwarded_for_from_a_non_loopback_peer_by_default(
 
 @pytest.mark.django_db
 def test_request_link_uses_forwarded_for_from_a_loopback_proxy_by_default(
-    client, monkeypatch, settings
+    client, link_attempts_per_ip, settings
 ):
-    monkeypatch.setattr(request_link_throttle, "num_requests", 1)
-    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+    link_attempts_per_ip(1)
     settings.PORTAL_TRUSTED_PROXY_COUNT = None
     request = {"email": "kdorkoli@example.si"}
 
@@ -298,10 +308,9 @@ def test_request_link_uses_forwarded_for_from_a_loopback_proxy_by_default(
 
 @pytest.mark.django_db
 def test_request_link_can_ignore_forwarded_for_from_a_loopback_proxy(
-    client, monkeypatch, settings
+    client, link_attempts_per_ip, settings
 ):
-    monkeypatch.setattr(request_link_throttle, "num_requests", 1)
-    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+    link_attempts_per_ip(1)
     settings.PORTAL_TRUSTED_PROXY_COUNT = 0
     request = {"email": "kdorkoli@example.si"}
 
@@ -326,10 +335,9 @@ def test_request_link_can_ignore_forwarded_for_from_a_loopback_proxy(
 
 @pytest.mark.django_db
 def test_request_link_uses_forwarded_for_with_a_configured_proxy_count(
-    client, monkeypatch, settings
+    client, link_attempts_per_ip, settings
 ):
-    monkeypatch.setattr(request_link_throttle, "num_requests", 1)
-    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+    link_attempts_per_ip(1)
     settings.PORTAL_TRUSTED_PROXY_COUNT = 1
     request = {"email": "kdorkoli@example.si"}
 

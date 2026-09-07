@@ -115,7 +115,7 @@ def return_path(candidate: str | None) -> str | None:
     return candidate
 
 
-def build_login_url(user, next_path: str | None = None) -> str:
+def build_login_url(user, next_path: str | None) -> str:
     """The link in the mail. `nazaj` carries where the shelter was going.
 
     The path travels in the link because a link from the mail opens a new
@@ -128,7 +128,7 @@ def build_login_url(user, next_path: str | None = None) -> str:
     return f"{settings.FRONTEND_URL}{settings.MAGIC_LINK_PATH}?{urlencode(query)}"
 
 
-def build_login_message(user, next_path: str | None = None) -> EmailMessage:
+def build_login_message(user, next_path: str | None) -> EmailMessage:
     """The login mail: plain text, UTF-8, a name on the From, a live Reply-To.
 
     DEFAULT_FROM_EMAIL is a send-only mailbox, so a shelter that answers this
@@ -150,7 +150,7 @@ def build_login_message(user, next_path: str | None = None) -> EmailMessage:
     return message
 
 
-def send_login_link(user, next_path: str | None = None) -> None:
+def send_login_link(user, next_path: str | None) -> None:
     try:
         build_login_message(user, next_path).send()
     except Exception:

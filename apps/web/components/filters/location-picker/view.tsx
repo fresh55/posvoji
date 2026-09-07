@@ -860,9 +860,32 @@ export function LocationPickerView({
                 there would have been an empty band of chrome above the search
                 box. That is why it is drawn only while the panel is out and
                 only from lg, and why the column below pays its own top gap at
-                the smaller sizes. */}
+                the smaller sizes.
+
+                The sentence is printed twice in this component, once here and
+                once in the peek bar above, because there are two head rows and
+                only one is ever on screen: below lg the head is a button that
+                folds the sheet, from lg it is this plain row beside a control
+                that folds the panel. One shared element cannot be both, so
+                each width draws its own and both read `label`. Without it this
+                row was 52px of empty band with a lone chevron in it, which
+                left the desktop list unheaded and made the glyph read as
+                "next" rather than as "hide the list". */}
             {panelOpen && (
-              <div className="hidden shrink-0 items-center justify-end px-4 pt-4 pb-2 lg:flex">
+              <div
+                data-picker-panel-head
+                className="hidden shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2 lg:flex"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 truncate text-sm font-medium">
+                    {label}
+                  </span>
+                  {selected.length > 0 && (
+                    <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums text-muted-foreground">
+                      {selected.length}
+                    </span>
+                  )}
+                </span>
                 <button
                   type="button"
                   data-picker-collapse

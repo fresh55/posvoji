@@ -13,6 +13,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import {
   PORTAL_PATH,
   PORTAL_RETURN_KEY,
+  PORTAL_VERIFIED_KEY,
   rememberPortalReturn,
 } from "@/hooks/use-portal-session";
 import { PortalError, requestLoginLink, verifyToken } from "@/lib/portal-api";
@@ -76,22 +77,32 @@ afterEach(() => {
 const DEEP_LINK = "/portal/zival?zavetisce=testno&id=1";
 
 // Addresses a login must never send the browser to, whether they were
-// planted in storage or in the link itself.
+// planted in storage or in the link itself. The same list the other half of
+// this rule is held to, in test_request_link_drops_a_page_outside_the_portal
+// in apps/portal/tests/test_auth.py.
 const OUTSIDE_THE_PORTAL = [
   "https://evil.example/portal",
   "//evil.example/portal",
   "javascript:alert(1)",
   "/portalx",
   "/zavetisca/ljubljana",
+  // The login page itself, bare and with a query: a login may not send a
+  // visitor back to a login.
+  "/portal/prijava",
   "/portal/prijava?token=abc",
   "/portal\\@evil.example",
   "/portal/zival?x=1\nlocation:https://evil.example",
+  // A plain space, which the whitespace rule catches on its own.
+  "/portal/zival?x=1 y",
   // Control characters that are not whitespace, so only the control rule
-  // catches them: a C0 byte and a C1 one. apps/portal refuses both.
+  // catches them: two C0 bytes and a C1 one. apps/portal refuses all three.
+  "/portal/zival?x=1\u0000",
   "/portal/zival?id=testno:1\u0001",
   "/portal/zival?id=testno:1\u0085",
   // Longer than the 500 characters apps/portal will carry.
   `/portal/zival?id=${"a".repeat(500)}`,
+  // No page at all, which is what an empty `nazaj` carries.
+  "",
 ];
 
 function emailBox(): HTMLElement {
@@ -303,7 +314,7 @@ describe("a verification that left no session behind", () => {
     });
     // Read by the workspace's guard, which is the only thing that can tell a
     // browser that kept no cookie from a visitor who never signed in.
-    expect(window.sessionStorage.getItem("portal:verified")).toBe("1");
+    expect(window.sessionStorage.getItem(PORTAL_VERIFIED_KEY)).toBe("1");
   });
 
   it("says what happened when the guard sends the visitor back", async () => {
@@ -385,34 +396,15 @@ describe("where a login that went through lands", () => {
   const SESSION = { email: "info@zavetisce.si", shelters: [] };
 
   /**
-   * jsdom cannot navigate, and its Location will not let one method be
-   * stubbed on its own, so the whole object is stood in for. The stand-in
-   * carries the address the test arrived on, frozen: the page reads the
-   * token off it, and what it writes back goes to the real history. The
-   * stand-in is taken down by the same hook captureNavigation's is.
+   * The link the mail opened. The address goes into the history first, so the
+   * stand-in captureNavigation takes over it carries the token, and what the
+   * card hands over to is recorded rather than navigated to.
    */
   function arriveWithToken(
     search = "?token=abc123",
   ): ReturnType<typeof vi.fn> {
-    const real = window.location;
     window.history.replaceState(null, "", `/portal/prijava${search}`);
-    const replace = vi.fn();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: {
-        pathname: "/portal/prijava",
-        search,
-        href: `http://localhost/portal/prijava${search}`,
-        replace,
-      },
-    });
-    restoreLocation = () => {
-      Object.defineProperty(window, "location", {
-        configurable: true,
-        value: real,
-      });
-    };
-    return replace;
+    return captureNavigation();
   }
 
   /** A link from the mail, with the page it was asked for in it. */

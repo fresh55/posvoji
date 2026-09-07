@@ -45,14 +45,19 @@ function respond(
       ? ""
       : JSON.stringify(body)
     : HTML_BODY;
+  // A real Response carries its body once. The stand-in refuses a second read
+  // the same way, so a path that reads one response twice fails here rather
+  // than quietly reading the same text again.
+  let consumed = false;
   fetchMock.mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
     headers: new Headers(headers),
-    text: () => Promise.resolve(text),
-    json: json
-      ? () => Promise.resolve(body)
-      : () => Promise.reject(new SyntaxError("not json")),
+    text: () => {
+      if (consumed) throw new TypeError("body stream already read");
+      consumed = true;
+      return Promise.resolve(text);
+    },
   });
 }
 

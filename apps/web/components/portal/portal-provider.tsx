@@ -24,9 +24,7 @@ import {
   type PortalListingActions,
 } from "@/hooks/use-portal-listings";
 import {
-  PORTAL_LOGIN_NO_SESSION_PATH,
-  PORTAL_LOGIN_PATH,
-  rememberPortalReturn,
+  bounceToLogin,
   takeVerified,
   usePortalSession,
   type PortalSessionState,
@@ -208,15 +206,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     [clearFilters],
   );
 
-  // The guard: no session, no portal. replace() so the back button does not
-  // walk into a page that will only bounce again. The page being left is
-  // remembered first, so the login brings the shelter back to it: a link to
-  // one animal that was opened from a mail would otherwise end on the list.
-  //
-  // A visitor who has just verified a link and still has no session is here
-  // because the browser kept no cookie. Their link is spent, so the login page
-  // is told what happened and says so; every other anonymous visitor is simply
-  // asked for an address.
+  // The guard: no session, no portal.
   useEffect(() => {
     // The hand over worked, so the note has nothing left to explain and must
     // not be read by a bounce hours later, when the session simply ran out.
@@ -225,16 +215,12 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (session.status !== "anonymous") return;
-    rememberPortalReturn();
-    window.location.replace(
-      takeVerified() ? PORTAL_LOGIN_NO_SESSION_PATH : PORTAL_LOGIN_PATH,
-    );
+    bounceToLogin();
   }, [session.status]);
 
-  const onUnauthorized = useCallback(() => {
-    rememberPortalReturn();
-    window.location.replace(PORTAL_LOGIN_PATH);
-  }, []);
+  // A list the API refuses is the same bounce: the session went while the
+  // page was open. A module function, so the hooks below see one identity.
+  const onUnauthorized = bounceToLogin;
 
   // Both hooks always run, as hooks must; the one the shelter does not use
   // gets no slug and stays idle without a request.

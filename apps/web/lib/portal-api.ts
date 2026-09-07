@@ -389,7 +389,7 @@ function isCsrfFailure(failure: Failure): boolean {
  * caller has to have something to say without one.
  */
 function retryAfterSeconds(response: Response): number | undefined {
-  const raw = response.headers?.get("Retry-After");
+  const raw = response.headers.get("Retry-After");
   if (typeof raw !== "string") return undefined;
   const value = raw.trim();
   if (!/^\d+$/.test(value)) return undefined;

@@ -26,10 +26,8 @@ import { Label } from "@/components/ui/label";
 import {
   PORTAL_ERROR_NO_SESSION,
   PORTAL_ERROR_PARAM,
-  isPortalReturnPath,
-  markVerified,
+  landAfterLogin,
   peekPortalReturn,
-  takePortalReturn,
 } from "@/hooks/use-portal-session";
 import {
   commitSearch,
@@ -169,10 +167,9 @@ export function PortalLogin() {
     getSearchSnapshot,
     getServerSearchSnapshot,
   );
-  // The link carries the token and, when the shelter was sent to the login
-  // from a page inside the portal, that page as `nazaj`. The guard's own
-  // reason for sending them back is read in the same go: the address bar is
-  // cleaned once the token is captured.
+  // What the address the card was opened on says: the token of a link from
+  // the mail, the page that link was asked to come back to, and the guard's
+  // reason for sending a visitor here.
   const link = useMemo(() => {
     const params = new URLSearchParams(search);
     return {
@@ -227,20 +224,9 @@ export function PortalLogin() {
     verifyToken(checking.token).then(
       () => {
         if (!live) return;
-        // Noted before the hand over, so that a workspace which finds no
-        // session can say the cookie is what went missing rather than send
-        // the shelter back here with a blank form and a spent link.
-        markVerified();
-        // replace, not assign: the token never becomes a history entry the
-        // back button can walk into. Back to the page the shelter was sent
-        // here from, when there is one, else to the list. The link's answer
-        // comes first: it is what a tab the mail opened has. The remembered
-        // one is taken either way, so it is not left for a later login.
-        const remembered = takePortalReturn();
-        const back = checking.back;
-        window.location.replace(
-          back !== null && isPortalReturnPath(back) ? back : remembered,
-        );
+        // The page the link named, when it named one. Where that lands, and
+        // what it does to the page this tab remembers, is the hook's to say.
+        landAfterLogin(checking.back);
       },
       (error: unknown) => {
         if (!live) return;

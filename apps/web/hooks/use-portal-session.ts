@@ -22,6 +22,42 @@ export const PORTAL_ERROR_NO_SESSION = "seja";
 export const PORTAL_LOGIN_NO_SESSION_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR_PARAM}=${PORTAL_ERROR_NO_SESSION}`;
 
 /**
+ * One sessionStorage entry, with the guard every use of it needs: a browser
+ * that stores nothing throws on each of these calls, and the portal carries on
+ * as if the entry were simply empty.
+ */
+function slot(key: string) {
+  return {
+    write(value: string): void {
+      try {
+        window.sessionStorage.setItem(key, value);
+      } catch {
+        // Storage blocked. Nothing is kept, and the caller has a landing to
+        // fall back to.
+      }
+    },
+    /** What is stored, left in place. */
+    peek(): string | null {
+      try {
+        return window.sessionStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    /** What is stored, cleared on the way out, so it is used once. */
+    take(): string | null {
+      try {
+        const stored = window.sessionStorage.getItem(key);
+        window.sessionStorage.removeItem(key);
+        return stored;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+/**
  * A verification that worked, noted for the page it hands over to.
  *
  * The session lives in a cookie the API sets. A browser that keeps no cookie
@@ -30,27 +66,18 @@ export const PORTAL_LOGIN_NO_SESSION_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR
  * leaves the shelter with a burnt link and no idea why. The note survives that
  * one hop and nothing more.
  */
-const VERIFIED_KEY = "portal:verified";
+export const PORTAL_VERIFIED_KEY = "portal:verified";
+
+const verified = slot(PORTAL_VERIFIED_KEY);
 
 /** Called on the way to the workspace, before the page is replaced. */
-export function markVerified(): void {
-  try {
-    window.sessionStorage.setItem(VERIFIED_KEY, "1");
-  } catch {
-    // A browser that stores nothing throws here. The redirect still works;
-    // only the reason for it is lost.
-  }
+function markVerified(): void {
+  verified.write("1");
 }
 
 /** Reads the note and clears it, so it explains one bounce and no later one. */
 export function takeVerified(): boolean {
-  try {
-    const noted = window.sessionStorage.getItem(VERIFIED_KEY) === "1";
-    window.sessionStorage.removeItem(VERIFIED_KEY);
-    return noted;
-  } catch {
-    return false;
-  }
+  return verified.take() === "1";
 }
 
 /**
@@ -98,6 +125,8 @@ export function portalNewListingPath(shelter: string): string {
  */
 export const PORTAL_RETURN_KEY = "posvoji.portal.return";
 
+const returnPath = slot(PORTAL_RETURN_KEY);
+
 /**
  * Longer than any address the portal writes. The same cap as
  * MAX_RETURN_PATH_LENGTH in apps/portal/core/api/auth.py.
@@ -123,7 +152,7 @@ const CONTROL_CHARACTER = /[\x00-\x1f\x7f-\x9f]/;
  * has no storage to read it from, so both sides check it and neither may be
  * the weaker.
  */
-export function isPortalReturnPath(path: string): boolean {
+function isPortalReturnPath(path: string): boolean {
   if (path.length > MAX_RETURN_PATH_LENGTH) return false;
   // Two rules, not one scan. A control character is not something a portal
   // address holds at all; whitespace and the backslash are what could break
@@ -148,11 +177,7 @@ export function isPortalReturnPath(path: string): boolean {
 export function rememberPortalReturn(): void {
   const path = window.location.pathname + window.location.search;
   if (!isPortalReturnPath(path)) return;
-  try {
-    window.sessionStorage.setItem(PORTAL_RETURN_KEY, path);
-  } catch {
-    // Storage blocked. The shelter lands on the list instead, as before.
-  }
+  returnPath.write(path);
 }
 
 /**
@@ -162,28 +187,60 @@ export function rememberPortalReturn(): void {
  * that follows in this tab still takes it.
  */
 export function peekPortalReturn(): string | null {
-  try {
-    const stored = window.sessionStorage.getItem(PORTAL_RETURN_KEY);
-    if (stored && isPortalReturnPath(stored)) return stored;
-  } catch {
-    // Storage blocked. Nothing could have been remembered either.
-  }
-  return null;
+  const stored = returnPath.peek();
+  return stored && isPortalReturnPath(stored) ? stored : null;
 }
 
 /**
  * The remembered page, taken so it is used once, or the list when there is
  * none or what is there is not a portal address.
  */
-export function takePortalReturn(): string {
-  try {
-    const stored = window.sessionStorage.getItem(PORTAL_RETURN_KEY);
-    window.sessionStorage.removeItem(PORTAL_RETURN_KEY);
-    if (stored && isPortalReturnPath(stored)) return stored;
-  } catch {
-    // Storage blocked. Nothing could have been remembered either.
-  }
-  return PORTAL_PATH;
+function takePortalReturn(): string {
+  const stored = returnPath.take();
+  return stored && isPortalReturnPath(stored) ? stored : PORTAL_PATH;
+}
+
+/**
+ * Hands the tab over to the page a login that went through belongs on.
+ *
+ * `linkPath` is the page a link from the mail was asked to come back to, or
+ * null when it named none. It is the first answer: a tab the mail opened has
+ * no storage of ours, so the link is all such a tab has. The remembered page
+ * is taken whether it is used or not, so a spent one is never left behind for
+ * a later login in this tab. Neither is trusted without being vetted, and
+ * with both gone the list stands in.
+ *
+ * The verification is noted before the hand over, so that a workspace which
+ * finds no session can say the cookie is what went missing rather than send
+ * the shelter back here with a blank form and a spent link. replace, not
+ * assign: the link is single use and must not become a history entry the back
+ * button can walk into.
+ */
+export function landAfterLogin(linkPath: string | null): void {
+  markVerified();
+  const remembered = takePortalReturn();
+  window.location.replace(
+    linkPath !== null && isPortalReturnPath(linkPath) ? linkPath : remembered,
+  );
+}
+
+/**
+ * Sends a page with no session behind it out to the login. The page being
+ * left is remembered first, so the login can bring the shelter back to it: a
+ * link to one animal opened from a mail would otherwise end on the list.
+ * replace(), so the back button does not walk into a page that will only
+ * bounce again.
+ *
+ * A visitor who has just verified a link and still has no session is here
+ * because the browser kept no cookie. Their link is spent, so the login page
+ * is told what happened and says so; every other anonymous visitor is simply
+ * asked for an address.
+ */
+export function bounceToLogin(): void {
+  rememberPortalReturn();
+  window.location.replace(
+    takeVerified() ? PORTAL_LOGIN_NO_SESSION_PATH : PORTAL_LOGIN_PATH,
+  );
 }
 
 export type PortalSessionState =

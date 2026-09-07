@@ -38,6 +38,8 @@ const JOIN_URL = `${REPO_URL}/issues/new?template=predlagaj-zavetisce.yml`;
 const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
+    lead: "Kontakti slovenskih zavetišč na enem mestu.",
+    permissionNote: "Objave živali dodamo z dovoljenjem zavetišč.",
     lookupLink: "Najdena žival? Poišči pomoč po občini",
     censusLabel: "Pregled zavetišč",
     inRegistry: "v registru",
@@ -62,6 +64,8 @@ const pageText = {
   },
   en: {
     title: "Shelters across Slovenia",
+    lead: "Contact details for Slovenian animal shelters in one place.",
+    permissionNote: "Animal listings are published with each shelter’s permission.",
     lookupLink: "Found an animal? Find help by municipality",
     censusLabel: "Shelter overview",
     inRegistry: "in the registry",
@@ -85,13 +89,6 @@ const pageText = {
     asOf: "as of",
   },
 } satisfies Record<Locale, Record<string, string>>;
-
-// The directory and the published listings have different scopes.
-function lede(locale: Locale): string {
-  return locale === "en"
-    ? "Contact details for Slovenian animal shelters in one place. Animal listings are published with each shelter’s permission."
-    : "Kontakti slovenskih zavetišč na enem mestu. Objave živali dodamo z dovoljenjem zavetišč.";
-}
 
 export function SheltersPage({ locale }: { locale: Locale }) {
   const shelters = loadShelters();
@@ -190,7 +187,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 {text.title}
               </h1>
               <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-                {lede(locale)}
+                {text.lead}
               </p>
               {/* This lookup serves people who have found a stray. */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
@@ -301,11 +298,14 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             }
           />
 
-          {/* The invite card above already terminates the atlas block, so the
-              provenance stays the quiet last word with no rule of its own. */}
-          <p className="max-w-3xl text-xs text-muted-foreground">
-            {asOf ? `${text.source}, ${text.asOf} ${asOf}.` : `${text.source}.`}
-          </p>
+          {/* Keep publishing context beside the source so the introduction
+              gets readers to the directory sooner, especially on phones. */}
+          <div className="max-w-3xl space-y-2 text-sm leading-relaxed text-muted-foreground">
+            <p>{text.permissionNote}</p>
+            <p className="text-xs">
+              {asOf ? `${text.source}, ${text.asOf} ${asOf}.` : `${text.source}.`}
+            </p>
+          </div>
         </main>
 
         {/* The register is 5,967px at 375px, which is 7.3 screens, and nothing

@@ -236,6 +236,7 @@ export function FilterSheet({
               selected={scope.selected}
               onOpen={openScope}
               onReset={scope.onReset}
+              layout="row"
             >
               <RemovableChips chips={scope.chips} className="mt-2" />
             </LocationScopeRow>

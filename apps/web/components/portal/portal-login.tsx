@@ -26,8 +26,8 @@ import { Label } from "@/components/ui/label";
 import {
   PORTAL_ERROR_NO_SESSION,
   PORTAL_ERROR_PARAM,
-  PORTAL_PATH,
-  markVerified,
+  landAfterLogin,
+  peekPortalReturn,
 } from "@/hooks/use-portal-session";
 import {
   commitSearch,
@@ -167,36 +167,41 @@ export function PortalLogin() {
     getSearchSnapshot,
     getServerSearchSnapshot,
   );
-  const token = useMemo(
-    () => new URLSearchParams(search).get("token"),
-    [search],
-  );
-  // The workspace's guard sends a visitor back with this when a verification
-  // that worked left no session cookie behind.
-  const noSession = useMemo(
-    () =>
-      new URLSearchParams(search).get(PORTAL_ERROR_PARAM) ===
-      PORTAL_ERROR_NO_SESSION,
-    [search],
-  );
+  // What the address the card was opened on says: the token of a link from
+  // the mail, the page that link was asked to come back to, and the guard's
+  // reason for sending a visitor here.
+  const link = useMemo(() => {
+    const params = new URLSearchParams(search);
+    return {
+      token: params.get("token"),
+      back: params.get("nazaj"),
+      // The workspace's guard sends a visitor back with this when a
+      // verification that worked left no session cookie behind.
+      noSession:
+        params.get(PORTAL_ERROR_PARAM) === PORTAL_ERROR_NO_SESSION,
+    };
+  }, [search]);
 
   const [state, setState] = useState<LoginState>({ step: "form" });
   const [email, setEmail] = useState("");
-  const [checking, setChecking] = useState<string | null>(null);
+  const [checking, setChecking] = useState<{
+    token: string;
+    back: string | null;
+  } | null>(null);
   const [bounced, setBounced] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // A token in the URL switches the card to "verifying" in the same render it
   // becomes visible, so the login form never flashes behind it.
-  if (token && token !== checking) {
-    setChecking(token);
+  if (link.token && link.token !== checking?.token) {
+    setChecking({ token: link.token, back: link.back });
     setState({ step: "verifying" });
   }
 
   // The bounce is read the same way and in the same render, so the form is
   // never on screen without the reason it is there. A token wins: the visitor
   // is arriving with a link, not coming back from a workspace.
-  if (noSession && !token && !bounced) {
+  if (link.noSession && !link.token && !bounced) {
     setBounced(true);
     setState({
       step: "form",
@@ -212,19 +217,16 @@ export function PortalLogin() {
     let live = true;
 
     // A login link is single use. Once it has been read it has no business in
-    // the address bar, in the history, or in a referer.
+    // the address bar, in the history, or in a referer. The whole query goes,
+    // so the page it named goes with it.
     commitSearch("", "replace");
 
-    verifyToken(checking).then(
+    verifyToken(checking.token).then(
       () => {
         if (!live) return;
-        // Noted before the hand over, so that a workspace which finds no
-        // session can say the cookie is what went missing rather than send
-        // the shelter back here with a blank form and a spent link.
-        markVerified();
-        // replace, not assign: the token never becomes a history entry the
-        // back button can walk into.
-        window.location.replace(PORTAL_PATH);
+        // The page the link named, when it named one. Where that lands, and
+        // what it does to the page this tab remembers, is the hook's to say.
+        landAfterLogin(checking.back);
       },
       (error: unknown) => {
         if (!live) return;
@@ -283,7 +285,11 @@ export function PortalLogin() {
 
     setState({ step: "sending" });
     try {
-      await requestLoginLink(address);
+      // Along with the address goes the page the shelter was sent here from,
+      // for the link to bring back: the mail opens it in a tab of its own,
+      // which has no storage of ours to read that page from. Peeked, not
+      // taken: a login that follows in this tab still lands there.
+      await requestLoginLink(address, peekPortalReturn());
       setState({ step: "sent", email: address });
     } catch (cause) {
       // The address is not what failed, so it keeps its valid state and the

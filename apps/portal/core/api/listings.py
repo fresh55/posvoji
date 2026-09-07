@@ -11,13 +11,13 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from django.core.files.base import ContentFile
-from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 from ninja import File, Router, Status
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
 
+from ..db import serialized_write
 from ..models import (
     LISTING_COLUMN_BY_JSON_KEY,
     Listing,
@@ -148,9 +148,9 @@ def add_photo(
     if already is not None:
         return Status(200, photo_out(already))
 
-    with transaction.atomic():
-        # Serialize the read-modify-write of the position. Two uploads that
-        # read the same highest position would then collide on the unique
+    with serialized_write():
+        # The read-modify-write of the position is one write. Two uploads that
+        # read the same highest position would otherwise collide on the unique
         # constraint instead of queueing behind each other.
         Listing.objects.select_for_update().filter(pk=listing.pk).first()
         highest = ListingPhoto.objects.filter(listing=listing).aggregate(

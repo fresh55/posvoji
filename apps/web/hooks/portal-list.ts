@@ -3,7 +3,8 @@
 // One copy, because the two hooks answer for the same screen and a fix applied
 // to one and not the other is a silent difference in what a shelter is told.
 
-import { portalText } from "@/components/portal/portal-text";
+import { fieldLabel } from "@/components/portal/portal-fields";
+import { fill, portalText } from "@/components/portal/portal-text";
 import { PortalError, type PortalErrorKind } from "@/lib/portal-api";
 
 export const SAVED_FLASH_MS = 1800;
@@ -29,8 +30,27 @@ const MESSAGES: Partial<Record<PortalErrorKind, string>> = {
   invalid: portalText.invalidError,
 };
 
+/** "Ime", "Ime in Pasma", "Ime, Pasma in Spol". */
+function listFields(labels: readonly string[]): string {
+  if (labels.length <= 1) return labels.join("");
+  return `${labels.slice(0, -1).join(", ")} in ${labels[labels.length - 1]}`;
+}
+
+/** The invalid message, naming the fields when the API did. */
+export function invalidMessage(fields: readonly string[]): string {
+  if (fields.length === 0) return portalText.invalidError;
+  const template =
+    fields.length === 1
+      ? portalText.invalidFieldOne
+      : fields.length === 2
+        ? portalText.invalidFieldTwo
+        : portalText.invalidFieldMany;
+  return fill(template, { fields: listFields(fields.map(fieldLabel)) });
+}
+
 export function message(error: unknown, fallback: string): string {
   if (error instanceof PortalError) {
+    if (error.kind === "invalid") return invalidMessage(error.fields);
     const known = MESSAGES[error.kind];
     if (known) return known;
   }

@@ -19,7 +19,7 @@ from ninja import Router, Status
 from sesame.utils import get_token as get_login_token
 from sesame.utils import get_user
 
-from ..models import Shelter
+from ..models import Shelter, has_control_character
 from ..schemas import CsrfOut, ErrorOut, MeOut, RequestLinkIn, VerifyIn
 from ..security import address_send_allowed, csrf_auth, request_link_throttle
 
@@ -75,12 +75,60 @@ def me_payload(user) -> dict:
     }
 
 
-def build_login_url(user) -> str:
-    query = urlencode({"token": get_login_token(user)})
-    return f"{settings.FRONTEND_URL}{settings.MAGIC_LINK_PATH}?{query}"
+# The portal's root, where a login lands when the link says nothing else.
+PORTAL_PATH = "/portal"
+
+# Longer than any address the portal writes. Not a schema constraint, so an
+# over-long value is dropped rather than refused.
+MAX_RETURN_PATH_LENGTH = 500
 
 
-def build_login_message(user) -> EmailMessage:
+def return_path(candidate: str | None) -> str | None:
+    """The portal page a login may send the shelter back to, or None.
+
+    The same rule as isPortalReturnPath in the web app: a path under /portal,
+    which rules out an absolute and a protocol-relative URL, with nothing in
+    it that could break out of the query, and not the login page itself. What
+    fails the rule is dropped without a word: the value has no bearing on
+    whether the mail goes out.
+    """
+    if not candidate or len(candidate) > MAX_RETURN_PATH_LENGTH:
+        return None
+    if not candidate.startswith(PORTAL_PATH):
+        return None
+    rest = candidate[len(PORTAL_PATH) :]
+    if rest and rest[0] not in "/?":
+        return None
+    # Two separate rules that used to be spelled as one scan. A control
+    # character is not something a portal address holds at all, and models.py
+    # is where that is defined for the whole app; whitespace and the backslash
+    # are what could break the value out of the query it travels in.
+    if has_control_character(candidate):
+        return None
+    if any(c.isspace() or c == "\\" for c in candidate):
+        return None
+    login_page = settings.MAGIC_LINK_PATH
+    if candidate == login_page or candidate.startswith(
+        (f"{login_page}?", f"{login_page}/")
+    ):
+        return None
+    return candidate
+
+
+def build_login_url(user, next_path: str | None) -> str:
+    """The link in the mail. `nazaj` carries where the shelter was going.
+
+    The path travels in the link because a link from the mail opens a new
+    tab, and the tab that asked for it has no way to hand the new one
+    anything. Callers pass only what return_path accepted.
+    """
+    query = {"token": get_login_token(user)}
+    if next_path:
+        query["nazaj"] = next_path
+    return f"{settings.FRONTEND_URL}{settings.MAGIC_LINK_PATH}?{urlencode(query)}"
+
+
+def build_login_message(user, next_path: str | None) -> EmailMessage:
     """The login mail: plain text, UTF-8, a name on the From, a live Reply-To.
 
     DEFAULT_FROM_EMAIL is a send-only mailbox, so a shelter that answers this
@@ -91,7 +139,7 @@ def build_login_message(user) -> EmailMessage:
         subject=EMAIL_SUBJECT,
         body=EMAIL_BODY.format(
             email=user.email,
-            url=build_login_url(user),
+            url=build_login_url(user, next_path),
             reply_to=reply_to,
         ),
         from_email=formataddr((settings.PORTAL_FROM_NAME, settings.DEFAULT_FROM_EMAIL)),
@@ -102,9 +150,9 @@ def build_login_message(user) -> EmailMessage:
     return message
 
 
-def send_login_link(user) -> None:
+def send_login_link(user, next_path: str | None) -> None:
     try:
-        build_login_message(user).send()
+        build_login_message(user, next_path).send()
     except Exception:
         # Email backends are extensible and aren't limited to OSError. Any
         # ordinary delivery failure must retain the same 204 response as an
@@ -131,6 +179,9 @@ def csrf_token(request, response: HttpResponse):
 def request_link(request, payload: RequestLinkIn):
     """Always 204. The response never reveals whether the account exists."""
     email = payload.email.strip()
+    # Read here and handed straight to the link. It is never logged or
+    # stored: the mail is the only place it goes.
+    next_path = return_path(payload.next)
     if email:
         user = (
             get_user_model()
@@ -144,7 +195,7 @@ def request_link(request, payload: RequestLinkIn):
         )
         if user is not None:
             if address_send_allowed(user.email):
-                send_login_link(user)
+                send_login_link(user, next_path)
             else:
                 # Still 204: the caller learns nothing either way, and the
                 # shelter's inbox is what the limit protects.

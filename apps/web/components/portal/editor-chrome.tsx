@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ChevronRight, LoaderCircle, RotateCcw, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
@@ -12,16 +13,30 @@ import { PORTAL_PATH } from "@/hooks/use-portal-session";
 // each: a shelter that learns them on one kind must not meet a different
 // arrangement on the other.
 
+/** A click that opens the link somewhere other than this tab. */
+function opensElsewhere(event: React.MouseEvent): boolean {
+  return (
+    event.button !== 0 ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    event.altKey
+  );
+}
+
 /** Where the shelter is, and the way back to the list. */
 export function EditorBreadcrumb({
   name,
   blocked,
+  saving = false,
   onBlocked,
 }: {
   /** The animal being edited, which is where this trail ends. */
   name: string;
   /** Whether leaving would drop typed work that has not been asked about. */
   blocked: boolean;
+  /** A save is on its way. The link waits with the rest of the page. */
+  saving?: boolean;
   onBlocked: () => void;
 }) {
   return (
@@ -31,16 +46,27 @@ export function EditorBreadcrumb({
     >
       <Link
         href={PORTAL_PATH}
+        aria-disabled={saving || undefined}
         onClick={(event) => {
+          // Leaving mid-save would drop the page that is waiting for the
+          // answer, so the link goes inert for as long as the bar is.
+          if (saving) {
+            event.preventDefault();
+            return;
+          }
           // The link is a real one, so Back, a middle click and a long press
-          // all behave. It is only held back when there is work the shelter
-          // has not been asked about yet.
+          // all behave. Ctrl, meta, shift and the middle button open the list
+          // in another tab or window and leave this page, work and all,
+          // where it is: nothing to ask about, so nothing is held back.
+          if (opensElsewhere(event)) return;
+          // It is only held back when there is work the shelter has not been
+          // asked about yet.
           if (blocked) {
             event.preventDefault();
             onBlocked();
           }
         }}
-        className="rounded-ui underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring"
+        className="rounded-ui underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:text-muted-foreground aria-disabled:hover:no-underline"
       >
         {portalText.animalsTitle}
       </Link>
@@ -60,33 +86,47 @@ export function EditorBreadcrumb({
  *
  * The bottom padding carries the phone's home indicator, and each page's own
  * max-lg:pb-28 keeps the last row clear of the bar.
+ *
+ * A save that did not go through is said in the bar, above the buttons: it is
+ * the one part of the page that is on screen wherever the shelter pressed
+ * Shrani from, on both layouts. At the foot of the form it was a screen away
+ * from a submit made off the fixed bar.
  */
 export function EditorSaveBar({
   saving,
   cancelDisabled,
   saveDisabled,
+  error,
   onCancel,
 }: {
   /** Drawn on the submit button, which is not the same as "anything is busy". */
   saving: boolean;
   cancelDisabled: boolean;
   saveDisabled: boolean;
+  /** The failed save's own line, drawn above the buttons while it stands. */
+  error?: ReactNode;
   onCancel: () => void;
 }) {
   return (
-    <div className="flex gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2">
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={cancelDisabled}
-        onClick={onCancel}
-      >
-        {portalText.cancel}
-      </Button>
-      <Button type="submit" disabled={saveDisabled} className="flex-1">
-        {saving && <LoaderCircle className="animate-spin" aria-hidden />}
-        {saving ? portalText.saving : portalText.save}
-      </Button>
+    <div
+      data-save-bar
+      className="space-y-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2"
+    >
+      {error}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={cancelDisabled}
+          onClick={onCancel}
+        >
+          {portalText.cancel}
+        </Button>
+        <Button type="submit" disabled={saveDisabled} className="flex-1">
+          {saving && <LoaderCircle className="animate-spin" aria-hidden />}
+          {saving ? portalText.saving : portalText.save}
+        </Button>
+      </div>
     </div>
   );
 }

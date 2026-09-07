@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -12,8 +13,15 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
 import {
+  confirmShown,
+  fieldRow,
+  makeUnreadable,
+  typeUnreadable,
+} from "@/components/portal/editor-test-helpers";
+import {
   COMPATIBILITY_META,
   ENERGY_META,
+  SEX_META,
   SPECIAL_NEEDS_META,
 } from "@/components/portal/portal-fields";
 import { PortalProvider } from "@/components/portal/portal-provider";
@@ -27,6 +35,7 @@ import {
   type PortalAnimal,
   type PortalShelter,
 } from "@/lib/portal-api";
+import { draftKey } from "@/lib/portal-drafts";
 
 // The address is the page's only argument, so the tests set it the way a
 // visitor would and the mock reads it back at every render.
@@ -156,12 +165,6 @@ function row(label: string): HTMLElement {
   return screen.getByRole("radiogroup", { name: label });
 }
 
-function fieldRow(name: string): HTMLElement {
-  const found = document.querySelector<HTMLElement>(`[data-field="${name}"]`);
-  if (!found) throw new Error(`no row for ${name}`);
-  return found;
-}
-
 function saveButton(): HTMLButtonElement {
   return screen.getByRole("button", {
     name: portalText.save,
@@ -181,8 +184,9 @@ function makeDirty() {
   fireEvent.change(field("portal-name"), { target: { value: "Murka" } });
 }
 
-function confirmShown(): boolean {
-  return screen.queryByText(portalText.leaveTitle) !== null;
+/** A save that never answers, for the page while it is waiting. */
+function saveHangs() {
+  vi.mocked(saveAnimal).mockReturnValue(new Promise(() => {}));
 }
 
 describe("finding the animal the address names", () => {
@@ -422,6 +426,394 @@ describe("what a field tells a screen reader", () => {
     fireEvent.change(field("portal-age-years"), { target: { value: "2" } });
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  it("marks only the box at fault", async () => {
+    await open();
+
+    fireEvent.change(field("portal-age-months"), { target: { value: "-3" } });
+    fireEvent.click(saveButton());
+
+    expect(field("portal-age-months").getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+    expect(field("portal-age-years").getAttribute("aria-invalid")).toBeNull();
+  });
+});
+
+describe("a box the browser could not read", () => {
+  // Chromium reports "2-1" in a number box as an empty value with
+  // validity.badInput set. Read as empty, "2-1 let, 3 mesece" saved as three
+  // months, and a year of 0001 in the date box cleared the override.
+  it("does not save the rest of the age as the whole of it", async () => {
+    await open();
+    fireEvent.change(field("portal-age-months"), { target: { value: "3" } });
+
+    typeUnreadable(field("portal-age-years"));
+    fireEvent.click(saveButton());
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toContain(portalText.invalidError);
+    expect(
+      fieldRow("approximateAgeMonths").contains(message),
+    ).toBe(true);
+    // The box at fault, and only that one.
+    expect(field("portal-age-years").getAttribute("aria-invalid")).toBe("true");
+    expect(field("portal-age-months").getAttribute("aria-invalid")).toBeNull();
+    expect(document.activeElement).toBe(field("portal-age-years"));
+  });
+
+  it("is work: Shrani stays on and leaving asks", async () => {
+    await open();
+
+    typeUnreadable(field("portal-age-years"));
+
+    // Nothing the patch could carry, but something the shelter typed.
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(cancelButton());
+    expect(confirmShown()).toBe(true);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("does not clear a birth date it could not read", async () => {
+    await open({ birthDate: "2020-05-01", overrides: { birthDate: "2020-05-01" } });
+
+    typeUnreadable(field("portal-birth-date"));
+    fireEvent.click(saveButton());
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toContain(portalText.birthDateError);
+    expect(fieldRow("birthDate").contains(message)).toBe(true);
+    const date = field("portal-birth-date");
+    expect(date.getAttribute("aria-invalid")).toBe("true");
+    expect(date.getAttribute("aria-errormessage")).toBe(message.id);
+    expect(document.activeElement).toBe(date);
+  });
+
+  it("is not a revert and is not mirrored", async () => {
+    // Seen on the wire: "2-1" in the years box over an age override read as
+    // an emptied box, so the row said "Bo povrnjeno", the mirror stored the
+    // empty boxes, and after a reload Shrani sent approximateAgeMonths null.
+    await open({
+      approximateAgeMonths: 27,
+      birthDate: "2020-05-01",
+      overrides: { approximateAgeMonths: 27, birthDate: "2020-05-01" },
+    });
+
+    typeUnreadable(field("portal-age-years"));
+    typeUnreadable(field("portal-birth-date"));
+
+    expect(screen.queryByText(portalText.willRevert)).toBeNull();
+    expect(window.sessionStorage.length).toBe(0);
+
+    // Reading again with the record's own value is not a change either.
+    const years = field("portal-age-years");
+    makeUnreadable(years, false);
+    fireEvent.change(years, { target: { value: "2" } });
+    expect(screen.queryByText(portalText.willRevert)).toBeNull();
+  });
+
+  it("saves again once the box reads", async () => {
+    await open();
+    typeUnreadable(field("portal-age-years"));
+    fireEvent.click(saveButton());
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    const years = field("portal-age-years");
+    makeUnreadable(years, false);
+    fireEvent.change(years, { target: { value: "3" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      expect(saveAnimal).toHaveBeenCalledWith("testno", "testno:1", {
+        approximateAgeMonths: 36,
+      });
+    });
+  });
+
+  it("is noticed from the input event when the value does not move", async () => {
+    // "e" typed into the empty months box: "" before and "" after, so React
+    // fires no change event. The input event still carries the flag.
+    await open();
+    const months = field("portal-age-months");
+    makeUnreadable(months);
+
+    fireEvent.input(months, { target: { value: "" } });
+    fireEvent.click(saveButton());
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    expect(months.getAttribute("aria-invalid")).toBe("true");
+  });
+});
+
+describe("a birth date the animal could not have", () => {
+  function tomorrow(): string {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  it("refuses a date in the future at the box", async () => {
+    await open();
+
+    fireEvent.change(field("portal-birth-date"), {
+      target: { value: tomorrow() },
+    });
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(saveButton());
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      portalText.birthDateError,
+    );
+    expect(document.activeElement).toBe(field("portal-birth-date"));
+  });
+
+  it("refuses a date before 1900", async () => {
+    await open();
+
+    fireEvent.change(field("portal-birth-date"), {
+      target: { value: "1899-12-31" },
+    });
+    fireEvent.click(saveButton());
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      portalText.birthDateError,
+    );
+  });
+
+  it("takes the message down once the date is typed again", async () => {
+    await open();
+    fireEvent.change(field("portal-birth-date"), {
+      target: { value: "1899-12-31" },
+    });
+    fireEvent.click(saveButton());
+    expect(screen.queryByRole("alert")).not.toBeNull();
+
+    fireEvent.change(field("portal-birth-date"), {
+      target: { value: "2020-05-01" },
+    });
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("refuses an age past a hundred years at the years box", async () => {
+    await open();
+
+    fireEvent.change(field("portal-age-years"), { target: { value: "150" } });
+    fireEvent.click(saveButton());
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    expect(field("portal-age-years").getAttribute("aria-invalid")).toBe("true");
+  });
+});
+
+describe("a name with no space in it", () => {
+  // jsdom lays nothing out, so the width cannot be measured here. What can be
+  // held is the chain that let a 200-character name push the page sideways
+  // at 375px: the summary is a grid item, a grid item's minimum width is its
+  // content's, and the h1 is nowrap. Every box between the h1 and the grid
+  // has to give that minimum up for the truncate to have anything to cut.
+  it("is truncated inside a column that cannot grow past the page", async () => {
+    const long = "M".repeat(200);
+    await open({ name: long });
+
+    const heading = screen.getByRole("heading", { name: long });
+    expect(heading.className).toContain("truncate");
+    expect(heading.className).toContain("min-w-0");
+
+    // The flex column the three lines share.
+    const lines = heading.parentElement?.parentElement;
+    expect(lines?.className).toContain("min-w-0");
+    expect(lines?.className).toContain("flex-1");
+    for (const line of Array.from(lines?.querySelectorAll("p") ?? [])) {
+      expect(line.className).toContain("truncate");
+    }
+
+    // Both grid items: the summary and the form column beside it.
+    const aside = heading.closest("aside");
+    expect(aside?.className).toContain("min-w-0");
+    expect(aside?.nextElementSibling?.className).toContain("min-w-0");
+    // And the breadcrumb, which repeats the name.
+    const trail = screen.getByRole("navigation", {
+      name: portalText.breadcrumbLabel,
+    });
+    expect(trail.className).toContain("min-w-0");
+    expect(within(trail).getByText(long).className).toContain("truncate");
+  });
+});
+
+describe("a save that did not go through", () => {
+  async function failOnce() {
+    signIn();
+    vi.mocked(fetchAnimals).mockResolvedValue([animal()]);
+    vi.mocked(saveAnimal).mockRejectedValue(new PortalError(500));
+    renderPage();
+    await waitFor(() =>
+      expect(document.getElementById("portal-name")).toBeTruthy(),
+    );
+    makeDirty();
+    fireEvent.click(saveButton());
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        portalText.saveError,
+      );
+    });
+    return screen.getByRole("alert");
+  }
+
+  it("is said in the save bar, beside Shrani, and takes the focus", async () => {
+    const message = await failOnce();
+
+    // The bar is on screen wherever the shelter pressed from, on both
+    // layouts; the foot of the form was a screen away from the fixed bar.
+    const bar = document.querySelector("[data-save-bar]");
+    expect(bar?.contains(message)).toBe(true);
+    expect(bar?.contains(saveButton())).toBe(true);
+    expect(message.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(message);
+    expect(message.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("is taken down once the shelter edits a field", async () => {
+    await failOnce();
+
+    fireEvent.change(field("portal-breed"), { target: { value: "Mešanec" } });
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("comes back for a second failure", async () => {
+    await failOnce();
+    fireEvent.change(field("portal-breed"), { target: { value: "Mešanec" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        portalText.saveError,
+      );
+    });
+    expect(document.activeElement).toBe(screen.getByRole("alert"));
+  });
+});
+
+describe("a status save that did not go through", () => {
+  it("is said under the status buttons, not at the foot of the form", async () => {
+    await open();
+    vi.mocked(saveAnimal).mockRejectedValue(new PortalError(500));
+
+    const statuses = screen.getByRole("group", {
+      name: portalText.statusLegend,
+    });
+    fireEvent.click(within(statuses).getByRole("button", { name: "Rezerviran" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        portalText.saveError,
+      );
+    });
+    const message = screen.getByRole("alert");
+    // The block is the container the buttons and their sentence share.
+    expect(statuses.parentElement?.contains(message)).toBe(true);
+    expect(
+      document.querySelector("[data-save-bar]")?.contains(message),
+    ).toBe(false);
+    // The Shrani that was never pressed did not fail.
+    expect(saveButton().disabled).toBe(true);
+  });
+});
+
+describe("the breadcrumb", () => {
+  it("goes inert while a save is on its way", async () => {
+    await open();
+    saveHangs();
+    makeDirty();
+    fireEvent.click(saveButton());
+    // The button says so while it waits.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: portalText.saving }),
+      ).toBeTruthy(),
+    );
+
+    const link = breadcrumb();
+    expect(link.getAttribute("aria-disabled")).toBe("true");
+    const proceeded = fireEvent.click(link);
+
+    expect(proceeded).toBe(false);
+    expect(confirmShown()).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("lets a click meant for another tab through without asking", async () => {
+    await open();
+    makeDirty();
+
+    // Ctrl, meta, shift and the middle button open the list elsewhere and
+    // leave this page, work and all, where it is.
+    for (const init of [
+      { ctrlKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { button: 1 },
+    ]) {
+      const proceeded = fireEvent.click(breadcrumb(), init);
+      expect(proceeded).toBe(true);
+      expect(confirmShown()).toBe(false);
+    }
+    expect(push).not.toHaveBeenCalled();
+
+    // A plain click is still held back.
+    fireEvent.click(breadcrumb());
+    expect(confirmShown()).toBe(true);
+  });
+});
+
+describe("a submit while a save is on its way", () => {
+  it("does not send the patch twice", async () => {
+    await open();
+    saveHangs();
+    makeDirty();
+
+    // Two submits in one task, before React has drawn the saving state: the
+    // bar is not disabled yet, so only the page's own guard stands between
+    // the second one and the wire.
+    const form = field("portal-name").closest("form") as HTMLFormElement;
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+
+    expect(saveAnimal).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a stored draft this form cannot use", () => {
+  it("falls back to the record for the parts it drops", async () => {
+    // A deploy can change the shape of a draft while a tab is still open on
+    // the old one, and the tab's storage is not ours alone.
+    window.sessionStorage.setItem(
+      draftKey("info@zavetisce.si", "testno", "testno:1"),
+      JSON.stringify({ name: null, sex: "banana", ageYears: "3", photos: [] }),
+    );
+
+    await open();
+
+    expect((field("portal-name") as HTMLInputElement).value).toBe("Muri");
+    expect(
+      within(row(portalText.fieldSex))
+        .getByRole("radio", { name: SEX_META.female.label })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect((field("portal-age-years") as HTMLInputElement).value).toBe("3");
+  });
 });
 
 describe("taking an icon answer back", () => {
@@ -548,18 +940,20 @@ describe("a choice that gives the field back to the crawler", () => {
   });
 
   it("leaves an unoverridden Posebne potrebe alone", async () => {
-    // Nothing to give back, so clearing the row is only an answer withdrawn.
+    // Nothing to give back, and the crawl did answer, so the tap on the
+    // chosen card is ignored: the card stays on and nothing is queued.
     await open({ specialNeeds: true });
 
-    fireEvent.click(
-      within(fieldRow("specialNeeds")).getByRole("radio", {
-        name: SPECIAL_NEEDS_META.yes.label,
-      }),
-    );
+    const yes = within(fieldRow("specialNeeds")).getByRole("radio", {
+      name: SPECIAL_NEEDS_META.yes.label,
+    });
+    fireEvent.click(yes);
 
+    expect(yes.getAttribute("aria-checked")).toBe("true");
     expect(
       within(fieldRow("specialNeeds")).queryByText(portalText.willRevert),
     ).toBeNull();
+    expect(saveButton().disabled).toBe(true);
   });
 
   it("still reads an emptied box as a revert", async () => {

@@ -170,11 +170,7 @@ export const portalText = {
   reviewBannerFailed:
     "Nekaterih stanj ni bilo mogoče potrditi. Poskusite znova.",
   edit: "Uredi podatke",
-  editTitle: "Uredi {name}",
-  // True of every row, which "Prazno polje pomeni …" was not: a row the
-  // shelter has already changed holds their own value, not a blank.
-  editLead: "Kar vpišete tukaj, obvelja namesto podatka z vaše spletne strani.",
-  // The other half, under the control of a row the shelter has changed. The
+  // Under the control of a row the shelter has changed. The
   // pair matches statusOwnLine and statusFromSiteLine on the card: a sentence
   // at the point of use, because the revert button's hover title is something
   // a touch user never opens.
@@ -213,9 +209,6 @@ export const portalText = {
   saving: "Shranjujem …",
   saved: "Shranjeno",
   cancel: "Prekliči",
-  // Every way out of the editor passes through this once something is typed.
-  discardTitle: "Popravki niso shranjeni",
-  discardLead: "Če zdaj zaprete okno, se vpisano izgubi.",
   keepEditing: "Nadaljuj urejanje",
   discardChanges: "Zavrzi popravke",
 
@@ -268,6 +261,18 @@ export const portalText = {
   savedHidden: "Shranjeno. Trenutni filter skrije žival {name}.",
   saveError: "Shranjevanje ni uspelo. Poskusite znova.",
   invalidError: "Podatek ni v pravi obliki. Preverite vnos.",
+  // What a refused value says when the API named the field. One form each
+  // for one, two and more fields, because the verb and the noun both change
+  // with the count.
+  invalidFieldOne: "Podatek v polju {fields} ni v pravi obliki. Preverite vnos.",
+  invalidFieldTwo:
+    "Podatka v poljih {fields} nista v pravi obliki. Preverite vnos.",
+  invalidFieldMany:
+    "Podatki v poljih {fields} niso v pravi obliki. Preverite vnos.",
+  // Under the date box. One sentence for all three ways a date can be wrong:
+  // the browser could not read it, it is before 1900, or it is after today.
+  birthDateError:
+    "Datum rojstva ni v pravi obliki ali ni med 1. 1. 1900 in danes. Preverite vnos.",
   edited: "Urejeno",
   editedCount: "Urejena polja: {count}",
   willRevert: "Bo povrnjeno",

@@ -15,6 +15,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import {
   PORTAL_LOGIN_NO_SESSION_PATH,
   PORTAL_LOGIN_PATH,
+  PORTAL_VERIFIED_KEY,
 } from "@/hooks/use-portal-session";
 import {
   PortalError,
@@ -313,7 +314,7 @@ describe("the guard over a workspace with no session", () => {
   // Without this the shelter is bounced back to an empty form with nothing to
   // read and one dead link in their inbox.
   it("tells the login page when a verification left no session behind", async () => {
-    window.sessionStorage.setItem("portal:verified", "1");
+    window.sessionStorage.setItem(PORTAL_VERIFIED_KEY, "1");
     vi.mocked(fetchSession).mockRejectedValue(new PortalError(401));
     const replace = captureNavigation();
 
@@ -323,13 +324,13 @@ describe("the guard over a workspace with no session", () => {
       expect(replace).toHaveBeenCalledWith(PORTAL_LOGIN_NO_SESSION_PATH);
     });
     // Read once. A later bounce is a plain anonymous one and reads as one.
-    expect(window.sessionStorage.getItem("portal:verified")).toBeNull();
+    expect(window.sessionStorage.getItem(PORTAL_VERIFIED_KEY)).toBeNull();
   });
 
   // Otherwise the note would sit in the tab until some later session ran out,
   // and that bounce would blame the browser for a cookie it did store.
   it("drops the note as soon as a session is read", async () => {
-    window.sessionStorage.setItem("portal:verified", "1");
+    window.sessionStorage.setItem(PORTAL_VERIFIED_KEY, "1");
     signIn(CRAWLED);
     vi.mocked(fetchAnimals).mockResolvedValue([]);
 
@@ -338,7 +339,7 @@ describe("the guard over a workspace with no session", () => {
     await waitFor(() => {
       expect(screen.getByText(portalText.emptyTitle)).toBeTruthy();
     });
-    expect(window.sessionStorage.getItem("portal:verified")).toBeNull();
+    expect(window.sessionStorage.getItem(PORTAL_VERIFIED_KEY)).toBeNull();
   });
 });
 

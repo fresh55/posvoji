@@ -128,7 +128,8 @@ export const COMPATIBILITY_META: Record<PortalCompatibility, ChoiceMeta> = {
  * needs more time, knowledge or care than most, or the shelter has not said
  * so. There is no third answer to offer, which is why this is two cards and
  * not the three COMPATIBILITY_META carries. "No answer" is the row with
- * nothing chosen, which a tap on the chosen card gives back.
+ * nothing chosen, which a tap on the chosen card gives back wherever the grid
+ * lets it (see ChoiceGrid's clearable).
  */
 export const PORTAL_SPECIAL_NEEDS_ANSWERS = ["yes", "no"] as const;
 export type PortalSpecialNeedsAnswer =
@@ -196,13 +197,33 @@ export function isCount(value: number): boolean {
 export type AgeBox = "years" | "months";
 
 /**
+ * The three boxes the browser reads a value out of for us, and can fail to,
+ * in the order both forms read them. A number box holding "2-1" and a date
+ * box holding a year of 0001 both report an empty value with validity.badInput
+ * set, so each page keeps its own note of which boxes are in that state.
+ */
+export const READ_BOXES = ["birthDate", "ageYears", "ageMonths"] as const;
+
+export type ReadBox = (typeof READ_BOXES)[number];
+
+/**
+ * A hundred years, which is past any animal a shelter holds. The API refuses
+ * the same count, so the box is refused here, where the message can sit next
+ * to it, rather than by the server after the save.
+ *
+ * The other half of this bound is MAX_AGE_MONTHS in apps/portal/core/schemas.py.
+ */
+export const MAX_AGE_MONTHS = 1200;
+
+/**
  * The two age boxes as the one month count the wire carries.
  *
  * An empty half counts as zero, so "2 let" alone is two years; only two empty
  * boxes mean no age at all, which is what clears an override. The months box
  * is not capped at eleven: "18 mesecev" adds up to the same age. A box holding
- * something that is not a count yields no number and names itself, so the form
- * can point at the one the shelter has to fix.
+ * something that is not a count, or a total past MAX_AGE_MONTHS, yields no
+ * number and names the box at fault, so the form can point at the one the
+ * shelter has to fix.
  *
  * Both forms ask this, so the crawled editor and the listing form cannot come
  * to different answers about the same two boxes.
@@ -219,7 +240,69 @@ export function parseAgeBoxes(
   const wholeMonths = rawMonths === "" ? 0 : Number(rawMonths);
   if (!isCount(wholeYears)) return { months: null, error: "years" };
   if (!isCount(wholeMonths)) return { months: null, error: "months" };
-  return { months: wholeYears * 12 + wholeMonths, error: null };
+  const total = wholeYears * 12 + wholeMonths;
+  if (total > MAX_AGE_MONTHS) {
+    // The years alone past the cap is the years box; otherwise the months
+    // pushed a plausible year count over it.
+    return {
+      months: null,
+      error: wholeYears * 12 > MAX_AGE_MONTHS ? "years" : "months",
+    };
+  }
+  return { months: total, error: null };
+}
+
+/** No animal in a shelter was born before this. The other half of the bound,
+ *  1900 and today, is EARLIEST_BIRTH_DATE and bounded_birth_date in
+ *  apps/portal/core/schemas.py. */
+export const EARLIEST_BIRTH_DATE = "1900-01-01";
+
+/** Today as the date input spells it, in the local calendar. */
+export function localIsoDate(now: Date): string {
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Whether a birth date is one the animal could have: a real calendar day, not
+ * before EARLIEST_BIRTH_DATE and not after today.
+ *
+ * The date input only ever hands over an ISO day or the empty string, but a
+ * draft read back from storage can hold anything, so the shape is checked as
+ * well. Empty is not a date and not a fault: the form treats it as no answer.
+ */
+export function isPlausibleBirthDate(value: string, now: Date): boolean {
+  if (value === "") return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
+    return false;
+  }
+  return value >= EARLIEST_BIRTH_DATE && value <= localIsoDate(now);
+}
+
+/**
+ * The most the API takes for each free-text field. The inputs carry these as
+ * maxLength, and buildPatch cuts to them as well, because a draft read back
+ * from storage or pasted past the limit never went through the input's check.
+ *
+ * The other half of these two bounds is the max_length on name, breed and
+ * shortDescription in apps/portal/core/schemas.py.
+ */
+export const TEXT_LIMITS = {
+  name: 200,
+  breed: 200,
+  shortDescription: 2000,
+} as const;
+
+/** Trimmed and cut to the limit, or null for nothing. Cut first, so a cut
+ *  that lands on a space does not leave it at the end. */
+export function limited(value: string, max: number): string | null {
+  return trimmed(value.slice(0, max));
 }
 
 /**
@@ -229,6 +312,37 @@ export function parseAgeBoxes(
  */
 export function hintId(uid: string, field: string): string {
   return `${uid}-${field}-hint`;
+}
+
+/**
+ * The API's keys under the names the form shows them by. One table: the
+ * checklist beside the form and the message a refused save carries both name
+ * the same fields, and two lists would drift.
+ */
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  name: portalText.fieldName,
+  status: portalText.statusLegend,
+  species: portalText.fieldSpecies,
+  sex: portalText.fieldSex,
+  breed: portalText.fieldBreed,
+  birthDate: portalText.fieldBirthDate,
+  approximateAgeMonths: portalText.fieldAgeMonths,
+  size: portalText.fieldSize,
+  energy: portalText.fieldEnergy,
+  goodWithKids: portalText.fieldGoodWithKids,
+  goodWithDogs: portalText.fieldGoodWithDogs,
+  goodWithCats: portalText.fieldGoodWithCats,
+  apartmentOk: portalText.fieldApartmentOk,
+  specialNeeds: portalText.fieldSpecialNeeds,
+  shortDescription: portalText.fieldDescription,
+};
+
+/**
+ * A key not in the table is a field the form has no name for yet, and the raw
+ * key is still more use to a shelter than no name at all.
+ */
+export function fieldLabel(key: string): string {
+  return FIELD_LABELS[key] ?? key;
 }
 
 type StatusMeta = {
@@ -318,16 +432,9 @@ export const SEARCHABLE_FIELDS = [
  * and where the checklist has to read as the same thing as the rows it sits
  * next to.
  */
-export const SEARCHABLE_LABELS: Record<
-  (typeof SEARCHABLE_FIELDS)[number]["key"],
-  string
-> = {
-  energy: portalText.fieldEnergy,
-  goodWithKids: portalText.fieldGoodWithKids,
-  goodWithDogs: portalText.fieldGoodWithDogs,
-  goodWithCats: portalText.fieldGoodWithCats,
-  apartmentOk: portalText.fieldApartmentOk,
-};
+export const SEARCHABLE_LABELS = Object.fromEntries(
+  SEARCHABLE_FIELDS.map(({ key }) => [key, fieldLabel(key)]),
+) as Record<(typeof SEARCHABLE_FIELDS)[number]["key"], string>;
 
 /**
  * Selected state for a deliberate "I don't know" answer. It is still a
@@ -386,4 +493,23 @@ export function fieldControls(row: HTMLElement): HTMLElement[] {
       "[data-field-control] input, [data-field-control] textarea, [data-field-control] button",
     ),
   );
+}
+
+/**
+ * The control of one box the browser reads for us, for the submit that has to
+ * point at it and the discard that has to empty it. Through the rows rather
+ * than by id, so the two forms can keep their own ids. The two age boxes share
+ * a row, in the order the form reads them.
+ */
+export function readBoxControl(
+  form: HTMLFormElement | null,
+  box: ReadBox,
+): HTMLInputElement | null {
+  const row = fieldRow(
+    form,
+    box === "birthDate" ? "birthDate" : "approximateAgeMonths",
+  );
+  if (!row) return null;
+  const control = fieldControls(row)[box === "ageMonths" ? 1 : 0];
+  return control instanceof HTMLInputElement ? control : null;
 }

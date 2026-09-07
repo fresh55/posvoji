@@ -1,9 +1,32 @@
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from django.conf import settings
 from django.db import models
+
+# Every control character except tab, newline and carriage return: the C0
+# range, DEL and the C1 range. Nothing a shelter types on purpose, and a NUL
+# in a name has reached the public dataset through here before.
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+# The same ranges with tab and the line ends put back, which is the whole of
+# Unicode's Cc category. Free text keeps those three because a description may
+# hold them; an identifier or a URL path may not, so those callers ask this
+# instead.
+_ANY_CONTROL_CHARACTER = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def has_control_character(value: str) -> bool:
+    """Whether the text holds a control character of any kind.
+
+    Tab and the line ends count here, unlike in clean_text. So does the C1
+    range: this follows the ranges stated above rather than the narrower
+    reading of a scan that stops at DEL, which would let a shelter put a
+    C1 byte into an animal id or a login return path.
+    """
+    return _ANY_CONTROL_CHARACTER.search(value) is not None
 
 
 def iso_utc(value: datetime) -> str:
@@ -17,8 +40,15 @@ def clean_text(value: Any) -> Any:
     For an override that clears the correction and the crawled value stands
     again; for a listing it is the shelter not stating the field. Both
     routers write what comes off the wire through this.
+
+    Control characters are dropped on the way, apart from tab and the line
+    ends, and the line ends become a bare newline, so text pasted out of a
+    document does not carry the document's bytes into the dataset. Anything
+    that is not a string, a date or a number or a flag, passes untouched.
     """
     if isinstance(value, str):
+        value = _CONTROL_CHARACTERS.sub("", value)
+        value = value.replace("\r\n", "\n").replace("\r", "\n")
         return value.strip() or None
     return value
 
@@ -340,6 +370,18 @@ class AnimalOverride(models.Model):
     def overridden_fields(self) -> dict[str, object]:
         """The fields this shelter actually changed, keyed camelCase."""
         return stated_values(self, OVERRIDE_FIELDS)
+
+    def is_empty(self) -> bool:
+        """Whether this override states nothing, and so does not exist.
+
+        A row with every column NULL corrects nothing. It is left out of the
+        export and never listed, and the only thing it would carry is an
+        updated_at saying the shelter edited an animal it did not. Both the
+        shelter's route and the admin actions delete such a row rather than
+        keep it. Migration 0007 asks the same question over its own frozen
+        column list, which is why it does not call this.
+        """
+        return not self.overridden_fields()
 
 
 def listing_photo_name(listing_id, filename: str) -> str:

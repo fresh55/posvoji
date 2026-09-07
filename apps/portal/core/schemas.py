@@ -8,6 +8,7 @@ avoids an alias layer between the two sides.
 from datetime import date
 from typing import Any
 
+from django.utils import timezone
 from ninja import Schema
 from pydantic import ConfigDict, Field, field_validator
 
@@ -18,7 +19,31 @@ from .models import (
     OverrideSex,
     OverrideSize,
     OverrideStatus,
+    clean_text,
 )
+
+# Every bound below is stated twice, here and in the editor that sends the
+# value: apps/web/components/portal/portal-fields.ts. Change one and change
+# the other, or the client refuses what the server takes, or worse offers what
+# the server answers 422 to.
+
+# A hundred years. The web client caps the age field at the same value, and
+# anything near the integer limit used to overflow the column.
+MAX_AGE_MONTHS = 1200
+# No animal a shelter lists today was born before this, and the bound keeps
+# a mistyped year out of the dataset.
+EARLIEST_BIRTH_DATE = date(1900, 1, 1)
+
+
+def bounded_birth_date(value: date | None) -> date | None:
+    """A birth date that is neither in the future nor before 1900."""
+    if value is None:
+        return None
+    if value < EARLIEST_BIRTH_DATE:
+        raise ValueError(f"birthDate must not be before {EARLIEST_BIRTH_DATE}")
+    if value > timezone.localdate():
+        raise ValueError("birthDate must not be in the future")
+    return value
 
 
 class ErrorOut(Schema):
@@ -47,6 +72,11 @@ class RequestLinkIn(Schema):
     model_config = ConfigDict(extra="forbid")
 
     email: str = Field(max_length=254)
+    # The portal page the shelter was on before the login, to be carried in
+    # the link. No length constraint here on purpose: a value that is too
+    # long or not a portal path is dropped in the view, not answered with a
+    # 422, so the mail still goes out.
+    next: str | None = None
 
 
 class VerifyIn(Schema):
@@ -108,13 +138,15 @@ class AnimalOverrideIn(Schema):
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
+    # 200 for a name or a breed, 2000 for the description. The editor counts
+    # against the same two in apps/web/components/portal/portal-fields.ts.
     name: str | None = Field(default=None, max_length=200)
     shortDescription: str | None = Field(default=None, max_length=2000)
     status: OverrideStatus | None = None
     sex: OverrideSex | None = None
     breed: str | None = Field(default=None, max_length=200)
     birthDate: date | None = None
-    approximateAgeMonths: int | None = Field(default=None, ge=0)
+    approximateAgeMonths: int | None = Field(default=None, ge=0, le=MAX_AGE_MONTHS)
     size: OverrideSize | None = None
     energy: OverrideEnergy | None = None
     goodWithKids: OverrideCompatibility | None = None
@@ -122,6 +154,11 @@ class AnimalOverrideIn(Schema):
     goodWithCats: OverrideCompatibility | None = None
     apartmentOk: OverrideCompatibility | None = None
     specialNeeds: bool | None = None
+
+    @field_validator("birthDate")
+    @classmethod
+    def birth_date_is_plausible(cls, value: date | None) -> date | None:
+        return bounded_birth_date(value)
 
 
 class ListingIn(Schema):
@@ -144,12 +181,14 @@ class ListingIn(Schema):
     )
 
     species: ListingSpecies
+    # The same 200 and 2000 as an override, and the same two the editor holds
+    # in apps/web/components/portal/portal-fields.ts.
     name: str = Field(max_length=200)
     status: OverrideStatus = OverrideStatus.AVAILABLE
     sex: OverrideSex | None = None
     breed: str | None = Field(default=None, max_length=200)
     birthDate: date | None = None
-    approximateAgeMonths: int | None = Field(default=None, ge=0)
+    approximateAgeMonths: int | None = Field(default=None, ge=0, le=MAX_AGE_MONTHS)
     size: OverrideSize | None = None
     energy: OverrideEnergy | None = None
     goodWithKids: OverrideCompatibility | None = None
@@ -159,15 +198,22 @@ class ListingIn(Schema):
     specialNeeds: bool | None = None
     shortDescription: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("birthDate")
+    @classmethod
+    def birth_date_is_plausible(cls, value: date | None) -> date | None:
+        return bounded_birth_date(value)
+
     @field_validator("name")
     @classmethod
     def name_is_not_blank(cls, value: str) -> str:
         # A listing is the whole record, so it cannot be nameless the way an
-        # override can simply leave the crawled name alone.
-        stripped = value.strip()
-        if not stripped:
+        # override can simply leave the crawled name alone. Judged on the
+        # cleaned text, so a name of control characters alone is refused
+        # here and not by the NOT NULL column after cleaning.
+        cleaned = clean_text(value)
+        if cleaned is None:
             raise ValueError("name must not be blank")
-        return stripped
+        return cleaned
 
 
 class ExportListingPhotoOut(Schema):

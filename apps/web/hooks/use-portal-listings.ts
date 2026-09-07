@@ -65,6 +65,11 @@ function withPhoto(
   return { ...listing, photos: [...listing.photos, photo] };
 }
 
+// One value each, so a consumer that keys a memo on the list is not woken by
+// a fresh [] on every render of a shelter that has not loaded yet.
+const NO_LISTINGS: PortalListing[] = [];
+const LOADING: PortalListState = { status: "loading" };
+
 export type PortalListingActions = {
   create: (input: PortalListingInput) => Promise<PortalListing | null>;
   update: (
@@ -99,7 +104,11 @@ export function usePortalListings(
   publicName: (listing: PortalListing) => string | null;
 } {
   const [listings, setListings] = useState<PortalListing[]>([]);
-  const [state, setState] = useState<PortalListState>({ status: "loading" });
+  const [state, setState] = useState<PortalListState>(LOADING);
+  // The shelter the list above answered for, compared at render time so a
+  // new slug never shows the previous shelter's list as ready for a frame.
+  // Same rule as usePortalAnimals, for the same editor page.
+  const [listSlug, setListSlug] = useState<string | null>(null);
   // The name every listing carried when this list arrived. A save replaces the
   // listing but never this, so it stays the name from before the edit. A
   // listing created in this session is in neither: the public site has no page
@@ -136,6 +145,7 @@ export function usePortalListings(
         if (!live) return;
         setListings(list);
         setListedNames(new Map(list.map((listing) => [listing.id, listing.name])));
+        setListSlug(slug);
         setState({ status: "ready" });
       },
       (error: unknown) => {
@@ -145,6 +155,7 @@ export function usePortalListings(
           return;
         }
         setListings([]);
+        setListSlug(slug);
         setState({
           status: "error",
           message: message(error, portalText.listError),
@@ -186,6 +197,9 @@ export function usePortalListings(
   const fail = useCallback(
     (key: string, error: unknown, fallback: string) => {
       if (isUnauthorized(error)) {
+        // Nothing was stored, and the card must not be left saying it is
+        // still being while the redirect lands.
+        setSaveStates((current) => ({ ...current, [key]: IDLE }));
         unauthorized.current();
         return;
       }
@@ -340,5 +354,13 @@ export function usePortalListings(
     [listedNames],
   );
 
-  return { listings, state, saveStates, reload, actions, publicName };
+  const stale = slug !== null && listSlug !== slug;
+  return {
+    listings: stale ? NO_LISTINGS : listings,
+    state: stale ? LOADING : state,
+    saveStates,
+    reload,
+    actions,
+    publicName,
+  };
 }

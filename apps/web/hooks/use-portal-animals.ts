@@ -37,6 +37,11 @@ export type PortalBulkState =
  *  more can be, so it is the caller who decides what happens next. */
 type SaveOutcome = "saved" | "failed" | "unauthorized";
 
+// One value each, so a consumer that keys a memo on the list is not woken by
+// a fresh [] on every render of a shelter that has not loaded yet.
+const NO_ANIMALS: PortalAnimal[] = [];
+const LOADING: PortalListState = { status: "loading" };
+
 /**
  * The shelter's animals plus a per-animal save state. Saving is not
  * optimistic: the PUT answers with the merged animal, so the card is replaced
@@ -56,7 +61,13 @@ export function usePortalAnimals(
   publicName: (animal: PortalAnimal) => string | null;
 } {
   const [animals, setAnimals] = useState<PortalAnimal[]>([]);
-  const [state, setState] = useState<PortalListState>({ status: "loading" });
+  const [state, setState] = useState<PortalListState>(LOADING);
+  // The shelter the list above answered for. Compared at render time, so a
+  // new slug does not have to wait for the effect below to commit: for that
+  // one frame the previous shelter's list would stand as "ready" under the
+  // new slug, and the editor page would read an animal that is not on it as
+  // one that does not exist.
+  const [listSlug, setListSlug] = useState<string | null>(null);
   // The name every animal carried when this list arrived. A save replaces the
   // animal but never this, so it stays the name from before the edit.
   const [listedNames, setListedNames] = useState<
@@ -71,10 +82,19 @@ export function usePortalAnimals(
   // One run at a time, read synchronously: a second tap on "Potrdi vse"
   // arrives long before any state from the first has rendered.
   const confirming = useRef(false);
+  // The animals a PUT is out for, read synchronously for the same reason: a
+  // second save of the same animal must not race the first for the last
+  // word on what the server stored.
+  const inFlight = useRef(new Set<string>());
+
+  const stale = slug !== null && listSlug !== slug;
+  const shown = stale ? NO_ANIMALS : animals;
+  const shownState = stale ? LOADING : state;
+
   // The list as it is right now, so a run started from a button drawn one
   // render ago still sends what each animal's status says today.
-  const latest = useRef(animals);
-  latest.current = animals;
+  const latest = useRef(shown);
+  latest.current = shown;
   // Kept in a ref so save() does not have to be rebuilt on every redirect
   // callback identity change.
   const unauthorized = useRef(onUnauthorized);
@@ -116,6 +136,7 @@ export function usePortalAnimals(
         if (!live) return;
         setAnimals(list);
         setListedNames(new Map(list.map((animal) => [animal.id, animal.name])));
+        setListSlug(slug);
         setState({ status: "ready" });
       },
       (error: unknown) => {
@@ -125,6 +146,7 @@ export function usePortalAnimals(
           return;
         }
         setAnimals([]);
+        setListSlug(slug);
         setState({
           status: "error",
           message: message(error, portalText.listError),
@@ -163,6 +185,7 @@ export function usePortalAnimals(
       patch: PortalAnimalPatch,
     ): Promise<SaveOutcome> => {
       if (!slug) return "failed";
+      inFlight.current.add(animalId);
       setSaveStates((current) => ({
         ...current,
         [animalId]: { status: "saving" },
@@ -182,7 +205,13 @@ export function usePortalAnimals(
         flashSaved(animalId);
         return "saved";
       } catch (error) {
-        if (isUnauthorized(error)) return "unauthorized";
+        if (isUnauthorized(error)) {
+          // Nothing was stored, and the row must not be left saying it is
+          // still being: the redirect that follows can be slow to land, and
+          // a tab the browser keeps open would show a spinner for good.
+          setSaveStates((current) => ({ ...current, [animalId]: IDLE }));
+          return "unauthorized";
+        }
         setSaveStates((current) => ({
           ...current,
           [animalId]: {
@@ -191,6 +220,8 @@ export function usePortalAnimals(
           },
         }));
         return "failed";
+      } finally {
+        inFlight.current.delete(animalId);
       }
     },
     [flashSaved, slug],
@@ -198,6 +229,11 @@ export function usePortalAnimals(
 
   const save = useCallback(
     async (animalId: string, patch: PortalAnimalPatch): Promise<boolean> => {
+      // The row's controls are disabled while it saves; this is the same
+      // rule underneath them, for a tap that gets past the disabled state.
+      // The second PUT is dropped rather than queued: it was made from a
+      // record the first is about to replace.
+      if (inFlight.current.has(animalId)) return false;
       const outcome = await runSave(animalId, patch);
       if (outcome === "unauthorized") {
         unauthorized.current();
@@ -291,8 +327,8 @@ export function usePortalAnimals(
   );
 
   return {
-    animals,
-    state,
+    animals: shown,
+    state: shownState,
     saveStates,
     reload,
     save,

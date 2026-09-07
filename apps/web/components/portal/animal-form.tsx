@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { TriangleAlert } from "lucide-react";
+import { AgeBoxes, BirthDateBox } from "@/components/portal/age-boxes";
 import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
+import { FieldError } from "@/components/portal/notice";
 import {
   MissingMark,
   OverrideMark,
@@ -16,21 +17,26 @@ import {
   SEX_META,
   SIZE_META,
   SPECIAL_NEEDS_META,
+  TEXT_LIMITS,
   ageParts,
   hintId,
+  isPlausibleBirthDate,
   isPortalCompatibility,
   isPortalEnergy,
   isPortalSex,
   isPortalSize,
   isoDate,
+  limited,
   parseAgeBoxes,
   specialNeedsAnswer,
   specialNeedsValue,
   trimmed,
   type AgeBox,
   type PortalSpecialNeedsAnswer,
+  type ReadBox,
 } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
+import { draftSanitizer } from "@/lib/portal-drafts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,6 +72,14 @@ export type Draft = {
   specialNeeds: PortalSpecialNeedsAnswer | null;
 };
 
+/**
+ * The DOM ids of the three boxes the browser reads for us. This form's own,
+ * because the listing form draws the same boxes on a page that can hold both.
+ */
+const BIRTH_DATE_ID = "portal-birth-date";
+const AGE_YEARS_ID = "portal-age-years";
+const AGE_MONTHS_ID = "portal-age-months";
+
 export function draftFrom(animal: PortalAnimal): Draft {
   const age = ageParts(animal.approximateAgeMonths ?? null);
   return {
@@ -94,6 +108,41 @@ export function draftFrom(animal: PortalAnimal): Draft {
   };
 }
 
+type ChoiceKey =
+  | "sex"
+  | "size"
+  | "energy"
+  | "goodWithKids"
+  | "goodWithDogs"
+  | "goodWithCats"
+  | "apartmentOk"
+  | "specialNeeds";
+
+/** The answers each choice row can hold, so a stored one can be checked. */
+const CHOICES: Record<ChoiceKey, readonly string[]> = {
+  sex: PORTAL_SEXES,
+  size: PORTAL_SIZES,
+  energy: PORTAL_ENERGIES,
+  goodWithKids: PORTAL_COMPATIBILITIES,
+  goodWithDogs: PORTAL_COMPATIBILITIES,
+  goodWithCats: PORTAL_COMPATIBILITIES,
+  apartmentOk: PORTAL_COMPATIBILITIES,
+  specialNeeds: PORTAL_SPECIAL_NEEDS_ANSWERS,
+};
+
+/** What of a stored draft this form can take back. */
+export const sanitizeDraft = draftSanitizer<Draft>({
+  text: [
+    "name",
+    "breed",
+    "birthDate",
+    "ageYears",
+    "ageMonths",
+    "shortDescription",
+  ],
+  choices: CHOICES,
+});
+
 export function isOverridden(
   animal: PortalAnimal,
   field: PortalField,
@@ -105,11 +154,15 @@ export function isOverridden(
  * Only what actually changed goes into the body. A null is sent solely to
  * clear an override the shelter already has, never to "unset" crawled data,
  * which the API cannot do anyway.
+ *
+ * `now` is what the birth date is measured against: a date after today is
+ * not one the animal can have.
  */
 export function buildPatch(
   draft: Draft,
   animal: PortalAnimal,
-): { patch: PortalAnimalPatch; ageError: AgeBox | null } {
+  now: Date,
+): { patch: PortalAnimalPatch; ageError: AgeBox | null; dateError: boolean } {
   const patch: PortalAnimalPatch = {};
 
   function put<Key extends keyof PortalAnimalPatch>(
@@ -122,14 +175,25 @@ export function buildPatch(
     patch[key] = next;
   }
 
-  put("name", trimmed(draft.name), animal.name ?? null);
-  put("breed", trimmed(draft.breed), animal.breed ?? null);
+  // Cut to what the API takes. The inputs carry the same limits as maxLength,
+  // but a draft read back from storage never went through them. The record's
+  // side is trimmed too, so crawled text with a space on the end does not
+  // make an untouched form dirty.
+  put(
+    "name",
+    limited(draft.name, TEXT_LIMITS.name),
+    trimmed(animal.name ?? ""),
+  );
+  put(
+    "breed",
+    limited(draft.breed, TEXT_LIMITS.breed),
+    trimmed(animal.breed ?? ""),
+  );
   put(
     "shortDescription",
-    trimmed(draft.shortDescription),
-    animal.shortDescription ?? null,
+    limited(draft.shortDescription, TEXT_LIMITS.shortDescription),
+    trimmed(animal.shortDescription ?? ""),
   );
-  put("birthDate", trimmed(draft.birthDate), isoDate(animal.birthDate));
   put("sex", draft.sex, isPortalSex(animal.sex) ? animal.sex : null);
   put("size", draft.size, isPortalSize(animal.size) ? animal.size : null);
   put(
@@ -165,6 +229,11 @@ export function buildPatch(
 
   // A box that holds something unusable is left out of the patch: it is not a
   // value to save and not a request to give the field back either.
+  const birthDate = trimmed(draft.birthDate);
+  const dateError =
+    birthDate !== null && !isPlausibleBirthDate(birthDate, now);
+  if (!dateError) put("birthDate", birthDate, isoDate(animal.birthDate));
+
   const age = parseAgeBoxes(draft.ageYears, draft.ageMonths);
   if (!age.error) {
     put(
@@ -174,7 +243,7 @@ export function buildPatch(
     );
   }
 
-  return { patch, ageError: age.error };
+  return { patch, ageError: age.error, dateError };
 }
 
 /** Label row shared by every field: the name, the edit mark, the way back. */
@@ -299,26 +368,54 @@ export function AnimalForm({
   set,
   setAge,
   revertAge,
+  setBirthDate,
+  revertBirthDate,
+  markBox,
   reverting,
   saving,
-  ageError,
-  ageErrorId,
+  refused,
+  refusedErrorId,
 }: {
   /** One prefix per mounted form, for the hints' own ids. */
   uid: string;
   animal: PortalAnimal;
   draft: Draft;
   set: <Key extends keyof Draft>(key: Key, value: Draft[Key]) => void;
-  /** Its own setter, because typing in an age box also retires its error. */
-  setAge: (key: "ageYears" | "ageMonths", value: string) => void;
+  /**
+   * The boxes the browser reads for us get their own setters, because the
+   * page has to know when it could not: `unreadable` is validity.badInput,
+   * and a true means the box holds text the value does not carry. Typing in
+   * an age box also retires its error.
+   */
+  setAge: (
+    key: "ageYears" | "ageMonths",
+    value: string,
+    unreadable: boolean,
+  ) => void;
   revertAge: () => void;
+  setBirthDate: (value: string, unreadable: boolean) => void;
+  revertBirthDate: () => void;
+  /**
+   * The same note, from the input event. onChange only fires when the value
+   * changed, and "e" typed into an empty number box takes it from "" to ""
+   * with badInput set, as does deleting that "e" again with badInput clear.
+   * The input event fires either way, so the mark is kept current from it.
+   */
+  markBox: (box: ReadBox, unreadable: boolean) => void;
   /** Whether saving would give this field back to the crawler. */
   reverting: (field: PortalField) => boolean;
   saving: boolean;
-  ageError: boolean;
-  ageErrorId: string;
+  /** The box the last submit refused. One at a time, so one message. */
+  refused: ReadBox | null;
+  /** The rows share the one message id: only one can be refused. */
+  refusedErrorId: string;
 }) {
   const compatibilityHintId = `${uid}-compatibility-hint`;
+
+  /** The message a read box points at, which only the refused one has. */
+  function errorFor(box: ReadBox): string | null {
+    return refused === box ? refusedErrorId : null;
+  }
 
   // Which of the adopter's filters this animal still leaves blank. Read off
   // the saved animal, not the draft, so the row keeps saying what the public
@@ -326,6 +423,25 @@ export function AnimalForm({
   const missing = new Set<PortalField>(
     missingSearchableFields(animal).map((field) => field.key),
   );
+
+  // What the form opened with, for the rows that ask whether a tap on the
+  // chosen card may take the answer back.
+  const base = draftFrom(animal);
+
+  /**
+   * Whether the chosen card of a row may be tapped off.
+   *
+   * On a row the shelter has overridden, tapping off is the way back: the
+   * cleared row reaches the wire as the null that reverts the field. On a row
+   * the crawl left empty it is the way out of a mis-tap, with nothing lost.
+   * On a row the crawl did answer, tapping off would empty the grid while
+   * the patch dropped the null and the saved value stood: a change the page
+   * shows and never sends. That row keeps its card; the way back from a
+   * mis-tap is the crawled card itself.
+   */
+  function clearable(field: ChoiceKey): boolean {
+    return isOverridden(animal, field) || base[field] === null;
+  }
 
   return (
     <div className="space-y-8">
@@ -347,6 +463,7 @@ export function AnimalForm({
             meta={ENERGY_META}
             value={draft.energy}
             onPick={(energy) => set("energy", energy)}
+            clearable={clearable("energy")}
             disabled={saving}
             describedBy={hintId(uid, "energy")}
           />
@@ -376,6 +493,7 @@ export function AnimalForm({
               meta={COMPATIBILITY_META}
               value={draft[field]}
               onPick={(value) => set(field, value)}
+              clearable={clearable(field)}
               disabled={saving}
               describedBy={compatibilityHintId}
             />
@@ -402,6 +520,7 @@ export function AnimalForm({
             meta={COMPATIBILITY_META}
             value={draft.apartmentOk}
             onPick={(value) => set("apartmentOk", value)}
+            clearable={clearable("apartmentOk")}
             disabled={saving}
           />
         </Field>
@@ -422,6 +541,7 @@ export function AnimalForm({
           <Input
             id="portal-name"
             value={draft.name}
+            maxLength={TEXT_LIMITS.name}
             disabled={saving}
             aria-describedby={hintId(uid, "name")}
             onChange={(event) => set("name", event.target.value)}
@@ -443,6 +563,7 @@ export function AnimalForm({
             meta={SEX_META}
             value={draft.sex}
             onPick={(sex) => set("sex", sex)}
+            clearable={clearable("sex")}
             disabled={saving}
           />
         </Field>
@@ -460,6 +581,7 @@ export function AnimalForm({
           <Input
             id="portal-breed"
             value={draft.breed}
+            maxLength={TEXT_LIMITS.breed}
             disabled={saving}
             onChange={(event) => set("breed", event.target.value)}
           />
@@ -480,6 +602,7 @@ export function AnimalForm({
             meta={SIZE_META}
             value={draft.size}
             onPick={(size) => set("size", size)}
+            clearable={clearable("size")}
             disabled={saving}
           />
         </Field>
@@ -491,24 +614,27 @@ export function AnimalForm({
             uid={uid}
             field="birthDate"
             label={portalText.fieldBirthDate}
-            htmlFor="portal-birth-date"
+            htmlFor={BIRTH_DATE_ID}
             overridden={isOverridden(animal, "birthDate")}
             reverting={reverting("birthDate")}
-            onRevert={() => set("birthDate", "")}
+            onRevert={revertBirthDate}
             disabled={saving}
           >
-            <Input
-              id="portal-birth-date"
-              type="date"
+            <BirthDateBox
+              id={BIRTH_DATE_ID}
               value={draft.birthDate}
               disabled={saving}
-              onChange={(event) => set("birthDate", event.target.value)}
+              errorFor={errorFor}
+              setBirthDate={setBirthDate}
+              markBox={markBox}
             />
+            {refused === "birthDate" && (
+              <FieldError id={refusedErrorId} className="mt-1.5">
+                {portalText.birthDateError}
+              </FieldError>
+            )}
           </Field>
 
-          {/* Two inputs, because a shelter knows an age as "two years", not
-              as a month count. The unit next to each box labels it; the
-              field itself is the group above them. */}
           <Field
             uid={uid}
             field="approximateAgeMonths"
@@ -519,70 +645,24 @@ export function AnimalForm({
             disabled={saving}
             hint={portalText.ageHint}
           >
-            <div
-              role="group"
-              aria-label={portalText.fieldAgeMonths}
-              aria-describedby={hintId(uid, "approximateAgeMonths")}
-              className="grid grid-cols-2 gap-1.5"
-            >
-              <div className="flex items-center gap-1.5">
-                {/* The age's message is its own and sits right below these
-                    two boxes, so the box at fault points at that. The save
-                    bar at the foot of the page is a screen away. */}
-                <Input
-                  id="portal-age-years"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  value={draft.ageYears}
-                  disabled={saving}
-                  aria-invalid={ageError || undefined}
-                  aria-errormessage={ageError ? ageErrorId : undefined}
-                  aria-describedby={hintId(uid, "approximateAgeMonths")}
-                  onChange={(event) => setAge("ageYears", event.target.value)}
-                />
-                <Label
-                  htmlFor="portal-age-years"
-                  className="shrink-0 text-xs font-normal text-muted-foreground"
-                >
-                  {portalText.fieldAgeYearsUnit}
-                </Label>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Input
-                  id="portal-age-months"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  value={draft.ageMonths}
-                  disabled={saving}
-                  aria-invalid={ageError || undefined}
-                  aria-errormessage={ageError ? ageErrorId : undefined}
-                  aria-describedby={hintId(uid, "approximateAgeMonths")}
-                  onChange={(event) => setAge("ageMonths", event.target.value)}
-                />
-                <Label
-                  htmlFor="portal-age-months"
-                  className="shrink-0 text-xs font-normal text-muted-foreground"
-                >
-                  {portalText.fieldAgeMonthsUnit}
-                </Label>
-              </div>
-            </div>
-            {ageError && (
-              <p
-                id={ageErrorId}
-                role="alert"
-                className="mt-1.5 flex items-start gap-1.5 text-sm text-destructive"
-              >
-                <TriangleAlert
-                  className="mt-0.5 size-3.5 shrink-0"
-                  aria-hidden
-                />
+            <AgeBoxes
+              uid={uid}
+              yearsId={AGE_YEARS_ID}
+              monthsId={AGE_MONTHS_ID}
+              years={draft.ageYears}
+              months={draft.ageMonths}
+              disabled={saving}
+              errorFor={errorFor}
+              setAge={setAge}
+              markBox={markBox}
+            />
+            {/* The age's message is its own and sits right below the two
+                boxes, so the box at fault points at that. The save bar at the
+                foot of the page is a screen away. */}
+            {(refused === "ageYears" || refused === "ageMonths") && (
+              <FieldError id={refusedErrorId} className="mt-1.5">
                 {portalText.invalidError}
-              </p>
+              </FieldError>
             )}
           </Field>
         </div>
@@ -605,6 +685,7 @@ export function AnimalForm({
             meta={SPECIAL_NEEDS_META}
             value={draft.specialNeeds}
             onPick={(value) => set("specialNeeds", value)}
+            clearable={clearable("specialNeeds")}
             disabled={saving}
             describedBy={hintId(uid, "specialNeeds")}
           />
@@ -625,6 +706,7 @@ export function AnimalForm({
             id="portal-description"
             rows={5}
             value={draft.shortDescription}
+            maxLength={TEXT_LIMITS.shortDescription}
             disabled={saving}
             aria-describedby={hintId(uid, "shortDescription")}
             onChange={(event) => set("shortDescription", event.target.value)}

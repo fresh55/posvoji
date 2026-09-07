@@ -31,29 +31,31 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def _env_positive_int(name: str, default: int) -> int:
+def _env_str(name: str, default: str) -> str:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip()
+
+
+def _env_int(name: str, *, default: int | None, minimum: int) -> int | None:
+    """An integer setting, or the default when the variable is unset or blank.
+
+    The message names the bound a deployment has to write, not which
+    comparison failed. A minimum with no phrase here fails at import rather
+    than describing itself wrongly, and that is when the caller passes the
+    words again.
+    """
+    must_be = {0: "a non-negative integer", 1: "a positive integer"}[minimum]
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
         return default
     try:
         value = int(raw)
     except ValueError as error:
-        raise ImproperlyConfigured(f"{name} must be a positive integer") from error
-    if value < 1:
-        raise ImproperlyConfigured(f"{name} must be a positive integer")
-    return value
-
-
-def _env_optional_nonnegative_int(name: str) -> int | None:
-    raw = os.environ.get(name)
-    if raw is None or raw.strip() == "":
-        return None
-    try:
-        value = int(raw)
-    except ValueError as error:
-        raise ImproperlyConfigured(f"{name} must be a non-negative integer") from error
-    if value < 0:
-        raise ImproperlyConfigured(f"{name} must be a non-negative integer")
+        raise ImproperlyConfigured(f"{name} must be {must_be}") from error
+    if value < minimum:
+        raise ImproperlyConfigured(f"{name} must be {must_be}")
     return value
 
 
@@ -115,10 +117,28 @@ TEMPLATES = [
 WSGI_APPLICATION = "portal.wsgi.application"
 ASGI_APPLICATION = "portal.asgi.application"
 
+# SQLite takes one writer at a time, and every request thread has its own
+# connection. A deferred transaction asks for the write lock at its first
+# write, and two requests that both read first then collide with "database
+# is locked". IMMEDIATE takes the lock at BEGIN instead, so a second writer
+# waits on the busy timeout and then runs, and the read-modify-write in
+# upsert_override is serialized by the transaction itself, because SQLite
+# ignores select_for_update. Not configurable: the routes are written
+# against it.
+#
+# WAL lets readers go on while a writer holds the lock, and synchronous=NORMAL
+# is durable across process crashes in WAL mode at a fraction of the fsyncs.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.environ.get("PORTAL_DB_PATH") or str(BASE_DIR / "db.sqlite3"),
+        "OPTIONS": {
+            "transaction_mode": "IMMEDIATE",
+            # Seconds a writer waits for the lock before it gives up.
+            "timeout": _env_int("PORTAL_DB_TIMEOUT", default=20, minimum=1),
+            "init_command": os.environ.get("PORTAL_DB_INIT_COMMAND")
+            or "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+        },
     }
 }
 
@@ -152,18 +172,16 @@ SESAME_ONE_TIME = True
 # an identity. Forwarded addresses remain untrusted unless the deployment
 # explicitly states how many rightmost proxy hops it controls. The narrow
 # exception is one same-host proxy hop, identified by a loopback direct peer.
-PORTAL_LOGIN_LINK_RATE = (
-    os.environ.get("PORTAL_LOGIN_LINK_RATE", "5/hour").strip() or "5/hour"
+PORTAL_LOGIN_LINK_RATE = _env_str("PORTAL_LOGIN_LINK_RATE", "5/hour")
+PORTAL_TRUSTED_PROXY_COUNT = _env_int(
+    "PORTAL_TRUSTED_PROXY_COUNT", default=None, minimum=0
 )
-PORTAL_TRUSTED_PROXY_COUNT = _env_optional_nonnegative_int("PORTAL_TRUSTED_PROXY_COUNT")
 
 # The IP limit counts one client, this one counts one mailbox. Without it a
 # caller who changes network can still make the portal deliver message after
 # message to a shelter's published address, which is the address the registry
 # publishes and the one a shelter cannot stop reading.
-PORTAL_LOGIN_LINK_ADDRESS_RATE = (
-    os.environ.get("PORTAL_LOGIN_LINK_ADDRESS_RATE", "3/hour").strip() or "3/hour"
-)
+PORTAL_LOGIN_LINK_ADDRESS_RATE = _env_str("PORTAL_LOGIN_LINK_ADDRESS_RATE", "3/hour")
 
 # Both limits are counters in the cache, so every process that answers a
 # request-link call has to see the same ones. The deployment runs gunicorn
@@ -264,22 +282,29 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
 # Sending is synchronous inside the request, so an unreachable or silent mail
 # host holds a worker until the socket gives up. The caller is waiting for a
 # 204 that says nothing about delivery anyway.
-EMAIL_TIMEOUT = _env_positive_int("PORTAL_EMAIL_TIMEOUT", 10)
+EMAIL_TIMEOUT = _env_int("PORTAL_EMAIL_TIMEOUT", default=10, minimum=1)
 DEFAULT_FROM_EMAIL = os.environ.get("PORTAL_FROM_EMAIL", "portal@posvoji.si")
 # The From address is a send-only mailbox, so the mail carries a display name
 # a shelter recognises and a Reply-To that a person reads.
-PORTAL_FROM_NAME = os.environ.get("PORTAL_FROM_NAME", "").strip() or "Posvoji.si"
-PORTAL_REPLY_TO_EMAIL = (
-    os.environ.get("PORTAL_REPLY_TO_EMAIL", "").strip() or "info@posvoji.si"
-)
+PORTAL_FROM_NAME = _env_str("PORTAL_FROM_NAME", "Posvoji.si")
+PORTAL_REPLY_TO_EMAIL = _env_str("PORTAL_REPLY_TO_EMAIL", "info@posvoji.si")
 
 # Where the frontend serves the magic link landing page.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 MAGIC_LINK_PATH = "/portal/prijava"
 
-# Read only inputs from the rest of the repo.
+# Read only inputs from the rest of the repo. One ingest run writes both
+# datasets: animals.json with the shelters' overrides merged in, which is
+# what the site and the listing read, and animals.crawled.json as the crawl
+# produced it, which is what a baseline and a conflict compare against. A
+# data/dist from before the split has only the first, and the portal falls
+# back to it (core/dataset.py).
 DATASET_PATH = Path(
     os.environ.get("DATASET_PATH") or REPO_ROOT / "data" / "dist" / "animals.json"
+)
+CRAWLED_DATASET_PATH = Path(
+    os.environ.get("CRAWLED_DATASET_PATH")
+    or REPO_ROOT / "data" / "dist" / "animals.crawled.json"
 )
 SHELTERS_YAML_PATH = Path(
     os.environ.get("SHELTERS_YAML") or REPO_ROOT / "data" / "shelters.yaml"

@@ -12,7 +12,10 @@ import { PORTAL_ENERGIES } from "@/lib/portal-api";
 
 afterEach(cleanup);
 
-function renderGrid(value: "calm" | "balanced" | "lively" | null = null) {
+function renderGrid(
+  value: "calm" | "balanced" | "lively" | null = null,
+  clearable?: boolean,
+) {
   const onPick = vi.fn();
   render(
     <ChoiceGrid
@@ -21,6 +24,7 @@ function renderGrid(value: "calm" | "balanced" | "lively" | null = null) {
       meta={ENERGY_META}
       value={value}
       onPick={onPick}
+      clearable={clearable}
       disabled={false}
       describedBy="energy-hint"
     />,
@@ -95,6 +99,24 @@ describe("ChoiceGrid wiring", () => {
     fireEvent.click(card(ENERGY_META.calm.label));
 
     expect(onPick).toHaveBeenCalledWith(null);
+  });
+
+  // The crawled editor turns that off for a row whose answer came off the
+  // shelter's site: an emptied grid there would show a change the patch
+  // never sends. The card stays on, and another card can still be picked.
+  it("keeps the chosen card on when the row is not clearable", () => {
+    const { onPick } = renderGrid("calm", false);
+
+    fireEvent.click(card(ENERGY_META.calm.label));
+
+    expect(onPick).not.toHaveBeenCalled();
+    expect(card(ENERGY_META.calm.label).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+
+    fireEvent.click(card(ENERGY_META.lively.label));
+
+    expect(onPick).toHaveBeenCalledWith("lively");
   });
 
   it("lays a two-answer row out in two columns", () => {

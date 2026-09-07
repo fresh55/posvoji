@@ -83,6 +83,28 @@ def test_the_filter_narrows_to_the_review_queue(admin_client, conflicted):
 
 
 @pytest.mark.django_db
+def test_the_crawl_state_reads_the_crawled_dataset(admin_client, shelter, dataset_file):
+    # The merged file carries the override, so read off it every correction
+    # would look like a crawl that caught up. The crawl itself moved.
+    dataset_file(
+        [make_animal("testno:1", shelter, status="reserved")],
+        crawled=[make_animal("testno:1", shelter, status="adopted")],
+    )
+    AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        status="reserved",
+        baseline={"status": "available"},
+    )
+
+    moved = admin_client.get(CHANGELIST, {"crawl": "moved"}).content.decode()
+    caught_up = admin_client.get(CHANGELIST, {"crawl": "caught-up"}).content.decode()
+
+    assert "testno:1" in moved
+    assert "testno:1" not in caught_up
+
+
+@pytest.mark.django_db
 def test_the_filter_finds_overrides_with_no_matching_animal(
     admin_client, shelter, dataset_file
 ):
@@ -116,6 +138,31 @@ def test_accepting_the_crawl_clears_only_the_conflicting_field(
     assert moved.breed == "mešanec"
     assert moved.baseline == {"breed": "kuža"}
     assert moved.updated_by == admin_user
+
+
+@pytest.mark.django_db
+def test_accepting_the_crawl_for_the_last_field_removes_the_row(
+    override_admin, rf, admin_user, shelter, dataset_file
+):
+    # The shelter's route deletes a row with nothing stated, and the admin
+    # follows the same rule rather than leaving an empty row in the list.
+    dataset_file([make_animal("testno:1", shelter, status="adopted")])
+    only = AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        status="reserved",
+        baseline={"status": "available"},
+    )
+
+    run_action(
+        override_admin,
+        "accept_the_crawl",
+        rf,
+        admin_user,
+        AnimalOverride.objects.filter(pk=only.pk),
+    )
+
+    assert not AnimalOverride.objects.filter(pk=only.pk).exists()
 
 
 @pytest.mark.django_db

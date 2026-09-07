@@ -121,6 +121,116 @@ describe("the name the public site can already have a page for", () => {
   });
 });
 
+describe("a list read under a shelter it was not fetched for", () => {
+  it("is loading, with nothing of the previous shelter's, from the first render", async () => {
+    vi.mocked(fetchAnimals).mockImplementation(async (slug) =>
+      slug === "testno"
+        ? [animal()]
+        : [animal({ id: "drugo:1", name: "Bine" })],
+    );
+    const view = renderHook(
+      ({ slug }: { slug: string }) => usePortalAnimals(slug, vi.fn()),
+      { initialProps: { slug: "testno" } },
+    );
+    await waitFor(() => expect(view.result.current.state.status).toBe("ready"));
+    expect(view.result.current.animals[0].id).toBe("testno:1");
+
+    view.rerender({ slug: "drugo" });
+
+    // Not testno's list under drugo's name for even one render: the editor
+    // page would read an animal of drugo's as missing from it.
+    expect(view.result.current.state).toEqual({ status: "loading" });
+    expect(view.result.current.animals).toEqual([]);
+
+    await waitFor(() => expect(view.result.current.state.status).toBe("ready"));
+    expect(view.result.current.animals[0].id).toBe("drugo:1");
+  });
+
+  it("reports the new shelter's own failure, not the old list", async () => {
+    vi.mocked(fetchAnimals).mockResolvedValueOnce([animal()]);
+    vi.mocked(fetchAnimals).mockRejectedValueOnce(new PortalError(403));
+    const view = renderHook(
+      ({ slug }: { slug: string }) => usePortalAnimals(slug, vi.fn()),
+      { initialProps: { slug: "testno" } },
+    );
+    await waitFor(() => expect(view.result.current.state.status).toBe("ready"));
+
+    view.rerender({ slug: "tuje" });
+
+    await waitFor(() => expect(view.result.current.state.status).toBe("error"));
+    expect(view.result.current.animals).toEqual([]);
+  });
+});
+
+describe("one animal saved twice at once", () => {
+  it("drops the second save while the first is still out", async () => {
+    const { result } = await load([animal()]);
+    const queue = heldSaves();
+
+    let first: Promise<boolean> = Promise.resolve(false);
+    let second: boolean | null = null;
+    await act(async () => {
+      first = result.current.save("testno:1", { name: "Murka" });
+      second = await result.current.save("testno:1", { name: "Murkica" });
+    });
+
+    expect(second).toBe(false);
+    expect(queue).toHaveLength(1);
+    expect(sentPatches()).toEqual([["testno:1", { name: "Murka" }]]);
+    expect(result.current.saveStates["testno:1"]).toEqual({ status: "saving" });
+
+    await act(async () => {
+      queue[0].resolve(animal({ name: "Murka", overrides: { name: "Murka" } }));
+      await first;
+    });
+    expect(await first).toBe(true);
+    expect(result.current.animals[0].name).toBe("Murka");
+
+    // Once it has answered, the same animal saves again.
+    vi.mocked(saveAnimal).mockResolvedValue(
+      animal({ name: "Murkica", overrides: { name: "Murkica" } }),
+    );
+    let third = false;
+    await act(async () => {
+      third = await result.current.save("testno:1", { name: "Murkica" });
+    });
+    expect(third).toBe(true);
+    expect(result.current.animals[0].name).toBe("Murkica");
+  });
+
+  it("does not hold up a save of a different animal", async () => {
+    const { result } = await load([animal(), animal({ id: "testno:2" })]);
+    const queue = heldSaves();
+
+    await act(async () => {
+      void result.current.save("testno:1", { name: "Murka" });
+      void result.current.save("testno:2", { name: "Bine" });
+    });
+
+    expect(queue).toHaveLength(2);
+    expect(sentPatches()).toEqual([
+      ["testno:1", { name: "Murka" }],
+      ["testno:2", { name: "Bine" }],
+    ]);
+  });
+});
+
+describe("a session that ends during a save", () => {
+  it("leaves no row saying it is still saving", async () => {
+    const { result, onUnauthorized } = await load([animal()]);
+    vi.mocked(saveAnimal).mockRejectedValue(new PortalError(401));
+
+    let saved = true;
+    await act(async () => {
+      saved = await result.current.save("testno:1", { name: "Murka" });
+    });
+
+    expect(saved).toBe(false);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    expect(result.current.saveStates["testno:1"]).toEqual({ status: "idle" });
+  });
+});
+
 describe("confirming every status the crawl read", () => {
   it("sends each animal the status it already shows, and skips the answered one", async () => {
     const { result } = await load([

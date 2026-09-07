@@ -24,13 +24,14 @@ import type {
 } from "@/components/filters/filter-groups";
 import {
   FilterSheet,
-  filterSheetWorthOpening,
+  filterSheetReason,
 } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { activeFilterCount } from "@/lib/filters";
+import { cn } from "@/lib/utils";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
@@ -143,7 +144,7 @@ export function AnimalFilters({
   // Asked of the sheet rather than worked out here: what is inside it is its
   // own business, and this file only needs to know whether to hang a button
   // on the dock for it (filter-sheet.tsx).
-  const hasFilterSheet = filterSheetWorthOpening({
+  const sheetReason = filterSheetReason({
     groups,
     toggles,
     goodWith,
@@ -152,6 +153,14 @@ export function AnimalFilters({
     resultCount,
     activeCount,
   });
+  // The one answer that runs out at a width. From md the toolbar above draws
+  // the order itself and the sheet's own sort row stands down, so a sheet
+  // held open by the order alone has nothing behind its trigger there and the
+  // trigger goes with it. In CSS and not from a width read in JS: this page is
+  // statically exported, and a button deciding whether to exist after
+  // hydration flickers on every cold load to settle a state no live dataset
+  // reaches.
+  const orderOnly = sheetReason === "order";
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker
@@ -402,16 +411,31 @@ export function AnimalFilters({
           any shelter has animals at all (see animal-grid.tsx) and this
           condition holds. It still stands down when there is genuinely nothing
           to put in the dock, which is an empty dataset: an empty floating box
-          is not a control. */}
+          is not a control. The same rule is what takes the plate away at md
+          when the sheet's trigger goes and no picker is left to hold. */}
       {/* Outside the dock's condition: the way back up is worth having
           whether or not there is anything left to filter, and it is the only
           control on this page that answers the grid's own length. */}
       <BackToTop />
 
-      {(hasFilterSheet || shelters) && (
-        <div data-slot="mobile-filter-dock" className={DOCK_CLASS}>
-          {hasFilterSheet && (
+      {(sheetReason || shelters) && (
+        <div
+          data-slot="mobile-filter-dock"
+          className={cn(
+            DOCK_CLASS,
+            // What the plate does once the Filtri button leaves it at md.
+            // The grid counts its children and not the drawn ones, so
+            // only:col-span-2 does not fire on a hidden sibling: the picker
+            // falls into the auto column the button used to hold, which
+            // measured 151px of a 448px plate at 768 with the rest of it
+            // empty. One column instead. With no picker to hold, there is no
+            // plate to draw at all.
+            orderOnly && (shelters ? "md:grid-cols-1" : "md:hidden"),
+          )}
+        >
+          {sheetReason && (
             <FilterSheet
+              className={orderOnly ? "md:hidden" : undefined}
               sort={sort}
               onSortChange={onSortChange}
               filters={filters}

@@ -168,9 +168,63 @@ describe("mobile filter hardening", () => {
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const trigger = screen.getByRole("button", { name: "Filters" });
+
+    // Below md only. The order is the sheet's one reason to exist here, and
+    // the toolbar draws the order itself from md, so the trigger stands down
+    // at that width rather than opening on a title, an empty body and a
+    // footer. With no picker to keep it company the plate goes too. Classes
+    // and not measurements, because jsdom resolves no breakpoint and these
+    // are the whole of the rule. Read before the click: an open drawer hides
+    // the page behind it from the accessibility tree, trigger included.
+    expect(dock?.className).toContain("md:hidden");
+    expect(trigger.className.split(" ")).toContain("md:hidden");
+
+    fireEvent.click(trigger);
 
     expect(await screen.findByRole("combobox")).toBeTruthy();
+  });
+
+  it("leaves the picker the whole plate where the order-only sheet stands down at md", () => {
+    // The same order-only state with a shelter left to pick. The trigger goes
+    // at md and the picker stays, so the plate keeps its border and drops to
+    // one column: only:col-span-2 counts children and not drawn ones, and
+    // left at two the picker falls into the auto column the button used to
+    // hold, measured at 768 as 151px of a 448px plate.
+    renderFilters({
+      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
+      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+      resultCount: 3,
+    });
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock?.className).toContain("md:grid-cols-1");
+    expect(dock?.className).not.toContain("md:hidden");
+    expect(
+      screen.getByRole("button", { name: "Filters" }).className.split(" "),
+    ).toContain("md:hidden");
+  });
+
+  it("keeps the trigger at every width once a filter is on, order or no order", () => {
+    // Three results and a shelter picked, so the order and the way back out
+    // are both reasons to open. The order is the only one that runs out at
+    // md, so it is the last answer the sheet tries: a picked shelter has the
+    // Kje row and the footer's clear, drawn at every width below lg, and the
+    // trigger has to be there at every one of them.
+    renderFilters({
+      filters: { ...EMPTY_FILTERS, shelter: ["test"] },
+      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
+      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+      shelterTally: new Map([["test", 3]]),
+      resultCount: 3,
+    });
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock?.className).not.toContain("md:hidden");
+    expect(dock?.className).not.toContain("md:grid-cols-1");
+    expect(
+      screen.getByRole("button", { name: "Filters, 1 active" }).className.split(" "),
+    ).not.toContain("md:hidden");
   });
 
   it("keeps the sheet mounted at zero results while a filter is on", async () => {

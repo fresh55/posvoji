@@ -32,6 +32,7 @@ import type {
   ToggleDef,
 } from "@/lib/filters";
 import type { AnimalSort } from "@/lib/sort";
+import { cn } from "@/lib/utils";
 
 /** The Kje row at the top of the sheet, and the pills under it. The dialog it
  *  opens is the dock's picker, not one of the sheet's own: a full-viewport map
@@ -56,7 +57,7 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
-/** Whether there is anything behind the Filtri button worth opening.
+/** What is behind the Filtri button, or undefined when nothing is.
  *
  *  It lives here rather than in the dock that mounts the sheet, because what
  *  it answers is what this file draws, and the dock was reconstructing that
@@ -70,19 +71,17 @@ const DRAWER_CLOSE_MS = 500;
  *  something to do in here, and so does a filtered-to-nothing one, which is
  *  where a visitor most needs the way back out.
  *
- *  The answer does not move at md, where the toolbar carries the order
- *  itself: what `orderWorthPicking` holds the sheet open for there is the
- *  scope row and the way back out, not the sort row it names. Narrowing it by
- *  width would take a media query in JS, and the sheet is worth more open
- *  than a tablet is worth a trigger less.
- *
- *  The state that buys: between md and lg, a dataset with no facet sections,
- *  no active filters and no shelters to choose between opens on a title, an
- *  empty body and a footer, because this clause alone was true and the row it
- *  was named for is not drawn. It takes a shelterless dataset to reach, which
- *  no live build has, and the honest fix is one boolean read from a width and
- *  passed in here rather than a fourth clause guessing at one. */
-export function filterSheetWorthOpening({
+ *  A reason and not a yes, because one of the three is drawn at one width and
+ *  not another: from md the toolbar carries the order itself and the sort row
+ *  below stands down, so a sheet held open by `order` alone opens there on a
+ *  title, an empty body and a footer. The caller stands the trigger down at
+ *  that width instead, in CSS (animal-filters.tsx). `order` is the last
+ *  answer tried for that reason: a sheet with anything else in it keeps its
+ *  trigger at every width, and only the one that runs out at md has to say
+ *  so. */
+export type FilterSheetReason = "sections" | "undo" | "order";
+
+export function filterSheetReason({
   groups,
   toggles,
   goodWith,
@@ -98,16 +97,19 @@ export function filterSheetWorthOpening({
   care?: CareSection;
   resultCount: number;
   activeCount: number;
-}): boolean {
+}): FilterSheetReason | undefined {
   const hasSections =
     groups.length > 0 ||
     toggles.length > 0 ||
     (goodWith?.options.length ?? 0) > 0 ||
     (home?.options.length ?? 0) > 0 ||
     (care?.options.length ?? 0) > 0;
-  const orderWorthPicking = resultCount > 1;
-  const somethingToUndo = activeCount > 0;
-  return hasSections || orderWorthPicking || somethingToUndo;
+  if (hasSections) return "sections";
+  // Values and not sections: a picked shelter has no section in here but it
+  // has the Kje row, and every active value has the footer's clear.
+  if (activeCount > 0) return "undo";
+  if (resultCount > 1) return "order";
+  return undefined;
 }
 
 export function FilterSheet({
@@ -129,6 +131,7 @@ export function FilterSheet({
   onToggleProperty,
   onToggleManyProperties,
   onClearAll,
+  className,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -154,6 +157,11 @@ export function FilterSheet({
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   onClearAll: () => void;
+  /** Merged onto the trigger, which is all this component draws until it is
+   *  opened. The dock passes the width at which the sheet has nothing left in
+   *  it (animal-filters.tsx); the content is portalled to <body> and takes
+   *  none of it. */
+  className?: string;
 } & FilterActionContract) {
   const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -196,7 +204,7 @@ export function FilterSheet({
               ? t("filtersWithCount", { count: activeCount })
               : messages.filters
           }
-          className="h-11 gap-1.5 rounded-ui px-3"
+          className={cn("h-11 gap-1.5 rounded-ui px-3", className)}
         >
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}

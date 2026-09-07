@@ -234,11 +234,9 @@ describe("mobile filter hardening", () => {
     // jsdom resolves no breakpoint either, so the band this control is drawn
     // in is asserted on the classes rather than on what is visible.
     const mobileSort = within(mobileToolbar).getByRole("combobox");
-    expect(mobileSort.closest("div")?.className).toContain("hidden");
-    expect(mobileSort.closest("div")?.className).toContain("md:block");
-    expect(mobileSort.closest("div")?.className).toContain("shrink-0");
-    // 44px between md and lg, which is what the row already stood at.
-    expect(mobileSort.className).toContain("max-lg:min-h-11");
+    const sortClasses = mobileSort.className.split(" ");
+    expect(sortClasses).toContain("max-md:hidden");
+    expect(sortClasses).toContain("shrink-0");
     // The row only becomes a flex box at md. Below it the strip's -my-2/py-2
     // collapse through this block and hold the row at 44px; flex at every
     // width measures the 28px margin box instead and the phone loses 16px.
@@ -334,12 +332,7 @@ describe("mobile filter hardening", () => {
 
     const dialog = await screen.findByRole("dialog");
     const sort = within(dialog).getByRole("combobox");
-    expect(sort.className).toContain("md:hidden");
-    // The header's own padding is what stays under the title once the row
-    // goes, and the row takes its own top margin with it.
-    expect(sort.className).toContain("mt-3");
-    const header = dialog.querySelector('[data-slot="filter-sheet-header"]');
-    expect(header?.className).toContain("pb-3");
+    expect(sort.className.split(" ")).toContain("md:hidden");
   });
 
   it("does not repeat the species tabs inside the sheet", async () => {

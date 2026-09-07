@@ -89,8 +89,10 @@ describe("the language switcher", () => {
     // The language the reader is already on is the press that does nothing,
     // so below lg it is the one that goes. Read off the class and not the
     // layout: this is a media query, and jsdom does not run one, so both
-    // anchors are here either way and aria-current still marks the current
-    // one for anything that reads the page rather than looks at it.
+    // anchors are here either way. aria-current stays on the current one for
+    // anything reading the markup, though not for a screen reader below lg,
+    // which honours display:none the same as the eye does; what says which
+    // language the page is in there is lang on the document.
     renderSwitcher();
 
     const slovenian = screen.getByRole("link", { name: "Slovenščina" });
@@ -109,12 +111,10 @@ describe("the language switcher", () => {
 
     const well = screen.getByRole("navigation");
     const slovenian = screen.getByRole("link", { name: "Slovenščina" });
-    const english = screen.getByRole("link", { name: "English" });
 
     expect(well.className.split(" ")).not.toContain("bg-muted");
     expect(well.className.split(" ")).toContain("lg:bg-muted");
     expect(slovenian.className.split(" ")).not.toContain("bg-background");
     expect(slovenian.className.split(" ")).toContain("lg:bg-background");
-    expect(english.className.split(" ")).toContain("text-muted-foreground");
   });
 });

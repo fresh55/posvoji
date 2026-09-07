@@ -162,6 +162,28 @@ export function AnimalFilters({
   // time: the labels there are already stripped by shelterChipLabel and the
   // removals already go through the same toggle.
   const shelterChips = chips.filter((chip) => chip.facet === "shelter");
+  // Whether there is an order left to pick, asked once for the two rows that
+  // offer one. resultCount and not just isEmpty: isEmpty is the whole dataset,
+  // and a filter combination that narrows it to zero results still leaves
+  // nothing for an order to apply to.
+  const canSort = !isEmpty && resultCount > 0;
+  // The species strip, described once and mounted in both rows. Only CSS
+  // separates the two, so both are in the tree at every width and the strip
+  // prices that itself (species-tabs.tsx); what this spares is the five props
+  // going out of step between two call sites, not the second mount. The box
+  // is the strip's, because SpeciesTabs takes no className and the row needs
+  // something that can be told to give way before the sort control does.
+  const speciesStrip = (
+    <div className="min-w-0">
+      <SpeciesTabs
+        value={filters.species}
+        onChange={onSpeciesChange}
+        counts={speciesTally}
+        roster={speciesRoster}
+        disabled={isEmpty}
+      />
+    </div>
+  );
 
   return (
     <>
@@ -182,20 +204,21 @@ export function AnimalFilters({
           A phone's bar is narrow and short enough to be worth the effect;
           a full-width desktop rail is not, and an opaque ground pins just
           as well. */}
-      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-3 backdrop-blur-sm short:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
+      {/* py-rail-pad and not a plain length: the filter panel across the
+          gutter pins to the same edge and carries the same amount as top
+          padding, so the two columns start their content on one line. The
+          number is written once, in globals.css. */}
+      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-rail-pad backdrop-blur-sm short:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
+        {/* min-h-8 states the row's height rather than leaving it to whichever
+            control happens to be tallest. It was the sort trigger's 32px
+            (size="sm"), and that control stands down at zero results, so the
+            row fell to the tabs' own 28px in the one state where nothing else
+            filled it and the panel head across the gutter drifted 4px off. */}
         <div
           data-slot="desktop-toolbar"
-          className="hidden items-center justify-between gap-4 lg:flex"
+          className="hidden min-h-8 items-center justify-between gap-4 lg:flex"
         >
-          <div className="min-w-0">
-            <SpeciesTabs
-              value={filters.species}
-              onChange={onSpeciesChange}
-              counts={speciesTally}
-              roster={speciesRoster}
-              disabled={isEmpty}
-            />
-          </div>
+          {speciesStrip}
 
           <div className="flex shrink-0 items-center gap-2">
             {/* sr-only here for the same reason as the phone's status line
@@ -230,12 +253,7 @@ export function AnimalFilters({
                 />
               </div>
             )}
-            {/* resultCount, not just isEmpty: isEmpty is the whole dataset,
-                and a filter combination that narrows it to zero results
-                still leaves nothing for an order to apply to. */}
-            {!isEmpty && resultCount > 0 && (
-              <SortPicker value={sort} onChange={onSortChange} />
-            )}
+            {canSort && <SortPicker value={sort} onChange={onSortChange} />}
           </div>
         </div>
 
@@ -252,8 +270,7 @@ export function AnimalFilters({
             trigger measures 186px on the desktop row, so from md it takes
             the right end of this one and the tabs keep the rest, in a
             min-w-0 box so the strip still scrolls and still fades its own
-            edges (species-tabs.tsx). Same guard as the desktop row above,
-            for the reason stated there.
+            edges (species-tabs.tsx).
 
             flex from md and not below it. The strip hangs its tap overlays
             on -my-2/py-2, and this row stands at 44px only while it is a
@@ -266,20 +283,20 @@ export function AnimalFilters({
           data-slot="mobile-toolbar"
           className="md:flex md:min-h-11 md:items-center md:justify-between md:gap-4 lg:hidden"
         >
-          <div className="min-w-0">
-            <SpeciesTabs
-              value={filters.species}
-              onChange={onSpeciesChange}
-              counts={speciesTally}
-              roster={speciesRoster}
-              disabled={isEmpty}
-            />
-          </div>
+          {speciesStrip}
 
-          {!isEmpty && resultCount > 0 && (
-            <div className="hidden shrink-0 md:block">
-              <SortPicker value={sort} onChange={onSortChange} />
-            </div>
+          {/* max-md:hidden on the control itself, the way the sheet's copy
+              wears md:hidden, rather than a box around it. The trigger's own
+              base is flex (ui/select.tsx), so a wrapper turning it back on at
+              md with md:block would have flattened its icon, label and
+              chevron into a stack. shrink-0 because the strip beside it is
+              min-w-0 and gives way first. */}
+          {canSort && (
+            <SortPicker
+              value={sort}
+              onChange={onSortChange}
+              className="shrink-0 max-md:hidden"
+            />
           )}
         </div>
 

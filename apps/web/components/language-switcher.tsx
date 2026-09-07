@@ -28,9 +28,12 @@ import { cn } from "@/lib/utils";
 // the overlay each one lays out to 44px reached across the gap and over its
 // neighbour: measured on a 390px phone, the right edge of SL hit-tested as EN,
 // because EN comes later in the DOM and won. That rule is written down once,
-// on the tap-target utility in globals.css. Below lg there is one button now
-// and nothing within 4px of it, so either way would hold; the box stays the
-// grown one so no hit test here changes.
+// on the tap-target utility in globals.css. Below lg there is one button now,
+// and the rule's own test is whether a neighbour sits inside the overhang: the
+// menu button is 12px away and carries a 4px overhang of its own, so an
+// overlay here would meet it exactly, abutting rather than overlapping. That
+// is the one case the rule does not settle, so the box stays the grown one and
+// no hit test here changes.
 //
 // min-w-11 with the height, because 44px is a square and this only ever had
 // the one side of it. The label is two characters, so px-3 brought the box to
@@ -89,7 +92,11 @@ export function LanguageSwitcher({
                 ? // Hidden below lg, and everything that raises it out of the
                   // well is written at lg with it, so none of it can paint on
                   // a width where the well is not there to raise it out of.
-                  "max-lg:hidden lg:bg-background lg:text-foreground lg:shadow-sm lg:hover:bg-background"
+                  // No text colour: this half is the page's own foreground and
+                  // inherits it, where the other half spends a class muting
+                  // itself. The hover keeps its lg prefix because ghost's own
+                  // dark:hover rule would otherwise outrank an unprefixed one.
+                  "max-lg:hidden lg:bg-background lg:shadow-sm lg:hover:bg-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

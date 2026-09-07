@@ -69,14 +69,14 @@ test("names a region on the first tap and picks it on the second", async ({
   const consequence = dialog.locator("[data-callout-note]").first();
   await expect(consequence).toBeVisible();
   await expect(consequence).toHaveText(
-    /^(Izbere \d+ zavetiš|Selects \d+ shelter)/,
+    /^(Še enkrat tapni: Izbere \d+ zavetiš|Tap again: Selects \d+ shelter)/,
   );
   // The annotation is aria-hidden, like every annotation on this plate, so the
   // region's own label is the only way the same sentence reaches a screen
   // reader. It has to be there too.
   await expect(centre).toHaveAttribute(
     "aria-label",
-    /(Izbere \d+ zavetiš|Selects \d+ shelter)/,
+    /(Še enkrat tapni: Izbere \d+ zavetiš|Tap again: Selects \d+ shelter)/,
   );
 
   await centre.tap();

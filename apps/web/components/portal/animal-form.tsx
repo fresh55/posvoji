@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { AgeBoxes, BirthDateBox } from "@/components/portal/age-boxes";
 import { missingSearchableFields } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
@@ -18,25 +17,10 @@ import {
   SIZE_META,
   SPECIAL_NEEDS_META,
   TEXT_LIMITS,
-  ageParts,
   hintId,
-  isPlausibleBirthDate,
-  isPortalCompatibility,
-  isPortalEnergy,
-  isPortalSex,
-  isPortalSize,
-  isoDate,
-  limited,
-  parseAgeBoxes,
-  specialNeedsAnswer,
-  specialNeedsValue,
-  trimmed,
-  type AgeBox,
-  type PortalSpecialNeedsAnswer,
   type ReadBox,
 } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
-import { draftSanitizer } from "@/lib/portal-drafts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,31 +30,11 @@ import {
   PORTAL_SEXES,
   PORTAL_SIZES,
   type PortalAnimal,
-  type PortalAnimalPatch,
-  type PortalCompatibility,
-  type PortalEnergy,
   type PortalField,
-  type PortalSex,
-  type PortalSize,
 } from "@/lib/portal-api";
-
-export type Draft = {
-  name: string;
-  breed: string;
-  birthDate: string;
-  /** The age is one number on the wire and two inputs here: years and months. */
-  ageYears: string;
-  ageMonths: string;
-  shortDescription: string;
-  sex: PortalSex | null;
-  size: PortalSize | null;
-  energy: PortalEnergy | null;
-  goodWithKids: PortalCompatibility | null;
-  goodWithDogs: PortalCompatibility | null;
-  goodWithCats: PortalCompatibility | null;
-  apartmentOk: PortalCompatibility | null;
-  specialNeeds: PortalSpecialNeedsAnswer | null;
-};
+import type { ReactNode } from "react";
+import { ChoiceKey, Draft, draftFrom, isOverridden } from "./animal-draft";
+import { FormSection } from "./form-section";
 
 /**
  * The DOM ids of the three boxes the browser reads for us. This form's own,
@@ -79,172 +43,6 @@ export type Draft = {
 const BIRTH_DATE_ID = "portal-birth-date";
 const AGE_YEARS_ID = "portal-age-years";
 const AGE_MONTHS_ID = "portal-age-months";
-
-export function draftFrom(animal: PortalAnimal): Draft {
-  const age = ageParts(animal.approximateAgeMonths ?? null);
-  return {
-    name: animal.name ?? "",
-    breed: animal.breed ?? "",
-    birthDate: isoDate(animal.birthDate) ?? "",
-    ageYears: age.years,
-    ageMonths: age.months,
-    shortDescription: animal.shortDescription ?? "",
-    sex: isPortalSex(animal.sex) ? animal.sex : null,
-    size: isPortalSize(animal.size) ? animal.size : null,
-    energy: isPortalEnergy(animal.energy) ? animal.energy : null,
-    goodWithKids: isPortalCompatibility(animal.goodWithKids)
-      ? animal.goodWithKids
-      : null,
-    goodWithDogs: isPortalCompatibility(animal.goodWithDogs)
-      ? animal.goodWithDogs
-      : null,
-    goodWithCats: isPortalCompatibility(animal.goodWithCats)
-      ? animal.goodWithCats
-      : null,
-    apartmentOk: isPortalCompatibility(animal.apartmentOk)
-      ? animal.apartmentOk
-      : null,
-    specialNeeds: specialNeedsAnswer(animal.specialNeeds),
-  };
-}
-
-type ChoiceKey =
-  | "sex"
-  | "size"
-  | "energy"
-  | "goodWithKids"
-  | "goodWithDogs"
-  | "goodWithCats"
-  | "apartmentOk"
-  | "specialNeeds";
-
-/** The answers each choice row can hold, so a stored one can be checked. */
-const CHOICES: Record<ChoiceKey, readonly string[]> = {
-  sex: PORTAL_SEXES,
-  size: PORTAL_SIZES,
-  energy: PORTAL_ENERGIES,
-  goodWithKids: PORTAL_COMPATIBILITIES,
-  goodWithDogs: PORTAL_COMPATIBILITIES,
-  goodWithCats: PORTAL_COMPATIBILITIES,
-  apartmentOk: PORTAL_COMPATIBILITIES,
-  specialNeeds: PORTAL_SPECIAL_NEEDS_ANSWERS,
-};
-
-/** What of a stored draft this form can take back. */
-export const sanitizeDraft = draftSanitizer<Draft>({
-  text: [
-    "name",
-    "breed",
-    "birthDate",
-    "ageYears",
-    "ageMonths",
-    "shortDescription",
-  ],
-  choices: CHOICES,
-});
-
-export function isOverridden(
-  animal: PortalAnimal,
-  field: PortalField,
-): boolean {
-  return Object.prototype.hasOwnProperty.call(animal.overrides, field);
-}
-
-/**
- * Only what actually changed goes into the body. A null is sent solely to
- * clear an override the shelter already has, never to "unset" crawled data,
- * which the API cannot do anyway.
- *
- * `now` is what the birth date is measured against: a date after today is
- * not one the animal can have.
- */
-export function buildPatch(
-  draft: Draft,
-  animal: PortalAnimal,
-  now: Date,
-): { patch: PortalAnimalPatch; ageError: AgeBox | null; dateError: boolean } {
-  const patch: PortalAnimalPatch = {};
-
-  function put<Key extends keyof PortalAnimalPatch>(
-    key: Key,
-    next: PortalAnimalPatch[Key],
-    current: PortalAnimalPatch[Key],
-  ): void {
-    if (next === current) return;
-    if (next === null && !isOverridden(animal, key)) return;
-    patch[key] = next;
-  }
-
-  // Cut to what the API takes. The inputs carry the same limits as maxLength,
-  // but a draft read back from storage never went through them. The record's
-  // side is trimmed too, so crawled text with a space on the end does not
-  // make an untouched form dirty.
-  put(
-    "name",
-    limited(draft.name, TEXT_LIMITS.name),
-    trimmed(animal.name ?? ""),
-  );
-  put(
-    "breed",
-    limited(draft.breed, TEXT_LIMITS.breed),
-    trimmed(animal.breed ?? ""),
-  );
-  put(
-    "shortDescription",
-    limited(draft.shortDescription, TEXT_LIMITS.shortDescription),
-    trimmed(animal.shortDescription ?? ""),
-  );
-  put("sex", draft.sex, isPortalSex(animal.sex) ? animal.sex : null);
-  put("size", draft.size, isPortalSize(animal.size) ? animal.size : null);
-  put(
-    "energy",
-    draft.energy,
-    isPortalEnergy(animal.energy) ? animal.energy : null,
-  );
-  put(
-    "goodWithKids",
-    draft.goodWithKids,
-    isPortalCompatibility(animal.goodWithKids) ? animal.goodWithKids : null,
-  );
-  put(
-    "goodWithDogs",
-    draft.goodWithDogs,
-    isPortalCompatibility(animal.goodWithDogs) ? animal.goodWithDogs : null,
-  );
-  put(
-    "goodWithCats",
-    draft.goodWithCats,
-    isPortalCompatibility(animal.goodWithCats) ? animal.goodWithCats : null,
-  );
-  put(
-    "apartmentOk",
-    draft.apartmentOk,
-    isPortalCompatibility(animal.apartmentOk) ? animal.apartmentOk : null,
-  );
-  put(
-    "specialNeeds",
-    specialNeedsValue(draft.specialNeeds),
-    animal.specialNeeds,
-  );
-
-  // A box that holds something unusable is left out of the patch: it is not a
-  // value to save and not a request to give the field back either.
-  const birthDate = trimmed(draft.birthDate);
-  const dateError =
-    birthDate !== null && !isPlausibleBirthDate(birthDate, now);
-  if (!dateError) put("birthDate", birthDate, isoDate(animal.birthDate));
-
-  const age = parseAgeBoxes(draft.ageYears, draft.ageMonths);
-  if (!age.error) {
-    put(
-      "approximateAgeMonths",
-      age.months,
-      animal.approximateAgeMonths ?? null,
-    );
-  }
-
-  return { patch, ageError: age.error, dateError };
-}
 
 /** Label row shared by every field: the name, the edit mark, the way back. */
 function Field({
@@ -330,24 +128,6 @@ function Field({
         </p>
       )}
     </div>
-  );
-}
-
-/** One titled block of rows. Four or five of them make a form. */
-export function FormSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="space-y-5">
-      <h2 className="border-b pb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h2>
-      {children}
-    </section>
   );
 }
 
@@ -716,3 +496,11 @@ export function AnimalForm({
     </div>
   );
 }
+export {
+  buildPatch,
+  draftFrom,
+  isOverridden,
+  sanitizeDraft,
+} from "./animal-draft";
+export type { Draft } from "./animal-draft";
+export { FormSection } from "./form-section";

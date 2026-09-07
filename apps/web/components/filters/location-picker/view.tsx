@@ -1,30 +1,7 @@
-import { filteredAnimalCount } from "@/lib/labels";
-import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  List,
-  LoaderCircle,
-  MapPin,
-  Maximize2,
-  Navigation,
-  Search,
-  X,
-} from "lucide-react";
-import { MiniMap } from "@/components/filters/mini-map";
-import { MapAttribution } from "@/components/filters/map-attribution";
-import { MapLegend } from "@/components/filters/map-legend";
 import { LocationScopeRow } from "@/components/filters/location-scope-row";
-import { ShelterMap } from "@/components/filters/shelter-map";
-import { ShelterRows } from "@/components/filters/shelter-rows";
+import { MiniMap } from "@/components/filters/mini-map";
 import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogClose,
@@ -34,10 +11,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { animalCount } from "@/lib/labels";
-import { readTypedLocation } from "@/lib/origin";
 import { cn } from "@/lib/utils";
+import { Maximize2, X } from "lucide-react";
 import type { LocationPickerController } from "./controller";
 import {
   openedWithKeyboard,
@@ -45,20 +22,12 @@ import {
   sameValues,
   visibleTrigger,
 } from "./model";
-import {
-  hasFinePointer,
-  MAP_STAGE_TRANSITION_CLASS,
-  PANEL_TRANSITION_CLASS,
-} from "./motion";
-
-// How many shelters are picked, as a pill. Three places in this file say it:
-// the peek bar, the panel head beside it, and the folded rail. Written out at
-// each of them the three had already drifted apart, so the shape lives here
-// and each site adds only the colour its own surround asks for. Shape only for
-// that reason: the rail's pill sits inside a control that brightens on hover
-// and inherits that, while the two heads state their own muted ink.
-const COUNT_PILL_CLASS =
-  "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-2xs tabular-nums";
+import { hasFinePointer } from "./motion";
+import { PickerDock } from "./picker-dock";
+import { PickerMapStage } from "./picker-map-stage";
+import { COUNT_PILL_CLASS } from "./picker-scope";
+import { PickerSearch } from "./picker-search";
+import { PickerShelterList } from "./picker-shelter-list";
 
 export function LocationPickerView({
   controller,
@@ -69,11 +38,9 @@ export function LocationPickerView({
     options,
     counts,
     selected,
-    onToggle,
     onToggleMany,
     resultCount,
     offSite,
-    summaries,
     deepLink,
     dress,
     locale,
@@ -85,54 +52,14 @@ export function LocationPickerView({
     setQuery,
     expandedShelter,
     setExpandedShelter,
-    offGroupOpen,
-    setOffGroupOpen,
-    listRef,
     dropNote,
-    spotlitShelterId,
     panelOpen,
-    setPanelOpen,
     sheetOpen,
-    setSheetOpen,
     searchRef,
-    placeMode,
-    searching,
-    statusId,
-    offGroupId,
-    state,
-    toggleNearby,
-    dismissError,
-    turnOffNearby,
-    resolved,
-    origin,
-    rowRefs,
-    hoveredRowValue,
-    setHoveredRowValue,
-    hoveredMarkerValues,
-    setHoveredMarkerValues,
-    highlightedDensity,
-    setHighlightedDensity,
-    regionShelterNames,
     markersVisible,
-    setMarkersVisible,
-    setMapFacts,
     pins,
-    handlePick,
-    hoverScrollTo,
-    toggleExpandedShelter,
-    visibleRows,
-    visibleOffRows,
     searchNews,
-    hasSelected,
-    hasMixed,
-    hasEmpty,
-    nearbyOn,
-    status,
-    missing,
-    detailBase,
-    offGroupHeading,
     label,
-    doneLabel,
   } = controller;
 
   // What is in scope, and how many shelters that is. Both head rows print it:
@@ -155,21 +82,58 @@ export function LocationPickerView({
     </>
   );
 
-  const offGroupList = (
-    <ShelterRows
-      rows={visibleOffRows.map((row) => ({
-        value: row.value,
-        label: row.label,
-        city: row.city,
-        km: row.km,
-        href: `${detailBase}/${row.value}`,
-      }))}
-      highlighted={hoveredMarkerValues ?? undefined}
-      scrollTo={hoverScrollTo}
-      onHoverRow={setHoveredRowValue}
-      lessThanOneKm={messages.lessThanOneKm}
-      labelledBy={offGroupId}
-      className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
+  const listContent = (
+    <PickerShelterList
+      counts={controller.counts}
+      selected={controller.selected}
+      onToggle={controller.onToggle}
+      summaries={controller.summaries}
+      locale={controller.locale}
+      messages={controller.messages}
+      t={controller.t}
+      query={controller.query}
+      setQuery={controller.setQuery}
+      expandedShelter={controller.expandedShelter}
+      offGroupOpen={controller.offGroupOpen}
+      setOffGroupOpen={controller.setOffGroupOpen}
+      listRef={controller.listRef}
+      searchRef={controller.searchRef}
+      offGroupId={controller.offGroupId}
+      rowRefs={controller.rowRefs}
+      setHoveredRowValue={controller.setHoveredRowValue}
+      hoveredMarkerValues={controller.hoveredMarkerValues}
+      hoverScrollTo={controller.hoverScrollTo}
+      toggleExpandedShelter={controller.toggleExpandedShelter}
+      visibleRows={controller.visibleRows}
+      visibleOffRows={controller.visibleOffRows}
+      detailBase={controller.detailBase}
+      offGroupHeading={controller.offGroupHeading}
+    />
+  );
+
+  const searchContent = (
+    <PickerSearch
+      selected={controller.selected}
+      onToggle={controller.onToggle}
+      onToggleMany={controller.onToggleMany}
+      locale={controller.locale}
+      messages={controller.messages}
+      query={controller.query}
+      setQuery={controller.setQuery}
+      searchRef={controller.searchRef}
+      placeMode={controller.placeMode}
+      searching={controller.searching}
+      statusId={controller.statusId}
+      state={controller.state}
+      toggleNearby={controller.toggleNearby}
+      dismissError={controller.dismissError}
+      turnOffNearby={controller.turnOffNearby}
+      resolved={controller.resolved}
+      rowRefs={controller.rowRefs}
+      visibleRows={controller.visibleRows}
+      visibleOffRows={controller.visibleOffRows}
+      nearbyOn={controller.nearbyOn}
+      status={controller.status}
     />
   );
 
@@ -444,187 +408,32 @@ export function LocationPickerView({
               hairlines are a quarter of a unit wide. Checked live at 1280,
               1440 and 1920 and it runs clean, because the only work per frame
               is one SVG relayout of paths that are already computed. */}
-          <div
-            data-map-stage={panelOpen ? "panel" : "rail"}
-            className={cn(
-              // One stack at every width: the plate, then the caption under
-              // it. The caption used to float into the plate's own bottom-left
-              // corner from lg up, which only works while the letterbox
-              // happens to leave paper there; a plate limited by height leaves
-              // none and the legend ended up on the country. In flow the plate
-              // is given what the caption does not take, so an overlap is not
-              // something to tune away, it is something that cannot be
-              // expressed.
-              //
-              // The credit is the one exemption, and it floats in that corner
-              // now. The legend is what made the rule: a key is read against
-              // the map it explains, so a key drawn on the country is a key
-              // that cannot be read. The credit is read against itself. It
-              // carries its own opaque plate, it takes no pointer, and below
-              // lg it is one line where the caption was three rows, so the
-              // worst corner the letterbox can hand it costs legibility
-              // nothing and costs a tap nothing. See the paragraph on the
-              // plate for the rest.
-              "absolute inset-x-0 top-0 flex flex-col gap-2 p-2 sm:p-3",
-              // Named, so the paw layer in map-marker.tsx can ask how wide the
-              // plate is actually drawn rather than guessing from the viewport.
-              // This element is the right one to ask: its width is the width
-              // the SVG fills, and it is the box that changes width when the
-              // panel folds to a rail. The container query is about width
-              // alone, so the caption sharing this column costs it nothing.
-              "@container/map-stage",
-              // p-3 and not p-4 at lg: every other edge in this dialog is
-              // inset by three, the title chip, the close, the pill and the
-              // panel alike, and the plate was the one thing keeping a
-              // different gutter.
-              "lg:right-auto lg:bottom-0 lg:p-3",
-              MAP_STAGE_TRANSITION_CLASS,
-              // Below lg the sheet takes height instead of width, so the same
-              // recentering happens on the other axis: the container gives up
-              // exactly what the sheet takes and the plate recentres in what
-              // is left. Nothing is ever drawn under the sheet either.
-              //
-              // The inset is the sheet's own height, read from --sheet-h
-              // rather than written out a second time. The two used to be twin
-              // arbitrary expressions, base and short-viewport, kept in step
-              // by a note; they are one declaration on the stage now (see it
-              // above), so there is nothing left to drift.
-              sheetOpen ? "bottom-(--sheet-h)" : "bottom-13",
-              panelOpen
-                ? "lg:w-[calc(100%-25.5rem)]"
-                : "lg:w-[calc(100%-4.5rem)]",
-            )}
-          >
-            {/* The plate gets what the caption leaves and no more. min-h-0 is
-                what lets a flex item give way at all, and the SVG letterboxes
-                inside whatever height it ends up with, so the map shrinks
-                rather than the caption being pushed off the stage. */}
-            <div className="relative flex min-h-0 flex-1 items-center justify-center">
-              <ShelterMap
-                pins={pins}
-                selected={selected}
-                onPick={handlePick}
-                onFacts={setMapFacts}
-                origin={origin}
-                // This shelter's open details in the list are already carrying
-                // its count and species line, so the marker under the pointer
-                // says its name and stops there.
-                describedElsewhere={expandedShelter}
-                highlightedValue={hoveredRowValue}
-                matchedValues={
-                  // Only a name narrows anything, so only a name has matches
-                  // to dim the rest of the country against. A place leaves
-                  // every row in the list and would have dimmed nothing while
-                  // claiming to have searched.
-                  searching
-                    ? [...visibleRows, ...visibleOffRows].map(
-                        (row) => row.value,
-                      )
-                    : null
-                }
-                // The ring and named card that answer "so where is that?",
-                // asked by an animal card's shelter name. Stronger than the
-                // hover highlight on purpose, and the only signal phones get.
-                //
-                // No note under the name. A shelter named on an animal card is
-                // not "the responsible shelter" for anywhere; that caption
-                // belongs to the found-animal page, which asks the other
-                // question (found-animal-atlas.tsx). The ring and the name are
-                // the whole answer here.
-                spotlightValues={spotlitShelterId ? [spotlitShelterId] : null}
-                onHoverShelters={setHoveredMarkerValues}
-                // The plate says whether it is drawing markers, and this
-                // dialog's instruction line and legend answer to that rather
-                // than to a breakpoint of their own. See markersVisible above.
-                onMarkersVisible={setMarkersVisible}
-                highlightedDensity={highlightedDensity}
-                // The same breakdown the shelter details read. On the plate it is
-                // a line of species glyphs under the name of one hovered
-                // shelter, so the map answers "who lives here" without
-                // waiting for a click.
-                summaries={summaries}
-                // What an empty region has to say for itself. Computed here
-                // because this is where the coverage table already is.
-                regionShelterNames={regionShelterNames}
-                // lg+: the SVG takes the whole row above and lets its own
-                // preserveAspectRatio letterbox the viewBox inside it. That is
-                // the letterboxing: no aspect-ratio arithmetic on this side,
-                // and the paper it leaves showing is the dialog's ground.
-                // Below lg it keeps the component's own h-auto instead, so the
-                // plate is exactly as tall as 320:210 makes it and no taller,
-                // capped at the row so a raised sheet shrinks it rather than
-                // pushing it out of the frame.
-                className="max-h-full lg:h-full"
-              />
-
-              {/* The credit, floated on the plate rather than set under it. CC
-                  BY 4.0 still requires it visible and it still is: it left the
-                  caption's flow, not the dialog, and nothing on the path from
-                  it up to the dialog hides it. What it stopped doing is
-                  charging the caption 36px for three lines of prose, which on
-                  a 320px phone is a fifth of the plate standing above it.
-
-                  Opaque, unlike the /80 the title chip and the close button
-                  wear. Those are chrome and can afford to let the map through.
-                  This is 10px type that has to clear 4.5:1, and the ratio the
-                  size was chosen against was measured on the paper; over a
-                  hillshade that varies underneath it the ratio would vary with
-                  it, so the paper travels with the text.
-
-                  pointer-events-none on the paragraph and auto on the links
-                  alone: the box sits over a corner of the country that can be
-                  picked, and a credit is not allowed to eat a region's taps.
-
-                  Bottom-left because that is the emptiest corner the plate
-                  has, sea and the Italian border, and because it is where the
-                  letterbox leaves bare paper when the viewBox does not fill
-                  the row. */}
-              <MapAttribution messages={messages} />
-            </div>
-
-            {/* The caption: the legend, under the plate, which is where a
-                printed sheet puts a key and the one place it can be that no
-                aspect ratio can turn into an overlap. It is the
-                stage's last row, so the plate's bottom edge is always above
-                it, whatever the sheet is doing to the height they share.
-
-                The plate's own furniture keeps its own corners inside the
-                viewBox and never meets this; the confirm pill takes the
-                dialog's bottom-right, which at lg is outside this column
-                entirely (the stage stops where the panel begins) and below lg
-                floats in the same band this sits in, as it did before.
-
-                Nothing in it folds any more. The legend used to be taken away
-                with the sheet, on the reasoning that an open sheet leaves the
-                map nothing worth explaining; measured, it leaves a plate, and
-                the density ramp, the selection green, the hatch and the origin
-                ring are all still drawn on it. What a phone gets is the
-                compact register MapLegend writes for itself, not a smaller
-                share of the same rows. The stage's floor pays for it: see the
-                sheet's ceiling term below.
-
-                The credit used to sit under the legend here and floats on the
-                plate now, so this row holds one item: nothing to space it
-                against, and no pointer-events pair, the legend being the only
-                thing in the band that can be reached. 10px, where the two of
-                them together took 49. */}
-            <div className="z-10 w-full shrink-0">
-              <MapLegend
-                showDensity={pins.some((pin) => pin.count > 0)}
-                highlightedDensity={highlightedDensity}
-                onHoverDensity={setHighlightedDensity}
-                onLeaveDensity={() => setHighlightedDensity(null)}
-                hasSelectedRegion={hasSelected}
-                hasMixedRegion={hasMixed}
-                // Both halves of the same question: there is a hollow circle
-                // to explain only where the roster draws one and the plate
-                // is drawing markers at all.
-                hasEmptyMarker={hasEmpty && markersVisible}
-                origin={origin}
-                messages={messages}
-              />
-            </div>
-          </div>
+          <PickerMapStage
+            selected={controller.selected}
+            summaries={controller.summaries}
+            messages={controller.messages}
+            expandedShelter={controller.expandedShelter}
+            spotlitShelterId={controller.spotlitShelterId}
+            panelOpen={controller.panelOpen}
+            sheetOpen={controller.sheetOpen}
+            searching={controller.searching}
+            origin={controller.origin}
+            hoveredRowValue={controller.hoveredRowValue}
+            setHoveredMarkerValues={controller.setHoveredMarkerValues}
+            highlightedDensity={controller.highlightedDensity}
+            setHighlightedDensity={controller.setHighlightedDensity}
+            regionShelterNames={controller.regionShelterNames}
+            markersVisible={controller.markersVisible}
+            setMarkersVisible={controller.setMarkersVisible}
+            setMapFacts={controller.setMapFacts}
+            pins={controller.pins}
+            handlePick={controller.handlePick}
+            visibleRows={controller.visibleRows}
+            visibleOffRows={controller.visibleOffRows}
+            hasSelected={controller.hasSelected}
+            hasMixed={controller.hasMixed}
+            hasEmpty={controller.hasEmpty}
+          />
 
           {/* The title, floated on the paper rather than stacked above the
               map. DialogHeader stays whole because radix names the dialog off
@@ -699,656 +508,19 @@ export function LocationPickerView({
               folds are the same DOM with different classes, so the list, the
               search and whichever shelter is open inside it keep their state
               and their scroll position across either move. */}
-          <div
-            data-picker-panel={panelOpen ? "open" : "collapsed"}
-            data-picker-sheet={sheetOpen ? "open" : "collapsed"}
-            className={cn(
-              "absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden border-t bg-background/95 shadow-lg backdrop-blur",
-              PANEL_TRANSITION_CLASS,
-              // The sheet used to be a flat 55dvh, which is a fraction of the
-              // screen picked for a tall phone and then charged to every
-              // short one. Its chrome does not shrink with the viewport: the
-              // peek bar, the tab row, the two 44px inputs, the sort row and
-              // the pill's reserve come to about 320px whatever the screen
-              // is, so at 375x667 the list scroller was left 18px and at
-              // 320x568 it was left none at all, with the confirm pill
-              // sitting where the first row should have been.
-              //
-              // Three terms, innermost first:
-              //
-              //   55dvh          what a tall phone gets, unchanged. At 390x844
-              //                  this is still the term that wins, so that
-              //                  layout is exactly what it was.
-              //   max(…,27.5rem) the floor: 320px of chrome plus three rows of
-              //                  about 40px. This is what a short viewport
-              //                  gets instead of a fraction, and it is why the
-              //                  sheet is sized by what it holds rather than
-              //                  by how tall the screen happens to be.
-              //   min(…,100%-…) the ceiling, against the stage rather than the
-              //                  viewport, so the floor can never push the
-              //                  sheet past the dialog it lives in. What it
-              //                  subtracts is --sheet-reserve, the map stage's
-              //                  own floor.
-              //
-              // That reserve used to be a flat 9rem, on the reasoning that
-              // what the stage has to keep is room for its caption. It is not:
-              // it is room for the map and its caption, and the caption was
-              // the only half being counted. Measured with the sheet open, the
-              // plate came out 335x122 at 375x667, 283x69 at 320x568 and
-              // 696x192 on a 768 tablet, which is a 320:210 country drawn at a
-              // third of its own proportions in a band of paper. Nothing in
-              // the dialog said so, because the SVG letterboxes politely.
-              //
-              // So the reserve is what the plate needs plus what the caption
-              // costs:
-              //
-              //   --plate-h  the height a whole plate takes at this dialog's
-              //              width, which is 210/320 of it (MAP_WIDTH and
-              //              MAP_HEIGHT in lib/geo.ts). It reads --picker-w,
-              //              declared once on DialogContent and worn there, so
-              //              the width is not written twice.
-              //   + 2.5rem   the caption under the plate and the stage's own
-              //              gap. It was 4rem while the CC BY paragraph shared
-              //              that row and ran to two or three lines: 63px at
-              //              375 wide, 76px at 320. The credit floats on the
-              //              plate now and the row is the legend by itself,
-              //              measured at 10px, so the term is the legend and
-              //              the gap and nothing else. Measuring the plate
-              //              against the whole dialog rather than the padded
-              //              stage already covers the edges, so 2.5rem is the
-              //              rest.
-              //   min(…,50%) and never more than half the stage. Past about
-              //              730px of width a whole plate wants more height
-              //              than the dialog has, and an uncapped reserve
-              //              would go on taking it: at 1000x800 it asked for
-              //              697 of a 750px stage and left the list 53. Half
-              //              is where the two stop bidding, and it only binds
-              //              on a screen wide enough for the map to have won
-              //              anyway.
-              //
-              // A phone is tall and narrow, so the plate term wins there and
-              // the cap never comes into it: at 390x844 the reserve is 305 of
-              // a 791px stage, the 55dvh term is still under the ceiling, and
-              // that layout is untouched. At 375x667 and 320x568 the ceiling
-              // is what decides, the sheet gives up the hundred or so pixels
-              // the map was missing, and the column below scrolls for the
-              // rest.
-              //
-              // The flat 6rem stands on a viewport that is short and at least
-              // sm wide, which is every phone held sideways. There the plate
-              // wants 520px of a 365px stage and no split is worth having, so
-              // the sheet lands folded instead (see the landing effect above)
-              // and this reserve is only what a visitor who raises it anyway
-              // is charged: the caption, and nothing for a map they have just
-              // said they are not looking at.
-              //
-              // Both terms live on the stage as --sheet-h and --sheet-reserve,
-              // so the height here and the stage's own bottom inset are one
-              // expression read twice rather than two written twice.
-              sheetOpen ? "h-(--sheet-h) rounded-ui-top" : "h-13",
-              "lg:inset-x-auto lg:right-3 lg:top-16 lg:bottom-16 lg:h-auto lg:rounded-ui lg:border",
-              panelOpen ? "lg:w-96" : "lg:w-12 lg:justify-center",
-            )}
-          >
-            {/* The peek bar, below lg. The whole strip is the control, because
-                on a sheet the strip is the affordance.
-
-                It says the current answer, not the name of what is behind it.
-                A strip reading "Zavetišča" over a sheet whose first control
-                already said so was a label standing where a fact belonged.
-                What a collapsed sheet has to carry is what the picking added
-                up to, which is the same sentence the toolbar trigger wears,
-                computed once as `label` above and read here. The count badge
-                stays beside it as the at-a-glance form of the same thing. */}
-            <button
-              type="button"
-              data-picker-peek
-              aria-expanded={sheetOpen}
-              onClick={() => setSheetOpen((current) => !current)}
-              className="flex h-13 shrink-0 items-center gap-2 px-4 text-left lg:hidden"
-            >
-              {scopeHeadLabel}
-              <ChevronUp
-                className={cn(
-                  "ml-auto size-4 text-muted-foreground transition-transform motion-reduce:transition-none",
-                  sheetOpen && "rotate-180",
-                )}
-                aria-hidden
-              />
-            </button>
-
-            {/* The rail: everything the folded panel still has to say, which is
-                that there is a list behind it and how much has been picked.
-                One control, so the whole rail head takes the click. */}
-            <div
-              data-picker-panel-head={panelOpen || undefined}
-              className={cn(
-                "hidden shrink-0 lg:flex",
-                panelOpen
-                  ? "items-center justify-between gap-2 px-4 pt-4 pb-2"
-                  : "flex-col items-center p-2",
-              )}
-            >
-              {panelOpen && (
-                <span className="flex min-w-0 items-center gap-2">
-                  {scopeHeadLabel}
-                </span>
-              )}
-              <button
-                type="button"
-                data-picker-rail={!panelOpen || undefined}
-                data-picker-collapse={panelOpen || undefined}
-                aria-expanded={panelOpen}
-                aria-label={
-                  panelOpen ? messages.collapsePanel : messages.expandPanel
-                }
-                onClick={() => setPanelOpen((current) => !current)}
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {panelOpen ? (
-                  <ChevronRight className="size-4" aria-hidden />
-                ) : (
-                  <ChevronLeft className="size-4" aria-hidden />
-                )}
-                {!panelOpen && selected.length > 0 && (
-                  <span aria-hidden className={COUNT_PILL_CLASS}>
-                    {selected.length}
-                  </span>
-                )}
-              </button>
-              {!panelOpen && (
-                <List className="size-4 text-muted-foreground" aria-hidden />
-              )}
-            </div>
-
-            {/* Mounted while either dock is out, and hidden at the breakpoint
-                whose dock is folded. One copy of the list and one search box,
-                whichever way the panel is currently drawn. */}
-            {(panelOpen || sheetOpen) && (
-              <div
-                className={cn(
-                  // pt-1 and no more at lg. The head row above already ends
-                  // with pb-2, and anything larger here made the gap under it
-                  // two different gaps, so this 4px is not spacing: it is
-                  // clearance. A scroller clips at its padding box, and the
-                  // search box flush against the top edge loses the outer 3px
-                  // of its focus ring to that clip. Nothing reserved at the
-                  // bottom either: every child of this column, the footer
-                  // included, takes its own height in flow.
-                  //
-                  // Below lg there is no head row to be clear of, only the peek
-                  // bar, so this column pays the gap itself: pt-3, which is
-                  // what the vanished tab row used to leave between the strip
-                  // and the field.
-                  //
-                  // overflow-y-auto is the floor under all of that. Everything
-                  // above sizes the sheet to what it holds, and on a screen
-                  // short enough no size is enough: a 390px viewport held
-                  // sideways leaves this column about 160px to seat 300px of
-                  // chrome, and while the panel clipped what did not fit, the
-                  // list and the confirm button were not on screen at all and
-                  // nothing scrolled to reach them. The list is still the one
-                  // child that gives way, so this scroller only takes over once
-                  // the list has given everything it has; when it does, the
-                  // footer is scrolled to rather than cut off, which is what in
-                  // flow has to mean on a screen that short. The peek bar sits
-                  // outside it, so the fold never scrolls away from under the
-                  // thumb.
-                  //
-                  // Plain, not fade-scroll: that utility takes the scrollbar
-                  // away and puts a mask in its place, and this is a last
-                  // resort that should say so in the platform's own hand.
-                  "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-1 pb-4 max-lg:pt-3",
-                  // And below lg, whatever the home indicator asks for on top
-                  // of that. The sheet is the bottom edge of the dialog and
-                  // the dialog is nearly the bottom edge of the screen, so on
-                  // a phone with a gesture bar the last thing in this column,
-                  // which is the way out, sits under it. Only what the dialog
-                  // is not already clear of: 94dvh leaves 3dvh below the
-                  // frame, which is 12px on a 390px landscape screen against
-                  // an inset of 34, so the sum would pad twice for the same
-                  // strip of glass and charge a short viewport for it.
-                  "max-lg:pb-[calc(1rem+max(0px,env(safe-area-inset-bottom,0px)-3dvh))]",
-                  !panelOpen && "lg:hidden",
-                  !sheetOpen && "max-lg:hidden",
-                )}
-              >
-                {/* One box, and it takes both ways of narrowing a country:
-                where you are, and which shelter you are after. It used to be
-                two, stacked, and the visitor had to sort their own sentence
-                into the right one before typing it. "Maribor" belonged in
-                both.
-
-                What the text is, the text decides. The postal table either
-                recognises it, in which case it is a place and the whole list
-                sorts to it, or it does not, in which case it is a name and the
-                list narrows to the rows carrying it. Typing runs the one into
-                the other: "Mari" leaves the Maribor rows, "Maribor" gives them
-                all back in order of distance from there. See placeMode and
-                searching in the controller, which is where the switch lives.
-
-                The typed origin is still the sort that always works: no
-                permission prompt, no fix to wait for, and it answers "which
-                shelter is near the town I am moving to" as well as it answers
-                "near me". */}
-                <div className="relative shrink-0">
-                  {/* The mark tells the visitor which of the two the box
-                      has just become, which nothing else on screen does
-                      before the list moves under it. Two glyphs and not one
-                      tinted glyph, because this is a change of subject, not
-                      a change of state: the pin is the place the list is
-                      sorting from, the magnifier is the text it is
-                      filtering by. */}
-                  {placeMode ? (
-                    <MapPin
-                      data-picker-field-mode="place"
-                      className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-foreground"
-                      aria-hidden
-                    />
-                  ) : (
-                    <Search
-                      data-picker-field-mode="name"
-                      className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                  )}
-                  <Input
-                    ref={searchRef}
-                    // Not type="search". WebKit draws that type its own
-                    // clear button, and this field already carries one that
-                    // puts the focus back where the visitor left it; two
-                    // crosses in one box is one too many.
-                    type="text"
-                    // Both halves of what this takes are words, so the
-                    // plain keyboard is right even though half the answers
-                    // are four digits: a numeric pad cannot spell Maribor.
-                    // And no autofill, because the browser has nothing
-                    // stored that fits a box holding either a postcode or a
-                    // shelter's name; postal-code, which the place field
-                    // used to claim, would offer the visitor's own address
-                    // to a field that is as likely to want "Mala hiša".
-                    inputMode="text"
-                    autoComplete="off"
-                    value={query}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setQuery(next);
-                      // The most recent act wins. Typing a place that resolves is
-                      // a newer answer than any fix, so geolocation goes off
-                      // rather than quietly outranking what was just typed.
-                      // Anything else only clears a stale error, which would
-                      // otherwise sit on top of this input's own feedback and make
-                      // typing look inert.
-                      if (readTypedLocation(next).status === "matched") {
-                        turnOffNearby();
-                      } else {
-                        dismissError();
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      // The top row a key may act on: the first match that has
-                      // something to toggle. Both branches below mean the same
-                      // row, so it is found once.
-                      const first = visibleRows[0];
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        // Only a unique name match can be committed from the
-                        // field. Ambiguous matches hand focus to the list.
-                        // A place already sorted the rows as it was typed.
-                        if (searching) {
-                          if (
-                            first &&
-                            visibleRows.length + visibleOffRows.length === 1
-                          )
-                            onToggle(first.value);
-                          else if (first)
-                            rowRefs.current.get(first.value)?.focus();
-                        } else {
-                          event.currentTarget.blur();
-                        }
-                        return;
-                      }
-                      // ArrowDown walks into the list, whichever mode put
-                      // the rows there.
-                      if (event.key === "ArrowDown" && first) {
-                        rowRefs.current.get(first.value)?.focus();
-                        event.preventDefault();
-                      }
-                      // Escape is the dialog's to hear first, so what it does in
-                      // this field is decided on DialogContent above.
-                    }}
-                    // The box holds one answer at a time, so coming back to it
-                    // means replacing, not appending. Selecting on focus makes
-                    // typing a new postcode over an old one just work.
-                    onFocus={(event) => event.currentTarget.select()}
-                    enterKeyHint="done"
-                    placeholder={messages.placeOrShelter}
-                    aria-label={messages.placeOrShelter}
-                    aria-describedby={
-                      state.status === "error" ? undefined : statusId
-                    }
-                    // 44px tall below lg, the same touch-target rule the rest of
-                    // this dialog's mobile chrome keeps; lg and up gets the
-                    // denser h-8 back. text-base below lg because iOS Safari
-                    // zooms the page whenever a focused input sets type under
-                    // 16px, and this dialog is a map: a zoom leaves it unaimable.
-                    className="h-11 pl-8 pr-8 text-base md:text-base lg:h-8 lg:text-sm"
-                  />
-                  {query !== "" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuery("");
-                        searchRef.current?.focus();
-                      }}
-                      aria-label={messages.clearField}
-                      // The icon stays size-6, but below lg the button's own box
-                      // grows to the 44px touch target and re-centers on the same
-                      // spot the smaller icon sits at, so the field does not have
-                      // to widen for it.
-                      className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-ui text-muted-foreground transition-colors hover:text-foreground lg:size-6"
-                    >
-                      <X className="size-3.5" aria-hidden />
-                    </button>
-                  )}
-                </div>
-
-                {/* Directly under the field it is about, where the eye already is
-                after typing. Stays mounted so a denied permission is
-                announced, not just drawn. */}
-                <p
-                  id={statusId}
-                  aria-live="polite"
-                  className="mt-1 shrink-0 text-2xs leading-tight text-muted-foreground empty:hidden"
-                >
-                  {status}
-                </p>
-
-                <div className="mt-2 flex shrink-0 items-center justify-between gap-2">
-                  {/* This changes sort order, not filter state. The icon is a
-                  crosshair rather than the sort arrow the sort picker owns:
-                  with a typed box above it, this button's job is "use where I
-                  am", and sorting is what both of them cause. It steps aside
-                  while a typed place drives the sort: the list is already
-                  nearest-first, and pressing it then would silently swap the
-                  typed origin for the visitor's own. */}
-                  {resolved.source !== "typed" && (
-                    <button
-                      type="button"
-                      onClick={toggleNearby}
-                      aria-pressed={nearbyOn}
-                      aria-describedby={
-                        state.status === "error" ? statusId : undefined
-                      }
-                      className={cn(
-                        // max-lg:min-h-9 rather than the full 44px: this row sits
-                        // beside the Clear button and a full min-h-11 on both
-                        // would force the row itself taller than the layout
-                        // wants. 36px still clears the WCAG 2.5.8 minimum and
-                        // is a real improvement on the old py-0.5 (about 22px).
-                        "inline-flex w-fit items-center gap-1.5 rounded-ui py-0.5 text-xs transition-colors max-lg:min-h-9",
-                        nearbyOn
-                          ? "font-medium text-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {state.status === "locating" ? (
-                        <LoaderCircle
-                          className="size-3.5 animate-spin"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Navigation className="size-3.5" aria-hidden />
-                      )}
-                      {state.status === "locating"
-                        ? messages.locating
-                        : messages.nearestFirst}
-                    </button>
-                  )}
-
-                  {/* The way back to no shelter at all, and the only reset in the
-                  dialog. Named for what it clears rather than with the bare
-                  "Počisti" every other sheet in the site uses: this one sits
-                  beside a search box and a place box that both have a clear of
-                  their own, and the word alone did not say which of the three
-                  it meant. Ghost weight, because live filtering means the
-                  primary act is picking, not undoing it. */}
-                  {selected.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => onToggleMany(selected)}
-                      // Same max-lg:min-h-9 as the nearest-me toggle beside it.
-                      // px-2 and a hover surface give the press a body to land on,
-                      // so it reads as a button rather than a stray line of text.
-                      className="ml-auto inline-flex items-center rounded-ui px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-lg:min-h-9"
-                    >
-                      {pickerText[locale].clearSelection} ({selected.length}
-                      )
-                    </button>
-                  )}
-                </div>
-
-                {/* The list scrolls inside the panel at every size. In the sheet it
-                used to be the dialog that scrolled; the sheet's height is
-                bounded, so the scrolling has to happen here or the peek bar
-                gets pushed off the top of its own sheet.
-
-                min-h-0 is what lets it give way to the fixed rows above it.
-                Below lg it may only give way so far: this is the one child of
-                the column that is allowed to shrink, so every pixel the chrome
-                wants comes out of here, and with a hard zero as the limit the
-                list is what disappears first. 5rem is the last resort, not the
-                normal case, and it only bites if something above grows past
-                what the sheet's own floor budgeted for it, a two-line status
-                line under the place field being the likely one, and a landscape
-                phone being the certain one. When it does, the overflow lands in
-                the column's own scroll rather than in the list, which is the
-                right thing to spend: a row that has to be scrolled to can still
-                be read, a row that was never given a height cannot. */}
-                <div
-                  ref={listRef}
-                  // fade-scroll rather than a scrollbar. The group of
-                  // shelters with nothing listed sits below the fold at
-                  // every height this panel takes, so the list always has
-                  // more under it than it shows, and a bare overflow-y-auto
-                  // left that to a scrollbar the platform may draw as
-                  // nothing at all until it is scrolled. The mask says it
-                  // without taking a gutter, which is also why pr-1 goes:
-                  // it was insetting the rows off a scrollbar that is no
-                  // longer drawn.
-                  className="fade-scroll mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20"
-                >
-                  {visibleRows.length === 0 &&
-                  visibleOffRows.length === 0 ? (
-                    // The one state in this panel that had a bare
-                    // underline for a control. Centred in the space the
-                    // list is not using, with the reset as a real button:
-                    // an empty list is the one moment the panel has room
-                    // to spare, and the way out of it should look like
-                    // something to press.
-                    <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        {messages.noSheltersFound} »{query.trim()}«
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setQuery("");
-                          searchRef.current?.focus();
-                        }}
-                        // size-sm draws 32px, and this is the only way out
-                        // of a list with nothing in it: the one control on
-                        // screen at that moment is the one that can least
-                        // afford to be missed by a thumb. The dialog's own
-                        // lg gate, as everywhere else here.
-                        className="max-lg:min-h-11"
-                      >
-                        {messages.clearSearch}
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <ShelterRows
-                        rows={visibleRows}
-                        counts={counts}
-                        selected={selected}
-                        // The parent's own toggle, unwrapped: a row click is a
-                        // selection and nothing more, exactly like a marker click.
-                        onToggle={onToggle}
-                        // What a shelter is, for the one shelter being asked
-                        // about. Only the live list needs them: an off-site row
-                        // leads to that shelter's own page, which is where its
-                        // details already are.
-                        summaries={summaries}
-                        // Asking about a shelter without touching what is picked.
-                        // The row itself cannot carry this: it reports
-                        // aria-pressed, so its click has to toggle, and a picked
-                        // shelter could never be asked about from its own row. The
-                        // two verbs stay apart in both directions, so this handler
-                        // goes nowhere near onToggle and onToggle goes nowhere
-                        // near this.
-                        //
-                        // One shelter at a time, decided here because the rows see
-                        // one row each and this sees the list.
-                        expanded={expandedShelter}
-                        onToggleExpanded={toggleExpandedShelter}
-                        // The words, from here, because the rows take every word
-                        // they show as a prop. Two names for one control, one per
-                        // state, and each tooltip's string sits inside the
-                        // accessible name that adds the shelter to it (WCAG 2.5.3).
-                        infoLabel={(rowLabel) =>
-                          t("showShelterDetails", { label: rowLabel })
-                        }
-                        hideInfoLabel={(rowLabel) =>
-                          t("hideShelterDetailsFor", { label: rowLabel })
-                        }
-                        infoText={messages.showShelterDetailsShort}
-                        hideInfoText={messages.hideShelterDetails}
-                        refs={rowRefs}
-                        highlighted={hoveredMarkerValues ?? undefined}
-                        scrollTo={hoverScrollTo}
-                        onHoverRow={setHoveredRowValue}
-                        onExitTop={() => searchRef.current?.focus()}
-                        lessThanOneKm={messages.lessThanOneKm}
-                        // What the count pill is counting, said only to a
-                        // screen reader: the digits are the row's own mark
-                        // and the noun beside "· 113 km" is what stopped
-                        // two numbers in one row from reading alike.
-                        countLabel={(count) =>
-                          filteredAnimalCount(count, locale)
-                        }
-                        waitLabel={(duration) =>
-                          locale === "sl"
-                            ? `Najdlje čaka: ${duration}`
-                            : `Longest wait: ${duration}`
-                        }
-                        // Two columns from sm up to lg, one column from lg: the
-                        // single column is the narrow panel's shape, and the panel
-                        // only exists from lg now. In the sheet the list has the
-                        // width of the screen and two columns is what fits it.
-                        className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
-                      />
-
-                      {/* Registry shelters without animals, under their own
-                  heading so the zeroes read as "not here yet" rather
-                  than as empty search results. There is nothing to
-                  filter by, but there is a page for each of them, so
-                  the rows are links out rather than dead toggles:
-                  ShelterRows renders a row with an href as an <a>
-                  instead of a toggle button, so the two lists share
-                  their layout, their columns and their map-hover
-                  scroll echo instead of one copying the other by hand. */}
-                      {visibleOffRows.length > 0 &&
-                        (visibleRows.length === 0 ? (
-                          // Nothing live left for the query, so this group
-                          // is not a group, it is the answer. No trigger: a
-                          // control that cannot be closed without hiding
-                          // the only rows on screen is a dead control, and
-                          // a fold over the sole match reads as "not
-                          // found" on a list that found it.
-                          //
-                          // Swapping the trigger for a paragraph unmounts a
-                          // focusable element, which would drop focus to
-                          // the body if it held it. It cannot here: the
-                          // only thing that moves visibleRows is the query,
-                          // and the query only moves while focus is in the
-                          // search box.
-                          <div className="mt-3">
-                            <p
-                              id={offGroupId}
-                              className="px-2 pb-1 text-2xs font-medium text-muted-foreground"
-                            >
-                              {offGroupHeading}
-                            </p>
-                            {offGroupList}
-                          </div>
-                        ) : (
-                          <Collapsible
-                            open={offGroupOpen}
-                            onOpenChange={setOffGroupOpen}
-                            className="mt-3"
-                          >
-                            {/* The chevron turns off the trigger's own
-                        data-state, which Radix writes and the repo's
-                        data-open variant matches, so the open state has one
-                        home rather than a copy handed down as a prop. */}
-                            <CollapsibleTrigger
-                              id={offGroupId}
-                              className="group flex w-full items-center gap-1 rounded-ui px-2 py-1 text-left text-2xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] max-lg:min-h-9"
-                            >
-                              <ChevronRight
-                                className="size-3 shrink-0 transition-transform group-data-open:rotate-90 motion-reduce:transition-none"
-                                aria-hidden
-                              />
-                              {offGroupHeading}
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="pt-1">
-                              {offGroupList}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ))}
-                    </>
-                  )}
-                </div>
-
-                {/* This one is about the map, not about the input, so it stays at
-                the bottom of the column. No wrapper: the margin belongs on the
-                paragraph itself, so empty:hidden takes the gap away with the
-                line. Wrapped, the note cost the list 8px of height on every
-                screen where there was no note to read. */}
-                <p className="mt-2 shrink-0 text-2xs leading-tight text-muted-foreground empty:hidden">
-                  {missing}
-                </p>
-
-                {/* The way out, at the foot of the panel it belongs to,
-                rather than floating over the map with a shadow under it.
-
-                -mx-4 against the column's px-4 so the rule runs the full width
-                of the panel rather than stopping at the text. Full width
-                because there is nothing to sit beside it: the reset lives up
-                by the search box, with the other two clears.
-
-                A folded panel draws no footer, because the whole column is
-                hidden at that breakpoint. The X on the map is a plain
-                DialogClose and stays where it is, so folding the list costs
-                the count on this button and not the way out. */}
-                <div className="sticky bottom-0 z-10 -mx-4 mt-3 shrink-0 border-t bg-background px-4 pt-3">
-                  <DialogClose asChild>
-                    {/* 44px below lg. The default button height is 36,
-                        which is the size the sheet's own budget wanted of
-                        the rows in its header; this one is the primary act
-                        of the whole dialog and the last control a thumb
-                        travels to, so it takes the full target the close
-                        button already takes. */}
-                    <Button className="w-full max-lg:min-h-11">
-                      {doneLabel}
-                    </Button>
-                  </DialogClose>
-                </div>
-              </div>
-            )}
-          </div>
+          <PickerDock
+            selected={controller.selected}
+            messages={controller.messages}
+            panelOpen={controller.panelOpen}
+            setPanelOpen={controller.setPanelOpen}
+            sheetOpen={controller.sheetOpen}
+            setSheetOpen={controller.setSheetOpen}
+            missing={controller.missing}
+            doneLabel={controller.doneLabel}
+            scopeHeadLabel={scopeHeadLabel}
+            searchContent={searchContent}
+            listContent={listContent}
+          />
         </div>
       </DialogContent>
     </Dialog>

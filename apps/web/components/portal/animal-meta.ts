@@ -14,7 +14,7 @@ import type { AnimalFields } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
 import { ageInMonths } from "@/lib/filters";
 import { formatAge, pick } from "@/lib/labels";
-import { isOverridden } from "@/components/portal/animal-form";
+import { isOverridden } from "@/components/portal/animal-draft";
 import { fill, portalText } from "@/components/portal/portal-text";
 import type {
   PortalAnimal,

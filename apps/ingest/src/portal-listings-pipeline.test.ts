@@ -1,31 +1,15 @@
-import { describe, expect, it } from "vitest";
 import type { Animal, ProviderPolicy } from "@posvoji/schema";
-import { applyAllowedFields } from "./allowed-fields";
-import { captureCrawledSnapshot } from "./crawled-snapshot";
+import { describe, expect, it } from "vitest";
 import { exitCodeForRun } from "./exit-codes";
+import { preparePublication } from "./export-animals";
 import {
   crawlablePolicies,
-  isManualPolicy,
   manualPolicies,
   type LoadedPolicy,
 } from "./policies";
 import { answeredProviders, buildListingAnimals } from "./portal-listings";
 import type { PortalListingsPayload } from "./portal-listings-contract";
-import {
-  carryFirstSeenAt,
-  guardMassRemoval,
-  guardUniqueAnimalIds,
-  retainableAnimals,
-} from "./run-guards";
 import type { ShelterEntry } from "./shelters";
-
-// export.ts is a script with a top-level await and a disk full of side
-// effects, so there is no harness that runs it. What can be checked is the
-// sequence it puts an animal through, in the order it puts it through, with a
-// manual shelter's listings joining the crawled records at the point export.ts
-// joins them: before carryFirstSeenAt and before every guard. Each helper has
-// its own tests; these are about the order and about what the listings do to
-// it.
 
 const NOW = "2026-09-01T12:05:00Z";
 
@@ -106,26 +90,16 @@ function runPipeline(input: {
   crawledProviderIds: Set<string>;
   policies: Map<string, ProviderPolicy>;
 }): { published: Animal[]; snapshot: Animal[] } {
-  const produced = [...input.crawled, ...input.listings];
-  const refreshed = carryFirstSeenAt(input.previousCrawled, produced, {
-    sharedSourceUrlProviderIds: new Set(
-      [...input.policies.values()]
-        .filter((p) => isManualPolicy(p))
-        .map((p) => p.providerId),
-    ),
-  });
-  const carried = input.previousCrawled.filter(
-    (a) => !input.crawledProviderIds.has(a.source.providerId),
-  );
-  const { animals: preserved } = retainableAnimals(carried, input.policies);
-  const seeded = [...preserved, ...refreshed];
-  guardUniqueAnimalIds(seeded);
-  const restricted = applyAllowedFields(seeded, input.policies);
-  const snapshot = captureCrawledSnapshot(restricted.animals);
-  guardMassRemoval(input.previousCrawled, restricted.animals, {
+  const result = preparePublication({
+    crawled: input.crawled,
+    listingAnimals: input.listings,
+    previousAnimals: input.previousCrawled,
+    policies: [...input.policies.values()].map(loaded),
+    policyById: input.policies,
+    portalPayload: null,
     crawledProviderIds: input.crawledProviderIds,
   });
-  return { published: restricted.animals, snapshot };
+  return { published: result.overridden, snapshot: result.crawledSnapshot };
 }
 
 // export.ts's "ok" branch end to end: which manual providers the payload
@@ -173,9 +147,9 @@ describe("the crawl loop and the listings feed", () => {
       loaded(policy({ providerId: "off", enabled: false })),
     ];
 
-    expect(crawlablePolicies(all).map(({ policy: p }) => p.providerId)).toEqual([
-      "muri",
-    ]);
+    expect(crawlablePolicies(all).map(({ policy: p }) => p.providerId)).toEqual(
+      ["muri"],
+    );
     expect(manualPolicies(all).map(({ policy: p }) => p.providerId)).toEqual([
       "johanca",
       "oskar",

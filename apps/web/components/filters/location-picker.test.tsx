@@ -2715,8 +2715,8 @@ describe("LocationPicker attribution", () => {
 // the sheet's top corners, which spent a while square while the class saying
 // otherwise sat on the element.
 //
-// This reads the two files as text rather than through a compiler, because the
-// question is narrow enough to answer that way: is every radius name this
+// This reads the picker components and CSS as text rather than through a
+// compiler, because the question is narrow enough to answer that way: is every radius name this
 // component spells a name globals.css defines, either as a @utility of its own
 // or as an entry in the --radius-* namespace Tailwind generates its scale
 // from. Not a CSS build; the build is what would have to be run to answer
@@ -2724,10 +2724,20 @@ describe("LocationPicker attribution", () => {
 describe("LocationPicker radius utilities", () => {
   const web = process.cwd();
   const css = readFileSync(join(web, "app", "globals.css"), "utf8");
-  const source = readFileSync(
-    join(web, "components", "filters", "location-picker", "view.tsx"),
-    "utf8",
-  );
+  const source = [
+    "view.tsx",
+    "picker-dock.tsx",
+    "picker-map-stage.tsx",
+    "picker-search.tsx",
+    "picker-shelter-list.tsx",
+  ]
+    .map((file) =>
+      readFileSync(
+        join(web, "components", "filters", "location-picker", file),
+        "utf8",
+      ),
+    )
+    .join("\n");
 
   // Declared by hand, whole names. rounded-ui and rounded-ui-top are both of
   // these, and they exist because --radius-ui is a :root variable: the

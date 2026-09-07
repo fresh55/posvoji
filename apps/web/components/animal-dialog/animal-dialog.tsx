@@ -89,12 +89,23 @@ const CONTENT_CLASS =
 const CARD_CLASS =
   "relative flex flex-1 flex-col gap-4 p-4 sm:-mt-4 sm:min-h-0 sm:overflow-y-auto sm:rounded-ui sm:border sm:bg-popover sm:bg-clip-padding sm:p-6 sm:pt-12 sm:text-popover-foreground sm:shadow-lg";
 
-// Same round, translucent language as the photo chevrons, one level up: these
-// walk the list of animals rather than the list of photos. Centred by margin
-// rather than by transform, because the button's own press animation writes
-// the same translate variable.
+// Same round language as the photo chevrons, one level up: these walk the list
+// of animals rather than the list of photos. Centred by margin rather than by
+// transform, because the button's own press animation writes the same
+// translate variable.
+//
+// Opaque, unlike those chevrons: half of this button hangs outside the dialog
+// and half of it sits on the card, so a translucent ground was two colours at
+// once, which on dark reads as a seam down the middle of the circle. The
+// popover ground is the card's own, and the dark overrides are there because
+// the outline variant's own fill (dark:bg-input/30) is translucent too.
+//
+// pointer-coarse:size-11 for the tablet. iPad portrait is 768px, which is the
+// sm layout, where these arrows are the only way to the next animal: the title
+// row's pair is hidden from sm up and the page keys need a keyboard. A finger
+// gets the 44px floor; a mouse keeps the smaller circle.
 const ANIMAL_NAV_CLASS =
-  "absolute inset-y-0 z-40 my-auto hidden size-9 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:inline-flex";
+  "absolute inset-y-0 z-40 my-auto hidden size-9 rounded-full bg-popover shadow-xs sm:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:size-11";
 
 // The same two steps for a phone, which has neither the edge arrows above nor
 // the PageUp and PageDown keys they double for: without these the only way to
@@ -106,6 +117,18 @@ const ANIMAL_NAV_CLASS =
 // button beside them does the same); icon-sm alone would be 32px.
 const PHONE_NAV_CLASS =
   "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background sm:hidden";
+
+// The share button stands third in that row, and on the phone it was the only
+// one of the three drawn as a bare glyph: two outlined circles and then an
+// icon on nothing, which reads as a different kind of control rather than the
+// third step of the same one. This lends it the arrows' dress below sm, where
+// they are on screen; from sm the arrows are gone and the button keeps the
+// quiet ghost it wears beside the close. The dark pair is the outline
+// variant's own, because on dark that variant fills with input rather than
+// with background, and half a shade in the wrong direction is what would give
+// the row away.
+const PHONE_SHARE_CLASS =
+  "max-sm:rounded-full max-sm:border-border max-sm:bg-background/80 max-sm:shadow-xs max-sm:hover:bg-background max-sm:dark:border-input max-sm:dark:bg-input/30 max-sm:dark:hover:bg-input/50";
 
 const DRAG_SPRING = {
   type: "spring",
@@ -403,8 +426,19 @@ export function AnimalDialog({
           className={CONTENT_CLASS}
           style={{ transformOrigin: zoomOrigin(origin) }}
           onKeyDown={handleKeyDown}
-          onOpenAutoFocus={() => {
+          onOpenAutoFocus={(event) => {
             returnFocus.current = document.activeElement as HTMLElement | null;
+            // Radix would hand the open to the first focusable child, which
+            // since the arrows moved to the end is the leftmost print. The
+            // front print is the animal, the thing the dialog is about, and
+            // from it the arrow keys walk the fan without a Tab first. Only a
+            // fan with photos has one; an animal without keeps Radix's choice.
+            const front = contentRef.current?.querySelector<HTMLElement>(
+              'button[aria-pressed="true"]',
+            );
+            if (!front) return;
+            event.preventDefault();
+            front.focus({ preventScroll: true });
           }}
           onCloseAutoFocus={(event) => {
             // The card of the animal the dialog closed on, which after a
@@ -459,31 +493,6 @@ export function AnimalDialog({
               <span className="sr-only">{messages.close}</span>
             </Button>
           </DialogPrimitive.Close>
-
-          {previousId && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() => onNavigate(previousId)}
-              aria-label={messages.previousAnimal}
-              className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
-            >
-              <ChevronLeft className="size-4" aria-hidden />
-            </Button>
-          )}
-          {nextId && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() => onNavigate(nextId)}
-              aria-label={messages.nextAnimal}
-              className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
-            >
-              <ChevronRight className="size-4" aria-hidden />
-            </Button>
-          )}
 
           <LazyMotion features={domAnimation}>
             <m.div
@@ -586,6 +595,7 @@ export function AnimalDialog({
                         path={animalPath(lastAnimal, locale)}
                         name={name}
                         photo={shownPhoto}
+                        className={PHONE_SHARE_CLASS}
                       />
                       <DialogPrimitive.Close asChild>
                         <Button
@@ -657,6 +667,40 @@ export function AnimalDialog({
               )}
             </m.div>
           </LazyMotion>
+
+          {/* Last in the dialog, though they are drawn at its edges. Placed
+              first, they were what the dialog opened on: Radix focuses the
+              first focusable child, so the dialog announced itself as
+              "Prejšnja žival" and the first Tab step led away from the animal
+              rather than into it. Standing here, the open lands on the front
+              print, or on the phone's close button above it, and the tab order
+              reads photos, title row, facts, shelter, and only then the two
+              steps out of this animal. Absolute against the content box, so
+              where they are drawn is unchanged. */}
+          {previousId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onNavigate(previousId)}
+              aria-label={messages.previousAnimal}
+              className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </Button>
+          )}
+          {nextId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onNavigate(nextId)}
+              aria-label={messages.nextAnimal}
+              className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </Button>
+          )}
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>

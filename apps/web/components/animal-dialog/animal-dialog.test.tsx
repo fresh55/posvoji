@@ -1742,7 +1742,9 @@ describe("animal dialog", () => {
     });
     expect(next.className).toContain("pointer-events-none");
     expect(next.className).toContain("group-hover:pointer-events-auto");
-    expect(next.className).toContain("group-focus-within:pointer-events-auto");
+    expect(next.className).toContain(
+      "group-has-[:focus-visible]:pointer-events-auto",
+    );
     expect(next.className).not.toMatch(/(^|\s)pointer-events-auto(\s|$)/);
   });
 
@@ -2073,6 +2075,43 @@ describe("animal dialog", () => {
     );
   });
 
+  // The edge arrows are drawn at the edges but written last. Standing first,
+  // they were the first focusable child, which is what Radix hands the open
+  // to: the dialog announced itself as the way out of the animal, and the
+  // first Tab step led away from it. The phone's close button is still ahead
+  // of the photos, which is deliberate and is hidden from sm up, where these
+  // arrows are the ones on screen.
+  it("writes the animal steps after the animal itself", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+
+    const previous = edgeNav(dialog, "Prejšnja žival");
+    const next = edgeNav(dialog, "Naslednja žival");
+    const print = photoButton(dialog, "photo-spread", 1);
+
+    expect(
+      print.compareDocumentPosition(previous) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // Last of everything the dialog can focus, not just of the photos.
+    const buttons = Array.from(dialog.querySelectorAll("button"));
+    expect(buttons.at(-2)).toBe(previous);
+    expect(buttons.at(-1)).toBe(next);
+    expect(buttons[0]).not.toBe(previous);
+  });
+
+  // With the arrows last, the first focusable child is the leftmost print,
+  // and Radix would open on it. The front print is the animal, so the open
+  // lands there, and the arrow keys walk the fan from the first key.
+  it("opens on the front print", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+    const front = dialog.querySelector('button[aria-pressed="true"]');
+    expect(front).not.toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(front));
+  });
+
   it("offers the first animal the next step and nothing before it", async () => {
     renderDialog(REX, [REX.id, MURI.id]);
     const dialog = await screen.findByRole("dialog");
@@ -2207,6 +2246,7 @@ describe("animal dialog", () => {
 
     expect(share).toHaveBeenCalledWith({
       title: "Rex išče dom",
+      text: "Rex išče dom",
       url: `https://posvoji.si${animalPath(REX, "sl")}`,
     });
     expect(screen.queryByText("Deli to žival")).toBeNull();

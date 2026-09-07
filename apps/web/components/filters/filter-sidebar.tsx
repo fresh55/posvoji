@@ -12,7 +12,6 @@ import {
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
@@ -53,7 +52,6 @@ export function FilterSidebar({
   onToggleMany,
   onToggleProperty,
   onToggleManyProperties,
-  onClearAll,
   className,
 }: {
   filters: Filters;
@@ -65,15 +63,14 @@ export function FilterSidebar({
   home?: HomeSection;
   care?: CareSection;
   scope?: SidebarScope;
-  onClearAll: () => void;
   className?: string;
 } & FilterActionContract) {
   const { messages } = useI18n();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
-  // The chips row scrolls away with the page while the sidebar stays; this
-  // count and its clear keep the state and the way out in view. Selected
-  // values and not sections, so it agrees with the row it outlives: a badge
-  // reading 1 above two chips was two answers to one question.
+  // The chips row scrolls away with the page while the sidebar stays, so this
+  // count keeps the state in view after the pills have gone. Selected values
+  // and not sections, so it agrees with the row it outlives: a badge reading 1
+  // above two chips was two answers to one question.
   const activeValues = activeFilterCount(filters);
 
   return (
@@ -114,20 +111,6 @@ export function FilterSidebar({
             </LazyMotion>
           )}
         </h2>
-        <Button
-          type="button"
-          variant="link"
-          size="xs"
-          onClick={onClearAll}
-          aria-hidden={activeValues === 0}
-          tabIndex={activeValues > 0 ? undefined : -1}
-          className={cn(
-            "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
-            activeValues === 0 && "pointer-events-none opacity-0",
-          )}
-        >
-          {messages.clearAll}
-        </Button>
       </div>
 
       {/* Kje first, above every folding section. It is the question a visitor

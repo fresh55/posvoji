@@ -63,9 +63,10 @@ import type { AnimalSort } from "@/lib/sort";
 const DOCK_CLASS =
   "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
 
-// Desktop has enough room for one quiet toolbar. Mobile keeps the species
-// tabs, the result count and sort in the sticky rail while the two primary
-// discovery actions share a bottom dock that spans the viewport.
+// Desktop has enough room for one quiet toolbar. Below lg the species tabs
+// hold the sticky rail on their own, joined from md by the same quiet sort
+// control, while the two primary discovery actions share a bottom dock that
+// spans the viewport.
 export function AnimalFilters({
   isEmpty,
   hasSidebar = false,
@@ -238,21 +239,48 @@ export function AnimalFilters({
           </div>
         </div>
 
-        {/* One row below lg, and the species tabs are all of it. They refuse
-            to share a 390px row with anything wide: squeezed they cut "Mačke"
-            mid-word and pushed the last tab off the end of a strip nobody had
-            a reason to scroll. The count and the sort that used to sit beside
-            them are gone from this bar entirely, so the tabs get the width
-            without having to be given it. The strip still scrolls and still
-            fades its own edges (species-tabs.tsx). */}
-        <div data-slot="mobile-toolbar" className="lg:hidden">
-          <SpeciesTabs
-            value={filters.species}
-            onChange={onSpeciesChange}
-            counts={speciesTally}
-            roster={speciesRoster}
-            disabled={isEmpty}
-          />
+        {/* One row below lg. Below md the species tabs are all of it: they
+            refuse to share a 390px row with anything wide, and squeezed they
+            cut "Mačke" mid-word and pushed the last tab off the end of a
+            strip nobody had a reason to scroll. The count is gone from this
+            bar entirely, so the tabs get the width without being given it.
+
+            From md that argument runs out. Measured at 768x1024 this row is
+            720px wide and the tabs end at x=384, so 336px of it were empty
+            while the tablet had no sort control anywhere on screen: the
+            order was three taps away inside the filter sheet. The same quiet
+            trigger measures 186px on the desktop row, so from md it takes
+            the right end of this one and the tabs keep the rest, in a
+            min-w-0 box so the strip still scrolls and still fades its own
+            edges (species-tabs.tsx). Same guard as the desktop row above,
+            for the reason stated there.
+
+            flex from md and not below it. The strip hangs its tap overlays
+            on -my-2/py-2, and this row stands at 44px only while it is a
+            block box those margins can collapse through; made flex at every
+            width it measures the strip's 28px margin box instead and the
+            phone's row loses 16px. Both measured. From md the trigger's own
+            44px (max-lg:min-h-11) sets the line height, and min-h-11 holds
+            the same 44px in the states where the guard drops it. */}
+        <div
+          data-slot="mobile-toolbar"
+          className="md:flex md:min-h-11 md:items-center md:justify-between md:gap-4 lg:hidden"
+        >
+          <div className="min-w-0">
+            <SpeciesTabs
+              value={filters.species}
+              onChange={onSpeciesChange}
+              counts={speciesTally}
+              roster={speciesRoster}
+              disabled={isEmpty}
+            />
+          </div>
+
+          {!isEmpty && resultCount > 0 && (
+            <div className="hidden shrink-0 md:block">
+              <SortPicker value={sort} onChange={onSortChange} />
+            </div>
+          )}
         </div>
 
         {/* From lg only. On a phone this row was the fourth surface stating
@@ -316,14 +344,17 @@ export function AnimalFilters({
           wrapper rather than on the component, so its own layout classes are
           left alone and only the painting stops.
 
-          The sort control that used to share this row is in the filter sheet
-          now (filter-sheet.tsx). It spent a pass pinned in the bar and a pass
-          scrolling away above the grid, and the second was the wrong half of
-          a real finding: sorting is a primary way people find things, often
-          reached for before filtering, so it has to stay reachable while the
-          list is scrolled. The dock is the only thing on this page that is
-          always reachable, and the sheet behind it is where the visitor
-          already goes to change what the grid shows. */}
+          The sort control that used to share this row is not on it at any
+          width. Below md it is in the filter sheet (filter-sheet.tsx). It
+          spent a pass pinned in the bar and a pass scrolling away above the
+          grid, and the second was the wrong half of a real finding: sorting
+          is a primary way people find things, often reached for before
+          filtering, so it has to stay reachable while the list is scrolled.
+          The dock is the only thing on this page that is always reachable,
+          and the sheet behind it is where the visitor already goes to change
+          what the grid shows. From md the toolbar row above carries it
+          instead, on the 336px the tabs leave, and the sheet's copy stands
+          down. */}
       {!isEmpty && (
         <span className="sr-only lg:hidden">
           <ResultCount count={resultCount} locale={locale} />

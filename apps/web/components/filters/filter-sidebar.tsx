@@ -89,9 +89,20 @@ export function FilterSidebar({
         className,
       )}
     >
-      {/* h-7 matches the species tabs across the gutter, so both columns
-          start their content on the same line. */}
-      <div className="flex h-7 items-center justify-between gap-3">
+      {/* h-8, because the species tabs row across the gutter measures 32px:
+          py-1 around a text-sm line box. The toolbar that carries it pins at
+          top-0 with py-3 above the tabs, and the aside answers that with
+          lg:top-0 and lg:pt-3 of its own (animal-grid.tsx), so the two columns
+          start their content on one line both at rest and stuck, and the
+          hairline over the first section below lands on the toolbar's border-b
+          rather than 16px above it.
+
+          No clear in here. At lg the chips row beside the toolbar owns
+          clearing, next to the pills it clears, and it is on screen whenever
+          this head is: every active value draws a pill there except the
+          species tab, which undoes itself in a press of its own. Each section
+          keeps its Ponastavi for the one facet it holds. */}
+      <div className="flex h-8 items-center">
         <h2 className="flex items-center gap-2 text-sm font-medium">
           {messages.filters}
           {activeValues > 0 && (

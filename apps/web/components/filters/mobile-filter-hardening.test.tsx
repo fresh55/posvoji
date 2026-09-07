@@ -113,6 +113,22 @@ describe("mobile filter hardening", () => {
     for (const slot of Array.from(dock?.children ?? [])) {
       expect(slot.querySelector("button") ?? slot.closest("button")).toBeTruthy();
     }
+
+    // Edge to edge is for this width and the phone widths above it. The
+    // classes are asserted rather than measured because jsdom resolves no
+    // breakpoint, and they are the whole of the rule: pinned to both edges up
+    // to lg, a 768px tablet drew a 736px plate with a 639px pill on it for the
+    // 13 characters of "Vsa zavetišča". From sm the plate is capped and
+    // centred instead.
+    expect(dock?.className).toContain("sm:left-1/2");
+    expect(dock?.className).toContain("sm:right-auto");
+    expect(dock?.className).toContain("sm:w-[min(28rem,calc(100vw-2rem))]");
+    expect(dock?.className).toContain("sm:-translate-x-1/2");
+    // The bottom edge is not part of the cap. The footer measures its docked
+    // padding against this inset, so only the horizontal edges may move.
+    expect(dock?.className).toContain(
+      "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]",
+    );
   });
 
   it("keeps the sheet mounted for a homogeneous multi-result set, so the sort control stays reachable", async () => {

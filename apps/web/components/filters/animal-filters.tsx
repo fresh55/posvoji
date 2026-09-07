@@ -46,8 +46,19 @@ import type { AnimalSort } from "@/lib/sort";
 // the whole plate. The edges follow env(safe-area-inset-*) with the 0px
 // fallbacks globals.css documents, so the plate clears a notch or a curved
 // corner instead of running under it.
+//
+// Edge to edge is a phone's shape, not a tablet's. Pinned to both edges at
+// every width below lg, a tablet stretched two short controls across the page:
+// measured at 768x1024 the dock was 736px wide and the location pill 639px of
+// that, carrying the 13 characters of "Vsa zavetišča". From sm it is capped at
+// 28rem and centred instead, near the width it has on the phone it was drawn
+// for; a landscape phone at 844px lands on the same 28rem. min() is what keeps
+// 28rem a cap rather than a floor if either that number or the breakpoint
+// moves. Only the horizontal edges move: the bottom keeps the safe-area inset
+// the footer's docked padding is measured against, and BackToTop is positioned
+// on its own and stays at the viewport's right edge.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
 
 // Desktop has enough room for one quiet toolbar. Mobile keeps the species
 // tabs, the result count and sort in the sticky rail while the two primary

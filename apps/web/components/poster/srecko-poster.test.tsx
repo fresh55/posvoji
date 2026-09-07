@@ -167,7 +167,7 @@ describe("the band along the foot", () => {
     );
   });
 
-  it("codes his Slovenian page, and prints the same address in letters", () => {
+  it("codes his page, and prints the same address in letters", () => {
     const { container } = sheet();
 
     const qr = container.querySelector('svg[role="img"]');
@@ -184,17 +184,23 @@ describe("the band along the foot", () => {
     );
   });
 
-  it("codes the Slovenian page from the English sheet too", () => {
-    // The register's sheets encode the page they were built from; his English
-    // sheet points at the Slovenian page because that is the address the
-    // about page's dedication hands out.
+  it("codes the English page from the English sheet", () => {
+    // The register's sheets encode the page they were built from, and so does
+    // his: a reader of the English sheet lands on the English page.
     const { container } = sheet("en");
 
     expect(container.querySelector('svg[role="img"] path')?.getAttribute("d")).toBe(
-      qrSymbol(`${SITE_URL}${SRECKO_PATHS.sl}`).path,
+      qrSymbol(`${SITE_URL}${SRECKO_PATHS.en}`).path,
     );
     expect(container.querySelector(".poster-url")?.textContent).toBe(
-      "posvoji.si/o-nas/srecko",
+      "posvoji.si/en/about/srecko",
     );
+  });
+
+  it("wears the settled word in the quiet tone, not the reservation amber", () => {
+    const { container } = sheet();
+
+    const status = container.querySelector(".poster-status");
+    expect(status?.classList.contains("poster-status--quiet")).toBe(true);
   });
 });

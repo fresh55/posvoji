@@ -233,6 +233,14 @@
   -webkit-print-color-adjust: exact;
 }
 
+/* The settled states, adopted above all: the "quiet" badge in ui/badge.tsx,
+   in the same greys the identity tiles below wear, so a sheet has one grey. */
+.poster-status--quiet {
+  border-color: #d6d3d1;
+  background: #fafaf9;
+  color: #292524;
+}
+
 /* The second half of "{name} išče dom", close under the name so the two read
    as one sentence rather than as a headline and a caption. */
 .poster-seeking {

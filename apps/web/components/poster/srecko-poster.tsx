@@ -132,11 +132,11 @@ export function SreckoPoster({ locale }: { locale: Locale }) {
   const photo = SRECKO.photos[0];
   const status = statusLabel(SRECKO.status, locale);
 
-  // His Slovenian page in both languages, the way every animal's sheet
+  // His page in the sheet's own language, the way every animal's sheet
   // encodes the address it was built from.
-  const url = `${SITE_URL}${SRECKO_PATHS.sl}`;
+  const url = `${SITE_URL}${SRECKO_PATHS[locale]}`;
   // The same address in letters, for someone with no phone in their hand.
-  const printedUrl = `${SITE_URL.replace(/^https?:\/\//, "")}${SRECKO_PATHS.sl}`;
+  const printedUrl = `${SITE_URL.replace(/^https?:\/\//, "")}${SRECKO_PATHS[locale]}`;
 
   // A moment with a date is told with it, at whatever precision it was
   // recorded at, and one without is still told. The dates are read through
@@ -198,8 +198,13 @@ export function SreckoPoster({ locale }: { locale: Locale }) {
         </h1>
         {/* The settled word, beside the name where the register's sheet puts
             a reservation. There is no "išče dom" under it, for the reason
-            that sheet gives: it is a claim, and he is not making it. */}
-        {status && <span className="poster-status">{status}</span>}
+            that sheet gives: it is a claim, and he is not making it. Quiet
+            rather than amber: status-badge.tsx gives a reservation the warm
+            tone because it is a maybe, and an adoption the muted one because
+            it is over. The sheet keeps that distinction. */}
+        {status && (
+          <span className="poster-status poster-status--quiet">{status}</span>
+        )}
       </div>
 
       <PosterFacts tiles={sreckoTiles(locale)} />

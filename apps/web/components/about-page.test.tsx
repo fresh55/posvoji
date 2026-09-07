@@ -26,10 +26,10 @@ Object.defineProperty(window, "matchMedia", {
 afterEach(cleanup);
 
 describe("the about page", () => {
-  it("explains shelter adoption before open source in Slovenian", () => {
+  it("explains shelter adoption before site details in Slovenian", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
-      "Brezplačno", "Posvojitev pri zavetišču", "Podatki zavetišč", "Odprta koda", "Brez osebnih podatkov",
+      "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba", "Vsebine z dovoljenjem", "Za zavetišča",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });

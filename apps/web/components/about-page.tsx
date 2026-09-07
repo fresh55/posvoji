@@ -1,11 +1,11 @@
 import {
   Building2,
-  CodeXml,
-  EyeOff,
+  Clock3,
   HeartHandshake,
   type LucideIcon,
   Mail,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -51,84 +51,82 @@ type PageText = {
 // hand-written union only caught the direction that loses an icon.
 const pointIcons = {
   free: HeartHandshake,
-  openSource: CodeXml,
+  availability: Clock3,
   shelterData: ShieldCheck,
   shelterDecides: Building2,
-  noPersonalData: EyeOff,
+  forShelters: Users,
 } satisfies Record<string, LucideIcon>;
 
 type PointKey = keyof typeof pointIcons;
 
-// The same facts README.sl.md and the footer already state, said once in
-// full. Nothing here that the code cannot back: no ads and no tracking
-// because there are no remote tracking scripts, no accounts because
-// the site has none for visitors, no payment for a place because there is
-// no mechanism for one.
+// Practical guidance for adopters and shelters, grounded in DATA-POLICY.md.
+// Do not promise live availability or a refresh interval: sources can lag.
+// Browsing needs no account; shelters have a separate portal login.
 const pageText: Record<Locale, PageText> = {
   sl: {
-    lead: "Posvoji.si je odprt in brezplačen seznam živali iz slovenskih zavetišč, ki iščejo dom.",
+    lead: "Posvoji.si na enem mestu povezuje živali iz slovenskih zavetišč z ljudmi, ki jim želijo ponuditi dom. Nismo zavetišče in ne vodimo posvojitev.",
     points: [
       {
-        key: "free",
-        title: "Brezplačno",
-        body: "Za obiskovalce in za zavetišča. Brez oglasov, brez računov in brez sledenja. Nihče ne plača za uvrstitev ali za boljše mesto na seznamu.",
+        key: "shelterDecides",
+        title: "Želite posvojiti?",
+        body: "Obrnite se na zavetišče, navedeno pri živali. Z njim se dogovorite za spoznavanje ter preverite potrebe živali, pogoje in morebitne stroške posvojitve. O posvojitvi odloča zavetišče.",
       },
       {
-        key: "openSource",
-        title: "Odprta koda",
-        body: "Vsa koda je javna na GitHubu. Vsak lahko preveri, kako stran deluje in kaj določa vrstni red živali.",
+        key: "availability",
+        title: "Ali žival še išče dom?",
+        body: "Podatki se lahko spremenijo, preden se seznam osveži. Pred obiskom preverite pri zavetišču. Seznam ne zajema vseh živali v slovenskih zavetiščih.",
+      },
+      {
+        key: "free",
+        title: "Brezplačna uporaba",
+        body: "Za obiskovalce in zavetišča. Za ogled ne potrebujete računa. Brez oglasov in plačanih prednostnih uvrstitev. Zasebnih oglasov in osebnih podatkov posameznikov ne objavljamo.",
       },
       {
         key: "shelterData",
-        title: "Podatki zavetišč",
-        body: "Prikažemo samo, kar zavetišče dovoli. Pri vsaki živali sta navedena vir in povezava na izvorno objavo.",
+        title: "Vsebine z dovoljenjem",
+        body: "Podatke, fotografije in opise objavimo le v obsegu, ki ga dovoli zavetišče. Vir je naveden pri vsaki živali. Pravice do fotografij in opisov ostanejo njihovim imetnikom; odprta koda ne pomeni dovoljenja za uporabo teh vsebin.",
       },
       {
-        key: "shelterDecides",
-        title: "Posvojitev pri zavetišču",
-        body: "Posvoji.si ni zavetišče in ne vodi posvojitev. O vsaki živali odloča zavetišče, ki zanjo skrbi.",
-      },
-      {
-        key: "noPersonalData",
-        title: "Brez osebnih podatkov",
-        body: "Zasebni oglasi, kontakti posameznikov in številke mikročipov ne sodijo na to stran.",
+        key: "forShelters",
+        title: "Za zavetišča",
+        body: "Za vključitev nam pišite. Dogovorimo se za povezavo z vašim spletnim seznamom ali neposredno objavo prek portala. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
       },
     ],
     report:
-      "Napačen podatek, zastarela objava ali žival, ki je že našla dom? Pišite nam.",
+      "Za sodelovanje, popravek ali umik nam pišite. Pri napaki dodajte povezavo do objave in kaj je treba spremeniti.",
     code: "Koda na GitHubu",
   },
   en: {
-    lead: "Posvoji.si is an open, free index of animals waiting for a home in Slovenian shelters.",
+    lead: "Posvoji.si brings together animals from Slovenian shelters and people who want to give them a home. We are not a shelter and do not handle adoptions.",
     points: [
       {
-        key: "free",
-        title: "Free",
-        body: "For visitors and for shelters. No ads, no accounts and no tracking. Nobody pays to be listed or to rank higher.",
+        key: "shelterDecides",
+        title: "Want to adopt?",
+        body: "Contact the shelter named on the animal’s listing. Arrange a meeting and ask about the animal’s needs, adoption requirements and any fees. The shelter makes the adoption decision.",
       },
       {
-        key: "openSource",
-        title: "Open source",
-        body: "All the code is public on GitHub. Anyone can check how the site works and what decides the order of the animals.",
+        key: "availability",
+        title: "Still looking for a home?",
+        body: "Details can change before the list is updated. Check with the shelter before visiting. This list does not include every animal in Slovenian shelters.",
+      },
+      {
+        key: "free",
+        title: "Free to use",
+        body: "For visitors and shelters. No account is needed to browse. No ads or paid priority listings. We do not publish private-owner listings or individuals’ personal details.",
       },
       {
         key: "shelterData",
-        title: "Data from shelters",
-        body: "We show only what a shelter allows. Every animal names its source and links to the original listing.",
+        title: "Content with permission",
+        body: "We publish only the data, photos and descriptions the shelter permits. Every animal names its source. Photos and descriptions remain with their rights holders; open-source code does not grant permission to reuse that content.",
       },
       {
-        key: "shelterDecides",
-        title: "Adoption at the shelter",
-        body: "Posvoji.si is not a shelter and does not handle adoptions. The shelter caring for an animal decides about it.",
-      },
-      {
-        key: "noPersonalData",
-        title: "No personal data",
-        body: "Private listings, individuals’ contact details and microchip numbers do not belong here.",
+        key: "forShelters",
+        title: "For shelters",
+        body: "Email us to join. We can arrange to connect your website’s listings or help you publish directly through the portal. You can request corrections, content removal or an end to participation at any time.",
       },
     ],
     report:
-      "Wrong detail, stale listing or an animal that already found a home? Write to us.",
+      "Email us to take part, correct a listing or request removal. For a correction, include the listing link and what needs to change.",
     code: "Code on GitHub",
   },
 };
@@ -137,7 +135,7 @@ const pageText: Record<Locale, PageText> = {
 // 16px inside a button. The geometry is shared, the drawing is not.
 function GithubMark() {
   return (
-    <svg viewBox="0 0 16 16" aria-hidden className="size-4 fill-current">
+    <svg viewBox="0 0 16 16" aria-hidden data-icon="inline-start" className="size-4 fill-current">
       <path d={GITHUB_MARK} />
     </svg>
   );
@@ -155,7 +153,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = homePath(locale);
-  const pointOrder: PointKey[] = ["free", "shelterDecides", "shelterData", "openSource", "noPersonalData"];
 
   return (
     <I18nProvider locale={locale}>
@@ -169,17 +166,24 @@ export function AboutPage({ locale }: { locale: Locale }) {
               <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
                 {messages.about}
               </h1>
+              {/* The page's one sentence, and a step above the facts rather
+                  than level with them. At 18px it sat two pixels off the
+                  bodies below it and the whole column read as one size. */}
               <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
                 {text.lead}
               </p>
             </div>
           </div>
-          <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
-            <AboutCat locale={locale} />
-          </div>
+
+          {/* A rule between facts and nothing else. Each fact is an Item on
+              the row layout: the glyph names it at a glance, and only the
+              padding is this page's, so the rules run edge to edge.
+
+              mt-px on the media, measured: the title is text-base under
+              leading-snug, a 22px line box, and the glyph is 20px, so one
+              pixel centres it on the first line. */}
           <div className="divide-y border-y lg:col-start-1 lg:row-start-2">
-            {pointOrder.map((key) => {
-              const point = text.points.find((point) => point.key === key)!;
+            {text.points.map((point) => {
               const Icon = pointIcons[point.key];
               return (
                 <Item
@@ -197,6 +201,11 @@ export function AboutPage({ locale }: { locale: Locale }) {
                     <ItemTitle asChild className="text-base font-medium">
                       <h2>{point.title}</h2>
                     </ItemTitle>
+                    {/* A step under the title rather than the same size in a
+                        lighter ink. Title and body were both 16px, so five
+                        facts read as one block of text and the glyph was
+                        doing all the work of telling them apart. The same
+                        pairing the resources cards use. */}
                     <ItemDescription className="text-sm leading-relaxed">
                       {point.body}
                     </ItemDescription>
@@ -205,6 +214,10 @@ export function AboutPage({ locale }: { locale: Locale }) {
               );
             })}
           </div>
+
+          {/* The sentence stays beside the buttons rather than inside them:
+              it says what to write about, and a button label that is a full
+              sentence stops reading as a control. */}
           <div className="space-y-3 lg:col-start-1 lg:row-start-3">
             <p className="text-sm leading-relaxed text-muted-foreground">
               {text.report}
@@ -217,7 +230,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
                 className={THUMB_BUTTON}
               >
                 <a href={mailtoHref(CONTACT_EMAIL)}>
-                  <Mail aria-hidden />
+                  <Mail aria-hidden data-icon="inline-start" />
                   {CONTACT_EMAIL}
                 </a>
               </Button>
@@ -234,7 +247,18 @@ export function AboutPage({ locale }: { locale: Locale }) {
               </Button>
             </div>
           </div>
+
+          {/* Keep the practical information first in mobile and keyboard
+              reading order. On desktop the cat sits beside all three text
+              rows, with the dedication directly beneath the model. */}
+          <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
+            <AboutCat locale={locale} />
+          </div>
+
         </main>
+
+        {/* The one footer that does not link to this page, because it is on
+            it. */}
         <SiteFooter locale={locale} showAboutLink={false}>
           <ModelCredit locale={locale} />
         </SiteFooter>

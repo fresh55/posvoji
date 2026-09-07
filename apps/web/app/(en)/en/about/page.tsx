@@ -10,9 +10,7 @@ export const metadata: Metadata = staticPageMetadata({
   paths: ABOUT_PATHS,
   title: getMessages("en").about,
   description:
-    "Posvoji.si is an open, free index of animals in Slovenian shelters. No ads, open source, data straight from the shelters.",
-  // The same card the Slovenian page shows: it carries no sentence, so one
-  // file serves both languages and only the alt text changes.
+    "How Posvoji.si works: adoption through shelters, listing updates and free shelter participation. Content is published with permission.",
   image: sreckoShareImage("en", "about"),
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import type { LatLon } from "@/lib/geo";
 
@@ -12,73 +12,103 @@ export type NearbyState =
 
 const TIMEOUT_MS = 10000;
 const MAX_AGE_MS = 300000;
+const OFF: NearbyState = { status: "off" };
+// Both responsive pickers control one page-session location. Never persisted.
+let state: NearbyState = OFF;
+let query = "";
+let attempt = 0;
+let deadline: ReturnType<typeof setTimeout> | undefined;
+const listeners = new Set<() => void>();
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+const emit = () => {
+  for (const listener of listeners) listener();
+};
+function cancel() {
+  attempt += 1;
+  clearTimeout(deadline);
+  deadline = undefined;
+}
+function setState(next: NearbyState) {
+  state = next;
+  emit();
+}
+function setQuery(next: string) {
+  query = next;
+  emit();
+}
+export function useNearbyQuery() {
+  const value = useSyncExternalStore(
+    subscribe,
+    () => query,
+    () => "",
+  );
+  return [value, setQuery] as const;
+}
+/** Test-only: the session is shared across component lifetimes. */
+export function resetNearbyStore() {
+  cancel();
+  query = "";
+  setState(OFF);
+}
 
-// A permission prompt is not a filter. Sorting by distance is an extra the
-// panel offers once a fix arrives; until then, and if it never does, the
-// shelters stay listed and selectable exactly as before.
 export function useNearby() {
   const { messages } = useI18n();
-  const [state, setState] = useState<NearbyState>({ status: "off" });
-  // Bumped on every press, so a fix that resolves after the user switched the
-  // sort back off is discarded instead of reordering the list under them.
-  const attempt = useRef(0);
-
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => OFF,
+  );
   const toggle = useCallback(() => {
-    attempt.current += 1;
-
+    cancel();
     if (state.status === "on" || state.status === "locating") {
-      setState({ status: "off" });
+      setState(OFF);
       return;
     }
-
     if (!navigator.geolocation) {
       setState({ status: "error", message: messages.geolocationUnsupported });
       return;
     }
-
-    const current = attempt.current;
+    const current = attempt;
     setState({ status: "locating" });
+    const fail = (message: string) => {
+      if (current !== attempt) return;
+      cancel();
+      setState({ status: "error", message });
+    };
+    // The browser timeout excludes time waiting for permission. Bound that
+    // wait too, and invalidate late callbacks after timeout or cancellation.
+    deadline = setTimeout(() => fail(messages.geolocationTimeout), TIMEOUT_MS);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        if (current !== attempt.current) return;
+        if (current !== attempt) return;
+        cancel();
         setState({
           status: "on",
           at: { lat: coords.latitude, lon: coords.longitude },
         });
       },
-      (error) => {
-        if (current !== attempt.current) return;
-        setState({
-          status: "error",
-          message:
-            {
-              1: messages.geolocationDenied,
-              2: messages.geolocationUnavailable,
-              3: messages.geolocationTimeout,
-            }[error.code] ?? messages.geolocationUnavailable,
-        });
-      },
+      (error) =>
+        fail(
+          {
+            1: messages.geolocationDenied,
+            2: messages.geolocationUnavailable,
+            3: messages.geolocationTimeout,
+          }[error.code] ?? messages.geolocationUnavailable,
+        ),
       { timeout: TIMEOUT_MS, maximumAge: MAX_AGE_MS },
     );
-  }, [messages, state.status]);
-
-  // An error is news until the user does something newer. Typing a place is
-  // that newer thing, so the picker can put the error away instead of letting
-  // it sit on top of the typed sort's own feedback.
+  }, [messages]);
   const dismissError = useCallback(() => {
-    setState((current) =>
-      current.status === "error" ? { status: "off" } : current,
-    );
+    if (state.status === "error") setState(OFF);
   }, []);
-
-  // The most recent act wins. Typing a place that resolves is a newer answer to
-  // "where are you" than a fix the user asked for before, so the picker can
-  // switch this off outright, including while a fix is still in flight: bumping
-  // the attempt is what makes the pending callback land on nothing.
   const turnOff = useCallback(() => {
-    attempt.current += 1;
-    setState((current) => (current.status === "off" ? current : { status: "off" }));
+    cancel();
+    if (state.status !== "off") setState(OFF);
   }, []);
-
-  return { state, toggle, dismissError, turnOff };
+  return { state: snapshot, toggle, dismissError, turnOff };
 }

@@ -12,7 +12,7 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
   // Past MAX_CLUSTER_DISCS the marker gives up on one disc per shelter and
   // says the number instead, and a count disc is never hollow.
   if (town.shelters.length > MAX_CLUSTER_DISCS) return false;
-  const live = townIsLive(town, selected);
+  const live = townIsLive(town);
   // A single marker carries the town's own answer. It cannot be selected
   // while it is not live, so liveness settles it alone.
   if (town.shelters.length === 1) return !live;

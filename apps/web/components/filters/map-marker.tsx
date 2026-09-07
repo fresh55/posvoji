@@ -4,7 +4,7 @@ import { memo, useEffect, useState } from "react";
 import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import type { Locale } from "@/lib/i18n";
-import { animalCount, shelterCount } from "@/lib/labels";
+import { filteredAnimalCount, shelterCount } from "@/lib/labels";
 import {
   clusterDiscs,
   clusterHitWedges,
@@ -200,7 +200,7 @@ function markerLabel(
   if (townSelectableValues(town).length === 0) {
     return `${name}: ${noAnimalsListed}`;
   }
-  const animals = animalCount(townCount(town), locale);
+  const animals = filteredAnimalCount(townCount(town), locale);
   return town.shelters.length > 1
     ? `${name}: ${shelterCount(town.shelters.length, locale)}, ${animals}`
     : `${name}: ${animals}`;
@@ -220,7 +220,7 @@ function wedgeLabel(
   const animals =
     shelter.selectable === false
       ? noAnimalsListed
-      : animalCount(shelter.count, locale);
+      : filteredAnimalCount(shelter.count, locale);
   return `${shelter.label}: ${animals}`;
 }
 
@@ -332,7 +332,7 @@ export const Marker = memo(function Marker({
   // marker so the map can show where it is, but never the pick.
   const values = townSelectableValues(town);
   const state = selectionState(values, selected);
-  const live = townIsLive(town, selected);
+  const live = townIsLive(town);
   // A town holding only shelters with nothing to pick is informational: hover
   // names it, nothing selects it. Unlike a dead marker it keeps its pointer
   // events, so the visitor can find out what the faint dot is.

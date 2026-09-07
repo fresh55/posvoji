@@ -177,7 +177,7 @@ describe("ShelterMap marker states", () => {
 
   it("keeps an unavailable marker visibly and behaviorally disabled", () => {
     const html = renderMap([
-      pin("empty", "Zavetišče brez živali", "Ljubljana", 0),
+      { ...pin("empty", "Zavetišče brez živali", "Ljubljana", 0), selectable: false },
     ]);
 
     expect(html).toContain('data-marker-live="false"');
@@ -186,7 +186,7 @@ describe("ShelterMap marker states", () => {
 
   it("draws a shelter with nothing to pick as a dot, not a fainter paw disc", () => {
     const html = renderMap([
-      pin("empty", "Zavetišče brez živali", "Ljubljana", 0),
+      { ...pin("empty", "Zavetišče brez živali", "Ljubljana", 0), selectable: false },
     ]);
 
     expect(html).toContain("data-marker-empty");
@@ -208,7 +208,7 @@ describe("ShelterMap marker states", () => {
 
   it("draws that dot hollow, in the alpha the legend swatch copies", () => {
     const html = renderMap([
-      pin("empty", "Zavetišče brez živali", "Ljubljana", 0),
+      { ...pin("empty", "Zavetišče brez živali", "Ljubljana", 0), selectable: false },
     ]);
 
     const dot = html.match(/<circle[^>]*data-marker-empty[^>]*>/)?.[0] ?? "";
@@ -1442,7 +1442,7 @@ describe("mapFacts: hasEmpty", () => {
   it("is true for a shelter with nothing listed, and agrees with the map", () => {
     const pins = [
       pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
-      pin("horjul", "Zavetišče Horjul", "Horjul", 0),
+      { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
     ];
 
     expect(factsFor(pins, []).hasEmpty).toBe(true);
@@ -2832,15 +2832,15 @@ describe("ShelterMap without hover", () => {
       // each take their own noun. The verb is the same in all four: the
       // accusative "izbere" puts its object in matches the nominative
       // shelterCount returns for this neuter noun.
-      expect(note(armLjubljana(1).container)).toBe("Izbere 1 zavetišče");
+      expect(note(armLjubljana(1).container)).toBe("Še enkrat tapni: Izbere 1 zavetišče");
       cleanup();
-      expect(note(armLjubljana(2).container)).toBe("Izbere 2 zavetišči");
+      expect(note(armLjubljana(2).container)).toBe("Še enkrat tapni: Izbere 2 zavetišči");
       cleanup();
-      expect(note(armLjubljana(3).container)).toBe("Izbere 3 zavetišča");
+      expect(note(armLjubljana(3).container)).toBe("Še enkrat tapni: Izbere 3 zavetišča");
       cleanup();
-      expect(note(armLjubljana(4).container)).toBe("Izbere 4 zavetišča");
+      expect(note(armLjubljana(4).container)).toBe("Še enkrat tapni: Izbere 4 zavetišča");
       cleanup();
-      expect(note(armLjubljana(5).container)).toBe("Izbere 5 zavetišč");
+      expect(note(armLjubljana(5).container)).toBe("Še enkrat tapni: Izbere 5 zavetišč");
     });
 
     it("says the drop instead, when the region is already wholly picked", () => {
@@ -2851,7 +2851,7 @@ describe("ShelterMap without hover", () => {
       // opposite of what the press does.
       const { container } = armLjubljana(2, ["lj0", "lj1"]);
 
-      expect(note(container)).toBe("Odstrani 2 zavetišči");
+      expect(note(container)).toBe("Še enkrat tapni: Odstrani 2 zavetišči");
     });
 
     it("still promises the pick while only some of the region is picked", () => {
@@ -2860,7 +2860,7 @@ describe("ShelterMap without hover", () => {
       // A partly picked region is not a drop: toggleValues adds the rest.
       const { container } = armLjubljana(3, ["lj0"]);
 
-      expect(note(container)).toBe("Izbere 3 zavetišča");
+      expect(note(container)).toBe("Še enkrat tapni: Izbere 3 zavetišča");
     });
 
     it("announces a single-shelter region too", () => {
@@ -2869,7 +2869,7 @@ describe("ShelterMap without hover", () => {
       // Every armed region, not only the ones holding a crowd. One shelter is
       // still a consequence, and a rule with a threshold in it would leave the
       // visitor guessing which taps were the explained kind.
-      expect(note(armLjubljana(1).container)).toBe("Izbere 1 zavetišče");
+      expect(note(armLjubljana(1).container)).toBe("Še enkrat tapni: Izbere 1 zavetišče");
     });
 
     it("puts the same sentence in the region's own label", () => {
@@ -2881,7 +2881,7 @@ describe("ShelterMap without hover", () => {
       const { region } = armLjubljana(2);
 
       expect(region.getAttribute("aria-label")).toBe(
-        "Osrednjeslovenska: 2 zavetišči, 6 živali. Izbere 2 zavetišči.",
+        "Osrednjeslovenska: 2 zavetišči, 6 živali. Še enkrat tapni: Izbere 2 zavetišči.",
       );
     });
 

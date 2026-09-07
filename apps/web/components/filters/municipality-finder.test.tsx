@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 
+import { resetNearbyStore } from "@/hooks/use-nearby";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { MunicipalityFinder } from "./municipality-finder";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetNearbyStore();
+});
 
 // Three občine from different corners of the country, each with real coverage,
 // so a lookup that resolves has a card to show.

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,7 +27,10 @@ Object.defineProperty(window, "matchMedia", {
 
 Element.prototype.scrollIntoView = vi.fn();
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  resetNearbyOriginStore();
+});
 
 const options = [
   { value: "sever", label: "Zavetišče Sever", city: "Maribor" },

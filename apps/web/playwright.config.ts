@@ -10,6 +10,7 @@ export const PLAYWRIGHT_BASE_URL = `http://localhost:${PORT}`;
 // mobile projects can claim them without three copies of the same list
 // going out of step.
 const MOBILE_SPECS = [
+  "shelter-picker-audit.spec.ts",
   "shelter-picker-landscape.spec.ts",
   // The map's two-tap contract needs a device that cannot hover and a tap
   // that arrives as a tap; a desktop browser at a phone's width has neither.

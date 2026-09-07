@@ -136,7 +136,7 @@ describe("ShelterRows selection and counts", () => {
     expect(rowTag(html, "Mačja hiša")).toContain("cursor-pointer");
   });
 
-  it("dims a row with nothing to pick and offers it neither hand nor hover", () => {
+  it("keeps a roster row selectable when no animals match", () => {
     const html = renderToStaticMarkup(
       <ShelterRows
         rows={rows}
@@ -146,14 +146,12 @@ describe("ShelterRows selection and counts", () => {
       />,
     );
 
-    // Sia in Lu has no animals and is not picked, so there is nothing its row
-    // could toggle. It used to get all three of these from the <button> that
-    // was the whole row; the surface is a div now, so the row says them.
+    // The filter count says nothing about roster membership.
     const dead = rowTag(html, "Sia in Lu");
-    expect(dead).toContain("opacity-40");
-    expect(dead).toContain("cursor-not-allowed");
-    expect(dead).not.toContain("hover:bg-muted/50");
-    expect(dead).toContain("disabled=");
+    expect(dead).not.toContain("opacity-40");
+    expect(dead).toContain("cursor-pointer");
+    expect(dead).toContain("hover:bg-muted/50");
+    expect(dead).not.toContain("disabled=");
   });
 
   it("keeps the count next to the shelter name as a quiet badge, not a far-right number", () => {
@@ -825,4 +823,18 @@ describe("ShelterRows two lists sharing one highlight", () => {
     await waitFor(() => expect(linkScroll).toHaveBeenCalledTimes(1));
     expect(toggleScroll).not.toHaveBeenCalled();
   });
+});
+
+
+it("shows a known longest wait only when the shelter has matching animals", () => {
+  const summary = { species: [], longestWaiting: { name: "Test", duration: "10 let" } };
+  const renderWait = (count: number, known: boolean) => renderToStaticMarkup(
+    <ShelterRows rows={[{ value: "test", label: "Test" }]}
+      counts={new Map([["test", count]])}
+      summaries={known ? new Map([["test", summary]]) : undefined}
+      waitLabel={(duration) => `Najdlje čaka: ${duration}`} />,
+  );
+  expect(renderWait(1, true)).toContain("Najdlje čaka: 10 let");
+  expect(renderWait(0, true)).not.toContain("data-row-wait");
+  expect(renderWait(1, false)).not.toContain("data-row-wait");
 });

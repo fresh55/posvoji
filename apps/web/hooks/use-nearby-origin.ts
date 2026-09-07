@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { resetNearbyStore } from "./use-nearby";
 import type { LatLon } from "@/lib/geo";
 import type { ResolvedOrigin } from "@/lib/origin";
 
@@ -31,10 +32,8 @@ export type NearbyOrigin = {
 // all of them.
 const listeners = new Set<() => void>();
 let current: NearbyOrigin | null = null;
-// Which publisher put `current` there. The picker is mounted more than once at
-// a time (desktop toolbar or sidebar, mobile dock) and every instance resolves
-// an origin of its own, so the instances the visitor never touched are all
-// publishing nothing. Only the one that granted the origin may take it away.
+// The last publisher owns explicit clears. Releasing that ownership on
+// unmount retains the point and lets a remaining control clear it later.
 let owner: object | null = null;
 
 function same(a: NearbyOrigin | null, b: NearbyOrigin | null): boolean {
@@ -69,7 +68,7 @@ function getServerSnapshot(): NearbyOrigin | null {
 
 function publish(key: object, next: NearbyOrigin | null): void {
   if (next === null) {
-    if (owner !== key) return;
+    if (owner !== null && owner !== key) return;
     owner = null;
   } else {
     owner = key;
@@ -82,6 +81,7 @@ function publish(key: object, next: NearbyOrigin | null): void {
 /** Test-only. The store outlives a render, so a test that granted an origin
     would hand it to the next one. */
 export function resetNearbyOriginStore(): void {
+  resetNearbyStore();
   current = null;
   owner = null;
   for (const listener of listeners) listener();
@@ -115,6 +115,12 @@ export function usePublishNearbyOrigin(resolved: ResolvedOrigin): void {
     );
   }, [key, lat, lon, source, place]);
 
-  // An unmounting picker takes its own origin with it, and only its own.
-  useEffect(() => () => publish(key, null), [key]);
+  // The origin belongs to the page session. A responsive picker unmount is
+  // not a request to turn location off; explicit edits publish the next value.
+  useEffect(
+    () => () => {
+      if (owner === key) owner = null;
+    },
+    [key],
+  );
 }

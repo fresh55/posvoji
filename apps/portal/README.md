@@ -158,7 +158,9 @@ The From address is send-only. The mail carries `PORTAL_FROM_NAME` as its
 display name and `PORTAL_REPLY_TO_EMAIL` as `Reply-To`, and prints that same
 address as the one to write to with questions. `PORTAL_EMAIL_USE_TLS` is
 STARTTLS on port 587 and `PORTAL_EMAIL_USE_SSL` is implicit TLS on 465;
-setting both fails at startup rather than at the first send.
+setting both fails at startup rather than at the first send. Which of the
+two the deployment uses, and why, is in
+[docs/DEPLOY-PORTAL.md](../../docs/DEPLOY-PORTAL.md); it is not repeated here.
 
 ### Signing in as a shelter in development
 
@@ -509,7 +511,7 @@ variables.
 | `PORTAL_SESSION_COOKIE_DOMAIN` | unset | Set only if the cookie has to span subdomains. |
 | `PORTAL_SESSION_AGE` | `1209600` | Session lifetime in seconds. |
 | `PORTAL_LOGIN_LINK_RATE` | `5/hour` | Maximum accepted login-link requests per client IP. Counted in the cache below. |
-| `PORTAL_LOGIN_LINK_ADDRESS_RATE` | `3/hour` | Maximum login links sent to one address. Over it the endpoint still answers 204 and sends nothing. |
+| `PORTAL_LOGIN_LINK_ADDRESS_RATE` | `3/hour` | Maximum login links sent to one address. Over it the endpoint still answers 204 and sends nothing. Read at startup, so a rate that is malformed or allows nothing stops the process rather than the login. |
 | `PORTAL_CACHE_DIR` | `apps/portal/cache` | File-based cache holding both counters. Shared by every worker process on the host, and must be writable by the service. |
 | `PORTAL_TRUSTED_PROXY_COUNT` | unset | Number of trusted rightmost proxy hops in `X-Forwarded-For`. Unset trusts one hop only when `REMOTE_ADDR` is loopback; `0` always uses `REMOTE_ADDR`. |
 | `PORTAL_EMAIL_BACKEND` | console when `PORTAL_DEBUG` is on, otherwise SMTP | Django email backend. |
@@ -519,7 +521,7 @@ variables.
 | `PORTAL_EMAIL_PASSWORD` | empty | SMTP password. |
 | `PORTAL_EMAIL_USE_TLS` | `false` | STARTTLS, port 587. |
 | `PORTAL_EMAIL_USE_SSL` | `false` | Implicit TLS, port 465. Setting this and `PORTAL_EMAIL_USE_TLS` together fails at startup. |
-| `PORTAL_EMAIL_TIMEOUT` | `10` | Seconds a send waits on the mail host. Sending is synchronous inside the request. Must be a positive integer. |
+| `PORTAL_EMAIL_TIMEOUT` | `10` | Seconds each socket operation of a send waits, not the send as a whole. Sending is synchronous inside the request. Must be a positive integer. |
 | `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. Must be the mailbox `PORTAL_EMAIL_USER` authenticates as. |
 | `PORTAL_FROM_NAME` | `Posvoji.si` | Display name on the From address. |
 | `PORTAL_REPLY_TO_EMAIL` | `info@posvoji.si` | `Reply-To`, and the address the mail prints for questions. The From address is send-only. |

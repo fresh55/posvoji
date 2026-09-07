@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortalProvider } from "@/components/portal/portal-provider";
+import { captureNavigation, restoreNavigation } from "@/test/location";
 import { PortalWorkspace } from "@/components/portal/portal-workspace";
 import { fill, portalText } from "@/components/portal/portal-text";
 import {
@@ -58,33 +59,9 @@ Element.prototype.scrollTo = vi.fn();
 // out to scroll.
 Element.prototype.scrollIntoView = vi.fn();
 
-let restoreLocation: (() => void) | null = null;
-
-/**
- * A location whose replace() only records where the page was sent. jsdom
- * navigates nowhere and warns instead, and the guard is only observable
- * through the address it hands over to.
- */
-function captureNavigation(): ReturnType<typeof vi.fn> {
-  const real = window.location;
-  const replace = vi.fn();
-  Object.defineProperty(window, "location", {
-    configurable: true,
-    value: { ...real, replace, assign: vi.fn() },
-  });
-  restoreLocation = () => {
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: real,
-    });
-  };
-  return replace;
-}
-
 afterEach(() => {
   cleanup();
-  restoreLocation?.();
-  restoreLocation = null;
+  restoreNavigation();
 });
 
 beforeEach(() => {

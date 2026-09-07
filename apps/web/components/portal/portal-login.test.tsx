@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { captureNavigation, restoreNavigation } from "@/test/location";
 import { PortalLogin } from "@/components/portal/portal-login";
 import { fill, portalText } from "@/components/portal/portal-text";
 import {
@@ -41,36 +42,12 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-let restoreLocation: (() => void) | null = null;
-
-/**
- * A location whose replace() only records where the page was sent. jsdom
- * navigates nowhere and warns instead, and the test has to see the address
- * the card handed over to.
- */
-function captureNavigation(): ReturnType<typeof vi.fn> {
-  const real = window.location;
-  const replace = vi.fn();
-  Object.defineProperty(window, "location", {
-    configurable: true,
-    value: { ...real, replace, assign: vi.fn() },
-  });
-  restoreLocation = () => {
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: real,
-    });
-  };
-  return replace;
-}
-
 afterEach(() => {
   cleanup();
   vi.mocked(requestLoginLink).mockReset();
   vi.mocked(verifyToken).mockReset();
   window.sessionStorage.clear();
-  restoreLocation?.();
-  restoreLocation = null;
+  restoreNavigation();
   window.history.replaceState(null, "", "/portal");
 });
 

@@ -19,7 +19,7 @@ import {
 import { m, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 import { PortalShell } from "@/components/portal/portal-shell";
-import { fill, portalText, splitOnEmail } from "@/components/portal/portal-text";
+import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,7 @@ import {
   requestLoginLink,
   verifyToken,
 } from "@/lib/portal-api";
+import { mailtoHref } from "@/lib/contact-links";
 import { cn } from "@/lib/utils";
 
 // The import sits inside a branch on a compile time literal, so a production
@@ -91,7 +92,10 @@ function errorMessage(error: unknown): string {
 }
 
 // The help line, cut around the address once: the sentence never changes.
-const [HELP_BEFORE, HELP_AFTER] = splitOnEmail(portalText.helpLine);
+// Split rather than interpolated, because what goes in the gap is a link and
+// not a word: shelter staff read this on a phone, where an address that is
+// only text has to be copied out by hand.
+const [HELP_BEFORE, HELP_AFTER] = portalText.helpLine.split("{email}");
 
 // The character class is copied from lib/shelters.ts, which is the rule the
 // register is validated against: no character that turns one recipient into a
@@ -439,7 +443,7 @@ export function PortalLogin() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               {HELP_BEFORE}
               <a
-                href={`mailto:${portalText.contactEmail}`}
+                href={mailtoHref(portalText.contactEmail)}
                 className="underline underline-offset-4 hover:text-foreground"
               >
                 {portalText.contactEmail}

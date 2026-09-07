@@ -389,12 +389,11 @@ function isCsrfFailure(failure: Failure): boolean {
  * caller has to have something to say without one.
  */
 function retryAfterSeconds(response: Response): number | undefined {
-  const raw = response.headers.get("Retry-After");
-  if (typeof raw !== "string") return undefined;
-  const value = raw.trim();
-  if (!/^\d+$/.test(value)) return undefined;
-  const seconds = Number(value);
-  return Number.isSafeInteger(seconds) ? seconds : undefined;
+  const raw = response.headers.get("Retry-After")?.trim();
+  // The digit bound is what keeps the answer a safe integer, so nothing after
+  // this has to check for one.
+  if (!raw || !/^\d{1,15}$/.test(raw)) return undefined;
+  return Number(raw);
 }
 
 type PortalRequestInit = {

@@ -1,3 +1,4 @@
+import { usePickerHistory } from "@/hooks/use-picker-history";
 import {
   useCallback,
   useEffect,
@@ -9,8 +10,11 @@ import {
 import type { MapFacts } from "@/components/filters/shelter-map";
 import type { ShelterRow } from "@/components/filters/shelter-rows";
 import { useI18n } from "@/components/i18n-provider";
-import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
-import { useNearby } from "@/hooks/use-nearby";
+import {
+  DESKTOP_QUERY,
+  useDesktopBreakpointClose,
+} from "@/hooks/use-desktop-breakpoint-close";
+import { useNearby, useNearbyQuery } from "@/hooks/use-nearby";
 import { usePublishNearbyOrigin } from "@/hooks/use-nearby-origin";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { isDrop } from "@/lib/filters";
@@ -75,11 +79,15 @@ export function useLocationPickerController({
       onOpenChange,
     };
   });
+  const closeCleanup = useRef<() => void>(() => {});
   const setOpen = useCallback((next: boolean) => {
+    if (!next) closeCleanup.current();
     if (!openTarget.current.controlled) setSelfOpen(next);
     openTarget.current.onOpenChange?.(next);
   }, []);
-  const [query, setQuery] = useState("");
+  usePickerHistory(open, () => setOpen(false));
+  useDesktopBreakpointClose(open, () => setOpen(false), "either");
+  const [query, setQuery] = useNearbyQuery();
   // Which shelter's details are open in the list, by id. Null until an info
   // control is pressed and null again once one is collapsed. One at a time,
   // and that rule lives here because this is the only thing that sees the
@@ -136,6 +144,14 @@ export function useLocationPickerController({
     text: string;
     after: string[];
   } | null>(null);
+  // Retire the note permanently, even if a later selection has the same ids.
+  if (
+    dropNote &&
+    (dropNote.after.length !== selected.length ||
+      !dropNote.after.every((value) => selected.includes(value)))
+  ) {
+    setDropNote(null);
+  }
   // The shelter an animal card asked the map to point at. One at a time, like
   // the expanded shelter above it, and gone when the dialog closes: it answers
   // "where is this one", not "which ones did I choose".
@@ -149,6 +165,19 @@ export function useLocationPickerController({
     revealSelection,
     resetDocks,
   } = useLocationPickerMotion(open);
+  useEffect(() => {
+    closeCleanup.current = () => {
+      // Every dismissal, including Back and a breakpoint change, ends the
+      // same visit. A recognized place remains the page's sorting origin.
+      if (readTypedLocation(query).status !== "matched") setQuery("");
+      setExpandedShelter(null);
+      setSpotlitShelterId(null);
+      setOffGroupOpen(false);
+      setDropNote(null);
+      resetDocks();
+    };
+  }, [query, resetDocks, setQuery]);
+
 
   // An animal card asking for its shelter on the map. Guarded by breakpoint
   // because two instances of this picker are mounted at once and exactly one
@@ -180,7 +209,7 @@ export function useLocationPickerController({
     };
     window.addEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
     return () => window.removeEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
-  }, [canSpotlight, deepLink, landSpotlight, setOpen]);
+  }, [canSpotlight, deepLink, landSpotlight, setOpen, setQuery]);
   const searchRef = useRef<HTMLInputElement>(null);
   // The status line belongs to the one input, both on screen and to a
   // screen reader, so it is named once and pointed at from the field.
@@ -225,7 +254,8 @@ export function useLocationPickerController({
   // The other half of it: the box holds text that is not a place, so it is a
   // name to narrow the list by. Both are false for an empty box, which is the
   // resting state where the field asks nothing at all.
-  const searching = !placeMode && query.trim() !== "";
+  const searching =
+    !placeMode && query.trim() !== "" && !/^\d{1,3}$/.test(query.trim());
   // The same point, offered to the rest of the page. This control is the only
   // place on the site that asks where the visitor is, and it stays the only
   // place; what changes is that the answer no longer stops at this dialog's own
@@ -269,8 +299,8 @@ export function useLocationPickerController({
   // shelters here". How a municipality is placed in a region is with the
   // helper, in model.ts, which the found-animal page shares.
   const regionShelterNames = useMemo(
-    () => shelterNamesByRegion(municipalities ?? []),
-    [municipalities],
+    () => (open ? shelterNamesByRegion(municipalities ?? []) : undefined),
+    [municipalities, open],
   );
 
   // Whether the map is drawing markers right now, as the map itself answers
@@ -290,7 +320,8 @@ export function useLocationPickerController({
       hasSelected: false,
       hasMixed: false,
       hasEmpty: false,
-    });
+    },
+  );
 
   const pins: ShelterPin[] = useMemo(
     () => [
@@ -326,6 +357,7 @@ export function useLocationPickerController({
       // The same predicate toggleValues branches on, read before it runs so
       // the live region and the filter cannot disagree about what this click
       // did.
+      setDropNote(null);
       const dropping = isDrop(selected, values);
       onToggleMany(values);
       if (dropping) {
@@ -338,9 +370,7 @@ export function useLocationPickerController({
         // aria-pressed can say one marker came off; it cannot say twelve did,
         // and the running total in the live region is a total, not a
         // difference. Only for a region, because a single shelter's own
-        // pressed state is the whole of that news. Stale notes need no
-        // clearing: the note is only read while the selection is still the one
-        // this click left behind.
+        // pressed state is the whole of that news.
         if (values.length > 1) {
           setDropNote({
             text: sheltersDropped(values.length, locale),
@@ -361,6 +391,11 @@ export function useLocationPickerController({
       // the visitor is still picking from in order to repeat a sentence they
       // can already read. Every tap after the first would have cost a fold.
       revealSelection();
+      const first = values.find((value) => !selected.includes(value));
+      if (first)
+        requestAnimationFrame(() => {
+          bringIntoList(listNode.current, rowRefs.current.get(first) ?? null);
+        });
       // A click on the country is a newer question than the one an animal
       // card arrived with, and two rings at once would be two answers.
       setSpotlitShelterId(null);
@@ -463,7 +498,7 @@ export function useLocationPickerController({
   // rows whose own text happens to contain the town's name would take the
   // nearest shelters away from the visitor who just said where they are.
   const matchesQuery = (row: ShelterRow) =>
-    fold(`${row.label} ${row.city ?? ""}`).includes(fold(query));
+    fold(`${row.label} ${row.city ?? ""}`).includes(fold(query.trim()));
   const visibleRows = searching ? rows.filter(matchesQuery) : rows;
   const visibleOffRows = searching ? offRows.filter(matchesQuery) : offRows;
 

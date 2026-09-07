@@ -21,7 +21,11 @@ export const DESKTOP_QUERY = "(min-width: 64rem)";
  *  listener down and set it up again on every one of them. The ref is kept
  *  current by its own effect, so the listener always calls the callback from
  *  the latest committed render. */
-export function useDesktopBreakpointClose(open: boolean, onClose: () => void) {
+export function useDesktopBreakpointClose(
+  open: boolean,
+  onClose: () => void,
+  closeOn: "desktop" | "mobile" | "either" = "desktop",
+) {
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -33,10 +37,11 @@ export function useDesktopBreakpointClose(open: boolean, onClose: () => void) {
 
     const mql = window.matchMedia(DESKTOP_QUERY);
     const handleChange = (event: MediaQueryListEvent) => {
-      if (event.matches) onCloseRef.current();
+      if (closeOn === "either" || event.matches === (closeOn === "desktop"))
+        onCloseRef.current();
     };
 
     mql.addEventListener("change", handleChange);
     return () => mql.removeEventListener("change", handleChange);
-  }, [open]);
+  }, [open, closeOn]);
 }

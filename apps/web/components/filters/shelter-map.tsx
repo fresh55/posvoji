@@ -31,7 +31,11 @@ import {
   type ShelterPin,
   type Town,
 } from "@/lib/map-layout";
-import { animalCount, regionCommitNote, shelterCount } from "@/lib/labels";
+import {
+  filteredAnimalCount,
+  regionCommitNote,
+  shelterCount,
+} from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 import {
@@ -47,11 +51,7 @@ import {
   MixedHatch,
 } from "./shelter-map-geography";
 import { PlateFurniture } from "./shelter-map-furniture";
-import {
-  Connector,
-  OriginDistance,
-  SPOTLIGHT_RING,
-} from "./shelter-map-links";
+import { Connector, OriginDistance, SPOTLIGHT_RING } from "./shelter-map-links";
 import {
   coveredByLine,
   Region,
@@ -516,12 +516,12 @@ export function ShelterMap({
     : hoveredShelter
       ? hoveredShelter.selectable === false
         ? messages.noAnimalsListed
-        : animalCount(hoveredShelter.count, locale)
+        : filteredAnimalCount(hoveredShelter.count, locale)
       : townSelectableValues(activeTown).length === 0
         ? messages.noAnimalsListed
         : activeTown.shelters.length > 1
-          ? `${shelterCount(activeTown.shelters.length, locale)} · ${animalCount(townCount(activeTown), locale)}`
-          : animalCount(townCount(activeTown), locale);
+          ? `${shelterCount(activeTown.shelters.length, locale)} · ${filteredAnimalCount(townCount(activeTown), locale)}`
+          : filteredAnimalCount(townCount(activeTown), locale);
 
   /** Who lives there, when the annotation is about one house. A cluster's own
    *  card answers for its town, and the breakdown of a town is a fact about no
@@ -719,10 +719,10 @@ export function ShelterMap({
     () =>
       interactive
         ? towns
-            .filter((town) => townIsLive(town, selected))
+            .filter((town) => townIsLive(town))
             .sort((a, b) => a.x - b.x || a.y - b.y)
         : [],
-    [interactive, towns, selected],
+    [interactive, towns],
   );
   // One tab stop for the whole plate of coins, the way the regions share one.
   const tabStopTownKey =
@@ -873,11 +873,11 @@ export function ShelterMap({
    *  promise about a press that does not exist. */
   const armedNote =
     armedRegion && armedRegion.stats.live
-      ? regionCommitNote(
+      ? `${locale === "sl" ? "Še enkrat tapni: " : "Tap again: "}${regionCommitNote(
           armedRegion.stats.values.length,
           armedRegion.stats.state === true,
           locale,
-        )
+        )}`
       : undefined;
 
   // A marker sits on top of its region, so both would report a hover. The
@@ -1114,7 +1114,7 @@ export function ShelterMap({
           title={hoveredRegion.region.name}
           metadata={
             hoveredRegion.stats.live
-              ? `${shelterCount(hoveredRegion.stats.values.length, locale)} · ${animalCount(hoveredRegion.stats.animals, locale)}`
+              ? `${shelterCount(hoveredRegion.stats.values.length, locale)} · ${filteredAnimalCount(hoveredRegion.stats.animals, locale)}`
               : messages.noSheltersInRegion
           }
           // Two different second lines, and never both, because a region is

@@ -485,8 +485,8 @@
   mask-image: linear-gradient(
     to bottom,
     rgb(0 0 0 / calc(1 - var(--scroll-fade-top, 0))) 0,
-    black calc(var(--scroll-fade-top, 0) * 2.5rem),
-    black calc(100% - var(--scroll-fade-bottom, 0) * 2.5rem),
+    black calc(var(--scroll-fade-top, 0) * min(2.5rem, 25%)),
+    black calc(100% - var(--scroll-fade-bottom, 0) * min(2.5rem, 25%)),
     rgb(0 0 0 / calc(1 - var(--scroll-fade-bottom, 0))) 100%
   );
 }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { useState, type ComponentProps } from "react";
@@ -38,7 +39,10 @@ Object.defineProperty(window, "matchMedia", {
 // engine to assert.
 Element.prototype.scrollIntoView = vi.fn();
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  resetNearbyOriginStore();
+});
 
 // Alphabetical order puts Sever first, and Sever is the far one from
 // Ljubljana, so a nearest-first sort has to visibly move it.
@@ -655,7 +659,7 @@ describe("LocationPicker merged field", () => {
 
 describe("LocationPicker search announcement", () => {
   const live = () =>
-    screen.getByRole("dialog").querySelector("p.sr-only[aria-live='polite']")!
+    screen.getByRole("dialog").querySelector("[data-picker-search-news]")!
       .textContent ?? "";
 
   it("says how many shelters the query left", async () => {
@@ -671,7 +675,7 @@ describe("LocationPicker search announcement", () => {
     expect(live()).toContain(`Zadetki: ${shelterCount(1, "sl")}`);
     // The selection summary the region already carried is still in it. The
     // search is a clause on the end, not a replacement.
-    expect(live()).toContain("Vsa zavetišča");
+    expect(live()).not.toContain("Vsa zavetišča");
   });
 
   it("counts the off-site rows too, because the query narrowed them as well", async () => {
@@ -767,9 +771,9 @@ describe("LocationPicker sheet height", () => {
     expect(declared(ground, "--plate-h")).toBe("calc(0.65625*var(--picker-w))");
     // --picker-w is the dialog's own width, declared where it is worn so the
     // two cannot drift.
-    expect(
-      dialog().className.includes("[--picker-w:min(94vw,84rem)]"),
-    ).toBe(true);
+    expect(dialog().className.includes("[--picker-w:min(94vw,84rem)]")).toBe(
+      true,
+    );
   });
 
   it("keeps the list a height of its own below lg", async () => {
@@ -800,9 +804,7 @@ describe("LocationPicker off-site shelters", () => {
   it("heads the rows it cannot filter by, and leaves the legend out of it", async () => {
     await openPicker();
 
-    expect(
-      screen.queryByText(/Trenutno brez objavljenih živali/),
-    ).toBeNull();
+    expect(screen.queryByText(/Trenutno brez objavljenih živali/)).toBeNull();
 
     cleanup();
     await openPicker({ offSite });
@@ -1392,7 +1394,9 @@ describe("LocationPicker map picking", () => {
     // other one.
     expect(screen.queryByRole("button", { name: "Prikaži živali" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Prikaži/ })).toBeNull();
-    expect(screen.getByRole("button", { name: "Pokaži 11 živali" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Pokaži 11 živali" }),
+    ).toBeTruthy();
   });
 
   it("drops an already-picked shelter on a single click", () => {
@@ -2591,7 +2595,7 @@ describe("LocationPicker floating footer", () => {
 
     expect(row.textContent).toContain("Zavetišče Sever");
     expect(row.textContent).toContain("0");
-    expect(row.querySelector("button")!.hasAttribute("disabled")).toBe(true);
+    expect(row.querySelector("button")!.hasAttribute("disabled")).toBe(false);
   });
 
   it("offers a named reset only while something is selected", async () => {
@@ -3017,5 +3021,60 @@ describe("LocationPicker sheet landing", () => {
     expect(peek.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(peek);
     expect(sheet()?.getAttribute("data-picker-sheet")).toBe("open");
+  });
+});
+
+describe("LocationPicker audit regressions", () => {
+  it("keeps the roster visible through the first three postcode digits", async () => {
+    const input = await openPicker();
+    for (const query of ["1", "10", "100"]) {
+      type(input, query);
+      expect(rowOrder()).toEqual(["sever", "jug"]);
+      expect(screen.getByRole("dialog").textContent).not.toContain(
+        "Ni zadetkov",
+      );
+    }
+    type(input, "1000");
+    expect(rowOrder()).toEqual(["jug", "sever"]);
+  });
+  it("trims pasted shelter names", async () => {
+    const input = await openPicker();
+    type(input, " Zavetišče Jug ");
+    expect(rowOrder()).toEqual(["jug"]);
+  });
+  it("asks for a row choice when Enter has more than one match", async () => {
+    const onToggle = vi.fn();
+    const input = await openPicker({ onToggle });
+    type(input, "Zavetišče");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(document.activeElement?.textContent).toContain("Zavetišče Sever");
+  });
+  it("lets a zero-match shelter be picked from its row and map", async () => {
+    await openPicker({ counts: new Map(), resultCount: 0 });
+    const row = screen.getByRole("button", {
+      name: /Zavetišče Jug 0 živali s temi filtri/,
+    });
+    expect(row.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-pressed")).toBe("true");
+    const region = screen.getByRole("button", {
+      name: /Osrednjeslovenska:.*0 živali s temi filtri/,
+    });
+    expect(region.getAttribute("data-region-state")).toBe("selected");
+    fireEvent.keyDown(region, { key: "Enter" });
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    const marker = screen
+      .getByRole("dialog")
+      .querySelector('[data-marker-key="ljubljana"]');
+    expect(marker?.getAttribute("role")).toBe("button");
+  });
+  it("keeps keyboard focus on the desktop fold control", async () => {
+    await openPicker();
+    const fold = screen.getByRole("button", { name: "Skrij seznam" });
+    fold.focus();
+    fireEvent.click(fold);
+    expect(document.activeElement).toBe(fold);
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
   });
 });

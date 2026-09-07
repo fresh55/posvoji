@@ -377,8 +377,8 @@ describe("animal grid empty state", () => {
     // gets: two numbers ride every row and only one of them said what it was
     // counting before this.
     expect(countOf("druga")).toBe("11 žival");
-    expect(countOf("muri")).toBe("00 živali");
-    expect(countOf("tretje")).toBe("00 živali");
+    expect(countOf("muri")).toBe("00 živali s temi filtri");
+    expect(countOf("tretje")).toBe("00 živali s temi filtri");
   });
 
   it("renders the English recovery copy", () => {

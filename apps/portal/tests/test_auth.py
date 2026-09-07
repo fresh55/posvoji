@@ -8,7 +8,7 @@ from django.test import Client
 from sesame.utils import get_token
 
 from core.api.auth import ADDRESS_THROTTLED, DELIVERY_FAILED
-from core.security import request_link_throttle
+from core.security import address_send_limit, request_link_throttle
 
 REQUEST_LINK = "/api/auth/request-link"
 VERIFY = "/api/auth/verify"
@@ -56,6 +56,21 @@ def two_request_link_attempts(link_attempts_per_ip):
 def unlimited_per_ip(link_attempts_per_ip):
     """The IP limit out of the way, so a test can exercise the address limit."""
     link_attempts_per_ip(100)
+
+
+@pytest.fixture
+def link_attempts_per_address(monkeypatch):
+    """Set the per-mailbox limit for one test.
+
+    The limit is read once at import, the way the IP throttle is, so a test
+    moves the parsed object rather than the setting behind it.
+    """
+
+    def set_limit(count: int, duration: int = 3600) -> None:
+        monkeypatch.setattr(address_send_limit, "num_requests", count)
+        monkeypatch.setattr(address_send_limit, "duration", duration)
+
+    return set_limit
 
 
 @pytest.mark.django_db
@@ -163,7 +178,7 @@ def test_request_link_keeps_uniform_response_when_email_backend_fails(
     def fail_to_send(self, *args, **kwargs):
         raise RuntimeError("backend-specific delivery failure")
 
-    monkeypatch.setattr("core.api.auth.EmailMessage.send", fail_to_send)
+    monkeypatch.setattr("core.mail.EmailMessage.send", fail_to_send)
 
     response = post(client, REQUEST_LINK, {"email": member.email})
 
@@ -174,10 +189,10 @@ def test_request_link_keeps_uniform_response_when_email_backend_fails(
 
 @pytest.mark.django_db
 def test_request_link_stops_repeats_to_one_address(
-    client, member, second_member, unlimited_per_ip, settings, caplog
+    client, member, second_member, unlimited_per_ip, link_attempts_per_address, caplog
 ):
     caplog.set_level(logging.INFO)
-    settings.PORTAL_LOGIN_LINK_ADDRESS_RATE = "3/hour"
+    link_attempts_per_address(3)
 
     for _ in range(3):
         assert post(client, REQUEST_LINK, {"email": member.email}).status_code == 204
@@ -198,9 +213,9 @@ def test_request_link_stops_repeats_to_one_address(
 
 @pytest.mark.django_db
 def test_request_link_counts_one_address_however_it_is_written(
-    client, member, unlimited_per_ip, settings
+    client, member, unlimited_per_ip, link_attempts_per_address
 ):
-    settings.PORTAL_LOGIN_LINK_ADDRESS_RATE = "1/hour"
+    link_attempts_per_address(1)
 
     assert post(client, REQUEST_LINK, {"email": member.email}).status_code == 204
     assert post(client, REQUEST_LINK, {"email": " INFO@Example.SI "}).status_code == 204

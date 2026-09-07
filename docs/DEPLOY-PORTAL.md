@@ -248,30 +248,32 @@ message left or not.
 
 Submission goes through Neoserv, authenticated as a posvoji.si mailbox.
 **`PORTAL_EMAIL_USER` and `PORTAL_FROM_EMAIL` must be the same mailbox**, or
-the server may refuse the sender. That means `portal@posvoji.si` has to exist as
-a cPanel mailbox first; if it does not, use `info@posvoji.si` for both. The
-zone and the mail are at Neoserv, not on this host, and not at Hetzner.
+the server may refuse the sender. The cPanel plan carries one mailbox and it is
+`info@posvoji.si`, so that address is the sender, the authenticated user and
+the Reply-To. The zone and the mail are at Neoserv, not on this host, and not
+at Hetzner.
 
-The known endpoint is `eh3.neoserv.si` on 465, which is TLS from the first
-byte:
+The endpoint is `eh3.neoserv.si` on 587, which opens in the clear and upgrades
+with STARTTLS. This is what the first deploy proved on 2026-09-07:
 
 ```ini
 PORTAL_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 PORTAL_EMAIL_HOST=eh3.neoserv.si
-PORTAL_EMAIL_PORT=465
-PORTAL_EMAIL_USER=portal@posvoji.si
+PORTAL_EMAIL_PORT=587
+PORTAL_EMAIL_USER=info@posvoji.si
 PORTAL_EMAIL_PASSWORD=
-PORTAL_EMAIL_USE_TLS=false
-PORTAL_EMAIL_USE_SSL=true
+PORTAL_EMAIL_USE_TLS=true
+PORTAL_EMAIL_USE_SSL=false
 PORTAL_EMAIL_TIMEOUT=10
-PORTAL_FROM_EMAIL=portal@posvoji.si
+PORTAL_FROM_EMAIL=info@posvoji.si
 PORTAL_FROM_NAME=Posvoji.si
 PORTAL_REPLY_TO_EMAIL=info@posvoji.si
 ```
 
-Port 587 with `PORTAL_EMAIL_USE_TLS=true` instead is STARTTLS, and works only
-if Neoserv offers it there. Verify before relying on it. Never set both: the
-process refuses to start.
+Port 465 with `PORTAL_EMAIL_USE_SSL=true` instead is TLS from the first byte.
+Neoserv documents it, but the connection from this host times out, which costs
+`PORTAL_EMAIL_TIMEOUT` seconds of a worker per attempt and delivers nothing.
+Stay on 587. Never set both flags: the process refuses to start.
 
 Once the environment file is loaded, prove it before a shelter does:
 

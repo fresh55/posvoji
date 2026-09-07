@@ -22,12 +22,20 @@ export type PortalSaveState =
 
 export const IDLE: PortalSaveState = { status: "idle" };
 
-// What each failure says to a shelter. A kind that is not here says only
-// what the caller was doing, which is all a server fault can honestly say.
-const MESSAGES: Partial<Record<PortalErrorKind, string>> = {
+// What each failure says to a shelter. null says only what the caller was
+// doing, which is all a server fault can honestly say. Total rather than
+// partial on purpose: a new kind on PortalError is then a compile error here,
+// so it cannot be worded on the login card and forgotten in the workspace.
+const MESSAGES: Record<PortalErrorKind, string | null> = {
   forbidden: portalText.forbidden,
   network: portalText.networkError,
   invalid: portalText.invalidError,
+  // No route the workspace calls is rate limited yet. When one is, this is
+  // where its wait is worded; the login card words its own.
+  throttled: null,
+  unauthorized: null,
+  notFound: null,
+  server: null,
 };
 
 /** "Ime", "Ime in Pasma", "Ime, Pasma in Spol". */

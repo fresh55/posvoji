@@ -23,8 +23,15 @@ def throttled(request, exc: Throttled):
     Without Retry-After the login page can only tell a shelter to try later,
     with no idea how much later. CORS_EXPOSE_HEADERS is what lets the browser
     read the header at all, because the API is on another origin.
+
+    The status comes from the exception rather than being spelled again here.
+    The detail does not: it is lowercased to match the rest of this API's
+    messages ("shelter not found", "invalid or expired token"), and no shelter
+    ever reads it, because the web client shows its own wording.
     """
-    response = api.create_response(request, {"detail": "too many requests"}, status=429)
+    response = api.create_response(
+        request, {"detail": "too many requests"}, status=exc.status_code
+    )
     if exc.wait is not None:
         response["Retry-After"] = str(int(exc.wait))
     return response

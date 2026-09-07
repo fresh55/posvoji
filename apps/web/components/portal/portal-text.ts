@@ -2,18 +2,9 @@
 // here rather than in lib/i18n.ts, which carries the bilingual public site.
 // The placeholder syntax is shared with it.
 
-export { interpolate as fill } from "@/lib/i18n";
+import { CONTACT_EMAIL } from "@/lib/site";
 
-/**
- * A sentence with {email} in it, cut in two around the placeholder, so the
- * caller can put a mail link where the address goes. Shelter staff read these
- * on a phone, where an address that is only text has to be copied out by hand.
- */
-export function splitOnEmail(sentence: string): [string, string] {
-  const at = sentence.indexOf("{email}");
-  if (at === -1) return [sentence, ""];
-  return [sentence.slice(0, at), sentence.slice(at + "{email}".length)];
-}
+export { interpolate as fill } from "@/lib/i18n";
 
 export const portalText = {
   brand: "Portal za zavetišča",
@@ -57,7 +48,7 @@ export const portalText = {
     "Prijava je uspela, a brskalnik ni shranil seje. Dovolite piškotke za posvoji.si in zahtevajte novo povezavo.",
   unknownError: "Nekaj je šlo narobe. Poskusite znova.",
   // The address a shelter writes to when the login itself is the problem.
-  contactEmail: "info@posvoji.si",
+  contactEmail: CONTACT_EMAIL,
   // Under the form. A shelter whose inbox is not the one we hold has no way
   // through this page at all, so the way out is on the page they are stuck on.
   helpLine:

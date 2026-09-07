@@ -6,11 +6,10 @@ answers 204 whether the message left or not. This is how a deploy finds that
 out before a shelter does.
 """
 
-from email.utils import formataddr
-
 from django.conf import settings
-from django.core.mail import EmailMessage
 from django.core.management.base import BaseCommand, CommandError
+
+from core.mail import portal_message
 
 SUBJECT = "Test: portal Posvoji.si"
 BODY = (
@@ -34,16 +33,9 @@ class Command(BaseCommand):
         if not recipient:
             raise CommandError("--to needs an address")
 
-        message = EmailMessage(
-            subject=SUBJECT,
-            body=BODY,
-            from_email=formataddr(
-                (settings.PORTAL_FROM_NAME, settings.DEFAULT_FROM_EMAIL)
-            ),
-            to=[recipient],
-            reply_to=[settings.PORTAL_REPLY_TO_EMAIL],
-        )
-        message.encoding = "utf-8"
+        # The same envelope the login mail travels in, which is the point of
+        # the command: a message this one sends is a message that one can.
+        message = portal_message(subject=SUBJECT, body=BODY, to=recipient)
 
         try:
             sent = message.send()

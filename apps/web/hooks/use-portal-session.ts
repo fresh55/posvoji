@@ -48,7 +48,10 @@ function slot(key: string) {
     take(): string | null {
       try {
         const stored = window.sessionStorage.getItem(key);
-        window.sessionStorage.removeItem(key);
+        // Only when there is something to clear. take() runs on every load of
+        // a page with a session behind it, and the entry is absent on all of
+        // them, so an unconditional write is a storage round trip per load.
+        if (stored !== null) window.sessionStorage.removeItem(key);
         return stored;
       } catch {
         return null;

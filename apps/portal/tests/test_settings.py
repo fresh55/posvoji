@@ -4,6 +4,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
+
+from core.security import AddressSendLimit
 
 PORTAL_ROOT = Path(__file__).resolve().parents[1]
 PUBLISHED_DEVELOPMENT_SECRET_KEY = "dev-only-insecure-secret-key"
@@ -142,3 +145,20 @@ def test_mail_defaults_are_a_timeout_a_name_and_a_reply_to():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "10 False Posvoji.si info@posvoji.si 86400"
+
+
+@pytest.mark.parametrize("rate", ["0/hour", "3/hr", "sometimes"])
+def test_address_send_limit_refuses_a_rate_that_would_silence_the_login(rate):
+    """A zero rate is a portal-wide login outage, a typo is a 500 per request.
+
+    Both are refused where the value is read, so neither can wait until a
+    shelter asks for a link to be discovered.
+    """
+    with pytest.raises(ImproperlyConfigured):
+        AddressSendLimit(rate)
+
+
+def test_address_send_limit_reads_a_rate_the_way_the_ip_limit_does():
+    limit = AddressSendLimit("3/hour")
+
+    assert (limit.num_requests, limit.duration) == (3, 3600)

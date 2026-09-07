@@ -3,6 +3,7 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { mailtoHref } from "@/lib/contact-links";
+import { CONTACT_EMAIL } from "@/lib/site";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
 import { ABOUT_PATHS } from "@/lib/site-links";
@@ -10,7 +11,6 @@ import { ABOUT_PATHS } from "@/lib/site-links";
 // Where a correction goes. Printed as the address itself rather than behind
 // a word: a reader writing from their own mail client has to be able to read
 // it off the page, and the one string is then both the link and its text.
-const CONTACT_EMAIL = "info@posvoji.si";
 
 type PageText = {
   lead: string;

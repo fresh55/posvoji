@@ -193,6 +193,13 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
         "LOCATION": str(PORTAL_CACHE_DIR),
+        # This backend culls by deleting a random third of the directory once
+        # it holds MAX_ENTRIES files, and the files here are rate-limit
+        # counters: at Django's default of 300 a burst of traffic would quietly
+        # hand somebody back their allowance. One file per client address per
+        # hour is the shape, so a ceiling this far above what the service
+        # produces means culling never runs in ordinary use.
+        "OPTIONS": {"MAX_ENTRIES": 5000},
     }
 }
 
@@ -265,23 +272,29 @@ EMAIL_BACKEND = os.environ.get("PORTAL_EMAIL_BACKEND") or (
     else "django.core.mail.backends.smtp.EmailBackend"
 )
 EMAIL_HOST = os.environ.get("PORTAL_EMAIL_HOST", "localhost")
-EMAIL_PORT = int(os.environ.get("PORTAL_EMAIL_PORT", "25"))
+EMAIL_PORT = _env_int("PORTAL_EMAIL_PORT", default=25, minimum=1)
 EMAIL_HOST_USER = os.environ.get("PORTAL_EMAIL_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("PORTAL_EMAIL_PASSWORD", "")
 EMAIL_USE_TLS = _env_bool("PORTAL_EMAIL_USE_TLS", False)
 # Two different things: 587 opens in the clear and upgrades with STARTTLS,
-# 465 is TLS from the first byte. Neoserv's submission endpoint is 465.
+# 465 is TLS from the first byte. Neoserv answers on 587; its 465 is
+# documented but times out from the deployment host.
 EMAIL_USE_SSL = _env_bool("PORTAL_EMAIL_USE_SSL", False)
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
-    # Django raises on the first send instead, from inside the connection,
-    # where the message names neither variable and no login has worked yet.
+    # Django rejects this pairing too, but only when the connection opens,
+    # inside the send that send_login_link wraps in `except Exception`. There
+    # it would be swallowed into a delivery_failed line behind a 204, forever,
+    # while no shelter could sign in. A config error the app's own error
+    # handling is guaranteed to hide belongs where the config is read.
     raise ImproperlyConfigured(
         "PORTAL_EMAIL_USE_TLS and PORTAL_EMAIL_USE_SSL are mutually exclusive; "
         "set PORTAL_EMAIL_USE_SSL for port 465 or PORTAL_EMAIL_USE_TLS for 587"
     )
 # Sending is synchronous inside the request, so an unreachable or silent mail
 # host holds a worker until the socket gives up. The caller is waiting for a
-# 204 that says nothing about delivery anyway.
+# 204 that says nothing about delivery anyway. This bounds each socket
+# operation, not the send: a host that stalls at every step of connect, EHLO,
+# STARTTLS, AUTH and DATA holds a worker for several multiples of it.
 EMAIL_TIMEOUT = _env_int("PORTAL_EMAIL_TIMEOUT", default=10, minimum=1)
 DEFAULT_FROM_EMAIL = os.environ.get("PORTAL_FROM_EMAIL", "portal@posvoji.si")
 # The From address is a send-only mailbox, so the mail carries a display name

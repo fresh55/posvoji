@@ -243,6 +243,7 @@ export type PortalErrorKind =
   | "forbidden"
   | "notFound"
   | "invalid"
+  | "throttled"
   | "server";
 
 function kindFor(status: number): PortalErrorKind {
@@ -251,8 +252,21 @@ function kindFor(status: number): PortalErrorKind {
   if (status === 403) return "forbidden";
   if (status === 404) return "notFound";
   if (status === 400 || status === 422) return "invalid";
+  // The login link is rate limited per address and per network. Kept apart
+  // from "server": nothing is broken, and the shelter only has to wait.
+  if (status === 429) return "throttled";
   return "server";
 }
+
+/**
+ * What a failure carries beyond its status and detail. Both parts are set by
+ * one kind of failure each, so they are named rather than positional: a
+ * throttled request has no fields and a rejected payload has no wait.
+ */
+export type PortalErrorExtra = {
+  fields?: readonly string[];
+  retryAfterSeconds?: number;
+};
 
 /**
  * Every failure the client raises, network included. `kind` is what callers
@@ -274,15 +288,22 @@ export class PortalError extends Error {
    * built from it can name what to fix rather than say "a value".
    */
   readonly fields: readonly string[];
+  /**
+   * How long the API asked the caller to wait, in seconds. Present only when
+   * it sent a Retry-After the client could read, so a message built from it
+   * needs a wording for the case where there is none.
+   */
+  readonly retryAfterSeconds?: number;
 
-  constructor(status: number, detail?: string, fields: readonly string[] = []) {
+  constructor(status: number, detail?: string, extra: PortalErrorExtra = {}) {
     const kind = kindFor(status);
     super(detail ? `${kind} (${status}): ${detail}` : `${kind} (${status})`);
     this.name = "PortalError";
     this.status = status;
     this.kind = kind;
     this.detail = detail;
-    this.fields = fields;
+    this.fields = extra.fields ?? [];
+    this.retryAfterSeconds = extra.retryAfterSeconds;
   }
 }
 
@@ -356,6 +377,24 @@ async function readFailure(response: Response): Promise<Failure> {
 // nothing else the API refuses with a 403 mentions the check.
 function isCsrfFailure(failure: Failure): boolean {
   return failure.detail !== undefined && /csrf/i.test(failure.detail);
+}
+
+/**
+ * The wait a Retry-After header states, in seconds.
+ *
+ * Only the delta form is read. The header may also carry an HTTP date, which
+ * is measured against the visitor's clock rather than the server's, and a wait
+ * computed from a clock that is off is worse than no number at all. A header
+ * the CORS policy did not expose reads as absent here, which is why every
+ * caller has to have something to say without one.
+ */
+function retryAfterSeconds(response: Response): number | undefined {
+  const raw = response.headers?.get("Retry-After");
+  if (typeof raw !== "string") return undefined;
+  const value = raw.trim();
+  if (!/^\d+$/.test(value)) return undefined;
+  const seconds = Number(value);
+  return Number.isSafeInteger(seconds) ? seconds : undefined;
 }
 
 type PortalRequestInit = {
@@ -432,7 +471,10 @@ async function request<T>(
   }
 
   if (failure) {
-    throw new PortalError(response.status, failure.detail, failure.fields);
+    throw new PortalError(response.status, failure.detail, {
+      fields: failure.fields,
+      retryAfterSeconds: retryAfterSeconds(response),
+    });
   }
   if (response.status === 204) return undefined as T;
   try {

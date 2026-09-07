@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PortalLogin } from "@/components/portal/portal-login";
-import { portalText } from "@/components/portal/portal-text";
+import { fill, portalText } from "@/components/portal/portal-text";
 import {
   PORTAL_PATH,
   PORTAL_RETURN_KEY,
@@ -40,11 +40,36 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+let restoreLocation: (() => void) | null = null;
+
+/**
+ * A location whose replace() only records where the page was sent. jsdom
+ * navigates nowhere and warns instead, and the test has to see the address
+ * the card handed over to.
+ */
+function captureNavigation(): ReturnType<typeof vi.fn> {
+  const real = window.location;
+  const replace = vi.fn();
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: { ...real, replace, assign: vi.fn() },
+  });
+  restoreLocation = () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: real,
+    });
+  };
+  return replace;
+}
+
 afterEach(() => {
   cleanup();
   vi.mocked(requestLoginLink).mockReset();
   vi.mocked(verifyToken).mockReset();
   window.sessionStorage.clear();
+  restoreLocation?.();
+  restoreLocation = null;
   window.history.replaceState(null, "", "/portal");
 });
 
@@ -184,6 +209,131 @@ describe("a failure the address is not to blame for", () => {
   });
 });
 
+describe("a link the API refused to send because of the rate limit", () => {
+  it("says how long the wait is when the API stated it", async () => {
+    vi.mocked(requestLoginLink).mockRejectedValue(
+      new PortalError(429, "too many requests", { retryAfterSeconds: 540 }),
+    );
+    render(<PortalLogin />);
+
+    type("info@zavetisce.si");
+    send();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      fill(portalText.throttledMinutes, { minutes: 9 }),
+    );
+    // The address is not what failed, so the box keeps its valid state.
+    expect(emailBox().getAttribute("aria-invalid")).toBeNull();
+    expect(emailBox().getAttribute("aria-describedby")).toBeNull();
+  });
+
+  // Anything under a minute still reads as one: "0 min" would send the shelter
+  // straight back to the button that is being refused.
+  it("never rounds the wait down to nothing", async () => {
+    vi.mocked(requestLoginLink).mockRejectedValue(
+      new PortalError(429, "", { retryAfterSeconds: 20 }),
+    );
+    render(<PortalLogin />);
+
+    type("info@zavetisce.si");
+    send();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      fill(portalText.throttledMinutes, { minutes: 1 }),
+    );
+  });
+
+  it("names the window when the API sent no wait at all", async () => {
+    vi.mocked(requestLoginLink).mockRejectedValue(new PortalError(429));
+    render(<PortalLogin />);
+
+    type("info@zavetisce.si");
+    send();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(portalText.throttledHour);
+    // The retry-and-fail loop this replaces.
+    expect(alert.textContent).not.toContain(portalText.unknownError);
+  });
+});
+
+describe("the way out for a shelter the form cannot help", () => {
+  it("names the address under the form, as a link to write to", () => {
+    render(<PortalLogin />);
+
+    const link = screen.getByRole("link", { name: portalText.contactEmail });
+    expect(link.getAttribute("href")).toBe(
+      `mailto:${portalText.contactEmail}`,
+    );
+    expect(link.parentElement?.textContent).toBe(
+      fill(portalText.helpLine, { email: portalText.contactEmail }),
+    );
+  });
+
+  it("is not on the cards that have said their piece", async () => {
+    vi.mocked(requestLoginLink).mockResolvedValue(undefined);
+    render(<PortalLogin />);
+
+    type("info@zavetisce.si");
+    send();
+
+    await screen.findByText(portalText.sentTitle);
+    expect(
+      screen.queryByRole("link", { name: portalText.contactEmail }),
+    ).toBeNull();
+  });
+});
+
+describe("a verification that left no session behind", () => {
+  it("notes the verification before handing the tab over to the workspace", async () => {
+    vi.mocked(verifyToken).mockResolvedValue({
+      email: "info@zavetisce.si",
+      shelters: [],
+    });
+    // The address first: the stand-in location is a snapshot of the real one.
+    window.history.replaceState(null, "", "/portal?token=abc123");
+    const replace = captureNavigation();
+
+    render(<PortalLogin />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(PORTAL_PATH);
+    });
+    // Read by the workspace's guard, which is the only thing that can tell a
+    // browser that kept no cookie from a visitor who never signed in.
+    expect(window.sessionStorage.getItem("portal:verified")).toBe("1");
+  });
+
+  it("says what happened when the guard sends the visitor back", async () => {
+    window.history.replaceState(null, "", "/portal?napaka=seja");
+
+    render(<PortalLogin />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain(portalText.sessionNotStored);
+    // The form is what the shelter needs next, and the box is theirs to type in.
+    expect(emailBox().getAttribute("aria-invalid")).toBeNull();
+    expect(verifyToken).not.toHaveBeenCalled();
+    // Said on the card, so it has no business in a reloadable address.
+    await waitFor(() => {
+      expect(window.location.search).toBe("");
+    });
+  });
+
+  it("leaves the notice behind as soon as the shelter types", async () => {
+    window.history.replaceState(null, "", "/portal?napaka=seja");
+
+    render(<PortalLogin />);
+    expect(screen.getByRole("alert")).toBeTruthy();
+
+    type("info@zavetisce.si");
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
 describe("a token that arrives in the address bar", () => {
   it("is out of the URL before the answer comes back", async () => {
     let settle = () => {};
@@ -233,17 +383,18 @@ describe("a token that arrives in the address bar", () => {
 
 describe("where a login that went through lands", () => {
   const SESSION = { email: "info@zavetisce.si", shelters: [] };
-  const realLocation = window.location;
 
   /**
    * jsdom cannot navigate, and its Location will not let one method be
    * stubbed on its own, so the whole object is stood in for. The stand-in
    * carries the address the test arrived on, frozen: the page reads the
-   * token off it, and what it writes back goes to the real history.
+   * token off it, and what it writes back goes to the real history. The
+   * stand-in is taken down by the same hook captureNavigation's is.
    */
   function arriveWithToken(
     search = "?token=abc123",
   ): ReturnType<typeof vi.fn> {
+    const real = window.location;
     window.history.replaceState(null, "", `/portal/prijava${search}`);
     const replace = vi.fn();
     Object.defineProperty(window, "location", {
@@ -255,6 +406,12 @@ describe("where a login that went through lands", () => {
         replace,
       },
     });
+    restoreLocation = () => {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: real,
+      });
+    };
     return replace;
   }
 
@@ -262,13 +419,6 @@ describe("where a login that went through lands", () => {
   function linkWith(back: string): string {
     return `?token=abc123&nazaj=${encodeURIComponent(back)}`;
   }
-
-  afterEach(() => {
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: realLocation,
-    });
-  });
 
   it("goes back to the page the shelter was sent away from", async () => {
     // The provider, on finding no session, keeps the page it is leaving.

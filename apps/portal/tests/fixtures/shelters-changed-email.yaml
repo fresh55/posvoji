@@ -1,0 +1,25 @@
+# shelters.yaml after the registry moved one shelter to another address.
+# Same entries as the main fixture, with a new address on testno.
+
+meta:
+  register_source: "test fixture"
+  register_date: 2026-02-01
+
+shelters:
+  - id: testno
+    name: Zavetisce Testno
+    city: Testno
+    website: https://example.si/
+    email: nov@example.si
+    phone: "01 000 00 00"
+
+  - id: drugo
+    name: Zavetisce Drugo
+    city: Drugo
+    website: https://drugo.example.si/
+    email: zavetisce@drugo.example.si
+
+  - id: brez-poste
+    name: Zavetisce Brez poste
+    city: Nekje
+    website: https://brez.example.si/

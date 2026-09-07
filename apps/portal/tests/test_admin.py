@@ -9,6 +9,7 @@ from core.models import (
     AnimalOverride,
     Listing,
     ListingPhoto,
+    MembershipSource,
     Shelter,
     ShelterMembership,
 )
@@ -238,3 +239,19 @@ def test_the_listing_changelists_render(admin_client, manual_shelter):
 
     assert admin_client.get("/admin/core/listing/").status_code == 200
     assert admin_client.get("/admin/core/listingphoto/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_the_membership_changelist_shows_where_a_login_came_from(
+    admin_client, shelter, member
+):
+    ShelterMembership.objects.filter(user=member, shelter=shelter).update(
+        source=MembershipSource.REGISTRY
+    )
+
+    response = admin_client.get("/admin/core/sheltermembership/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "field-source" in body
+    assert "registry" in body

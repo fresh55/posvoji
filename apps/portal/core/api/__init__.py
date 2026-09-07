@@ -1,4 +1,5 @@
 from ninja import NinjaAPI
+from ninja.errors import Throttled
 
 from ..security import session_auth
 from .animals import router as animals_router
@@ -13,6 +14,21 @@ api = NinjaAPI(
     description="Shelter self service portal: logins and animal overrides.",
     auth=session_auth,
 )
+
+
+@api.exception_handler(Throttled)
+def throttled(request, exc: Throttled):
+    """429 that says how long the wait is.
+
+    Without Retry-After the login page can only tell a shelter to try later,
+    with no idea how much later. CORS_EXPOSE_HEADERS is what lets the browser
+    read the header at all, because the API is on another origin.
+    """
+    response = api.create_response(request, {"detail": "too many requests"}, status=429)
+    if exc.wait is not None:
+        response["Retry-After"] = str(int(exc.wait))
+    return response
+
 
 api.add_router("", auth_router, tags=["auth"])
 # Answers 404 for every route unless PORTAL_DEV_LOGIN is on, which DEBUG

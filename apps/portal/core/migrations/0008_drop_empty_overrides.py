@@ -38,7 +38,7 @@ def drop_empty_overrides(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0006_shelter_ingestion_listing_listingphoto"),
+        ("core", "0007_sheltermembership_source"),
     ]
 
     operations = [

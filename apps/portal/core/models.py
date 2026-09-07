@@ -213,6 +213,23 @@ class Shelter(models.Model):
         return self.ingestion == IngestionMode.MANUAL
 
 
+class MembershipSource(models.TextChoices):
+    """Where a membership came from, which is what decides who removes it.
+
+    "registry" is the address in data/shelters.yaml, minted by seed_shelters.
+    That command owns those rows: when the registry names another address for
+    the shelter, or none at all, it deletes the ones that no longer match.
+    "admin" is a row made by hand in /admin, usually a second staff address
+    the registry does not carry, and only a person removes it. "dev" is the
+    <slug>@dev.invalid login the development shelter picker mints, which
+    exists only in a development database.
+    """
+
+    REGISTRY = "registry", "registry"
+    ADMIN = "admin", "admin"
+    DEV = "dev", "dev"
+
+
 class ShelterMembership(models.Model):
     """Links a login to a shelter. No membership means no portal access."""
 
@@ -225,6 +242,13 @@ class ShelterMembership(models.Model):
         Shelter,
         on_delete=models.CASCADE,
         related_name="memberships",
+    )
+    # Every code path that mints a membership states its source, so the
+    # default is what is left: a row added by hand on the admin form.
+    source = models.CharField(
+        max_length=16,
+        choices=MembershipSource.choices,
+        default=MembershipSource.ADMIN,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

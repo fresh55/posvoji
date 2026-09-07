@@ -94,8 +94,15 @@ class ShelterAdmin(admin.ModelAdmin):
 
 @admin.register(ShelterMembership)
 class ShelterMembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "user_email", "shelter", "created_at")
-    list_filter = ("shelter",)
+    """Who signs in for which shelter, and where each row came from.
+
+    source stays editable. Changing a row from "registry" to "admin" is how a
+    login the registry no longer names is kept, because the seed only removes
+    the registry ones.
+    """
+
+    list_display = ("user", "user_email", "shelter", "source", "created_at")
+    list_filter = ("shelter", "source")
     search_fields = (
         "user__username",
         "user__email",

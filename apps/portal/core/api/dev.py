@@ -14,7 +14,7 @@ from ninja import Router, Status
 from ninja.errors import HttpError
 
 from ..accounts import ensure_user
-from ..models import Shelter, ShelterMembership
+from ..models import MembershipSource, Shelter, ShelterMembership
 from ..schemas import DevLoginIn, DevShelterOut, MeOut
 from ..security import csrf_auth
 from .auth import me_payload
@@ -85,7 +85,10 @@ def dev_login(request, payload: DevLoginIn):
         # A shelter the registry lists without an address still has to be
         # openable, otherwise it is the one page nobody can ever look at.
         user, _ = ensure_user(dev_email(shelter.slug))
-        ShelterMembership.objects.create(user=user, shelter=shelter)
+        # Marked as its own source so the registry seed leaves it standing.
+        ShelterMembership.objects.create(
+            user=user, shelter=shelter, source=MembershipSource.DEV
+        )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     logger.warning("dev login opened a session as %s", shelter.slug)

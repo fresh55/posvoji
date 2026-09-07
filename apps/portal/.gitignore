@@ -12,3 +12,6 @@ db.sqlite3
 db.sqlite3-journal
 staticfiles/
 media/
+
+# file-based cache: rate-limit counters, rebuilt whenever they are needed
+cache/

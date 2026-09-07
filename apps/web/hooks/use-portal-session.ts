@@ -14,6 +14,45 @@ export const PORTAL_LOGIN_PATH = "/portal/prijava";
 export const PORTAL_PATH = "/portal";
 export const PORTAL_ANIMAL_PATH = "/portal/zival";
 
+// What the guard tells the login page when it sends a visitor back. The two
+// halves are separate so the page reads the query with the same words the
+// guard wrote it with.
+export const PORTAL_ERROR_PARAM = "napaka";
+export const PORTAL_ERROR_NO_SESSION = "seja";
+export const PORTAL_LOGIN_NO_SESSION_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR_PARAM}=${PORTAL_ERROR_NO_SESSION}`;
+
+/**
+ * A verification that worked, noted for the page it hands over to.
+ *
+ * The session lives in a cookie the API sets. A browser that keeps no cookie
+ * for the API lets the exchange succeed and then answers /portal with a 401,
+ * and the login link is single use, so a silent bounce back to the login page
+ * leaves the shelter with a burnt link and no idea why. The note survives that
+ * one hop and nothing more.
+ */
+const VERIFIED_KEY = "portal:verified";
+
+/** Called on the way to the workspace, before the page is replaced. */
+export function markVerified(): void {
+  try {
+    window.sessionStorage.setItem(VERIFIED_KEY, "1");
+  } catch {
+    // A browser that stores nothing throws here. The redirect still works;
+    // only the reason for it is lost.
+  }
+}
+
+/** Reads the note and clears it, so it explains one bounce and no later one. */
+export function takeVerified(): boolean {
+  try {
+    const noted = window.sessionStorage.getItem(VERIFIED_KEY) === "1";
+    window.sessionStorage.removeItem(VERIFIED_KEY);
+    return noted;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The editor page for one animal.
  *

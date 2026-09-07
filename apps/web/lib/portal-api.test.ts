@@ -33,7 +33,10 @@ const HTML_BODY = "<!doctype html><title>502 Bad Gateway</title><h1>502</h1>";
 function respond(
   status: number,
   body?: unknown,
-  { json = true }: { json?: boolean } = {},
+  {
+    json = true,
+    headers = {},
+  }: { json?: boolean; headers?: Record<string, string> } = {},
 ) {
   // No body at all is the empty string, which is what a real Response reads
   // for a 204 or a 200 that carries nothing.
@@ -45,6 +48,7 @@ function respond(
   fetchMock.mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers(headers),
     text: () => Promise.resolve(text),
     json: json
       ? () => Promise.resolve(body)
@@ -348,6 +352,51 @@ describe("errors", () => {
       expect(error.kind).toBe(kind);
       expect(isUnauthorized(error)).toBe(false);
     }
+  });
+
+  // The login link is rate limited, and the shelter that meets the limit is
+  // the one pressing the button again. The wait has to survive the client, or
+  // the page can only say "something went wrong" and invite one more press.
+  it("marks 429 as throttling and keeps the wait the API asked for", async () => {
+    respond(200, { csrfToken: "test-csrf-token" });
+    respond(429, { detail: "too many requests" }, {
+      headers: { "Retry-After": "540" },
+    });
+
+    const error = await requestLoginLink("info@zavetisce.si").catch(
+      (reason) => reason,
+    );
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error.status).toBe(429);
+    expect(error.kind).toBe("throttled");
+    expect(error.retryAfterSeconds).toBe(540);
+    expect(isUnauthorized(error)).toBe(false);
+  });
+
+  it("reads a wait of zero seconds as a wait, not as none", async () => {
+    respond(429, undefined, { headers: { "Retry-After": "0" } });
+
+    const error = await fetchAnimals("zonzani").catch((reason) => reason);
+    expect(error.retryAfterSeconds).toBe(0);
+  });
+
+  // Anything the delta form does not cover is dropped rather than guessed at.
+  // The HTTP-date form is legal and is measured against the visitor's clock,
+  // which is exactly the thing that cannot be trusted here.
+  it.each([
+    ["a header the API did not send", undefined],
+    ["the HTTP-date form", "Wed, 21 Oct 2026 07:28:00 GMT"],
+    ["a negative count", "-30"],
+    ["a fraction", "12.5"],
+    ["an empty header", ""],
+  ])("carries no wait for %s", async (_case, value) => {
+    respond(429, undefined, {
+      headers: value === undefined ? {} : { "Retry-After": value },
+    });
+
+    const error = await fetchAnimals("zonzani").catch((reason) => reason);
+    expect(error.kind).toBe("throttled");
+    expect(error.retryAfterSeconds).toBeUndefined();
   });
 
   it("reports an unreachable API as a network failure, not a server one", async () => {

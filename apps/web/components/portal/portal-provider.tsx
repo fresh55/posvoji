@@ -24,8 +24,10 @@ import {
   type PortalListingActions,
 } from "@/hooks/use-portal-listings";
 import {
+  PORTAL_LOGIN_NO_SESSION_PATH,
   PORTAL_LOGIN_PATH,
   rememberPortalReturn,
+  takeVerified,
   usePortalSession,
   type PortalSessionState,
 } from "@/hooks/use-portal-session";
@@ -210,11 +212,23 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   // walk into a page that will only bounce again. The page being left is
   // remembered first, so the login brings the shelter back to it: a link to
   // one animal that was opened from a mail would otherwise end on the list.
+  //
+  // A visitor who has just verified a link and still has no session is here
+  // because the browser kept no cookie. Their link is spent, so the login page
+  // is told what happened and says so; every other anonymous visitor is simply
+  // asked for an address.
   useEffect(() => {
-    if (session.status === "anonymous") {
-      rememberPortalReturn();
-      window.location.replace(PORTAL_LOGIN_PATH);
+    // The hand over worked, so the note has nothing left to explain and must
+    // not be read by a bounce hours later, when the session simply ran out.
+    if (session.status === "ready") {
+      takeVerified();
+      return;
     }
+    if (session.status !== "anonymous") return;
+    rememberPortalReturn();
+    window.location.replace(
+      takeVerified() ? PORTAL_LOGIN_NO_SESSION_PATH : PORTAL_LOGIN_PATH,
+    );
   }, [session.status]);
 
   const onUnauthorized = useCallback(() => {

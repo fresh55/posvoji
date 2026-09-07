@@ -6,7 +6,7 @@ import { PortalError } from "@/lib/portal-api";
 
 describe("what a refused value tells the shelter", () => {
   it("names one field under the label the form shows it as", () => {
-    const text = message(new PortalError(422, "x", ["name"]), "fallback");
+    const text = message(new PortalError(422, "x", { fields: ["name"] }), "fallback");
 
     expect(text).toBe("Podatek v polju Ime ni v pravi obliki. Preverite vnos.");
   });

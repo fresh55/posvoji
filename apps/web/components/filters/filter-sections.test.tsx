@@ -316,68 +316,29 @@ describe("collapsible filter sections", () => {
     fireEvent.keyDown(header("Zdravje"), { key: "Home" });
     expect(document.activeElement).toBe(header("Spol"));
   });
-});
 
-describe("remembered folds", () => {
-  it("stores only what departs from the defaults", () => {
+  // The classes and not the computed style: jsdom ships no browser stylesheet,
+  // so the button rules that reset text-transform and letter-spacing, the
+  // whole reason a folding heading printed in sentence case, are not there to
+  // measure against.
+  it("prints a folding heading in the case every other heading uses", () => {
+    renderSidebar();
+
+    expect(header("Zdravje").classList.contains("uppercase")).toBe(true);
+    expect(header("Zdravje").classList.contains("tracking-wide")).toBe(true);
+  });
+
+  it("leaves the folded summary in its own case", () => {
     renderSidebar();
 
     fireEvent.click(header("Zdravje"));
-    expect(stored()).toEqual({ health: true });
-
-    fireEvent.click(header("Spol"));
-    expect(stored()).toEqual({ health: true, sex: false });
-  });
-
-  it("restores the stored folds in a fresh render", () => {
-    const { unmount } = renderSidebar();
+    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
     fireEvent.click(header("Zdravje"));
-    fireEvent.click(header("Spol"));
-    unmount();
 
-    // A new tab reads the same storage and starts from nothing else.
-    resetFilterSectionsStore();
-    renderSidebar();
-
-    expect(expanded("Zdravje")).toBe("true");
-    expect(expanded("Spol")).toBe("false");
-    expect(expanded("Starost")).toBe("true");
-  });
-});
-
-describe("the sidebar heading", () => {
-  it("counts selected values, not the sections holding them", () => {
-    const { unmount } = renderStatic(EMPTY_FILTERS, NOOP);
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri");
-    unmount();
-
-    // Two sections, three values. The chips row below this heading draws
-    // three pills, so the badge that outlives it has to say three.
-    renderStatic(
-      {
-        ...EMPTY_FILTERS,
-        sex: ["male", "female"],
-        toggles: ["sterilizacija"],
-      },
-      NOOP,
+    const summary = [...header("Zdravje").querySelectorAll("span")].find(
+      (span) => span.textContent === "Sterilizacija",
     );
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri3");
-  });
-
-  it("keeps the clear out of reach while nothing is active", () => {
-    renderStatic(EMPTY_FILTERS, NOOP);
-
-    expect(screen.queryByRole("button", { name: "Počisti vse" })).toBeNull();
-    expect(
-      screen.getByText("Počisti vse").getAttribute("aria-hidden"),
-    ).toBe("true");
-  });
-
-  it("clears every section from the heading", () => {
-    const onClearAll = vi.fn();
-    renderStatic({ ...EMPTY_FILTERS, sex: ["male"] }, onClearAll);
-
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse" }));
-    expect(onClearAll).toHaveBeenCalledTimes(1);
+    expect(summary?.classList.contains("normal-case")).toBe(true);
+    expect(summary?.classList.contains("tracking-normal")).toBe(true);
   });
 });

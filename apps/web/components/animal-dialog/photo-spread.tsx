@@ -1087,8 +1087,18 @@ function Fan({
 
   const progress = useMotionValue(0);
   const snap = useRef<ReturnType<typeof animate> | null>(null);
-  // A snap that outlives the fan would keep a frame loop alive.
-  useEffect(() => () => snap.current?.stop(), []);
+  // A snap that outlives the fan would keep a frame loop alive. Dropped as
+  // well as stopped: a walk stopped past the end of its spring resolves the
+  // promise it is waiting on, and what decides whether that promise still
+  // commits is this slot. The breakpoint remounts the whole fan, so a commit
+  // that ran here would land on the fan that replaced this one.
+  useEffect(
+    () => () => {
+      snap.current?.stop();
+      snap.current = null;
+    },
+    [],
+  );
 
   // The wash reads the same walk, so its light changes while a print is being
   // pulled in rather than after it lands. The jump that commits a step is a
@@ -1160,6 +1170,42 @@ function Fan({
   // where the fan has to travel it.
   const heading = useRef(0);
 
+  // One horizontal trackpad swipe is one photo: the travel accumulates until
+  // it crosses the same threshold a drag does, and everything after that
+  // belongs to the inertia rather than to a second decision. The gesture is
+  // the hook's; the fan supplies its own numbers and what to do with them.
+  //
+  // Above the walks and the drag rather than beside the other handlers,
+  // because every one of them ends the gesture this is holding.
+  const attachWheel = useWheelStep({
+    enabled: count > 1,
+    commitRatio: SWIPE_DISTANCE_RATIO,
+    spanRatio: SWIPE_SPAN_RATIO,
+    settleMs: WHEEL_SETTLE_MS,
+    // Not while a walk is in flight: the wheel writing the same number the
+    // spring is animating would have the two fighting over the fan. A swipe
+    // that reaches a step still adds one through onStep.
+    onTravel: (fraction) => {
+      if (shouldReduceMotion || heading.current !== 0) return;
+      // A spring back sets no heading, so the guard above cannot see one: a
+      // swipe arriving in its tail would be writing the same number the
+      // spring is still animating. The gesture takes the fan the way a press
+      // does, and for the same reason.
+      snap.current?.stop();
+      snap.current = null;
+      progress.set(clampToOvershoot(fraction));
+    },
+    onStep: step,
+    // A gesture that turned a photo has already handed the fan to the walk.
+    // One that did not puts back what it moved, or lets a walk it found in
+    // flight finish.
+    onSettle: (spent) => {
+      if (spent) return;
+      if (heading.current !== 0) settleWalk();
+      else springBack();
+    },
+  });
+
   // Walks the fan `delta` seats and then commits `target` as the new front.
   // Also the reduced-motion path, where the walk is skipped and the commit is
   // instant.
@@ -1174,6 +1220,12 @@ function Fan({
   // wait for the commit, or a frame paints the old seats at rest.
   function walkTo(delta: number, target: number) {
     snap.current?.stop();
+    // A trackpad swipe still in its settle window has the fan too, and the
+    // walk is now what moves it: left alone, the window closing mid-walk
+    // would put back a travel this walk has taken over, or add a second photo
+    // to it. A step the wheel itself commits comes through here and is not
+    // one of those, which the hook tells apart for itself.
+    attachWheel.cancel();
     heading.current = delta;
     const reseats = target !== activeIndex;
     const land = () => {
@@ -1306,6 +1358,11 @@ function Fan({
   // Not far, not fast: the fan goes back to where it stood.
   function springBack() {
     heading.current = 0;
+    // The other half of what walkTo drops, for the walk that turned out to be
+    // no walk at all. A settle window left open here has nothing to catch it:
+    // this spring sets no heading, so the window would find the fan at rest
+    // and spring it back a second time from wherever the tail had left it.
+    attachWheel.cancel();
     if (shouldReduceMotion) return;
     snap.current?.stop();
     snap.current = animate(progress, 0, tempo.spring);
@@ -1344,6 +1401,12 @@ function Fan({
     if (swipeStart.current && !swipeStart.current.mouse) return;
     snap.current?.stop();
     snap.current = null;
+    // And the wheel's own gesture with it. A trackpad swipe hands the fan a
+    // settle window that outlives the swipe by a quarter of a second, and a
+    // drag started inside it used to find that window closing under the
+    // finger: the fan sprang back to nothing while the drag was writing every
+    // frame, and the release read a walk that was no longer the finger's.
+    attachWheel.cancel();
     swipeStart.current = {
       x: event.clientX,
       y: event.clientY,
@@ -1471,33 +1534,6 @@ function Fan({
     event.stopPropagation();
   }
 
-  // One horizontal trackpad swipe is one photo: the travel accumulates until
-  // it crosses the same threshold a drag does, and everything after that
-  // belongs to the inertia rather than to a second decision. The gesture is
-  // the hook's; the fan supplies its own numbers and what to do with them.
-  const attachWheel = useWheelStep({
-    enabled: count > 1,
-    commitRatio: SWIPE_DISTANCE_RATIO,
-    spanRatio: SWIPE_SPAN_RATIO,
-    settleMs: WHEEL_SETTLE_MS,
-    // Not while a walk is in flight: the wheel writing the same number the
-    // spring is animating would have the two fighting over the fan. A swipe
-    // that reaches a step still adds one through onStep.
-    onTravel: (fraction) => {
-      if (shouldReduceMotion || heading.current !== 0) return;
-      progress.set(clampToOvershoot(fraction));
-    },
-    onStep: step,
-    // A gesture that turned a photo has already handed the fan to the walk.
-    // One that did not puts back what it moved, or lets a walk it found in
-    // flight finish.
-    onSettle: (spent) => {
-      if (spent) return;
-      if (heading.current !== 0) settleWalk();
-      else springBack();
-    },
-  });
-
   // The element has two owners: the wheel hook attaches its own non-passive
   // listener to it as it arrives, and the drag writes data-dragging on it.
   // Stable, or React would take the listener down and put it back up on every
@@ -1533,6 +1569,11 @@ function Fan({
       // while focus is anywhere inside it. The page must not scroll out from
       // under the visitor doing either.
       onKeyDown={(event) => {
+        // The tap a swipe swallows belongs to that swipe, and a key is not it.
+        // A touch swipe fires no click at all, so nothing cleared the flag it
+        // set: it sat here until the next press, and the Enter that opens the
+        // print in front was swallowed instead.
+        suppressTap.current = false;
         // A lone photo has nowhere to walk, and swallowing the key would take
         // the page's own scroll with it.
         if (count < 2) return;
@@ -1574,7 +1615,17 @@ function Fan({
           count in the corner, which opens the whole set. */}
       {slots
         .slice()
-        .sort((a, b) => a.index - b.index)
+        // In seat order, left to right, because that is the order a tab walks
+        // them in. By photo number the tab went 1, 2, 3, 9, 10 on a gallery of
+        // ten while 9 and 10 were standing on the left, which is the fan
+        // reading back to the keyboard in an order the eye cannot see.
+        //
+        // The keys are still the photo, so a print keeps its identity and its
+        // seat value across a commit; what changes is that React moves a node
+        // rather than re-rendering it. A moved node loses focus, and the walk
+        // already answers that: focusOnPrint is asked before the commit and
+        // focusFrontPrint puts the keyboard back after the re-seat.
+        .sort((a, b) => a.offset - b.offset)
         // Two refs are read here on purpose. The cascade is chosen from the
         // mount marker above, which has to be read where the transition is
         // built, and a print's seat value is looked up or made where the print
@@ -1630,7 +1681,16 @@ function Fan({
 
           The hit area grows and the mark does not: 20px of badge is under half
           the 44px a thumb is measured against, and a bigger chip on the
-          photograph is the wrong answer. */}
+          photograph is the wrong answer. 8px a side is 36px, which a mouse can
+          hit; where the pointer is coarse the overlay reaches 12px instead and
+          the mark is worth the whole 44px.
+
+          Overlaid by hand rather than with the tap-target utility in
+          globals.css: that one sets position: relative, and this badge is
+          positioned into the front print's corner. The rule it carries about
+          crowding still applies, and there is nothing within the overhang:
+          the chevrons sit at the middle of the print's height and this sits at
+          its bottom corner. */}
       {count >= SHEET_FROM && (
         <FrontPrintBox box={geometry.photoBox} photo={images[activeIndex]}>
           <Badge
@@ -1641,7 +1701,7 @@ function Fan({
               // The badge clips its own children, and the hit area below is
               // drawn outside its edges. Nothing else in here overflows.
               "pointer-events-auto cursor-pointer overflow-visible",
-              "after:absolute after:-inset-2",
+              "after:absolute after:-inset-2 pointer-coarse:after:-inset-3",
             )}
           >
             <button

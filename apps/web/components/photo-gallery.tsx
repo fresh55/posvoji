@@ -40,8 +40,13 @@ import { cn } from "@/lib/utils";
 // GPU. The extra 10% of opacity is what the blur was there for: to keep a
 // chevron legible over a photograph of any colour. The card's own chevrons
 // below keep theirs, because their photo stands still.
+//
+// Shown for a hover and for keyboard focus, but only the kind of focus that is
+// meant to be seen. The dialog opens with its front print focused, and a
+// plain focus-within had the chevrons standing on the photograph of every
+// dialog a mouse opened, until the pointer left the fan.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:pointer-events-auto";
 
 // This component's own chevrons, which differ from the shared constant in two
 // ways.

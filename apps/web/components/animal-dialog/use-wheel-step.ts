@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 // deltaMode 1 counts lines rather than pixels, which is what a real wheel
 // reports on Firefox. One line is about one line of text.
@@ -44,6 +44,25 @@ export type WheelStepOptions = {
 };
 
 /**
+ * What the hook hands back: the element's ref, with the gesture's own stop on
+ * it.
+ *
+ * One value rather than two, because the ref is what every caller spreads onto
+ * an element and a second return would have to be threaded through the ones
+ * that never take the gesture over.
+ */
+export type WheelStepAttach = ((
+  element: HTMLElement | null,
+) => (() => void) | undefined) & {
+  /** Drops the gesture in flight: the settle window closes without firing,
+   *  and the next event starts a fresh swipe. For a surface where another
+   *  input can take over mid-gesture, so the tail of a swipe does not put back
+   *  something a drag or a walk is already moving. A cancel raised while the
+   *  hook is handing a step over is the gesture's own doing and is ignored. */
+  cancel: () => void;
+};
+
+/**
  * One horizontal trackpad swipe over the returned element is one step.
  *
  * Spread the return value as an element's `ref`. It is a ref callback rather
@@ -62,7 +81,7 @@ export type WheelStepOptions = {
  * prevent, two fingers on a Mac trackpad are the browser's back gesture and
  * the visitor leaves the site instead of seeing the next photo.
  */
-export function useWheelStep(options: WheelStepOptions) {
+export function useWheelStep(options: WheelStepOptions): WheelStepAttach {
   // The gesture's own state, in refs rather than state: none of it is drawn,
   // and a re-render per wheel event would be one per frame of an inertia tail.
   const travel = useRef(0);
@@ -74,6 +93,12 @@ export function useWheelStep(options: WheelStepOptions) {
   // and a viewport cannot usefully change mid-swipe. The pointer path makes
   // the same assumption, and caches its width on the press.
   const width = useRef(1);
+  // Whether the hook is inside one of the caller's callbacks. A step the wheel
+  // itself commits reaches a caller that cancels whenever a walk starts, and
+  // clearing the settle window there would hand the inertia behind that step a
+  // fresh gesture to turn a second photo with. So a cancel from in there is
+  // the same swipe asking to drop itself, and is ignored.
+  const dispatching = useRef(false);
 
   // Held in a ref so the listener below is attached once per element.
   // Re-attaching it per render would take the settle timer down with it every
@@ -85,57 +110,82 @@ export function useWheelStep(options: WheelStepOptions) {
   });
 
   // Stable across renders, so React never detaches and reattaches the element
-  // for it.
-  return useCallback((element: HTMLElement | null) => {
-    if (!element) return;
-    // A parameter stays mutable to TypeScript, so the guard above does not
-    // narrow it inside the handler below. The const does.
-    const stage = element;
+  // for it, and so the cancel a surface holds is the same one from render to
+  // render.
+  return useMemo(() => {
+    // Runs one of the caller's callbacks with the cancel above disarmed.
+    function dispatch(run: () => void) {
+      dispatching.current = true;
+      try {
+        run();
+      } finally {
+        dispatching.current = false;
+      }
+    }
 
-    function settleWheel() {
+    function cancel() {
+      if (dispatching.current) return;
+      window.clearTimeout(settle.current);
       settle.current = undefined;
-      const wasSpent = spent.current;
       spent.current = false;
       travel.current = 0;
-      latest.current.onSettle?.(wasSpent);
     }
 
-    function handleWheel(event: WheelEvent) {
-      const { enabled, commitRatio, spanRatio, settleMs, onTravel, onStep } =
-        latest.current;
-      if (!enabled) return;
-      const lines = event.deltaMode === WHEEL_DELTA_LINE;
-      const dx = lines ? event.deltaX * WHEEL_LINE_PX : event.deltaX;
-      const dy = lines ? event.deltaY * WHEEL_LINE_PX : event.deltaY;
-      // Anything not dominantly horizontal belongs to whatever scrolls around
-      // this element, and returning without preventing is what leaves it be.
-      if (Math.abs(dx) <= Math.abs(dy)) return;
-      event.preventDefault();
-      // The first event of a gesture is where the width is taken, because a
-      // read here costs nothing the gesture has not already paid for, and a
-      // read on every event would interleave layout with the transform writes
-      // the same swipe is making.
-      if (settle.current === undefined) width.current = stage.clientWidth || 1;
-      window.clearTimeout(settle.current);
-      settle.current = window.setTimeout(settleWheel, settleMs);
-      if (spent.current) return;
+    function attach(element: HTMLElement | null) {
+      if (!element) return;
+      // A parameter stays mutable to TypeScript, so the guard above does not
+      // narrow it inside the handler below. The const does.
+      const stage = element;
 
-      travel.current += dx;
-      const travelled = travel.current;
-      if (Math.abs(travelled) > width.current * commitRatio) {
-        spent.current = true;
-        onStep(travelled > 0 ? 1 : -1);
-        return;
+      function settleWheel() {
+        settle.current = undefined;
+        const wasSpent = spent.current;
+        spent.current = false;
+        travel.current = 0;
+        dispatch(() => latest.current.onSettle?.(wasSpent));
       }
-      if (onTravel && spanRatio) {
-        onTravel(travelled / (width.current * spanRatio));
+
+      function handleWheel(event: WheelEvent) {
+        const { enabled, commitRatio, spanRatio, settleMs, onTravel, onStep } =
+          latest.current;
+        if (!enabled) return;
+        const lines = event.deltaMode === WHEEL_DELTA_LINE;
+        const dx = lines ? event.deltaX * WHEEL_LINE_PX : event.deltaX;
+        const dy = lines ? event.deltaY * WHEEL_LINE_PX : event.deltaY;
+        // Anything not dominantly horizontal belongs to whatever scrolls
+        // around this element, and returning without preventing is what
+        // leaves it be.
+        if (Math.abs(dx) <= Math.abs(dy)) return;
+        event.preventDefault();
+        // The first event of a gesture is where the width is taken, because a
+        // read here costs nothing the gesture has not already paid for, and a
+        // read on every event would interleave layout with the transform
+        // writes the same swipe is making.
+        if (settle.current === undefined) width.current = stage.clientWidth || 1;
+        window.clearTimeout(settle.current);
+        settle.current = window.setTimeout(settleWheel, settleMs);
+        if (spent.current) return;
+
+        travel.current += dx;
+        const travelled = travel.current;
+        if (Math.abs(travelled) > width.current * commitRatio) {
+          spent.current = true;
+          dispatch(() => onStep(travelled > 0 ? 1 : -1));
+          return;
+        }
+        if (onTravel && spanRatio) {
+          dispatch(() => onTravel(travelled / (width.current * spanRatio)));
+        }
       }
+
+      stage.addEventListener("wheel", handleWheel, { passive: false });
+      return () => {
+        stage.removeEventListener("wheel", handleWheel);
+        window.clearTimeout(settle.current);
+      };
     }
 
-    stage.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      stage.removeEventListener("wheel", handleWheel);
-      window.clearTimeout(settle.current);
-    };
+    attach.cancel = cancel;
+    return attach;
   }, []);
 }

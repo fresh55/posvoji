@@ -167,6 +167,19 @@ def test_an_unstated_field_comes_back_as_null(member_client, manual_shelter):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("name", ["", "   ", "\x00", "\x07 \x1b"])
+def test_a_name_with_nothing_readable_is_refused(member_client, manual_shelter, name):
+    # A name of control characters alone cleans to nothing, and the column
+    # cannot hold nothing, so it is refused at the door and not by the
+    # database.
+    response = post(member_client, manual_shelter.slug, {**LUNA, "name": name})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"][-1] == "name"
+    assert Listing.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_blank_text_is_the_same_as_not_stating_it(member_client, manual_shelter):
     body = create(member_client, manual_shelter.slug, shortDescription="   ")
 

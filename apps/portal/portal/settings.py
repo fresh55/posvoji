@@ -126,7 +126,6 @@ ASGI_APPLICATION = "portal.asgi.application"
 #
 # WAL lets readers go on while a writer holds the lock, and synchronous=NORMAL
 # is durable across process crashes in WAL mode at a fraction of the fsyncs.
-# On the in-memory test database the journal pragma is a no-op.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

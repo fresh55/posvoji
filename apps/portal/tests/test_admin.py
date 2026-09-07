@@ -140,6 +140,31 @@ def test_accepting_the_crawl_clears_only_the_conflicting_field(
 
 
 @pytest.mark.django_db
+def test_accepting_the_crawl_for_the_last_field_removes_the_row(
+    override_admin, rf, admin_user, shelter, dataset_file
+):
+    # The shelter's route deletes a row with nothing stated, and the admin
+    # follows the same rule rather than leaving an empty row in the list.
+    dataset_file([make_animal("testno:1", shelter, status="adopted")])
+    only = AnimalOverride.objects.create(
+        shelter=shelter,
+        animal_id="testno:1",
+        status="reserved",
+        baseline={"status": "available"},
+    )
+
+    run_action(
+        override_admin,
+        "accept_the_crawl",
+        rf,
+        admin_user,
+        AnimalOverride.objects.filter(pk=only.pk),
+    )
+
+    assert not AnimalOverride.objects.filter(pk=only.pk).exists()
+
+
+@pytest.mark.django_db
 def test_accepting_the_crawl_leaves_untouched_rows_alone(
     override_admin, rf, admin_user, conflicted
 ):

@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db import transaction
 from django.db.models import Count
 from django.utils import timezone
 
@@ -252,24 +253,41 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
         """
         index = animal_index(crawled=True)
         touched = 0
-        for override in queryset.select_related("shelter"):
-            animal = index.get((override.shelter.slug, override.animal_id))
-            conflicts = conflicts_for(override, animal)
-            # No conflicts also covers an override with no matching animal,
-            # which is not something either action can resolve.
-            if not conflicts:
-                continue
-            crawled = crawled_values(animal)
-            baseline = dict(override.baseline)
-            for conflict in conflicts:
-                resolve(override, conflict, crawled, baseline)
-            override.baseline = baseline
-            # An override with nothing left in its baseline has nothing
-            # recorded against the crawl, so it carries no time either.
-            override.baseline_at = timezone.now() if baseline else None
-            override.updated_by = request.user
-            override.save()
-            touched += len(conflicts)
+        for pk in list(queryset.values_list("pk", flat=True)):
+            # One transaction per row, so the write queues behind a shelter's
+            # PUT on the same row instead of racing it, and a row the shelter
+            # deleted meanwhile is simply gone.
+            with transaction.atomic():
+                override = (
+                    AnimalOverride.objects.select_related("shelter")
+                    .select_for_update()
+                    .filter(pk=pk)
+                    .first()
+                )
+                if override is None:
+                    continue
+                animal = index.get((override.shelter.slug, override.animal_id))
+                conflicts = conflicts_for(override, animal)
+                # No conflicts also covers an override with no matching
+                # animal, which is not something either action can resolve.
+                if not conflicts:
+                    continue
+                crawled = crawled_values(animal)
+                baseline = dict(override.baseline)
+                for conflict in conflicts:
+                    resolve(override, conflict, crawled, baseline)
+                touched += len(conflicts)
+                # An override with no stated value does not exist, the same
+                # rule the shelter's own route follows.
+                if not override.overridden_fields():
+                    override.delete()
+                    continue
+                override.baseline = baseline
+                # An override with nothing left in its baseline has nothing
+                # recorded against the crawl, so it carries no time either.
+                override.baseline_at = timezone.now() if baseline else None
+                override.updated_by = request.user
+                override.save()
         return touched
 
     @admin.action(description="Accept the crawl for conflicting fields")

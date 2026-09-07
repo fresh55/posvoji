@@ -19,6 +19,7 @@ from .models import (
     OverrideSex,
     OverrideSize,
     OverrideStatus,
+    clean_text,
 )
 
 # A hundred years. The web client caps the age field at the same value, and
@@ -192,11 +193,13 @@ class ListingIn(Schema):
     @classmethod
     def name_is_not_blank(cls, value: str) -> str:
         # A listing is the whole record, so it cannot be nameless the way an
-        # override can simply leave the crawled name alone.
-        stripped = value.strip()
-        if not stripped:
+        # override can simply leave the crawled name alone. Judged on the
+        # cleaned text, so a name of control characters alone is refused
+        # here and not by the NOT NULL column after cleaning.
+        cleaned = clean_text(value)
+        if cleaned is None:
             raise ValueError("name must not be blank")
-        return stripped
+        return cleaned
 
 
 class ExportListingPhotoOut(Schema):

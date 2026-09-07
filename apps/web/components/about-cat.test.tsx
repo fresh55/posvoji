@@ -6,6 +6,7 @@ import { AboutCat } from "./about-cat";
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
+    availableAnimations: string[] = [];
     paused = true;
     currentTime = 0;
     play = vi.fn(() => { this.paused = false; });

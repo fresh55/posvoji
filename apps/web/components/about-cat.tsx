@@ -6,20 +6,20 @@ import type { ModelViewerElement } from "@google/model-viewer";
 import type { Locale } from "@/lib/i18n";
 import { createCatInteraction } from "@/lib/cat-interaction";
 
-const MODEL = "/models/our-cat/cat.glb?v=9.0";
+const MODEL = "/models/our-cat/cat.glb?v=19.1";
 // The poster uses the same resting pose and camera as the interactive model.
-const POSTER = "/models/our-cat/poster.webp?v=9.0";
+const POSTER = "/models/our-cat/poster.webp?v=19.1";
 
 const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
-    keyboard: "Povleci ali uporabi smerne tipke za obračanje. Dotakni se mačka ali pritisni Enter oziroma preslednico za počasen mežik.",
+    keyboard: "Povleci ali uporabi smerne tipke za obračanje. Dotakni se glave za božanje ali brade za praskanje; za počasno božanje najprej za hip zadrži prst na mestu. Dotik hrbta sproži pogled nazaj in dvig repa, ponavljajoči dotiki močnejši odziv; dotik repa sproži zamah. Tipke H, C, B in T nadomestijo dotik glave, brade, hrbta in repa. Enter ali preslednica povabita k drugemu odzivu. Maček za kratek čas sledi kazalcu, po daljšem miru zadrema, ob dotiku pa se prebudi. Pred naslednjim odzivom dokonča trenutni gib.",
     loading: "Nalaganje mačka v 3D …",
     unavailable: "3D-ogled trenutno ni na voljo. Prikazana je slika mačka.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
-    keyboard: "Drag or use arrow keys to rotate. Tap the cat or press Enter or Space for a slow blink.",
+    keyboard: "Drag or use arrow keys to rotate. Touch his head to pet him or his chin for a scratch; for a slow stroke, briefly hold still before moving. Back touches invite a look back and raised tail, with a stronger response to repeated touches; tail touches invite a flick. H, C, B and T touch his head, chin, back and tail. Enter or Space invite another response. He briefly follows the pointer, dozes after a quiet spell, and wakes when touched. He finishes his current gesture before the next response.",
     loading: "Loading the cat in 3D …",
     unavailable: "The 3D view is unavailable. A still image of the cat is shown.",
   },
@@ -43,7 +43,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
     let ready = false;
     const canAnimate = () => ready && visible && !disposed && !document.hidden && !motion.matches;
 
-    // Resting, licking and both transitions are baked into one continuous clip.
+    // The awake routine is continuous; the controller adds reactions and sleep.
     const syncPlayback = () => {
       if (!viewer || !ready || disposed) return;
       interaction?.syncPlayback();
@@ -57,6 +57,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
     };
     const onError = () => {
       ready = false;
+      interaction?.syncPlayback();
       viewer?.pause();
       setStatus("failed");
     };
@@ -106,6 +107,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
           "environment-image": "neutral",
           exposure: "0.9",
           "animation-name": "Companion",
+          "aria-keyshortcuts": "Enter Space H C B T",
         };
         for (const [name, value] of Object.entries(attributes)) {
           viewer.setAttribute(name, value);

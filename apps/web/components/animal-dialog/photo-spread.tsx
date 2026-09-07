@@ -567,10 +567,11 @@ function useDesktopFan() {
  *
  *  The chevrons and the count live on the stage too, and neither of them is a
  *  print: aria-pressed is what only a print carries, and only the front print
- *  carries it true. Three callers ask this question, for focus on the way in,
- *  for the rectangle the contact sheet grows out of, and for focus on the way
- *  back from the lightbox. */
-function frontPrintOf(stage: HTMLElement | null) {
+ *  carries it true. Four callers ask this question: focus on the way in, the
+ *  rectangle the contact sheet grows out of, focus on the way back from the
+ *  lightbox, and the dialog around all three, which opens on the front print
+ *  and has no other way to name it. */
+export function frontPrintOf(stage: HTMLElement | null) {
   return stage?.querySelector<HTMLElement>('button[aria-pressed="true"]') ?? null;
 }
 
@@ -1613,19 +1614,18 @@ function Fan({
           set the fan cannot show at once. They read as blank cards rather than
           as the rest of a stack, so what says there are more photos is the
           count in the corner, which opens the whole set. */}
+      {/* In the order fanSlots hands them over, which is seat order, left to
+          right, and so the order a tab walks them in. They used to be sorted
+          by photo number here, which walked a gallery of ten as 1, 2, 3, 9,
+          10 while 9 and 10 stood on the left: the fan reading itself back to
+          the keyboard in an order the eye cannot see.
+
+          The keys are still the photo, so a print keeps its identity and its
+          seat value across a commit; what changes is that React moves a node
+          rather than re-rendering it. A moved node loses focus, and the walk
+          already answers that: focusOnPrint is asked before the commit and
+          focusFrontPrint puts the keyboard back after the re-seat. */}
       {slots
-        .slice()
-        // In seat order, left to right, because that is the order a tab walks
-        // them in. By photo number the tab went 1, 2, 3, 9, 10 on a gallery of
-        // ten while 9 and 10 were standing on the left, which is the fan
-        // reading back to the keyboard in an order the eye cannot see.
-        //
-        // The keys are still the photo, so a print keeps its identity and its
-        // seat value across a commit; what changes is that React moves a node
-        // rather than re-rendering it. A moved node loses focus, and the walk
-        // already answers that: focusOnPrint is asked before the commit and
-        // focusFrontPrint puts the keyboard back after the re-seat.
-        .sort((a, b) => a.offset - b.offset)
         // Two refs are read here on purpose. The cascade is chosen from the
         // mount marker above, which has to be read where the transition is
         // built, and a print's seat value is looked up or made where the print

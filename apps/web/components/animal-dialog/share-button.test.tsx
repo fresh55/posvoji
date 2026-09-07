@@ -194,19 +194,17 @@ describe("on a phone", () => {
 // reach whichever one the platform leaves standing, and neither may lose the
 // 44px the phone layout holds every control to.
 describe("the classes the caller passes", () => {
-  it("reach the popover's trigger", () => {
-    const button = renderButton(undefined, "max-sm:rounded-full");
-
-    expect(button.className).toContain("max-sm:rounded-full");
-    expect(button.className).toContain("size-11");
-  });
-
-  it("reach the button that opens the platform's sheet", () => {
-    phone = true;
-    Object.defineProperty(navigator, "share", {
-      configurable: true,
-      value: vi.fn().mockResolvedValue(undefined),
-    });
+  it.each([
+    ["the popover's trigger", false],
+    ["the button that opens the platform's sheet", true],
+  ])("reach %s", (_name, native) => {
+    if (native) {
+      phone = true;
+      Object.defineProperty(navigator, "share", {
+        configurable: true,
+        value: vi.fn().mockResolvedValue(undefined),
+      });
+    }
 
     const button = renderButton(undefined, "max-sm:rounded-full");
 

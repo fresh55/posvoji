@@ -57,8 +57,10 @@ export type WheelStepAttach = ((
   /** Drops the gesture in flight: the settle window closes without firing,
    *  and the next event starts a fresh swipe. For a surface where another
    *  input can take over mid-gesture, so the tail of a swipe does not put back
-   *  something a drag or a walk is already moving. A cancel raised while the
-   *  hook is handing a step over is the gesture's own doing and is ignored. */
+   *  something a drag or a walk is already moving. Safe to call from inside
+   *  onStep, where a caller that cancels on every walk lands: the step writes
+   *  its own bookkeeping after the callback, so the inertia behind it is still
+   *  swallowed. */
   cancel: () => void;
 };
 
@@ -93,12 +95,6 @@ export function useWheelStep(options: WheelStepOptions): WheelStepAttach {
   // and a viewport cannot usefully change mid-swipe. The pointer path makes
   // the same assumption, and caches its width on the press.
   const width = useRef(1);
-  // Whether the hook is inside one of the caller's callbacks. A step the wheel
-  // itself commits reaches a caller that cancels whenever a walk starts, and
-  // clearing the settle window there would hand the inertia behind that step a
-  // fresh gesture to turn a second photo with. So a cancel from in there is
-  // the same swipe asking to drop itself, and is ignored.
-  const dispatching = useRef(false);
 
   // Held in a ref so the listener below is attached once per element.
   // Re-attaching it per render would take the settle timer down with it every
@@ -113,18 +109,7 @@ export function useWheelStep(options: WheelStepOptions): WheelStepAttach {
   // for it, and so the cancel a surface holds is the same one from render to
   // render.
   return useMemo(() => {
-    // Runs one of the caller's callbacks with the cancel above disarmed.
-    function dispatch(run: () => void) {
-      dispatching.current = true;
-      try {
-        run();
-      } finally {
-        dispatching.current = false;
-      }
-    }
-
     function cancel() {
-      if (dispatching.current) return;
       window.clearTimeout(settle.current);
       settle.current = undefined;
       spent.current = false;
@@ -142,7 +127,7 @@ export function useWheelStep(options: WheelStepOptions): WheelStepAttach {
         const wasSpent = spent.current;
         spent.current = false;
         travel.current = 0;
-        dispatch(() => latest.current.onSettle?.(wasSpent));
+        latest.current.onSettle?.(wasSpent);
       }
 
       function handleWheel(event: WheelEvent) {
@@ -169,12 +154,19 @@ export function useWheelStep(options: WheelStepOptions): WheelStepAttach {
         travel.current += dx;
         const travelled = travel.current;
         if (Math.abs(travelled) > width.current * commitRatio) {
+          onStep(travelled > 0 ? 1 : -1);
+          // Spent, and the window re-armed, after the step rather than before
+          // it. A caller that drops this gesture as the walk takes the fan
+          // over is cancelling the swipe that has just handed the step across,
+          // and the inertia still to come is this gesture's own: these two are
+          // what swallow it.
           spent.current = true;
-          dispatch(() => onStep(travelled > 0 ? 1 : -1));
+          window.clearTimeout(settle.current);
+          settle.current = window.setTimeout(settleWheel, settleMs);
           return;
         }
         if (onTravel && spanRatio) {
-          dispatch(() => onTravel(travelled / (width.current * spanRatio)));
+          onTravel(travelled / (width.current * spanRatio));
         }
       }
 

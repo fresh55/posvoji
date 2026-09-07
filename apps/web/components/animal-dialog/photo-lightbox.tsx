@@ -915,7 +915,7 @@ export function PhotoLightbox({
               // and swallowing the key would say it was.
               if (wanted >= images.length) return;
               event.preventDefault();
-              onIndexChange(wanted);
+              goTo(wanted);
               return;
             }
             if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;

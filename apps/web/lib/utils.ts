@@ -9,11 +9,14 @@ import { extendTailwindMerge } from "tailwind-merge"
 // so the last one written wins, which is what every other rounded-* pair
 // already does here.
 //
-// rounded-ui is the only custom utility that needs this. The others in
-// globals.css either set a property no Tailwind class of ours sets beside
-// them (card-paint, tap-target, bleed, no-scrollbar, fade-scroll) or are
-// never passed alongside a standard utility for the same property
-// (rounded-ui-top, border-dashed-muted, the --spacing-* tokens).
+// rounded-ui is the only custom utility that needs this today. The rest of
+// globals.css either sets a property no Tailwind class of ours sets beside it
+// (card-paint, tap-target, bleed, no-scrollbar, fade-scroll) or is never
+// passed alongside a standard utility for the same property (rounded-ui-top,
+// border-dashed-muted). The --spacing-* tokens are the same trap unsprung:
+// px-gutter and px-4 would both survive a merge, and nothing passes them
+// together yet. Register the spacing theme key here on the day something
+// does.
 const twMerge = extendTailwindMerge({
   extend: { classGroups: { rounded: [{ rounded: ["ui"] }] } },
 })

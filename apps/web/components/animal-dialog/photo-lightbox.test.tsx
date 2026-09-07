@@ -574,20 +574,6 @@ describe("PhotoLightbox touch", () => {
     expect(zoomed(photo)).toBe("false");
   });
 
-  it("drops the zoom when another photo is shown", () => {
-    const { lightbox, show } = open();
-    const photo = slot(lightbox, "photo-lightbox-photo");
-
-    pinch(photo);
-    touch(photo, "pointerup", { x: 450, y: 300, pointerId: 2, time: 100 });
-    touch(photo, "pointerup", { x: 50, y: 300, pointerId: 1, time: 120 });
-    expect(zoomed(photo)).toBe("true");
-
-    show(1);
-
-    expect(zoomed(slot(lightbox, "photo-lightbox-photo"))).toBe("false");
-  });
-
   it("drops the zoom for good on a step away and back", () => {
     // The photo went back to its normal size on the step, so a zoom that came
     // back with the picture would say zoomed over a photograph at rest: the

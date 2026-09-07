@@ -65,7 +65,9 @@ The branch includes the interaction and attention modules, their unit tests,
 the model and matching still. The source worktree's separate experimental
 browser-test harness is not required by these pages.
 
-The short visible hint is followed by optional detailed instructions.
+A quiet dedication beneath the model links to the memorial in both languages.
+It stays visible while loading and when the still-image fallback is used.
+Keyboard guidance remains available through the model's accessible prompt.
 Animation respects reduced motion and pauses when the cat is offscreen or
 the tab is hidden.
 

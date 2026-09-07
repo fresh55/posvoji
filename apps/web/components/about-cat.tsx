@@ -5,6 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import type { Locale } from "@/lib/i18n";
 import { createCatInteraction } from "@/lib/cat-interaction";
+import { MUTED_LINK } from "@/lib/link-styles";
+import { SRECKO_PATHS, SRECKO_TEXT } from "@/lib/srecko";
+import { cn } from "@/lib/utils";
 
 const MODEL = "/models/our-cat/cat.glb?v=19.1";
 // The poster uses the same resting pose and camera as the interactive model.
@@ -13,19 +16,13 @@ const POSTER = "/models/our-cat/poster.webp?v=19.1";
 const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
-    instructions: "Povleci ali uporabi smerne tipke za obračanje. Dotakni se glave za božanje ali brade za praskanje; za počasno božanje najprej za hip zadrži prst na mestu. Dotik hrbta sproži pogled nazaj in dvig repa, ponavljajoči dotiki močnejši odziv; dotik repa sproži zamah. Tipke H, C, B in T nadomestijo dotik glave, brade, hrbta in repa. Enter ali preslednica povabita k drugemu odzivu. Maček za kratek čas sledi kazalcu, po daljšem miru zadrema, ob dotiku pa se prebudi. Pred naslednjim odzivom dokonča trenutni gib.",
-    keyboard: "Povleci za obračanje. Navodila za tipkovnico so pod mačkom.",
-    hint: "Pobožaj ga. Povleci za obračanje.",
-    controls: "Kako se igrati z mačkom",
+    keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Nalaganje mačka v 3D …",
     unavailable: "3D-ogled trenutno ni na voljo. Prikazana je slika mačka.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
-    instructions: "Drag or use arrow keys to rotate. Touch his head to pet him or his chin for a scratch; for a slow stroke, briefly hold still before moving. Back touches invite a look back and raised tail, with a stronger response to repeated touches; tail touches invite a flick. H, C, B and T touch his head, chin, back and tail. Enter or Space invite another response. He briefly follows the pointer, dozes after a quiet spell, and wakes when touched. He finishes his current gesture before the next response.",
-    keyboard: "Drag to rotate. Keyboard instructions are below the cat.",
-    hint: "Pet him. Drag to look around.",
-    controls: "How to interact with the cat",
+    keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "Loading the cat in 3D …",
     unavailable: "The 3D view is unavailable. A still image of the cat is shown.",
   },
@@ -34,6 +31,7 @@ const copy = {
 /** A browser-only enhancement of the still image, scoped to the about page. */
 export function AboutCat({ locale }: { locale: Locale }) {
   const text = copy[locale];
+  const memorial = SRECKO_TEXT[locale];
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
 
@@ -186,17 +184,15 @@ export function AboutCat({ locale }: { locale: Locale }) {
           className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
         />
       </div>
-      {status === "ready" && (
-        <div className="mt-2 text-center text-sm text-muted-foreground">
-          <p>{text.hint}</p>
-          <details className="mt-1">
-            <summary className="mx-auto min-h-11 w-fit cursor-pointer rounded-sm px-2 py-3 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">{text.controls}</summary>
-            <p className="mx-auto max-w-sm pb-3 text-left text-sm leading-relaxed">{text.instructions}</p>
-          </details>
-        </div>
-      )}
-      <figcaption className="sr-only" role="status">
+      <span className="sr-only" role="status">
         {status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading}
+      </span>
+      <figcaption className="mt-3 text-center text-sm leading-relaxed text-muted-foreground">
+        {memorial.dedicationBefore}
+        <a href={SRECKO_PATHS[locale]} className={cn(MUTED_LINK, "rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4")}>
+          {memorial.dedicationName}
+        </a>
+        {"."}
       </figcaption>
     </figure>
   );

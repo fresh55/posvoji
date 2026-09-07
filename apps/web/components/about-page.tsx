@@ -25,12 +25,9 @@ import {
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { MUTED_LINK } from "@/lib/link-styles";
 import { homePath } from "@/lib/shelter-path";
 import { REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
-import { SRECKO_PATHS, SRECKO_TEXT } from "@/lib/srecko";
-import { cn } from "@/lib/utils";
 
 // Where a correction goes. Printed as the address itself rather than behind
 // a word: a reader writing from their own mail client has to be able to read
@@ -160,7 +157,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
   const homeHref = homePath(locale);
-  const memorial = SRECKO_TEXT[locale];
   const pointOrder: PointKey[] = ["free", "shelterDecides", "shelterData", "openSource", "noPersonalData"];
 
   return (
@@ -243,16 +239,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
               </Button>
             </div>
           </div>
-          <p className="border-t pt-6 text-sm leading-relaxed text-muted-foreground lg:col-span-2 lg:row-start-4">
-            {memorial.dedicationBefore}
-            <a
-              href={SRECKO_PATHS[locale]}
-              className={cn(MUTED_LINK, "underline")}
-            >
-              {memorial.dedicationName}
-            </a>
-            {"."}
-          </p>
         </main>
         <SiteFooter locale={locale} showAboutLink={false}>
           <ModelCredit locale={locale} />

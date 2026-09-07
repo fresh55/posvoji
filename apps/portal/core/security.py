@@ -3,9 +3,11 @@
 import hashlib
 import ipaddress
 import secrets
+import time
 from typing import Literal
 
 from django.conf import settings
+from django.core.cache import cache
 from django.http import HttpRequest
 from ninja.errors import HttpError
 from ninja.security import APIKeyCookie, SessionAuth
@@ -92,6 +94,59 @@ class RequestLinkRateThrottle(SimpleRateThrottle):
 
 
 request_link_throttle = RequestLinkRateThrottle()
+
+ADDRESS_RATE_CACHE_PREFIX = "login-link-address"
+
+
+def _parse_rate(rate: str) -> tuple[int, int]:
+    """(requests, seconds) out of an "n/period" string.
+
+    The same parser the IP throttle uses, so both limits are written the same
+    way in the environment file.
+    """
+    throttle = SimpleRateThrottle(rate=rate)
+    return throttle.num_requests, throttle.duration
+
+
+def address_send_allowed(email: str) -> bool:
+    """Whether another login link may be sent to this address now.
+
+    The IP throttle limits one caller. This limits one mailbox, because the
+    addresses the registry publishes are the ones a shelter cannot stop
+    reading, and nothing else stops a caller who changes network from asking
+    for the same address again.
+
+    The counter lives in the shared cache, so it holds across worker
+    processes. cache.add opens the window and cache.incr counts inside it,
+    which is atomic on the backends that can be; a lost increment under a race
+    lets one extra message through and never blocks a shelter.
+    """
+    limit, period = _parse_rate(settings.PORTAL_LOGIN_LINK_ADDRESS_RATE)
+    if limit < 1:
+        return False
+
+    # Hashing keeps the address out of cache key restrictions and out of the
+    # file names the file-based cache writes. It is not an attempt to
+    # anonymize a known address.
+    ident = hashlib.sha256(email.strip().lower().encode()).hexdigest()
+    # A fixed window, named in the key. The count then cannot outlive the
+    # window it belongs to even if an entry is left behind.
+    window, elapsed = divmod(time.time(), period)
+    remaining = period - elapsed
+    key = f"{ADDRESS_RATE_CACHE_PREFIX}_{int(window)}_{ident}"
+
+    if cache.add(key, 1, remaining):
+        return True
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        # The entry went away between the two calls, so open a window again
+        # rather than refuse.
+        return cache.add(key, 1, remaining)
+    # Backends without a native incr implement it as get plus set, and that
+    # set carries the cache's default expiry rather than this window's.
+    cache.touch(key, remaining)
+    return count <= limit
 
 
 def export_token_auth(request: HttpRequest):

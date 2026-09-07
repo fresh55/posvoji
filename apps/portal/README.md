@@ -33,8 +33,14 @@ The API is then on `http://localhost:8000/api/`, the admin on
 
 `seed_shelters` reads `data/shelters.yaml` and upserts one shelter per entry,
 plus a login and a membership for every entry that carries an institutional
-address. It is safe to run again after the registry changes: nothing is
-duplicated and nothing is deleted. Pass `--path` to read another file.
+address. Nothing is duplicated when it runs again. The memberships it makes
+carry the source `registry` and follow the registry: when an entry names
+another address, or none at all, the membership for the old address is deleted
+and that address loses portal access. A membership added by hand in `/admin`
+or minted by the development login carries a different source and is never
+touched. The login row itself stays, without access, because both
+`/auth/request-link` and `/auth/verify` require a membership. Pass `--path` to
+read another file.
 
 It also reads `ingestion` out of `providers/<slug>/policy.yaml`, which is what
 decides whether a shelter writes its own listings. A shelter with no policy
@@ -67,7 +73,9 @@ directory stands in for the dataset file, `providers/` and `MEDIA_ROOT`.
    always 204, so the endpoint cannot be used to find out which addresses
    exist.
 2. The link points at `FRONTEND_URL + /portal/prijava?token=...`. The token is
-   signed by django-sesame, is valid for one hour and can be used only once.
+   signed by django-sesame, is valid for 24 hours and can be used only once.
+   The address it goes to is a shared institutional inbox somebody reads once
+   a working day, so an hour would expire before the first reading.
 3. The frontend posts the token to `POST /api/auth/verify`, which opens a
    normal Django session and sets the session cookie.
 
@@ -77,11 +85,24 @@ addresses. The direct network peer (`REMOTE_ADDR`) supplies the identity. When
 that peer is loopback, the default same-host nginx/Caddy deployment trusts the
 rightmost address in `X-Forwarded-For`. Other proxy topologies must explicitly
 configure how many rightmost proxy hops they trust; direct non-loopback callers
-cannot select their rate-limit identity with a forwarding header.
+cannot select their rate-limit identity with a forwarding header. A refused
+request answers 429 with `Retry-After` in seconds, which is named in
+`CORS_EXPOSE_HEADERS` so the login page on the other origin can read it and
+say how long the wait is.
 
-With Django's default local-memory cache, this is a best-effort per-process
-guard. Configure a shared Django cache or an upstream rate limit when the
-limit must apply across multiple application processes.
+A second limit counts the recipient rather than the caller: three links per
+address per hour by default, `PORTAL_LOGIN_LINK_ADDRESS_RATE`. The IP limit
+does not cover this, because a caller who changes network can still make the
+portal deliver to a shelter's published address again and again. Over the
+limit the endpoint still answers 204 and nothing is sent, so the caller learns
+nothing about the address either way. The suppressed send is written to the
+log as `portal.mail.address_throttled`.
+
+Both counters live in a file-based cache, so every process on the host sees
+the same ones. `PORTAL_CACHE_DIR` is the directory, `apps/portal/cache` when
+it is unset. The deployment runs gunicorn with three workers, and Django's
+default local-memory cache is per process, which would multiply both limits by
+the worker count.
 
 In development the mail goes to the console, so the link is printed in the
 `runserver` output.
@@ -95,6 +116,36 @@ responses; it does not stop a request from reaching the server. Before a
 `credentials: "include"` so the matching CSRF and session cookies travel with
 it. Django rotates the CSRF secret when a login succeeds, so the frontend gets
 a fresh token after login.
+
+### Mail
+
+The link is the login, so a portal that cannot send mail lets nobody in, and
+the API never says so: `POST /api/auth/request-link` answers 204 whether the
+message left or not. One command sends a test message through the configured
+backend and prints the backend, host and port it used:
+
+```bash
+uv run python manage.py check_mail --to you@example.com
+```
+
+Exit 0 with the message received is the proof. A refused or unreachable host
+is a `CommandError` carrying the backend's own message.
+
+Two markers make the rest visible in the log, because the response cannot:
+
+| Marker | What happened |
+|---|---|
+| `portal.mail.delivery_failed` | The backend raised. The shelter was told a link is on its way and none was sent. |
+| `portal.mail.address_throttled` | The per-address limit suppressed the send. Nothing is wrong. |
+
+[docs/DEPLOY-PORTAL.md](../../docs/DEPLOY-PORTAL.md) has the alert recipe for
+the first one.
+
+The From address is send-only. The mail carries `PORTAL_FROM_NAME` as its
+display name and `PORTAL_REPLY_TO_EMAIL` as `Reply-To`, and prints that same
+address as the one to write to with questions. `PORTAL_EMAIL_USE_TLS` is
+STARTTLS on port 587 and `PORTAL_EMAIL_USE_SSL` is implicit TLS on 465;
+setting both fails at startup rather than at the first send.
 
 ### Signing in as a shelter in development
 
@@ -408,15 +459,21 @@ variables.
 | `PORTAL_SECURE_COOKIES` | `false` when `PORTAL_DEBUG` is on | Marks the session cookie secure. |
 | `PORTAL_SESSION_COOKIE_DOMAIN` | unset | Set only if the cookie has to span subdomains. |
 | `PORTAL_SESSION_AGE` | `1209600` | Session lifetime in seconds. |
-| `PORTAL_LOGIN_LINK_RATE` | `5/hour` | Maximum accepted login-link requests per client IP. Uses Django's configured cache. |
+| `PORTAL_LOGIN_LINK_RATE` | `5/hour` | Maximum accepted login-link requests per client IP. Counted in the cache below. |
+| `PORTAL_LOGIN_LINK_ADDRESS_RATE` | `3/hour` | Maximum login links sent to one address. Over it the endpoint still answers 204 and sends nothing. |
+| `PORTAL_CACHE_DIR` | `apps/portal/cache` | File-based cache holding both counters. Shared by every worker process on the host, and must be writable by the service. |
 | `PORTAL_TRUSTED_PROXY_COUNT` | unset | Number of trusted rightmost proxy hops in `X-Forwarded-For`. Unset trusts one hop only when `REMOTE_ADDR` is loopback; `0` always uses `REMOTE_ADDR`. |
 | `PORTAL_EMAIL_BACKEND` | console when `PORTAL_DEBUG` is on, otherwise SMTP | Django email backend. |
 | `PORTAL_EMAIL_HOST` | `localhost` | SMTP host. |
 | `PORTAL_EMAIL_PORT` | `25` | SMTP port. |
 | `PORTAL_EMAIL_USER` | empty | SMTP user. |
 | `PORTAL_EMAIL_PASSWORD` | empty | SMTP password. |
-| `PORTAL_EMAIL_USE_TLS` | `false` | STARTTLS for SMTP. |
-| `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. |
+| `PORTAL_EMAIL_USE_TLS` | `false` | STARTTLS, port 587. |
+| `PORTAL_EMAIL_USE_SSL` | `false` | Implicit TLS, port 465. Setting this and `PORTAL_EMAIL_USE_TLS` together fails at startup. |
+| `PORTAL_EMAIL_TIMEOUT` | `10` | Seconds a send waits on the mail host. Sending is synchronous inside the request. Must be a positive integer. |
+| `PORTAL_FROM_EMAIL` | `portal@posvoji.si` | Sender of the login mail. Must be the mailbox `PORTAL_EMAIL_USER` authenticates as. |
+| `PORTAL_FROM_NAME` | `Posvoji.si` | Display name on the From address. |
+| `PORTAL_REPLY_TO_EMAIL` | `info@posvoji.si` | `Reply-To`, and the address the mail prints for questions. The From address is send-only. |
 
 In production set at least `PORTAL_SECRET_KEY`, `PORTAL_DEBUG=false`,
 `PORTAL_ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ORIGINS`, `PORTAL_EXPORT_TOKEN`,

@@ -31,6 +31,19 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _env_positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ImproperlyConfigured(f"{name} must be a positive integer") from error
+    if value < 1:
+        raise ImproperlyConfigured(f"{name} must be a positive integer")
+    return value
+
+
 def _env_optional_nonnegative_int(name: str) -> int | None:
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
@@ -125,9 +138,12 @@ AUTHENTICATION_BACKENDS = [
     "sesame.backends.ModelBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
-SESAME_MAX_AGE = 3600
+# A day, not an hour. The address that receives the link is a shared
+# institutional inbox that somebody reads once a working day, and a link that
+# has already expired when it is first read makes the portal unusable.
+SESAME_MAX_AGE = 60 * 60 * 24
 # Opening a link changes last_login and invalidates that token. A forwarded or
-# leaked link therefore cannot be replayed for the rest of its one-hour life.
+# leaked link therefore cannot be replayed for the rest of its life.
 SESAME_ONE_TIME = True
 
 # POST /auth/request-link is deliberately anonymous, but one client must not
@@ -140,6 +156,27 @@ PORTAL_LOGIN_LINK_RATE = (
     os.environ.get("PORTAL_LOGIN_LINK_RATE", "5/hour").strip() or "5/hour"
 )
 PORTAL_TRUSTED_PROXY_COUNT = _env_optional_nonnegative_int("PORTAL_TRUSTED_PROXY_COUNT")
+
+# The IP limit counts one client, this one counts one mailbox. Without it a
+# caller who changes network can still make the portal deliver message after
+# message to a shelter's published address, which is the address the registry
+# publishes and the one a shelter cannot stop reading.
+PORTAL_LOGIN_LINK_ADDRESS_RATE = (
+    os.environ.get("PORTAL_LOGIN_LINK_ADDRESS_RATE", "3/hour").strip() or "3/hour"
+)
+
+# Both limits are counters in the cache, so every process that answers a
+# request-link call has to see the same ones. The deployment runs gunicorn
+# with three workers, and Django's default local-memory cache is per process,
+# which would multiply both limits by the worker count. A file cache needs no
+# extra service on the host; the directory must be writable by the service.
+PORTAL_CACHE_DIR = Path(os.environ.get("PORTAL_CACHE_DIR") or BASE_DIR / "cache")
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": str(PORTAL_CACHE_DIR),
+    }
+}
 
 # Development only: /api/auth/dev/* lists every shelter and opens a session as
 # any of them without a mail round trip. `DEBUG and` is the real guard, so
@@ -199,6 +236,10 @@ if _env_bool("PORTAL_TRUST_PROXY_PROTO", False):
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ORIGINS", ["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+# A cross-origin response hands the browser only the safelisted headers unless
+# the server names the rest. Retry-After carries how long a throttled 429 has
+# left, which the login page tells the shelter.
+CORS_EXPOSE_HEADERS = ["Retry-After"]
 
 EMAIL_BACKEND = os.environ.get("PORTAL_EMAIL_BACKEND") or (
     "django.core.mail.backends.console.EmailBackend"
@@ -210,7 +251,27 @@ EMAIL_PORT = int(os.environ.get("PORTAL_EMAIL_PORT", "25"))
 EMAIL_HOST_USER = os.environ.get("PORTAL_EMAIL_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("PORTAL_EMAIL_PASSWORD", "")
 EMAIL_USE_TLS = _env_bool("PORTAL_EMAIL_USE_TLS", False)
+# Two different things: 587 opens in the clear and upgrades with STARTTLS,
+# 465 is TLS from the first byte. Neoserv's submission endpoint is 465.
+EMAIL_USE_SSL = _env_bool("PORTAL_EMAIL_USE_SSL", False)
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    # Django raises on the first send instead, from inside the connection,
+    # where the message names neither variable and no login has worked yet.
+    raise ImproperlyConfigured(
+        "PORTAL_EMAIL_USE_TLS and PORTAL_EMAIL_USE_SSL are mutually exclusive; "
+        "set PORTAL_EMAIL_USE_SSL for port 465 or PORTAL_EMAIL_USE_TLS for 587"
+    )
+# Sending is synchronous inside the request, so an unreachable or silent mail
+# host holds a worker until the socket gives up. The caller is waiting for a
+# 204 that says nothing about delivery anyway.
+EMAIL_TIMEOUT = _env_positive_int("PORTAL_EMAIL_TIMEOUT", 10)
 DEFAULT_FROM_EMAIL = os.environ.get("PORTAL_FROM_EMAIL", "portal@posvoji.si")
+# The From address is a send-only mailbox, so the mail carries a display name
+# a shelter recognises and a Reply-To that a person reads.
+PORTAL_FROM_NAME = os.environ.get("PORTAL_FROM_NAME", "").strip() or "Posvoji.si"
+PORTAL_REPLY_TO_EMAIL = (
+    os.environ.get("PORTAL_REPLY_TO_EMAIL", "").strip() or "info@posvoji.si"
+)
 
 # Where the frontend serves the magic link landing page.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")

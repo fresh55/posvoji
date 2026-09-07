@@ -165,6 +165,12 @@ No `basic_auth` here, deliberately. Caddy's `reverse_proxy` sets
 `X-Forwarded-For`, and the portal trusts one hop from loopback, which is what
 the login-link rate limit counts on.
 
+That limit and the per-address one are counters in a file-based cache, and the
+shared cache is what makes `--workers 3` correct: a per-process cache would
+multiply both limits by the worker count. `PORTAL_CACHE_DIR` is
+`/srv/posvoji/portal-data/cache`, inside the `ReadWritePaths` the unit already
+has, so the unit does not change. The directory is created on first use.
+
 ## First deploy
 
 ```bash
@@ -186,6 +192,11 @@ sudo systemctl reload caddy
 
 `seed_shelters` reads `data/shelters.yaml` and `providers/*/policy.yaml`, so
 the clone must be the whole repository, not just `apps/portal`.
+
+`migrate` matters on an upgrade too, not only here: `0007` adds a source to
+every shelter membership and marks the rows that already exist as `registry`,
+which is what lets `seed_shelters` withdraw an address the registry has
+dropped without touching a membership made by hand in `/admin`.
 
 ## Verify, in this order
 
@@ -222,6 +233,78 @@ Exit 0 with `portal listings: N listed, 0 skipped` is the whole chain working.
 Exit 2 with an unanswered provider means the mirror is stale: re-run
 `seed_shelters`.
 
+**None of this makes the login usable yet.** The mailed link points at
+`posvoji.si/portal/prijava`, and `posvoji.si` is behind Caddy `basic_auth`, so
+the link lands on a password prompt no shelter can answer. `api.posvoji.si` is
+already open, so everything above passes while the login stays unreachable.
+Taking the gate off the site is the launch, and it is a separate decision from
+this deploy.
+
+## Mail
+
+The login is a mailed link, so a portal that cannot send mail lets nobody in,
+and it fails quietly: `POST /api/auth/request-link` answers 204 whether the
+message left or not.
+
+Submission goes through Neoserv, authenticated as a posvoji.si mailbox.
+**`PORTAL_EMAIL_USER` and `PORTAL_FROM_EMAIL` must be the same mailbox**, or
+the server may refuse the sender. That means `portal@posvoji.si` has to exist as
+a cPanel mailbox first; if it does not, use `info@posvoji.si` for both. The
+zone and the mail are at Neoserv, not on this host, and not at Hetzner.
+
+The known endpoint is `eh3.neoserv.si` on 465, which is TLS from the first
+byte:
+
+```ini
+PORTAL_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+PORTAL_EMAIL_HOST=eh3.neoserv.si
+PORTAL_EMAIL_PORT=465
+PORTAL_EMAIL_USER=portal@posvoji.si
+PORTAL_EMAIL_PASSWORD=
+PORTAL_EMAIL_USE_TLS=false
+PORTAL_EMAIL_USE_SSL=true
+PORTAL_EMAIL_TIMEOUT=10
+PORTAL_FROM_EMAIL=portal@posvoji.si
+PORTAL_FROM_NAME=Posvoji.si
+PORTAL_REPLY_TO_EMAIL=info@posvoji.si
+```
+
+Port 587 with `PORTAL_EMAIL_USE_TLS=true` instead is STARTTLS, and works only
+if Neoserv offers it there. Verify before relying on it. Never set both: the
+process refuses to start.
+
+Once the environment file is loaded, prove it before a shelter does:
+
+```bash
+set -a && . /srv/posvoji/portal.env && set +a
+uv run python manage.py check_mail --to <your address>
+```
+
+Exit 0 with the message actually received is the proof. The command prints the
+backend, host and port it used, so a run that reaches the console backend is
+visible rather than mistaken for a success.
+
+### Watching it afterwards
+
+A send that fails later is only in the log, because the endpoint still answers
+204:
+
+```bash
+journalctl -u posvoji-portal --since -1d -g portal.mail.delivery_failed
+```
+
+`/etc/cron.d/posvoji-portal-mail`, which reports only when there is something
+to report, because cron mails a job's output and nothing else:
+
+```cron
+MAILTO=info@posvoji.si
+15 7 * * * root journalctl -u posvoji-portal --since -1d --no-pager -g portal.mail.delivery_failed | grep .
+```
+
+That needs a local MTA for cron's own mail; without one, send the same command
+somewhere else. The other marker, `portal.mail.address_throttled`, is the
+per-address limit doing its job and is not an alert.
+
 ## Backups
 
 There are none on this box today, and the portal is the first thing on it
@@ -256,9 +339,6 @@ the unit, the paths and the permissions.
 
 ## What is not covered here
 
-- Mail. The login link needs a working sender; `PORTAL_EMAIL_*` in the env
-  file points at one, and the console backend that development uses will
-  silently drop every link in production.
 - A rollback path. The web deploy keeps three releases and a symlink; this
   service has neither yet.
 - Log shipping and uptime monitoring. `journalctl -u posvoji-portal` is the

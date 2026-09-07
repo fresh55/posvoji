@@ -19,11 +19,16 @@ import {
 import { m, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 import { PortalShell } from "@/components/portal/portal-shell";
-import { fill, portalText } from "@/components/portal/portal-text";
+import { fill, portalText, splitOnEmail } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import {
+  PORTAL_ERROR_NO_SESSION,
+  PORTAL_ERROR_PARAM,
+  PORTAL_PATH,
+  markVerified,
+} from "@/hooks/use-portal-session";
 import {
   commitSearch,
   getSearchSnapshot,
@@ -60,12 +65,33 @@ type LoginState =
   | { step: "verifying" }
   | { step: "expired" };
 
+/**
+ * The wait, said in minutes. The API states it in seconds and rounds nothing,
+ * so anything under a minute still reads as one: "0 min" would tell a shelter
+ * to press the button again straight away, which is what got them here.
+ */
+function throttledMessage(seconds: number | undefined): string {
+  if (seconds === undefined) return portalText.throttledHour;
+  return fill(portalText.throttledMinutes, {
+    minutes: Math.max(1, Math.ceil(seconds / 60)),
+  });
+}
+
+// The one place the card picks the words for a failure. Throttling is the
+// failure a shelter meets by retrying, so it may never read as "nekaj je šlo
+// narobe": that sentence asks for the very retry that is being refused.
 function errorMessage(error: unknown): string {
-  if (error instanceof PortalError && error.kind === "network") {
-    return portalText.networkError;
+  if (error instanceof PortalError) {
+    if (error.kind === "network") return portalText.networkError;
+    if (error.kind === "throttled") {
+      return throttledMessage(error.retryAfterSeconds);
+    }
   }
   return portalText.unknownError;
 }
+
+// The help line, cut around the address once: the sentence never changes.
+const [HELP_BEFORE, HELP_AFTER] = splitOnEmail(portalText.helpLine);
 
 // The character class is copied from lib/shelters.ts, which is the rule the
 // register is validated against: no character that turns one recipient into a
@@ -145,10 +171,19 @@ export function PortalLogin() {
     () => new URLSearchParams(search).get("token"),
     [search],
   );
+  // The workspace's guard sends a visitor back with this when a verification
+  // that worked left no session cookie behind.
+  const noSession = useMemo(
+    () =>
+      new URLSearchParams(search).get(PORTAL_ERROR_PARAM) ===
+      PORTAL_ERROR_NO_SESSION,
+    [search],
+  );
 
   const [state, setState] = useState<LoginState>({ step: "form" });
   const [email, setEmail] = useState("");
   const [checking, setChecking] = useState<string | null>(null);
+  const [bounced, setBounced] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // A token in the URL switches the card to "verifying" in the same render it
@@ -156,6 +191,17 @@ export function PortalLogin() {
   if (token && token !== checking) {
     setChecking(token);
     setState({ step: "verifying" });
+  }
+
+  // The bounce is read the same way and in the same render, so the form is
+  // never on screen without the reason it is there. A token wins: the visitor
+  // is arriving with a link, not coming back from a workspace.
+  if (noSession && !token && !bounced) {
+    setBounced(true);
+    setState({
+      step: "form",
+      error: { text: portalText.sessionNotStored, onField: false },
+    });
   }
 
   // Keyed on the captured token, not on the one still in the URL: the effect
@@ -171,9 +217,14 @@ export function PortalLogin() {
 
     verifyToken(checking).then(
       () => {
+        if (!live) return;
+        // Noted before the hand over, so that a workspace which finds no
+        // session can say the cookie is what went missing rather than send
+        // the shelter back here with a blank form and a spent link.
+        markVerified();
         // replace, not assign: the token never becomes a history entry the
         // back button can walk into.
-        if (live) window.location.replace(PORTAL_PATH);
+        window.location.replace(PORTAL_PATH);
       },
       (error: unknown) => {
         if (!live) return;
@@ -192,6 +243,14 @@ export function PortalLogin() {
       live = false;
     };
   }, [checking]);
+
+  // The reason has been said on the card, so it has no business in the address
+  // bar: a reload or a shared link would otherwise carry the same notice to a
+  // page that is only asking for an address.
+  useEffect(() => {
+    if (!bounced) return;
+    commitSearch("", "replace");
+  }, [bounced]);
 
   // Every step but the form replaces the card's whole content, so the reader
   // is moved to the new heading rather than left on a button that is gone.
@@ -366,6 +425,21 @@ export function PortalLogin() {
                 {sending ? portalText.sending : portalText.sendLink}
               </Button>
             </form>
+
+            {/* Under the form, where a shelter that cannot get past it is
+                already looking. The address is a link and not text: on a
+                phone it has to open the mail app rather than be copied out
+                by hand. */}
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {HELP_BEFORE}
+              <a
+                href={`mailto:${portalText.contactEmail}`}
+                className="underline underline-offset-4 hover:text-foreground"
+              >
+                {portalText.contactEmail}
+              </a>
+              {HELP_AFTER}
+            </p>
           </>
         )}
       </m.section>

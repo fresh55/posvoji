@@ -1,11 +1,12 @@
 import json
+import logging
 
 import pytest
 from django.core import mail
-from django.core.cache import cache
 from django.test import Client
 from sesame.utils import get_token
 
+from core.api.auth import ADDRESS_THROTTLED, DELIVERY_FAILED
 from core.security import request_link_throttle
 
 REQUEST_LINK = "/api/auth/request-link"
@@ -26,16 +27,16 @@ def post(client, url, payload, **request_extra):
     )
 
 
-@pytest.fixture(autouse=True)
-def clear_request_link_throttle_cache():
-    cache.clear()
-    yield
-    cache.clear()
-
-
 @pytest.fixture
 def two_request_link_attempts(monkeypatch):
     monkeypatch.setattr(request_link_throttle, "num_requests", 2)
+    monkeypatch.setattr(request_link_throttle, "duration", 3600)
+
+
+@pytest.fixture
+def unlimited_per_ip(monkeypatch):
+    """The IP limit out of the way, so a test can exercise the address limit."""
+    monkeypatch.setattr(request_link_throttle, "num_requests", 100)
     monkeypatch.setattr(request_link_throttle, "duration", 3600)
 
 
@@ -63,23 +64,69 @@ def test_request_link_emails_a_member(client, member):
     assert len(mail.outbox) == 1
     message = mail.outbox[0]
     assert message.to == [member.email]
+    # Quoted because the display name holds a dot, which is what formataddr is
+    # for. A client shows Posvoji.si, not a bare portal@ address.
+    assert message.from_email == '"Posvoji.si" <portal@posvoji.si>'
+    assert message.reply_to == ["info@posvoji.si"]
     assert "http://localhost:3000/portal/prijava?token=" in message.body
-    assert "uporabiti samo enkrat" in message.body
+    assert member.email in message.body
+    assert "24 ur" in message.body
+    assert "deluje samo enkrat" in message.body
+    # Written in Slovenian, not in Slovenian with the diacritics filed off.
+    assert "zavetišča" in message.body
+    assert "info@posvoji.si" in message.body
 
 
 @pytest.mark.django_db
 def test_request_link_keeps_uniform_response_when_email_backend_fails(
     client, member, monkeypatch, caplog
 ):
-    def fail_to_send(*args, **kwargs):
+    def fail_to_send(self, *args, **kwargs):
         raise RuntimeError("backend-specific delivery failure")
 
-    monkeypatch.setattr("core.api.auth.send_mail", fail_to_send)
+    monkeypatch.setattr("core.api.auth.EmailMessage.send", fail_to_send)
 
     response = post(client, REQUEST_LINK, {"email": member.email})
 
     assert response.status_code == 204
-    assert "could not send a login link" in caplog.text
+    assert DELIVERY_FAILED in caplog.text
+    assert member.email in caplog.text
+
+
+@pytest.mark.django_db
+def test_request_link_stops_repeats_to_one_address(
+    client, member, second_member, unlimited_per_ip, settings, caplog
+):
+    caplog.set_level(logging.INFO)
+    settings.PORTAL_LOGIN_LINK_ADDRESS_RATE = "3/hour"
+
+    for _ in range(3):
+        assert post(client, REQUEST_LINK, {"email": member.email}).status_code == 204
+    assert len(mail.outbox) == 3
+
+    fourth = post(client, REQUEST_LINK, {"email": member.email})
+
+    assert fourth.status_code == 204
+    assert len(mail.outbox) == 3
+    assert ADDRESS_THROTTLED in caplog.text
+
+    other = post(client, REQUEST_LINK, {"email": second_member.email})
+
+    assert other.status_code == 204
+    assert len(mail.outbox) == 4
+    assert mail.outbox[-1].to == [second_member.email]
+
+
+@pytest.mark.django_db
+def test_request_link_counts_one_address_however_it_is_written(
+    client, member, unlimited_per_ip, settings
+):
+    settings.PORTAL_LOGIN_LINK_ADDRESS_RATE = "1/hour"
+
+    assert post(client, REQUEST_LINK, {"email": member.email}).status_code == 204
+    assert post(client, REQUEST_LINK, {"email": " INFO@Example.SI "}).status_code == 204
+
+    assert len(mail.outbox) == 1
 
 
 @pytest.mark.django_db
@@ -89,7 +136,13 @@ def test_request_link_rate_limits_one_ip(client, two_request_link_attempts):
 
     assert post(client, REQUEST_LINK, request, **remote_addr).status_code == 204
     assert post(client, REQUEST_LINK, request, **remote_addr).status_code == 204
-    assert post(client, REQUEST_LINK, request, **remote_addr).status_code == 429
+
+    refused = post(client, REQUEST_LINK, request, **remote_addr)
+
+    assert refused.status_code == 429
+    assert refused.json() == {"detail": "too many requests"}
+    # How long the wait is, which the login page has no other way to know.
+    assert 0 < int(refused.headers["Retry-After"]) <= 3600
 
 
 @pytest.mark.django_db

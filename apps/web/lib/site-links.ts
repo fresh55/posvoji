@@ -35,7 +35,8 @@ export type SiteLink = {
    * Spelled out in the header's inline row, rather than only in the footer
    * and the dropdown. The row is not a copy of the roster: a destination
    * earns a place up there by being a page of its own that the header is the
-   * shortest way to. Zavetišča and the found-animal page both are.
+   * shortest way to. Zavetišča, the found-animal page and O nas all are; the
+   * login is a door to another site and Viri is unlisted altogether.
    */
   inline?: boolean;
 };
@@ -76,15 +77,17 @@ export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
       label: messages.muniTab,
       inline: true,
     },
-    // What the site is and what it is not, in one screen. Listed in the
-    // footer and the dropdown, not in the header's inline row: it is a page
-    // of its own, but nobody in the grid is looking for the shortest way to
-    // it, and the row is two destinations for the reasons written on
-    // `inline`.
+    // What the site is and what it is not, in one screen. In the row from
+    // the top of every page, because the reader who wants it is the one
+    // asking who put a list of animals on the internet and what they want
+    // for it, and that reader asks before scrolling, not after. The footer
+    // is the length of the grid away, and a site that answers "who are you"
+    // only at the bottom answers it late.
     {
       key: "about",
       href: ABOUT_PATHS[locale],
       label: messages.about,
+      inline: true,
     },
     // Hidden on purpose while the page waits for a pass over its contents.
     // /viri and /en/resources still build and still answer; the link is only

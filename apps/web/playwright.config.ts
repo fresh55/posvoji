@@ -31,10 +31,10 @@ const MOBILE_SPECS = [
   "photo-lightbox-mobile.spec.ts",
 ];
 
-// Screenshot baselines have a deliberately smaller, dataset-free Chromium
-// matrix in playwright.visual.config.ts. Keep them out of the broader browser
-// suite so `test:e2e` retains its existing scope and setup requirements.
-const VISUAL_SPECS = ["shelter-map.visual.spec.ts"];
+// Map snapshots use playwright.visual.config.ts; cat behaviour and snapshots
+// use playwright.cat.config.ts. Keep these dedicated suites out of the broader
+// browser run so `test:e2e` retains its existing scope and setup requirements.
+const VISUAL_SPECS = ["shelter-map.visual.spec.ts", "cat-visual.spec.ts", "cat-hardening.spec.ts"];
 
 export default defineConfig({
   testDir: "./e2e",

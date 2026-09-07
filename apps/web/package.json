@@ -11,12 +11,14 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:visual": "playwright test --config=playwright.visual.config.ts",
+    "test:e2e:cat": "playwright test --config=playwright.cat.config.ts",
     "generate:postal-districts": "node scripts/generate-postal-districts.mjs",
     "generate:font-subset": "node scripts/generate-font-subset.mjs",
     "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs",
     "generate:animal-descriptions": "node scripts/generate-animal-descriptions.mjs"
   },
   "dependencies": {
+    "@google/model-viewer": "^4.3.1",
     "@posvoji/schema": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

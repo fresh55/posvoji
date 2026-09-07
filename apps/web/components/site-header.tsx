@@ -23,7 +23,7 @@ export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
           while the right half carried everything. */}
       {/* 40px between the brand and the row, against the row's own 24px. The
           32px here was set when the row held one link and there was no gap
-          inside it to out-rank; with two links in the row the group gap has
+          inside it to out-rank; with three links in the row the group gap has
           to stay the wider of the two or the brand joins the nav. */}
       {/* min-w-0 down the brand, so the wordmark is the thing that gives when
           the row runs out of room.

@@ -76,8 +76,8 @@ describe("the header menu", () => {
 });
 
 describe("the header's inline nav", () => {
-  // The row is the pages a visitor can go to, and nothing else. Both of these
-  // are destinations of their own that the header is the shortest way to from
+  // The row is the pages a visitor can go to, and nothing else. Each of these
+  // is a destination of its own that the header is the shortest way to from
   // anywhere in the grid.
   it("says the destinations the header is the shortest way to", () => {
     render(
@@ -90,11 +90,25 @@ describe("the header's inline nav", () => {
     expect(links.map((link) => link.textContent)).toEqual([
       "Zavetišča",
       "Najdena žival",
+      "O nas",
     ]);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/zavetisca",
       "/najdena-zival",
+      "/o-nas",
     ]);
+  });
+
+  it("routes the English visitor to the English pages", () => {
+    render(
+      <I18nProvider locale="en">
+        <SiteNav />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getAllByRole("link").map((link) => link.getAttribute("href")),
+    ).toEqual(["/en/shelters", "/en/found-animal", "/en/about"]);
   });
 
   it("keeps the login out of the row of destinations", () => {

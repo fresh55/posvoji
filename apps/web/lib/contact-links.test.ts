@@ -47,6 +47,18 @@ describe("mailtoHref", () => {
   it("passes the address through, having nothing local to expand", () => {
     expect(mailtoHref("info@example.test")).toBe("mailto:info@example.test");
   });
+
+  it.each([
+    "help?subject=adoption@example.test",
+    "help#desk@example.test",
+    "help%2Carchive@example.test",
+    "help+adoptions@example.test",
+  ])("keeps %s as one literal recipient", (email) => {
+    const url = new URL(mailtoHref(email));
+    expect(url.search).toBe("");
+    expect(url.hash).toBe("");
+    expect(decodeURIComponent(url.pathname)).toBe(email);
+  });
 });
 
 // The same rule against the register the site is actually built from, so an

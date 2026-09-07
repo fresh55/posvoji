@@ -1,4 +1,4 @@
-import { Building2, MapPinned, PawPrint, ShieldCheck } from "lucide-react";
+import { Building2, ListChecks, MapPinned, PawPrint } from "lucide-react";
 import { BackToTop } from "@/components/back-to-top";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -14,9 +14,7 @@ import { getMessages, type Locale } from "@/lib/i18n";
 import {
   animalCount,
   registerDateLabel,
-  sharesDataLabel,
   shelterCount,
-  waitingLabel,
 } from "@/lib/labels";
 import { shelterCensus } from "@/lib/shelter-census";
 import { REPO_URL } from "@/lib/site";
@@ -40,14 +38,17 @@ const JOIN_URL = `${REPO_URL}/issues/new?template=predlagaj-zavetisce.yml`;
 const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
-    lookupLink: "Iskalnik po občinah",
-    lookupRest: "Pove, katero zavetišče je pristojno za tvojo občino.",
+    lookupLink: "Najdena žival? Poišči pomoč po občini",
+    censusLabel: "Pregled zavetišč",
+    inRegistry: "v registru",
+    withListings: "z objavami",
+    onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
     website: "Spletna stran",
     email: "E-pošta",
     phone: "Telefon",
     newWindow: "(odpre se v novem oknu)",
-    noAnimals: "Živali niso objavljene",
+    noAnimals: "Brez objav na Posvoji.si",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
     inviteTitle: "Ste zavetišče?",
@@ -61,14 +62,17 @@ const pageText = {
   },
   en: {
     title: "Shelters across Slovenia",
-    lookupLink: "Municipality lookup",
-    lookupRest: "Answers which shelter is responsible for your town.",
+    lookupLink: "Found an animal? Find help by municipality",
+    censusLabel: "Shelter overview",
+    inRegistry: "in the registry",
+    withListings: "with listings",
+    onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
     website: "Website",
     email: "Email",
     phone: "Phone",
     newWindow: "(opens in a new window)",
-    noAnimals: "No animals published",
+    noAnimals: "No listings on Posvoji.si",
     heading: "Shelters",
     skip: "Skip the list of shelters",
     inviteTitle: "Are you a shelter?",
@@ -82,23 +86,11 @@ const pageText = {
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-// What the page is, in one sentence, and no numbers in it.
-//
-// It used to open "Vseh 17 zavetišč iz javnega registra UVHVVR" and close
-// "pri 11 od 17 zavetišč", with the census line under it saying 17 and 11
-// again forty pixels later: three 17s and two 11s inside one block. Numbers
-// belong to the census, which is built to be scanned and already refuses to
-// print a zero; the sentence keeps the part a number cannot carry, which is
-// that the list is the shelter's and we publish it only by permission.
-//
-// The registry is named once more on the page, in the provenance line at the
-// foot, where it carries the date that makes it a citation rather than a
-// claim. Naming it here as well put "register" on the page three times over,
-// counting the kicker directly above this.
+// The directory and the published listings have different scopes.
 function lede(locale: Locale): string {
   return locale === "en"
-    ? "Every animal shelter in Slovenia, with its contact details in one place. Where a shelter gives us permission, we publish its animals too."
-    : "Vsa slovenska zavetišča za živali, s kontakti na enem mestu. Kjer nam zavetišče to dovoli, objavimo tudi njegove živali.";
+    ? "Contact details for Slovenian animal shelters in one place. Animal listings are published with each shelter’s permission."
+    : "Kontakti slovenskih zavetišč na enem mestu. Objave živali dodamo z dovoljenjem zavetišč.";
 }
 
 export function SheltersPage({ locale }: { locale: Locale }) {
@@ -200,93 +192,28 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
                 {lede(locale)}
               </p>
-              {/* data/municipalities.yaml answers "which shelter covers my
-                  town" for all 212 občin, and this page never said so. Under
-                  the lede rather than beside the search, because it is a
-                  different question: not where a shelter is, but which one has
-                  to answer.
-
-                  A button, in the outline size the shelter page already gives
-                  its contacts, rather than the underlined link this was. For
-                  somebody who has just found a stray it is the most useful
-                  thing on the page and it read as prose: a muted sentence with
-                  a link inside it, in a column of muted sentences. Outline and
-                  small is as loud as the site's action vocabulary goes without
-                  becoming a hero, which this page cannot afford: the register
-                  is what the reader came for.
-
-                  MapPinned, the glyph the shelter page's coverage heading
-                  already uses. The lookup and that section answer the same
-                  question from opposite ends, so they wear the same mark. A
-                  magnifier would have promised a search of the list on this
-                  page, which is not what it opens.
-
-                  The sentence stays beside the button rather than inside it:
-                  it explains what the lookup does, and a button label that is
-                  a full sentence stops reading as a control.
-
-                  Drawn at 44px below lg, which is where this repo puts the
-                  touch/pointer boundary (site-menu.tsx switches to the
-                  dropdown there). size="sm" is h-8, and at 32px this was the
-                  smallest deliberate control on a page whose brand,
-                  breadcrumb, hamburger and footer links all reach 44. Grown
-                  rather than overlaid with tap-target, for the reason that
-                  utility's own block in globals.css gives, and because this
-                  one is meant to be the loudest thing under the lede for
-                  somebody holding a stray: a 32px button that merely accepts
-                  a 44px tap still reads as small. The padding goes with the
-                  height, or a 44px box on 10px of side padding reads as a
-                  stretched pill.
-
-                  min-h-11 and not h-11, the same spelling animal-grid.tsx
-                  uses on the same variant: a floor lets the label wrap and
-                  the box follow, where a fixed height would clip it. Nothing
-                  wraps at the sizes this is read at today, which is exactly
-                  why the difference would go unnoticed.
-
-                  From lg the classes stop applying and the button is size="sm"
-                  again, unchanged: outline and small is the treatment argued
-                  for above, and a pointer does not need the 44. */}
+              {/* This lookup serves people who have found a stray. */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
                 <Button
                   asChild
                   variant="outline"
                   size="sm"
-                  className="max-lg:min-h-11 max-lg:gap-1.5 max-lg:px-4"
+                  className="h-auto min-h-11 max-w-full gap-1.5 whitespace-normal px-4 py-2"
                 >
                   <a href={FOUND_ANIMAL_PATHS[locale]}>
                     <MapPinned aria-hidden />
                     {text.lookupLink}
                   </a>
                 </Button>
-                <p className="text-sm text-muted-foreground">
-                  {text.lookupRest}
-                </p>
               </div>
 
-              {/* The census line: the register's totals as one typographic
-                  band, no box and no fill, hairlines between the groups.
-                  Static and server-rendered, because it states the registry
-                  and the registry does not move under the reader.
-                  never-print-a-zero, the same rule the lede keeps: a zero here
-                  reads as a failure of the site rather than as a fact about
-                  Slovenia, so a group with nothing in it does not render.
-
-                  Built from a list rather than three hand-spaced spans. The
-                  padding used to be written per group (pr-4, pl-4 pr-4, pl-4)
-                  and had to be re-derived by hand whenever a group could be
-                  absent; first:pl-0 last:pr-0 lets the row space itself
-                  whichever groups survive the filter.
-
-                  The hairlines and the padding start at sm, because neither
-                  survives a wrap. divide-x rules the trailing edge of every
-                  group but the last, which is a separator only while the
-                  groups are on one line: at 375px the third wraps, and the
-                  second is left drawing a stroke into the empty end of line
-                  one while the third starts line two 16px in from the column
-                  edge on its own pl-4. Below sm the row spaces itself with
-                  gaps instead, which wrap cleanly. */}
-              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground sm:gap-x-0 sm:divide-x sm:divide-border">
+              {/* Label what is counted. Listing counts do not establish permission status or shelter capacity. */}
+              <ul
+                role="list"
+                aria-label={text.censusLabel}
+                data-shelter-census
+                className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-1 text-sm text-muted-foreground"
+              >
                 {[
                   shelters.length > 0 && {
                     key: "shelters",
@@ -294,23 +221,17 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                     count: shelters.length,
                     body: (
                       <span className="tabular-nums">
-                        {shelterCount(shelters.length, locale)}
+                        {shelterCount(shelters.length, locale)} {text.inRegistry}
                       </span>
                     ),
                   },
                   census.withData > 0 && {
                     key: "providers",
-                    icon: ShieldCheck,
+                    icon: ListChecks,
                     count: census.withData,
                     body: (
                       <span>
-                        {/* The count in the green the site marks a
-                            data-sharing shelter with everywhere else, because
-                            it is the same fact. */}
-                        <span className="font-medium tabular-nums text-[var(--filter-accent-foreground)]">
-                          {census.withData}
-                        </span>{" "}
-                        {sharesDataLabel(census.withData, locale)}
+                        {shelterCount(census.withData, locale)} {text.withListings}
                       </span>
                     ),
                   },
@@ -323,7 +244,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                         <span className="tabular-nums">
                           {animalCount(census.animals, locale)}
                         </span>{" "}
-                        {waitingLabel(census.animals, locale)}
+                        {text.onSite}
                       </span>
                     ),
                   },
@@ -339,17 +260,17 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                     // text, because Slovenian agrees the noun with the number
                     // and a test parsing "186 živali" would be parsing the
                     // dual as well.
-                    <span
+                    <li
                       key={key}
                       data-census={key}
                       data-count={count}
-                      className="flex items-center gap-1.5 py-0.5 sm:px-4 sm:first:pl-0 sm:last:pr-0"
+                      className="flex items-center gap-1.5 py-0.5"
                     >
                       <Icon className="size-3.5 shrink-0" aria-hidden />
                       {body}
-                    </span>
+                    </li>
                   ))}
-              </p>
+              </ul>
             </div>
           </div>
 

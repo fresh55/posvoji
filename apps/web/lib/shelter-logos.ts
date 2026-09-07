@@ -109,13 +109,20 @@ function chipsFor(
 export function logosFromEntries(entries: Record<string, unknown>): ShelterLogos {
   const logos: ShelterLogos = {};
   for (const [id, value] of Object.entries(entries)) {
+    // One damaged entry must not throw away every other shelter's logo.
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
     const entry = value as Record<string, unknown>;
     const { file, width, height } = entry;
     const chips = chipsFor(entry);
     if (
       typeof file !== "string" ||
+      !/^[a-z0-9][a-z0-9._-]*$/i.test(file) ||
       typeof width !== "number" ||
+      !Number.isSafeInteger(width) ||
+      width <= 0 ||
       typeof height !== "number" ||
+      !Number.isSafeInteger(height) ||
+      height <= 0 ||
       chips === undefined
     ) {
       continue;

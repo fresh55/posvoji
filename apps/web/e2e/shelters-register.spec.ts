@@ -46,6 +46,60 @@ const REGISTER = "/zavetisca";
 const CARD = 'li[id^="zavetisce-"]';
 const CHANNELS = ["phone", "email", "website"] as const;
 
+for (const indexPath of ["/zavetisca", "/en/shelters"]) {
+  test(`${indexPath}: the summary and help link reflow with enlarged text`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto(indexPath);
+    await expect(page.locator("[data-shelter-census] li")).toHaveCount(3);
+    await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+    await expect.poll(() => page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )).toBeLessThanOrEqual(1);
+
+    const helpPath = indexPath === "/zavetisca" ? "/najdena-zival" : "/en/found-animal";
+    const help = page.locator(`main a[href="${helpPath}"]`);
+    expect(await help.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect(errors).toEqual([]);
+  });
+
+  test(`${indexPath}: keyboard users can skip the register`, async ({ page }) => {
+    await page.goto(indexPath);
+    const skip = page.locator('a[href="#za-zavetisci"]');
+    await skip.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#za-zavetisci")).toBeFocused();
+    await page.keyboard.press("Tab");
+    // Back to top is legitimately between the register and the footer.
+    if (await page.locator('[data-slot="back-to-top"]:focus').count()) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(page.locator("footer a").first()).toBeFocused();
+  });
+
+  test(`${indexPath}: shelter contacts reflow with enlarged text`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    // A contact-only shelter keeps this focused on the page chrome, and has
+    // the register's longest email address to exercise an unbroken value.
+    await page.goto(`${indexPath}/johanca`);
+    await expect(page.locator("h1")).toBeVisible();
+    await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+
+    await expect.poll(() => page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )).toBeLessThanOrEqual(1);
+
+    const email = page.locator('main a[href^="mailto:"]');
+    const box = await email.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+    expect(await email.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  });
+}
+
 type Misalignment = {
   /** 1-based, in visual order down the page. */
   row: number;
@@ -224,7 +278,7 @@ test.describe("the shelters register", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(REGISTER);
 
-    const census = page.locator("main p").filter({ hasText: /\d/ }).first();
+    const census = page.locator("[data-shelter-census]");
     await expect(census).toBeVisible();
 
     const geometry = await census.evaluate((element) => {

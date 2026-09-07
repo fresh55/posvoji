@@ -134,7 +134,7 @@ describe("the shelter page's hero", () => {
     // row's flex-wrap move the column under the mark instead, where it has
     // the full width.
     const { column, heading } = hero(container);
-    expect(column.className).toContain("min-w-40");
+    expect(column.className).toContain("min-w-[min(10rem,100%)]");
     expect(column.className).not.toContain("min-w-0");
     expect(column.parentElement?.className).toContain("flex-wrap");
     // And under the floor, a word wider than the column breaks rather than

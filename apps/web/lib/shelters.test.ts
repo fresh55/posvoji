@@ -199,4 +199,39 @@ describe("a registry the loader cannot read", () => {
 
     expect(load).toThrow(/id is used twice/);
   });
+
+  it.each(["../portal", "a/b", "x?tab=1", "x#animals", " x ", "__proto__"])(
+    "rejects an id that cannot identify a shelter route: %s",
+    async (id) => {
+      const { loadShelters: load } = await registryOf(
+        GOOD.replace("id: zonzani", `id: ${JSON.stringify(id)}`),
+      );
+      expect(load).toThrow(/id must be a kebab-case slug/);
+    },
+  );
+
+  it.each([
+    "info@example.test?bcc=archive.test",
+    "info@example.test#fragment.test",
+    "info@-example.test",
+    "info@example..test",
+  ])("rejects an unusable email domain: %s", async (email) => {
+    const { loadShelters: load } = await registryOf(
+      GOOD.replace("info@zonzani.si", email),
+    );
+    expect(load).toThrow(/email is not an address/);
+  });
+
+  it.each(["phone", "onCallPhone"])(
+    "requires %s to contain one dialable number",
+    async (field) => {
+      for (const phone of ["   ", "()-", "+", "03 749 06 00 / 01", "03+7490600"]) {
+        const { loadShelters: load } = await registryOf(
+          GOOD.replace('    phone: "03 749 06 00"\n', "") +
+            `    ${field}: ${JSON.stringify(phone)}\n`,
+        );
+        expect(load).toThrow(/phone is not a single dialable number/);
+      }
+    },
+  );
 });

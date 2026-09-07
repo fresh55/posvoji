@@ -76,6 +76,33 @@ describe("reading the shelter logo manifest", () => {
 
     expect(Object.keys(logos)).toEqual(["good"]);
   });
+
+  it.each([null, undefined, false, "bad", []])(
+    "keeps valid logos beside a non-object entry: %s",
+    (bad) => {
+      expect(Object.keys(logosFromEntries({
+        bad,
+        good: { ...entry, tone: "dark" },
+      }))).toEqual(["good"]);
+    },
+  );
+
+  it.each([0, -1, NaN, Infinity, 0.5])(
+    "skips unusable pixel dimensions: %s",
+    (dimension) => {
+      expect(logosFromEntries({
+        badWidth: { ...entry, width: dimension, tone: "dark" },
+        badHeight: { ...entry, height: dimension, tone: "dark" },
+      })).toEqual({});
+    },
+  );
+
+  it.each(["", "../other.webp", "folder/logo.webp", "..\\other.webp", "logo.webp?x", "logo.webp#x", "%2e%2e%2flogo.webp"])(
+    "keeps logo URLs inside their media directory: %s",
+    (file) => {
+      expect(logosFromEntries({ bad: { ...entry, file, tone: "dark" } })).toEqual({});
+    },
+  );
 });
 
 // Logo files are content-addressed and the ingest run sweeps the ones nothing

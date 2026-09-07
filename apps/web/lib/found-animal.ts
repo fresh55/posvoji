@@ -28,4 +28,7 @@ export const FOUND_ANIMAL_PARAM = "najdena";
  *  every other param this app reads is a named export: PHOTO_PARAM,
  *  SORT_PARAM, FOUND_ANIMAL_PARAM. A public contract is not a string literal
  *  in a render. */
+// kraj names a settled municipality; posta holds a postcode or a name still
+// being searched. Keeping that distinction on writes means an ambiguous
+// postal name stays a question after reloading or changing language.
 export const FOUND_ANIMAL_PLACE_PARAMS = ["kraj", "posta"] as const;

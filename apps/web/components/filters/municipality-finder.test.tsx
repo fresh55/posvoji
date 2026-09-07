@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import { MunicipalityFinder } from "./municipality-finder";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, "", "/");
+});
 
 // Three občine from different corners of the country, each with real coverage,
 // so a lookup that resolves has a card to show.
@@ -82,7 +87,7 @@ describe("MunicipalityFinder deep link", () => {
     window.history.replaceState({}, "", "/najdena-zival?kraj=Koper");
     renderFinder();
 
-    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe(
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe(
       "Koper",
     );
     expect(screen.getByText("Zavetišče Obala")).toBeTruthy();
@@ -99,7 +104,7 @@ describe("MunicipalityFinder deep link", () => {
     window.history.replaceState({}, "", "/najdena-zival");
     renderFinder();
 
-    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("");
     expect(screen.queryByText("Zavetišče Obala")).toBeNull();
   });
 
@@ -112,7 +117,7 @@ describe("MunicipalityFinder deep link", () => {
 
     expect(screen.getByText("Zavetišče Obala")).toBeTruthy();
 
-    const search = screen.getByRole("searchbox");
+    const search = screen.getByRole("combobox");
     fireEvent.change(search, { target: { value: "Maribor" } });
 
     expect((search as HTMLInputElement).value).toBe("Maribor");
@@ -126,8 +131,62 @@ describe("MunicipalityFinder deep link", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Počisti iskanje" }));
 
-    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("");
     expect(screen.queryByText("Zavetišče Obala")).toBeNull();
+    expect(window.location.search).toBe("");
+    cleanup();
+    renderFinder();
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("");
+  });
+
+  it("carries an edited municipality into the other language and reloads", () => {
+    window.history.replaceState({}, "", "/najdena-zival?kraj=Koper&posta=6000&source=a%20b");
+    const view = render(
+      <I18nProvider locale="sl">
+        <LanguageSwitcher paths={FOUND_ANIMAL_PATHS} />
+        <MunicipalityFinder entries={ENTRIES} onActiveShelters={() => undefined} />
+      </I18nProvider>,
+    );
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Maribor" } });
+    expect(window.location.search).toBe("?source=a%20b&kraj=Maribor");
+
+    const english = screen.getByRole("link", { name: "English" });
+    const preventNavigation = (event: Event) => event.preventDefault();
+    english.addEventListener("click", preventNavigation);
+    fireEvent.click(english);
+    const destination = english.getAttribute("href")!;
+    expect(destination).toBe("/en/found-animal?source=a%20b&kraj=Maribor");
+    view.unmount();
+    window.history.replaceState({}, "", destination);
+    render(
+      <I18nProvider locale="en">
+        <MunicipalityFinder entries={ENTRIES} onActiveShelters={() => undefined} />
+      </I18nProvider>,
+    );
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("Maribor");
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(screen.queryByText("Zavetišče Obala")).toBeNull();
+  });
+
+  it("restores the location from history after an edited search", () => {
+    renderFinder();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Maribor" } });
+    act(() => {
+      window.history.replaceState({}, "", "/najdena-zival?kraj=Koper");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.getByText("Zavetišče Obala")).toBeTruthy();
+    expect(screen.queryByText("Zavetišče Maribor")).toBeNull();
+    expect(window.location.search).toBe("?kraj=Koper");
+  });
+
+  it("saves the resolved municipality from a postcode", () => {
+    renderFinder();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "1000" } });
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Ljubljana");
+    cleanup();
+    renderFinder();
+    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
   });
 });
 
@@ -136,7 +195,7 @@ describe("MunicipalityFinder empty state", () => {
     renderFinder();
 
     // Finding a contact does not require choosing from example towns.
-    const search = screen.getByRole("searchbox");
+    const search = screen.getByRole("combobox");
     expect(search).toBeTruthy();
     expect(screen.queryByText("Npr.:")).toBeNull();
     expect(screen.queryByRole("button", { name: "Ljubljana" })).toBeNull();
@@ -162,7 +221,7 @@ describe("MunicipalityFinder empty state", () => {
     expect(live.length).toBe(2);
     expect(live[1].textContent).toBe("");
 
-    fireEvent.change(screen.getByRole("searchbox"), {
+    fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "Koper" },
     });
 
@@ -172,7 +231,7 @@ describe("MunicipalityFinder empty state", () => {
   it("names the shelter once a single občina is typed", () => {
     renderFinder();
 
-    fireEvent.change(screen.getByRole("searchbox"), {
+    fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "Maribor" },
     });
 
@@ -224,7 +283,7 @@ describe("MunicipalityFinder enter key", () => {
         />
       </I18nProvider>,
     );
-    return screen.getByRole("searchbox");
+    return screen.getByRole("combobox");
   }
 
   it("does nothing destructive while several municipalities still match", () => {
@@ -232,7 +291,7 @@ describe("MunicipalityFinder enter key", () => {
     fireEvent.change(search, { target: { value: "Ljub" } });
 
     // All three are on the list and none of them is the answer yet.
-    expect(screen.getByRole("button", { name: /Ljubljana - Vič/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Ljubljana - Vič/ })).toBeTruthy();
 
     fireEvent.keyDown(search, { key: "Enter" });
 
@@ -244,7 +303,7 @@ describe("MunicipalityFinder enter key", () => {
     expect(screen.queryByText(/pristojno zavetišč/)).toBeNull();
     // And the list is still there to pick from, which is the whole of what
     // the visitor has to act on.
-    expect(screen.getByRole("button", { name: /Ljubno/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Ljubno/ })).toBeTruthy();
   });
 
   it("takes an exact name over the ones that merely contain it", () => {
@@ -277,6 +336,82 @@ describe("MunicipalityFinder enter key", () => {
     fireEvent.keyDown(search, { key: "Enter" });
 
     expect(screen.getByText("Zavetišče Ljubno")).toBeTruthy();
+  });
+
+  it("announces suggestions and lets the arrows choose an explicit answer", () => {
+    const search = renderAmbiguous();
+    search.focus();
+    const status = document.querySelectorAll('[aria-live="polite"]')[1];
+    fireEvent.change(search, { target: { value: "Ljub" } });
+    expect(status.textContent).toBe("Najdene občine: 3. Izberi pravo.");
+    expect(search.getAttribute("aria-controls")).toBe(screen.getByRole("listbox").id);
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    const option = screen.getByRole("option", { name: /Ljubljana - Vič/, selected: true });
+    expect(search.getAttribute("aria-activedescendant")).toBe(option.id);
+    expect(document.activeElement).toBe(search);
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(screen.getByText("Zavetišče Ljubljana - Vič")).toBeTruthy();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(search.getAttribute("aria-activedescendant")).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Ljubljana - Vič");
+  });
+
+  it("wraps suggestions and closes with Escape without clearing the text", () => {
+    const search = renderAmbiguous();
+    fireEvent.change(search, { target: { value: "Ljub" } });
+    fireEvent.keyDown(search, { key: "ArrowUp" });
+    expect(screen.getByRole("option", { name: /Ljubno/, selected: true })).toBeTruthy();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    expect(screen.getByRole("option", { name: "Ljubljana Zavetišče Ljubljana", selected: true })).toBeTruthy();
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect((search as HTMLInputElement).value).toBe("Ljub");
+    expect(search.getAttribute("aria-activedescendant")).toBeNull();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+  });
+
+  it("discards a highlighted option when the query changes and ignores IME Enter", () => {
+    const search = renderAmbiguous();
+    fireEvent.change(search, { target: { value: "Ljub" } });
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    fireEvent.change(search, { target: { value: "Ljubl" } });
+    expect(search.getAttribute("aria-activedescendant")).toBeNull();
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    fireEvent.keyDown(search, { key: "Enter", isComposing: true });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+    fireEvent.blur(search);
+    expect(search.getAttribute("aria-expanded")).toBe("false");
+    expect(search.getAttribute("aria-activedescendant")).toBeNull();
+  });
+});
+
+describe("MunicipalityFinder search feedback", () => {
+  it.each(["9999", "999", "10000", "SI-9999"])("announces an invalid postcode: %s", (query) => {
+    renderFinder();
+    const status = document.querySelectorAll('[aria-live="polite"]')[1];
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: query } });
+    expect(status.textContent).toBe("Te poštne številke ne najdem. Preveri vnos.");
+    expect(screen.queryByText(/Ni občine z imenom/)).toBeNull();
+  });
+
+  it("announces an unknown name and removes the error after correction", () => {
+    renderFinder();
+    const status = document.querySelectorAll('[aria-live="polite"]')[1];
+    const search = screen.getByRole("combobox");
+    fireEvent.change(search, { target: { value: "zzzz" } });
+    expect(status.textContent).toBe("Ni občine z imenom »zzzz«");
+    fireEvent.change(search, { target: { value: "1000" } });
+    expect(status.textContent).toBe("Ljubljana · pristojno zavetišče");
+  });
+
+  it("uses English postcode feedback on the English page", () => {
+    render(<I18nProvider locale="en"><MunicipalityFinder entries={ENTRIES} onActiveShelters={() => undefined} /></I18nProvider>);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "9999" } });
+    expect(screen.getByText("No such postcode. Check the number.")).toBeTruthy();
   });
 });
 
@@ -322,7 +457,7 @@ function renderReal() {
       />
     </I18nProvider>,
   );
-  return screen.getByRole("searchbox");
+  return screen.getByRole("combobox");
 }
 
 // A fix that arrives the moment the button is pressed, so the finder is in the
@@ -378,10 +513,38 @@ describe("MunicipalityFinder typed text against the device position", () => {
     );
 
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Ljubljana");
+  });
+
+  it("does not resurrect a device result after typing and clearing", () => {
+    stubGeolocationAt(46.0569, 14.5058);
+    const search = renderReal();
+    fireEvent.click(screen.getByRole("button", { name: "Uporabi mojo lokacijo" }));
+    fireEvent.change(search, { target: { value: "Maribor" } });
+    fireEvent.click(screen.getByRole("button", { name: "Počisti iskanje" }));
+    expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
+    expect(window.location.search).toBe("");
   });
 });
 
 describe("MunicipalityFinder postal guess beside the občina name", () => {
+  it("keeps an ambiguous postal name unresolved across reloads", () => {
+    const search = renderReal();
+    fireEvent.change(search, { target: { value: "Križevci" } });
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("posta")).toBe("Križevci");
+    cleanup();
+    renderReal();
+    expect(screen.getByRole("option", { name: /Križevci/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Gornji Petrovci/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("option", { name: /Gornji Petrovci/ }));
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Gornji Petrovci");
+    cleanup();
+    renderReal();
+    expect(screen.getByText("Zavetišče Gornji Petrovci")).toBeTruthy();
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
   it("offers the občina that is spelled, not only the postcode's own", () => {
     // "Križevci" is postal district 9206 in Goričko, whose three občine are
     // Gornji Petrovci, Šalovci and Moravske Toplice, and it is also Občina
@@ -391,10 +554,10 @@ describe("MunicipalityFinder postal guess beside the občina name", () => {
     const search = renderReal();
     fireEvent.change(search, { target: { value: "Križevci" } });
 
-    expect(screen.getByRole("button", { name: /Križevci/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Križevci/ })).toBeTruthy();
     // The postal district's own občine are still offered: the guess is kept,
     // not swapped for the name.
-    expect(screen.getByRole("button", { name: /Gornji Petrovci/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Gornji Petrovci/ })).toBeTruthy();
 
     // And spelling it out in full is enough to take it.
     fireEvent.keyDown(search, { key: "Enter" });

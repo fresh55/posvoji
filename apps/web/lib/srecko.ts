@@ -100,3 +100,113 @@ export const SRECKO: Srecko = {
   timeline: [{ key: "listed" }, { key: "adopted" }, { key: "died" }],
   photos: [],
 };
+
+// The three date shapes a SreckoEvent is allowed to carry, as the one place
+// that decides what is a date and what is a typo. Both readers below go
+// through them, so a value his page prints is a value the span arithmetic can
+// also read.
+const YEAR = /^\d{4}$/u;
+const YEAR_MONTH = /^\d{4}-\d{2}$/u;
+const YEAR_MONTH_DAY = /^\d{4}-\d{2}-\d{2}$/u;
+
+// Built once rather than per call. Constructing an Intl.DateTimeFormat is the
+// expensive half of formatting a date, and the shapes never vary.
+//
+// Slovenian is numeric for a full date, the same choice lib/labels.ts argues
+// for registerDateLabel, and a month name where there is no day to carry:
+// "marec 2019" stands on its own in a list, where "3. 2019" reads as a broken
+// date rather than as a month.
+//
+// registerDateLabel itself is not reused. It handles the full date only, and
+// importing it would pull lib/labels.ts, and through it the whole filter
+// engine, into a module the poster route and the share card also read.
+const MONTH_FORMAT: Record<Locale, Intl.DateTimeFormat> = {
+  sl: new Intl.DateTimeFormat("sl-SI", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }),
+  en: new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }),
+};
+
+const DAY_FORMAT: Record<Locale, Intl.DateTimeFormat> = {
+  sl: new Intl.DateTimeFormat("sl-SI", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }),
+  en: new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }),
+};
+
+/** The first instant a stored date can mean, read in UTC. A date-only string
+ *  parses as UTC midnight and reading it locally moves it into the previous
+ *  day west of Greenwich. */
+function startOf(date: string): Date | undefined {
+  const iso = YEAR.test(date)
+    ? `${date}-01-01`
+    : YEAR_MONTH.test(date)
+      ? `${date}-01`
+      : YEAR_MONTH_DAY.test(date)
+        ? date
+        : undefined;
+  if (iso === undefined) return undefined;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  // The round trip is not decoration. A day past the end of its month is not
+  // rejected, it is rolled over: "2019-02-30" parses as 2 March and would have
+  // printed as a date he could be said to have. Only a value that reads back
+  // as it was written is a date.
+  return parsed.toISOString().startsWith(iso) ? parsed : undefined;
+}
+
+/**
+ * One of his dates as the locale writes it, at the precision it was recorded
+ * at: a year stays a year, a month prints as a month, a full date as a date.
+ *
+ * Undefined for anything this file does not recognise as a date, because the
+ * timeline is written to read without one. A line that lost its date says
+ * less; a line that printed "Invalid Date" would say something false.
+ */
+export function sreckoDateLabel(
+  date: string,
+  locale: Locale,
+): string | undefined {
+  if (YEAR.test(date)) return date;
+  const start = startOf(date);
+  if (!start) return undefined;
+  return YEAR_MONTH.test(date)
+    ? MONTH_FORMAT[locale].format(start)
+    : DAY_FORMAT[locale].format(start);
+}
+
+/**
+ * Whole months between the adoption and the death, or undefined while either
+ * date is missing.
+ *
+ * Derived rather than stored, so the one number on his page that is a claim
+ * about how long he had cannot disagree with the two dates above it. The same
+ * arithmetic monthsInShelter uses in lib/labels.ts: both ends read in UTC,
+ * days ignored, and a span that runs backwards is refused rather than shown
+ * as zero.
+ */
+export function sreckoMonthsAtHome(
+  timeline: readonly SreckoEvent[],
+): number | undefined {
+  const dateOf = (key: SreckoEventKey) =>
+    timeline.find((event) => event.key === key)?.date;
+  const adopted = dateOf("adopted");
+  const died = dateOf("died");
+  if (adopted === undefined || died === undefined) return undefined;
+  const from = startOf(adopted);
+  const to = startOf(died);
+  if (!from || !to) return undefined;
+  const months =
+    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
+    (to.getUTCMonth() - from.getUTCMonth());
+  return months < 0 ? undefined : months;
+}

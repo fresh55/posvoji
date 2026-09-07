@@ -36,15 +36,18 @@ export function SreckoPage({ locale }: { locale: Locale }) {
             </Button>
           </div>
           {SRECKO.photos.length > 0 ? (
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {SRECKO.photos.map((photo, index) => (
-                <li key={photo.src} className={index === 0 ? "sm:col-span-2" : ""}>
-                  <Image src={photo.src} alt={photo.alt[locale]} width={photo.width} height={photo.height} loading={index === 0 ? "eager" : "lazy"}
-                    sizes={index === 0 ? "(min-width: 800px) 768px, 100vw" : "(min-width: 640px) 384px, 100vw"}
-                    className="h-auto w-full rounded-ui" />
-                </li>
-              ))}
-            </ul>
+            <figure className="mx-auto w-full space-y-3" style={{ maxWidth: portrait.width }}>
+              <ul className="grid gap-3 sm:grid-cols-3">
+                {SRECKO.photos.map((photo, index) => (
+                  <li key={photo.src} className={index === 0 ? "sm:col-span-3" : ""}>
+                    <Image src={photo.src} alt={photo.alt[locale]} width={photo.width} height={photo.height} loading={index === 0 ? "eager" : "lazy"}
+                      sizes={index === 0 ? "(min-width: 800px) 768px, 100vw" : "(min-width: 640px) 248px, 100vw"}
+                      className="h-auto w-full rounded-ui" />
+                  </li>
+                ))}
+              </ul>
+              <figcaption className="text-xs text-muted-foreground">{text.photoCredit}</figcaption>
+            </figure>
           ) : (
             <div className="relative mx-auto h-64 w-full max-w-sm sm:h-80">
               <Image src={portrait.src} alt={portrait.alt[locale]} fill loading="eager" sizes="(min-width: 640px) 384px, 100vw" className="object-contain" />

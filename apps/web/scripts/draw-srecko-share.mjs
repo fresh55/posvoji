@@ -41,7 +41,7 @@ for (const locale of ["sl", "en"]) {
       await lettering(surface === "about" ? text.aboutShare : SRECKO.name, 64, 192, surface === "about" ? 56 : 88, 560, true),
       await lettering(surface === "about" ? text.aboutShareBody : text.memorial, 64, 368, 30, 550, false, "#525252"),
     ];
-    if (isRender) layers.push(await lettering(text.shareCredit, 64, 578, 16, 1072, false, "#737373"));
+    layers.push(await lettering(isRender ? text.shareCredit : text.photoCredit, 64, 578, 16, 1072, false, "#737373"));
     const output = publicFile(meta.url);
     await sharp({ create: { width: meta.width, height: meta.height, channels: 3, background: "#ffffff" } })
       .composite(layers).jpeg({ quality: 88 }).toFile(output);

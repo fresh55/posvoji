@@ -22,7 +22,7 @@ export function SreckoPoster({ locale }: { locale: Locale }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={portrait.src} alt={portrait.alt[locale]} className="poster-photo-image" />
       </div>
-      <p className="poster-memorial-story">{text.posterStory}</p>
+      <p className="poster-memorial-story">{text.posterStory}{SRECKO.memory && <> {SRECKO.memory[locale]}</>}</p>
       {moments.length > 0 && <p className="poster-timeline">{moments.map(event => `${event.label}: ${event.date}`).join(" · ")}</p>}
       <div className="poster-band">
         <div className="poster-memorial">
@@ -36,7 +36,7 @@ export function SreckoPoster({ locale }: { locale: Locale }) {
             <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>)}</p>
         </div>
       </div>
-      {isRender && <p className="poster-credit">{text.credit}</p>}
+      <p className="poster-credit">{isRender ? text.credit : text.photoCredit}</p>
     </div>
   );
 }

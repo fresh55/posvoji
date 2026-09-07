@@ -21,7 +21,32 @@ Edit `apps/web/lib/srecko.ts`. Use only facts confirmed by his owner.
 - `SRECKO_TEXT` holds the shared memorial, poster and preview wording.
 
 Do not infer personality, medical history, dates, or historical site rankings.
-The current illustration remains until an approved photograph is available.
+The illustration is the fallback if the approved photograph list is empty.
+
+## Recorded sources
+
+- The owner supplied Mačja hiša as his shelter and the memory "zelo igrivi
+  fant" in this task on 2026-09-08. The short memory is translated into English.
+- User-supplied screenshots of Mačja hiša posts dated 2023-03-16 and
+  2023-03-18 establish that he came home on 2023-03-17: the first announces
+  departure the following day; the second confirms it happened the previous
+  afternoon. The milestone says "Came home" to describe that evidence.
+  Shelter arrival and death dates remain unknown.
+- The screenshots were read as supplied; no social platform was fetched or
+  scraped, and the screenshots are not stored in this repository.
+- On 2026-09-08, the owner confirmed in this task that the supplied photographs
+  are theirs and explicitly permitted their use on Posvoji.si. This is the
+  permission for the four files under `apps/web/public/images/srecko/`,
+  separate from Mačja hiša's website-catalogue permission. Credit is
+  "Photos: personal archive, used with permission"; no public reuse licence
+  is implied.
+- Five attachments repeated one portrait; it is included once. The other
+  three photographs show Srečko watching television, resting, and looking at
+  a toy. The collage photograph containing an identifiable person is excluded.
+  Prepared images contain only the original cat photographs, without social
+  interface, comments, EXIF, XMP or IPTC. They retain the supplied resolution
+  (612×570 portrait; approximately 305×305 home pictures), without upscaling
+  or generated detail. Original-resolution files can replace these later.
 
 ## Share cards
 

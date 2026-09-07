@@ -6,13 +6,23 @@ export type SreckoPhoto = {
   /** Local public/ path: permission-cleared, EXIF-free, longest edge <= 1600px. */
   src: string; width: number; height: number; alt: Record<Locale, string>;
 };
-/** Owner-confirmed facts only. Add prepared photographs and dates here. */
+/** Confirmed facts only; provenance is recorded in docs/SRECKO.md. */
 export const SRECKO = {
   name: "Srečko", species: "cat", sex: "male", felv: "positive", eyes: "one",
-  timeline: [{ key: "listed" }, { key: "adopted" }, { key: "died" }] as SreckoEvent[],
-  photos: [] as SreckoPhoto[],
+  shelter: { name: "Mačja hiša", from: { sl: "iz Mačje hiše", en: "from Mačja hiša" } },
+  timeline: [{ key: "listed" }, { key: "adopted", date: "2023-03-17" }, { key: "died" }] as SreckoEvent[],
+  photos: [
+    { src: "/images/srecko/srecko-portret.webp", width: 612, height: 570,
+      alt: { sl: "Srečko, bel maček s sivimi lisami, leži na brisači.", en: "Srečko, a white cat with grey patches, lying on a towel." } },
+    { src: "/images/srecko/srecko-televizija.webp", width: 305, height: 305,
+      alt: { sl: "Srečko sedi pred televizijo in gleda tigra na zaslonu.", en: "Srečko sitting in front of the television, watching a tiger on the screen." } },
+    { src: "/images/srecko/srecko-pociva.webp", width: 305, height: 305,
+      alt: { sl: "Srečko počiva v mehkem ležišču na postelji.", en: "Srečko resting in a soft cat bed on the bed." } },
+    { src: "/images/srecko/srecko-igra.webp", width: 306, height: 305,
+      alt: { sl: "Srečko na postelji gleda visečo igračo v obliki ribe.", en: "Srečko on the bed, looking up at a dangling fish toy." } },
+  ] as SreckoPhoto[],
   /** A genuine memory supplied by his owner, in both languages. */
-  memory: undefined as Record<Locale, string> | undefined,
+  memory: { sl: "Bil je zelo igriv fant.", en: "He was a very playful boy." } as Record<Locale, string> | undefined,
 } as const;
 export const SRECKO_PATHS = { sl: "/o-nas/srecko", en: "/en/about/srecko" } as const;
 export const SRECKO_POSTER_PATHS = { sl: "/o-nas/srecko/plakat", en: "/en/about/srecko/poster" } as const;
@@ -26,7 +36,7 @@ export const SRECKO_RENDER = {
 export const SRECKO_TEXT = {
   sl: {
     memorial: "V spomin na Srečka",
-    intro: "Srečko je prišel iz zavetišča in našel dom. Posvoji.si je posvečen njegovemu spominu.",
+    intro: `Srečko je prišel ${SRECKO.shelter.from.sl} in našel dom. Posvoji.si je posvečen njegovemu spominu.`,
     purpose: "V njegov spomin pomagamo drugim živalim iz zavetišč, da jih ljudje, ki iščejo družabnika, lažje najdejo.",
     dedication: "Ta stran je v spomin na Srečka.",
     dedicationBefore: "Ta stran je v spomin na ", dedicationName: "Srečka",
@@ -34,17 +44,18 @@ export const SRECKO_TEXT = {
     eye: { title: "Eno oko", body: "Desnega očesa ni imel. Rana se je zacelila." },
     felv: { title: "FeLV pozitiven", body: "Test na virus mačje levkemije je bil pozitiven." },
     dates: "Pomembni trenutki", home: "Doma",
-    events: { listed: "V zavetišču", adopted: "Posvojen", died: "Umrl" },
-    posterStory: "Iz zavetišča je prišel v svoj dom.",
+    events: { listed: "V zavetišču", adopted: "Prišel domov", died: "Umrl" },
+    posterStory: `Srečko je ${SRECKO.shelter.from.sl} prišel v svoj dom.`,
     scan: "Spoznaj njegovo zgodbo in mačke, ki še čakajo na dom.",
     credit: "Upodobitev: Cat [Murdered: Soul Suspect], mark2580, CC BY 4.0, prilagojeno.",
     shareCredit: "Upodobitev: mark2580 · CC BY 4.0 · prilagojeno",
+    photoCredit: "Fotografije: osebni arhiv, z dovoljenjem.",
     aboutShare: "Živali, ki iščejo dom",
     aboutShareBody: "Odprt in brezplačen seznam živali iz slovenskih zavetišč.",
   },
   en: {
     memorial: "In memory of Srečko",
-    intro: "Srečko came from a shelter and found a home. Posvoji.si is dedicated to his memory.",
+    intro: `Srečko came ${SRECKO.shelter.from.en} and found a home. Posvoji.si is dedicated to his memory.`,
     purpose: "In his memory, we help people looking for a companion discover other animals in shelters.",
     dedication: "This site is in memory of Srečko.",
     dedicationBefore: "This site is in memory of ", dedicationName: "Srečko",
@@ -52,11 +63,12 @@ export const SRECKO_TEXT = {
     eye: { title: "One eye", body: "He had no right eye. The wound had healed over." },
     felv: { title: "FeLV positive", body: "He tested positive for feline leukemia virus." },
     dates: "Milestones", home: "At home",
-    events: { listed: "In the shelter", adopted: "Adopted", died: "Died" },
-    posterStory: "He came from a shelter and found a home.",
+    events: { listed: "In the shelter", adopted: "Came home", died: "Died" },
+    posterStory: `Srečko came ${SRECKO.shelter.from.en} and found a home.`,
     scan: "Discover his story and the cats still waiting for a home.",
     credit: "Render: Cat [Murdered: Soul Suspect] by mark2580, CC BY 4.0, adapted.",
     shareCredit: "Render: mark2580 · CC BY 4.0 · adapted",
+    photoCredit: "Photos: personal archive, used with permission.",
     aboutShare: "Animals waiting for a home",
     aboutShareBody: "An open, free index of animals in Slovenian shelters.",
   },

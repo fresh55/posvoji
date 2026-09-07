@@ -6,7 +6,8 @@ import { SRECKO, SRECKO_TEXT, SRECKO_PATHS, SRECKO_POSTER_PATHS, sreckoDateLabel
 Object.defineProperty(window, "matchMedia", { configurable: true, value: vi.fn(() => ({
   matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn(),
 })) });
-afterEach(() => { cleanup(); SRECKO.photos.length = 0; });
+const recordedPhotos = [...SRECKO.photos];
+afterEach(() => { cleanup(); SRECKO.photos.splice(0, SRECKO.photos.length, ...recordedPhotos); });
 describe("Srečko's memorial", () => {
   it.each(["sl", "en"] as const)("explains the memorial before the portrait and offers waiting cats (%s)", locale => {
     const { container } = render(<SreckoPage locale={locale} />);
@@ -19,14 +20,26 @@ describe("Srečko's memorial", () => {
     expect(container.querySelector("main")?.lastElementChild?.textContent).toBe(SRECKO_TEXT[locale].dedication);
     expect([...container.querySelectorAll("a")].map(a => a.getAttribute("href"))).toContain(SRECKO_PATHS[locale === "sl" ? "en" : "sl"]);
     expect(container.querySelector("main details")?.hasAttribute("open")).toBe(false);
-    expect(screen.queryByRole("heading", { name: SRECKO_TEXT[locale].dates })).toBeNull();
+    expect(screen.getByRole("heading", { name: SRECKO_TEXT[locale].dates })).toBeTruthy();
+    expect(container.querySelectorAll("main time")).toHaveLength(1);
+    expect(container.querySelector("main time")?.getAttribute("datetime")).toBe("2023-03-17");
+    expect(screen.getByText(SRECKO.memory![locale])).toBeTruthy();
+    expect(header.textContent).toContain(locale === "sl" ? "Mačje hiše" : "Mačja hiša");
     expect(container.textContent).not.toMatch(/ranked|uvrščen|filter skrije/);
   });
   it("uses the prepared photo and removes the model credit", () => {
-    SRECKO.photos.push({ src: "/test-portrait.webp", width: 800, height: 600, alt: { sl: "Srečko doma", en: "Srečko at home" } });
+    render(<SreckoPage locale="en" />);
+    expect(screen.getAllByRole("img")).toHaveLength(4);
+    expect(decodeURIComponent(screen.getAllByRole("img")[0].getAttribute("src") ?? "")).toContain(sreckoPortrait().src);
+    expect(screen.getByText(SRECKO_TEXT.en.photoCredit)).toBeTruthy();
+    expect(screen.queryByText("Model credit")).toBeNull();
+  });
+  it("keeps the credited illustration when no photographs are available", () => {
+    SRECKO.photos.length = 0;
     render(<SreckoPage locale="en" />);
     expect(decodeURIComponent(screen.getByRole("img").getAttribute("src") ?? "")).toContain(sreckoPortrait().src);
-    expect(screen.queryByText("Model credit")).toBeNull();
+    expect(screen.getByText("Model credit")).toBeTruthy();
+    expect(screen.queryByText(SRECKO_TEXT.en.photoCredit)).toBeNull();
   });
   it("assigns separate localized cards to About and the memorial", () => {
     expect(new Set(["sl", "en"].flatMap(locale => ["about", "memorial"].map(surface =>
@@ -45,9 +58,12 @@ describe("recorded dates", () => {
     expect(sreckoMilestones("sl", [{ key: "listed", date }])).toEqual([]);
   });
   it("shows only dated milestones", () => {
-    expect(sreckoMilestones("sl")).toEqual([]);
+    expect(sreckoMilestones("sl", [{ key: "listed" }, { key: "died" }])).toEqual([]);
+    expect(sreckoMilestones("sl")).toEqual([
+      { key: "adopted", label: "Prišel domov", date: "17. 3. 2023", iso: "2023-03-17" },
+    ]);
     expect(sreckoMilestones("en", [{ key: "listed" }, { key: "adopted", date: "2019" }])).toEqual([
-      { key: "adopted", label: "Adopted", date: "2019", iso: "2019" },
+      { key: "adopted", label: "Came home", date: "2019", iso: "2019" },
     ]);
   });
   it("displays a range rather than manufacturing a duration from partial dates", () => {

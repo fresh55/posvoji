@@ -3,6 +3,7 @@ import { AboutPage } from "@/components/about-page";
 import { getMessages } from "@/lib/i18n";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { staticPageMetadata } from "@/lib/site-metadata";
+import { sreckoShareImage } from "@/lib/srecko";
 
 export const metadata: Metadata = staticPageMetadata({
   locale: "sl",
@@ -12,6 +13,7 @@ export const metadata: Metadata = staticPageMetadata({
   title: getMessages("sl").about,
   description:
     "Kako deluje Posvoji.si: posvojitev pri zavetišču, aktualnost objav in brezplačno sodelovanje zavetišč. Vsebine objavljamo z dovoljenjem.",
+  image: sreckoShareImage("sl", "about"),
 });
 
 export default function About() {

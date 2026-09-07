@@ -3,6 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AboutCat } from "./about-cat";
+import { SRECKO_PATHS } from "@/lib/srecko";
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
@@ -66,18 +67,15 @@ describe("the about cat", () => {
     expect(viewer.getAttribute("touch-action")).toBe("pan-y");
   });
 
-  // Nothing is printed beside the cat, in any state. The gestures are named
-  // to screen readers through the viewer's own interaction prompt and are
-  // left for a sighted visitor to find or not; a line that named them sat
-  // here for a while and went the way the caption under it went.
-  it("prints nothing beside the cat", async () => {
-    const { container } = render(<AboutCat locale="en" />);
+  it.each(["sl", "en"] as const)("places the memorial link below the model instead of visible instructions (%s)", async (locale) => {
+    const { container } = render(<AboutCat locale={locale} />);
+    const caption = container.querySelector("figcaption")!;
+    expect(caption.textContent).toBe(locale === "sl" ? "Ta stran je v spomin na Srečka." : "This site is in memory of Srečko.");
+    expect(caption.querySelector("a")?.getAttribute("href")).toBe(SRECKO_PATHS[locale]);
     await loadViewer();
-
-    const printed = [...container.querySelectorAll("p, figcaption")].filter(
-      (node) => !node.className.includes("sr-only"),
-    );
-    expect(printed).toHaveLength(0);
+    expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelector("figcaption")).toBe(caption);
+    expect(container.querySelector("model-viewer")!.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("pauses offscreen and in a hidden tab, resuming only when visible", async () => {

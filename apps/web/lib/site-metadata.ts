@@ -47,6 +47,13 @@ export type StaticPageInput = {
    */
   title: string;
   description: string;
+  /**
+   * A 1200x630 preview of the page's own, when it has one. Most fixed pages
+   * do not, for the reason given under staticPageMetadata, and take the plain
+   * summary card. The url is relative to the site; the layouts set
+   * metadataBase, so Next resolves it.
+   */
+  image?: { url: string; width: number; height: number; alt: string };
 };
 
 /**
@@ -60,20 +67,26 @@ export type StaticPageInput = {
  * in both languages, and a link to any of them pasted into a chat had no
  * card at all.
  *
- * No image. The site draws two kinds and neither is generic: a share card per
- * animal, drawn by the ingest export, and a map plate per shelter, drawn by
- * scripts/build-shelter-plates.mjs. There is nothing in public/ that a fixed
- * page could use at 1200x630, so these emit no og:image and take the plain
- * summary card, which is the shape shelterMetadata already falls back to when
- * a plate is missing. If a site-wide card is ever drawn, it is added here once
- * and every fixed page gets it.
+ * No image unless the page brings its own. The site draws two kinds and
+ * neither is generic: a share card per animal, drawn by the ingest export, and
+ * a map plate per shelter, drawn by scripts/build-shelter-plates.mjs. There is
+ * nothing in public/ that every fixed page could use at 1200x630, so by
+ * default these emit no og:image and take the plain summary card, which is the
+ * shape shelterMetadata already falls back to when a plate is missing. A page
+ * with a picture of its own, the about page and the cat's, passes it as
+ * `image` and gets the large card. If a site-wide card is ever drawn, it is
+ * added here once and every fixed page gets it.
  */
 export function staticPageMetadata({
   locale,
   paths,
   title,
   description,
+  image,
 }: StaticPageInput): Metadata {
+  const images = image
+    ? [{ url: image.url, width: image.width, height: image.height, alt: image.alt }]
+    : undefined;
   return {
     title: `${title} | ${SITE_NAME}`,
     description,
@@ -85,11 +98,13 @@ export function staticPageMetadata({
       title,
       description,
       url: paths[locale],
+      images,
     },
     twitter: {
-      card: "summary",
+      card: images ? "summary_large_image" : "summary",
       title,
       description,
+      images,
     },
   };
 }

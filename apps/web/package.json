@@ -5,7 +5,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "node scripts/generate-animal-descriptions.mjs && next dev",
-    "build": "node scripts/generate-animal-descriptions.mjs && next build && node scripts/drop-dev-output.mjs",
+    "build": "node scripts/generate-animal-descriptions.mjs && pnpm generate:srecko-share && next build && node scripts/drop-dev-output.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
@@ -15,7 +15,8 @@
     "generate:postal-districts": "node scripts/generate-postal-districts.mjs",
     "generate:font-subset": "node scripts/generate-font-subset.mjs",
     "generate:postcode-municipalities": "node scripts/generate-postcode-municipalities.mjs",
-    "generate:animal-descriptions": "node scripts/generate-animal-descriptions.mjs"
+    "generate:animal-descriptions": "node scripts/generate-animal-descriptions.mjs",
+    "generate:srecko-share": "tsx scripts/draw-srecko-share.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",
@@ -46,7 +47,9 @@
     "eslint-config-next": "16.3.1",
     "jsdom": "^26.1.0",
     "proj4": "^2.21.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

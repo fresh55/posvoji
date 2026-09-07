@@ -69,6 +69,35 @@ describe("staticPageMetadata", () => {
 
   it("takes the plain summary card, having no image to show", () => {
     expect(meta.openGraph?.images).toBeUndefined();
+    expect((meta.twitter as { images?: unknown }).images).toBeUndefined();
     expect(twitterCard(meta)).toBe("summary");
+  });
+
+  describe("given a page with a picture of its own", () => {
+    const image = {
+      url: "/models/our-cat/share.jpg",
+      width: 1200,
+      height: 630,
+      alt: "Srečko, bel maček s sivimi lisami in enim očesom.",
+    };
+    const withImage = staticPageMetadata({
+      locale: "sl",
+      paths,
+      title: "O nas",
+      description: "Kdo smo.",
+      image,
+    });
+
+    // The dimensions and the alt are as load-bearing as the url: a scraper
+    // that has to fetch the file to learn its size falls back to the small
+    // card, and a preview with no alt says nothing to a screen reader.
+    it("states the picture in full", () => {
+      expect(withImage.openGraph?.images).toEqual([image]);
+    });
+
+    it("asks for the large card and shows the same picture on it", () => {
+      expect(twitterCard(withImage)).toBe("summary_large_image");
+      expect((withImage.twitter as { images?: unknown }).images).toEqual([image]);
+    });
   });
 });

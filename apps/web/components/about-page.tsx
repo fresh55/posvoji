@@ -39,8 +39,6 @@ type PageText = {
    *  and are not translated. */
   report: string;
   code: string;
-  /** The memorial stays separate from the practical information. */
-  dedication: string;
 };
 
 // One glyph per fact, keyed rather than stored in each locale so the two
@@ -97,7 +95,6 @@ const pageText: Record<Locale, PageText> = {
     report:
       "Za sodelovanje, popravek ali umik nam pišite. Pri napaki dodajte povezavo do objave in kaj je treba spremeniti.",
     code: "Koda na GitHubu",
-    dedication: "Ta stran je v spomin na Srečka.",
   },
   en: {
     lead: "Posvoji.si brings together animals from Slovenian shelters and people who want to give them a home. We are not a shelter and do not handle adoptions.",
@@ -131,7 +128,6 @@ const pageText: Record<Locale, PageText> = {
     report:
       "Email us to take part, correct a listing or request removal. For a correction, include the listing link and what needs to change.",
     code: "Code on GitHub",
-    dedication: "This site is in memory of Srečko.",
   },
 };
 
@@ -254,24 +250,11 @@ export function AboutPage({ locale }: { locale: Locale }) {
 
           {/* Keep the practical information first in mobile and keyboard
               reading order. On desktop the cat sits beside all three text
-              rows; the memorial remains the last line at every width. */}
+              rows, with the dedication directly beneath the model. */}
           <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
             <AboutCat locale={locale} />
           </div>
 
-          {/* The dedication, and it is the last thing on the page on purpose.
-              A dedication takes its weight from being alone and from coming
-              at the end, the way a book carries one; set beside his card it
-              would have been read as a caption and would have had a status
-              badge for company.
-
-              Spanning both columns rather than sitting in the text one, so
-              nothing shares its line and the page finishes on it. Small and
-              muted, because it does not need to be loud to be the reason for
-              everything above it. */}
-          <p className="border-t pt-6 text-sm leading-relaxed text-muted-foreground lg:col-span-2 lg:row-start-4">
-            {text.dedication}
-          </p>
         </main>
 
         {/* The one footer that does not link to this page, because it is on

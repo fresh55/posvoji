@@ -3,6 +3,7 @@ import { AboutPage } from "@/components/about-page";
 import { getMessages } from "@/lib/i18n";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { staticPageMetadata } from "@/lib/site-metadata";
+import { sreckoShareImage } from "@/lib/srecko";
 
 export const metadata: Metadata = staticPageMetadata({
   locale: "en",
@@ -10,6 +11,7 @@ export const metadata: Metadata = staticPageMetadata({
   title: getMessages("en").about,
   description:
     "How Posvoji.si works: adoption through shelters, listing updates and free shelter participation. Content is published with permission.",
+  image: sreckoShareImage("en", "about"),
 });
 
 export default function About() {

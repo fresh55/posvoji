@@ -233,6 +233,14 @@
   -webkit-print-color-adjust: exact;
 }
 
+/* The settled states, adopted above all: the "quiet" badge in ui/badge.tsx,
+   in the same greys the identity tiles below wear, so a sheet has one grey. */
+.poster-status--quiet {
+  border-color: #d6d3d1;
+  background: #fafaf9;
+  color: #292524;
+}
+
 /* The second half of "{name} išče dom", close under the name so the two read
    as one sentence rather than as a headline and a caption. */
 .poster-seeking {
@@ -512,6 +520,60 @@
   letter-spacing: -0.01em;
 }
 
+/* -- the one sheet that is not an animal from the register -------------- */
+
+/* Srečko's sheet (srecko-poster.tsx) is this one with a shelter-shaped hole
+   in it. Everything above serves it unchanged; these are the five places
+   where a sheet with no shelter, no dataset date and one borrowed picture
+   needs a rule the register's sheets never needed. */
+
+/* His picture, until there are photographs of him, is the render the about
+   page shows before the model loads. It is opaque and white to its own edges,
+   so the letterbox tone would print as a beige border around a white
+   rectangle. The frame takes the paper's own white instead and the cat sits
+   on the sheet. Nothing is drawn behind it either: a blurred fill of a white
+   render is a grey smudge with a cat in it. */
+.poster-photo--render {
+  background: #ffffff;
+}
+
+/* The render is an adaptation of a CC BY 4.0 model, and a sheet on a wall has
+   no footer disclosure to press (components/model-credit.tsx). The sheet's
+   smallest type, the printed address's, because a licence is a thing to have
+   carried rather than a thing to read across a room. */
+.poster-credit {
+  flex: none;
+  margin: calc(2 * var(--u)) 0 0;
+  font-size: calc(3.2 * var(--u));
+  color: #78716c;
+}
+
+/* The three moments of his life, on one line under the facts. Quieter than a
+   fact tile and louder than the credit: it is the only sentence on the sheet
+   that is about time. */
+.poster-timeline {
+  flex: none;
+  margin: calc(5 * var(--u)) 0 0;
+  font-size: calc(4.5 * var(--u));
+  color: #57534e;
+}
+
+/* The band's left column, where an animal's sheet puts its shelter. Same job
+   as .poster-shelter: let the column shrink rather than push the code off the
+   paper. */
+.poster-memorial {
+  min-width: 0;
+}
+
+/* Why the sheet exists, in the about page's own words. Set at the town's size
+   rather than the adoption note's: on this sheet it is the sentence, not a
+   footnote under one. */
+.poster-dedication {
+  margin: calc(3 * var(--u)) 0 0;
+  font-size: calc(5 * var(--u));
+  color: #57534e;
+}
+
 /* -- print ------------------------------------------------------------- */
 
 @media print {
@@ -551,3 +613,11 @@
     display: none !important;
   }
 }
+
+/* Memorial identity stays visible before the portrait. */
+.poster-memorial-head { flex: none; margin-bottom: calc(4 * var(--u)); }
+.poster-memorial-label { margin: 0 0 calc(2 * var(--u)); font-size: calc(6 * var(--u)); color: #57534e; }
+.poster-memorial-story { flex: none; margin: calc(5 * var(--u)) 0; font-size: calc(6 * var(--u)); }
+.poster-scan-invitation { margin: calc(3 * var(--u)) 0 0; font-size: calc(4.2 * var(--u)); color: #57534e; }
+.poster-sheet--memorial .poster-timeline { margin: 0 0 calc(4 * var(--u)); }
+.poster-sheet--memorial .poster-photo { min-height: calc(60 * var(--u)); }

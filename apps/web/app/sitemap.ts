@@ -11,6 +11,7 @@ import {
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
 import { ABOUT_PATHS, RESOURCES_PATHS } from "@/lib/site-links";
+import { SRECKO_PATHS } from "@/lib/srecko";
 
 /**
  * Every public page, in both languages, with each one naming the other.
@@ -107,6 +108,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // before.
     {
       paths: ABOUT_PATHS,
+      changeFrequency: "yearly",
+    },
+    // The cat the about page is dedicated to. Listed here despite being in no
+    // menu, for the reason /viri is: unlisted in the site's own navigation is
+    // not the same as hidden from search. What it says about him is finished,
+    // so it changes about as often as the page above it.
+    {
+      paths: SRECKO_PATHS,
       changeFrequency: "yearly",
     },
     ...shelters.map((shelter) => ({

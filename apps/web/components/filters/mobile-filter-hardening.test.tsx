@@ -188,6 +188,13 @@ describe("mobile filter hardening", () => {
       resultCount: 0,
     });
 
+    // The toolbar's own sort is gone with the results, on the same guard the
+    // desktop row keeps: nothing is left for an order to apply to.
+    const mobileToolbar = document.querySelector(
+      '[data-slot="mobile-toolbar"]',
+    ) as HTMLElement;
+    expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
+
     fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
 
     expect(await screen.findByRole("combobox")).toBeTruthy();
@@ -217,15 +224,31 @@ describe("mobile filter hardening", () => {
     // utility that grows the tap target around the drawing.
     expect(mobileTab.className).toContain("max-lg:tap-target");
 
-    // The pinned bar is the species tabs and nothing else: sorting is in the
-    // filter sheet now, behind the dock, which is the one control on a phone
-    // that never scrolls away. It spent a pass pinned in this bar and a pass
-    // scrolling off above the grid; the second lost the property that
-    // mattered, which is being reachable mid-scroll.
+    // Sort is on this row too, from md up. At 768 the row is 720px and the
+    // tabs end at 384, so the 336px after them were empty while the tablet
+    // had no sort control on screen at all; on a phone the tabs still take
+    // the row and the sheet behind the dock keeps the order.
     //
     // Scoped to the mobile branch: only CSS separates the two toolbars, so
     // jsdom renders the desktop one too and its Select is a real combobox.
-    expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
+    // jsdom resolves no breakpoint either, so the band this control is drawn
+    // in is asserted on the classes rather than on what is visible.
+    const mobileSort = within(mobileToolbar).getByRole("combobox");
+    expect(mobileSort.closest("div")?.className).toContain("hidden");
+    expect(mobileSort.closest("div")?.className).toContain("md:block");
+    expect(mobileSort.closest("div")?.className).toContain("shrink-0");
+    // 44px between md and lg, which is what the row already stood at.
+    expect(mobileSort.className).toContain("max-lg:min-h-11");
+    // The row only becomes a flex box at md. Below it the strip's -my-2/py-2
+    // collapse through this block and hold the row at 44px; flex at every
+    // width measures the 28px margin box instead and the phone loses 16px.
+    expect(mobileToolbar.className).toContain("md:flex");
+    expect(mobileToolbar.className).not.toMatch(/(^|\s)flex(\s|$)/);
+    expect(mobileToolbar.className).toContain("md:min-h-11");
+    // And the tabs keep the rest of it, in the same min-w-0 box the desktop
+    // toolbar wraps them in, so the strip can still scroll inside the row.
+    const tabsBox = mobileTab.closest('[data-slot="mobile-toolbar"] > div');
+    expect(tabsBox?.className).toContain("min-w-0");
     // A chips row would be the fourth surface stating the filter state on one
     // screen, so it is not in the bar either.
     expect(
@@ -298,6 +321,25 @@ describe("mobile filter hardening", () => {
     expect(header).toBeTruthy();
     expect(scrollBody).toBeTruthy();
     expect(scrollBody?.contains(header as Node)).toBe(false);
+  });
+
+  it("stands the sheet's sort row down from md, where the toolbar carries it", async () => {
+    // Below md this row is the only way to change the order; from md the
+    // toolbar behind the sheet has 336px spare and carries the same control,
+    // and two triggers for one setting on one screen is one too many. jsdom
+    // resolves no breakpoint, so the band is asserted on the class.
+    renderSheet();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const sort = within(dialog).getByRole("combobox");
+    expect(sort.className).toContain("md:hidden");
+    // The header's own padding is what stays under the title once the row
+    // goes, and the row takes its own top margin with it.
+    expect(sort.className).toContain("mt-3");
+    const header = dialog.querySelector('[data-slot="filter-sheet-header"]');
+    expect(header?.className).toContain("pb-3");
   });
 
   it("does not repeat the species tabs inside the sheet", async () => {

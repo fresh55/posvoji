@@ -51,7 +51,10 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  scrolling away with the top of the page. On a phone the place that is
  *  always reachable is the sheet behind the dock, so that is where sorting
  *  went, and a sheet has room for the same Select the desktop toolbar uses.
- *  Two placements, one control, and a hand-rolled listbox less.
+ *  From md the sticky toolbar has the room too (animal-filters.tsx), so the
+ *  quiet trigger goes back on the row there and the sheet's copy stands down.
+ *  Three placements, two dresses, one control, and a hand-rolled listbox
+ *  less.
  *
  *  `quiet` is the toolbar's dress: borderless until hovered, so a desktop row
  *  has one anchor instead of four framed boxes. Inside the sheet it is off,
@@ -148,8 +151,9 @@ export function SortPicker({
         {/* The label used to go at max-sm, so a phone got an arrow and a
             chevron in a box and nothing saying what either did. That was to
             leave the species tabs beside it room to breathe; the tabs have
-            had a row of their own since they stopped fitting one, and this
-            control no longer shares a row with them at all. Truncation, not
+            had the phone's row to themselves since they stopped fitting one,
+            and the rows this control does share with them, from md up, have
+            336px to spare at the narrowest of them. Truncation, not
             hiding, is what a long sort name gets: the trigger keeps whatever
             width its placement gives it and the name gives way inside, on the
             width the trigger's own classes above give this value. */}

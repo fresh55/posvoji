@@ -65,10 +65,16 @@ const DRAWER_CLOSE_MS = 500;
  *  from. Three things can be inside, so there are three named answers and a
  *  section added below has one place to be counted.
  *
- *  Sorting is the reason the last two exist. The sheet is where a phone
- *  changes the order, so a result set that no facet can narrow still has
+ *  Sorting is the reason the last two exist. Below md the sheet is where the
+ *  order is changed, so a result set that no facet can narrow still has
  *  something to do in here, and so does a filtered-to-nothing one, which is
- *  where a visitor most needs the way back out. */
+ *  where a visitor most needs the way back out.
+ *
+ *  The answer does not move at md, where the toolbar carries the order
+ *  itself: what `orderWorthPicking` holds the sheet open for there is the
+ *  scope row and the way back out, not the sort row it names. Narrowing it by
+ *  width would take a media query in JS, and the sheet is worth more open
+ *  than a tablet is worth a trigger less. */
 export function filterSheetWorthOpening({
   groups,
   toggles,
@@ -131,11 +137,13 @@ export function FilterSheet({
    *  trigger no longer promises a section the sheet does not have. */
   activeCount: number;
   resultCount: number;
-  /** Sorting is offered here on a phone, and only here. It is not a filter
-   *  and does not join `Filters` (lib/sort.ts keeps the two apart on purpose,
-   *  since one orders the list the other has already matched); what it shares
-   *  with them is the sheet, because the sheet is the one surface a visitor
-   *  can always reach to change what the grid shows. */
+  /** Sorting is offered here on a phone, and below md it is offered nowhere
+   *  else. It is not a filter and does not join `Filters` (lib/sort.ts keeps
+   *  the two apart on purpose, since one orders the list the other has
+   *  already matched); what it shares with them is the sheet, because on a
+   *  phone the sheet is the one surface a visitor can always reach to change
+   *  what the grid shows. From md the toolbar has the room for the control
+   *  and the row below stands down. */
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   onClearAll: () => void;
@@ -232,9 +240,18 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
-          {/* Sort on its own full-width row under the title, and inside the
-              header block rather than the scrolling body, so it stays put
-              while the filter list moves under it.
+          {/* Sort on its own full-width row under the title, below md only,
+              and inside the header block rather than the scrolling body, so
+              it stays put while the filter list moves under it.
+
+              From md the toolbar behind this sheet carries the order itself:
+              that row is 720px wide at 768 with the tabs ending at 384, so
+              the control is on screen and one tap away instead of three, and
+              a copy in here would be the same control twice on one screen.
+              The header's own pb-3 is what sits under the title once the row
+              is gone, and the row takes its mt-3 with it, so nothing dangles.
+              The sheet is only reachable below lg, so this is the md-to-lg
+              band and nothing else.
 
               It shared the title's row for one pass and could not: the close
               button is absolutely positioned in that corner at 44px, and the
@@ -257,7 +274,7 @@ export function FilterSheet({
             value={sort}
             onChange={onSortChange}
             quiet={false}
-            className="mt-3 h-11 w-full text-sm"
+            className="mt-3 h-11 w-full text-sm md:hidden"
           />
         </div>
 

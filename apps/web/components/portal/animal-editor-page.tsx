@@ -334,13 +334,25 @@ function AnimalEditor({
   }, [field]);
 
   const saving = saveState.status === "saving";
+  // The draft as far as it can be read. A box the browser could not read
+  // holds "" in the draft, which buildPatch would take for an emptied box
+  // and turn into a revert of the shelter's own value, and the mirror would
+  // then store that revert for the next visit to send. Those boxes count as
+  // untouched here; the form still shows the draft, so their text stays.
+  const readable = useMemo(() => {
+    if (unreadable.size === 0) return draft;
+    const base = draftFrom(animal);
+    const next = { ...draft };
+    for (const box of unreadable) next[box] = base[box];
+    return next;
+  }, [draft, unreadable, animal]);
   // The same patch the submit will send: what the form would change, and
   // which box, if any, holds something that is not a value.
   const {
     patch,
     ageError: badAgeBox,
     dateError: badDate,
-  } = buildPatch(draft, animal, now);
+  } = buildPatch(readable, animal, now);
   const dirty = Object.keys(patch).length > 0;
   // An unusable age or date produces no patch, but it is still work the
   // shelter typed and the page must not throw it away silently.
@@ -353,7 +365,7 @@ function AnimalEditor({
   // to the same typed work. Only while there is work: a form nobody has
   // touched must not leave a key behind, or the list would mark every animal
   // that was ever opened.
-  usePortalDraftMirror(account, shelter, animal.id, draft, typedWork, () =>
+  usePortalDraftMirror(account, shelter, animal.id, readable, typedWork, () =>
     draftFrom(animal),
   );
 

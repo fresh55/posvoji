@@ -52,7 +52,9 @@ export function portalNewListingPath(shelter: string): string {
  * Where a shelter sent to the login page was going, so the login can take
  * them back there rather than to the list. sessionStorage, so it lives as
  * long as the tab and no longer, and a key of its own so clearing the drafts
- * leaves it alone.
+ * leaves it alone. Same tab only: a magic link clicked in the mail opens a
+ * new tab, which has no storage of its own to read this from, and lands on
+ * the list as before.
  */
 export const PORTAL_RETURN_KEY = "posvoji.portal.return";
 

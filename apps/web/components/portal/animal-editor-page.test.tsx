@@ -514,6 +514,29 @@ describe("a box the browser could not read", () => {
     expect(document.activeElement).toBe(date);
   });
 
+  it("is not a revert and is not mirrored", async () => {
+    // Seen on the wire: "2-1" in the years box over an age override read as
+    // an emptied box, so the row said "Bo povrnjeno", the mirror stored the
+    // empty boxes, and after a reload Shrani sent approximateAgeMonths null.
+    await open({
+      approximateAgeMonths: 27,
+      birthDate: "2020-05-01",
+      overrides: { approximateAgeMonths: 27, birthDate: "2020-05-01" },
+    });
+
+    typeUnreadable("portal-age-years");
+    typeUnreadable("portal-birth-date");
+
+    expect(screen.queryByText(portalText.willRevert)).toBeNull();
+    expect(window.sessionStorage.length).toBe(0);
+
+    // Reading again with the record's own value is not a change either.
+    const years = field("portal-age-years");
+    makeUnreadable(years, false);
+    fireEvent.change(years, { target: { value: "2" } });
+    expect(screen.queryByText(portalText.willRevert)).toBeNull();
+  });
+
   it("saves again once the box reads", async () => {
     await open();
     typeUnreadable("portal-age-years");

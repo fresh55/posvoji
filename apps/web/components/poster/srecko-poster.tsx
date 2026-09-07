@@ -6,12 +6,13 @@ import { PosterFacts, type PosterTile } from "@/components/poster/poster-facts";
 import { QrCode } from "@/components/poster/qr-code";
 import { HEALTH_ICONS, SPECIES_ICONS } from "@/lib/animal-icons";
 import type { Locale } from "@/lib/i18n";
-import { META_SEPARATOR, registerDateLabel, statusLabel } from "@/lib/labels";
+import { META_SEPARATOR, statusLabel } from "@/lib/labels";
 import { SITE_URL } from "@/lib/site";
 import {
   SRECKO,
   SRECKO_PATHS,
   SRECKO_SHARE_IMAGE,
+  sreckoDateLabel,
   type SreckoEventKey,
 } from "@/lib/srecko";
 import { cn } from "@/lib/utils";
@@ -90,43 +91,6 @@ const posterText = {
  *  .poster-photo--render is for. */
 const RENDER = "/models/our-cat/poster.webp";
 
-/** Month and year, for a date the record knows only that far. Built once,
- *  like the register's own date formatter in lib/labels.ts. Numeric in
- *  Slovenian for the reason given there: nothing here declines a month. */
-const MONTH_FORMAT: Record<Locale, Intl.DateTimeFormat> = {
-  sl: new Intl.DateTimeFormat("sl-SI", {
-    month: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }),
-  en: new Intl.DateTimeFormat("en-GB", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }),
-};
-
-/**
- * A moment's date, from however much of it is known.
- *
- * The record holds a year, a month or a day (see SreckoEvent in lib/srecko.ts)
- * and is allowed to hold nothing at all, which is what it holds today. An
- * absent date prints as nothing and the moment is still told: a sheet that
- * guessed a year to fill the gap would be the one thing on it that is not
- * true.
- */
-function eventDate(
-  date: string | undefined,
-  locale: Locale,
-): string | undefined {
-  if (!date) return undefined;
-  if (/^\d{4}$/.test(date)) return date;
-  if (/^\d{4}-\d{2}$/.test(date)) {
-    return MONTH_FORMAT[locale].format(new Date(`${date}-01T00:00:00Z`));
-  }
-  return registerDateLabel(date, locale);
-}
-
 /**
  * What the sheet says about him, in the tiles the register's sheets wear.
  *
@@ -174,8 +138,13 @@ export function SreckoPoster({ locale }: { locale: Locale }) {
   // The same address in letters, for someone with no phone in their hand.
   const printedUrl = `${SITE_URL.replace(/^https?:\/\//, "")}${SRECKO_PATHS.sl}`;
 
+  // A moment with a date is told with it, at whatever precision it was
+  // recorded at, and one without is still told. The dates are read through
+  // lib/srecko.ts rather than formatted here, so the sheet and his page cannot
+  // write the same day two ways, and neither of them can print a date the
+  // record does not hold.
   const moments = SRECKO.timeline.map((event) => {
-    const when = eventDate(event.date, locale);
+    const when = event.date ? sreckoDateLabel(event.date, locale) : undefined;
     return when ? `${text.events[event.key]}: ${when}` : text.events[event.key];
   });
 

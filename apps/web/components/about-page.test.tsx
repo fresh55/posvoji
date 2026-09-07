@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AboutPage } from "./about-page";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { ABOUT_PATHS } from "@/lib/site-links";
+import { SRECKO_PATHS } from "@/lib/srecko";
 
 // The viewer's browser lifecycle is exercised separately in about-cat.test.tsx.
 vi.mock("./about-cat", () => ({ AboutCat: () => null }));
@@ -48,16 +49,33 @@ describe("the about page", () => {
   // that says why the site exists, so a later pass over the wording should
   // have to come here and mean it rather than lose it to a trim. Last in the
   // main column too: a dedication that stops being last stops being one.
+  //
+  // Read off the paragraph rather than through getByText: his name inside the
+  // sentence is a link now, so the line is three nodes and a text query built
+  // on direct text children would no longer see it whole. Whole is the point,
+  // which is what lastElementChild asserts.
   it.each<Locale>(["sl", "en"])("closes on the dedication (%s)", (locale) => {
     const { container } = render(<AboutPage locale={locale} />);
 
     const dedication = locale === "sl"
       ? "Ta stran je v spomin na Srečka."
       : "This site is in memory of Srečko.";
-    expect(screen.getByText(dedication)).not.toBeNull();
 
     const main = container.querySelector("main");
     expect(main?.lastElementChild?.textContent).toBe(dedication);
+  });
+
+  // His name is the way to his page and the only way to it: the page is in no
+  // menu and in no footer, because a reader who has not read this line has no
+  // reason to be sent there. So this link is the whole of its discoverability
+  // and losing it would leave the page unreachable rather than merely quiet.
+  it.each<Locale>(["sl", "en"])("leads to his page (%s)", (locale) => {
+    render(<AboutPage locale={locale} />);
+
+    const name = locale === "sl" ? "Srečka" : "Srečko";
+    expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(
+      SRECKO_PATHS[locale],
+    );
   });
 
   // The page is the destination of the footer's about link, so its own

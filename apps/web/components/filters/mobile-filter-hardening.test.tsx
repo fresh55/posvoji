@@ -71,8 +71,8 @@ type FiltersProps = Partial<ComponentProps<typeof AnimalFilters>>;
 
 /** One AnimalFilters with every prop no test cares about already filled in,
  *  the same bargain renderSheet above strikes and for the same reason: the
- *  four tests below each vary two or three things, and spelling the other
- *  fifteen out per test hid which ones those were. One dog at one shelter,
+ *  tests below each vary two or three things, and spelling the other fifteen
+ *  out per test hid which ones those were. One dog at one shelter,
  *  nothing filtered, which is the smallest state the dock still draws.
  *
  *  The roster and the tally start as the same numbers because nothing is
@@ -103,6 +103,24 @@ function renderFilters(overrides: FiltersProps = {}) {
     </I18nProvider>,
   );
 }
+
+/** Three animals no facet can tell apart: every group and toggle list is
+ *  empty, which is what a shelter's single-species roster produces. The sheet
+ *  behind the dock has nothing in it but the order at this state, which is
+ *  the one reason it holds that runs out at md (filter-sheet.tsx). The tests
+ *  below start here and each varies one thing from it. */
+const ORDER_ONLY: FiltersProps = {
+  speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
+  speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+  resultCount: 3,
+};
+
+/** A dataset with no shelters to choose between, which leaves the dock's
+ *  trigger without the picker beside it. */
+const NO_SHELTERS: FiltersProps = {
+  shelters: undefined,
+  shelterTally: new Map(),
+};
 
 /** The one sex facet the dock tests lean on, as a group and its count. */
 const SEX_GROUP: FiltersProps = {
@@ -157,13 +175,7 @@ describe("mobile filter hardening", () => {
     // roster produces. hasFilterSheet used to read only those facets, so the
     // dock (and the sort control living inside its sheet) vanished here even
     // though there was still an order to pick.
-    renderFilters({
-      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
-      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
-      shelters: undefined,
-      shelterTally: new Map(),
-      resultCount: 3,
-    });
+    renderFilters({ ...ORDER_ONLY, ...NO_SHELTERS });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
@@ -171,6 +183,57 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     expect(await screen.findByRole("combobox")).toBeTruthy();
+  });
+
+  it("takes the trigger and the plate away at md, where the order is all the sheet holds", () => {
+    // The state above, asked the other question. The order is the sheet's one
+    // reason to exist here and the toolbar draws the order itself from md, so
+    // the trigger stands down at that width rather than opening on a title, a
+    // footer and nothing between them. With no picker to keep it company the
+    // plate goes with it. Classes and not measurements, because jsdom
+    // resolves no breakpoint and these are the whole of the rule.
+    renderFilters({ ...ORDER_ONLY, ...NO_SHELTERS });
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock?.className.split(" ")).toContain("md:hidden");
+    expect(
+      screen.getByRole("button", { name: "Filters" }).className.split(" "),
+    ).toContain("md:hidden");
+  });
+
+  it("leaves the picker the whole plate where the order-only sheet stands down at md", () => {
+    // The same order-only state with a shelter left to pick. The trigger goes
+    // at md and the picker stays, so the plate stays with it and needs no
+    // second rule to fill: a flex item that is not drawn is not an item, and
+    // the picker's flex-1 takes the row on its own (animal-filters.tsx).
+    renderFilters(ORDER_ONLY);
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock?.className.split(" ")).not.toContain("md:hidden");
+    expect(
+      screen.getByRole("button", { name: "Filters" }).className.split(" "),
+    ).toContain("md:hidden");
+  });
+
+  it("keeps the trigger at every width once a filter is on, order or no order", () => {
+    // Three results and a shelter picked, so the order and the way back out
+    // are both reasons to open. The order is the only one that runs out at
+    // md, so it is the last answer the sheet tries: a picked shelter has the
+    // Kje row and the footer's clear, drawn at every width below lg, and the
+    // trigger has to be there at every one of them.
+    renderFilters({
+      ...ORDER_ONLY,
+      filters: { ...EMPTY_FILTERS, shelter: ["test"] },
+      shelterTally: new Map([["test", 3]]),
+    });
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock?.className.split(" ")).not.toContain("md:hidden");
+    expect(
+      screen
+        .getByRole("button", { name: "Filters, 1 active" })
+        .className.split(" "),
+    ).not.toContain("md:hidden");
   });
 
   it("keeps the sheet mounted at zero results while a filter is on", async () => {

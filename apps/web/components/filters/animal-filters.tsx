@@ -24,13 +24,15 @@ import type {
 } from "@/components/filters/filter-groups";
 import {
   FilterSheet,
-  filterSheetWorthOpening,
+  filterSheetReason,
+  SORT_ROW_HIDDEN,
 } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { activeFilterCount } from "@/lib/filters";
+import { cn } from "@/lib/utils";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type {
   FilterOption,
@@ -43,10 +45,23 @@ import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 
 // The dock's two children are not equal: the Filtri button needs its own text
-// and badge and nothing more, so it takes an auto column and the location
-// control takes the rest. Giving both flex-1 handed the button half the plate
-// and truncated the town name beside it. only:col-span-2 keeps a lone child on
-// the whole plate. The edges follow env(safe-area-inset-*) with the 0px
+// and badge and nothing more, so it keeps the width of its content and the
+// location control takes the rest. Giving both flex-1 handed the button half
+// the plate and truncated the town name beside it. What splits it now is
+// flex-1 on the picker against a button that asks for nothing: flex-grow
+// starts at 0, which is what leaves it at its content width, and only:grow
+// gives it the whole plate on the days it is the only child.
+//
+// A flex row, and it used to be a two-column grid. The difference is that a
+// child can leave: the trigger stands down between md and lg where the sheet
+// behind it has nothing in it, and a display:none child still holds its grid
+// column. only:col-span-2 could not see that its sibling was gone, and the
+// picker dropped into the auto column the button had been holding, 151px of a
+// 448px plate measured at 768. A flex item that is not drawn is not an item,
+// so the picker fills the row on its own and one rule splits the plate at
+// every width.
+//
+// The edges follow env(safe-area-inset-*) with the 0px
 // fallbacks globals.css documents, so the plate clears a notch or a curved
 // corner instead of running under it.
 //
@@ -61,7 +76,7 @@ import type { AnimalSort } from "@/lib/sort";
 // the footer's docked padding is measured against, and BackToTop is positioned
 // on its own and stays at the viewport's right edge.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[auto_minmax(0,1fr)] items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:col-span-2";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
 
 // Desktop has enough room for one quiet toolbar. Below lg the species tabs
 // hold the sticky rail on their own, joined from md by the same quiet sort
@@ -143,7 +158,7 @@ export function AnimalFilters({
   // Asked of the sheet rather than worked out here: what is inside it is its
   // own business, and this file only needs to know whether to hang a button
   // on the dock for it (filter-sheet.tsx).
-  const hasFilterSheet = filterSheetWorthOpening({
+  const sheetReason = filterSheetReason({
     groups,
     toggles,
     goodWith,
@@ -167,6 +182,21 @@ export function AnimalFilters({
   // and a filter combination that narrows it to zero results still leaves
   // nothing for an order to apply to.
   const canSort = !isEmpty && resultCount > 0;
+  // The class the sheet's trigger wears, or nothing. `order` is the one reason
+  // that runs out at a width: from md the toolbar draws the order itself and
+  // the sheet's own sort row stands down with it, so a sheet the order alone
+  // holds open has nothing left behind its button there and the button goes
+  // too. The width is the sheet's to name, so it comes from there
+  // (SORT_ROW_HIDDEN) rather than being written out again here.
+  //
+  // In CSS and not from a width read in JS: this page is statically exported,
+  // and a button deciding whether to exist after hydration flickers on every
+  // cold load to settle a state no live dataset reaches. `canSort` is what
+  // makes the premise true rather than merely true today -- the toolbar's own
+  // control is gated on it, and without it a clause added there could leave
+  // this band with no way to pick an order at all.
+  const triggerStandsDown =
+    sheetReason === "order" && canSort && SORT_ROW_HIDDEN;
   // The species strip, described once and mounted in both rows. Only CSS
   // separates the two, so both are in the tree at every width and the strip
   // prices that itself (species-tabs.tsx); what this spares is the five props
@@ -285,7 +315,10 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          {/* max-md:hidden on the control itself, the way the sheet's copy
+          {/* The complement of SORT_ROW_HIDDEN, and written out rather than
+              derived from it: Tailwind reads class names out of the source as
+              literals, so a string built from another one is a class it never
+              generates. On the control itself, the way the sheet's copy
               wears md:hidden, rather than a box around it. The trigger's own
               base is flex (ui/select.tsx), so a wrapper turning it back on at
               md with md:block would have flattened its icon, label and
@@ -408,10 +441,20 @@ export function AnimalFilters({
           control on this page that answers the grid's own length. */}
       <BackToTop />
 
-      {(hasFilterSheet || shelters) && (
-        <div data-slot="mobile-filter-dock" className={DOCK_CLASS}>
-          {hasFilterSheet && (
+      {(sheetReason || shelters) && (
+        <div
+          data-slot="mobile-filter-dock"
+          className={cn(
+            DOCK_CLASS,
+            // The picker takes the whole plate on its own once the trigger
+            // beside it leaves (DOCK_CLASS). With no picker to take it, there
+            // is no plate to draw: an empty floating box is not a control.
+            !shelters && triggerStandsDown,
+          )}
+        >
+          {sheetReason && (
             <FilterSheet
+              className={cn(triggerStandsDown)}
               sort={sort}
               onSortChange={onSortChange}
               filters={filters}
@@ -443,7 +486,7 @@ export function AnimalFilters({
             />
           )}
           {shelters && (
-            <div className="[&>button]:h-11 [&>button]:w-full [&>button]:rounded-ui">
+            <div className="flex-1 [&>button]:h-11 [&>button]:w-full [&>button]:rounded-ui">
               <LocationPicker
                 options={shelters}
                 counts={shelterTally}

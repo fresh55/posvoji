@@ -1,13 +1,13 @@
 import type { ModelViewerElement } from "@google/model-viewer";
 import { createCatAttention } from "./cat-attention";
 
-type Reaction = "Notice" | "Slow blink" | "Paw hello" | "Nuzzle" | "Head rub" |
+export type CatReaction = "Notice" | "Slow blink" | "Paw hello" | "Nuzzle" | "Head rub" |
   "Sniff" | "Face wash" | "Stretch" | "Yawn" | "Playful reach left" | "Playful reach right" |
   "Back pet" | "Tail flick" | "Head pet" | "Chin scratch" | "Back warning" | "Drowse" | "Wake";
-type Gesture = Exclude<Reaction, "Playful reach left" | "Playful reach right"> | "Playful reach";
+type Gesture = Exclude<CatReaction, "Playful reach left" | "Playful reach right"> | "Playful reach";
 type TouchRegion = "back" | "tail" | "head" | "chin";
 type TapRequest = { side?: "left" | "right"; region?: TouchRegion; stronger?: boolean };
-const regionReactions: Record<TouchRegion, Reaction> = { back: "Back pet", tail: "Tail flick", head: "Head pet", chin: "Chin scratch" };
+const regionReactions: Record<TouchRegion, CatReaction> = { back: "Back pet", tail: "Tail flick", head: "Head pet", chin: "Chin scratch" };
 const regionOf = (materialName: string | undefined): TouchRegion | undefined =>
   materialName === "Back touch region" ? "back" : materialName === "Tail touch region" ? "tail" :
     materialName === "Head touch region" ? "head" : materialName === "Chin touch region" ? "chin" : undefined;
@@ -15,12 +15,12 @@ const tapGestures: Gesture[] = ["Slow blink", "Paw hello", "Nuzzle", "Head rub",
   "Face wash", "Stretch", "Yawn", "Playful reach", "Notice"];
 // The authored rig's sagittal plane after its export transform, in metres.
 const MODEL_MIDLINE_X = -.074;
-const gestureOf = (name: Reaction): Gesture => name.startsWith("Playful reach") ? "Playful reach" : name as Gesture;
+const gestureOf = (name: CatReaction): Gesture => name.startsWith("Playful reach") ? "Playful reach" : name as Gesture;
 
 /** Small authored reactions, using only model-viewer's public animation API. */
 export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () => boolean) {
   let disposed = false;
-  let reaction: Reaction | null = null;
+  let reaction: CatReaction | null = null;
   let switching = false;
   let generation = 0;
   let resumeTime = 0;
@@ -146,7 +146,7 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
     syncPlayback();
   };
 
-  const startReaction = (name: Reaction) => {
+  const startReaction = (name: CatReaction) => {
     if (disposed || !canAnimate() || !viewer.availableAnimations.includes(name)) return;
     clearHover();
     clearCompletion();
@@ -158,8 +158,8 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
     lastGesture = gestureOf(name);
     void changeClip(name, 0);
   };
-  const variants = (gesture: Gesture): Reaction[] => (gesture === "Playful reach"
-    ? ["Playful reach left", "Playful reach right"] as Reaction[] : [gesture])
+  const variants = (gesture: Gesture): CatReaction[] => (gesture === "Playful reach"
+    ? ["Playful reach left", "Playful reach right"] as CatReaction[] : [gesture])
     .filter(name => viewer.availableAnimations.includes(name));
   const startTapReaction = (request: TapRequest) => {
     const targeted = request.stronger && viewer.availableAnimations.includes("Back warning") ? "Back warning" : request.region && regionReactions[request.region];
@@ -296,7 +296,7 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
       }
       if (!noticedThisVisit) {
         if (attention.start(event.clientX, event.clientY)) { noticedThisVisit = true; return; }
-        const preferred: Reaction = lastGesture === "Sniff" ? "Notice" : "Sniff";
+        const preferred: CatReaction = lastGesture === "Sniff" ? "Notice" : "Sniff";
         startReaction(viewer.availableAnimations.includes(preferred) ? preferred : "Notice");
       }
     }, 220);
@@ -376,6 +376,14 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
 
   return {
     syncPlayback,
+    /** A reaction the page asks for, as a tap would. Ignored while the cat is
+     *  busy or asleep, so it can never interrupt a routine mid-clip. */
+    react(name: CatReaction) {
+      if (sleepState !== "awake" || reaction || switching || pendingTap || routineBusy()) return false;
+      startReaction(name);
+      activity();
+      return reaction === name;
+    },
     dispose() {
       disposed = true;
       generation++;

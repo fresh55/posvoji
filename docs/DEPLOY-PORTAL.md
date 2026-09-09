@@ -30,7 +30,9 @@ login without any code change saying so.
    same host, which means a shelter cannot reach the portal at all until the
    gate comes off, whatever the API does. The API's own hostname must **not**
    be behind `basic_auth`: it has its own login, and a browser cannot answer a
-   basic-auth challenge on a cross-origin XHR.
+   basic-auth challenge on a cross-origin XHR. For the shelter demo the gate
+   gets a password page in front of it, DEMO-GATE.md, and `basic_auth` stays
+   underneath for the health checks.
 
 ## Host prerequisites
 

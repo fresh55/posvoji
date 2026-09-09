@@ -3,6 +3,7 @@ import {
   type ShelterCardData,
   type ShelterCardText,
 } from "@/components/shelter-card";
+import { ShelterJumpStrip } from "@/components/shelter-jump-strip";
 import { Card } from "@/components/ui/card";
 import { MUTED_LINK } from "@/lib/link-styles";
 import { SKIP_LINK } from "@/lib/skip-link";
@@ -53,6 +54,14 @@ export type SheltersAtlasText = {
    *  the key legible, which is a different thing from making the order
    *  predictable, so this line stays whatever size the town is drawn at. */
   sortNote: string;
+  /** "Skok na zavetišče" / "Jump to a shelter", the accessible name of the
+   *  chip strip below sm. Not printed: the chips are towns and the towns are
+   *  the sort key the line above has just named, so a visible label would be
+   *  a third line saying what the second one says. A list of seventeen links
+   *  with no name is announced as "list, 17 items" between the sort note and
+   *  the register itself, which is where a reader most needs to be told what
+   *  they have arrived at. */
+  jump: string;
 };
 
 /** The invitation, the grid's last cell rather than a banner under it. Every
@@ -80,6 +89,14 @@ export type SheltersInvite = {
  * search box over a list the reader can already see is ceremony, and the one
  * search worth having on this site, the občina lookup, belongs to the
  * found-animal flow that owns that question.
+ *
+ * The chip strip below sm does not reopen that. It is an index and not a
+ * filter: it hides nothing, removes nothing and answers no query. It prints
+ * the same seventeen towns in the same order the grid draws them, and every
+ * chip is an anchor into the grid that is already there. The argument above
+ * is against a control that stands between the reader and a list they can see;
+ * at one column the reader cannot see the list, and the strip is how it is
+ * given back to them. See the comment on the strip for why it stops at sm.
  *
  * That also takes the whole client boundary off this page. It was here for the
  * filter's state; with no filter, the register is what it always was, a
@@ -154,6 +171,36 @@ export function SheltersAtlas({
           </a>
         )}
       </div>
+
+      {/* The register's own index below sm: one row that scrolls sideways.
+          Why it exists, why it stops at sm and why it is a row rather than a
+          wrapping block are all on the component.
+
+          Its chips are built here rather than there because the strip is a
+          client component and card.animals is a function: the count's noun
+          agrees with the number in Slovenian, so the sentence is formatted on
+          this side of the boundary and handed over as text. The count test is
+          the card's own, so a chip can never claim a list the card beside it
+          does not print: absent and zero are both "we publish no list for this
+          shelter". */}
+      <ShelterJumpStrip
+        label={text.jump}
+        chips={shelters.map((shelter) => {
+          const count =
+            shelter.animals !== undefined && shelter.animals > 0
+              ? shelter.animals
+              : undefined;
+          return {
+            id: shelter.id,
+            city: shelter.city,
+            count,
+            label:
+              count === undefined
+                ? undefined
+                : `${shelter.city}, ${card.animals(count)}`,
+          };
+        })}
+      />
 
       {/* Two columns from sm and three from xl. The cards carry six or seven
           lines now, so a third column at 1280px still leaves each one a

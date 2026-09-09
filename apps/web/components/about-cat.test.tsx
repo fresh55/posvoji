@@ -3,7 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AboutCat } from "./about-cat";
-import { SRECKO_PATHS } from "@/lib/srecko";
+import { SRECKO_PATHS, SRECKO_TEXT } from "@/lib/srecko";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@google/model-viewer", () => {
@@ -77,10 +77,10 @@ describe("the about cat", () => {
     expect(viewer.getAttribute("touch-action")).toBe("pan-y");
   });
 
-  it.each(["sl", "en"] as const)("places the memorial link below the model instead of visible instructions (%s)", async (locale) => {
+  it.each(["sl", "en"] as const)("keeps the introduction and memorial link below the model while loading (%s)", async (locale) => {
     const { container } = render(<AboutCat locale={locale} />);
     const caption = container.querySelector("figcaption")!;
-    expect(caption.textContent).toBe(locale === "sl" ? "Ta stran je v spomin na Srečka." : "This site is in memory of Srečko.");
+    expect(caption.querySelector("p")?.textContent).toBe(SRECKO_TEXT[locale].intro);
     expect(caption.querySelector("a")?.getAttribute("href")).toBe(SRECKO_PATHS[locale]);
     await loadViewer();
     expect(container.querySelector("details")).toBeNull();

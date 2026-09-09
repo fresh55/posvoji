@@ -175,7 +175,10 @@ export function AboutCat({ locale }: { locale: Locale }) {
           src={POSTER}
           alt={status === "ready" ? "" : text.alt}
           fill
+          // Load the fallback immediately, but don't speculatively preload a
+          // poster that WebGL can replace before it paints (React skips low).
           loading="eager"
+          fetchPriority="low"
           sizes="(min-width: 1024px) 420px, (min-width: 640px) 448px, 100vw"
           className={`object-contain ${status === "ready" ? "invisible" : ""}`}
         />

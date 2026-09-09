@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@google/model-viewer@4.3.1':
+    hash: 9fa6e8b4f8820498188a9e8e74eaf0845c17da7a7d01808e7d2669c9c76468e7
+    path: patches/@google__model-viewer@4.3.1.patch
+
 importers:
 
   .: {}
@@ -76,7 +81,7 @@ importers:
     dependencies:
       '@google/model-viewer':
         specifier: ^4.3.1
-        version: 4.3.1(three@0.183.2)
+        version: 4.3.1(patch_hash=9fa6e8b4f8820498188a9e8e74eaf0845c17da7a7d01808e7d2669c9c76468e7)(three@0.183.2)
       '@posvoji/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -5851,7 +5856,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@google/model-viewer@4.3.1(three@0.183.2)':
+  '@google/model-viewer@4.3.1(patch_hash=9fa6e8b4f8820498188a9e8e74eaf0845c17da7a7d01808e7d2669c9c76468e7)(three@0.183.2)':
     dependencies:
       '@monogrid/gainmap-js': 3.4.0(three@0.183.2)
       lit: 3.3.3

@@ -1,0 +1,156 @@
+diff --git a/lib/features/controls.js b/lib/features/controls.js
+index 09aa5eb570cbe0bff0e1f258b656a63ae622e4c0..6d5752155504d605ca00e784cfdc6fe8c22b379f 100644
+--- a/lib/features/controls.js
++++ b/lib/features/controls.js
+@@ -268,8 +268,18 @@ export const ControlsMixin = (ModelViewerElement) => {
+             return this[$scene].idealAspect;
+         }
+         jumpCameraToGoal() {
++            if (this[$jumpCamera]) {
++                return;
++            }
+             this[$jumpCamera] = true;
+-            this.requestUpdate($jumpCamera, false);
++            // Style synchronization can call this from updated(). Wait for that
++            // update instead of scheduling another Lit render just to jump the camera.
++            this.updateComplete.then(() => {
++                this[$jumpCamera] = false;
++                this[$controls].jumpToGoal();
++                this[$scene].jumpToGoal();
++                this[$onChange]();
++            });
+         }
+         resetInteractionPrompt() {
+             this[$lastPromptOffset] = 0;
+@@ -358,14 +368,6 @@ export const ControlsMixin = (ModelViewerElement) => {
+             if (changedProperties.has('a11y')) {
+                 this[$updateA11y]();
+             }
+-            if (this[$jumpCamera] === true) {
+-                Promise.resolve().then(() => {
+-                    controls.jumpToGoal();
+-                    scene.jumpToGoal();
+-                    this[$onChange]();
+-                    this[$jumpCamera] = false;
+-                });
+-            }
+         }
+         async updateFraming() {
+             const scene = this[$scene];
+diff --git a/lib/model-viewer-base.js b/lib/model-viewer-base.js
+index df2f31a8dcbe9c2c2e42dbf8d7a7dc8f1772a534..cf00dadf804197d2646360cb7f7ddd1a36d0b172 100644
+--- a/lib/model-viewer-base.js
++++ b/lib/model-viewer-base.js
+@@ -260,7 +260,6 @@ export default class ModelViewerElementBase extends ReactiveElement {
+                         const oldVisibility = this.modelIsVisible;
+                         this[$isElementInViewport] = entry.isIntersecting;
+                         this[$announceModelVisibility](oldVisibility);
+-                        console.log(`IntersectionObserver fired! isIntersecting: ${entry.isIntersecting}`);
+                         if (this[$isElementInViewport] && !this.loaded) {
+                             this[$updateSource]();
+                         }
+@@ -519,10 +518,8 @@ export default class ModelViewerElementBase extends ReactiveElement {
+         const extraModels = Array.from(this.querySelectorAll('extra-model'));
+         const extraUrlsList = extraModels.map(m => m.src).filter(src => src != null);
+         const extraUrlsMatch = extraUrlsList.join(',') === (scene.extraUrls || []).join(',');
+-        console.log(`[$updateSource] called! \nsrc: ${this.src}\nextraUrls: ${extraUrlsList.join(',')}\nloaded: ${this.loaded}`);
+         if (this.loaded || !this[$shouldAttemptPreload]() ||
+             (this.src === scene.url && extraUrlsMatch)) {
+-            console.log('[$updateSource] BAILING OUT EARLY!');
+             return;
+         }
+         const source = this.src;
+diff --git a/lib/three-components/ModelScene.js b/lib/three-components/ModelScene.js
+index d70a8b03b6c497911cdaa9334af144b3a319c196..f5f55a99eb9cb91ca8e01d63a664929907fec8a3 100644
+--- a/lib/three-components/ModelScene.js
++++ b/lib/three-components/ModelScene.js
+@@ -807,9 +807,6 @@ export class ModelScene extends Scene {
+             repetitionCount = 1;
+             console.warn(`Invalid repetitionCount value: ${repetitionCount}. Using  1 value as minimum.`);
+         }
+-        else {
+-            console.warn(`Invalid repetitionCount value: ${repetitionCount}. Using default: Infinity`);
+-        }
+         if (repetitionCount === 1 && loopMode !== LoopOnce) {
+             loopMode = LoopOnce;
+         }
+diff --git a/src/features/controls.ts b/src/features/controls.ts
+index 3c5ba2ebf0f6158d8fee5e14ad10bd366fc35803..307d5a09c465debea25e8b880d7ef7dbe35a943d 100644
+--- a/src/features/controls.ts
++++ b/src/features/controls.ts
+@@ -452,8 +452,18 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
+     }
+ 
+     jumpCameraToGoal() {
++      if (this[$jumpCamera]) {
++        return;
++      }
+       this[$jumpCamera] = true;
+-      this.requestUpdate($jumpCamera, false);
++      // Style synchronization can call this from updated(). Wait for that
++      // update instead of scheduling another Lit render just to jump the camera.
++      this.updateComplete.then(() => {
++        this[$jumpCamera] = false;
++        this[$controls].jumpToGoal();
++        this[$scene].jumpToGoal();
++        this[$onChange]();
++      });
+     }
+ 
+     resetInteractionPrompt() {
+@@ -570,15 +580,6 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
+       if (changedProperties.has('a11y')) {
+         this[$updateA11y]();
+       }
+-
+-      if (this[$jumpCamera] === true) {
+-        Promise.resolve().then(() => {
+-          controls.jumpToGoal();
+-          scene.jumpToGoal();
+-          this[$onChange]();
+-          this[$jumpCamera] = false;
+-        });
+-      }
+     }
+ 
+     async updateFraming() {
+diff --git a/src/model-viewer-base.ts b/src/model-viewer-base.ts
+index db9b23febae37e7a90f07cb041868c9954159163..abd4191434e2f60080dc35508fee684afc7dfe51 100644
+--- a/src/model-viewer-base.ts
++++ b/src/model-viewer-base.ts
+@@ -349,8 +349,6 @@ export default class ModelViewerElementBase extends ReactiveElement {
+             const oldVisibility = this.modelIsVisible;
+             this[$isElementInViewport] = entry.isIntersecting;
+             this[$announceModelVisibility](oldVisibility);
+-            console.log(`IntersectionObserver fired! isIntersecting: ${
+-                entry.isIntersecting}`);
+             if (this[$isElementInViewport] && !this.loaded) {
+               this[$updateSource]();
+             }
+@@ -681,12 +679,8 @@ export default class ModelViewerElementBase extends ReactiveElement {
+     const extraUrlsMatch =
+         extraUrlsList.join(',') === (scene.extraUrls || []).join(',');
+ 
+-    console.log(`[$updateSource] called! \nsrc: ${this.src}\nextraUrls: ${
+-        extraUrlsList.join(',')}\nloaded: ${this.loaded}`);
+-
+     if (this.loaded || !this[$shouldAttemptPreload]() ||
+         (this.src === scene.url && extraUrlsMatch)) {
+-      console.log('[$updateSource] BAILING OUT EARLY!');
+       return;
+     }
+ 
+diff --git a/src/three-components/ModelScene.ts b/src/three-components/ModelScene.ts
+index 8a682f34cabc9d0e0c03dc2e0219bd1579cbee8a..ed7f81fc6984e5ac7108479205db2edb659a6326 100644
+--- a/src/three-components/ModelScene.ts
++++ b/src/three-components/ModelScene.ts
+@@ -983,9 +983,6 @@ export class ModelScene extends Scene {
+       repetitionCount = 1;
+       console.warn(`Invalid repetitionCount value: ${
+           repetitionCount}. Using  1 value as minimum.`);
+-    } else {
+-      console.warn(`Invalid repetitionCount value: ${
+-          repetitionCount}. Using default: Infinity`);
+     }
+ 
+     if (repetitionCount === 1 && loopMode !== LoopOnce) {

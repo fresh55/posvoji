@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SheltersPage } from "@/components/shelters-page";
+import { getMessages } from "@/lib/i18n";
 import { SHELTER_INDEX_PATHS } from "@/lib/shelter-path";
 import { staticPageMetadata } from "@/lib/site-metadata";
 
@@ -7,7 +8,7 @@ export const metadata: Metadata = staticPageMetadata({
   locale: "en",
   // The Slovenian half of the pair. See the note on the /zavetisca route.
   paths: SHELTER_INDEX_PATHS,
-  title: "Shelters",
+  title: getMessages("en").shelters,
   // Written for the search that lands here, which is "shelter" and a town
   // name. See the Slovenian route for the reasoning; the two stay mirrors.
   description:

@@ -1,21 +1,52 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { ShelterLogin, SiteMenu, SiteNav } from "@/components/site-menu";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
+import { homePath } from "@/lib/shelter-path";
+import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 
 type SiteHeaderProps = {
-  homeHref: string;
+  /** The language this page is in, and the only thing the header needs to
+   *  work out where its own brand points. It used to take that address as a
+   *  prop of its own, and every call site passed homePath(locale) or the same
+   *  two strings written out by hand: a second prop carrying the first one's
+   *  information, which is what the note below argues against. The header
+   *  prints a string of its own now as well (the skip link), and that needs
+   *  the catalogue, which needs the locale. */
+  locale: Locale;
   /** This page's address in both locales. The language switcher needs the
    *  pair; the nav needs only the current locale's half, to mark the item
-   *  that points at the page the reader is already on. Every page that
-   *  renders a header already passes this, so the nav gets its answer without
-   *  a second prop that could drift out of step with the first. */
+   *  that points at the page the reader is already on. Optional, and the
+   *  switcher falls back to the homepage pair: that is the right answer on
+   *  the homepage, which is the one page that leaves it out, and a page with
+   *  a twin should pass it rather than send the reader to the root. */
   languagePaths?: Record<Locale, string>;
 };
 
-export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
+export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
+  const messages = getMessages(locale);
+
   return (
-    <header className="bleed flex items-center justify-between gap-4 border-b py-4">
+    <header className="bleed relative flex items-center justify-between gap-4 border-b py-4">
+      {/* The first focusable thing in the document, before the brand. Every
+          navigation on this site is a document load, so the chrome's tab
+          stops are paid again on every page a keyboard visitor opens rather
+          than once per visit, and a shelter page puts up to 186 cards behind
+          them. The two bypass links inside the page skip a list; this one
+          skips the chrome, which nothing else could.
+
+          relative on the header above, because the link goes absolute on
+          focus and an absolutely positioned flex item otherwise resolves
+          against the initial containing block and lands on top of the logo.
+          left-gutter and not left-0: the header bleeds to the shell edge, so
+          the padding box an absolute child measures from starts outside the
+          page's own column. */}
+      <a
+        href={`#${CONTENT_ID}`}
+        className={SKIP_LINK_PINNED}
+      >
+        {messages.skipToContent}
+      </a>
       {/* Brand and destination together on the left, which is where a nav
           belongs when there is one link in it. Piled on the right with the
           language switcher and the login it read as a fourth control in a row
@@ -48,7 +79,14 @@ export function SiteHeader({ homeHref, languagePaths }: SiteHeaderProps) {
           previously was a horizontal scrollbar. */}
       <div className="flex min-w-0 items-center gap-10">
         <a
-          href={homeHref}
+          href={homePath(locale)}
+          // Named for BackToTop, which sends focus to the top of the document
+          // and picks the target off the DOM (back-to-top.tsx). It used to ask
+          // for the header's first anchor, which is the skip link above since
+          // this header grew one, and focusing that revealed it on every
+          // press. An attribute rather than a position, so the next thing
+          // added to this row cannot take the focus either.
+          data-brand
           // The primary way home, and the logo drew it 40px tall. The utility
           // grows the tappable box without moving the drawing.
           className="flex min-w-0 max-lg:tap-target items-center gap-2 font-medium tracking-tight"

@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
 // nothing swaps after hydration.
 
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
+  // The English literal is the registry's and is only a fallback: props are
+  // spread after it, so a caller's aria-label wins. PageBreadcrumb passes the
+  // catalogue's name, because a landmark left in English is read out with
+  // Slovenian phonemes on every page above the root.
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />;
 }
 
@@ -69,13 +73,21 @@ function BreadcrumbLink({
   );
 }
 
-/** The page the reader is on: named, and not a link to itself. */
+/**
+ * The page the reader is on: named, and not a link to itself.
+ *
+ * Deviates from the registry, which puts role="link" and aria-disabled="true"
+ * on this span. That said the opposite of the sentence above: the current
+ * page's own name was announced in a links rotor on every inner page as a
+ * dimmed link that could not be focused or followed. aria-current on a plain
+ * span is the whole mechanism, and it is the one the portal's hand-rolled
+ * trail uses too. A later `shadcn add breadcrumb` will offer the two
+ * attributes back.
+ */
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       data-slot="breadcrumb-page"
-      role="link"
-      aria-disabled="true"
       aria-current="page"
       className={cn("font-medium text-foreground", className)}
       {...props}

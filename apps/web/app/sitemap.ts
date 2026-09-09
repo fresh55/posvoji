@@ -11,6 +11,7 @@ import {
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
 import { ABOUT_PATHS, RESOURCES_PATHS } from "@/lib/site-links";
+import { XDEFAULT_LOCALE } from "@/lib/site-metadata";
 import { SRECKO_PATHS } from "@/lib/srecko";
 
 /**
@@ -63,11 +64,16 @@ type Pair = {
  * including itself, which is what Google's own documentation asks for: a
  * crawler arriving at either URL has to be able to find every other version
  * from that one entry.
+ *
+ * x-default reads XDEFAULT_LOCALE, the same constant localeAlternates resolves
+ * in the head, so the two cannot answer differently. See lib/site-metadata.ts
+ * for why that half and not the other.
  */
 function entries(pair: Pair): MetadataRoute.Sitemap {
   const languages = {
     sl: absolute(pair.paths.sl),
     en: absolute(pair.paths.en),
+    "x-default": absolute(pair.paths[XDEFAULT_LOCALE]),
   };
   return LOCALES.map((locale) => ({
     url: absolute(pair.paths[locale]),

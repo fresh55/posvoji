@@ -4,12 +4,33 @@ const sl = {
   metadataDescription:
     "Odprt indeks živali iz slovenskih zavetišč, ki iščejo dom. Vsaka žival z jasnim virom in povezavo na zavetišče.",
   githubTitle: "Cepljena, sterilizirana, brez znanih napak.",
-  openSource: "odprta koda",
-  canHelp: ", lahko pomagaš",
+  // The footer's link to the repository, as one string. It used to be two
+  // keys printed one after the other, the second of them beginning with a
+  // comma, which is the assembly the goodWith section below refuses in the
+  // same file: the phrases are whole and translated, never put together in
+  // the component.
+  openSourceInvite: "Odprta koda, pomagaš lahko tudi ti.",
+  // What a link that leaves the site says. Word for word the shelters page's
+  // own note, so the site says this one way rather than three.
+  newWindow: "(odpre se v novem oknu)",
   heroTitle: "Živali iz slovenskih zavetišč, ki iščejo dom.",
   updated: "osveženo",
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
+  // The same fact the homepage states beside the shelter count with `updated`,
+  // said as a sentence because the footer has no count to hang it on. It is
+  // the one place an animal page reached from a search engine says how old the
+  // listing is, which is this site's whole claim over a shelter's Facebook
+  // page. {date} comes from registerDateLabel, numeric in Slovenian, so there
+  // is no month name here to decline.
+  footerUpdated: "Podatki zavetišč, osveženi {date}.",
+  // The line the contact address follows, on every page rather than only on
+  // /o-nas. A wrong listing is the likeliest reason anyone writes, and the
+  // page it is wrong on is not the about page. The address itself stays the
+  // one CONTACT_EMAIL in lib/site.ts and is printed as itself rather than
+  // behind a word, the rule about-page.tsx records: a reader writing from
+  // their own mail client has to be able to read it off the page.
+  footerContact: "Popravek ali vprašanje?",
   moreInformation: "Več informacij",
   // The footer's own <nav>. It used to carry moreInformation as well, and on
   // the shelters page the header nav and this one both render from lg up, so
@@ -22,8 +43,19 @@ const sl = {
   // links: a button that opens a menu has to say so, not describe what is
   // inside it.
   menu: "Meni",
+  // The first focusable thing on the page, in the header above everything
+  // else. Every navigation on this site is a document load, so the chrome's
+  // tab stops are paid again on every page a keyboard visitor opens, not once
+  // per visit. Same verb as the two bypass links inside the page below.
+  skipToContent: "Preskoči na vsebino",
+  // The breadcrumb's landmark name. The primitive hardcodes an English
+  // aria-label, which a Slovenian screen reader voices with Slovenian
+  // phonemes on every page above the root. Not "Drobtinice": a calque of the
+  // English metaphor names nothing a reader would say. The other landmarks
+  // here are descriptive phrases, and the portal names its own trail the same
+  // way. English keeps "Breadcrumb", which is the ARIA convention.
+  breadcrumbNav: "Pot do strani",
   backToTop: "Na vrh strani",
-  backToAnimals: "Nazaj na živali",
   /** The root crumb. The site root is the animal grid, so the trail names it
    *  as the place it is rather than as an abstract "home". */
   allAnimals: "Vse živali",
@@ -115,6 +147,11 @@ const sl = {
   animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
   resultsHeading: "Živali",
   skipResults: "Preskoči seznam živali",
+  // The same bypass on a shelter's page, where the list is not a result set
+  // but everything one shelter has, uncapped: 186 cards at the longest. The
+  // label says whose animals they are, because the visitor got here by
+  // choosing that shelter.
+  skipShelterAnimals: "Preskoči živali tega zavetišča",
   noResults: "Ni zadetkov.",
   // The grid's own load-more control, once the automatic steps are spent.
   // Numerals only, no noun: "še 120" needs no agreement, where "120 živali"
@@ -246,6 +283,15 @@ const sl = {
   // of page text beside the control said the same thing twice, and a note
   // under it explaining who pays read as a subtitle written to sell. What the
   // dialog does with the answer, the dialog says on arrival.
+  //
+  // Since the flow became a page it is that page's h1 as well, and it does not
+  // match the nav label on purpose: muniTab is the noun, because a row of
+  // destinations is nouns and a question mark would be the only one in it,
+  // while the page itself opens with the question the visitor typed into a
+  // search box to get here. The participle stays masculine for the same
+  // reason: "našel sem psa" is the search, and the page exists to be found by
+  // it. The advice below is where the reader is addressed rather than quoted,
+  // and that one is neutral.
   muniPromptTitle: "Si našel žival?",
   muniTab: "Najdena žival",
   muniSearch: "Občina ali poštna številka …",
@@ -283,8 +329,11 @@ const sl = {
   muniNearestNote:
     "Ni potrjeno, da so pristojna za to občino. Pokliči in vprašaj.",
   muniUnverified: "ni preverjenega podatka",
+  // "kjer je bila žival najdena" and not "kjer si našel žival": the reader is
+  // being told what to do, not quoted, so nothing here has to guess their
+  // gender. Same construction as muniPostcodeInstead above.
   muniUnverifiedAdvice:
-    "Pokliči občino, kjer si našel žival, in vprašaj, katero zavetišče jo lahko prevzame.",
+    "Pokliči občino, kjer je bila žival najdena, in vprašaj, katero zavetišče jo lahko prevzame.",
   // Names the office, not a register: gov.si no longer publishes the list of
   // shelters at any address, so the link goes to UVHVVR itself.
   muniRegister: "Uprava za varno hrano, veterinarstvo in varstvo rastlin (gov.si)",
@@ -410,17 +459,20 @@ const en: Messages = {
   metadataDescription:
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
-  openSource: "open source",
-  canHelp: ", you can help",
+  openSourceInvite: "Open source, and you can help.",
+  newWindow: "(opens in a new window)",
   heroTitle: "Animals from Slovenian shelters looking for a home.",
   updated: "updated",
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
+  footerUpdated: "Shelter data updated {date}.",
+  footerContact: "A correction or a question?",
   moreInformation: "More information",
   footerLinks: "Footer links",
   menu: "Menu",
+  skipToContent: "Skip to content",
+  breadcrumbNav: "Breadcrumb",
   backToTop: "Back to top",
-  backToAnimals: "Back to the animals",
   allAnimals: "All animals",
   notFoundTitle: "Page not found",
   notFoundBody: "The link may be wrong, or the page is no longer here.",
@@ -478,6 +530,7 @@ const en: Messages = {
   animalsComingSoon: "Animals will appear here when the first shelters join.",
   resultsHeading: "Animals",
   skipResults: "Skip the list of animals",
+  skipShelterAnimals: "Skip this shelter’s animals",
   noResults: "No results.",
   showMoreAnimals: "Show {n} more",
   shownOfTotal: "{shown} of {total} animals",

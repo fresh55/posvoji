@@ -38,9 +38,13 @@ export function ModelCredit({ locale }: { locale: Locale }) {
   return (
     <details className="group/credit">
       {/* The footer's own small-link grammar, down to the 6px icon gap: this
-          renders directly under the GitHub link and two adjacent icon-and-text
-          lines with different gaps read as a mistake. No focus colour here,
-          because globals.css sets outline-ring on everything. */}
+          renders under the footer's action row, which ends in the repository
+          link, and two icon-and-text lines that close to each other with
+          different gaps read as a mistake. The overlay stays rather than
+          becoming a drawn box: the footer now keeps 24px above this, which is
+          clear of the overhang, so this is the isolated control globals.css
+          says to overlay. No focus colour here, because globals.css sets
+          outline-ring on everything. */}
       <summary className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-sm underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 max-lg:tap-target">
         {text.trigger}
         <ChevronDown

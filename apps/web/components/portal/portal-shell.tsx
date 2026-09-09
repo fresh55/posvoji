@@ -6,6 +6,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { Logo } from "@/components/logo";
 import { portalText } from "@/components/portal/portal-text";
 import { SiteFooter } from "@/components/site-footer";
+import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
 /**
@@ -28,13 +29,33 @@ export function PortalShell({
           has to carry its own. */}
       <LazyMotion features={domAnimation}>
         <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-          <header className="bleed flex items-center justify-between gap-3 border-b py-4">
+          <header className="bleed relative flex items-center justify-between gap-3 border-b py-4">
+            {/* The public header's bypass, spelled again here because this
+                header is hand-rolled and does not render SiteHeader. Fewer
+                stops to skip than on the public site, but the list is a long
+                table and the editor a long form, and a keyboard visitor pays
+                the brand and the actions again on every step between them.
+                relative on the header and left-gutter here for the reason
+                site-header.tsx records: the header bleeds, so an absolutely
+                positioned child otherwise measures from outside the page's
+                own column. */}
+            <a
+              href={`#${CONTENT_ID}`}
+              className={SKIP_LINK_PINNED}
+            >
+              {portalText.skipToContent}
+            </a>
             {/* The public site is a static export and navigates with plain
-                anchors: a document load costs nothing there and next/link
-                would ship a router for it. The portal's own two pages are the
-                exception and do use next/link, because the session and the
-                loaded list have to survive the step between them. This link
-                leaves the portal, so it is an anchor. */}
+                anchors. Not to keep the router out, which was the reason
+                recorded here and is not true: the app-router chunk is in
+                every page's script list whether or not a Link is on the
+                page. What next/link would add is prefetch traffic. Prefetch
+                defaults to auto and fetches a route's segment tree for every
+                link in the viewport, and the home grid puts sixty of them
+                there at once. The portal's own two pages are the exception
+                and do use next/link, because the session and the loaded list
+                have to survive the step between them. This link leaves the
+                portal, so it is an anchor. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
@@ -52,7 +73,12 @@ export function PortalShell({
             {actions}
           </header>
 
+          {/* The same id the public pages use, so there is one name for
+              "the content" across the whole export. tabIndex so focus moves
+              here rather than only scrolling the page. */}
           <main
+            id={CONTENT_ID}
+            tabIndex={-1}
             className={cn(
               "mx-auto flex w-full flex-1 flex-col py-page-y",
               narrow
@@ -63,7 +89,11 @@ export function PortalShell({
             {children}
           </main>
 
-          <SiteFooter locale="sl" />
+          {/* The portal states the address itself, under the login form and in
+              the workspace's no-shelters lead, and takes it away again on the
+              card that has said its piece. A footer copy would put it back on
+              all three. */}
+          <SiteFooter locale="sl" showContact={false} />
         </div>
       </LazyMotion>
     </I18nProvider>

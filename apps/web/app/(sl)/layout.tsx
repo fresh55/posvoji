@@ -2,21 +2,14 @@ import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
 import { PrehydrationFilterScript } from "@/components/prehydration-filter-script";
-import { getMessages } from "@/lib/i18n";
-import { SITE_URL } from "@/lib/site";
+import { rootMetadata, rootViewport } from "@/lib/site-metadata";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  // Link previews need absolute URLs, and a static export has no request to
-  // build one from, so every relative URL below is resolved against this.
-  metadataBase: new URL(SITE_URL),
-  title: "Posvoji.si",
-  description: getMessages("sl").metadataDescription,
-};
+// Both roots carry the same head, so it is built in one place. See
+// lib/site-metadata.ts for what is in it and why.
+export const metadata: Metadata = rootMetadata("sl");
 
-// Without this, env(safe-area-inset-*) resolves to 0 on iOS: the page draws
-// under the notch and home indicator, but nothing is told it may.
-export const viewport: Viewport = { viewportFit: "cover" };
+export const viewport: Viewport = rootViewport;
 
 export default function SlovenianLayout({ children }: LayoutProps<"/">) {
   return (

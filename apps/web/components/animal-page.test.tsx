@@ -187,6 +187,30 @@ describe("the animal page's breadcrumb", () => {
       container.querySelector('[data-slot="breadcrumb-page"]')?.textContent,
     ).toBe("Muri");
   });
+
+  // The shelter is the animal's real ancestor and the word this page is
+  // searched for. Asserted on the row and in the JSON-LD together, because
+  // PageBreadcrumb builds both from one array and a trail that names the
+  // shelter on the page but not in the markup is the drift it exists to stop.
+  it("names the shelter between the root and the animal", () => {
+    const { container } = render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+
+    const crumbs = [
+      ...container.querySelectorAll('[data-slot="breadcrumb-link"]'),
+    ];
+    expect(crumbs.map((crumb) => crumb.textContent)).toEqual([
+      "Vse živali",
+      "Zavetišče Zonzani",
+    ]);
+    expect(crumbs[1]?.getAttribute("href")).toBe("/zavetisca/zonzani");
+
+    const jsonLd = container.querySelector(
+      'script[type="application/ld+json"]',
+    );
+    expect(jsonLd?.textContent).toContain("Zavetišče Zonzani");
+  });
 });
 
 describe("the animal page's way to a printed sheet", () => {

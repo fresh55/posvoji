@@ -398,6 +398,8 @@ describe("the empty dataset", () => {
   it("says the animals are still coming without pretending to load them", () => {
     // Four pulsing skeletons used to stand under this line for good, which is
     // a promise that something is on its way on the one page where nothing is.
+    // The count covers the stand-in below as well: with no dataset there is
+    // nothing for a filtered link to be waiting for either.
     const { container } = renderGrid([]);
 
     expect(
@@ -435,6 +437,22 @@ describe("the pre-hydration mark", () => {
     renderGrid(ANIMALS);
 
     expect(document.documentElement.hasAttribute("data-filtering")).toBe(false);
+  });
+
+  it("leaves something standing where the hidden results are", () => {
+    // The rule in globals.css hides the whole results block, tabs and count
+    // and sort control included, so a shared filtered link opened on nothing
+    // at all until this. jsdom applies no stylesheet, so what is pinned here
+    // is the shape the rule acts on: the stand-in is in the markup, it is
+    // outside the block being hidden, and it says nothing to a screen reader.
+    const { container } = renderGrid(ANIMALS);
+
+    const pending = container.querySelector('[data-slot="results-pending"]');
+    expect(pending).toBeTruthy();
+    expect(pending!.closest('[data-slot="results"]')).toBeNull();
+    expect(pending!.getAttribute("aria-hidden")).toBe("true");
+    // Six cards and the bar standing in for the toolbar above them.
+    expect(pending!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(7);
   });
 });
 

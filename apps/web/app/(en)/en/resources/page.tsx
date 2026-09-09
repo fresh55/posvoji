@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { ResourcesPage } from "@/components/resources-page";
+import { getMessages } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
 import { staticPageMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = staticPageMetadata({
   locale: "en",
   paths: RESOURCES_PATHS,
-  title: "Trusted animal-care resources",
+  // The Slovenian half of the pair. See the note on the /viri route.
+  title: getMessages("en").resources,
   description:
     "Trusted veterinary resources about nutrition, health, behaviour and welfare for dogs, cats, rabbits and other companion animals.",
 });

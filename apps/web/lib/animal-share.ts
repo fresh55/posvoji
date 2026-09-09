@@ -161,7 +161,9 @@ export function animalMetadata(
     : undefined;
 
   return {
-    title: `${title} | ${SITE_NAME}`,
+    // Bare. The root layout's title template appends the site name; a title
+    // that spells it here would carry it twice.
+    title,
     description,
     alternates: localeAlternates(
       { sl: animalPath(animal, "sl"), en: animalPath(animal, "en") },

@@ -35,7 +35,7 @@ export function PosterPage({ locale, slug }: { locale: Locale; slug: string }) {
           .poster-chrome, and anything that is site furniture on this route
           wears that class. */}
       <div className="poster-chrome flex items-center justify-between gap-3 border-b px-gutter py-2">
-        {/* The animal's own name and not messages.backToAnimals: the way back
+        {/* The animal's own name and not messages.allAnimals: the way back
             from a sheet is the page it was made from, and there is exactly one
             of those. */}
         <a

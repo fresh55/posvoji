@@ -7,6 +7,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterDetailPage } from "./shelter-detail-page";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -152,5 +153,62 @@ describe("the shelter page's hero", () => {
     const { line } = hero(container);
     expect(line.className).toContain("flex-wrap");
     expect(line.textContent).toContain("3 animals");
+  });
+});
+
+// The list here is uncapped and the largest shelter in the register holds 186
+// animals, so this is the one page that can put 186 tab stops and some
+// 28,000px between the reader and the footer, which is the only way to any
+// other page at phone width.
+describe("the shelter page's ways past its animals", () => {
+  it("bypasses the grid to a landing pad that takes focus", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    const skip = container.querySelector('a[href="#za-zivalmi"]');
+    const pad = container.querySelector("#za-zivalmi");
+    if (!skip || !pad) throw new Error("bypass link or landing pad not found");
+
+    expect(skip.textContent).toBe("Preskoči živali tega zavetišča");
+    // tabIndex, or the anchor only scrolls the page and leaves the keyboard
+    // back at the first card.
+    expect(pad.getAttribute("tabindex")).toBe("-1");
+    // After the cards, not before them.
+    expect(
+      skip.compareDocumentPosition(pad) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("mounts back-to-top over a footer that reserves the strip it parks in", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    expect(container.querySelector('[data-slot="back-to-top"]')).not.toBeNull();
+    // Below lg the button stays pinned to the viewport, so the footer has to
+    // hold the strip open or the button lands on the footer's links. Asserted
+    // on the token the two share rather than on the prop's name, which is what
+    // makes them one distance.
+    expect(container.querySelector("footer")?.className).toContain(
+      "--back-to-top-bottom",
+    );
+  });
+
+  // The bypass link and the landmark it aims at are one contract, and it is
+  // site-shell.tsx that holds both halves now; site-shell.test.tsx is where
+  // the two are checked against each other, once, for all nine pages. What is
+  // left here is the page's own half of it: that this page draws its chrome
+  // through the shell rather than writing its own, which is the only way it
+  // can still lose the pair.
+  it("draws its chrome through the shell", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    expect(
+      container.querySelector(`header a[href="#${CONTENT_ID}"]`),
+    ).not.toBeNull();
+    expect(container.querySelector("main")?.id).toBe(CONTENT_ID);
   });
 });

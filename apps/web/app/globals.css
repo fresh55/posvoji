@@ -66,8 +66,22 @@
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
      than restating the same arithmetic (site-footer.tsx). Retuned at lg,
-     below, where there is no dock left to clear. */
-  --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+     below, where there is no dock left to clear.
+
+     The 0px fallback for the reason --gutter states above, and this is the one
+     token where dropping the declaration would take more than its own element
+     with it: the docked footer reserves calc(this + 3rem), so an invalid value
+     here leaves the footer with no run-off and puts the button back on the
+     links, which is the regression site-footer.tsx records having measured.
+
+     The derived distance stays on the footer and is not hoisted into a
+     clearance token declared here. A custom property substitutes its own var()
+     references where it is declared, so an arithmetic token on :root would
+     resolve this one against :root and freeze; a page overriding the input on
+     its own wrapper would not reach back into it, and its footer would reserve
+     a strip for a button parked somewhere else. Same rule as the fade mask
+     below. */
+  --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   /* The other half of the same corner, beside the distance it pairs with
      rather than spelled into a class string. viewport-fit=cover puts the
      sensor housing over a long edge in landscape, and a control pinned at a
@@ -594,6 +608,19 @@
   display: none;
 }
 
+/* The other half of the gate. Hiding the results left nothing on the page at
+   all, and the cross-document view transition below delivers the visitor to
+   that emptiness with a fade. So AnimalGrid prerenders a stand-in beside the
+   results section, and the two swap on the same mark: while it is set the
+   stand-in is the page, and the moment the effect takes it off the real
+   results are back and this goes.
+   Written as the negation rather than as a second [data-filtering] rule,
+   because the stand-in has to be absent on every ordinary landing, and an
+   ordinary landing is any address the inline script found nothing to mark. */
+:root:not([data-filtering]) [data-slot="results-pending"] {
+  display: none;
+}
+
 /* The border colour a dashed box opts into. A dashed container that names no
    colour inherits `* { border-border }` from the base layer, and on dark
    --border is white at 10%: 1.32:1 against --card whole, and a dashed line
@@ -632,10 +659,13 @@
    overhangs the drawing, so it only works where the control has room around
    it. A control drawn at 36px carries an overhang of 4px per side, and a
    neighbour closer than that takes presses meant for it, or has its own
-   taken. Both have been measured here: the language switcher's two halves sit
-   2px apart and the register card stacks three contact rows 2px apart, and in
-   each case the overlay reached over the gap and the later element in the DOM
-   won the hit test.
+   taken. Three have been measured here: the language switcher's two halves sit
+   2px apart, the register card stacks three contact rows 2px apart, and the
+   footer stacked its repository link 8px above the about page's model credit,
+   which at a 19.5px line box (text-xs at leading-relaxed) is an overhang of
+   12.25px per side and an overlap of 16.5px. In each case the overlay reached
+   over the gap and the later element in the DOM won the hit test: on /o-nas a
+   press on the bottom band of the repository link opened the credit under it.
 
    So: overlay an isolated control, grow the drawn box of a crowded one
    (min-h-11 and min-w-11 behind the same breakpoint). The boundary is not a
@@ -694,6 +724,60 @@
   .animate-spin {
     animation: none;
   }
+
+  /* The below-lg menu is the whole of the site's navigation there, and it
+     opens on slide, zoom and fade keyframes from tw-animate-css, which ships
+     no reduced-motion rule of its own. Everything else on the site is gated:
+     the view transition below, and 62 motion-reduce: utilities across
+     components. The vendored dropdown was the one thing left unasked.
+     animation: none and not a zeroed duration, because Radix's presence hook
+     reads getComputedStyle().animationName: with no animation the content
+     unmounts on close instead of hanging until a run that never starts ends.
+     Safe to select by slot, unlike the focus rule below: DropdownMenuContent
+     sets it on the primitive it renders rather than passing it through
+     asChild, so the slot is on the animated element itself. MotionConfig
+     reducedMotion="user" in i18n-provider.tsx governs motion/react and does
+     nothing for CSS keyframes. */
+  [data-slot="dropdown-menu-content"] {
+    animation: none;
+  }
+}
+
+/* Focus in forced-colors mode. Windows high contrast keeps outlines and drops
+   box-shadows, and every shadcn control here draws focus as ring-3, which is a
+   shadow, over focus-visible:border-ring. The same mode forces the resting and
+   the focused border to one system colour, so the border cannot carry the
+   difference either: the indicator is not weakened there, it is gone. That is
+   the two language buttons, the shelter login, the menu trigger, back-to-top
+   and every breadcrumb link, plus the filter chips, the species tabs and the
+   animal page's own controls, which spell the same pattern by hand. The plain
+   anchors are unaffected, because `* { outline-ring }` in the base block only
+   names a colour and leaves the UA's outline standing.
+
+   The measurements on --ring above settle how strong the ring is against what
+   it sits on, and button.tsx does the same for the destructive variant. Both
+   reason about normal rendering, and neither covers the mode where there is no
+   ring to measure.
+
+   Written on focus itself rather than by data-slot: button.tsx spreads
+   {...props} after its own slot, so the menu trigger arrives as
+   dropdown-menu-trigger and back-to-top as back-to-top, which are two of the
+   controls that most need this. Unlayered, again for the reason above.
+   The colour is the system's; only the geometry is ours.
+
+   [tabindex="0"] and not [tabindex], which is the same selector with a much
+   longer reach. The app holds one tabIndex={0}, the photo gallery's, against
+   sixteen tabIndex={-1}: every <main> the skip link aims at, and every landing
+   pad the in-page bypass links aim at. Those take focus programmatically, so
+   :focus-visible can match them, and the broad selector drew a 2px system
+   outline around the whole of <main> the moment somebody used the skip link in
+   Windows high contrast. A landing pad is not a control and should not be
+   dressed as one. */
+@media (forced-colors: active) {
+  :where(a, button, summary, [tabindex="0"]):focus-visible {
+    outline: 2px solid;
+    outline-offset: 2px;
+  }
 }
 
 /* Cross-document view transitions. The site's navigations are real anchors
@@ -705,5 +789,53 @@
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
+  }
+}
+
+/* Paper. An A4 sheet is about 794px, which is 49.6rem, so lg never applies and
+   every below-lg branch does: a printed page was carrying the hamburger, the
+   language pill, the floating back-to-top wherever the reader had scrolled
+   and, on the homepage, the filter dock across the bottom of the first sheet.
+   The last two are bg-background over shadow-lg, and print drops backgrounds,
+   so they landed as empty boxes over the text.
+
+   The pages people put on paper are /najdena-zival, which is a list of on-call
+   numbers, and /zavetisca/[slug], which is a shelter's hours and contacts.
+   Neither has a poster, and both are read away from the screen they were
+   printed on, so what has to survive is the contacts and where they came from.
+
+   Selected by element and data-slot rather than by class, so a class string
+   rewritten upstairs does not quietly take the rules off. The brand and the
+   footer prose stay: the sheet should still say where it came from.
+
+   Unlayered for the reason recorded on the reduced-motion block above.
+
+   Out of reach of the poster route, which has to stay that way: it draws no
+   header, no footer and no main, its two anchors sit inside .poster-chrome
+   which poster.css hides on paper, and the sheet itself holds none. */
+@media print {
+  header button,
+  header nav,
+  [data-slot="back-to-top"],
+  [data-slot="mobile-filter-dock"],
+  footer nav {
+    display: none;
+  }
+
+  /* A link whose text is a word rather than an address loses its destination
+     the moment it is ink. The shelter entry's website button reads "Spletna
+     stran" (shelter-detail-page.tsx), and both coverage tables credit their
+     sources by title (municipality-coverage-card.tsx), so on paper those are
+     dead ends. The parenthetical is the only place the address survives.
+     No tel: or mailto: counterpart, and that is a decision rather than an
+     omission: every phone and email link on these pages already draws the
+     number or the address as its own text, so expanding the href would print
+     the same value twice with a scheme in front of it.
+     anywhere, because a URL has no space in it to break at and a sheet of
+     paper has no sideways scroll to overflow into. */
+  main a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
   }
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { FoundAnimalPage } from "@/components/found-animal-page";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import { getMessages } from "@/lib/i18n";
 import { staticPageMetadata } from "@/lib/site-metadata";
 
 // The description answers the searches this page exists for ("našel sem psa",
@@ -12,7 +13,10 @@ import { staticPageMetadata } from "@/lib/site-metadata";
 export const metadata: Metadata = staticPageMetadata({
   locale: "sl",
   paths: FOUND_ANIMAL_PATHS,
-  title: "Si našel žival?",
+  // The page's own h1, read from the catalogue rather than typed again here.
+  // It is the question the visitor typed into a search box, which is why it
+  // differs from the noun the nav row carries.
+  title: getMessages("sl").muniPromptTitle,
   description:
     "Vpiši občino ali poštno številko kraja, kjer si našel žival, in dobiš pristojno zavetišče s telefonsko številko. Odlov in oskrbo krije občina – najditelja ne stane nič.",
 });

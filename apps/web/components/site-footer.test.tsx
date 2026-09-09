@@ -4,6 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
+import { registerDateLabel } from "@/lib/labels";
+import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
 
@@ -77,6 +79,88 @@ describe("SiteFooter", () => {
       screen.getByRole("navigation", { name: messages.footerLinks }),
     ).toBeTruthy();
     expect(messages.footerLinks).not.toBe(messages.moreInformation);
+  });
+
+  // The date the dataset was written, on every page that holds one. The site
+  // printed it in the homepage hero and nowhere else, so a stranger who
+  // arrived on an animal page from a search engine could not tell a listing
+  // captured last night from one captured in March.
+  it("says how old the copy on the screen is, in both locales", () => {
+    const stamp = "2026-09-07T03:12:00.000Z";
+
+    const sl = render(<SiteFooter locale="sl" updatedAt={stamp} />);
+    expect(sl.container.textContent).toContain(registerDateLabel(stamp, "sl"));
+    // The placeholder is filled, not printed.
+    expect(sl.container.textContent).not.toContain("{date}");
+
+    cleanup();
+
+    // registerDateLabel and not toLocaleDateString, which is the pair that
+    // would drift: in Slovenian the two agree, and in English one says
+    // "7 September 2026" and the other "07/09/2026".
+    const en = render(<SiteFooter locale="en" updatedAt={stamp} />);
+    expect(en.container.textContent).toContain(registerDateLabel(stamp, "en"));
+  });
+
+  it("says nothing about a dataset on a page that has none", () => {
+    const messages = getMessages("sl");
+    const { container } = render(<SiteFooter locale="sl" />);
+
+    const [opening] = messages.footerUpdated.split("{date}");
+    expect(container.textContent).not.toContain(opening);
+  });
+
+  // The correction route and the code, on every page. Both are outside the
+  // nav on purpose: the roster in lib/site-links.ts holds pages of this site,
+  // and a mail composer and a repository on another domain are neither. The
+  // test above pins the nav at three hrefs, and this is the other half of
+  // that invariant.
+  it("offers a way to write and a way to read the code", () => {
+    const { container } = render(<SiteFooter locale="sl" />);
+    const nav = container.querySelector("nav")!;
+
+    const mail = container.querySelector<HTMLAnchorElement>(
+      'a[href^="mailto:"]',
+    )!;
+    expect(mail.getAttribute("href")).toContain(CONTACT_EMAIL);
+    // Printed as the address itself, so a reader writing from their own mail
+    // client can read it off the page.
+    expect(mail.textContent).toBe(CONTACT_EMAIL);
+    expect(nav.contains(mail)).toBe(false);
+
+    const repo = container.querySelector<HTMLAnchorElement>(
+      `a[href="${REPO_URL}"]`,
+    )!;
+    expect(nav.contains(repo)).toBe(false);
+  });
+
+  // The same rule the three link flags follow: a page that states the address
+  // itself passes the footer's copy off. /o-nas prints it in its contact block
+  // and the portal under its login form, and the portal's card takes it away
+  // again once the link is sent, which a footer copy would contradict.
+  // The repository link is not part of the bargain and stays.
+  it("passes the correction route off for a page that states it itself", () => {
+    const { container } = render(
+      <SiteFooter locale="sl" showContact={false} />,
+    );
+
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull();
+    expect(
+      container.querySelector<HTMLAnchorElement>(`a[href="${REPO_URL}"]`),
+    ).not.toBeNull();
+  });
+
+  // target="_blank" is silent, and this is the only link in the chrome that
+  // leaves the site.
+  it("says the repository link opens a new window", () => {
+    const messages = getMessages("sl");
+    const { container } = render(<SiteFooter locale="sl" />);
+
+    const repo = container.querySelector<HTMLAnchorElement>(
+      `a[href="${REPO_URL}"]`,
+    )!;
+    expect(repo.textContent).toContain(messages.openSourceInvite);
+    expect(repo.textContent?.trimEnd().endsWith(messages.newWindow)).toBe(true);
   });
 
   it("clears the floating filter dock on the one page that has one", () => {

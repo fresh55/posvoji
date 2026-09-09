@@ -30,7 +30,11 @@ export async function generateMetadata({
   const animal = findAnimalBySlug(loadDataset()?.animals ?? [], slug);
   if (!animal) return {};
   return {
-    title: `${animal.name ?? getMessages("sl").unnamed}: plakat`,
+    // absolute, so the root layout's "| Posvoji.si" does not reach it. This is
+    // the one route where the <title> is not read: it is what Chrome offers as
+    // the file name when the sheet is printed to PDF, and "Aisha: plakat.pdf"
+    // is the name that file wants.
+    title: { absolute: `${animal.name ?? getMessages("sl").unnamed}: plakat` },
     // Not indexed, and no link preview either. This sheet is a copy of the
     // animal's own page with a QR on it: in a search result it would compete
     // with that page for the same animal, and it is the page that has to win.

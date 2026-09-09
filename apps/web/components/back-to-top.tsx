@@ -37,8 +37,9 @@ const SHOW_AFTER_SCREENS = 2;
 // for this button rather than moving it. Lifting as well would be that same
 // clearance counted twice. That does mean a page mounting BackToTop without a
 // docked footer has no clearance below lg, so every mount has to pass it:
-// animal-filters.tsx mounts this for the homepage grid and shelters-page.tsx
-// for the register, and both of their footers are docked.
+// animal-filters.tsx mounts this for the homepage grid, shelters-page.tsx for
+// the register and shelter-detail-page.tsx for one shelter's animals, and all
+// three of those footers are docked.
 // Both distances are tokens in globals.css, retuned there at lg. The right one
 // carries the safe-area inset the bottom one had all along; see
 // --back-to-top-right for why the two compose their insets differently.
@@ -109,7 +110,11 @@ export function BackToTop() {
         // The header is where the visitor was sent, so that is what should
         // take focus next rather than leaving it on a button that has just
         // disappeared out from under the finger.
-        document.querySelector<HTMLElement>("header a")?.focus();
+        //
+        // The brand by name and not the header's first anchor: that is the
+        // skip link now (site-header.tsx), and focusing it drew it over the
+        // logo on every press.
+        document.querySelector<HTMLElement>("header a[data-brand]")?.focus();
       }}
       className={cn(
         PLACEMENT,

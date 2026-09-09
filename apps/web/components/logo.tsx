@@ -43,6 +43,19 @@ export function Logo({ className }: { className?: string }) {
   // discards the preloaded copy and fetches the file a second time. Chrome says
   // so out loud: "a preload for /icon.svg is found, but is not used because the
   // request credentials mode does not match".
-  preload(LOGO_HREF, { as: "image", crossOrigin: "anonymous" });
+  //
+  // fetchPriority is not decoration either, and it fixes two things with one
+  // argument. An image preload defaults to Low, so this 11KB file queued
+  // behind roughly 600KB of JavaScript; and react-dom routes an image preload
+  // into the head's early queue only when it is marked high, so in the export
+  // the tag landed last in the head, after both stylesheets and every async
+  // script. Until the file arrives the box above paints currentColor with
+  // nothing masking it, which in the header is a near-black rectangle: the
+  // exact frame this preload exists to prevent.
+  preload(LOGO_HREF, {
+    as: "image",
+    crossOrigin: "anonymous",
+    fetchPriority: "high",
+  });
   return <span aria-hidden className={className} style={LOGO_STYLE} />;
 }

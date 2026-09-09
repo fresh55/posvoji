@@ -1,8 +1,7 @@
 import { FoundAnimalAtlas } from "@/components/found-animal-atlas";
-import { I18nProvider } from "@/components/i18n-provider";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { SiteShell } from "@/components/site-shell";
 import { loadDataset } from "@/lib/dataset";
 import { toPins } from "@/components/filters/location-picker/model";
 import { cityAt } from "@/lib/geo";
@@ -36,7 +35,6 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const animals = dataset?.animals ?? [];
   const entries = buildMunicipalityEntries(locale, animals);
   const messages = getMessages(locale);
-  const homeHref = locale === "sl" ? "/" : "/en";
 
   // Every registered shelter on the map, on the register's own names. The
   // dialog draws the ones with a list from the filter options and the rest
@@ -60,34 +58,31 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   );
 
   return (
-    <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader
-          homeHref={homeHref}
-          languagePaths={{
-            sl: FOUND_ANIMAL_PATHS.sl,
-            en: FOUND_ANIMAL_PATHS.en,
-          }}
+    <SiteShell
+      locale={locale}
+      languagePaths={FOUND_ANIMAL_PATHS}
+      // Full width, where the finder alone took max-w-xl: the map wants the
+      // room, and the finder keeps to its own 24rem column beside it at lg
+      // (see the atlas).
+      mainClassName="flex w-full flex-1 flex-col gap-6 py-page-y"
+      // The one footer that does not link to the found-animal page, because
+      // it is on it.
+      footer={
+        <SiteFooter
+          locale={locale}
+          showFoundAnimalLink={false}
+          updatedAt={dataset?.generatedAt}
         />
-
-        {/* Full width, where the finder alone took max-w-xl: the map wants
-            the room, and the finder keeps to its own 24rem column beside it
-            at lg (see the atlas). */}
-        <main className="flex w-full flex-1 flex-col gap-6 py-page-y">
-          <div className="space-y-5">
-            <PageBreadcrumb locale={locale} current={messages.muniTab} />
-            <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
-              {messages.muniPromptTitle}
-            </h1>
-          </div>
-
-          <FoundAnimalAtlas entries={entries} pins={pins} />
-        </main>
-
-        {/* The one footer that does not link to the found-animal page,
-            because it is on it. */}
-        <SiteFooter locale={locale} showFoundAnimalLink={false} />
+      }
+    >
+      <div className="space-y-5">
+        <PageBreadcrumb locale={locale} current={messages.muniTab} />
+        <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+          {messages.muniPromptTitle}
+        </h1>
       </div>
-    </I18nProvider>
+
+      <FoundAnimalAtlas entries={entries} pins={pins} />
+    </SiteShell>
   );
 }

@@ -7,7 +7,10 @@ import { SreckoPosterPage } from "@/components/poster/srecko-poster-page";
 // out the one thing every other listing has is a page that treats him as an
 // exception.
 export const metadata: Metadata = {
-  title: "Srečko: plakat",
+  // absolute, so the root layout's "| Posvoji.si" does not reach it. See the
+  // animal sheet's route: on a printing page the <title> is the PDF's file
+  // name rather than a heading.
+  title: { absolute: "Srečko: plakat" },
   // Not indexed, and no link preview either. This sheet is a copy of his page
   // with a QR on it: in a search result it would compete with that page, and
   // it is the page that has to win. Nothing here is secret, so the sheet stays

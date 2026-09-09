@@ -5,7 +5,8 @@ import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
 import { portalText } from "@/components/portal/portal-text";
 
 export const metadata: Metadata = {
-  title: "Uredi žival | Posvoji.si",
+  // Bare: the root layout's title template appends the site name.
+  title: "Uredi žival",
   description:
     "Urejanje podatkov o eni živali v portalu Posvoji.si za zavetišča.",
   robots: { index: false, follow: false },

@@ -3,7 +3,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { MUTED_LINK } from "@/lib/link-styles";
-import { homePath, sheltersIndexPath } from "@/lib/shelter-path";
+import { HOME_PATHS, homePath, sheltersIndexPath } from "@/lib/shelter-path";
 
 /**
  * The body of every 404 this site serves, in one place.
@@ -29,9 +29,17 @@ export function NotFoundPage({
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader homeHref={homeHref} languagePaths={{ sl: "/", en: "/en" }} />
+        {/* HOME_PATHS and not the pair written out here. There is no English
+            twin of an arbitrary bad path, so this is the one page where the
+            switcher cannot keep the reader's place; the root is the honest
+            answer, and it is named once in lib/shelter-path.ts. */}
+        <SiteHeader locale={locale} languagePaths={HOME_PATHS} />
 
-        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center">
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center"
+        >
           <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
             {messages.notFoundTitle}
           </h1>
@@ -39,12 +47,18 @@ export function NotFoundPage({
             {messages.notFoundBody}
           </p>
           {children}
+          {/* allAnimals, which is what the breadcrumb calls the root on every
+              page that has one. This row and the error page were the two
+              places the site kept a second name for it, and the arrow dressed
+              it as a back action on the one page a search engine sends people
+              to with nothing behind them. The link beside it is already the
+              plain name of its destination, so the two are a pair now. */}
           <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
             <a
               href={homeHref}
               className="max-lg:tap-target font-medium text-foreground underline-offset-4 hover:underline"
             >
-              ← {messages.backToAnimals}
+              {messages.allAnimals}
             </a>
             <a href={sheltersIndexPath(locale)} className={MUTED_LINK}>
               {messages.shelters}

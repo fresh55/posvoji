@@ -35,7 +35,7 @@ export function ShelterAnimalGrid({
   /** This shelter's own page, where closing the dialog returns to. */
   basePath: string;
 }) {
-  const { locale } = useI18n();
+  const { locale, messages } = useI18n();
 
   // The dataset's own date and not the clock, same as the home page grid: the
   // order and the ages printed on the cards in it have to be read off the same
@@ -52,6 +52,25 @@ export function ShelterAnimalGrid({
 
   return (
     <>
+      {/* One tab stop per card and nothing after this grid but the footer,
+          which is the only way to any other page at phone width. The largest
+          shelter in the register holds 186 animals and this grid is uncapped,
+          where the home page's stops at INITIAL_CARDS with a load-more
+          (grid-rendering.ts), so this is the one list on the site a keyboard
+          cannot get past. Same class string as the register's bypass link
+          (shelters-atlas.tsx) and the home grid's, and no offsets in it: the
+          link keeps its place in the flow when it takes focus, so it does not
+          have to be positioned against anything.
+
+          The label names whose animals these are, not a result set: the
+          visitor is here because they chose this shelter. */}
+      <a
+        href="#za-zivalmi"
+        className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+      >
+        {messages.skipShelterAnimals}
+      </a>
+
       <div className={CARD_GRID}>
         {sorted.map((animal) => (
           <AnimalCard
@@ -62,6 +81,14 @@ export function ShelterAnimalGrid({
           />
         ))}
       </div>
+
+      {/* Where the link lands: the end of the grid, whatever the grid holds.
+          tabIndex so focus actually moves here rather than only scrolling the
+          page. The name is the instrumental the other two landing pads use,
+          "za-rezultati" and "za-zavetisci", and not "za-zivali": the register
+          records that anchors a letter apart on one page are a trap, and the
+          same holds for anchors a letter apart across the site. */}
+      <div id="za-zivalmi" tabIndex={-1} />
 
       <AnimalDialog
         animal={selected}

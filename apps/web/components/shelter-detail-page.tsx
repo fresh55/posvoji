@@ -1,6 +1,7 @@
 import { Globe, Info, Mail, MapPin, MapPinned, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
+import { BackToTop } from "@/components/back-to-top";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { I18nProvider } from "@/components/i18n-provider";
 import { JsonLd } from "@/components/json-ld";
@@ -151,14 +152,18 @@ export function ShelterDetailPage({
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          homeHref={locale === "sl" ? "/" : "/en"}
+          locale={locale}
           languagePaths={{
             sl: `/zavetisca/${shelter.id}`,
             en: `/en/shelters/${shelter.id}`,
           }}
         />
 
-        <main className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10">
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10"
+        >
           {/* This page is where the shelter's own facts live, so the machine
               readable copy of them belongs here rather than on the index. */}
           <JsonLd data={shelterJsonLd(shelter, locale)} />
@@ -415,7 +420,37 @@ export function ShelterDetailPage({
           </p>
         </main>
 
-        <SiteFooter locale={locale} />
+        {/* The longest document on the site. This shelter's grid is uncapped,
+            and the largest of them holds 186 cards: two to a row at the 300 to
+            330px a row measured in grid-rendering.ts, that is some 28,000px
+            and 186 tab stops between the top of the page and the footer, which
+            is the only way to any other page at phone width. The home grid
+            caps itself at 60 with a load-more (grid-rendering.ts) and the
+            register carries this control already (shelters-page.tsx); this
+            page had neither.
+
+            A client component under a server one, the same as on the
+            register: it reads scroll position and measures the footer, so
+            mounting it here only marks the boundary and everything above
+            stays server rendered. Its label comes from I18nProvider, which
+            this page already wraps the tree in. */}
+        <BackToTop />
+
+        {/* docked, on a page that has no dock, for the reason the register's
+            footer carries it (shelters-page.tsx): below lg the button stays
+            pinned to the viewport rather than lifting over the footer, so at
+            the end of the document it lands on the footer links unless the
+            footer reserves the strip it parks in. That padding is derived
+            from --back-to-top-bottom, which is the button's own inset, so the
+            two cannot drift apart.
+
+            Both are unconditional, and not gated on hasData with the grid: a
+            registry shelter draws no cards but still carries the contacts,
+            the map and up to 26 municipality chips, which passes two screens
+            on a phone, and that is the whole of what decides whether the
+            button appears. The pair has to agree page-wide or the strip is
+            missing on exactly the page that needed it. */}
+        <SiteFooter locale={locale} updatedAt={dataset?.generatedAt} docked />
       </div>
     </I18nProvider>
   );

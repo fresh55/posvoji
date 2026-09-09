@@ -20,11 +20,7 @@ import { shelterCensus } from "@/lib/shelter-census";
 import { REPO_URL } from "@/lib/site";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import {
-  homePath,
-  SHELTER_INDEX_PATHS,
-  shelterPath,
-} from "@/lib/shelter-path";
+import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
 import { siteLinks } from "@/lib/site-links";
 
@@ -96,7 +92,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const animals = dataset?.animals ?? [];
   const text = pageText[locale];
   const messages = getMessages(locale);
-  const homeHref = homePath(locale);
 
   const logos = getShelterLogos();
 
@@ -162,14 +157,18 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader homeHref={homeHref} languagePaths={SHELTER_INDEX_PATHS} />
+        <SiteHeader locale={locale} languagePaths={SHELTER_INDEX_PATHS} />
 
         {/* Full width, the same as the home page's main (site-page.tsx). The
             header and the footer bleed to the 7xl frame, so a 5xl main put the
             logo 96px left of the h1 above 1088px and ran both rules 192px wider
             than the grid they bracket. The prose blocks keep their own cap, so
             the measure does not follow the frame out. */}
-        <main className="flex w-full flex-1 flex-col gap-section-gap py-page-y">
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="flex w-full flex-1 flex-col gap-section-gap py-page-y"
+        >
           {/* The list in the order the page draws it, pointing at the detail
               pages that carry each shelter's own facts. */}
           <JsonLd data={shelterListJsonLd(cards, locale)} />
@@ -313,8 +312,10 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             last card the language switcher, the nav and the trail are all
             about 6,000px of hand scrolling away. The homepage grid has had
             this control since it was written (animal-filters.tsx) and this
-            page never got it, although it is the second longest document on
-            the site.
+            page never got it. It is not the longest document on the site: a
+            shelter's own page draws its animals uncapped, and the largest of
+            them runs some 28,000px, which is why that page mounts this too
+            (shelter-detail-page.tsx).
 
             A client component under a server one. It reads scroll position
             and measures the footer, so it has to be, and mounting it from
@@ -334,7 +335,12 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             other page at phone width. This reserves that strip once. It is
             not double clearance: there is no dock on this page to have
             reserved it already. */}
-        <SiteFooter locale={locale} showSheltersLink={false} docked />
+        <SiteFooter
+          locale={locale}
+          showSheltersLink={false}
+          updatedAt={dataset?.generatedAt}
+          docked
+        />
       </div>
     </I18nProvider>
   );

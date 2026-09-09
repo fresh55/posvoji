@@ -36,7 +36,6 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const animals = dataset?.animals ?? [];
   const entries = buildMunicipalityEntries(locale, animals);
   const messages = getMessages(locale);
-  const homeHref = locale === "sl" ? "/" : "/en";
 
   // Every registered shelter on the map, on the register's own names. The
   // dialog draws the ones with a list from the filter options and the rest
@@ -62,18 +61,16 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader
-          homeHref={homeHref}
-          languagePaths={{
-            sl: FOUND_ANIMAL_PATHS.sl,
-            en: FOUND_ANIMAL_PATHS.en,
-          }}
-        />
+        <SiteHeader locale={locale} languagePaths={FOUND_ANIMAL_PATHS} />
 
         {/* Full width, where the finder alone took max-w-xl: the map wants
             the room, and the finder keeps to its own 24rem column beside it
             at lg (see the atlas). */}
-        <main className="flex w-full flex-1 flex-col gap-6 py-page-y">
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="flex w-full flex-1 flex-col gap-6 py-page-y"
+        >
           <div className="space-y-5">
             <PageBreadcrumb locale={locale} current={messages.muniTab} />
             <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
@@ -86,7 +83,11 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
 
         {/* The one footer that does not link to the found-animal page,
             because it is on it. */}
-        <SiteFooter locale={locale} showFoundAnimalLink={false} />
+        <SiteFooter
+          locale={locale}
+          showFoundAnimalLink={false}
+          updatedAt={dataset?.generatedAt}
+        />
       </div>
     </I18nProvider>
   );

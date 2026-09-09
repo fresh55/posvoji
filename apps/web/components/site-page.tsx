@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { shelterCount } from "@/lib/labels";
+import { registerDateLabel, shelterCount } from "@/lib/labels";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
@@ -41,9 +41,19 @@ export function SitePage({ locale }: { locale: Locale }) {
             those visitors on to the page the flow lives on. */}
         <FoundAnimalRedirect locale={locale} />
 
-        <SiteHeader homeHref={locale === "sl" ? "/" : "/en"} />
+        <SiteHeader locale={locale} />
 
-        <main className="flex flex-1 flex-col gap-section-gap py-page-y">
+        {/* Where the header's skip link lands, on every page that has one.
+            One id for both locales rather than a Slovenian and an English
+            spelling: these mains live in components the two share, and a
+            second name would buy a locale branch in nine files for a fragment
+            nobody reads. tabIndex so focus moves here rather than only
+            scrolling the page. */}
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="flex flex-1 flex-col gap-section-gap py-page-y"
+        >
           <div className="space-y-1.5">
             <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
               {messages.heroTitle}
@@ -75,9 +85,14 @@ export function SitePage({ locale }: { locale: Locale }) {
               {dataset && shelters > 0 && (
                 <p>
                   {shelterCount(shelters, locale)} · {messages.updated}{" "}
-                  {new Date(dataset.generatedAt).toLocaleDateString(
-                    locale === "sl" ? "sl-SI" : "en-GB",
-                  )}
+                  {/* registerDateLabel and not a toLocaleDateString of its
+                      own. The footer prints the same timestamp on this page
+                      now, and it uses that helper: two formatters over one
+                      date agreed in Slovenian and disagreed in English, where
+                      the default en-GB date is 07/09/2026 and the helper's is
+                      7 September 2026. The helper also pins the time zone to
+                      UTC, so neither line steps a day near a boundary. */}
+                  {registerDateLabel(dataset.generatedAt, locale)}
                 </p>
               )}
               {hasLookup && <FoundAnimalButton />}
@@ -100,7 +115,16 @@ export function SitePage({ locale }: { locale: Locale }) {
             has to duck under it. It is also the one page that already knows
             whether the coverage table has anything in it, so it answers for
             the found-animal link rather than taking the default. */}
-        <SiteFooter locale={locale} showFoundAnimalLink={hasLookup} docked />
+        {/* The freshness line as well as the hero's, and the two are not a
+            duplication in any way a reader can see: the hero is at the top of
+            a document that runs about 67,000px, and this is at the end of it.
+            Both read the same timestamp through the same formatter. */}
+        <SiteFooter
+          locale={locale}
+          showFoundAnimalLink={hasLookup}
+          updatedAt={dataset?.generatedAt}
+          docked
+        />
       </div>
     </I18nProvider>
   );

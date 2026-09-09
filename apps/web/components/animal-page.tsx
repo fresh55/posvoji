@@ -16,6 +16,7 @@ import { animalPath, findAnimalBySlug, posterPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
+import { shelterPath } from "@/lib/shelter-path";
 import { speciesLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -73,20 +74,35 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
         <SiteHeader
-          homeHref={indexHref}
+          locale={locale}
           languagePaths={{
             sl: animalPath(animal, "sl"),
             en: animalPath(animal, "en"),
           }}
         />
 
-        <main className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y">
-          {/* Two crumbs and not four. The URL runs /zival/{animal}/{city}/
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y"
+        >
+          {/* Three crumbs and not four. The URL runs /zival/{animal}/{city}/
               {shelter}, but /zival, /zival/{animal} and /zival/{animal}/{city}
               are not routes and all three 404 (dynamicParams is false), so a
               trail mirroring the path would advertise pages that do not
-              exist. The animal's shelter is named further down the page, with
-              a link of its own. */}
+              exist.
+
+              The shelter is a crumb all the same, because it is not a segment
+              of this URL: /zavetisca/{shelter} is a generated route of its
+              own, and the register refuses to build if the dataset holds an
+              animal for a shelter it does not list (shelters-page.tsx), so
+              the page a crumb here points at always exists. It is also the
+              word this page is searched for. The trail used to stop at the
+              root, so the trail a search result printed read "Vse živali" and
+              said nothing about where the animal is; PageBreadcrumb feeds one
+              array to the row and to the JSON-LD, so the two say it together.
+              The shelter is still named further down the page, with a link of
+              its own, which is what a reader already on the page uses. */}
           {/* space-y-5 rather than the main's own gap-8, so the trail sits
               20px above what it introduces here as it does on every other
               page. A breadcrumb is the same distance from its page whatever
@@ -99,6 +115,12 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 page. The h1 below already calls it what this calls it. */}
             <PageBreadcrumb
               locale={locale}
+              trail={[
+                {
+                  label: animal.shelter.name,
+                  href: shelterPath(animal.shelter.id, locale),
+                },
+              ]}
               current={animal.name ?? messages.unnamed}
             />
 
@@ -196,7 +218,11 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           </div>
         </main>
 
-        <SiteFooter locale={locale} />
+        {/* The page a shared link lands on, and the one where the freshness
+            line earns the most: a stranger reading it has nothing else on the
+            screen that says whether the listing was captured last night or in
+            March. */}
+        <SiteFooter locale={locale} updatedAt={dataset.generatedAt} />
       </div>
     </I18nProvider>
   );

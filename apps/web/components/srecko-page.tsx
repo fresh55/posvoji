@@ -21,8 +21,8 @@ export function SreckoPage({ locale }: { locale: Locale }) {
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader homeHref={homePath(locale)} languagePaths={SRECKO_PATHS} />
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-7 py-page-y sm:gap-8">
+        <SiteHeader locale={locale} languagePaths={SRECKO_PATHS} />
+        <main id="vsebina" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-7 py-page-y sm:gap-8">
           <div className="space-y-5">
             <PageBreadcrumb locale={locale} trail={[{ label: getMessages(locale).about, href: ABOUT_PATHS[locale] }]} current={SRECKO.name} />
             <header className="space-y-3">

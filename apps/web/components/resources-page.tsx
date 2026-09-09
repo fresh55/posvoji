@@ -291,17 +291,17 @@ const pageText = {
 export function ResourcesPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
-  const homeHref = locale === "sl" ? "/" : "/en";
 
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader
-          homeHref={homeHref}
-          languagePaths={RESOURCES_PATHS}
-        />
+        <SiteHeader locale={locale} languagePaths={RESOURCES_PATHS} />
 
-        <main className="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14">
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14"
+        >
           <div className="space-y-5">
             <PageBreadcrumb locale={locale} current={messages.resources} />
             <div className="max-w-3xl space-y-3">

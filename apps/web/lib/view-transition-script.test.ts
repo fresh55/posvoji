@@ -13,9 +13,14 @@ function setup() {
 }
 
 describe("cross-document transition cancellation", () => {
-  it.each(["pageswap", "pagereveal"])("handles a skipped %s without an unhandled rejection", async (name) => {
+  it.each([
+    ["pageswap", "AbortError", "Transition was skipped"],
+    ["pagereveal", "AbortError", "Transition was skipped"],
+    ["pageswap", "InvalidStateError", "Transition was aborted because of invalid state"],
+    ["pagereveal", "InvalidStateError", "Transition was aborted because of invalid state"],
+  ])("handles %s %s without logging an error or leaking a rejection", async (eventName, errorName, message) => {
     const { listeners, error } = setup();
-    listeners.get(name)!({ viewTransition: { ready: Promise.reject(new DOMException("Transition was skipped", "AbortError")) } });
+    listeners.get(eventName)!({ viewTransition: { ready: Promise.reject(new DOMException(message, errorName)) } });
     await Promise.resolve();
     expect(error).not.toHaveBeenCalled();
     expect([...listeners.keys()]).toEqual(["pageswap", "pagereveal"]);

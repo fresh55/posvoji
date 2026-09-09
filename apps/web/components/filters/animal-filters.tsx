@@ -45,26 +45,21 @@ import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 
 // The dock's two children are not equal: the Filtri button needs its own text
-// and badge and nothing more, so it keeps its content width and the location
-// control takes the rest. Giving both flex-1 handed the button half the plate
-// and truncated the town name beside it; the button's own shrink-0
-// (ui/button.tsx) against flex-1 on the picker is what splits it instead.
+// and badge and nothing more, so it keeps the width of its content and the
+// location control takes the rest. Giving both flex-1 handed the button half
+// the plate and truncated the town name beside it. What splits it now is
+// flex-1 on the picker against a button that asks for nothing: flex-grow
+// starts at 0, which is what leaves it at its content width, and only:grow
+// gives it the whole plate on the days it is the only child.
 //
 // A flex row, and it used to be a two-column grid. The difference is that a
 // child can leave: the trigger stands down between md and lg where the sheet
 // behind it has nothing in it, and a display:none child still holds its grid
-// column. only:col-span-2 cannot see that a sibling is gone, and the picker
-// dropped into the auto column the button had been holding, 151px of a 448px
-// plate measured at 768. A flex item that is not drawn is not an item, so the
-// picker fills the row on its own and one rule splits the plate at every
-// width.
-//
-// The lone child is told to fill from here instead of by a `[&>*]:only:*`
-// rule in this string. That rule rode along from the grid and was measured
-// never to arrive: Tailwind emits it, the selector matches the button in
-// querySelector, and the button still computes flex-grow 0 and sits at 77px
-// of a 343px plate at 375. Whether it is alone is known where it is drawn
-// anyway, so it is said there.
+// column. only:col-span-2 could not see that its sibling was gone, and the
+// picker dropped into the auto column the button had been holding, 151px of a
+// 448px plate measured at 768. A flex item that is not drawn is not an item,
+// so the picker fills the row on its own and one rule splits the plate at
+// every width.
 //
 // The edges follow env(safe-area-inset-*) with the 0px
 // fallbacks globals.css documents, so the plate clears a notch or a curved
@@ -81,7 +76,7 @@ import type { AnimalSort } from "@/lib/sort";
 // the footer's docked padding is measured against, and BackToTop is positioned
 // on its own and stays at the viewport's right edge.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
 
 // Desktop has enough room for one quiet toolbar. Below lg the species tabs
 // hold the sticky rail on their own, joined from md by the same quiet sort
@@ -172,15 +167,6 @@ export function AnimalFilters({
     resultCount,
     activeCount,
   });
-  // The one answer that runs out at a width. From md the toolbar above draws
-  // the order itself and the sheet's own sort row stands down with it, so a
-  // sheet the order alone holds open has nothing left behind its trigger
-  // there and the trigger goes too. The width is the sheet's to name, so it
-  // comes from there (SORT_ROW_HIDDEN) rather than being written out again
-  // here. In CSS and not from a width read in JS: this page is statically
-  // exported, and a button deciding whether to exist after hydration flickers
-  // on every cold load to settle a state no live dataset reaches.
-  const orderOnly = sheetReason === "order";
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker
@@ -196,6 +182,21 @@ export function AnimalFilters({
   // and a filter combination that narrows it to zero results still leaves
   // nothing for an order to apply to.
   const canSort = !isEmpty && resultCount > 0;
+  // The class the sheet's trigger wears, or nothing. `order` is the one reason
+  // that runs out at a width: from md the toolbar draws the order itself and
+  // the sheet's own sort row stands down with it, so a sheet the order alone
+  // holds open has nothing left behind its button there and the button goes
+  // too. The width is the sheet's to name, so it comes from there
+  // (SORT_ROW_HIDDEN) rather than being written out again here.
+  //
+  // In CSS and not from a width read in JS: this page is statically exported,
+  // and a button deciding whether to exist after hydration flickers on every
+  // cold load to settle a state no live dataset reaches. `canSort` is what
+  // makes the premise true rather than merely true today -- the toolbar's own
+  // control is gated on it, and without it a clause added there could leave
+  // this band with no way to pick an order at all.
+  const triggerStandsDown =
+    sheetReason === "order" && canSort && SORT_ROW_HIDDEN;
   // The species strip, described once and mounted in both rows. Only CSS
   // separates the two, so both are in the tree at every width and the strip
   // prices that itself (species-tabs.tsx); what this spares is the five props
@@ -434,8 +435,7 @@ export function AnimalFilters({
           any shelter has animals at all (see animal-grid.tsx) and this
           condition holds. It still stands down when there is genuinely nothing
           to put in the dock, which is an empty dataset: an empty floating box
-          is not a control. The same rule is what takes the plate away at md
-          when the sheet's trigger goes and no picker is left to hold. */}
+          is not a control. */}
       {/* Outside the dock's condition: the way back up is worth having
           whether or not there is anything left to filter, and it is the only
           control on this page that answers the grid's own length. */}
@@ -449,12 +449,12 @@ export function AnimalFilters({
             // The picker takes the whole plate on its own once the trigger
             // beside it leaves (DOCK_CLASS). With no picker to take it, there
             // is no plate to draw: an empty floating box is not a control.
-            orderOnly && !shelters && SORT_ROW_HIDDEN,
+            !shelters && triggerStandsDown,
           )}
         >
           {sheetReason && (
             <FilterSheet
-              className={cn(!shelters && "grow", orderOnly && SORT_ROW_HIDDEN)}
+              className={cn(triggerStandsDown)}
               sort={sort}
               onSortChange={onSortChange}
               filters={filters}

@@ -66,6 +66,10 @@ const DRAWER_CLOSE_MS = 500;
  *  bargain `DESKTOP_QUERY` strikes in use-desktop-breakpoint-close.ts. */
 export const SORT_ROW_HIDDEN = "md:hidden";
 
+/** The sort row's own dress, resolved once: both halves are constants, so
+ *  there is one answer and no reason to ask cn for it per render. */
+const SORT_ROW_CLASS = cn("mt-3 h-11 w-full text-sm", SORT_ROW_HIDDEN);
+
 /** What is behind the Filtri button, or undefined when nothing is.
  *
  *  It lives here rather than in the dock that mounts the sheet, because what
@@ -302,7 +306,7 @@ export function FilterSheet({
             value={sort}
             onChange={onSortChange}
             quiet={false}
-            className={cn("mt-3 h-11 w-full text-sm", SORT_ROW_HIDDEN)}
+            className={SORT_ROW_CLASS}
           />
         </div>
 

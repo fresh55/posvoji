@@ -50,6 +50,22 @@ const WIDTH_FALLOFF = 0.35;
 // it is a third of the 394px card the three-column band draws, which is the
 // width the marks are actually read at.
 //
+// The register's row is 56px below sm and 64px from sm up. The row is air
+// around the mark rather than a box the mark fills, and on a phone that air
+// is the most expensive thing on the card: one column, seventeen cards, and
+// the reader travels the whole list. The 8px comes off the row and not off
+// the mark, so nothing is drawn smaller.
+//
+// 56 is the number the marks fit in. maxHeight caps the tallest drawn mark at
+// 54, which Johanca and Mačja hiša reach. The chip around a mark is 7px wider
+// on each side (6 of padding, 1 of border), so it can stand taller than the
+// row: the tallest painted one is Muri's at 58, which is 1px proud top and
+// bottom. Nothing clips, because nothing here hides its overflow, and the
+// card's own gap absorbs the pixel. The three marks whose chip box comes out
+// at 66 or 68 (Johanca, Mačja hiša, Sevnica) paint nothing at all: none of
+// them asks for a chip on either ground, so the box is transparent and only
+// the mark inside it, 54px at most, is drawn.
+//
 // The margin there is thin, and a count pill grows with the number in it, so
 // the widest marks are not guaranteed to clear it forever. What happens when
 // they do not is the aspect-ratio on the drawn mark below: the mark gets
@@ -86,7 +102,10 @@ const SIZE = {
   // side by side, so the one placement where the falloff above is actually
   // read.
   register: {
-    row: "h-16",
+    // 56px on a phone and 64px from sm. The tallest mark in the set draws at
+    // 54, so the extra 8px was never carrying anything, and on a one-column
+    // page it is 8px of air above every name, seventeen times over.
+    row: "h-14 sm:h-16",
     height: 52,
     maxHeight: 54,
     maxWidth: 144,

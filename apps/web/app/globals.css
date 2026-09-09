@@ -671,7 +671,18 @@
    (min-h-11 and min-w-11 behind the same breakpoint). The boundary is not a
    judgement call, it is whether a neighbour is inside the overhang. Call
    sites that grow instead of overlaying should point here rather than
-   restating the rule. */
+   restating the rule.
+
+   What to gate it on is a separate question from that one, and the answer is
+   drifting. Most call sites here say max-lg, which is a guess: it hands 44px
+   to a 1024px laptop window, which is a mouse, and withholds it from a 1180px
+   tablet that is all thumb. pointer-coarse asks the device what it has, which
+   is what the number is about, and is what the register card and the animal
+   dialog's nav arrows now use. Prefer it for anything new. The remaining
+   max-lg call sites (about-page, animal-grid, language-switcher, filter-chips,
+   sort-picker, municipality-finder, picker-shelter-list) are not wrong, they
+   are unmeasured; moving them changes touch sizing across the filter bar and
+   the picker, so it wants its own pass rather than a drive-by. */
 @utility tap-target {
   position: relative;
   &::after {

@@ -20,6 +20,7 @@ import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
 import { groupLabel, type FilterFacet } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
+import { SCROLL_STRIP } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
 
 export type Chip = {
@@ -345,13 +346,14 @@ export function FilterChips({
           margin gives the row back the height it had before. */}
       <div
         ref={scrollRef}
-        // scroll-px-10 matches the 2.5rem the fade eats at either end: the
-        // browser scrolls a focused pill into view on its own, and without
-        // this it parks it flush against the edge, under the mask, half
-        // faded. The -mx-1/px-1 pair is the horizontal twin of the vertical
-        // one below: a scroll box clips at its padding edge, and a focus ring
-        // sits two pixels outside the pill it belongs to.
-        className="fade-scroll-x min-w-0 overflow-x-auto scroll-px-10 -mx-1 px-1 max-lg:-my-2.5 max-lg:py-2.5"
+        // SCROLL_STRIP is the fade, the scroll padding that keeps a focused
+        // pill out from under it, and the horizontal room the focus ring
+        // needs; the couplings between those three are on the constant. The
+        // -my/py pair below is this row's own vertical half of it.
+        className={cn(
+          SCROLL_STRIP,
+          "min-w-0 max-lg:-my-2.5 max-lg:py-2.5",
+        )}
       >
         <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap max-lg:gap-2">
           <AnimatePresence initial={false} mode="popLayout">

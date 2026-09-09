@@ -41,10 +41,11 @@ const pageText = {
     withListings: "z objavami",
     onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
+    jumpLabel: "Skok na zavetišče",
     website: "Spletna stran",
     email: "E-pošta",
     phone: "Telefon",
-    noAnimals: "Brez objav na Posvoji.si",
+    noAnimals: "Brez objav",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
     inviteTitle: "Ste zavetišče?",
@@ -66,10 +67,11 @@ const pageText = {
     withListings: "with listings",
     onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
+    jumpLabel: "Jump to a shelter",
     website: "Website",
     email: "Email",
     phone: "Phone",
-    noAnimals: "No listings on Posvoji.si",
+    noAnimals: "No listings",
     heading: "Shelters",
     skip: "Skip the list of shelters",
     inviteTitle: "Are you a shelter?",
@@ -160,7 +162,19 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       // logo 96px left of the h1 above 1088px and ran both rules 192px wider
       // than the grid they bracket. The prose blocks keep their own cap, so
       // the measure does not follow the frame out.
-      mainClassName="flex w-full flex-1 flex-col gap-section-gap py-page-y"
+      // short:py-4, which is the landscape phone. At 844x390 the frame is past
+      // sm, so --page-y is 2.5rem and the page spends 80px of a 390px screen
+      // on air above and below a document that is 6,600px long. The first
+      // screen came out as the trail, the h1, the lede, the lookup button and
+      // the census, with no card on it at all. 16px is the phone value the
+      // portrait frame already uses, applied on height rather than on width,
+      // and it gives the first card back 48px of the 390.
+      //
+      // Here rather than on --page-y, which eleven pages read: every one of
+      // them has this problem in landscape, and none of them has been measured
+      // in it. The token is where this belongs the moment a second page needs
+      // it; two copies of this override is the signal, not a third.
+      mainClassName="flex w-full flex-1 flex-col gap-section-gap py-page-y short:py-4"
       // The register is 5,967px at 375px, which is 7.3 screens, and nothing
       // on this page is fixed or sticky: the header is static, so from the
       // last card the language switcher, the nav and the trail are all about
@@ -207,7 +221,11 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             still named where it counts: in the provenance line at the
             foot, with the date that makes it a citation. */}
         <PageBreadcrumb locale={locale} current={messages.shelters} />
-        <div className="max-w-3xl space-y-3">
+        {/* short:space-y-2 for the same reason the main's padding tightens:
+            four blocks with 12px between them is 36px of the landscape
+            phone's 390, and 8px still separates them. Nothing else about the
+            intro changes with the height. */}
+        <div className="max-w-3xl space-y-3 short:space-y-2">
           <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
             {text.title}
           </h1>
@@ -234,7 +252,15 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             role="list"
             aria-label={text.censusLabel}
             data-shelter-census
-            className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-1 text-sm text-muted-foreground"
+            // gap-x-4 rather than gap-x-5. The groups have carried no
+            // separator since the hairlines came off below sm, so the gap is
+            // the only thing holding them apart, and at 20px the registry
+            // count and the listings count did not fit on one line at 390:
+            // three groups took three lines out of a phone's first screen.
+            // 16px seats two of them together there and reads as one line
+            // with a break in it rather than as a list. The e2e spec checks
+            // that every line starts at the same x whatever the wrap does.
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground"
           >
             {[
               shelters.length > 0 && {
@@ -286,7 +312,12 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                   key={key}
                   data-census={key}
                   data-count={count}
-                  className="flex items-center gap-1.5 py-0.5"
+                  // The 2px above and below is a pointer's hit area on a line
+                  // that is not a control: nothing here is pressable, and on a
+                  // phone it only adds 4px to each of the lines this wraps
+                  // onto. So it starts at sm, where the line does not wrap and
+                  // the padding costs nothing.
+                  className="flex items-center gap-1.5 sm:py-0.5"
                 >
                   <Icon className="size-3.5 shrink-0" aria-hidden />
                   {body}
@@ -310,6 +341,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           heading: text.heading,
           skip: text.skip,
           sortNote: text.sortNote,
+          jump: text.jumpLabel,
         }}
         invite={
           portal && {

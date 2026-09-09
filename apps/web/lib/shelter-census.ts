@@ -73,3 +73,21 @@ export function shelterCensus(
     unregistered: [...unregistered].sort(),
   };
 }
+
+/**
+ * A shelter's published count, or nothing.
+ *
+ * never-print-a-zero, as a function, because more than one surface draws this
+ * fact and they have to draw it on the same test: the card's green pill and
+ * its avatar accent, and the phone index's chip. Absent and zero are the same
+ * answer, and both mean "we publish no list for this shelter" rather than
+ * "this shelter holds no animals".
+ *
+ * byShelter above already guarantees it, since a count only enters the map by
+ * being incremented. This is the guard for everything downstream of that map,
+ * where the number has become an optional field on a view model and the
+ * guarantee no longer travels with it.
+ */
+export function publishedCount(animals?: number): number | undefined {
+  return animals !== undefined && animals > 0 ? animals : undefined;
+}

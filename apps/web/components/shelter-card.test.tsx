@@ -281,6 +281,73 @@ describe("the shelter card", () => {
     expect(screen.queryByText("Živali niso objavljene")).toBeNull();
   });
 
+  it("puts the name above the mark on a phone and leaves the band alone", () => {
+    const { container } = render(
+      <ShelterCard shelter={shelter({ animals: 2 })} text={text} />,
+    );
+
+    // Below sm the grid is one column, so the card has no row to align its
+    // sections against and lays them out as a flex column instead: the name
+    // and the town first, the mark and the count under them, the contacts
+    // last. Everything here is max-sm, so the subgrid band from sm up is
+    // untouched, which is what these assertions are really guarding.
+    const card = container.querySelector("li");
+    expect(card?.className).toContain("max-sm:flex");
+    expect(card?.className).toContain("max-sm:flex-col");
+    // One order utility does it: the content goes to the front and the other
+    // two keep their source order behind it. So the assertion is that the
+    // content is pulled and that nothing else carries an order at all, which
+    // is what would quietly reintroduce a second ordering to keep in step.
+    const order = (slot: string) =>
+      container.querySelector(`[data-slot="${slot}"]`)?.className ?? "";
+    expect(order("item-content")).toContain("max-sm:order-first");
+    expect(order("item-media")).not.toContain("order-");
+    expect(order("item-footer")).not.toContain("order-");
+  });
+
+  it("draws the phone card tighter and its name larger", () => {
+    const { container } = render(
+      <ShelterCard shelter={shelter()} text={text} />,
+    );
+
+    // 16px of padding and 12px between the sections instead of Item's 20 and
+    // 16, and the name at 18px instead of 16. The class list is the contract
+    // here because the size is the point: cn merges these after Item's own
+    // p-5 and gap-4, so a later padding on the primitive cannot quietly win.
+    const card = container.querySelector("li");
+    expect(card?.className).toContain("max-sm:p-4");
+    expect(card?.className).toContain("max-sm:gap-3");
+
+    const title = container.querySelector('[data-slot="item-title"]');
+    expect(title?.className).toContain("max-sm:text-lg");
+    // text-pretty over ItemTitle's own text-balance: balance is capped at
+    // about six lines and the long names take four or five short ragged ones
+    // at 320.
+    expect(title?.className).toContain("text-pretty");
+    expect(title?.className).not.toContain("text-balance");
+  });
+
+  it("sizes the contact rows for the pointer rather than the viewport", () => {
+    const { container } = render(
+      <ShelterCard
+        shelter={shelter({ phone: "03 749 06 00", email: "info@zonzani.si" })}
+        text={text}
+      />,
+    );
+
+    // 44px and no gap for a thumb, 36px and 2px for a mouse. Asked of the
+    // pointer, not of a width: max-lg gave the touch row to a 1024px laptop
+    // window and took it from the 1180px tablet. The rows tile on touch
+    // because the band between two of them falls through to the name's
+    // stretched ::after, which walks to the shelter's page.
+    const row = container.querySelector("[data-contact]");
+    expect(row?.className).toContain("pointer-coarse:min-h-11");
+    expect(row?.className).not.toContain("max-lg:min-h-11");
+    expect(
+      container.querySelector('[data-slot="item-footer"]')?.className,
+    ).toContain("pointer-coarse:gap-0");
+  });
+
   it("carries an anchor a link can name", () => {
     render(<ShelterCard shelter={shelter()} text={text} />);
 

@@ -195,19 +195,20 @@ describe("the shelter page's ways past its animals", () => {
     );
   });
 
-  it("names its main so the header's skip link has somewhere to land", () => {
+  // The bypass link and the landmark it aims at are one contract, and it is
+  // site-shell.tsx that holds both halves now; site-shell.test.tsx is where
+  // the two are checked against each other, once, for all nine pages. What is
+  // left here is the page's own half of it: that this page draws its chrome
+  // through the shell rather than writing its own, which is the only way it
+  // can still lose the pair.
+  it("draws its chrome through the shell", () => {
     const { container } = render(
       <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
     );
 
-    const skip = container.querySelector(`header a[href="#${CONTENT_ID}"]`);
-    expect(skip?.textContent).toBe("Preskoči na vsebino");
-    // First in the header, or it is not a bypass: everything it skips would
-    // already have taken focus.
-    expect(container.querySelector("header a")).toBe(skip);
-    // The literal, not the constant, on this side: the point of the test is
-    // that the link and the landmark meet at one value, and both reading the
-    // same import would agree with each other however that import changed.
-    expect(container.querySelector("main")?.id).toBe("vsebina");
+    expect(
+      container.querySelector(`header a[href="#${CONTENT_ID}"]`),
+    ).not.toBeNull();
+    expect(container.querySelector("main")?.id).toBe(CONTENT_ID);
   });
 });

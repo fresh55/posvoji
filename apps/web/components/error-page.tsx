@@ -46,8 +46,10 @@ export function ErrorPage({
   const messages = getMessages(locale);
 
   return (
-    // The same frame as every other page, spelled out here for the same reason
-    // not-found-page.tsx spells it out: there is no layout to inherit it from.
+    // The same frame as every other page, spelled out here rather than drawn
+    // from site-shell.tsx: there is no layout to inherit it from, and the
+    // shell brings the header and the footer with it, which is the cost the
+    // note above declines to pay.
     <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
       <main
         id={CONTENT_ID}

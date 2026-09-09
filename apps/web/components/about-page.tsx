@@ -8,11 +8,10 @@ import {
   Users,
 } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
-import { I18nProvider } from "@/components/i18n-provider";
 import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
 import {
   Item,
@@ -26,7 +25,6 @@ import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
-import { CONTENT_ID } from "@/lib/skip-link";
 
 // Where a correction goes. Printed as the address itself rather than behind
 // a word: a reader writing from their own mail client has to be able to read
@@ -154,120 +152,114 @@ export function AboutPage({ locale }: { locale: Locale }) {
   const text = pageText[locale];
 
   return (
-    <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader locale={locale} languagePaths={ABOUT_PATHS} />
-
-        <main
-          id={CONTENT_ID}
-          tabIndex={-1}
-          className="grid w-full flex-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
-        >
-          <div className="space-y-5">
-            <PageBreadcrumb locale={locale} current={messages.about} />
-            <div className="space-y-3">
-              <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-                {messages.about}
-              </h1>
-              {/* The page's one sentence, and a step above the facts rather
-                  than level with them. At 18px it sat two pixels off the
-                  bodies below it and the whole column read as one size. */}
-              <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                {text.lead}
-              </p>
-            </div>
-          </div>
-
-          {/* A rule between facts and nothing else. Each fact is an Item on
-              the row layout: the glyph names it at a glance, and only the
-              padding is this page's, so the rules run edge to edge.
-
-              mt-px on the media, measured: the title is text-base under
-              leading-snug, a 22px line box, and the glyph is 20px, so one
-              pixel centres it on the first line. */}
-          <div className="divide-y border-y lg:col-start-1 lg:row-start-2">
-            {text.points.map((point) => {
-              const Icon = pointIcons[point.key];
-              return (
-                <Item
-                  key={point.key}
-                  layout="row"
-                  className="px-0 py-5"
-                >
-                  <ItemMedia className="mt-px">
-                    <Icon
-                      className="size-5 shrink-0 text-muted-foreground"
-                      aria-hidden
-                    />
-                  </ItemMedia>
-                  <ItemContent>
-                    <ItemTitle asChild className="text-base font-medium">
-                      <h2>{point.title}</h2>
-                    </ItemTitle>
-                    {/* A step under the title rather than the same size in a
-                        lighter ink. Title and body were both 16px, so five
-                        facts read as one block of text and the glyph was
-                        doing all the work of telling them apart. The same
-                        pairing the resources cards use. */}
-                    <ItemDescription className="text-sm leading-relaxed">
-                      {point.body}
-                    </ItemDescription>
-                  </ItemContent>
-                </Item>
-              );
-            })}
-          </div>
-
-          {/* The sentence stays beside the buttons rather than inside them:
-              it says what to write about, and a button label that is a full
-              sentence stops reading as a control. */}
-          <div className="space-y-3 lg:col-start-1 lg:row-start-3">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {text.report}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className={THUMB_BUTTON}
-              >
-                <a href={mailtoHref(CONTACT_EMAIL)}>
-                  <Mail aria-hidden data-icon="inline-start" />
-                  {CONTACT_EMAIL}
-                </a>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className={THUMB_BUTTON}
-              >
-                <a href={REPO_URL} target="_blank" rel="noreferrer">
-                  <GithubMark />
-                  {text.code}
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          {/* Keep the practical information first in mobile and keyboard
-              reading order. On desktop the cat sits beside all three text
-              rows, with the dedication directly beneath the model. */}
-          <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
-            <AboutCat locale={locale} />
-          </div>
-
-        </main>
-
-        {/* The one footer that does not link to this page, because it is on
-            it. It passes the correction route off for the same reason: the
-            contact block above prints the address already, and a second copy
-            of it two hundred pixels lower says nothing new. */}
+    <SiteShell
+      locale={locale}
+      languagePaths={ABOUT_PATHS}
+      mainClassName="grid w-full flex-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
+      // The one footer that does not link to this page, because it is on it.
+      // It passes the correction route off for the same reason: the contact
+      // block above prints the address already, and a second copy of it two
+      // hundred pixels lower says nothing new.
+      footer={
         <SiteFooter locale={locale} showAboutLink={false} showContact={false}>
           <ModelCredit locale={locale} />
         </SiteFooter>
+      }
+    >
+      <div className="space-y-5">
+        <PageBreadcrumb locale={locale} current={messages.about} />
+        <div className="space-y-3">
+          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
+            {messages.about}
+          </h1>
+          {/* The page's one sentence, and a step above the facts rather
+              than level with them. At 18px it sat two pixels off the
+              bodies below it and the whole column read as one size. */}
+          <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            {text.lead}
+          </p>
+        </div>
       </div>
-    </I18nProvider>
+
+      {/* A rule between facts and nothing else. Each fact is an Item on
+          the row layout: the glyph names it at a glance, and only the
+          padding is this page's, so the rules run edge to edge.
+
+          mt-px on the media, measured: the title is text-base under
+          leading-snug, a 22px line box, and the glyph is 20px, so one
+          pixel centres it on the first line. */}
+      <div className="divide-y border-y lg:col-start-1 lg:row-start-2">
+        {text.points.map((point) => {
+          const Icon = pointIcons[point.key];
+          return (
+            <Item
+              key={point.key}
+              layout="row"
+              className="px-0 py-5"
+            >
+              <ItemMedia className="mt-px">
+                <Icon
+                  className="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle asChild className="text-base font-medium">
+                  <h2>{point.title}</h2>
+                </ItemTitle>
+                {/* A step under the title rather than the same size in a
+                    lighter ink. Title and body were both 16px, so five
+                    facts read as one block of text and the glyph was
+                    doing all the work of telling them apart. The same
+                    pairing the resources cards use. */}
+                <ItemDescription className="text-sm leading-relaxed">
+                  {point.body}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
+          );
+        })}
+      </div>
+
+      {/* The sentence stays beside the buttons rather than inside them:
+          it says what to write about, and a button label that is a full
+          sentence stops reading as a control. */}
+      <div className="space-y-3 lg:col-start-1 lg:row-start-3">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {text.report}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={THUMB_BUTTON}
+          >
+            <a href={mailtoHref(CONTACT_EMAIL)}>
+              <Mail aria-hidden data-icon="inline-start" />
+              {CONTACT_EMAIL}
+            </a>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={THUMB_BUTTON}
+          >
+            <a href={REPO_URL} target="_blank" rel="noreferrer">
+              <GithubMark />
+              {text.code}
+            </a>
+          </Button>
+        </div>
+      </div>
+
+      {/* Keep the practical information first in mobile and keyboard
+          reading order. On desktop the cat sits beside all three text
+          rows, with the dedication directly beneath the model. */}
+      <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
+        <AboutCat locale={locale} />
+      </div>
+    </SiteShell>
   );
 }

@@ -1,10 +1,8 @@
-import { I18nProvider } from "@/components/i18n-provider";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
-import { CONTENT_ID } from "@/lib/skip-link";
 import { Card } from "@/components/ui/card";
 
 type LocalizedText = Record<Locale, string>;
@@ -294,89 +292,82 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
   const text = pageText[locale];
 
   return (
-    <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader locale={locale} languagePaths={RESOURCES_PATHS} />
-
-        <main
-          id={CONTENT_ID}
-          tabIndex={-1}
-          className="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14"
-        >
-          <div className="space-y-5">
-            <PageBreadcrumb locale={locale} current={messages.resources} />
-            <div className="max-w-3xl space-y-3">
-              <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-                {text.title}
-              </h1>
-              <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-                {text.intro}
-              </p>
-            </div>
-            <p className="max-w-3xl rounded-ui border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-              {text.notice}
-            </p>
-          </div>
-
-          {sections.map((section) => (
-            <section key={section.id} id={section.id} className="space-y-5">
-              <h2 className="border-b pb-3 text-xl font-medium tracking-tight sm:text-2xl">
-                {section.title[locale]}
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                {section.resources.map((resource, index) => {
-                  const quoted = quotedLang(resource.lang, locale);
-                  // Stable across builds: the section and the resource's place
-                  // in it, not the title, which carries spaces and accents.
-                  const titleId = `${section.id}-${index}-title`;
-                  const linkId = `${section.id}-${index}-open`;
-                  return (
-                    <Card asChild key={`${section.id}-${resource.title}`}>
-                      <article className="flex flex-col p-5">
-                        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span className="rounded-full border bg-muted/50 px-2.5 py-1">
-                            {resource.kind[locale]}
-                          </span>
-                          <span lang={quoted}>{resource.organization}</span>
-                        </div>
-                        <h3
-                          className="text-base font-medium leading-snug"
-                          id={titleId}
-                          lang={quoted}
-                        >
-                          {resource.title}
-                        </h3>
-                        <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                          {resource.description[locale]}
-                        </p>
-                        {/* Nineteen links all named "Odpri vir" are nineteen
-                            links a reader listing them cannot tell apart. The
-                            name is the link's own words and then the heading
-                            above it, so what is printed stays two words and
-                            the title finishes the name from where it already
-                            stands, with the lang it already carries. */}
-                        <a
-                          href={resource.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          id={linkId}
-                          aria-labelledby={`${linkId} ${titleId}`}
-                          className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
-                        >
-                          {text.open}
-                          <span aria-hidden>↗</span>
-                        </a>
-                      </article>
-                    </Card>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </main>
-
-        <SiteFooter locale={locale} />
+    <SiteShell
+      locale={locale}
+      languagePaths={RESOURCES_PATHS}
+      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14"
+      footer={<SiteFooter locale={locale} />}
+    >
+      <div className="space-y-5">
+        <PageBreadcrumb locale={locale} current={messages.resources} />
+        <div className="max-w-3xl space-y-3">
+          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
+            {text.title}
+          </h1>
+          <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+            {text.intro}
+          </p>
+        </div>
+        <p className="max-w-3xl rounded-ui border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+          {text.notice}
+        </p>
       </div>
-    </I18nProvider>
+
+      {sections.map((section) => (
+        <section key={section.id} id={section.id} className="space-y-5">
+          <h2 className="border-b pb-3 text-xl font-medium tracking-tight sm:text-2xl">
+            {section.title[locale]}
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {section.resources.map((resource, index) => {
+              const quoted = quotedLang(resource.lang, locale);
+              // Stable across builds: the section and the resource's place
+              // in it, not the title, which carries spaces and accents.
+              const titleId = `${section.id}-${index}-title`;
+              const linkId = `${section.id}-${index}-open`;
+              return (
+                <Card asChild key={`${section.id}-${resource.title}`}>
+                  <article className="flex flex-col p-5">
+                    <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="rounded-full border bg-muted/50 px-2.5 py-1">
+                        {resource.kind[locale]}
+                      </span>
+                      <span lang={quoted}>{resource.organization}</span>
+                    </div>
+                    <h3
+                      className="text-base font-medium leading-snug"
+                      id={titleId}
+                      lang={quoted}
+                    >
+                      {resource.title}
+                    </h3>
+                    <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                      {resource.description[locale]}
+                    </p>
+                    {/* Nineteen links all named "Odpri vir" are nineteen
+                        links a reader listing them cannot tell apart. The
+                        name is the link's own words and then the heading
+                        above it, so what is printed stays two words and
+                        the title finishes the name from where it already
+                        stands, with the lang it already carries. */}
+                    <a
+                      href={resource.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      id={linkId}
+                      aria-labelledby={`${linkId} ${titleId}`}
+                      className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+                    >
+                      {text.open}
+                      <span aria-hidden>↗</span>
+                    </a>
+                  </article>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </SiteShell>
   );
 }

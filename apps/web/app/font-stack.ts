@@ -21,10 +21,16 @@ import localFont from "next/font/local";
 //
 // Regenerate with `pnpm --filter web generate:font-subset`. The file is
 // Inter under the SIL Open Font License; see app/fonts/OFL.txt.
-const inter = Inter({ subsets: ["latin"] });
+// Discover fonts through the head stylesheet. On cross-document navigation,
+// Chromium can reuse a decoded face without consuming a fresh preload hint,
+// leaving that document's hint unused even though the text uses the font.
+const inter = Inter({ subsets: ["latin"], preload: false });
 
 const interSlovenian = localFont({
   src: "./fonts/inter-slovenian-subset.woff2",
+  // English and some short pages never use these eight glyphs. Let the
+  // unicode-range request this small face only when the text needs it.
+  preload: false,
   // The subset keeps Inter's 100-900 axis, so it tracks the weights the rest
   // of the page uses instead of pinning these letters to one of them.
   weight: "100 900",

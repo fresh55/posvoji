@@ -5,3 +5,5 @@
 *.webp binary
 *.avif binary
 *.glb binary
+# Unified diffs prefix empty context lines with a required space.
+patches/*.patch whitespace=-blank-at-eol

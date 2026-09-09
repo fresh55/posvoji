@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AboutCat } from "./about-cat";
 import { SRECKO_PATHS } from "@/lib/srecko";
+import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
@@ -55,6 +56,15 @@ async function loadViewer() {
 }
 
 describe("the about cat", () => {
+  it("renders an immediately loadable fallback without a speculative poster preload", () => {
+    const html = renderToStaticMarkup(<AboutCat locale="sl" />);
+    const document = new DOMParser().parseFromString(html, "text/html");
+    const poster = document.querySelector("img")!;
+    expect(poster.getAttribute("loading")).toBe("eager");
+    expect(poster.getAttribute("fetchpriority")).toBe("low");
+    expect(document.querySelector('link[rel="preload"][as="image"]')).toBeNull();
+  });
+
   it("loads when visible and automatically plays the continuous animation without controls", async () => {
     render(<AboutCat locale="en" />);
     expect(document.querySelector("model-viewer")).toBeNull();

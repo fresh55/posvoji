@@ -104,6 +104,17 @@ function renderFilters(overrides: FiltersProps = {}) {
   );
 }
 
+/** Three animals no facet can tell apart: every group and toggle list is
+ *  empty, which is what a shelter's single-species roster produces. The sheet
+ *  behind the dock has nothing in it but the order at this state, which is
+ *  the one reason it holds that runs out at md (filter-sheet.tsx). Four tests
+ *  below start here and each varies one thing from it. */
+const ORDER_ONLY: FiltersProps = {
+  speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
+  speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+  resultCount: 3,
+};
+
 /** The one sex facet the dock tests lean on, as a group and its count. */
 const SEX_GROUP: FiltersProps = {
   groups: [{ group: "sex", options: [{ value: "male", label: "Male" }] }],
@@ -158,48 +169,60 @@ describe("mobile filter hardening", () => {
     // dock (and the sort control living inside its sheet) vanished here even
     // though there was still an order to pick.
     renderFilters({
-      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
-      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
+      ...ORDER_ONLY,
       shelters: undefined,
       shelterTally: new Map(),
-      resultCount: 3,
     });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
 
-    const trigger = screen.getByRole("button", { name: "Filters" });
-
-    // Below md only. The order is the sheet's one reason to exist here, and
-    // the toolbar draws the order itself from md, so the trigger stands down
-    // at that width rather than opening on a title, an empty body and a
-    // footer. With no picker to keep it company the plate goes too. Classes
-    // and not measurements, because jsdom resolves no breakpoint and these
-    // are the whole of the rule. Read before the click: an open drawer hides
-    // the page behind it from the accessibility tree, trigger included.
-    expect(dock?.className).toContain("md:hidden");
-    expect(trigger.className.split(" ")).toContain("md:hidden");
-
-    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
 
-  it("leaves the picker the whole plate where the order-only sheet stands down at md", () => {
-    // The same order-only state with a shelter left to pick. The trigger goes
-    // at md and the picker stays, so the plate keeps its border and drops to
-    // one column: only:col-span-2 counts children and not drawn ones, and
-    // left at two the picker falls into the auto column the button used to
-    // hold, measured at 768 as 151px of a 448px plate.
+  it("takes the trigger and the plate away at md, where the order is all the sheet holds", () => {
+    // The state above, asked the other question. The order is the sheet's one
+    // reason to exist here and the toolbar draws the order itself from md, so
+    // the trigger stands down at that width rather than opening on a title, a
+    // footer and nothing between them. With no picker to keep it company the
+    // plate goes with it. Classes and not measurements, because jsdom
+    // resolves no breakpoint and these are the whole of the rule.
     renderFilters({
-      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
-      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
-      resultCount: 3,
+      ...ORDER_ONLY,
+      shelters: undefined,
+      shelterTally: new Map(),
     });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className).toContain("md:grid-cols-1");
-    expect(dock?.className).not.toContain("md:hidden");
+    expect(dock?.className.split(" ")).toContain("md:hidden");
+    expect(
+      screen.getByRole("button", { name: "Filters" }).className.split(" "),
+    ).toContain("md:hidden");
+  });
+
+  it("gives the trigger the whole plate when no picker shares it", () => {
+    // With no shelters to choose between, the trigger is the dock's only
+    // child and takes the width. It is told so here rather than by an
+    // only-child rule in DOCK_CLASS: that one came over from the grid and was
+    // measured never to reach the button, which sat at 77px of a 343px plate.
+    renderFilters({ ...ORDER_ONLY, shelters: undefined, shelterTally: new Map() });
+
+    expect(
+      screen.getByRole("button", { name: "Filters" }).className.split(" "),
+    ).toContain("grow");
+  });
+
+  it("leaves the picker the whole plate where the order-only sheet stands down at md", () => {
+    // The same order-only state with a shelter left to pick. The trigger goes
+    // at md and the picker stays, so the plate stays with it and needs no
+    // second rule to fill: a flex item that is not drawn is not an item, and
+    // the picker's flex-1 takes the row on its own (animal-filters.tsx).
+    renderFilters(ORDER_ONLY);
+
+    const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(dock?.className.split(" ")).not.toContain("md:hidden");
     expect(
       screen.getByRole("button", { name: "Filters" }).className.split(" "),
     ).toContain("md:hidden");
@@ -212,18 +235,17 @@ describe("mobile filter hardening", () => {
     // Kje row and the footer's clear, drawn at every width below lg, and the
     // trigger has to be there at every one of them.
     renderFilters({
+      ...ORDER_ONLY,
       filters: { ...EMPTY_FILTERS, shelter: ["test"] },
-      speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
-      speciesRoster: { all: 3, dog: 3, cat: 0, other: 0 },
       shelterTally: new Map([["test", 3]]),
-      resultCount: 3,
     });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className).not.toContain("md:hidden");
-    expect(dock?.className).not.toContain("md:grid-cols-1");
+    expect(dock?.className.split(" ")).not.toContain("md:hidden");
     expect(
-      screen.getByRole("button", { name: "Filters, 1 active" }).className.split(" "),
+      screen
+        .getByRole("button", { name: "Filters, 1 active" })
+        .className.split(" "),
     ).not.toContain("md:hidden");
   });
 

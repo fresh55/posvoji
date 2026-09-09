@@ -57,6 +57,15 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
+/** The width from which the toolbar carries the order and the sort row in
+ *  this sheet stands down (animal-filters.tsx draws the toolbar's copy on the
+ *  complementary `max-md:hidden`). Exported because the dock's trigger has to
+ *  disappear at exactly the width this row does: a sheet the `order` reason
+ *  alone holds open has nothing left in it from here, and the two answering
+ *  the same question with two literals is how they drift apart. The same
+ *  bargain `DESKTOP_QUERY` strikes in use-desktop-breakpoint-close.ts. */
+export const SORT_ROW_HIDDEN = "md:hidden";
+
 /** What is behind the Filtri button, or undefined when nothing is.
  *
  *  It lives here rather than in the dock that mounts the sheet, because what
@@ -73,13 +82,17 @@ const DRAWER_CLOSE_MS = 500;
  *
  *  A reason and not a yes, because one of the three is drawn at one width and
  *  not another: from md the toolbar carries the order itself and the sort row
- *  below stands down, so a sheet held open by `order` alone opens there on a
- *  title, an empty body and a footer. The caller stands the trigger down at
- *  that width instead, in CSS (animal-filters.tsx). `order` is the last
- *  answer tried for that reason: a sheet with anything else in it keeps its
- *  trigger at every width, and only the one that runs out at md has to say
- *  so. */
-export type FilterSheetReason = "sections" | "undo" | "order";
+ *  below stands down (SORT_ROW_HIDDEN), so a sheet held open by `order` alone
+ *  opens there on a title, a footer, and a body holding the Kje row or
+ *  nothing at all, depending on whether the dataset has shelters to choose
+ *  between. The caller stands the trigger down at that width instead, in CSS
+ *  (animal-filters.tsx).
+ *
+ *  `order` is tried last, and the order of the returns below is the contract
+ *  rather than a style: a sheet with anything else in it keeps its trigger at
+ *  every width, so only the answer that runs out at md may be the one given.
+ *  A clause inserted above it changes which states lose their button. */
+type FilterSheetReason = "sections" | "undo" | "order";
 
 export function filterSheetReason({
   groups,
@@ -289,7 +302,7 @@ export function FilterSheet({
             value={sort}
             onChange={onSortChange}
             quiet={false}
-            className="mt-3 h-11 w-full text-sm md:hidden"
+            className={cn("mt-3 h-11 w-full text-sm", SORT_ROW_HIDDEN)}
           />
         </div>
 

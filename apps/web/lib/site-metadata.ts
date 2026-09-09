@@ -141,6 +141,15 @@ export type StaticPageInput = {
   title: string;
   description: string;
   /**
+   * Set by a page that lives in the same route segment as the layout carrying
+   * the title template, which on this site is only app/(sl)/page.tsx and
+   * app/(en)/en/page.tsx. Those two get the suffix appended here because the
+   * template cannot reach them; every other route is a child segment and the
+   * template does the work. The previews are unaffected either way, and stay
+   * bare for the reason above.
+   */
+  besideTheRootLayout?: boolean;
+  /**
    * A 1200x630 preview of the page's own, when it has one. Most fixed pages
    * do not and take the site card instead, drawn once for all of them. The url
    * is relative to the site; the roots set metadataBase, so Next resolves it.
@@ -178,10 +187,17 @@ export function staticPageMetadata({
   title,
   description,
   image,
+  besideTheRootLayout = false,
 }: StaticPageInput): Metadata {
   const images = [image ?? { ...SITE_CARD, alt: siteCardAlt[locale] }];
   return {
-    title,
+    // Next applies a title template to CHILD segments and not to the page
+    // sitting in the same segment as the layout that declares it, so the two
+    // home routes are the only pages the root's template cannot reach. Left to
+    // the template they render the bare sentence and are the only two pages on
+    // the site whose tab and search result do not name it. They append the
+    // suffix here, in the one place that knows how the template spells it.
+    title: besideTheRootLayout ? { absolute: `${title} | ${SITE_NAME}` } : title,
     description,
     alternates: localeAlternates(paths, locale),
     openGraph: {

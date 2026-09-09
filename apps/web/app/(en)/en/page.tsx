@@ -13,6 +13,8 @@ export const metadata: Metadata = staticPageMetadata({
   paths: HOME_PATHS,
   title: getMessages("en").heroTitle.replace(/\.$/, ""),
   description: getMessages("en").metadataDescription,
+  // Beside the root layout, the same as the / route. See staticPageMetadata.
+  besideTheRootLayout: true,
 });
 
 export default function Home() {

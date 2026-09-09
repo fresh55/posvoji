@@ -22,6 +22,9 @@ export const metadata: Metadata = staticPageMetadata({
   paths: HOME_PATHS,
   title: getMessages("sl").heroTitle.replace(/\.$/, ""),
   description: getMessages("sl").metadataDescription,
+  // This page sits beside the root layout, so the title template cannot reach
+  // it. See staticPageMetadata.
+  besideTheRootLayout: true,
 });
 
 export default function Home() {

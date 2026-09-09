@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SheltersPage } from "@/components/shelters-page";
+import { getMessages } from "@/lib/i18n";
 import { SHELTER_INDEX_PATHS } from "@/lib/shelter-path";
 import { staticPageMetadata } from "@/lib/site-metadata";
 
@@ -10,7 +11,9 @@ export const metadata: Metadata = staticPageMetadata({
   // off said nothing, in either direction, and it is the pair most likely to
   // be searched for in the language the searcher is not using.
   paths: SHELTER_INDEX_PATHS,
-  title: "Zavetišča",
+  // The same string the nav, the breadcrumb and the h1 read, so the head
+  // cannot end up naming the page something the page does not.
+  title: getMessages("sl").shelters,
   // Written for the search that lands here, which is "zavetišče" and a town
   // name. What the page can do for that person is give them the phone number
   // and let them find their own town; how the data is licensed is the

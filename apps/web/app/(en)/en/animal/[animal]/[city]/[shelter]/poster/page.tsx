@@ -27,7 +27,9 @@ export async function generateMetadata({
   const animal = findAnimalBySlug(loadDataset()?.animals ?? [], slug);
   if (!animal) return {};
   return {
-    title: `${animal.name ?? getMessages("en").unnamed}: poster`,
+    // See the Slovenian route, for the absolute title as well: the <title>
+    // here is the printed file's name, not a heading anybody reads.
+    title: { absolute: `${animal.name ?? getMessages("en").unnamed}: poster` },
     // See the Slovenian route: the sheet must not compete with the animal's
     // own page in a search result.
     robots: { index: false, follow: false },

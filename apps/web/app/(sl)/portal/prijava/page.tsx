@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { PortalLogin } from "@/components/portal/portal-login";
 
 export const metadata: Metadata = {
-  title: "Prijava za zavetišča | Posvoji.si",
+  // Bare, like every other title in the tree: the root layout appends the
+  // site name.
+  title: "Prijava za zavetišča",
   description:
     "Prijava v portal Posvoji.si za zavetišča. Prijavite se s povezavo, ki jo pošljemo na e-naslov zavetišča.",
   robots: { index: false, follow: false },

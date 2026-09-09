@@ -178,6 +178,16 @@ export function shelterScopeLabel(
     : sheltersOf(selected, total, locale);
 }
 
+/** The same named selection on the map trigger, sidebar and phone filter row. */
+export function shelterSelectionLabel(
+  selected: ReadonlyArray<{ label: string }>,
+  locale: Locale,
+): string {
+  if (selected.length === 0) return allShelters(locale);
+  if (selected.length === 1) return selected[0].label;
+  return `${locale === "en" ? "Selected" : "Izbrano"}: ${selected.length}`;
+}
+
 export function sheltersMissingFromMap(n: number, locale: Locale): string {
   if (locale === "en") {
     return `${shelterCount(n, locale)} ${n === 1 ? "is" : "are"} not on the map.`;

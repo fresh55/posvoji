@@ -237,6 +237,7 @@ export function MapCallout({
   metadata,
   note,
   species,
+  action,
   scale = DEFAULT_PLATE_SCALE,
   rectKey = "",
   onRect,
@@ -262,6 +263,8 @@ export function MapCallout({
    *  clusters and regions, which answer for more than one house and would be
    *  summing up strangers. */
   species?: { species: Species; count: number }[];
+  /** An explicit touch choice; passive hover annotations omit it. */
+  action?: { label: string; onClick: () => void; onFocusChange?: (focused: boolean) => void };
   /** Pixels the plate draws one user unit at, measured by ShelterMap. Every
    *  size below is divided by it, so the label renders at the same size on a
    *  tablet and on a wide desktop. */
@@ -309,12 +312,12 @@ export function MapCallout({
     if (!node) return;
     const needed = Math.max(node.scrollHeight, type.floor);
     if (needed !== height) setHeight(needed);
-  }, [title, metadata, note, speciesKey, type.floor, height]);
+  }, [title, metadata, note, speciesKey, action?.label, type.floor, height]);
 
   // A chip with a title and nothing under it is a tooltip and is padded like
   // one; anything with a second line is a card. The species row counts, since
   // it is a line of the card whether or not it is made of words.
-  const dense = !metadata && !note && !species?.length;
+  const dense = !metadata && !note && !species?.length && !action;
   const padY = dense ? type.padYTight : type.padY;
 
   // The chip's own box: the reserved column, and the measured type plus the
@@ -387,7 +390,7 @@ export function MapCallout({
 
   return (
     <g
-      aria-hidden
+      aria-hidden={action ? undefined : true}
       data-map-callout
       className={cn(
         // motion-reduce:duration-0, not motion-reduce:animate-none: see the
@@ -517,6 +520,20 @@ export function MapCallout({
                 >
                   {note}
                 </span>
+              )}
+              {action && (
+                <button
+                  type="button"
+                  data-map-action
+                  aria-label={`${action.label}: ${title}`}
+                  onClick={action.onClick}
+                  onFocus={() => action.onFocusChange?.(true)}
+                  onBlur={() => action.onFocusChange?.(false)}
+                  className="pointer-events-auto mt-2 block w-full rounded-ui bg-primary px-2 text-center font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
+                  style={{ minHeight: 44 / scale, fontSize: type.metadata, lineHeight: type.leading }}
+                >
+                  {action.label}
+                </button>
               )}
               {species && species.length > 0 && (
                 <span

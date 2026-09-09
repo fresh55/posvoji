@@ -70,20 +70,9 @@ export const MARKER_STROKE_WIDTH = 0.9;
 // hue lives in the token rather than here, so a theme can move the colour
 // without touching the ranking.
 //
-// Higher alphas than the grey ramp they replace, because the ink is now a
-// muted green rather than near-black foreground: at the old 12-45% the whole
-// country washed out. At 20-58% the light theme's steps clear 1.12 to 1.20
-// against each other in luminance and gain chroma as they climb, which is the
-// second axis the grey ramp did not have.
-//
-// The floor is 20% because an inert region fills at 4% neutral foreground over
-// the same ground, and the boundary between "no shelters here" and "the
-// quietest region in the country" has to be a step of the ramp. At 20% it
-// clears 1.20:1, matching the ramp's own smallest step. The top is capped at
-// 58%, which composites lighter than the grey ramp's darkest step by a wide
-// margin: the region border and the white marker discs stay readable on the
-// busiest region, and the top step stays quieter than the selected green.
-export const DENSITY_STEPS = [0.2, 0.28, 0.37, 0.47, 0.58] as const;
+// Keep availability quieter than selection. The low-opacity ramp preserves
+// ranking without turning an unselected busy region into the dominant control.
+export const DENSITY_STEPS = [0.12, 0.17, 0.22, 0.28, 0.35] as const;
 
 // Rank binning, not fixed count thresholds. Two shelters hold most of the
 // animals in the country, so cutoffs at 10/25/50/100 dropped every other region
@@ -120,7 +109,7 @@ function getRegionStats(
   // Only what a click may toggle. Off-site shelters are on the map but not in
   // the region's values, so a region pick never selects a shelter with
   // nothing to show, and a region holding only those stays inert.
-  const values = towns.flatMap(townSelectableValues);
+  const values = towns.flatMap((town) => townSelectableValues(town, selected));
   const animals = towns.reduce((sum, town) => sum + townCount(town), 0);
   return {
     values,
@@ -361,12 +350,19 @@ export function townCount(town: Town): number {
   return town.shelters.reduce((sum, shelter) => sum + shelter.count, 0);
 }
 
-// The values a click on this town may toggle. Off-site shelters share the
-// marker but never the pick.
-export function townSelectableValues(town: Town): string[] {
+// The values a click on this town may toggle. Unpublished and zero-match
+// shelters share the marker but cannot be added through a bulk action.
+export function townSelectableValues(town: Town, selected: string[] = []): string[] {
   return town.shelters
-    .filter((shelter) => shelter.selectable !== false)
+    .filter((shelter) => shelterIsSelectable(shelter, selected))
     .map((shelter) => shelter.value);
+}
+
+/** The same eligibility as the list: matching shelters can be added, and an
+ * existing selection remains removable when the other filters leave it at zero. */
+export function shelterIsSelectable(shelter: ShelterPin, selected: string[]): boolean {
+  return shelter.selectable !== false &&
+    (shelter.count > 0 || selected.includes(shelter.value));
 }
 
 // Shared by the region and marker components, so a shelter reads the same
@@ -400,13 +396,13 @@ export function mapStateName(
   return state === true ? "selected" : state === "mixed" ? "mixed" : "idle";
 }
 
-// Whether a town's marker is a control or only a place: it needs something a
-// click may toggle, irrespective of the active animal filters. Shared
+// Whether a town's marker is a control or only a place: a matching shelter can
+// be added, and an existing selection remains removable. Shared
 // by the marker, which draws the hollow "nothing listed" disc off it, and by
 // the legend helper, which decides from the same answer whether that shape is
 // on the map at all.
-export function townIsLive(town: Town): boolean {
-  return townSelectableValues(town).length > 0;
+export function townIsLive(town: Town, selected: string[] = []): boolean {
+  return townSelectableValues(town, selected).length > 0;
 }
 
 // One source of truth for the visible and accessible town label. A cluster is

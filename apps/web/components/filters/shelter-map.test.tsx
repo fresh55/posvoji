@@ -88,6 +88,30 @@ function factsFor(pins: ShelterPin[], selected: string[]) {
   return mapFacts(towns, regionStatsByRegion(byRegion, selected), selected);
 }
 
+describe("map availability language", () => {
+  it("keeps a known shelter location when the filters leave it with no matches", () => {
+    const html = renderMap([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 0)]);
+    expect(regionTag(html, "Osrednjeslovenska")).toContain("Ni živali, ki ustrezajo filtrom");
+    expect(html).toContain('aria-label="Zavetišče Ljubljana: Ni živali, ki ustrezajo filtrom"');
+    expect(regionTag(html, "Osrednjeslovenska")).not.toContain("Ni zavetišč");
+    expect(regionTag(html, "Podravska")).toContain("Ni zavetišč v tej regiji");
+  });
+
+  it("distinguishes unpublished listings from a filtered-out shelter", () => {
+    const html = renderMap([{ ...pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 0), selectable: false }]);
+    expect(regionTag(html, "Osrednjeslovenska")).toContain("Trenutno brez objavljenih živali");
+    expect(regionTag(html, "Osrednjeslovenska")).not.toContain("ustrezajo filtrom");
+  });
+
+  it("shows the same filtered availability in the region callout", () => {
+    const { container } = render(<I18nProvider locale="sl"><ShelterMap
+      pins={[pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 0)]}
+      selected={[]} onPick={vi.fn()} /></I18nProvider>);
+    hoverRegion(container.querySelector('[aria-label^="Osrednjeslovenska"]')!);
+    expect(screen.getByText("Ni živali, ki ustrezajo filtrom")).toBeTruthy();
+  });
+});
+
 describe("ShelterMap presentation mode", () => {
   it("renders one labelled graphic without pick or hover controls", () => {
     const html = renderToStaticMarkup(
@@ -577,7 +601,7 @@ describe("ShelterMap regions", () => {
     expect(html).toContain("var(--filter-accent-strong)");
   });
 
-  it("hatches a partly picked region instead of half-fading the green", () => {
+  it("marks partial selection with a dashed boundary without covering the region in stripes", () => {
     const html = renderMap(
       [
         pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
@@ -586,17 +610,11 @@ describe("ShelterMap regions", () => {
       ["macja-hisa"],
     );
 
-    const pattern = html.match(/<pattern[^>]*>/)?.[0] ?? "";
-    const id = pattern.match(/id="([^"]+)"/)?.[1] ?? "";
-    expect(id).not.toBe("");
-    expect(pattern).toContain('patternUnits="userSpaceOnUse"');
-    expect(pattern).toContain('patternTransform="rotate(45)"');
-
     const region = regionTag(html, "Savinjska");
     expect(region).toContain('data-region-state="mixed"');
-    expect(region).toContain(`fill="url(#${id})"`);
-    // The half-strength green the hatch replaces.
-    expect(region).not.toContain("fill-opacity:0.5");
+    expect(region).toContain('aria-pressed="mixed"');
+    expect(region).toContain("stroke-dasharray:3_2");
+    expect(region).not.toContain('fill="url(');
   });
 
   it("keeps every region drawn, empty ones included", () => {
@@ -1439,13 +1457,14 @@ describe("mapFacts: hasEmpty", () => {
     ).toBe(false);
   });
 
-  it("is true for a shelter with nothing listed, and agrees with the map", () => {
+  it("separates no filtered matches from no published listings", () => {
     const pins = [
       pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
-      { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
+      pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(factsFor(pins, []).hasEmpty).toBe(true);
+    expect(factsFor(pins, []).hasEmpty).toBe(false);
+    expect(factsFor(pins, []).hasFilteredEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
 
@@ -2650,6 +2669,15 @@ describe("ShelterMap species annotation", () => {
     expect(container.querySelector(".lucide-dog")).not.toBeNull();
   });
 
+  it("omits the full-shelter species breakdown when the map count is filtered", () => {
+    const container = renderSummaries([
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 3),
+    ]);
+    fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
+    expect(container.querySelector("[data-callout-species]")).toBeNull();
+    expect(screen.getByText("3 živali")).toBeTruthy();
+  });
+
   it("adds none over a town answering for several shelters at once", () => {
     // Four shelters, so the marker gives up on one disc each and answers as a
     // town; hovering it names the town, not a house.
@@ -2765,6 +2793,34 @@ describe("ShelterMap without hover", () => {
   }
 
   const tap = (node: Element) => fireEvent.click(node, { detail: 1 });
+
+  it("offers an accessible action after identifying a region", () => {
+    onATouchscreen();
+    const map = renderPlate();
+    tap(map.region("Osrednjeslovenska"));
+    const action = screen.getByRole("button", { name: "Izberi · 1 zavetišče: Osrednjeslovenska" });
+    expect(map.onPick).not.toHaveBeenCalled();
+    fireEvent.click(action);
+    expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+      kind: "group", label: "Osrednjeslovenska", values: ["ljubljana"],
+    });
+    expect(screen.queryByRole("button", { name: /^Izberi ·/ })).toBeNull();
+  });
+
+  it("keeps the explicit choice present while a keyboard user focuses it", () => {
+    onATouchscreen();
+    vi.useFakeTimers();
+    const map = renderPlate();
+    tap(map.region("Osrednjeslovenska"));
+    const action = screen.getByRole("button", { name: /^Izberi ·/ });
+    act(() => action.focus());
+    act(() => vi.advanceTimersByTime(ARMED_TTL_MS * 2));
+    expect(document.activeElement).toBe(action);
+    fireEvent.click(action);
+    expect(map.onPick).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(map.region("Osrednjeslovenska"));
+    vi.useRealTimers();
+  });
 
   it("names the region the first tap lands on instead of picking it", () => {
     onATouchscreen();

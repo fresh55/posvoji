@@ -1,5 +1,5 @@
 import type { ShelterRow } from "@/components/filters/shelter-rows";
-import type { FilterOption } from "@/lib/filters";
+import { activeFilterCount, type FilterOption, type Filters } from "@/lib/filters";
 import { cityAt, distanceKm, project, type LatLon } from "@/lib/geo";
 import type { Locale } from "@/lib/i18n";
 import type { ShelterPin } from "@/lib/map-layout";
@@ -9,6 +9,16 @@ import { MUNICIPALITY_CENTROIDS } from "@/lib/postcode-municipalities";
 
 export function sameValues(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((value) => b.includes(value));
+}
+
+export function pickerFilterSummary(filters: Filters, locale: Locale): string {
+  const species = locale === "sl"
+    ? { all: "Vse živali", dog: "Psi", cat: "Mačke", other: "Ostale živali" }
+    : { all: "All animals", dog: "Dogs", cat: "Cats", other: "Other animals" };
+  const extra = activeFilterCount({ ...filters, shelter: [] });
+  return [species[filters.species], extra > 0
+    ? locale === "sl" ? `Dodatni filtri: ${extra}` : `Additional filters: ${extra}`
+    : null].filter(Boolean).join(" · ");
 }
 
 export const MUNICIPALITY_AT = new Map<string, LatLon>(
@@ -73,12 +83,44 @@ export const pickerText = {
     showing: "Prikazano",
     done: "Končano",
     clearSelection: "Počisti izbor",
+    selected: "Izbrano",
+    removeSelection: "Odstrani zavetišče",
+    places: "Kraji",
+    shelters: "Zavetišča",
+    near: "V bližini",
+    removeOrigin: "Odstrani izhodišče",
+    distance: "Približna zračna razdalja med kraji.",
+    countsMatch: "Število živali upošteva izbrane filtre.",
+    zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
+    allShelters: "Vsa zavetišča",
+    clearFilters: "Počisti vse filtre",
+    backToResults: "Nazaj k rezultatom",
+    chooseShelters: "Izberi zavetišča",
+    chooseSheltersHint: "Izberi eno ali več zavetišč.",
+    showList: "Pokaži seznam",
+    showMap: "Pokaži zemljevid",
   },
   en: {
     matches: "Matches",
     showing: "Showing",
     done: "Done",
     clearSelection: "Clear selection",
+    selected: "Selected",
+    removeSelection: "Remove shelter",
+    places: "Places",
+    shelters: "Shelters",
+    near: "Near",
+    removeOrigin: "Remove starting point",
+    distance: "Approximate straight-line distance between towns.",
+    countsMatch: "Animal counts reflect your current filters.",
+    zeroMatches: "No published animals match your selection.",
+    allShelters: "All shelters",
+    clearFilters: "Clear all filters",
+    backToResults: "Back to results",
+    chooseShelters: "Choose shelters",
+    chooseSheltersHint: "Select one or more shelters.",
+    showList: "Show list",
+    showMap: "Show map",
   },
 } satisfies Record<Locale, Record<string, string>>;
 

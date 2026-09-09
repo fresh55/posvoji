@@ -113,12 +113,16 @@ describe("responsive picker session", () => {
     resize(false);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
-  it("retains a typed origin when the sidebar disappears for a sparse species", async () => {
+  it("retains a confirmed place when the sidebar disappears for a sparse species", () => {
     const view = render(<Pair />);
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[0]);
     fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {
       target: { value: "1000" },
     });
+    expect(screen.getByTestId("origin").textContent).toBe("none");
+    fireEvent.click(
+      screen.getByRole("button", { name: /^V bližini Ljubljana/ }),
+    );
     expect(screen.getByTestId("origin").textContent).toBe("typed");
     view.rerender(<Pair showDesktop={false} />);
     expect(screen.getByTestId("origin").textContent).toBe("typed");
@@ -127,5 +131,47 @@ describe("responsive picker session", () => {
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
         .value,
     ).toBe("1000");
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče" }).textContent,
+    ).toContain("Ljubljana");
+  });
+  it("shares a confirmed place across breakpoints and clears it from either picker", async () => {
+    render(<Pair />);
+    fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
+    fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {
+      target: { value: "1000" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /^V bližini Ljubljana/ }),
+    );
+    // A shelter-name search must not silently replace the chosen origin.
+    fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {
+      target: { value: "Jug" },
+    });
+    expect(screen.getByTestId("origin").textContent).toBe("typed");
+
+    resize(true);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[0]);
+    expect(
+      (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
+        .value,
+    ).toBe("1000");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Odstrani izhodišče" }),
+    );
+    expect(screen.getByTestId("origin").textContent).toBe("none");
+
+    resize(false);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
+    expect(
+      screen.queryByRole("button", { name: "Odstrani izhodišče" }),
+    ).toBeNull();
+    expect(
+      (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
+        .value,
+    ).toBe("");
+    expect(screen.getByTestId("origin").textContent).toBe("none");
   });
 });

@@ -7,9 +7,29 @@ import {
   longStayMonths,
   registerDateLabel,
   shelterChipLabel,
+  shelterSelectionLabel,
 } from "./labels";
 
 const NOW = new Date("2026-08-15T00:00:00Z");
+
+describe("shelterSelectionLabel", () => {
+  it("names the unrestricted selection in either language", () => {
+    expect(shelterSelectionLabel([], "sl")).toBe("Vsa zavetišča");
+    expect(shelterSelectionLabel([], "en")).toBe("All shelters");
+  });
+
+  it("keeps the selected shelter's complete name in either language", () => {
+    const selection = [{ label: "Zavetišče Ljubljana" }];
+    expect(shelterSelectionLabel(selection, "sl")).toBe("Zavetišče Ljubljana");
+    expect(shelterSelectionLabel(selection, "en")).toBe("Zavetišče Ljubljana");
+  });
+
+  it("counts multiple choices explicitly without a registry fraction", () => {
+    const selection = [{ label: "Sever" }, { label: "Jug" }];
+    expect(shelterSelectionLabel(selection, "sl")).toBe("Izbrano: 2");
+    expect(shelterSelectionLabel(selection, "en")).toBe("Selected: 2");
+  });
+});
 
 function animal(extra: Partial<Animal> = {}): Animal {
   return {

@@ -31,9 +31,9 @@ export function pickerTrigger(page: Page): Locator {
   return page.locator("[data-picker-trigger]").filter({ visible: true });
 }
 
-// The shelter rows are buttons with aria-pressed, and so is the sort toggle
-// that sits above them. Only a row wraps its label in spans.
-export const ROW = "button[aria-pressed]:has(span)";
+// Shelter rows carry their own marker; selection and view controls elsewhere
+// in the dialog must never be mistaken for an animal-filter choice.
+export const ROW = "[data-shelter-row] button[aria-pressed]";
 
 export function rows(dialog: Locator): Locator {
   return dialog.locator(ROW);
@@ -44,13 +44,14 @@ export async function openPicker(page: Page): Promise<Locator> {
   await pickerTrigger(page).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('svg[role="group"]')).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Izberi zavetišča" })).toBeVisible();
   return dialog;
 }
 
-// The way out of the dialog. Its label carries the count when there is one to
-// carry and falls back to the bare word when there is not, so both spellings
-// have to be reachable by one locator.
+// The persistent footer carries either the result count or the zero-result
+// return action. Scoping it keeps unrelated map/list controls out.
 export function donePill(page: Page): Locator {
-  return page.getByRole("button", { name: /^(Pokaži .* živali?|Končano)$/ });
+  return page.locator("[data-picker-footer]").getByRole("button", {
+    name: /^(Pokaži .* živali?|Nazaj k rezultatom)$/,
+  });
 }

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { ShelterDetails } from "@/components/filters/shelter-details";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -43,6 +44,34 @@ export type ShelterRow = {
 // map and the keyboard code that reach into it do not need to know which
 // element kind they got.
 type ShelterRowElement = HTMLButtonElement | HTMLAnchorElement;
+
+// The picker has a scrollable panel around its own list. Native
+// scrollIntoView moves both and can hide the search controls above the list.
+// Keep a row reveal inside that list; other callers retain native scrolling.
+function revealRow(row: ShelterRowElement) {
+  const scroller = row.closest<HTMLElement>("[data-picker-list-scroll]");
+  if (!scroller) {
+    row.scrollIntoView({ block: "nearest", behavior: "auto" });
+    return;
+  }
+
+  const rowBounds = row.getBoundingClientRect();
+  const top = scroller.getBoundingClientRect().top + scroller.clientTop;
+  const bottom = top + scroller.clientHeight;
+  const tallerThanViewport = rowBounds.height > scroller.clientHeight;
+
+  // A tall row already spanning the viewport is as visible as it can be.
+  if (rowBounds.top < top && rowBounds.bottom > bottom) return;
+  if (rowBounds.top < top) {
+    scroller.scrollTop += tallerThanViewport
+      ? rowBounds.bottom - bottom
+      : rowBounds.top - top;
+  } else if (rowBounds.bottom > bottom) {
+    scroller.scrollTop += tallerThanViewport
+      ? rowBounds.top - top
+      : rowBounds.bottom - bottom;
+  }
+}
 
 // Stable empty defaults, so a caller rendering link rows only is not made to
 // fabricate a Map and an array it will never read from.
@@ -195,8 +224,8 @@ export function ShelterRows({
   const pointerInsideRef = useRef(false);
 
   // The row the caller named is brought into view, so an echo is visible even
-  // when the matched shelter has scrolled off. `block: "nearest"` means a row
-  // already on screen does not move at all. Instant, not smooth: the repo
+  // when the matched shelter has scrolled off. A row already on screen does
+  // not move at all. Instant, not smooth: the repo
   // already treats motion as something to justify (see motion-reduce: in
   // shelter-map.tsx), and a list that jumps rather than glides never fights a
   // scroll the visitor is mid-gesture on.
@@ -206,17 +235,16 @@ export function ShelterRows({
   // `scrollTo` the picker hands them, so both run. localRefs.get returns
   // undefined for a value that belongs to the other list, which makes the
   // lookup itself the arbiter: exactly one of the two ever holds that row, so
-  // exactly one of them ever calls scrollIntoView, and the two can never fight
+  // exactly one of them ever reveals a row, and the two can never fight
   // over where the shared scroll container lands.
   useEffect(() => {
     if (!scrollTo || pointerInsideRef.current) return;
-    localRefs.current
-      .get(scrollTo)
-      ?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    const row = localRefs.current.get(scrollTo);
+    if (row) revealRow(row);
   }, [scrollTo]);
 
-  // Arrow keys walk the roster toggle rows. A registry link uses the tab
-  // order instead; a zero filtered animal count does not disable a shelter.
+  // Arrow keys walk enabled toggle rows. Registry links use the tab order;
+  // selected shelters remain reachable even when their match count is zero.
   //
   // The info control stays out of the walk, and the walk stays one stop per
   // shelter. Every control in this list is in the tab order already, so the
@@ -230,7 +258,11 @@ export function ShelterRows({
   const moveFocus = (event: KeyboardEvent, value: string) => {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const enabled = rows.filter((row) => !row.href);
+    const enabled = rows.filter(
+      (row) =>
+        !row.href &&
+        ((counts.get(row.value) ?? 0) > 0 || selected.includes(row.value)),
+    );
     const index = enabled.findIndex((row) => row.value === value);
     if (index < 0) return;
     if (event.key === "ArrowUp" && index === 0) {
@@ -245,7 +277,11 @@ export function ShelterRows({
           : event.key === "ArrowUp"
             ? index - 1
             : Math.min(index + 1, enabled.length - 1);
-    localRefs.current.get(enabled[next].value)?.focus();
+    const row = localRefs.current.get(enabled[next].value);
+    if (row) {
+      row.focus({ preventScroll: true });
+      revealRow(row);
+    }
   };
 
   // One provider for the whole list rather than one per row: the delays are
@@ -284,7 +320,7 @@ export function ShelterRows({
 
           // A registry shelter with nothing to filter by: there is a page for
           // it, so the row is a link out rather than a dead toggle. It copies
-          // a toggle row's layout down to the size-3.5 spacer where the check
+          // a toggle row's layout down to the size-4 spacer where the check
           // sits, so the two lists share their columns.
           if (href) {
             return (
@@ -296,8 +332,7 @@ export function ShelterRows({
                 onPointerLeave={() => onHoverRow?.(null)}
                 data-highlighted={isHighlighted || undefined}
                 className={cn(
-                  // max-lg:min-h-11 is the 44px touch target the comment above
-                  // this function promises; lg and up keeps the denser row.
+                  // A 44px minimum keeps the whole row easy to target.
                   // Touch targets across the map dialog gate at lg rather than
                   // md, because lg is where the picker's list dock switches
                   // from a bottom sheet to a side panel, which is where the
@@ -307,40 +342,40 @@ export function ShelterRows({
                   // already take, for the same reason: this row sits inside a
                   // scroller, and a ring drawn outside the box is what the
                   // container clips first.
-                  "flex w-full items-center gap-2 rounded-ui px-2 py-1.5 text-left transition-colors max-lg:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
+                  "flex min-h-11 w-full items-center gap-2 rounded-ui px-2 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
                   isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
                 )}
               >
-                <span className="size-3.5 shrink-0" aria-hidden />
+                <span className="size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-muted-foreground">
+                  <span className="text-sm leading-snug font-medium text-foreground max-lg:line-clamp-2 lg:block lg:truncate">
                     {label}
                   </span>
                   {sublabel && (
-                    <span className="block truncate text-2xs text-muted-foreground">
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                       {sublabel}
                     </span>
                   )}
                 </span>
-                <ChevronRight
-                  className="size-3 shrink-0 text-muted-foreground/60"
-                  aria-hidden
-                />
+                <span className="inline-flex size-11 shrink-0 items-center justify-center" aria-hidden>
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </span>
               </a>
             );
           }
 
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
+          const disabled = count === 0 && !checked;
           const summary = summaries.get(value);
           const isExpanded = expanded === value;
+          const showDetails = Boolean(onToggleExpanded && hasDetails(summary));
           // Selection puts nothing on the row's surface at all: any shared fill,
           // however faint, makes two adjacent picked rows read as one shape,
           // because the 2px gap between rows is thinner than the eye needs. What
-          // says "picked" is the check, the label's weight and the count pill's
-          // tint, three marks that sit inside each row and cannot merge across
-          // two. The surface is left free to answer hover and the map's marker
-          // highlight, the same way on every row.
+          // says "picked" is the check. Names and count badges keep the same
+          // hierarchy across the list, while the surface answers hover and the
+          // map's marker highlight.
           //
           // The row is a wrapper holding two controls rather than one control,
           // because a toggle and a question are two different acts. Every target
@@ -375,7 +410,10 @@ export function ShelterRows({
                 // take. What is left on this side is the gutter the info
                 // control sits against, which is its own target's business.
                 "flex w-full items-center gap-1 rounded-ui pr-2 transition-colors",
-                isHighlighted ? "bg-muted/50" : "hover:bg-muted/50",
+                disabled && "cursor-not-allowed",
+                isHighlighted
+                  ? "bg-muted/50"
+                  : !disabled && "hover:bg-muted/50",
               )}
             >
               <button
@@ -383,78 +421,42 @@ export function ShelterRows({
                 ref={setRef}
                 onClick={() => onToggle?.(value)}
                 onKeyDown={(event) => moveFocus(event, value)}
+                disabled={disabled}
                 aria-pressed={checked}
                 data-highlighted={isHighlighted || undefined}
                 className={cn(
                   // pl-2 is the row's left inset, held by the control that
                   // answers a press on it rather than by the wrapper around it.
                   // cursor-pointer because preflight gives every button the
-                  // arrow cursor, not the hand. max-lg:min-h-11 is the 44px
-                  // touch target, same rule as the link row above. The focus
+                  // arrow cursor, not the hand. min-h-11 is the 44px
+                  // target, same rule as the link row above. The focus
                   // ring is drawn inside the button's own box, because the row
                   // leaves no room outside it; animal-card.tsx already uses an
                   // inset outline for the same reason.
-                  "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-1.5 pl-2 text-left max-lg:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
+                  "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-2 pl-2 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] disabled:cursor-not-allowed",
+                  // Keep the details control readable and available at zero.
+                  disabled && "opacity-40",
                 )}
               >
-                {/* Always laid out, so selecting a row doesn't shift the list. */}
-                <Check
+                {/* The empty box makes selection visible before the first pick;
+                  the disclosure chevron remains a separate action. */}
+                <span
+                  data-selection-indicator={checked ? "checked" : "unchecked"}
                   className={cn(
-                    "size-3.5 shrink-0",
+                    "inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
                     checked
-                      ? "text-[var(--filter-accent-strong)]"
-                      : "opacity-0",
+                      ? "border-[var(--filter-accent-strong)] bg-[var(--filter-accent)] text-[var(--filter-accent-strong)]"
+                      : "border-muted-foreground/70",
                   )}
-                  strokeWidth={2.25}
                   aria-hidden
-                />
+                >
+                  {checked && <Check className="size-3" strokeWidth={2.5} />}
+                </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span
-                      className={cn(
-                        "min-w-0 flex-1 truncate text-sm",
-                        checked ? "font-medium" : "text-muted-foreground",
-                      )}
-                    >
-                      {label}
-                    </span>
-                    {/* The count as a pill tucked against the name it belongs
-                      to, not a number stranded across the row's own width.
-                      Same quiet-badge shape the sidebar already uses for a
-                      count (h-5 min-w-5 rounded-full, tabular-nums), so this
-                      reads as the site's one way of showing "how many" rather
-                      than a new one invented for this list. On a picked row it
-                      takes the accent tint: with the row surface kept clear,
-                      the pill is the mark that stays visible at the right edge
-                      when the left half of a long name is all a narrow panel
-                      shows.
-
-                      An unpicked pill keeps the secondary variant's own
-                      foreground rather than overriding it to muted. Muted ink
-                      on the secondary surface measured 4.35:1, under the 4.5
-                      that 11px text has to clear, and the count is the number
-                      the row is picked on, not decoration. The variant's own
-                      pairing is the quiet one that was already designed to
-                      clear it. */}
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "h-5 min-w-5 shrink-0 rounded-full px-1 text-2xs font-normal tabular-nums",
-                        checked &&
-                          "bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
-                      )}
-                    >
-                      {countLabel ? (
-                        <>
-                          <span aria-hidden>{count}</span>
-                          <span className="sr-only">{countLabel(count)}</span>
-                        </>
-                      ) : (
-                        count
-                      )}
-                    </Badge>
+                  <span className="min-w-0 text-sm leading-snug font-medium text-foreground max-lg:line-clamp-2 lg:block lg:truncate">
+                    {label}
                   </span>
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-muted-foreground">
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     {sublabel && (
                       <span className="min-w-0 truncate">{sublabel}</span>
                     )}
@@ -469,6 +471,22 @@ export function ShelterRows({
                     )}
                   </span>
                 </span>
+                {/* A stable count column makes the roster easy to compare.
+                  The checkbox carries selection; every count keeps the same
+                  neutral badge and tabular figures. */}
+                <Badge
+                  variant="secondary"
+                  className="h-6 min-w-8 shrink-0 rounded-md px-1.5 text-xs font-medium tabular-nums"
+                >
+                  {countLabel ? (
+                    <>
+                      <span aria-hidden>{count}</span>
+                      <span className="sr-only">{countLabel(count)}</span>
+                    </>
+                  ) : (
+                    count
+                  )}
+                </Badge>
               </button>
 
               {/* On every toggle row a caller has something to open for, picked
@@ -505,24 +523,23 @@ export function ShelterRows({
                 chevron at the end of a row already reads as one, and twelve
                 bordered circles down a narrow list read as a second column of
                 pills competing with the counts. */}
-              {onToggleExpanded && hasDetails(summary) && (
+              {showDetails ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <CollapsibleTrigger asChild>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         aria-label={
                           isExpanded
                             ? hideInfoLabel?.(label)
                             : infoLabel?.(label)
                         }
                         className={cn(
-                          // max-lg:size-11 is the 44px touch target the toggle
-                          // and the link row already take below lg, same rule and
-                          // same breakpoint. The focus ring is inset for the same
-                          // reason the toggle's is: the wrapper's padding leaves
-                          // no room to draw it outside.
-                          "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-ui transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] max-lg:size-11",
+                          // The shared ghost button keeps one 44px disclosure
+                          // column at every width. Its ring stays in the scroller.
+                          "size-11 cursor-pointer focus-visible:ring-inset",
                           isExpanded
                             ? "text-foreground"
                             : "text-muted-foreground",
@@ -533,14 +550,16 @@ export function ShelterRows({
                         ) : (
                           <ChevronDown className="size-4" aria-hidden />
                         )}
-                      </button>
+                      </Button>
                     </CollapsibleTrigger>
                   </TooltipTrigger>
                   <TooltipContent side="left" sideOffset={6}>
                     {isExpanded ? hideInfoText : infoText}
                   </TooltipContent>
                 </Tooltip>
-              )}
+              ) : onToggleExpanded ? (
+                <span className="size-11 shrink-0" aria-hidden />
+              ) : null}
             </div>
           );
 
@@ -565,7 +584,7 @@ export function ShelterRows({
               // panel beneath it, so the span belongs here rather than on the
               // content. Between sm and lg the list is two columns, and a panel
               // squeezed into half of one would set the species chips and the
-              // photo fan wrapping under a row that does not wrap. Spanning both
+              // thumbnails wrapping under a row that does not wrap. Spanning both
               // columns costs a reflow of the cells after this one for as long as
               // the panel is open, which is the cheaper of the two: the shelter
               // being read stays where it was and grows, and only the list under
@@ -575,23 +594,10 @@ export function ShelterRows({
             >
               {row}
               <CollapsibleContent>
-                {/* Inset to the label column, past the check glyph: 8px of the
-                  toggle's own pl-2 plus the check's 14px puts the fill at 22px,
-                  and the panel's px-2 then lands the content at 30px, exactly
-                  where the shelter's name starts above it. The inset is doing
-                  real work, not decoration. bg-muted/30 sits a hair under the
-                  bg-muted/50 a hovered or map-highlighted row carries, and at
-                  that distance a hovered row directly above an open panel would
-                  read as one block; the left edge is what keeps them two
-                  things. The separator says the same again for anyone who
-                  cannot see the fill at all.
-
-                  bg-muted/30 is also load-bearing for ShelterDetails: the photo
-                  fan's ring is a color-mix of exactly this fill over the
-                  picker's background, so an overlap cuts rather than haloes.
-                  Change one and change the other. */}
-                <div className="ml-5.5 border-t border-border/60 bg-muted/30 px-2 py-2">
-                  <ShelterDetails summary={summary} />
+                {/* One quiet inset surface groups the overview without adding
+                  another card border or shadow to the shelter list. */}
+                <div className="mb-2 ml-6 mr-2 rounded-ui bg-muted/40 p-3">
+                  <ShelterDetails summary={summary} matchingCount={count} />
                 </div>
               </CollapsibleContent>
             </Collapsible>

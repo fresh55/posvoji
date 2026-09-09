@@ -4,11 +4,9 @@ import { openPicker, pickerTrigger } from "./picker";
 // The map's two-tap contract, on the projects that actually have a finger.
 //
 // On a pointer that cannot hover, the first tap on a region names it and the
-// second picks it: a tap is the pointing and the pressing at once, and the
-// plate draws no region names of its own, so a single-tap pick took a dozen
-// shelters out of a shape nothing on screen had named. shelter-map.tsx has the
-// whole of the reasoning, and shelter-map.test.tsx pins the mechanism against
-// a stubbed matchMedia.
+// second picks it. The first tap exposes the full name and the effect of
+// selection before committing. shelter-map.test.tsx pins this mechanism
+// against a stubbed matchMedia.
 //
 // What a unit test cannot answer is whether a real touch on a real engine
 // still lands there: the gate reads (hover: none) and MouseEvent.detail, both
@@ -41,8 +39,8 @@ const CENTRE = "Osrednjeslovenska";
 const EAST = "Savinjska";
 
 /** The picked-shelter count, read off the control that opens the dialog. It
- *  says "Vsa zavetišča" until something is picked and "n od m zavetišč" after,
- *  so its own text is the least brittle way to ask whether a tap committed. */
+ *  names the full selection after a pick, so it is a stable way to ask
+ *  whether a tap committed without depending on map styling. */
 async function scopeLabel(page: Page): Promise<string> {
   return (await pickerTrigger(page).getAttribute("aria-label")) ?? "";
 }
@@ -51,6 +49,7 @@ test("names a region on the first tap and picks it on the second", async ({
   page,
 }) => {
   const dialog = await openPicker(page);
+  await dialog.locator("[data-picker-show-map]").click();
   const centre = region(dialog, CENTRE);
   const before = await scopeLabel(page);
 
@@ -92,6 +91,7 @@ test("moves the naming to another region instead of picking the first", async ({
   page,
 }) => {
   const dialog = await openPicker(page);
+  await dialog.locator("[data-picker-show-map]").click();
   const before = await scopeLabel(page);
 
   await region(dialog, CENTRE).tap();
@@ -107,6 +107,7 @@ test("forgets an arming the finger has dragged away from", async ({ page }) => {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   const dialog = await openPicker(page);
+  await dialog.locator("[data-picker-show-map]").click();
   const centre = region(dialog, CENTRE);
   const before = await scopeLabel(page);
 

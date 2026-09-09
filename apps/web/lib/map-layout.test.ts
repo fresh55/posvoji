@@ -9,6 +9,9 @@ import {
   dominantShelterIndex,
   driftBudget,
   layoutTowns,
+  groupTownsByRegion,
+  regionStatsByRegion,
+  townSelectableValues,
   markerGeometry,
   markerRadius,
   markerVisualReach,
@@ -907,8 +910,28 @@ describe("densityScale", () => {
   it("keeps each step clear of the one before it", () => {
     for (let index = 1; index < DENSITY_STEPS.length; index += 1) {
       expect(DENSITY_STEPS[index] - DENSITY_STEPS[index - 1]).toBeGreaterThan(
-        0.07,
+        0.04,
       );
     }
+  });
+});
+
+describe("map selection eligibility", () => {
+  const pins = [pin("matching", "Ljubljana", 5), pin("filtered", "Horjul", 0)];
+
+  it("does not add a disabled zero-match shelter through a region", () => {
+    const towns = layoutTowns(pins);
+    const { byRegion } = groupTownsByRegion(towns);
+    const region = regionStatsByRegion(byRegion, []).find(({ stats }) => stats.animals === 5)!;
+    expect(region.stats.values).toEqual(["matching"]);
+    expect(townSelectableValues(towns.find((town) => town.city === "Horjul")!)).toEqual([]);
+  });
+
+  it("keeps a selected zero-match shelter removable from the map", () => {
+    const towns = layoutTowns(pins);
+    const { byRegion } = groupTownsByRegion(towns);
+    const region = regionStatsByRegion(byRegion, ["filtered"]).find(({ stats }) => stats.animals === 5)!;
+    expect(region.stats.values).toEqual(expect.arrayContaining(["matching", "filtered"]));
+    expect(townSelectableValues(towns.find((town) => town.city === "Horjul")!, ["filtered"])).toEqual(["filtered"]);
   });
 });

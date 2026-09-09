@@ -128,6 +128,36 @@ const expected = {
 
 assert.doesNotThrow(() => validateLayout(configFor(), expected));
 
+// The demo gate (docs/DEMO-GATE.md) is a basic_auth with a matcher, placed
+// before the public routes. Its expression and not-path matchers are unknown
+// to this scanner and are treated as possibly matching; that is harmless
+// because authentication responds to nothing, so the probes pass through to
+// the public file_server as before.
+const demoGate = {
+  match: [
+    {
+      expression: {
+        expr: '{http.request.cookie.posvoji_demo} != "secret"',
+        name: "guest",
+      },
+      not: [{ path: ["/vstop", "/vstop.html", "/_next/static/*"] }],
+    },
+  ],
+  handle: [
+    {
+      handler: "authentication",
+      providers: {
+        http_basic: {
+          accounts: [{ username: "health", password: "$2a$14$hash" }],
+        },
+      },
+    },
+  ],
+};
+assert.doesNotThrow(() =>
+  validateLayout(configFor({ prelude: [demoGate] }), expected),
+);
+
 assert.throws(
   () => validateLayout(configFor({ clean: false }), expected),
   /preceding \.html try_files rewrite/,

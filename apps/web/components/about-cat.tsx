@@ -19,12 +19,14 @@ const copy = {
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Nalaganje mačka v 3D …",
     unavailable: "3D-ogled trenutno ni na voljo. Prikazana je slika mačka.",
+    story: "Spoznajte Srečka",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "Loading the cat in 3D …",
     unavailable: "The 3D view is unavailable. A still image of the cat is shown.",
+    story: "Meet Srečko",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -191,12 +193,11 @@ export function AboutCat({ locale }: { locale: Locale }) {
       <span className="sr-only" role="status">
         {status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading}
       </span>
-      <figcaption className="mt-3 text-center text-sm leading-relaxed text-muted-foreground">
-        {memorial.dedicationBefore}
+      <figcaption className="mx-auto mt-3 max-w-xs space-y-2 text-center text-sm leading-relaxed text-muted-foreground">
+        <p>{memorial.intro}</p>
         <a href={SRECKO_PATHS[locale]} className={cn(MUTED_LINK, "rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4")}>
-          {memorial.dedicationName}
+          {text.story}
         </a>
-        {"."}
       </figcaption>
     </figure>
   );

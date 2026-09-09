@@ -1,11 +1,9 @@
 import {
   Building2,
-  Clock3,
   HeartHandshake,
   type LucideIcon,
   Mail,
   ShieldCheck,
-  Users,
 } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
 import { ModelCredit } from "@/components/model-credit";
@@ -23,16 +21,14 @@ import {
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { MUTED_LINK } from "@/lib/link-styles";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 
-// Where a correction goes. Printed as the address itself rather than behind
-// a word: a reader writing from their own mail client has to be able to read
-// it off the page, and the one string is then both the link and its text.
-
 type PageText = {
   lead: string;
-  points: { key: PointKey; title: string; body: string }[];
+  maintainer: string;
+  points: { key: PointKey; title: string; body: string; link?: { label: string; href: string } }[];
   /** The closing line. The address and the repository follow it as buttons
    *  and are not translated. */
   report: string;
@@ -49,10 +45,8 @@ type PageText = {
 // hand-written union only caught the direction that loses an icon.
 const pointIcons = {
   free: HeartHandshake,
-  availability: Clock3,
   shelterData: ShieldCheck,
   shelterDecides: Building2,
-  forShelters: Users,
 } satisfies Record<string, LucideIcon>;
 
 type PointKey = keyof typeof pointIcons;
@@ -62,69 +56,53 @@ type PointKey = keyof typeof pointIcons;
 // Browsing needs no account; shelters have a separate portal login.
 const pageText: Record<Locale, PageText> = {
   sl: {
-    lead: "Posvoji.si na enem mestu povezuje živali iz slovenskih zavetišč z ljudmi, ki jim želijo ponuditi dom. Nismo zavetišče in ne vodimo posvojitev.",
+    lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
+    maintainer: "Posvoji.si razvijam in vzdržujem kot osebni projekt.",
     points: [
       {
         key: "shelterDecides",
         title: "Želite posvojiti?",
-        body: "Obrnite se na zavetišče, navedeno pri živali. Z njim se dogovorite za spoznavanje ter preverite potrebe živali, pogoje in morebitne stroške posvojitve. O posvojitvi odloča zavetišče.",
-      },
-      {
-        key: "availability",
-        title: "Ali žival še išče dom?",
-        body: "Podatki se lahko spremenijo, preden se seznam osveži. Pred obiskom preverite pri zavetišču. Seznam ne zajema vseh živali v slovenskih zavetiščih.",
+        body: "Za spoznavanje in pogoje posvojitve se obrnite na zavetišče ob objavi. Pred obiskom preverite, ali žival še išče dom. Posvojitev vodi zavetišče; naš seznam ne zajema vseh živali.",
       },
       {
         key: "free",
         title: "Brezplačna uporaba",
-        body: "Za obiskovalce in zavetišča. Za ogled ne potrebujete računa. Brez oglasov in plačanih prednostnih uvrstitev. Zasebnih oglasov in osebnih podatkov posameznikov ne objavljamo.",
+        body: "Za obiskovalce in zavetišča. Za ogled ne potrebujete računa. Brez oglasov in plačanih prednostnih uvrstitev.",
       },
       {
         key: "shelterData",
         title: "Vsebine z dovoljenjem",
-        body: "Podatke, fotografije in opise objavimo le v obsegu, ki ga dovoli zavetišče. Vir je naveden pri vsaki živali. Pravice do fotografij in opisov ostanejo njihovim imetnikom; odprta koda ne pomeni dovoljenja za uporabo teh vsebin.",
-      },
-      {
-        key: "forShelters",
-        title: "Za zavetišča",
-        body: "Za vključitev nam pišite. Dogovorimo se za povezavo z vašim spletnim seznamom ali neposredno objavo prek portala. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
+        body: "Podatke, fotografije in opise objavljamo z dovoljenjem zavetišč in navedemo njihov vir.",
+        link: { label: "O vsebinah in dovoljenjih", href: `${REPO_URL}/blob/main/docs/DATA-POLICY.md` },
       },
     ],
     report:
-      "Za sodelovanje, popravek ali umik nam pišite. Pri napaki dodajte povezavo do objave in kaj je treba spremeniti.",
+      "Ste zavetišče ali imate predlog? Pišite nam. Za popravek ali umik dodajte povezavo do objave.",
     code: "Koda na GitHubu",
   },
   en: {
-    lead: "Posvoji.si brings together animals from Slovenian shelters and people who want to give them a home. We are not a shelter and do not handle adoptions.",
+    lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",
+    maintainer: "I develop and maintain Posvoji.si as a personal project.",
     points: [
       {
         key: "shelterDecides",
         title: "Want to adopt?",
-        body: "Contact the shelter named on the animal’s listing. Arrange a meeting and ask about the animal’s needs, adoption requirements and any fees. The shelter makes the adoption decision.",
-      },
-      {
-        key: "availability",
-        title: "Still looking for a home?",
-        body: "Details can change before the list is updated. Check with the shelter before visiting. This list does not include every animal in Slovenian shelters.",
+        body: "Contact the shelter on the listing to arrange a meeting and ask about adoption requirements. Check availability before visiting. The shelter handles the adoption; our list does not include every animal.",
       },
       {
         key: "free",
         title: "Free to use",
-        body: "For visitors and shelters. No account is needed to browse. No ads or paid priority listings. We do not publish private-owner listings or individuals’ personal details.",
+        body: "For visitors and shelters. No account needed to browse. No ads or paid priority listings.",
       },
       {
         key: "shelterData",
         title: "Content with permission",
-        body: "We publish only the data, photos and descriptions the shelter permits. Every animal names its source. Photos and descriptions remain with their rights holders; open-source code does not grant permission to reuse that content.",
-      },
-      {
-        key: "forShelters",
-        title: "For shelters",
-        body: "Email us to join. We can arrange to connect your website’s listings or help you publish directly through the portal. You can request corrections, content removal or an end to participation at any time.",
+        body: "We publish data, photos and descriptions with the shelters’ permission and credit their source.",
+        link: { label: "Content and permissions", href: `${REPO_URL}/blob/main/docs/DATA-POLICY.md#english-summary` },
       },
     ],
     report:
-      "Email us to take part, correct a listing or request removal. For a correction, include the listing link and what needs to change.",
+      "Run a shelter or have a suggestion? Email us. For corrections or removal, include the listing link.",
     code: "Code on GitHub",
   },
 };
@@ -145,7 +123,7 @@ function GithubMark() {
 const THUMB_BUTTON = "max-lg:min-h-11 max-lg:gap-1.5 max-lg:px-4";
 
 /**
- * The site's five facts remain readable while the cat loads independently.
+ * The site's introduction remains readable while the cat loads independently.
  */
 export function AboutPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
@@ -178,6 +156,9 @@ export function AboutPage({ locale }: { locale: Locale }) {
           <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
             {text.lead}
           </p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {text.maintainer}
+          </p>
         </div>
       </div>
 
@@ -207,14 +188,15 @@ export function AboutPage({ locale }: { locale: Locale }) {
                 <ItemTitle asChild className="text-base font-medium">
                   <h2>{point.title}</h2>
                 </ItemTitle>
-                {/* A step under the title rather than the same size in a
-                    lighter ink. Title and body were both 16px, so five
-                    facts read as one block of text and the glyph was
-                    doing all the work of telling them apart. The same
-                    pairing the resources cards use. */}
+                {/* Match the title/body hierarchy used by resource cards. */}
                 <ItemDescription className="text-sm leading-relaxed">
                   {point.body}
                 </ItemDescription>
+                {point.link && (
+                  <a href={point.link.href} className={`${MUTED_LINK} w-fit rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4`}>
+                    {point.link.label}
+                  </a>
+                )}
               </ItemContent>
             </Item>
           );

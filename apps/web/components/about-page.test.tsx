@@ -29,14 +29,14 @@ describe("the about page", () => {
   it("explains shelter adoption before site details in Slovenian", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
-      "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba", "Vsebine z dovoljenjem", "Za zavetišča",
+      "Želite posvojiti?", "Brezplačna uporaba", "Vsebine z dovoljenjem",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
   // The heading and the crumb above it read one string, so this pins the
   // wiring and not the wording: a copy change moves both and this stays
   // green, while a page that named itself something the roster does not
-  // would fail. The five facts are counted rather than quoted, for the same
+  // would fail. The sections are counted rather than quoted, for the same
   // reason: their words live in one place.
   it.each<Locale>(["sl", "en"])(
     "names itself the way the roster does (%s)",
@@ -46,7 +46,7 @@ describe("the about page", () => {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
         getMessages(locale).about,
       );
-      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(5);
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
     },
   );
 
@@ -89,5 +89,11 @@ describe("the about page", () => {
     const repo = screen.getByRole("link", { name: code });
     expect(repo.getAttribute("href")).toBe("https://github.com/fresh55/posvoji");
     expect(repo.getAttribute("rel")).toBe("noreferrer");
+    const policy = screen.getByRole("link", {
+      name: locale === "sl" ? "O vsebinah in dovoljenjih" : "Content and permissions",
+    });
+    expect(policy.getAttribute("href")).toBe(
+      `https://github.com/fresh55/posvoji/blob/main/docs/DATA-POLICY.md${locale === "en" ? "#english-summary" : ""}`,
+    );
   });
 });

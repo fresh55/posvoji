@@ -108,7 +108,9 @@ export function shelterMetadata(
     : undefined;
 
   return {
-    title: `${shelter.name} | ${SITE_NAME}`,
+    // Bare. The root layout's title template appends the site name; a title
+    // that spells it here would carry it twice.
+    title: shelter.name,
     description,
     alternates: localeAlternates(
       { sl: shelterPath(shelter.id, "sl"), en: shelterPath(shelter.id, "en") },

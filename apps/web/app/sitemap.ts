@@ -63,11 +63,16 @@ type Pair = {
  * including itself, which is what Google's own documentation asks for: a
  * crawler arriving at either URL has to be able to find every other version
  * from that one entry.
+ *
+ * x-default is the Slovenian address, the same answer the head gives. See
+ * localeAlternates in lib/site-metadata.ts for why that half and not the
+ * other; the two have to agree, and this is the file that would drift.
  */
 function entries(pair: Pair): MetadataRoute.Sitemap {
   const languages = {
     sl: absolute(pair.paths.sl),
     en: absolute(pair.paths.en),
+    "x-default": absolute(pair.paths.sl),
   };
   return LOCALES.map((locale) => ({
     url: absolute(pair.paths[locale]),

@@ -4,6 +4,7 @@ import {
   serializeJsonLd,
   shelterJsonLd,
   shelterListJsonLd,
+  siteJsonLd,
 } from "@/lib/shelter-jsonld";
 import { loadShelters, type ShelterRegistryEntry } from "@/lib/shelters";
 
@@ -29,6 +30,36 @@ const shelter: ShelterRegistryEntry = {
   phone: "01 234 56 78",
   notes: "Interna opomba, ki ne sme nikoli iz repozitorija.",
 };
+
+describe("siteJsonLd", () => {
+  it("gives each language its own site and its own address", () => {
+    const sl = read(siteJsonLd("sl"));
+    expect(sl["@type"]).toBe("WebSite");
+    expect(sl["@id"]).toBe("https://posvoji.si/#website");
+    expect(sl.url).toBe("https://posvoji.si/");
+    expect(sl.inLanguage).toBe("sl");
+
+    const en = read(siteJsonLd("en"));
+    expect(en["@id"]).toBe("https://posvoji.si/en#website");
+    expect(en.url).toBe("https://posvoji.si/en");
+    expect(en.inLanguage).toBe("en");
+  });
+
+  // One publisher behind two translations. If the @id moved with the locale,
+  // the site would be claiming two organisations where there is one.
+  it("names one publisher from both languages", () => {
+    const publisher = {
+      "@type": "Organization",
+      "@id": "https://posvoji.si/#org",
+      name: "Posvoji.si",
+      url: "https://posvoji.si",
+      logo: "https://posvoji.si/apple-icon.png",
+      sameAs: ["https://github.com/fresh55/posvoji"],
+    };
+    expect(read(siteJsonLd("sl")).publisher).toEqual(publisher);
+    expect(read(siteJsonLd("en")).publisher).toEqual(publisher);
+  });
+});
 
 describe("shelterListJsonLd", () => {
   it("numbers every shelter in the registry from one, in the order given", () => {

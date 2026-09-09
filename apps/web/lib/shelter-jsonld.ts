@@ -1,8 +1,9 @@
 import { telNumber } from "@/lib/contact-links";
-import type { Locale } from "@/lib/i18n";
-import { shelterPath, sheltersIndexPath } from "@/lib/shelter-path";
+import { getMessages, type Locale } from "@/lib/i18n";
+import { homePath, shelterPath, sheltersIndexPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
-import { SITE_URL } from "@/lib/site";
+import { REPO_URL, SITE_URL } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site-metadata";
 
 /** What a builder here may put in a node. Narrower than unknown so a value that
  *  cannot survive JSON.stringify never reaches the serialiser. */
@@ -25,6 +26,47 @@ const listName = {
   sl: "Zavetišča po Sloveniji",
   en: "Shelters across Slovenia",
 } satisfies Record<Locale, string>;
+
+/**
+ * Who publishes this register, and which language this copy of it is written
+ * in.
+ *
+ * The homepage was the one page type on the site that emitted no structured
+ * data at all. The shelter pages, the animal pages, the shelters index and the
+ * about page each say what they are; the front door said nothing.
+ *
+ * Two nodes, joined. The WebSite is per locale, because / and /en are one page
+ * in two languages and not one document: a single identity carrying two urls
+ * and two inLanguage values is a claim no consumer can resolve. The
+ * Organization is shared, with an @id on the bare origin, because the
+ * publisher is one thing whichever language the reader asked for.
+ *
+ * The logo is the PNG and not app/icon.svg. Google asks for a raster, and
+ * apple-icon.png is 180x180 and already in the export.
+ *
+ * No SearchAction. The filtering is client-side on a static export, so there
+ * is no address a crawler could hand a query to.
+ */
+export function siteJsonLd(locale: Locale): JsonLdNode {
+  const home = absolute(homePath(locale));
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "WebSite",
+    "@id": `${home}#website`,
+    url: home,
+    name: SITE_NAME,
+    description: getMessages(locale).metadataDescription,
+    inLanguage: locale,
+    publisher: {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#org`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/apple-icon.png`,
+      sameAs: [REPO_URL],
+    },
+  };
+}
 
 /**
  * The trail a page draws, as the structured data that says the same thing.

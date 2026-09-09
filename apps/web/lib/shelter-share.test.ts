@@ -41,12 +41,15 @@ describe("shelterPlateUrl", () => {
 describe("shelterMetadata", () => {
   it("says who and where, in the reader's language", () => {
     const sl = shelterMetadata(shelter, "sl", true);
-    expect(sl.title).toBe("Zavod Muri | Posvoji.si");
+    // Bare: the root layout's title template appends the site's name, so a
+    // shelter that spelled it here would carry it twice.
+    expect(sl.title).toBe("Zavod Muri");
     expect(sl.description).toContain("Zavod Muri, Vransko.");
     expect(sl.alternates?.canonical).toBe("/zavetisca/muri");
     expect(sl.alternates?.languages).toEqual({
       sl: "/zavetisca/muri",
       en: "/en/shelters/muri",
+      "x-default": "/zavetisca/muri",
     });
 
     const en = shelterMetadata(shelter, "en", true);

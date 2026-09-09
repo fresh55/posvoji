@@ -2,19 +2,14 @@ import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
 import { PrehydrationFilterScript } from "@/components/prehydration-filter-script";
-import { getMessages } from "@/lib/i18n";
-import { SITE_URL } from "@/lib/site";
+import { rootMetadata, rootViewport } from "@/lib/site-metadata";
 import "../../globals.css";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: "Posvoji.si",
-  description: getMessages("en").metadataDescription,
-};
+// The same head the Slovenian root carries, built in one place because there
+// is no layout above the two of them. See lib/site-metadata.ts.
+export const metadata: Metadata = rootMetadata("en");
 
-// Without this, env(safe-area-inset-*) resolves to 0 on iOS: the page draws
-// under the notch and home indicator, but nothing is told it may.
-export const viewport: Viewport = { viewportFit: "cover" };
+export const viewport: Viewport = rootViewport;
 
 export default function EnglishLayout({ children }: LayoutProps<"/en">) {
   return (

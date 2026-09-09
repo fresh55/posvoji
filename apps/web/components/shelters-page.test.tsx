@@ -72,14 +72,11 @@ describe("the phone jump strip", () => {
     render(<SheltersPage locale="sl" />);
     const strip = screen.getByRole("list", { name: "Skok na zavetišče" });
     const links = within(strip).getAllByRole("link");
-    expect(links.map(link => link.getAttribute("href"))).toEqual([
-      "#zavetisce-first",
-      "#zavetisce-second",
-      "#zavetisce-third",
-    ]);
     // Every chip resolves to a card that is really on the page, and to its
     // own: two towns in the real register hold two shelters each, so the town
     // alone does not identify a chip and the href is the only thing that can.
+    // Stronger than comparing the hrefs to a list, which the strip's own test
+    // already does.
     const targets = links.map(link =>
       document.getElementById(link.getAttribute("href")!.slice(1)),
     );

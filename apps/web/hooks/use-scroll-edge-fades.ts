@@ -70,8 +70,18 @@ export function useScrollEdgeFades<T extends HTMLElement>() {
     Children are observed as well as the container, and so is the child list.
     A row of chips changes its scroll width without ever changing its own size:
     a filter comes off, the content shrinks inside a box that did not move, and
-    a container-only ResizeObserver never fires. */
-export function useScrollEdgeFadesX<T extends HTMLElement>() {
+    a container-only ResizeObserver never fires.
+
+    watchChildren turns that off for a row whose children are server rendered
+    and never move: there the child list cannot change, every child box is
+    fixed for the life of the page, and the only things that alter the scroll
+    width are a resize and an orientation change, both of which the container's
+    own entry catches. Left on by default, because a caller that needs it and
+    forgets gets a fade that silently stops updating, and a caller that does
+    not need it pays a few observer registrations. */
+export function useScrollEdgeFadesX<T extends HTMLElement>({
+  watchChildren = true,
+}: { watchChildren?: boolean } = {}) {
   return useCallback((el: T | null) => {
     if (!el) return;
 
@@ -90,6 +100,14 @@ export function useScrollEdgeFadesX<T extends HTMLElement>() {
       return () => el.removeEventListener("scroll", update);
     }
     const observer = new ResizeObserver(update);
+    if (!watchChildren) {
+      observer.observe(el);
+      return () => {
+        el.removeEventListener("scroll", update);
+        observer.disconnect();
+      };
+    }
+
     const observeChildren = () => {
       observer.disconnect();
       observer.observe(el);
@@ -107,5 +125,5 @@ export function useScrollEdgeFadesX<T extends HTMLElement>() {
       observer.disconnect();
       mutations.disconnect();
     };
-  }, []);
+  }, [watchChildren]);
 }

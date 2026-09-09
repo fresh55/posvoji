@@ -2,6 +2,7 @@
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { animalCount } from "@/lib/labels";
 import { ShelterJumpStrip, type ShelterJumpChip } from "./shelter-jump-strip";
 
 afterEach(cleanup);
@@ -11,9 +12,11 @@ afterEach(cleanup);
 // returns a scroll-listener-only teardown in that case. filter-chips.test.tsx
 // renders the same hook the same way.
 
+// animalCount rather than the string written out, so the dual ladder in
+// lib/labels.ts is the one this reads, the same as shelter-card.test.tsx.
 const shelters: ShelterJumpChip[] = [
-  { id: "first", city: "Celje", count: 2, label: "Celje, 2 živali" },
-  { id: "second", city: "Koper", count: 1, label: "Koper, 1 žival" },
+  { id: "first", city: "Celje", count: { value: 2, label: animalCount(2, "sl") } },
+  { id: "second", city: "Koper", count: { value: 1, label: animalCount(1, "sl") } },
   { id: "third", city: "Maribor" },
 ];
 
@@ -51,27 +54,23 @@ describe("the phone jump strip", () => {
     // The row has no width for "2 živali" beside every town, so the paw and
     // the number carry it visually and the accessible name carries the noun.
     const strip = renderStrip();
-    const celje = within(strip).getByRole("link", { name: "Celje, 2 živali" });
+    const celje = within(strip).getByRole("link", {
+      name: `Celje, ${animalCount(2, "sl")}`,
+    });
     expect(celje.textContent).toBe("Celje2");
     expect(celje.querySelector("svg")).not.toBeNull();
   });
 
   it("gives a shelter without a published list its town and nothing else", () => {
+    // The zero test lives in shelters-atlas.tsx, which asks
+    // lib/shelter-census.ts; what the strip has to hold is that a chip
+    // arriving without a count draws no glyph, no accent and no label.
     const strip = renderStrip();
     const maribor = within(strip).getByRole("link", { name: "Maribor" });
     // No aria-label: the town is the text, and a label repeating it would
     // only be a second copy to keep in step.
     expect(maribor.getAttribute("aria-label")).toBeNull();
     expect(maribor.querySelector("svg")).toBeNull();
-  });
-
-  it("prints no paw for a chip the page gave no count", () => {
-    // The zero test lives in shelters-atlas.tsx, where the card's own rule
-    // for it lives too; what the strip has to hold is that a chip with no
-    // count draws neither the glyph nor the accent.
-    const strip = renderStrip([{ id: "zero", city: "Ptuj" }]);
-    const chip = within(strip).getByRole("link", { name: "Ptuj" });
-    expect(chip.querySelector("svg")).toBeNull();
-    expect(chip.className).not.toContain("filter-accent");
+    expect(maribor.className).not.toContain("filter-accent");
   });
 });

@@ -169,6 +169,11 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       // the census, with no card on it at all. 16px is the phone value the
       // portrait frame already uses, applied on height rather than on width,
       // and it gives the first card back 48px of the 390.
+      //
+      // Here rather than on --page-y, which eleven pages read: every one of
+      // them has this problem in landscape, and none of them has been measured
+      // in it. The token is where this belongs the moment a second page needs
+      // it; two copies of this override is the signal, not a third.
       mainClassName="flex w-full flex-1 flex-col gap-section-gap py-page-y short:py-4"
       // The register is 5,967px at 375px, which is 7.3 screens, and nothing
       // on this page is fixed or sticky: the header is static, so from the
@@ -307,13 +312,12 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                   key={key}
                   data-census={key}
                   data-count={count}
-                  // max-sm:py-0. The 2px above and below is a pointer's
-                  // hit area on a line that is not a control: nothing here
-                  // is pressable, and below sm it only adds 4px to each of
-                  // the lines this wraps onto on a phone. It stays from sm,
-                  // where the line does not wrap and the padding costs
-                  // nothing.
-                  className="flex items-center gap-1.5 py-0.5 max-sm:py-0"
+                  // The 2px above and below is a pointer's hit area on a line
+                  // that is not a control: nothing here is pressable, and on a
+                  // phone it only adds 4px to each of the lines this wraps
+                  // onto. So it starts at sm, where the line does not wrap and
+                  // the padding costs nothing.
+                  className="flex items-center gap-1.5 sm:py-0.5"
                 >
                   <Icon className="size-3.5 shrink-0" aria-hidden />
                   {body}

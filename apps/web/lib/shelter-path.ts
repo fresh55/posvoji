@@ -44,3 +44,15 @@ export const SHELTER_INDEX_PATHS = {
   sl: sheltersIndexPath("sl"),
   en: sheltersIndexPath("en"),
 } as const;
+
+/**
+ * A shelter's anchor on the index page, which is the id its card carries and
+ * the target the phone index's chips point at.
+ *
+ * Named here rather than written at both ends, because the two ends are in
+ * different components and a chip whose href does not match a card's id fails
+ * silently: the browser scrolls nowhere and says nothing.
+ */
+export function shelterAnchorId(id: string): string {
+  return `zavetisce-${id}`;
+}

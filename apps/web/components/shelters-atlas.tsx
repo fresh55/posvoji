@@ -6,6 +6,7 @@ import {
 import { ShelterJumpStrip } from "@/components/shelter-jump-strip";
 import { Card } from "@/components/ui/card";
 import { MUTED_LINK } from "@/lib/link-styles";
+import { publishedCount } from "@/lib/shelter-census";
 import { SKIP_LINK } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
@@ -179,25 +180,23 @@ export function SheltersAtlas({
           Its chips are built here rather than there because the strip is a
           client component and card.animals is a function: the count's noun
           agrees with the number in Slovenian, so the sentence is formatted on
-          this side of the boundary and handed over as text. The count test is
-          the card's own, so a chip can never claim a list the card beside it
-          does not print: absent and zero are both "we publish no list for this
-          shelter". */}
+          this side of the boundary and handed over as text. publishedCount is
+          the same rule the card draws its pill on (lib/shelter-census.ts), so
+          a chip cannot claim a list the card beside it does not print.
+
+          The count key is spread in rather than set to undefined, so a shelter
+          that shares no list sends no key at all across the boundary instead
+          of a marker saying it has none. */}
       <ShelterJumpStrip
         label={text.jump}
         chips={shelters.map((shelter) => {
-          const count =
-            shelter.animals !== undefined && shelter.animals > 0
-              ? shelter.animals
-              : undefined;
+          const count = publishedCount(shelter.animals);
           return {
             id: shelter.id,
             city: shelter.city,
-            count,
-            label:
-              count === undefined
-                ? undefined
-                : `${shelter.city}, ${card.animals(count)}`,
+            ...(count !== undefined && {
+              count: { value: count, label: card.animals(count) },
+            }),
           };
         })}
       />

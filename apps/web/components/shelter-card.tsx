@@ -9,7 +9,9 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { mailtoHref, telHref } from "@/lib/contact-links";
+import { publishedCount } from "@/lib/shelter-census";
 import type { ShelterLogo } from "@/lib/shelter-logos";
+import { shelterAnchorId } from "@/lib/shelter-path";
 
 /** What a card needs, and nothing else.
  *
@@ -87,12 +89,11 @@ export type ShelterCardText = {
 // mail composer or walks to the shelter's page, and nothing says so happened.
 //
 // So the row is drawn at 44px for a coarse pointer, and the question is asked
-// of the pointer rather than of the viewport. A width is a guess at an input:
-// max-lg gave the 44px row to a 1024px laptop window, which is a mouse, and
-// took it from the 1180px tablet that is all thumb. pointer-coarse asks the
-// device what it has, which is the thing the number is actually about, and is
-// the idiom components/animal-dialog/animal-dialog.tsx already uses for its
-// nav arrows.
+// of the pointer rather than of the viewport, which is the idiom
+// components/animal-dialog/animal-dialog.tsx already uses for its nav arrows.
+// The argument for asking it that way, and the list of call sites still asking
+// about width instead, are with the tap-target utility in globals.css, where
+// the rest of this rule lives.
 //
 // Grown rather than overlaid with tap-target, because the rows sit against
 // each other; the tap-target utility in globals.css carries that rule. The
@@ -149,20 +150,16 @@ export function ShelterCard({
   text: ShelterCardText;
 }) {
   const host = shelter.website ? websiteLabel(shelter.website) : undefined;
-  // never-print-a-zero: absent and zero are the same answer here, and both
-  // mean "we publish no list for this shelter". Folded into one optional
-  // number rather than a boolean beside the original field, because the mark
-  // and the count pill have to be drawn on the same test and the pill still
-  // needs the number itself.
-  const animals =
-    shelter.animals !== undefined && shelter.animals > 0
-      ? shelter.animals
-      : undefined;
+  // never-print-a-zero, from lib/shelter-census.ts, which owns the rule for
+  // every surface that draws this count. One optional number rather than a
+  // boolean beside the original field, because the mark and the count pill
+  // have to be drawn on the same test and the pill still needs the number.
+  const animals = publishedCount(shelter.animals);
 
   return (
     <Item asChild variant="outline" layout="subgrid">
       <li
-        id={`zavetisce-${shelter.id}`}
+        id={shelterAnchorId(shelter.id)}
         // relative, because the name's anchor stretches an ::after over this
         // whole box: the card is clickable without being one giant <a> whose
         // accessible name is every word printed on it.
@@ -210,7 +207,7 @@ export function ShelterCard({
             eye has an edge to run down; what it no longer has is one y. Paid
             for the name reaching the reader first, which is the thing the
             page is a list of. */}
-        <ItemMedia className="justify-between gap-3 max-sm:order-2">
+        <ItemMedia className="justify-between gap-3">
           {/* "register" rather than "sm": this is the one place the whole set
               of logos is drawn side by side, so it is the one place one mark's
               drawn size is read against another's. See WIDTH_FALLOFF.
@@ -285,10 +282,12 @@ export function ShelterCard({
           )}
         </ItemMedia>
 
-        {/* order-1, -2, -3 on the three sections, all below sm, and the DOM
-            order is left as it is: the source order is the one the subgrid
-            band draws and the one a reader without CSS gets. See the phone
-            paragraph on ShelterCard.
+        {/* One order utility, not three. The phone order differs from the
+            source order by a single move, the content going to the front, and
+            order-first says exactly that while the media and the footer keep
+            their own sequence at the default 0. The DOM order is left as it
+            is: the source order is the one the subgrid band draws and the one
+            a reader without CSS gets. See the phone paragraph on ShelterCard.
 
             The usual objection to order is that it walks the keyboard through
             a card in one sequence and the eye through it in another. It does
@@ -296,7 +295,7 @@ export function ShelterCard({
             is decoration with an empty alt and the count is a paragraph. The
             two things that take focus are the name and the contact rows, and
             they are first and last in both orders. */}
-        <ItemContent className="max-sm:order-1">
+        <ItemContent className="max-sm:order-first">
           {/* No reserved second line here any more.
 
               A sm:max-xl:min-h-[2lh] used to sit on this title, because in the
@@ -408,7 +407,7 @@ export function ShelterCard({
             the track, and a card that renders an empty one does that without
             being asked to remember. */}
         {shelter.phone || shelter.email || shelter.website ? (
-          <ItemFooter asChild className="max-sm:order-3">
+          <ItemFooter asChild>
             {/* gap-0.5 for a pointer, none at all for a thumb. Nothing is
                 drawn at a row's edge, so what is read here is the space
                 between two lines of text, and that is 18px at a 36px row: the
@@ -486,7 +485,7 @@ export function ShelterCard({
             </ul>
           </ItemFooter>
         ) : (
-          <ItemFooter className="max-sm:order-3" />
+          <ItemFooter />
         )}
       </li>
     </Item>

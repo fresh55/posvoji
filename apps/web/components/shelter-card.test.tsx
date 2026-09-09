@@ -294,11 +294,15 @@ describe("the shelter card", () => {
     const card = container.querySelector("li");
     expect(card?.className).toContain("max-sm:flex");
     expect(card?.className).toContain("max-sm:flex-col");
+    // One order utility does it: the content goes to the front and the other
+    // two keep their source order behind it. So the assertion is that the
+    // content is pulled and that nothing else carries an order at all, which
+    // is what would quietly reintroduce a second ordering to keep in step.
     const order = (slot: string) =>
-      container.querySelector(`[data-slot="${slot}"]`)?.className;
-    expect(order("item-content")).toContain("max-sm:order-1");
-    expect(order("item-media")).toContain("max-sm:order-2");
-    expect(order("item-footer")).toContain("max-sm:order-3");
+      container.querySelector(`[data-slot="${slot}"]`)?.className ?? "";
+    expect(order("item-content")).toContain("max-sm:order-first");
+    expect(order("item-media")).not.toContain("order-");
+    expect(order("item-footer")).not.toContain("order-");
   });
 
   it("draws the phone card tighter and its name larger", () => {

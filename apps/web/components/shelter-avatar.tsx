@@ -102,7 +102,10 @@ const SIZE = {
   // side by side, so the one placement where the falloff above is actually
   // read.
   register: {
-    row: "h-16 max-sm:h-14",
+    // 56px on a phone and 64px from sm. The tallest mark in the set draws at
+    // 54, so the extra 8px was never carrying anything, and on a one-column
+    // page it is 8px of air above every name, seventeen times over.
+    row: "h-14 sm:h-16",
     height: 52,
     maxHeight: 54,
     maxWidth: 144,

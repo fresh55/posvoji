@@ -2,6 +2,8 @@
 
 import { PawPrint } from "lucide-react";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
+import { SCROLL_STRIP } from "@/lib/scroll-strip";
+import { shelterAnchorId } from "@/lib/shelter-path";
 import { cn } from "@/lib/utils";
 
 /** One town in the strip. Not ShelterCardData: this component is the page's
@@ -13,11 +15,14 @@ export type ShelterJumpChip = {
   id: string;
   city: string;
   /** How many animals the dataset holds for this shelter, absent for one that
-   *  shares no list. Drives the paw and the accent, and is printed bare. */
-  count?: number;
-  /** "Celje, 2 živali", the chip's accessible name. Present exactly when
-   *  `count` is, because it is the only place the noun is said. */
-  label?: string;
+   *  shares no list. Drives the paw and the accent.
+   *
+   *  The number and its sentence travel together, in one optional field rather
+   *  than two, because they are one fact: a chip with a count and no sentence
+   *  would have a paw and no accessible noun, and the type would allow it. The
+   *  label is the formatted count alone ("2 živali"); the strip puts the town
+   *  in front of it, so the town is spelled in one place. */
+  count?: { value: number; label: string };
 };
 
 /**
@@ -54,19 +59,21 @@ export function ShelterJumpStrip({
   /** "Skok na zavetišče" / "Jump to a shelter", the row's accessible name. */
   label: string;
 }) {
-  const scrollRef = useScrollEdgeFadesX<HTMLUListElement>();
+  // The chips are server rendered and never move, so the container's own
+  // resize entry is the only thing that can change this row's scroll width.
+  const scrollRef = useScrollEdgeFadesX<HTMLUListElement>({
+    watchChildren: false,
+  });
 
   return (
-    // scroll-px-10 matches the 2.5rem the fade eats at either end, so a chip
-    // the browser scrolls to on focus does not park under the mask. The
-    // -mx-1/px-1 pair gives a focus ring room to sit outside its chip: a
-    // scroll box clips at its padding edge. py-1 does the same for the ring's
-    // top and bottom, because overflow-x: auto clips the other axis too.
+    // SCROLL_STRIP carries the fade, the scroll padding and the horizontal
+    // room a focus ring needs; py-1 is this row's own vertical half of that,
+    // because overflow-x: auto clips the other axis too.
     <ul
       ref={scrollRef}
       role="list"
       aria-label={label}
-      className="fade-scroll-x mb-3 flex gap-2 overflow-x-auto scroll-px-10 -mx-1 px-1 py-1 sm:hidden"
+      className={cn(SCROLL_STRIP, "mb-3 flex gap-2 py-1 sm:hidden")}
     >
       {chips.map((chip) => (
         <li key={chip.id} className="shrink-0">
@@ -92,19 +99,19 @@ export function ShelterJumpStrip({
               meant for its left-hand side. The rule lives with the utility in
               globals.css. */}
           <a
-            href={`#zavetisce-${chip.id}`}
-            aria-label={chip.label}
+            href={`#${shelterAnchorId(chip.id)}`}
+            aria-label={chip.count && `${chip.city}, ${chip.count.label}`}
             className={cn(
-              "inline-flex min-h-11 items-center gap-1.5 rounded-ui border px-3 text-sm whitespace-nowrap text-muted-foreground hover:text-foreground",
-              chip.count !== undefined &&
+              "inline-flex min-h-11 items-center gap-1.5 rounded-ui border px-3 text-sm whitespace-nowrap text-muted-foreground outline-hidden hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring",
+              chip.count &&
                 "border-[var(--filter-accent-border)] text-[var(--filter-accent-foreground)]",
             )}
           >
             {chip.city}
-            {chip.count !== undefined && (
+            {chip.count && (
               <>
                 <PawPrint className="size-3.5 shrink-0" aria-hidden />
-                <span className="tabular-nums">{chip.count}</span>
+                <span className="tabular-nums">{chip.count.value}</span>
               </>
             )}
           </a>

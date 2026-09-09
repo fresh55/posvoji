@@ -14,15 +14,14 @@ import {
   DESKTOP_QUERY,
   useDesktopBreakpointClose,
 } from "@/hooks/use-desktop-breakpoint-close";
-import { useNearby, useNearbyQuery } from "@/hooks/use-nearby";
+import { useNearby, useNearbyQuery, useNearbyChosenPlace } from "@/hooks/use-nearby";
 import { usePublishNearbyOrigin } from "@/hooks/use-nearby-origin";
-import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { isDrop } from "@/lib/filters";
 import { onMap } from "@/lib/geo";
 import {
   animalCount,
   shelterCount,
-  shelterScopeLabel,
+  shelterSelectionLabel,
   sheltersDropped,
   sheltersMissingFromMap,
 } from "@/lib/labels";
@@ -43,7 +42,7 @@ import {
   toPins,
   type LocatedRow,
 } from "./model";
-import { useLocationPickerMotion } from "./motion";
+import { hasHeightToSpare, useLocationPickerMotion } from "./motion";
 
 export function useLocationPickerController({
   options,
@@ -52,6 +51,8 @@ export function useLocationPickerController({
   onToggle,
   onToggleMany,
   resultCount,
+  filterSummary,
+  onClearFilters,
   municipalities,
   offSite,
   summaries,
@@ -88,15 +89,15 @@ export function useLocationPickerController({
   usePickerHistory(open, () => setOpen(false));
   useDesktopBreakpointClose(open, () => setOpen(false), "either");
   const [query, setQuery] = useNearbyQuery();
+  const [chosenPlace, setChosenPlace] = useNearbyChosenPlace();
   // Which shelter's details are open in the list, by id. Null until an info
   // control is pressed and null again once one is collapsed. One at a time,
   // and that rule lives here because this is the only thing that sees the
   // whole list: opening a second shelter closes the first.
   //
-  // It is inspection and nothing else. Nothing here reads or writes the
-  // selection and the selection never writes here, which is the whole of the
-  // split: a shelter can be looked at without being picked, and picked without
-  // being looked at.
+  // Row disclosure inspects a shelter without changing the selection. A new
+  // map pick also opens its details so the selected marker has a visible
+  // answer in the list; removing a selection leaves those details alone.
   const [expandedShelter, setExpandedShelter] = useState<string | null>(null);
   // Whether the registry shelters with nothing listed are unfolded. Shut to
   // start with: none of them can be picked, so every row of that group is
@@ -110,30 +111,13 @@ export function useLocationPickerController({
   // found behind a control that reads as "not found". See the branch at the
   // foot of the scroller.
   const [offGroupOpen, setOffGroupOpen] = useState(false);
-  // Drives the two mask stops on the list's fade-scroll: the hook writes
-  // --scroll-fade-top/bottom off the scroll position and re-measures on the
-  // children, which is what keeps the bottom fade honest when the group at the
-  // foot of the list folds open or shut and changes the scroll height without
-  // a scroll event. A callback ref, so it wires up on whichever commit the
-  // dialog gets around to mounting the list in.
-  const listFades = useScrollEdgeFades<HTMLDivElement>();
-  // The same node, kept, because two effects below have to scroll this list
-  // and only this list; see bringIntoList for why they may not ask the element
-  // itself. The hook's callback ref is wrapped rather than replaced, so the
-  // fades and this handle attach in the same commit and come away in the same
-  // cleanup.
+  // Detail reveals scroll only the list, keeping search and dialog chrome in place.
   const listNode = useRef<HTMLDivElement | null>(null);
-  const listRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      listNode.current = node;
-      const cleanup = listFades(node);
-      return () => {
-        listNode.current = null;
-        cleanup?.();
-      };
-    },
-    [listFades],
-  );
+  const listRef = useCallback((node: HTMLDivElement | null) => {
+    listNode.current = node;
+    return () => { listNode.current = null; };
+  }, []);
+  const pendingMapFocus = useRef<string | null>(null);
   // The news of a region click that took several shelters off at once, and the
   // selection it left behind. It is carried with that selection rather than
   // cleared by hand because every other path that edits the selection would
@@ -168,15 +152,15 @@ export function useLocationPickerController({
   useEffect(() => {
     closeCleanup.current = () => {
       // Every dismissal, including Back and a breakpoint change, ends the
-      // same visit. A recognized place remains the page's sorting origin.
-      if (readTypedLocation(query).status !== "matched") setQuery("");
+      // same visit. Keep only the explicitly confirmed place between visits.
+      setQuery(chosenPlace?.query ?? "");
       setExpandedShelter(null);
       setSpotlitShelterId(null);
       setOffGroupOpen(false);
       setDropNote(null);
       resetDocks();
     };
-  }, [query, resetDocks, setQuery]);
+  }, [chosenPlace, resetDocks, setQuery]);
 
 
   // An animal card asking for its shelter on the map. Guarded by breakpoint
@@ -229,33 +213,33 @@ export function useLocationPickerController({
   // The point the list sorts from, and where it came from. Memoized because
   // the row sort below takes it as a dependency, and a fresh object every
   // render would re-sort every render.
-  const { typed, resolved } = useMemo(() => {
-    const read = readTypedLocation(query);
-    return { typed: read, resolved: resolveOrigin(geolocated, read) };
-  }, [geolocated, query]);
+  const typed = useMemo(() => readTypedLocation(query), [query]);
+  const resolved = useMemo(
+    () => resolveOrigin(geolocated, chosenPlace?.location ?? { status: "empty" }),
+    [geolocated, chosenPlace],
+  );
   const origin = resolved.at;
-  // Which of the two questions the one box is currently asking. The text
-  // decides, not the visitor: a postal lookup either recognises it or it does
-  // not, and that single fact is the whole of the mode switch.
-  //
-  // "Mari" resolves to nothing yet, so it narrows the list to the Maribor
-  // rows; the moment the last letter lands, "Maribor" is a place, the list
-  // opens back out and sorts to it instead. That handoff is the point of
-  // merging the two fields: one continuous sentence, rather than a decision
-  // about which box to type it into taken before there is anything to decide
-  // it on.
-  //
-  // Read off `typed` and not off `resolved`, because resolveOrigin lets a live
-  // geolocation fix outrank a typed place and this is not a question about
-  // which point the list sorts from. A recognised town is a recognised town
-  // whatever else is on; the field's own onChange turns geolocation off in
-  // that case anyway, exactly as the place box always did.
-  const placeMode = typed.status === "matched";
-  // The other half of it: the box holds text that is not a place, so it is a
-  // name to narrow the list by. Both are false for an empty box, which is the
-  // resting state where the field asks nothing at all.
-  const searching =
-    !placeMode && query.trim() !== "" && !/^\d{1,3}$/.test(query.trim());
+  // Recognizing a place offers a result; choosing that result changes the
+  // origin. Until then, even an exact town name filters the shelter list.
+  // Editing the query after choosing a place starts a new shelter search
+  // while retaining the confirmed origin in its separate, removable chip.
+  const placeMode = chosenPlace !== null && chosenPlace.query === query;
+  const choosePlace = useCallback(() => {
+    if (typed.status !== "matched") return;
+    turnOffNearby();
+    setChosenPlace({ location: typed, query });
+    searchRef.current?.focus({ preventScroll: true });
+  }, [query, setChosenPlace, turnOffNearby, typed]);
+  const clearOrigin = useCallback(() => {
+    turnOffNearby();
+    setChosenPlace(null);
+    if (placeMode) setQuery("");
+    searchRef.current?.focus({ preventScroll: true });
+  }, [placeMode, setChosenPlace, setQuery, turnOffNearby]);
+  const placeSuggestionRef = useRef<HTMLButtonElement>(null);
+  // Unconfirmed text narrows the list. Emptying the field clears that search
+  // without discarding the separately confirmed starting point.
+  const searching = !placeMode && query.trim() !== "";
   // The same point, offered to the rest of the page. This control is the only
   // place on the site that asks where the visitor is, and it stays the only
   // place; what changes is that the answer no longer stops at this dialog's own
@@ -315,13 +299,13 @@ export function useLocationPickerController({
   // True to start with, which is what ShelterMap starts at too, so the two are
   // one answer from the first render rather than converging on the second.
   const [markersVisible, setMarkersVisible] = useState(true);
-  const [{ hasSelected, hasMixed, hasEmpty }, setMapFacts] =
+  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty }, setMapFacts] =
     useState<MapFacts>({
       hasSelected: false,
       hasMixed: false,
       hasEmpty: false,
-    },
-  );
+      hasFilteredEmpty: false,
+    });
 
   const pins: ShelterPin[] = useMemo(
     () => [
@@ -344,14 +328,9 @@ export function useLocationPickerController({
   // it, on that same click. Click, tap, Enter and Space all land here, and a
   // list row does the same through the parent's own onToggle.
   //
-  // That is what the markers and the regions have been saying all along
-  // through aria-pressed, and the picker used to disagree with them: a click
-  // on a picked target re-asked about it and changed no filter, so the first
-  // press of a pressed control did nothing to the selection. No map target
-  // opens information of any kind now, so nothing on screen stands between a
-  // click and its effect, and nothing on screen decides what a click does.
-  // Asking about a shelter is the info control's job, one row down in the
-  // list.
+  // aria-pressed always agrees with the filter change. Adding a target also
+  // opens the first matching shelter's details; a row's disclosure control
+  // still offers inspection without selection.
   const handlePick = useCallback(
     (values: string[]) => {
       // The same predicate toggleValues branches on, read before it runs so
@@ -391,11 +370,17 @@ export function useLocationPickerController({
       // the visitor is still picking from in order to repeat a sentence they
       // can already read. Every tap after the first would have cost a fold.
       revealSelection();
-      const first = values.find((value) => !selected.includes(value));
-      if (first)
-        requestAnimationFrame(() => {
-          bringIntoList(listNode.current, rowRefs.current.get(first) ?? null);
-        });
+      // Keep the newest map choice and its detail card together. A previous
+      // name query must not hide the row that was just chosen on the map.
+      if (searching) setQuery("");
+      const firstMatch = values.find((value) => options.some((row) => row.value === value));
+      if (firstMatch) {
+        setExpandedShelter(firstMatch);
+        // Mobile selection opens List view and hides the activating map target.
+        if (!window.matchMedia(DESKTOP_QUERY).matches && hasHeightToSpare()) {
+          pendingMapFocus.current = firstMatch;
+        }
+      }
       // A click on the country is a newer question than the one an animal
       // card arrived with, and two rings at once would be two answers.
       setSpotlitShelterId(null);
@@ -404,7 +389,7 @@ export function useLocationPickerController({
     // whether it drops before the toggle runs, and what the selection it
     // leaves behind looks like. Both are facts about the selection at click
     // time, which the functional setter form cannot carry.
-    [locale, onToggleMany, revealSelection, selected],
+    [locale, onToggleMany, options, revealSelection, searching, selected, setQuery],
   );
 
   // Which row a marker hover brings into view, and whether it brings one at
@@ -437,13 +422,9 @@ export function useLocationPickerController({
     setExpandedShelter((current) => (current === value ? null : value));
   }, []);
 
-  // Bring a shelter's panel into view when it opens. The row itself is on
-  // screen by definition, because the control that opened it is in that row,
-  // but the panel grows below it and the scroller it grows into can be as
-  // short as 5rem in the sheet: opened from the last visible row, the answer
-  // would be entirely under the fold with only the control's own label to say
-  // anything happened. The whole cell is scrolled, row and panel together, so
-  // "nearest" measures what actually has to fit.
+  // Reveal the row and details after a disclosure or map pick. The list can
+  // be short and a map pick can name an offscreen row, so measure the whole
+  // cell and adjust only the list's scroll position.
   //
   // Twice, and both are needed. The first call is the one that runs where
   // there is no animation to wait for; the second waits for the open animation
@@ -461,15 +442,18 @@ export function useLocationPickerController({
   // drag the dialog's title and tabs off the top of.
   useEffect(() => {
     if (!expandedShelter) return;
-    const cell = rowRefs.current
-      .get(expandedShelter)
-      ?.closest('[data-slot="collapsible"]');
+    const row = rowRefs.current.get(expandedShelter);
+    if (sheetOpen && pendingMapFocus.current === expandedShelter) {
+      row?.focus({ preventScroll: true });
+      pendingMapFocus.current = null;
+    }
+    const cell = row?.closest('[data-slot="collapsible"]') ?? row;
     if (!cell) return;
     const bring = () => bringIntoList(listNode.current, cell);
     bring();
     cell.addEventListener("animationend", bring, { once: true });
     return () => cell.removeEventListener("animationend", bring);
-  }, [expandedShelter]);
+  }, [expandedShelter, panelOpen, sheetOpen, query, selected]);
 
   // The spotlit shelter's own row, brought into view once there is a row. It
   // cannot be done where the event is heard: the list is mounted by the dialog
@@ -493,10 +477,9 @@ export function useLocationPickerController({
   // Search narrows the list only. The map keeps every pin, so the country
   // stays whole while you type.
   //
-  // Only while the box is being read as a name. A recognised place has already
-  // been answered by sorting the whole list to it, and filtering it down to the
-  // rows whose own text happens to contain the town's name would take the
-  // nearest shelters away from the visitor who just said where they are.
+  // Choosing the place result restores the whole list in distance order.
+  // Recognition alone keeps the matching shelter rows visible alongside the
+  // place suggestion, so the visitor can choose which result they meant.
   const matchesQuery = (row: ShelterRow) =>
     fold(`${row.label} ${row.city ?? ""}`).includes(fold(query.trim()));
   const visibleRows = searching ? rows.filter(matchesQuery) : rows;
@@ -572,25 +555,6 @@ export function useLocationPickerController({
   const missing =
     unplaced > 0 ? sheltersMissingFromMap(unplaced, locale) : undefined;
 
-  // One roster, and every count in this dialog is read off it. The four
-  // quantities are kept apart on purpose, because conflating any two of them
-  // is what made the trigger lie:
-  //
-  //   total       every shelter in the registry, the live ones and the ones
-  //               with nothing listed alike. This is what the list renders and
-  //               what the trigger promises, and it does not move when a
-  //               species tab does.
-  //   selected    how many are picked. Always a subset of the roster, so
-  //               "2 od 1 zavetišč" cannot be written any more.
-  //   resultCount the animals the whole filter state matches, which is about
-  //               animals and not about shelters at all.
-  //
-  // `total` used to be options.length, which is the shelter facet of the
-  // species-filtered set: the trigger read "Vseh 11 zavetišč" over a list of
-  // seventeen rows, and /?zavetisce=macja-hisa,macji-dol&vrsta=zajcek read
-  // "2 od 1 zavetišč". The roster is the registry now, so the sentence on the
-  // trigger and the rows under it are the same set of shelters.
-  const total = rows.length + offRows.length;
   const detailBase = locale === "sl" ? "/zavetisca" : "/en/shelters";
 
   // The registry's shelters with nothing listed, as a heading and a list. Held
@@ -601,23 +565,20 @@ export function useLocationPickerController({
   const offGroupHeading = t("noAnimalsListedHeadingCount", {
     count: visibleOffRows.length,
   });
-  // "Vsa zavetišča" alone, with no count: the roster this dialog lists is the
-  // whole UVHVVR registry, live shelters and the ones with nothing listed
-  // alike, which is not the number the hero states in the same breath (the
-  // live-shelter count). A number here used to read as a second, disagreeing
-  // answer to a question the hero had just answered ("11 zavetišč" next to
-  // "Vseh 17 zavetišč"); see allShelters in lib/labels.ts.
-  const label = shelterScopeLabel(selected.length, total, locale);
+  // Selection names belong in the trigger and footer; full registry totals
+  // and animal counts answer different questions and stay out of this label.
+  const selectedRows = selected.map((value) =>
+    [...options, ...(offSite ?? [])].find((row) => row.value === value) ?? { value, label: value },
+  );
+  const label = shelterSelectionLabel(selectedRows, locale);
 
   // The way out of the dialog, carrying the number the picking adds up to.
   // Filtering is live, so this is not a promise about what the press will do.
   // Nothing happens on the way out that has not happened already; the button
   // names what is behind it, the same job `label` does for the trigger.
   //
-  // Zero keeps the bare "Končano". "Pokaži 0 živali" offers something the
-  // press cannot deliver, and a visitor who has filtered everything away needs
-  // the way out named, not the emptiness counted: the empty state inside the
-  // list is where that is already said.
+  // Zero names the return to results. The persistent footer explains the
+  // empty result and offers recovery separately from leaving the dialog.
   //
   // animalCount is safe in the accusative "Pokaži" puts its object in. žival
   // is an i-stem feminine whose accusative matches its nominative in all four
@@ -626,7 +587,7 @@ export function useLocationPickerController({
   const doneLabel =
     resultCount > 0
       ? t("showAnimals", { count: animalCount(resultCount, locale) })
-      : pickerText[locale].done;
+      : pickerText[locale].backToResults;
 
   return {
     options,
@@ -635,6 +596,8 @@ export function useLocationPickerController({
     onToggle,
     onToggleMany,
     resultCount,
+    filterSummary,
+    onClearFilters,
     municipalities,
     offSite,
     summaries,
@@ -647,6 +610,10 @@ export function useLocationPickerController({
     setOpen,
     query,
     setQuery,
+    typed,
+    choosePlace,
+    clearOrigin,
+    placeSuggestionRef,
     expandedShelter,
     setExpandedShelter,
     offGroupOpen,
@@ -692,12 +659,14 @@ export function useLocationPickerController({
     hasSelected,
     hasMixed,
     hasEmpty,
+    hasFilteredEmpty,
     nearbyOn,
     status,
     missing,
     detailBase,
     offGroupHeading,
     label,
+    selectedRows,
     doneLabel,
   };
 }

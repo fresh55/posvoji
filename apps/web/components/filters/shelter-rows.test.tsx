@@ -12,6 +12,9 @@ import { I18nProvider } from "@/components/i18n-provider";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { ShelterRows } from "./shelter-rows";
 
+// Native row reveals remain the fallback for lists outside the picker.
+Element.prototype.scrollIntoView = vi.fn();
+
 const rows = [
   { value: "macja-hisa", label: "Zavetišče Mačja hiša", city: "Celje" },
   { value: "sia-in-lu", label: "Zavetišče Sia in Lu", city: "Celje" },
@@ -87,8 +90,7 @@ describe("ShelterRows selection and counts", () => {
     const selected = rowTag(html, "Sia in Lu");
     const unselected = rowTag(html, "Mačja hiša");
 
-    // The check turns visible and green, the label gains weight and the
-    // count pill takes the accent tint. Any shared fill on the row surface,
+    // The check turns visible and green. Any shared fill on the row surface,
     // however faint, made two adjacent picked rows read as one shape across
     // the 2px gap between them, so the surface carries no selection at all.
     expect(selected).toContain("text-[var(--filter-accent-strong)]");
@@ -136,7 +138,7 @@ describe("ShelterRows selection and counts", () => {
     expect(rowTag(html, "Mačja hiša")).toContain("cursor-pointer");
   });
 
-  it("keeps a roster row selectable when no animals match", () => {
+  it("dims an unselected row when no animals match and offers it neither hand nor hover", () => {
     const html = renderToStaticMarkup(
       <ShelterRows
         rows={rows}
@@ -146,15 +148,14 @@ describe("ShelterRows selection and counts", () => {
       />,
     );
 
-    // The filter count says nothing about roster membership.
     const dead = rowTag(html, "Sia in Lu");
-    expect(dead).not.toContain("opacity-40");
-    expect(dead).toContain("cursor-pointer");
-    expect(dead).toContain("hover:bg-muted/50");
-    expect(dead).not.toContain("disabled=");
+    expect(dead).toContain("opacity-40");
+    expect(dead).toContain("cursor-not-allowed");
+    expect(dead).not.toContain("hover:bg-muted/50");
+    expect(dead).toContain("disabled=");
   });
 
-  it("keeps the count next to the shelter name as a quiet badge, not a far-right number", () => {
+  it("keeps the count in a neutral aligned badge after the shelter name", () => {
     const html = renderToStaticMarkup(
       <ShelterRows
         rows={rows}
@@ -165,14 +166,14 @@ describe("ShelterRows selection and counts", () => {
     );
 
     const row = rowTag(html, "Mačja hiša");
-    // The count now lives inside the same inline group as the label, wearing
-    // the same quiet rounded-full badge shape the sidebar uses elsewhere for
-    // a count, rather than sitting in its own cell across the row.
+    // Counts keep a stable-width column after the name and city. The same
+    // neutral badge makes the numbers easy to compare down the roster.
     const labelIndex = row.indexOf("Mačja hiša");
     const countIndex = row.indexOf(">5<");
     expect(countIndex).toBeGreaterThan(-1);
     expect(countIndex).toBeGreaterThan(labelIndex);
-    expect(row).toContain("rounded-full");
+    expect(row).toContain("rounded-md");
+    expect(row).toContain("min-w-8");
     expect(row).toContain("tabular-nums");
   });
 });
@@ -502,6 +503,43 @@ describe("ShelterRows expansion", () => {
       0,
     );
   });
+
+  it("updates the detail match count when filters change without replacing the shelter overview", () => {
+    function FilteredRow({ count }: { count: number }) {
+      return (
+        <I18nProvider locale="sl">
+          <ShelterRows
+            rows={[rows[0]]}
+            counts={new Map([["macja-hisa", count]])}
+            summaries={summaries}
+            expanded="macja-hisa"
+            onToggle={() => undefined}
+            onToggleExpanded={() => undefined}
+            infoLabel={infoLabel}
+            hideInfoLabel={hideInfoLabel}
+          />
+        </I18nProvider>
+      );
+    }
+
+    const { rerender } = render(<FilteredRow count={2} />);
+    expect(screen.getByText("Ustreza filtrom: 2")).toBeTruthy();
+    expect(screen.getByText("Vse objavljene živali: 4")).toBeTruthy();
+
+    rerender(<FilteredRow count={0} />);
+    expect(screen.getByText("Ustreza filtrom: 0")).toBeTruthy();
+    expect(screen.getByText("Vse objavljene živali: 4")).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: /^Zavetišče Mačja hiša/,
+      }).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Skrij podrobnosti za Zavetišče Mačja hiša",
+      }).disabled,
+    ).toBe(false);
+  });
 });
 
 describe("ShelterRows map-hover scroll echo", () => {
@@ -615,6 +653,90 @@ describe("ShelterRows map-hover scroll echo", () => {
   });
 });
 
+describe("ShelterRows scrolling inside the picker", () => {
+  afterEach(() => cleanup());
+
+  function ScopedRows({ scrollTo }: { scrollTo?: string }) {
+    return (
+      <div data-testid="outer-panel">
+        <input aria-label="Search shelters" />
+        <div data-picker-list-scroll>
+          <ShelterRows
+            rows={rows}
+            counts={counts}
+            onToggle={() => undefined}
+            scrollTo={scrollTo}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function mockScrollLayout(container: HTMLElement, top: number, bottom: number) {
+    const outer = screen.getByTestId("outer-panel");
+    const list = container.querySelector<HTMLElement>("[data-picker-list-scroll]")!;
+    const row = screen.getByRole("button", { name: /Sia in Lu/ });
+    outer.scrollTop = 7;
+    list.scrollTop = 80;
+    Object.defineProperty(list, "clientHeight", { value: 200 });
+    vi.spyOn(list, "getBoundingClientRect").mockReturnValue({
+      top: 200,
+      bottom: 400,
+      height: 200,
+    } as DOMRect);
+    vi.spyOn(row, "getBoundingClientRect").mockReturnValue({
+      top,
+      bottom,
+      height: bottom - top,
+    } as DOMRect);
+    // Simulate the ancestor movement that native scrolling can cause. The
+    // scoped path must never call it and must leave the search panel in place.
+    const nativeReveal = vi.fn(() => {
+      outer.scrollTop = 99;
+    });
+    row.scrollIntoView = nativeReveal;
+    return { outer, list, row, nativeReveal };
+  }
+
+  it.each([
+    { name: "row below the viewport", top: 420, bottom: 468, expected: 148 },
+    { name: "row above the viewport", top: 150, bottom: 198, expected: 30 },
+    { name: "visible row", top: 250, bottom: 298, expected: 80 },
+    { name: "tall row spanning the viewport", top: 150, bottom: 450, expected: 80 },
+    { name: "tall row below the viewport", top: 300, bottom: 560, expected: 180 },
+    { name: "tall row above the viewport", top: 90, bottom: 350, expected: 30 },
+  ])("reveals a $name in the list without moving its outer panel", ({
+    top,
+    bottom,
+    expected,
+  }) => {
+    const { container, rerender } = render(<ScopedRows />);
+    const { outer, list, nativeReveal } = mockScrollLayout(container, top, bottom);
+
+    rerender(<ScopedRows scrollTo="sia-in-lu" />);
+
+    expect(list.scrollTop).toBe(expected);
+    expect(outer.scrollTop).toBe(7);
+    expect(nativeReveal).not.toHaveBeenCalled();
+  });
+
+  it("moves keyboard focus without browser scrolling, then reveals only the list row", () => {
+    const { container } = render(<ScopedRows />);
+    const { outer, list, row, nativeReveal } = mockScrollLayout(container, 420, 468);
+    const rowFocus = vi.spyOn(row, "focus");
+    const first = screen.getByRole("button", { name: /Mačja hiša/ });
+    first.focus();
+
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+
+    expect(rowFocus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(document.activeElement).toBe(row);
+    expect(list.scrollTop).toBe(148);
+    expect(outer.scrollTop).toBe(7);
+    expect(nativeReveal).not.toHaveBeenCalled();
+  });
+});
+
 // The off-site rows in location-picker.tsx: a registry shelter with nothing
 // to filter by links to its own page instead of toggling a selection.
 const linkRows = [
@@ -639,11 +761,11 @@ describe("ShelterRows link rows", () => {
   it("keeps a toggle row's columns: the check's spacer, no count badge", () => {
     const html = renderToStaticMarkup(<ShelterRows rows={linkRows} />);
 
-    // The size-3.5 spacer stands in for the check icon, so the label lines
+    // The size-4 spacer stands in for the selection box, so the label lines
     // up with a toggle row's own; a link is never checked, so nothing sits
     // in it.
     expect(html).toContain(
-      '<span class="size-3.5 shrink-0" aria-hidden="true">',
+      '<span class="size-4 shrink-0" aria-hidden="true">',
     );
     expect(html).not.toContain("rounded-full");
     expect(html).not.toContain("tabular-nums");

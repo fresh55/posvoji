@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { ShelterSummary } from "@/lib/shelter-summary";
@@ -29,7 +29,7 @@ function faceAltTexts(container: HTMLElement): string[] {
 }
 
 describe("ShelterDetails faces", () => {
-  it("fans out the waiting animals' photos, longest wait first", () => {
+  it("shows the waiting animals' photos in order, longest wait first", () => {
     const { container } = renderDetails({
       species: [{ species: "dog", count: 4 }],
       longestWaiting: { name: "Mila", duration: "10 let" },
@@ -67,6 +67,57 @@ describe("ShelterDetails species", () => {
       container.querySelectorAll("[data-pick-species]"),
     ).map((chip) => chip.getAttribute("aria-label"));
     expect(chips).toEqual(["Pes: 4", "Mačka: 1"]);
+  });
+});
+
+describe("ShelterDetails count scope", () => {
+  const summary: ShelterSummary = {
+    species: [
+      { species: "dog", count: 4 },
+      { species: "cat", count: 1 },
+    ],
+    faces: [{ name: "Mila", src: "/media/animals/mila.webp" }],
+    longestWaiting: { name: "Mila", duration: "10 let" },
+  };
+
+  it.each([
+    {
+      locale: "sl" as const,
+      matching: "Ustreza filtrom: 0",
+      allPublished: "Vse objavljene živali",
+      previews: "Primeri iz vseh objav",
+    },
+    {
+      locale: "en" as const,
+      matching: "Matching your filters: 0",
+      allPublished: "All published animals",
+      previews: "Examples from all listings",
+    },
+  ])("distinguishes zero matches from the complete overview in $locale", ({
+    locale,
+    matching,
+    allPublished,
+    previews,
+  }) => {
+    render(
+      <I18nProvider locale={locale}>
+        <ShelterDetails summary={summary} matchingCount={0} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText(matching)).toBeTruthy();
+    const overview = screen.getByRole("group", { name: allPublished });
+    expect(within(overview).getByText(`${allPublished}: 5`)).toBeTruthy();
+    expect(within(overview).getByText(previews)).toBeTruthy();
+    expect(within(overview).getByRole("img", { name: "Mila" })).toBeTruthy();
+    expect(within(overview).getByText(/Mila/)).toBeTruthy();
+  });
+
+  it("does not invent a filtered count for a standalone overview", () => {
+    renderDetails(summary);
+
+    expect(screen.queryByText(/Ustreza filtrom/)).toBeNull();
+    expect(screen.getByText("Vse objavljene živali: 5")).toBeTruthy();
   });
 });
 

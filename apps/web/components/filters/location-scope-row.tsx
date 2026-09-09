@@ -16,7 +16,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { FilterOption } from "@/lib/filters";
 import { cityAt } from "@/lib/geo";
-import { shelterScopeLabel } from "@/lib/labels";
+import { shelterSelectionLabel } from "@/lib/labels";
 import type { ShelterPin } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
 
@@ -126,10 +126,11 @@ export function LocationScopeRow({
     () => shelterPins(options, counts, offSite),
     [counts, offSite, options],
   );
-  // The registry, live shelters and the ones with nothing listed alike, which
-  // is the roster the dialog lists and the total its own label counts against.
-  const total = options.length + (offSite?.length ?? 0);
-  const label = shelterScopeLabel(selected.length, total, locale);
+  // Resolve names from the full registry, matching the picker footer chips.
+  const selectedRows = selected.map((value) =>
+    [...options, ...(offSite ?? [])].find((row) => row.value === value) ?? { label: value },
+  );
+  const label = shelterSelectionLabel(selectedRows, locale);
   const oneRow = layout === "row";
 
   const shouldReduceMotion = useReducedMotion();

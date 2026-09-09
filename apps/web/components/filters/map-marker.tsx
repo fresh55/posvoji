@@ -20,6 +20,7 @@ import {
   satelliteHitCircles,
   type ShelterPin,
   selectionState,
+  shelterIsSelectable,
   townCount,
   townIsLive,
   townLabel,
@@ -30,6 +31,7 @@ import {
 // not need even an erased import back into the module that renders Marker.
 import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { cn } from "@/lib/utils";
+import { mapAvailabilityText, shelterAvailability } from "./map-availability";
 
 // The hollow disc a shelter with nothing listed draws: just over half the
 // radius the coin would have taken, no fill, foreground at 45%. The map legend
@@ -197,9 +199,10 @@ function markerLabel(
   noAnimalsListed: string,
 ): string {
   const name = townLabel(town);
-  if (townSelectableValues(town).length === 0) {
+  if (town.shelters.every((shelter) => shelter.selectable === false)) {
     return `${name}: ${noAnimalsListed}`;
   }
+  if (townCount(town) === 0) return `${name}: ${mapAvailabilityText[locale].noMatches}`;
   const animals = filteredAnimalCount(townCount(town), locale);
   return town.shelters.length > 1
     ? `${name}: ${shelterCount(town.shelters.length, locale)}, ${animals}`
@@ -220,7 +223,7 @@ function wedgeLabel(
   const animals =
     shelter.selectable === false
       ? noAnimalsListed
-      : filteredAnimalCount(shelter.count, locale);
+      : shelterAvailability(shelter, locale) ?? filteredAnimalCount(shelter.count, locale);
   return `${shelter.label}: ${animals}`;
 }
 
@@ -330,9 +333,9 @@ export const Marker = memo(function Marker({
   const shared = town.shelters.length > 1;
   // Only the shelters a click may toggle. An off-site shelter shares the
   // marker so the map can show where it is, but never the pick.
-  const values = townSelectableValues(town);
+  const values = townSelectableValues(town, selected);
   const state = selectionState(values, selected);
-  const live = townIsLive(town);
+  const live = townIsLive(town, selected);
   // A town holding only shelters with nothing to pick is informational: hover
   // names it, nothing selects it. Unlike a dead marker it keeps its pointer
   // events, so the visitor can find out what the faint dot is.
@@ -392,7 +395,7 @@ export const Marker = memo(function Marker({
   // The same test the pointer's own targets make: an off-site shelter is named
   // and never picked, whichever way the visitor arrived at it.
   const drilledPickable =
-    drilledShelter !== undefined && live && drilledShelter.selectable !== false;
+    drilledShelter !== undefined && live && shelterIsSelectable(drilledShelter, selected);
 
   // What the coin reports pressed. While the drill is open it answers for the
   // mark and not for the town, because that is what its name says as well. A
@@ -470,7 +473,7 @@ export const Marker = memo(function Marker({
     const shelter = town.shelters.find((entry) => entry.value === value);
     // An off-site shelter's target names it and stops there, the same deal its
     // dot has always had.
-    const pickable = interactive && live && shelter?.selectable !== false;
+    const pickable = interactive && live && Boolean(shelter && shelterIsSelectable(shelter, selected));
     return {
       pickable,
       props: {
@@ -957,7 +960,7 @@ function markProps(
     selected: picked,
     // An off-site shelter keeps its own mark whatever its town holds: the
     // mark, not the town, is what says "this one you can pick".
-    live: live && shelter.selectable !== false,
+    live: live && shelterIsSelectable(shelter, selected),
     discAttribute: picked ? "selected" : "idle",
     shelterValue: shelter.value,
     // A list hover still names the town, so it lights every mark. A pointer on

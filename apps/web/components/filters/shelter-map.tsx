@@ -48,7 +48,6 @@ import {
   COUNTRY_OUTLINE,
   ContextFade,
   GeographicContext,
-  MixedHatch,
 } from "./shelter-map-geography";
 import { PlateFurniture } from "./shelter-map-furniture";
 import { Connector, OriginDistance, SPOTLIGHT_RING } from "./shelter-map-links";
@@ -60,6 +59,8 @@ import {
 import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { commitKey, Marker, PLATE_MIN_SCALE } from "./map-marker";
 import { mapFacts, type MapFacts } from "./shelter-map-facts";
+import { mapAvailabilityText, regionAvailability, shelterAvailability } from "./map-availability";
+import { MapRegionNames } from "./map-region-names";
 
 export type { ShelterPin } from "@/lib/map-layout";
 export type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
@@ -251,7 +252,6 @@ export function ShelterMap({
   // defines this pattern, so the id cannot be a constant. useId is stripped to
   // alphanumerics because the value it returns carries colons.
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
-  const hatchId = `map-hatch-${uid}`;
   const contextFadeId = `map-context-fade-${uid}`;
   const hillshadeClipId = `map-hillshade-clip-${uid}`;
   const towns = useMemo(() => layoutTowns(pins), [pins]);
@@ -298,6 +298,7 @@ export function ShelterMap({
    *  data-map-commit string that mark carries. Null on every other pointer,
    *  where the first click is still the pick: see handlePlateClickCapture. */
   const [armed, setArmed] = useState<string | null>(null);
+  const [armedActionFocused, setArmedActionFocused] = useState(false);
   /** The region the roving tabindex remembers as the plate's one tab stop.
    *  Kept past a blur, unlike namedRegionId above, which is about what the
    *  plate is saying rather than about where the tab order resumes. */
@@ -367,6 +368,7 @@ export function ShelterMap({
   // pointer that cannot hover, so a mouse hover is never what this clears.
   const withdrawArmed = useCallback(() => {
     setArmed(null);
+    setArmedActionFocused(false);
     setHoveredTownKey(null);
     setHoveredShelterValue(null);
     onHoverShelters?.(null);
@@ -382,7 +384,7 @@ export function ShelterMap({
     const withdrawIfMoved = () => {
       if (corner() !== armedAt) withdrawArmed();
     };
-    const timer = setTimeout(withdrawArmed, ARMED_TTL_MS);
+    const timer = armedActionFocused ? undefined : setTimeout(withdrawArmed, ARMED_TTL_MS);
     // Capture on the window, because a scroll event on an inner scroller does
     // not bubble but does pass through the capture phase above it.
     window.addEventListener("scroll", withdrawIfMoved, {
@@ -393,7 +395,7 @@ export function ShelterMap({
       clearTimeout(timer);
       window.removeEventListener("scroll", withdrawIfMoved, { capture: true });
     };
-  }, [armed, withdrawArmed]);
+  }, [armed, armedActionFocused, withdrawArmed]);
 
   /** Where each annotation on the plate has put its block of type, keyed by
    *  the site that drew it. A table and not a single rectangle because more
@@ -514,11 +516,11 @@ export function ShelterMap({
   const townMetadata = !activeTown
     ? undefined
     : hoveredShelter
-      ? hoveredShelter.selectable === false
+      ? shelterAvailability(hoveredShelter, locale) ?? filteredAnimalCount(hoveredShelter.count, locale)
+      : activeTown.shelters.every((shelter) => shelter.selectable === false)
         ? messages.noAnimalsListed
-        : filteredAnimalCount(hoveredShelter.count, locale)
-      : townSelectableValues(activeTown).length === 0
-        ? messages.noAnimalsListed
+        : townCount(activeTown) === 0
+          ? mapAvailabilityText[locale].noMatches
         : activeTown.shelters.length > 1
           ? `${shelterCount(activeTown.shelters.length, locale)} · ${filteredAnimalCount(townCount(activeTown), locale)}`
           : filteredAnimalCount(townCount(activeTown), locale);
@@ -526,9 +528,13 @@ export function ShelterMap({
   /** Who lives there, when the annotation is about one house. A cluster's own
    *  card answers for its town, and the breakdown of a town is a fact about no
    *  shelter in it. */
-  const calloutSpecies = calloutShelter
+  const summarySpecies = calloutShelter
     ? summaries?.get(calloutShelter.value)?.species
     : undefined;
+  // A full-shelter breakdown cannot explain a filtered badge. Keep the map's
+  // compact callout scoped to its count; the list details explain the full roster.
+  const calloutSpecies = summarySpecies?.reduce((total, item) => total + item.count, 0) === calloutShelter?.count
+    ? summarySpecies : undefined;
 
   // Memoized so the highlighted town's region is a lookup rather than a second
   // point-in-polygon pass over every render.
@@ -719,10 +725,10 @@ export function ShelterMap({
     () =>
       interactive
         ? towns
-            .filter((town) => townIsLive(town))
+            .filter((town) => townIsLive(town, selected))
             .sort((a, b) => a.x - b.x || a.y - b.y)
         : [],
-    [interactive, towns],
+    [interactive, towns, selected],
   );
   // One tab stop for the whole plate of coins, the way the regions share one.
   const tabStopTownKey =
@@ -850,6 +856,34 @@ export function ShelterMap({
   const armedRegion = armed
     ? regions.find(({ region }) => commitKey("region", region.id) === armed)
     : undefined;
+  const armedTown = armed && !armedRegion
+    ? towns.find((town) => commitKey("town", town.key) === armed ||
+      town.shelters.some((shelter) => commitKey("shelter", shelter.value) === armed))
+    : undefined;
+  const armedShelter = armedTown?.shelters.find((shelter) =>
+    commitKey("shelter", shelter.value) === armed);
+  const armedValues = armedRegion?.stats.values ?? (armedShelter
+    ? [armedShelter.value]
+    : armedTown ? townSelectableValues(armedTown, selected) : []);
+  const armedAction = armedValues.length > 0 ? {
+    label: `${armedValues.every((value) => selected.includes(value))
+      ? mapAvailabilityText[locale].remove : mapAvailabilityText[locale].select} · ${shelterCount(armedValues.length, locale)}`,
+    onFocusChange: setArmedActionFocused,
+    onClick: () => {
+      const from: MapPick = armedRegion
+        ? { kind: "group", label: armedRegion.region.name, values: armedValues }
+        : armedShelter || armedValues.length === 1
+          ? { kind: "shelter", value: armedValues[0] }
+          : { kind: "group", label: townLabel(armedTown!), values: armedValues };
+      if (armedActionFocused) {
+        const target = armedRegion ? regionRefs.current.get(armedRegion.region.id)
+          : armedTown ? townRefs.current.get(armedTown.key) : undefined;
+        target?.focus({ preventScroll: true });
+      }
+      withdrawArmed();
+      onPick?.(armedValues, from);
+    },
+  } : undefined;
 
   /** What the tap after this one will do to the filter, in words, or undefined
    *  when no region is armed.
@@ -926,7 +960,6 @@ export function ShelterMap({
       )}
     >
       <defs>
-        <MixedHatch id={hatchId} />
         <ContextFade id={contextFadeId} />
         {/* The relief stops at the border. Slovenia is the subject and the
             neighbours are a silhouette; terrain running on across them would
@@ -980,7 +1013,7 @@ export function ShelterMap({
           // handed the same array across a render that has nothing to do with
           // it: Region is memoized, and a fresh array per render would undo
           // that for all twelve of them. A live region ignores it.
-          coveredBy={regionShelterNames?.get(region.id)}
+          coveredBy={byRegion.has(region.id) ? undefined : regionShelterNames?.get(region.id)}
           // The armed region's own consequence, and nobody else's. A string
           // and not the arming itself, so eleven memoized regions are handed
           // the same undefined they were handed last render and only the one
@@ -990,9 +1023,12 @@ export function ShelterMap({
           armedNote={
             armedRegion?.region.id === region.id ? armedNote : undefined
           }
-          hatchId={hatchId}
+          emptyMessage={regionAvailability(byRegion.get(region.id) ?? [], locale, messages.noSheltersInRegion)}
         />
       ))}
+      {interactive && !markersVisible && (
+        <MapRegionNames scale={plateScale} calloutRects={Object.values(calloutRects)} />
+      )}
 
       {/* Over the choropleth, so a town name is never read through a region
           fill, and under everything a click or a hover produces. */}
@@ -1095,6 +1131,7 @@ export function ShelterMap({
                 // MapCallout drawing its dense one-line label.
                 metadata={saidElsewhere ? undefined : townMetadata}
                 species={saidElsewhere ? undefined : calloutSpecies}
+                action={armedTown?.key === activeTown.key ? armedAction : undefined}
               />
             )}
         </g>
@@ -1112,10 +1149,11 @@ export function ShelterMap({
           rectKey="region"
           onRect={handleCalloutRect}
           title={hoveredRegion.region.name}
+          action={armedRegion?.region.id === hoveredRegion.region.id ? armedAction : undefined}
           metadata={
             hoveredRegion.stats.live
               ? `${shelterCount(hoveredRegion.stats.values.length, locale)} · ${filteredAnimalCount(hoveredRegion.stats.animals, locale)}`
-              : messages.noSheltersInRegion
+              : regionAvailability(byRegion.get(hoveredRegion.region.id) ?? [], locale, messages.noSheltersInRegion)
           }
           // Two different second lines, and never both, because a region is
           // either live or it is not.
@@ -1136,10 +1174,10 @@ export function ShelterMap({
               ? hoveredRegion === armedRegion
                 ? armedNote
                 : undefined
-              : coveredByLine(
+              : !byRegion.has(hoveredRegion.region.id) ? coveredByLine(
                   regionShelterNames?.get(hoveredRegion.region.id),
                   t,
-                )
+                ) : undefined
           }
         />
       )}

@@ -11,6 +11,7 @@ import {
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
+import { pickerFilterSummary } from "@/components/filters/location-picker/model";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
@@ -52,6 +53,7 @@ export function FilterSidebar({
   onToggleMany,
   onToggleProperty,
   onToggleManyProperties,
+  onClearAll,
   className,
 }: {
   filters: Filters;
@@ -63,9 +65,10 @@ export function FilterSidebar({
   home?: HomeSection;
   care?: CareSection;
   scope?: SidebarScope;
+  onClearAll?: () => void;
   className?: string;
 } & FilterActionContract) {
-  const { messages } = useI18n();
+  const { messages, locale } = useI18n();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
   // The chips row scrolls away with the page while the sidebar stays, so this
   // count keeps the state in view after the pills have gone. Selected values
@@ -144,6 +147,8 @@ export function FilterSidebar({
           onToggle={(value) => onToggle("shelter", value)}
           onToggleMany={(values) => onToggleMany("shelter", values)}
           resultCount={scope.resultCount}
+          filterSummary={pickerFilterSummary(filters, locale)}
+          onClearFilters={onClearAll}
           municipalities={scope.municipalities}
           offSite={scope.offSite}
           summaries={scope.summaries}

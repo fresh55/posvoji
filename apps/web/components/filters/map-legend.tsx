@@ -4,6 +4,8 @@ import type { LatLon } from "@/lib/geo";
 import type { Messages } from "@/lib/i18n";
 import { DENSITY_STEPS } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
+import { mapAvailabilityText } from "./map-availability";
 
 const LEGEND_SWATCH_GROUND =
   "color-mix(in oklch, var(--muted) 40%, var(--background))";
@@ -27,6 +29,7 @@ export function MapLegend({
   hasSelectedRegion,
   hasMixedRegion,
   hasEmptyMarker,
+  hasFilteredMarker = false,
   origin,
   messages,
 }: {
@@ -37,13 +40,14 @@ export function MapLegend({
   /** At least one region is fully picked right now, so the solid selection
    *  green is on the map and needs telling apart from the density ramp. */
   hasSelectedRegion: boolean;
-  /** At least one region is partly picked right now, so the hatch on the map
+  /** At least one region is partly picked right now, so the dashed boundary
    *  is a state worth naming. */
   hasMixedRegion: boolean;
   /** At least one shelter with nothing listed is drawn as a hollow circle right
    *  now. The row itself decides at which widths that is worth saying: see it
    *  below. */
   hasEmptyMarker: boolean;
+  hasFilteredMarker?: boolean;
   origin: LatLon | undefined;
   messages: Pick<
     Messages,
@@ -55,13 +59,14 @@ export function MapLegend({
     | "originLegend"
   >;
 }) {
+  const { locale } = useI18n();
   return (
     <div
       data-map-legend
-      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-3xs leading-none text-muted-foreground lg:gap-x-4 lg:gap-y-1.5 lg:text-2xs"
+      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-4 text-muted-foreground"
     >
       {showDensity && (
-        <span className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 whitespace-nowrap">
           <span>{messages.fewerAnimals}</span>
           <span
             className="flex items-center gap-0.5"
@@ -89,7 +94,7 @@ export function MapLegend({
                   DENSITY_STEPS opacity. */}
                 <span
                   className={cn(
-                    "relative block size-2 overflow-hidden rounded-[2px] transition-shadow",
+                    "relative block size-2.5 overflow-hidden rounded-[2px] transition-shadow",
                     highlightedDensity === index && "ring-1 ring-foreground/30",
                   )}
                   style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
@@ -113,7 +118,7 @@ export function MapLegend({
           picked" and nothing on the map corrects them. Both variants, because
           regions are selectable on phones too. */}
       {hasSelectedRegion && (
-        <span className="flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span
             aria-hidden
             className="size-2.5 shrink-0 rounded-[2px] border border-[var(--filter-accent-strong)] bg-[var(--map-selected-fill)]"
@@ -121,20 +126,13 @@ export function MapLegend({
           {messages.selectedRegionLegend}
         </span>
       )}
-      {/* The hatch a mixed/partly-selected region gets on the map, at legend
-          size. Only while such a region exists, which is the moment the hatch
-          first appears: the row teaches the pattern as it is made, rather than
-          describing a state the map is not in. Both variants, because regions
-          and their partial selection exist on phones too. */}
+      {/* The dashed boundary distinguishes a partial choice without painting
+          a strong pattern across the whole region. */}
       {hasMixedRegion && (
-        <span className="flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span
             aria-hidden
-            className="size-2.5 shrink-0 rounded-[2px] border border-[var(--filter-accent-strong)]"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, var(--filter-accent-strong) 0 1px, var(--filter-accent) 1px 4px)",
-            }}
+            className="size-2.5 shrink-0 rounded-[2px] border border-dashed border-[var(--filter-accent-strong)] bg-[var(--map-selected-fill)]/20"
           />
           {messages.mixedRegionLegend}
         </span>
@@ -152,15 +150,21 @@ export function MapLegend({
           phone; it also kept it off a tablet that draws markers, and left it
           standing on a landscape phone that does not. */}
       {hasEmptyMarker && (
-        <span className="flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
-          {messages.emptyShelterLegend}
+          {mapAvailabilityText[locale].noListingsLegend}
+        </span>
+      )}
+      {hasFilteredMarker && (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <EmptyMarkerGlyph className="size-3.5 shrink-0" />
+          {mapAvailabilityText[locale].noMatchesLegend}
         </span>
       )}
       {/* Only once there is a point to explain. The ring repeats the dashed
           circle the map draws at the origin, at legend size. */}
       {origin && (
-        <span className="flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <OriginGlyph className="size-4 shrink-0" />
           {messages.originLegend}
         </span>

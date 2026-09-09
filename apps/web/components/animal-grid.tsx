@@ -387,6 +387,7 @@ export function AnimalGrid({
         </a>
         {hasSidebar && (
           <FilterSidebar
+            onClearAll={handleClearAll}
             // lg:bg-background is load-bearing, not decoration. lg:sticky
             // puts the sidebar on its own compositing layer, and Chrome
             // keeps subpixel text antialiasing on such a layer only while

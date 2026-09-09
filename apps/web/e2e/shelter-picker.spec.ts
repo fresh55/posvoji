@@ -1,29 +1,12 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { donePill, openPicker, pickerTrigger, rows } from "./picker";
-import { MIN_TARGET, reachedBox } from "./reach";
+import { isReachable, MIN_TARGET, reachedBox } from "./reach";
 
-// The panel's own flows, as opposed to shelter-map.spec.ts, which pins the map
-// beside it. The unit tests render this panel into jsdom, which reports every
-// element as zero-sized: it can assert that a class is present and that state
-// moved, and it cannot answer any question whose answer is a measurement.
-// Four such questions are left, and they are what this file pins.
-//
-//   the scroll fade   only engages when the content is genuinely taller than
-//                     the box, which needs real heights
-//   the touch targets only clear 44px if nothing clips or overlaps them, which
-//                     needs a real hit test rather than a computed style
-//   the fold          has to survive a close and reopen, which needs the whole
-//                     dialog lifecycle rather than a remount
-//   the footer pill   counts what the filter actually matches, end to end from
-//                     a row click through the URL to the button's own label
-//
-// Selectors stay on roles and data-* attributes, the contract these components
-// keep. Class names are not used to find anything.
-
-// The one scroller in the panel. It is found by the utility that makes it one,
-// because the fade is the thing under test and the class is its contract.
+// Browser checks complement unit coverage with actual clipping, scrolling,
+// hit targets, dialog lifecycle, and result counts from the current dataset.
+// Stable data attributes identify the list independently of its styling.
 function list(dialog: Locator): Locator {
-  return dialog.locator("[data-picker-panel] .fade-scroll");
+  return dialog.locator("[data-picker-list-scroll]");
 }
 
 // Links inside the scroller only. The caption under the map carries the CC BY
@@ -98,53 +81,65 @@ test.describe("desktop", () => {
     await expect(donePill(page)).toBeVisible();
   });
 
-  test("fades the list's clipped edge, and only the clipped one", async ({
-    page,
-  }) => {
+  test("keeps selected names and the result action usable with the desktop list folded", async ({ page }) => {
+    const dialog = await openPicker(page);
+    await rows(dialog).first().click();
+    const footer = dialog.locator("[data-picker-footer]");
+    const chip = footer.getByRole("button", { name: /^Odstrani zavetišče:/ });
+    await expect(chip).toHaveCount(1);
+    const selectedName = await chip.getAttribute("title");
+    expect(selectedName).toBeTruthy();
+    await expect(pickerTrigger(page)).toHaveAccessibleName(`Zavetišče: ${selectedName}. Odpri zemljevid.`);
+    await dialog.getByRole("button", { name: "Skrij seznam", exact: true }).click();
+    await expect(dialog.locator("[data-picker-panel]")).toHaveAttribute("data-picker-panel", "collapsed");
+    expect(await isReachable(donePill(page))).toBe(true);
+    expect(await isReachable(chip)).toBe(true);
+
+    await chip.click();
+    await expect(chip).toHaveCount(0);
+    await expect(pickerTrigger(page)).toHaveAccessibleName("Zavetišče: Vsa zavetišča. Odpri zemljevid.");
+    await donePill(page).click();
+    await expect(dialog).toBeHidden();
+  });
+
+  test("offers city matching and nearby sorting as separate choices", async ({ page }) => {
+    const dialog = await openPicker(page);
+    const search = dialog.getByLabel("Kraj, pošta ali zavetišče");
+    await search.fill("Ljubljana");
+    const suggestion = dialog.getByRole("button", { name: /^V bližini Ljubljana/ });
+    await expect(suggestion).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toHaveCount(0);
+    const matches = rows(dialog);
+    expect(await matches.count()).toBeGreaterThan(0);
+    for (const row of await matches.all()) await expect(row).toContainText(/Ljubljana/i);
+    const before = await pickerTrigger(page).getAttribute("aria-label");
+    await search.press("Enter");
+    await expect(suggestion).toBeFocused();
+    await expect(pickerTrigger(page)).toHaveAttribute("aria-label", before!);
+
+    await suggestion.click();
+    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toBeVisible();
+    await expect(search).toHaveValue("Ljubljana");
+    expect(await matches.count()).toBeGreaterThan(1);
+    await expect(dialog.getByText("Približna zračna razdalja med kraji.")).toBeVisible();
+    await search.fill("");
+    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Odstrani izhodišče" }).click();
+    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toHaveCount(0);
+  });
+
+  test("lets shelter content scroll without obscuring its text", async ({ page }) => {
     const dialog = await openPicker(page);
     const scroller = list(dialog);
     await expect(scroller).toBeVisible();
+    expect(await scroller.evaluate((el) => el.scrollHeight > el.clientHeight + 8)).toBe(true);
+    expect(await scroller.evaluate((el) => getComputedStyle(el).maskImage)).toBe("none");
 
-    // The registry holds more shelters than the panel is tall, so there is
-    // always something below the fold to say so.
-    const overflows = await scroller.evaluate(
-      (el) => el.scrollHeight > el.clientHeight + 8,
-    );
-    expect(overflows).toBe(true);
-
-    // Read the inline values the hook writes rather than the computed ones:
-    // the two custom properties are registered and transitioned, so a computed
-    // read lands mid-ease and says nothing about where it is heading.
-    const atTop = await scroller.evaluate((el) => ({
-      top: el.style.getPropertyValue("--scroll-fade-top"),
-      bottom: el.style.getPropertyValue("--scroll-fade-bottom"),
-    }));
-    expect(atTop).toEqual({ top: "0", bottom: "1" });
-
-    await scroller.evaluate((el) => {
-      el.scrollTop = el.scrollHeight;
-    });
-    // The listener is passive and fires on the next frame, not on assignment.
-    await expect
-      .poll(() =>
-        scroller.evaluate((el) =>
-          el.style.getPropertyValue("--scroll-fade-top"),
-        ),
-      )
-      .toBe("1");
-    expect(
-      await scroller.evaluate((el) =>
-        el.style.getPropertyValue("--scroll-fade-bottom"),
-      ),
-    ).toBe("0");
-
-    // And the fade replaces the scrollbar rather than sitting beside one.
-    // Typed to HTMLElement because evaluate hands back the SVGElement union
-    // and only the HTML branch carries offsetWidth.
-    const gutter = await scroller.evaluate(
-      (el: HTMLElement) => el.offsetWidth - el.clientWidth,
-    );
-    expect(gutter).toBe(0);
+    await scroller.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    expect(await scroller.evaluate((el) => getComputedStyle(el).maskImage)).toBe("none");
+    expect(await isReachable(donePill(page))).toBe(true);
+    await expect(dialog.getByRole("heading", { name: "Izberi zavetišča" })).toBeVisible();
   });
 
   test("folds the empty-shelter group shut, and opens it on a press", async ({
@@ -262,6 +257,19 @@ test.describe("desktop", () => {
 test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test("keeps named selection and results usable after switching to the map", async ({ page }) => {
+    const dialog = await openPicker(page);
+    await rows(dialog).first().click();
+    await dialog.locator("[data-picker-show-map]").click();
+    await expect(dialog.locator("[data-picker-sheet]")).toHaveAttribute("data-picker-sheet", "collapsed");
+    const chip = dialog.locator("[data-picker-footer]").getByRole("button", { name: /^Odstrani zavetišče:/ });
+    await expect(chip).toHaveCount(1);
+    expect(await isReachable(chip)).toBe(true);
+    expect(await isReachable(donePill(page))).toBe(true);
+    await donePill(page).click();
+    await expect(dialog).toBeHidden();
+  });
+
   test("gives every control in a row a real 44px target", async ({ page }) => {
     const dialog = await openPicker(page);
     const row = rows(dialog).first();
@@ -284,10 +292,7 @@ test.describe("mobile", () => {
 
     const reached = await reachedBox(trigger);
 
-    // 36px, and deliberately not MIN_TARGET: this row sits between two others
-    // and a full 44 on all three would push the header taller than the sheet
-    // budgets for. It still clears WCAG 2.5.8.
-    expect(reached.height).toBeGreaterThanOrEqual(36);
+    expect(reached.height).toBeGreaterThanOrEqual(MIN_TARGET);
     expect(reached.centre).toBe(true);
   });
 });

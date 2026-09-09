@@ -9,10 +9,18 @@ import { speciesLabel } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 
-// Fixed per position, not random, so one shelter's fan leans the same way on
-// every render. PhotoSpread's own nudge is tuned for full-size photos and
-// disappears at chip scale, so this one leans harder.
-const FACE_TILT = [-5, 4, -6] as const;
+const DETAIL_LABELS = {
+  sl: {
+    matching: "Ustreza filtrom",
+    allPublished: "Vse objavljene živali",
+    previews: "Primeri iz vseh objav",
+  },
+  en: {
+    matching: "Matching your filters",
+    allPublished: "All published animals",
+    previews: "Examples from all listings",
+  },
+} as const;
 
 // What one shelter is, beyond the name and the filtered count its row already
 // carries: who lives there, a few of the faces waiting, and who has waited
@@ -33,15 +41,20 @@ const FACE_TILT = [-5, 4, -6] as const;
 // cannot scroll past, so a phone gets shelter inspection for the first time.
 export function ShelterDetails({
   summary,
+  matchingCount,
   className,
 }: {
   /** Species breakdown, faces and longest wait for the one shelter this panel
    *  belongs to. Absent while the picker is rendered without a dataset behind
    *  it (the map gallery, tests), and the panel then has nothing to say. */
   summary?: ShelterSummary;
+  /** The row's count under the current filters. The summary remains the
+   *  complete shelter overview, so each number needs its own visible scope. */
+  matchingCount?: number;
   className?: string;
 }) {
   const { locale, t } = useI18n();
+  const labels = DETAIL_LABELS[locale];
 
   const species = summary?.species ?? [];
   const faces = summary?.faces ?? [];
@@ -53,86 +66,88 @@ export function ShelterDetails({
   }
 
   return (
-    <div data-shelter-details className={cn("space-y-2", className)}>
-      {/* Who lives here, in the icons the species tabs and the result count
-          already use. Every species the shelter has, whatever the species tab
-          is set to: see summarizeShelters for why. */}
-      {species.length > 0 && (
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
-          {species.map(({ species: kind, count }) => {
-            const Icon = SPECIES_ICONS[kind];
-            return (
-              <span
-                key={kind}
-                data-pick-species={kind}
-                role="img"
-                aria-label={`${speciesLabel(kind, locale)}: ${count}`}
-                className="inline-flex items-center gap-1"
-              >
-                <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                {count}
-              </span>
-            );
-          })}
+    <div data-shelter-details className={cn("space-y-3", className)}>
+      {matchingCount !== undefined && (
+        <p className="text-sm font-medium tabular-nums">
+          {labels.matching}: {matchingCount}
         </p>
       )}
+      <div
+        role="group"
+        aria-label={labels.allPublished}
+        className={cn(
+          "space-y-3",
+          matchingCount !== undefined && "border-t border-border/60 pt-3",
+        )}
+      >
+        <p className="text-xs font-medium text-muted-foreground tabular-nums">
+          {labels.allPublished}
+          {species.length > 0 &&
+            `: ${species.reduce((total, item) => total + item.count, 0)}`}
+        </p>
+        {/* Who lives here, in the icons the species tabs and the result count
+            already use. Every species the shelter has, whatever the species tab
+            is set to: see summarizeShelters for why. */}
+        {species.length > 0 && (
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs tabular-nums">
+            {species.map(({ species: kind, count }) => {
+              const Icon = SPECIES_ICONS[kind];
+              return (
+                <span
+                  key={kind}
+                  data-pick-species={kind}
+                  role="img"
+                  className="inline-flex items-center gap-1.5"
+                  aria-label={`${speciesLabel(kind, locale)}: ${count}`}
+                >
+                  <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                  {speciesLabel(kind, locale)}: {count}
+                </span>
+              );
+            })}
+          </p>
+        )}
 
-      {/* A mini photo-spread: the same tilt-and-overlap language the animal
-          dialog's gallery uses, at chip scale. The first face is whichever
-          animal longestWaiting names, whenever that animal has a photo at all
-          (see summarizeShelters), so this sits right above that line rather
-          than anywhere else in the panel.
+        {/* Equal thumbnails keep every face unobscured. The first photo still
+            belongs to the longest-waiting animal when one is available. */}
+        {faces.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">{labels.previews}</p>
+            <div className="grid max-w-72 grid-cols-3 gap-2">
+              {faces.map((face) => (
+                <span
+                  key={face.src}
+                  className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-md border border-border/60 bg-muted"
+                >
+                  <Image
+                    src={thumbnailUrl(face.src)}
+                    alt={face.name}
+                    fill
+                    sizes="6rem"
+                    className="object-cover"
+                  />
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
-          The ring is drawn from the surface the fan sits on, so an overlap
-          reads as a cut edge rather than as a mismatched halo. That surface is
-          the expanded panel's bg-muted/30, which is translucent and so has no
-          single token to name; color-mix composites the same colour the panel
-          does, muted at 30% over the picker's own background. Both terms are
-          redefined in the dark blocks, so this follows the theme without a
-          second rule. Keep it in step with whatever fill the collapsible
-          content carries in shelter-rows.tsx. */}
-      {faces.length > 0 && (
-        <div className="flex items-center">
-          {faces.map((face, index) => (
-            <span
-              key={face.src}
-              className={cn(
-                "relative size-11 shrink-0 overflow-hidden rounded-ui bg-muted",
-                "ring-2 ring-[color-mix(in_oklab,var(--muted)_30%,var(--background))]",
-                index > 0 && "-ml-4",
-              )}
-              style={{
-                zIndex: faces.length - index,
-                transform: `rotate(${FACE_TILT[index % FACE_TILT.length]}deg)`,
-              }}
-            >
-              <Image
-                src={thumbnailUrl(face.src)}
-                alt={face.name}
-                fill
-                sizes="3rem"
-                className="object-cover"
-              />
+        {/* The one animal a number cannot stand in for. Same hourglass and same
+            amber the animal card gives a long wait, so the two marks are one
+            mark. */}
+        {summary?.longestWaiting && (
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Hourglass
+              className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <span className="min-w-0 leading-relaxed">
+              {t("longestWaiting", summary.longestWaiting)}
             </span>
-          ))}
-        </div>
-      )}
-
-      {/* The one animal a number cannot stand in for. Same hourglass and same
-          amber the animal card gives a long wait, so the two marks are one
-          mark. */}
-      {summary?.longestWaiting && (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Hourglass
-            className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <span className="min-w-0 truncate">
-            {t("longestWaiting", summary.longestWaiting)}
-          </span>
-        </p>
-      )}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

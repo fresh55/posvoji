@@ -12,6 +12,7 @@ for (const width of [375, 640, 800]) {
     const search = page.getByLabel("Kraj, pošta ali zavetišče");
     await expect(search).toHaveCSS("font-size", "16px");
     await search.fill("1000");
+    await page.getByRole("button", { name: /^V bližini Ljubljana/ }).click();
     const waits = page.locator("[data-row-wait]");
     expect(await waits.count()).toBeGreaterThan(0);
     for (const wait of await waits.all()) {
@@ -25,14 +26,14 @@ for (const width of [375, 640, 800]) {
   });
 }
 
-test("zero-match regions stay selectable and Back retains the live filter", async ({
+test("Back retains a shelter selected on the map and unrelated URL parameters", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/?vrsta=zajcek&campaign=hello%20world");
+  await page.goto("/?campaign=hello%20world");
   await pickerTrigger(page).click();
   const region = page.getByRole("button", {
-    name: /^Pomurska:.*0 živali s temi filtri/,
+    name: /^Pomurska:/,
   });
   await region.focus();
   await region.press("Enter");
@@ -46,17 +47,20 @@ test("zero-match regions stay selectable and Back retains the live filter", asyn
   await expect(page).toHaveURL(/campaign=hello%20world/);
 });
 
-test("a touch arm has a visible outline and tells the visitor to tap again", async ({
+test("a touch arm has a visible outline and an explicit selection action", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/");
   await pickerTrigger(page).click();
+  await page.locator("[data-picker-show-map]").click();
   const region = page.getByRole("button", { name: /^Pomurska:/ });
   await region.tap();
   await expect(region).toHaveAttribute("data-region-armed", "true");
   await expect(region).toHaveAttribute("stroke-dasharray", "3 2");
-  await expect(page.getByText(/Še enkrat tapni:/)).toBeVisible();
-  await region.tap();
+  const select = page.locator("[data-map-action]");
+  await expect(select).toHaveAccessibleName(/^Izberi.*Pomurska/);
+  await expect(select).toBeVisible();
+  await select.tap();
   await expect(page).toHaveURL(/zavetisce=mala-hisa/);
 });

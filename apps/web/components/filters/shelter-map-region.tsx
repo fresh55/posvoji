@@ -114,15 +114,12 @@ const REGION_LOOK: Record<
     highlighted:
       "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.8]",
   },
-  // No fill utility here: the fill is the hatch pattern, set as an attribute,
-  // and a Tailwind fill class would win over it. The stroke carries most of the
-  // hover answer, because a fill-opacity step across thin lines on a pale
-  // ground barely moves; the opacity step is kept as well, since it lifts the
-  // ground the lines sit on.
+  // A partial choice outlines the region without striping every place inside
+  // it. The dashed boundary remains distinct from a fully selected region.
   mixed: {
-    rest: "stroke-[var(--filter-accent-strong)] [fill-opacity:0.85] [stroke-width:0.8] hover:[fill-opacity:1] hover:[stroke-width:1.3]",
+    rest: "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.2] [stroke-width:1.2] [stroke-dasharray:3_2] hover:[fill-opacity:0.3] hover:[stroke-width:1.5]",
     highlighted:
-      "stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.3]",
+      "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.3] [stroke-width:1.5] [stroke-dasharray:3_2]",
   },
   idle: {
     rest: cn(
@@ -167,7 +164,7 @@ export const Region = memo(function Region({
   densityFocus,
   coveredBy,
   armedNote,
-  hatchId,
+  emptyMessage,
 }: {
   /** False when the whole plate is a labelled graphic rather than a picker. */
   interactive: boolean;
@@ -207,8 +204,8 @@ export const Region = memo(function Region({
    *  aria-hidden, like every annotation on this plate: the label is the only
    *  way a screen reader ever hears what a hover or an arming says. */
   armedNote?: string;
-  /** The map's hatch pattern, which the mixed state fills with. */
-  hatchId: string;
+  /** Explains whether this location has no listings or no matching animals. */
+  emptyMessage?: string;
 }) {
   const { locale, messages, t } = useI18n();
   const d = REGION_PATHS.get(region.id) ?? "";
@@ -235,8 +232,8 @@ export const Region = memo(function Region({
         aria-label={
           interactive
             ? covered
-              ? `${region.name}: ${messages.noSheltersInRegion}. ${covered}`
-              : `${region.name}: ${messages.noSheltersInRegion}`
+              ? `${region.name}: ${emptyMessage ?? messages.noSheltersInRegion}. ${covered}`
+              : `${region.name}: ${emptyMessage ?? messages.noSheltersInRegion}`
             : undefined
         }
         data-region-state="inert"
@@ -309,9 +306,6 @@ export const Region = memo(function Region({
             : `${region.name}: ${shelterCount(stats.values.length, locale)}, ${filteredAnimalCount(stats.animals, locale)}`
           : undefined
       }
-      // Attribute and not a class, because a pattern reference cannot be
-      // written as a Tailwind fill utility.
-      fill={stateName === "mixed" ? `url(#${hatchId})` : undefined}
       data-region-state={stateName}
       data-region-armed={Boolean(armedNote) || undefined}
       strokeDasharray={armedNote ? "3 2" : undefined}

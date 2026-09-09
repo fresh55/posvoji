@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import type { LatLon } from "@/lib/geo";
+import type { TypedLocation } from "@/lib/origin";
 
 export type NearbyState =
   | { status: "off" }
@@ -10,12 +11,18 @@ export type NearbyState =
   | { status: "on"; at: LatLon }
   | { status: "error"; message: string };
 
+export type NearbyChosenPlace = {
+  location: Extract<TypedLocation, { status: "matched" }>;
+  query: string;
+} | null;
+
 const TIMEOUT_MS = 10000;
 const MAX_AGE_MS = 300000;
 const OFF: NearbyState = { status: "off" };
 // Both responsive pickers control one page-session location. Never persisted.
 let state: NearbyState = OFF;
 let query = "";
+let chosenPlace: NearbyChosenPlace = null;
 let attempt = 0;
 let deadline: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
@@ -49,10 +56,23 @@ export function useNearbyQuery() {
   );
   return [value, setQuery] as const;
 }
+function setChosenPlace(next: NearbyChosenPlace) {
+  chosenPlace = next;
+  emit();
+}
+export function useNearbyChosenPlace() {
+  const value = useSyncExternalStore(
+    subscribe,
+    () => chosenPlace,
+    () => null,
+  );
+  return [value, setChosenPlace] as const;
+}
 /** Test-only: the session is shared across component lifetimes. */
 export function resetNearbyStore() {
   cancel();
   query = "";
+  chosenPlace = null;
   setState(OFF);
 }
 

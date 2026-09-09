@@ -146,16 +146,30 @@ describe("Kje scope row in the sidebar", () => {
     expect(heading.className).toContain("uppercase");
   });
 
-  it("counts the pick against the whole registry, off-roster shelters included", () => {
+  it("names the selected shelter visibly and for a screen reader", () => {
     const trigger = renderSidebar({ selected: ["jug"] });
 
-    expect(trigger.textContent).toContain("1 od 3 zavetišč");
+    expect(trigger.textContent).toContain("Zavetišče Jug");
+    expect(trigger.getAttribute("aria-label")).toContain("Zavetišče: Zavetišče Jug");
   });
 
   it("says how many once several are picked", () => {
     const trigger = renderSidebar({ selected: ["jug", "sever"] });
 
-    expect(trigger.textContent).toContain("2 od 3 zavetišč");
+    expect(trigger.textContent).toContain("Izbrano: 2");
+  });
+
+  it("resolves a selected off-site shelter from the registry too", () => {
+    const trigger = renderSidebar({ selected: ["vzhod"] });
+    expect(trigger.textContent).toContain("Zavetišče Vzhod");
+  });
+
+  it("keeps the sidebar and opened picker selection labels consistent", async () => {
+    const trigger = renderSidebar({ selected: ["jug"] });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.querySelector("[data-picker-footer]")?.textContent).toContain("Zavetišče Jug");
+    expect(within(dialog).getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeTruthy();
   });
 
   it("opens the picker on press", async () => {
@@ -206,6 +220,13 @@ describe("Kje scope row in the sidebar", () => {
 });
 
 describe("Kje scope row in the filter sheet", () => {
+  it("names a selected shelter in the compact phone row", async () => {
+    renderSheet({ selected: ["jug"] });
+    const dialog = await openSheet();
+    const row = within(dialog).getByRole("button", { name: /Zavetišče: Zavetišče Jug/ });
+    expect(row.textContent).toContain("Zavetišče Jug");
+    expect(row.textContent).not.toContain("1 od 3");
+  });
   it("sits above the first filter section", async () => {
     renderSheet();
     const dialog = await openSheet();
@@ -407,7 +428,7 @@ describe("Kje scope sentence crossfade", () => {
 
     rerender(sidebarElement(["jug"]));
 
-    expect(labelNode(trigger, "1 od 3 zavetišč").style.opacity).toBe("0");
+    expect(labelNode(trigger, "Zavetišče Jug").style.opacity).toBe("0");
   });
 });
 

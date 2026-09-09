@@ -12,6 +12,10 @@ export type LocationPickerProps = {
   /** Animals the whole filter state currently matches, shown live on the
    * confirm button so picking a shelter has visible consequences. */
   resultCount: number;
+  /** Current animal filters, shown alongside the shelter counts. */
+  filterSummary?: string;
+  /** Explicit recovery when no animal matches, including across shelters. */
+  onClearFilters?: () => void;
   /** Municipality → responsible-shelter entries. Map furniture, not a mode:
    * the picker names who answers for the občine inside a region the roster
    * leaves empty. The lookup itself is a page (found-animal-page.tsx). */

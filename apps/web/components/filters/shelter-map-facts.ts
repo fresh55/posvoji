@@ -1,6 +1,7 @@
 import {
   MAX_CLUSTER_DISCS,
   townIsLive,
+  shelterIsSelectable,
   type RegionStats,
   type Town,
 } from "@/lib/map-layout";
@@ -12,7 +13,7 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
   // Past MAX_CLUSTER_DISCS the marker gives up on one disc per shelter and
   // says the number instead, and a count disc is never hollow.
   if (town.shelters.length > MAX_CLUSTER_DISCS) return false;
-  const live = townIsLive(town);
+  const live = townIsLive(town, selected);
   // A single marker carries the town's own answer. It cannot be selected
   // while it is not live, so liveness settles it alone.
   if (town.shelters.length === 1) return !live;
@@ -21,7 +22,7 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
   return town.shelters.some(
     (shelter) =>
       !selected.includes(shelter.value) &&
-      !(live && shelter.selectable !== false),
+      !(live && shelterIsSelectable(shelter, selected)),
   );
 }
 
@@ -29,14 +30,15 @@ export type MapFacts = {
   hasSelected: boolean;
   hasMixed: boolean;
   hasEmpty: boolean;
+  hasFilteredEmpty?: boolean;
 };
 
 /** What one look at the laid-out country says, for the panel and its legend.
  *
  *  Each is a state the legend grows a row for, and each row waits for the
  *  thing it explains to exist: the solid selection green the moment a region
- *  is picked whole, the hatch the moment one is partly picked, the hollow
- *  circle the moment a shelter with nothing listed is drawn.
+ *  is picked whole, the dashed border when one is partly picked, and the
+ *  hollow circles with their distinct publication or filter explanations.
  *
  *  Takes the towns and region stats ShelterMap already memoizes. Laying towns
  *  out and grouping them by region are the expensive parts, so the legend
@@ -56,6 +58,10 @@ export function mapFacts(
     hasMixed: regions.some(
       ({ stats }) => stats.live && stats.state === "mixed",
     ),
-    hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected)),
+    hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected) &&
+      town.shelters.some((shelter) => shelter.selectable === false)),
+    hasFilteredEmpty: towns.some((town) => townDrawsEmptyMark(town, selected) &&
+      town.shelters.some((shelter) => shelter.selectable !== false &&
+        shelter.count === 0 && !selected.includes(shelter.value))),
   };
 }

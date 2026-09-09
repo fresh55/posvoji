@@ -8,6 +8,9 @@ export { interpolate as fill } from "@/lib/i18n";
 
 export const portalText = {
   brand: "Portal za zavetišča",
+  // The public header's own bypass, in the portal's register: the site says
+  // "Preskoči", the portal addresses shelter staff as "vi" throughout.
+  skipToContent: "Preskočite na vsebino",
 
   // Login
   loginTitle: "Prijava za zavetišča",

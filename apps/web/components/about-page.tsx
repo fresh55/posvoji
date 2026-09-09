@@ -24,7 +24,6 @@ import {
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { homePath } from "@/lib/shelter-path";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 
@@ -152,14 +151,17 @@ const THUMB_BUTTON = "max-lg:min-h-11 max-lg:gap-1.5 max-lg:px-4";
 export function AboutPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
-  const homeHref = homePath(locale);
 
   return (
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-        <SiteHeader homeHref={homeHref} languagePaths={ABOUT_PATHS} />
+        <SiteHeader locale={locale} languagePaths={ABOUT_PATHS} />
 
-        <main className="grid w-full flex-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12">
+        <main
+          id="vsebina"
+          tabIndex={-1}
+          className="grid w-full flex-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
+        >
           <div className="space-y-5">
             <PageBreadcrumb locale={locale} current={messages.about} />
             <div className="space-y-3">
@@ -258,8 +260,10 @@ export function AboutPage({ locale }: { locale: Locale }) {
         </main>
 
         {/* The one footer that does not link to this page, because it is on
-            it. */}
-        <SiteFooter locale={locale} showAboutLink={false}>
+            it. It passes the correction route off for the same reason: the
+            contact block above prints the address already, and a second copy
+            of it two hundred pixels lower says nothing new. */}
+        <SiteFooter locale={locale} showAboutLink={false} showContact={false}>
           <ModelCredit locale={locale} />
         </SiteFooter>
       </div>

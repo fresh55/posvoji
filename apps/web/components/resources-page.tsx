@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
+import { CONTENT_ID } from "@/lib/skip-link";
 import { Card } from "@/components/ui/card";
 
 type LocalizedText = Record<Locale, string>;
@@ -298,7 +299,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
         <SiteHeader locale={locale} languagePaths={RESOURCES_PATHS} />
 
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14"
         >

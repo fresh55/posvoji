@@ -724,23 +724,20 @@
   .animate-spin {
     animation: none;
   }
-}
 
-/* The below-lg menu is the whole of the site's navigation there, and it opens
-   on slide, zoom and fade keyframes from tw-animate-css, which ships no
-   reduced-motion rule of its own. Everything else on the site is gated: the
-   view transition below, and 62 motion-reduce: utilities across components.
-   The vendored dropdown was the one thing left unasked.
-   Unlayered for the same reason as the block above.
-   animation: none and not a zeroed duration, because Radix's presence hook
-   reads getComputedStyle().animationName: with no animation the content
-   unmounts on close instead of hanging until a run that never starts ends.
-   Safe to select by slot, unlike the focus rule below: DropdownMenuContent
-   sets it on the primitive it renders rather than passing it through asChild,
-   so the slot is on the animated element itself. MotionConfig
-   reducedMotion="user" in i18n-provider.tsx governs motion/react and does
-   nothing for CSS keyframes. */
-@media (prefers-reduced-motion: reduce) {
+  /* The below-lg menu is the whole of the site's navigation there, and it
+     opens on slide, zoom and fade keyframes from tw-animate-css, which ships
+     no reduced-motion rule of its own. Everything else on the site is gated:
+     the view transition below, and 62 motion-reduce: utilities across
+     components. The vendored dropdown was the one thing left unasked.
+     animation: none and not a zeroed duration, because Radix's presence hook
+     reads getComputedStyle().animationName: with no animation the content
+     unmounts on close instead of hanging until a run that never starts ends.
+     Safe to select by slot, unlike the focus rule below: DropdownMenuContent
+     sets it on the primitive it renders rather than passing it through
+     asChild, so the slot is on the animated element itself. MotionConfig
+     reducedMotion="user" in i18n-provider.tsx governs motion/react and does
+     nothing for CSS keyframes. */
   [data-slot="dropdown-menu-content"] {
     animation: none;
   }
@@ -766,9 +763,18 @@
    {...props} after its own slot, so the menu trigger arrives as
    dropdown-menu-trigger and back-to-top as back-to-top, which are two of the
    controls that most need this. Unlayered, again for the reason above.
-   The colour is the system's; only the geometry is ours. */
+   The colour is the system's; only the geometry is ours.
+
+   [tabindex="0"] and not [tabindex], which is the same selector with a much
+   longer reach. The app holds one tabIndex={0}, the photo gallery's, against
+   sixteen tabIndex={-1}: every <main> the skip link aims at, and every landing
+   pad the in-page bypass links aim at. Those take focus programmatically, so
+   :focus-visible can match them, and the broad selector drew a 2px system
+   outline around the whole of <main> the moment somebody used the skip link in
+   Windows high contrast. A landing pad is not a control and should not be
+   dressed as one. */
 @media (forced-colors: active) {
-  :where(a, button, summary, [tabindex]):focus-visible {
+  :where(a, button, summary, [tabindex="0"]):focus-visible {
     outline: 2px solid;
     outline-offset: 2px;
   }

@@ -28,6 +28,7 @@ import {
   RESULTS_SLOT,
 } from "@/lib/prehydration-script";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+import { SKIP_LINK } from "@/lib/skip-link";
 import { sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import { PawPrint } from "lucide-react";
@@ -380,7 +381,7 @@ export function AnimalGrid({
         </h2>
         <a
           href="#za-rezultati"
-          className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+          className={SKIP_LINK}
         >
           {messages.skipResults}
         </a>

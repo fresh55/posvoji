@@ -16,8 +16,9 @@ import { animalPath, findAnimalBySlug, posterPath } from "@/lib/animal-path";
 import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { shelterPath } from "@/lib/shelter-path";
+import { homePath, shelterPath } from "@/lib/shelter-path";
 import { speciesLabel } from "@/lib/labels";
+import { CONTENT_ID } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
 /** The label names the destination, not the mechanism.
@@ -62,7 +63,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
   const messages = getMessages(locale);
   const text = pageText[locale];
   const reference = new Date(dataset.generatedAt);
-  const indexHref = locale === "sl" ? "/" : "/en";
+  const indexHref = homePath(locale);
   const hasPhoto = animal.images.length > 0;
   // What crosses into the two client components below, which read no photo of
   // it. Handed the whole animal they serialized every image, its source URL,
@@ -82,7 +83,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         />
 
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y"
         >

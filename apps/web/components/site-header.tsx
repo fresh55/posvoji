@@ -3,6 +3,7 @@ import { Logo } from "@/components/logo";
 import { ShelterLogin, SiteMenu, SiteNav } from "@/components/site-menu";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
+import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 
 type SiteHeaderProps = {
   /** The language this page is in, and the only thing the header needs to
@@ -41,8 +42,8 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
           the padding box an absolute child measures from starts outside the
           page's own column. */}
       <a
-        href="#vsebina"
-        className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:top-2 focus:left-gutter focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+        href={`#${CONTENT_ID}`}
+        className={SKIP_LINK_PINNED}
       >
         {messages.skipToContent}
       </a>

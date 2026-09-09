@@ -4,16 +4,11 @@ const sl = {
   metadataDescription:
     "Odprt indeks živali iz slovenskih zavetišč, ki iščejo dom. Vsaka žival z jasnim virom in povezavo na zavetišče.",
   githubTitle: "Cepljena, sterilizirana, brez znanih napak.",
-  // Superseded by openSourceInvite below. The footer is the only reader of
-  // these two, and the pair goes the moment it prints one string instead of
-  // gluing these back to back.
-  openSource: "odprta koda",
-  canHelp: ", lahko pomagaš",
-  // The footer's link to the repository, as one string. It used to be
-  // openSource and canHelp printed one after the other, the second of them
-  // beginning with a comma, which is the assembly the goodWith section below
-  // refuses in the same file: the phrases are whole and translated, never put
-  // together in the component.
+  // The footer's link to the repository, as one string. It used to be two
+  // keys printed one after the other, the second of them beginning with a
+  // comma, which is the assembly the goodWith section below refuses in the
+  // same file: the phrases are whole and translated, never put together in
+  // the component.
   openSourceInvite: "Odprta koda, pomagaš lahko tudi ti.",
   // What a link that leaves the site says. Word for word the shelters page's
   // own note, so the site says this one way rather than three.
@@ -61,12 +56,6 @@ const sl = {
   // way. English keeps "Breadcrumb", which is the ARIA convention.
   breadcrumbNav: "Pot do strani",
   backToTop: "Na vrh strani",
-  // The site root has one name and it is allAnimals below. This key held a
-  // second one, "Nazaj na živali", on the 404 and the error page: the two
-  // pages that never got a breadcrumb, so the rename the trail carried out
-  // did not reach them. Same words now. The key goes when both call sites
-  // read allAnimals instead.
-  backToAnimals: "Vse živali",
   /** The root crumb. The site root is the animal grid, so the trail names it
    *  as the place it is rather than as an abstract "home". */
   allAnimals: "Vse živali",
@@ -470,8 +459,6 @@ const en: Messages = {
   metadataDescription:
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
-  openSource: "open source",
-  canHelp: ", you can help",
   openSourceInvite: "Open source, and you can help.",
   newWindow: "(opens in a new window)",
   heroTitle: "Animals from Slovenian shelters looking for a home.",
@@ -486,7 +473,6 @@ const en: Messages = {
   skipToContent: "Skip to content",
   breadcrumbNav: "Breadcrumb",
   backToTop: "Back to top",
-  backToAnimals: "All animals",
   allAnimals: "All animals",
   notFoundTitle: "Page not found",
   notFoundBody: "The link may be wrong, or the page is no longer here.",

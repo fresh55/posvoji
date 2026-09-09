@@ -6,6 +6,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { Logo } from "@/components/logo";
 import { portalText } from "@/components/portal/portal-text";
 import { SiteFooter } from "@/components/site-footer";
+import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
 /**
@@ -39,8 +40,8 @@ export function PortalShell({
                 positioned child otherwise measures from outside the page's
                 own column. */}
             <a
-              href="#vsebina"
-              className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:top-2 focus:left-gutter focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+              href={`#${CONTENT_ID}`}
+              className={SKIP_LINK_PINNED}
             >
               {portalText.skipToContent}
             </a>
@@ -76,7 +77,7 @@ export function PortalShell({
               "the content" across the whole export. tabIndex so focus moves
               here rather than only scrolling the page. */}
           <main
-            id="vsebina"
+            id={CONTENT_ID}
             tabIndex={-1}
             className={cn(
               "mx-auto flex w-full flex-1 flex-col py-page-y",

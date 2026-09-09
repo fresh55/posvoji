@@ -5,6 +5,7 @@ import {
 } from "@/components/shelter-card";
 import { Card } from "@/components/ui/card";
 import { MUTED_LINK } from "@/lib/link-styles";
+import { SKIP_LINK } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
 /** The invitation cell's anchor, named once because two things point at it:
@@ -102,7 +103,7 @@ export function SheltersAtlas({
           each, so without a way past them a keyboard cannot reach the footer. */}
       <a
         href="#za-zavetisci"
-        className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+        className={SKIP_LINK}
       >
         {text.skip}
       </a>

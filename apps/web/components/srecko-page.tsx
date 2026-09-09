@@ -11,6 +11,7 @@ import { EMPTY_FILTERS, serializeFilters } from "@/lib/filters";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
 import { ABOUT_PATHS } from "@/lib/site-links";
+import { CONTENT_ID } from "@/lib/skip-link";
 import { SRECKO, SRECKO_PATHS, SRECKO_POSTER_PATHS, SRECKO_TEXT, sreckoMilestones, sreckoPortrait, sreckoHomeDateRange } from "@/lib/srecko";
 
 export function SreckoPage({ locale }: { locale: Locale }) {
@@ -22,7 +23,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
     <I18nProvider locale={locale}>
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
         <SiteHeader locale={locale} languagePaths={SRECKO_PATHS} />
-        <main id="vsebina" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-7 py-page-y sm:gap-8">
+        <main id={CONTENT_ID} tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-7 py-page-y sm:gap-8">
           <div className="space-y-5">
             <PageBreadcrumb locale={locale} trail={[{ label: getMessages(locale).about, href: ABOUT_PATHS[locale] }]} current={SRECKO.name} />
             <header className="space-y-3">

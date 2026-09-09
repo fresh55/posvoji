@@ -7,6 +7,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterDetailPage } from "./shelter-detail-page";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -199,11 +200,14 @@ describe("the shelter page's ways past its animals", () => {
       <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
     );
 
-    const skip = container.querySelector('header a[href="#vsebina"]');
+    const skip = container.querySelector(`header a[href="#${CONTENT_ID}"]`);
     expect(skip?.textContent).toBe("Preskoči na vsebino");
     // First in the header, or it is not a bypass: everything it skips would
     // already have taken focus.
     expect(container.querySelector("header a")).toBe(skip);
+    // The literal, not the constant, on this side: the point of the test is
+    // that the link and the landmark meet at one value, and both reading the
+    // same import would agree with each other however that import changed.
     expect(container.querySelector("main")?.id).toBe("vsebina");
   });
 });

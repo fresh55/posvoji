@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getMessages } from "@/lib/i18n";
-import { SITE_NAME } from "@/lib/site-metadata";
+import { SITE_NAME, THEME_COLOR } from "@/lib/site-metadata";
 
 /**
  * What a phone reads when somebody adds the site to their home screen.
@@ -35,11 +35,12 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     lang: "sl",
-    // The sRGB values of the light --background token, matching the
-    // light half of rootViewport's theme colour. A splash screen drawn in the
-    // page's own ground is the one that does not flash.
-    background_color: "#ffffff",
-    theme_color: "#ffffff",
+    // The light half of rootViewport's theme colour, read from the same
+    // constant rather than retyped: a splash screen drawn in the page's own
+    // ground is the one that does not flash, and two files spelling the same
+    // hex is how they stop matching.
+    background_color: THEME_COLOR.light,
+    theme_color: THEME_COLOR.light,
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },

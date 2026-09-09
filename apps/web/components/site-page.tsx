@@ -10,6 +10,7 @@ import { registerDateLabel, shelterCount } from "@/lib/labels";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -50,7 +51,7 @@ export function SitePage({ locale }: { locale: Locale }) {
             nobody reads. tabIndex so focus moves here rather than only
             scrolling the page. */}
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="flex flex-1 flex-col gap-section-gap py-page-y"
         >

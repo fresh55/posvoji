@@ -26,6 +26,7 @@ import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 // Where a correction goes. Printed as the address itself rather than behind
 // a word: a reader writing from their own mail client has to be able to read
@@ -158,7 +159,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
         <SiteHeader locale={locale} languagePaths={ABOUT_PATHS} />
 
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="grid w-full flex-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
         >

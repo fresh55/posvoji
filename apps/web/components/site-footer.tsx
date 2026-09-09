@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
-import { registerDateLabel } from "@/lib/labels";
+// The leaf module and not lib/labels.ts, which re-exports this: labels.ts
+// reaches the lib/filters barrel, and this file renders on every document in
+// the export and is imported by PortalShell, which is a client component. See
+// lib/date-label.ts for the measurement.
+import { registerDateLabel } from "@/lib/date-label";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
@@ -47,6 +51,14 @@ const FOOTER_LINK =
  */
 const FOOTER_ACTION =
   "inline-flex items-center gap-1.5 text-foreground underline decoration-border hover:decoration-foreground max-lg:min-h-11";
+
+/** The two above, resolved once. Both halves are constants, so there is one
+ *  answer and no reason to ask cn for it on every one of the roughly four
+ *  thousand documents this renders on. */
+const FOOTER_ACTION_LINK = cn(FOOTER_LINK, FOOTER_ACTION);
+
+/** Likewise: a pure function of a module constant. */
+const CONTACT_HREF = mailtoHref(CONTACT_EMAIL);
 
 export function SiteFooter({
   locale,
@@ -294,8 +306,8 @@ export function SiteFooter({
               <span className="inline-flex flex-wrap items-center gap-x-1.5">
                 {messages.footerContact}
                 <a
-                  href={mailtoHref(CONTACT_EMAIL)}
-                  className={cn(FOOTER_LINK, FOOTER_ACTION)}
+                  href={CONTACT_HREF}
+                  className={FOOTER_ACTION_LINK}
                 >
                   {CONTACT_EMAIL}
                 </a>
@@ -311,7 +323,7 @@ export function SiteFooter({
               // would put a client boundary at the bottom of every document in
               // the export, this file being what PortalShell imports.
               title={messages.githubTitle}
-              className={cn(FOOTER_LINK, FOOTER_ACTION)}
+              className={FOOTER_ACTION_LINK}
             >
               <svg
                 viewBox="0 0 16 16"

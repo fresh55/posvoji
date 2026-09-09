@@ -23,6 +23,7 @@ import { getShelterLogos } from "@/lib/shelter-logos";
 import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
 import { siteLinks } from "@/lib/site-links";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 /** The issue form a shelter that is not in the registry yet can actually
  *  reach. The project has no contact address of its own, and the portal login
@@ -45,7 +46,6 @@ const pageText = {
     website: "Spletna stran",
     email: "E-pošta",
     phone: "Telefon",
-    newWindow: "(odpre se v novem oknu)",
     noAnimals: "Brez objav na Posvoji.si",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
@@ -71,7 +71,6 @@ const pageText = {
     website: "Website",
     email: "Email",
     phone: "Phone",
-    newWindow: "(opens in a new window)",
     noAnimals: "No listings on Posvoji.si",
     heading: "Shelters",
     skip: "Skip the list of shelters",
@@ -165,7 +164,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             than the grid they bracket. The prose blocks keep their own cap, so
             the measure does not follow the frame out. */}
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="flex w-full flex-1 flex-col gap-section-gap py-page-y"
         >
@@ -276,7 +275,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               website: text.website,
               email: text.email,
               phone: text.phone,
-              newWindow: text.newWindow,
+              newWindow: messages.newWindow,
               animals: (count) => animalCount(count, locale),
               noAnimals: text.noAnimals,
             }}
@@ -292,7 +291,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 note: text.inviteNote,
                 joinLabel: text.inviteJoin,
                 joinHref: JOIN_URL,
-                newWindow: text.newWindow,
+                newWindow: messages.newWindow,
               }
             }
           />

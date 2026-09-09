@@ -33,13 +33,18 @@ export const SITE_NAME = "Posvoji.si";
  * static pages need it too and lib/shelter-share.ts opens node:fs at its top
  * level. This module is plain string work and safe to import from anywhere.
  */
+/** Which locale x-default names, stated once. The head resolves it here and
+ *  app/sitemap.ts resolves it there, and a policy written as two `.sl`
+ *  literals in two files is one a future change can half-apply. */
+export const XDEFAULT_LOCALE: Locale = "sl";
+
 export function localeAlternates(
   paths: Record<Locale, string>,
   locale: Locale,
 ): NonNullable<Metadata["alternates"]> {
   return {
     canonical: paths[locale],
-    languages: { ...paths, "x-default": paths.sl },
+    languages: { ...paths, "x-default": paths[XDEFAULT_LOCALE] },
   };
 }
 
@@ -93,11 +98,13 @@ export function rootMetadata(locale: Locale): Metadata {
  * support for oklch is not universal; these two are the sRGB values of
  * oklch(1 0 0) and oklch(0.145 0 0), the light and dark --background.
  */
+export const THEME_COLOR = { light: "#ffffff", dark: "#0a0a0a" } as const;
+
 export const rootViewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
   ],
 };
 

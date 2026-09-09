@@ -7,6 +7,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import type { ClientAnimal } from "@/lib/animal";
 import { CARD_GRID } from "@/lib/card-grid";
+import { SKIP_LINK } from "@/lib/skip-link";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 
@@ -66,7 +67,7 @@ export function ShelterAnimalGrid({
           visitor is here because they chose this shelter. */}
       <a
         href="#za-zivalmi"
-        className="sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground"
+        className={SKIP_LINK}
       >
         {messages.skipShelterAnimals}
       </a>

@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { MUTED_LINK } from "@/lib/link-styles";
 import { HOME_PATHS, homePath, sheltersIndexPath } from "@/lib/shelter-path";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 /**
  * The body of every 404 this site serves, in one place.
@@ -36,7 +37,7 @@ export function NotFoundPage({
         <SiteHeader locale={locale} languagePaths={HOME_PATHS} />
 
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center"
         >

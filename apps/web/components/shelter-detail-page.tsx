@@ -25,6 +25,7 @@ import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { getShelterBySlug, shelterRegisterDate } from "@/lib/shelters";
+import { CONTENT_ID } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
 const pageText = {
@@ -160,7 +161,7 @@ export function ShelterDetailPage({
         />
 
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10"
         >

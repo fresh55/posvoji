@@ -11,6 +11,7 @@ import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { shelterCensus } from "@/lib/shelter-census";
 import { loadShelters } from "@/lib/shelters";
+import { CONTENT_ID } from "@/lib/skip-link";
 
 // The found-animal flow as a page with a URL, which it never had. It lived
 // only inside the homepage map dialog behind /?najdena -- a query parameter
@@ -67,7 +68,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
             the room, and the finder keeps to its own 24rem column beside it
             at lg (see the atlas). */}
         <main
-          id="vsebina"
+          id={CONTENT_ID}
           tabIndex={-1}
           className="flex w-full flex-1 flex-col gap-6 py-page-y"
         >

@@ -53,7 +53,11 @@ export function PageBreadcrumb({
   ];
 
   return (
-    <Breadcrumb className={className}>
+    // The landmark's name, which the primitive hardcodes in English. Every
+    // other landmark on the site is named from the catalogue, and this one is
+    // announced on every page above the root: on a Slovenian document a
+    // rotor read "Več informacij", "Povezave v nogi", then an English word.
+    <Breadcrumb aria-label={messages.breadcrumbNav} className={className}>
       {/* The same trail, for machines. Emitted here rather than by each page
           so it is built from the array the crumbs are rendered from and the
           two can never drift. Next.js recommends structured data as a plain

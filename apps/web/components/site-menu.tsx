@@ -75,7 +75,12 @@ export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
         // stays in the row rather than disappearing, because a nav whose items
         // move between pages is harder to learn than one that marks the
         // current place; aria-current is what a screen reader reads off it,
-        // and the full ink is what everyone else sees.
+        // and the weight and the ink are what everyone else sees.
+        //
+        // The weight is what carries it. Full ink alone is what this row
+        // already gives a hovered link, so on a desktop with the pointer
+        // anywhere in the row the current page and the link under the cursor
+        // were drawn identically. A marker a hover can imitate marks nothing.
         const current = isCurrent(paths, locale, link.href);
         return (
           <a
@@ -84,7 +89,7 @@ export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
             aria-current={current ? "page" : undefined}
             className={cn(
               "text-sm transition-colors hover:text-foreground",
-              current ? "text-foreground" : "text-muted-foreground",
+              current ? "font-medium text-foreground" : "text-muted-foreground",
             )}
           >
             {link.label}

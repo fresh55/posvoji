@@ -133,28 +133,49 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
     // and a footer this page has no use for.
     <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
       <main id={CONTENT_ID} tabIndex={-1} className="flex flex-1 flex-col items-center justify-center py-page-y">
-        <div className="flex w-full max-w-sm flex-col items-center text-center">
-          <a href={HOME_PATHS[locale]} className="inline-flex items-center gap-2 text-lg font-semibold" aria-label="posvoji.si">
-            <Logo className="h-9 w-auto shrink-0" />
-            <span>posvoji.si</span>
-          </a>
-          {/* The cat is the page: everything else is one short line and one
-              field. He gets the vertical room; the rest is tight enough that
-              the whole gate fits a laptop viewport with the field in focus. */}
-          <figure className="mt-4 w-full">
-            <CatModel
-              locale={locale}
-              className="h-52 sm:h-64"
-              sizes="(min-width: 640px) 384px, 100vw"
-            posterPriority
-              onHandle={takeHandle}
-            />
-          </figure>
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">{text.title}</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{text.lead}</p>
-          <form onSubmit={submit} noValidate className="mt-6 w-full text-left">
+        {/* Three groups, one gap between them, and each group owns its own
+            inner spacing. One scale rather than a chain of margins is what
+            keeps "greeting, the thing to do, the way out" readable as three
+            steps instead of six loose lines. */}
+        <div className="flex w-full max-w-md flex-col items-center gap-10">
+          <div className="flex w-full flex-col items-center gap-5 text-center">
+            <a
+              href={HOME_PATHS[locale]}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-ui text-lg font-semibold",
+                "focus-visible:outline-2 focus-visible:outline-offset-4",
+              )}
+              aria-label="posvoji.si"
+            >
+              <Logo className="h-8 w-auto shrink-0" />
+              <span>posvoji.si</span>
+            </a>
+            {/* The cat is the page. He gets the vertical room; everything
+                else is one line of type and one field. */}
+            <figure className="w-full">
+              <CatModel
+                locale={locale}
+                className="h-56 sm:h-72"
+                sizes="(min-width: 640px) 448px, 100vw"
+                posterPriority
+                onHandle={takeHandle}
+              />
+            </figure>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+                {text.title}
+              </h1>
+              <p className="text-sm text-pretty text-muted-foreground sm:text-base">
+                {text.lead}
+              </p>
+            </div>
+          </div>
+
+          {/* Left aligned on purpose, against the centred block above: a
+              label belongs over the field it names, not over the middle. */}
+          <form onSubmit={submit} noValidate className="w-full space-y-2 text-left">
             <Label htmlFor="demo-password">{text.label}</Label>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
                 <Input
                   ref={input}
@@ -168,9 +189,9 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
                   value={password}
                   onChange={(event) => { setPassword(event.target.value); setBlank(false); }}
                   aria-invalid={error !== null || undefined}
-                  aria-describedby={error ? "demo-password-error" : undefined}
+                  aria-describedby="demo-password-error"
                   disabled={leaving}
-                  className="h-10 pr-10"
+                  className="h-11 pr-11"
                 />
                 <Button
                   type="button"
@@ -180,26 +201,39 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
                   aria-pressed={shown}
                   onClick={() => setShown((value) => !value)}
                   disabled={leaving}
-                  className="absolute inset-y-0 right-0 size-10 text-muted-foreground"
+                  className="absolute inset-y-0 right-0 size-11 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 >
                   {shown ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
                 </Button>
               </div>
-              <Button type="submit" size="lg" disabled={leaving} className="sm:px-6">{text.submit}</Button>
+              <Button type="submit" disabled={leaving} className="h-11 sm:px-8">
+                {text.submit}
+              </Button>
             </div>
+            {/* One line of room is always reserved. An error that appears
+                must not push the button out from under the pointer. */}
             <p
               id="demo-password-error"
               role="alert"
-              className={cn("mt-2 text-sm text-destructive", error ? "" : "hidden")}
+              className="min-h-5 text-sm text-destructive"
             >
               {error === "wrong" ? text.wrong : error === "empty" ? text.empty : ""}
             </p>
           </form>
-          <p className="mt-8 text-sm text-muted-foreground">
-            {text.noPassword}{" "}
-            <a href={mailtoHref(CONTACT_EMAIL)} className={cn(MUTED_LINK, "underline")}>{text.write}</a>
-            <span aria-hidden className="mx-2">·</span>
-            <a href={text.other.href} hrefLang={locale === "sl" ? "en" : "sl"} className={cn(MUTED_LINK, "underline")}>
+
+          <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              {text.noPassword}{" "}
+              <a href={mailtoHref(CONTACT_EMAIL)} className={cn(MUTED_LINK, "underline")}>
+                {text.write}
+              </a>
+            </span>
+            <span aria-hidden>·</span>
+            <a
+              href={text.other.href}
+              hrefLang={locale === "sl" ? "en" : "sl"}
+              className={cn(MUTED_LINK, "underline")}
+            >
               {text.other.label}
             </a>
           </p>

@@ -14,7 +14,7 @@
 
 meta:
   municipality_list_source: "GURS/SURS — 212 občin"
-  last_reviewed: 2026-08-20
+  last_reviewed: 2026-09-10
 
 sources:
   lj-2026:
@@ -52,12 +52,96 @@ sources:
     url: https://www.ptuj.si/post/321158
     date: "2026-08"
     confirmed: true
+  email-ajdovscina-2026-08-26:
+    label: "Občina Ajdovščina — e-poštna potrditev koncesije za Oskar"
+    date: "2026-08-26"
+    confirmed: true
+  email-beltinci-2026-08-27:
+    label: "Občina Beltinci — e-poštna potrditev javne službe Mala hiša"
+    date: "2026-08-27"
+    confirmed: true
+  email-benedikt-2026-08-26:
+    label: "Občina Benedikt — e-poštna potrditev zavetišča Mala hiša"
+    date: "2026-08-26"
+    confirmed: true
+  email-bistrica-ob-sotli-2026-09-01:
+    label: "Občina Bistrica ob Sotli — e-poštna informacija; ponudnik v iskanju, brez potrjene dodelitve"
+    date: "2026-09-01"
+    confirmed: true
+  email-bovec-2026-08-28:
+    label: "Občina Bovec — e-poštna informacija o Društvu Klic živali; brez podprtega zavetišča v registru"
+    date: "2026-08-28"
+    confirmed: true
+  email-bohinj-2026-08-26:
+    label: "Občina Bohinj — e-poštna potrditev zavetišča Horjul"
+    date: "2026-08-26"
+    confirmed: true
+  email-brda-2026-08-26:
+    label: "Občina Brda — e-poštna potrditev sodelovanja z Oskarjem"
+    date: "2026-08-26"
+    confirmed: true
+  email-celje-2026-09-08:
+    label: "Mestna občina Celje — e-poštna potrditev koncesije za Mačjo hišo; obseg po vrstah ni naveden"
+    date: "2026-09-08"
+    confirmed: true
+  email-cerkvenjak-2026-08-27:
+    label: "Občina Cerkvenjak — e-poštna potrditev pogodbe z Malo hišo"
+    date: "2026-08-27"
+    confirmed: true
+  email-dobrna-2026-08-26:
+    label: "Občina Dobrna — e-poštna potrditev pogodbe s Potepuhi"
+    date: "2026-08-26"
+    confirmed: true
+  email-dol-pri-ljubljani-2026-08-26:
+    label: "Občina Dol pri Ljubljani — e-poštna potrditev naročilnice za Meli"
+    date: "2026-08-26"
+    confirmed: true
+  email-horjul-2026-09-01:
+    label: "Občina Horjul — e-poštna potrditev odgovornosti Ljubljane; brez pogodbe"
+    date: "2026-09-01"
+    confirmed: true
+  email-jursinci-2026-08-31:
+    label: "Občina Juršinci — e-poštna informacija; brez pogodbe z zavetiščem"
+    date: "2026-08-31"
+    confirmed: true
+  email-markovci-2026-09-07:
+    label: "Občina Markovci — e-poštna potrditev odgovornosti Maribora; brez obnovljene pogodbe"
+    date: "2026-09-07"
+    confirmed: true
+  email-osilnica-2026-08-28:
+    label: "Občina Osilnica — e-poštna informacija; brez stalne dodelitve enemu zavetišču"
+    date: "2026-08-28"
+    confirmed: true
+  email-prebold-2026-08-28:
+    label: "Občina Prebold — e-poštna potrditev zavoda v Podlogu; ujemanje z registrom Potepuhi"
+    date: "2026-08-28"
+    confirmed: true
+  email-sveti-jurij-v-slovenskih-goricah-2026-08-31:
+    label: "Občina Sveti Jurij v Slovenskih goricah — e-poštna potrditev Male hiše"
+    date: "2026-08-31"
+    confirmed: true
+  email-smarje-pri-jelsah-2026-09-03:
+    label: "Občina Šmarje pri Jelšah — e-poštna potrditev Zonzanija"
+    date: "2026-09-03"
+    confirmed: true
+  email-tabor-2026-08-28:
+    label: "Občina Tabor — e-poštna potrditev Potepuhov"
+    date: "2026-08-28"
+    confirmed: true
+  email-vransko-2026-09-04:
+    label: "Občina Vransko — e-poštna potrditev koncesije za Muri"
+    date: "2026-09-04"
+    confirmed: true
+  email-vuzenica-2026-09-03:
+    label: "Občina Vuzenica — e-poštna potrditev odgovornosti Maribora; brez pogodbe"
+    date: "2026-09-03"
+    confirmed: true
 
 municipalities:
   - name: Ajdovščina
     coverage:
       - shelter: oskar
-        source: pmp-2023
+        source: email-ajdovscina-2026-08-26
   - name: Ankaran
     coverage:
       - shelter: obalno
@@ -69,10 +153,14 @@ municipalities:
   - name: Beltinci
     coverage:
       - shelter: mala-hisa
-        source: pmp-2023
+        source: email-beltinci-2026-08-27
   - name: Benedikt
-    coverage: []
+    coverage:
+      - shelter: mala-hisa
+        source: email-benedikt-2026-08-26
   - name: Bistrica ob Sotli
+    # VIR: email-bistrica-ob-sotli-2026-09-01. Občina išče izvajalca.
+    # Datum prenehanja prejšnje pogodbe je v odgovoru protisloven.
     coverage: []
   - name: Bled
     coverage:
@@ -85,12 +173,14 @@ municipalities:
   - name: Bohinj
     coverage:
       - shelter: horjul
-        source: pmp-2023
+        source: email-bohinj-2026-08-26
   - name: Borovnica
     coverage:
       - shelter: ljubljana
         source: lj-2026
   - name: Bovec
+    # VIR: email-bovec-2026-08-28. Naveden je partner Društvo Klic živali,
+    # ne zavetišče s podprtim ID v registru.
     coverage: []
   - name: Braslovče
     coverage:
@@ -99,7 +189,7 @@ municipalities:
   - name: Brda
     coverage:
       - shelter: oskar
-        source: pmp-2023
+        source: email-brda-2026-08-26
   - name: Brezovica
     coverage:
       - shelter: ljubljana
@@ -113,6 +203,9 @@ municipalities:
       - shelter: mala-hisa
         source: pmp-2023
   - name: Celje
+    # VIR novega odgovora: email-celje-2026-09-08.
+    # E-pošta potrjuje Mačjo hišo, ne opredeli pa vrst živali.
+    # Obstoječa nepotrjena vira po vrstah ohranjamo do pojasnila.
     coverage:
       - shelter: macja-hisa
         species: cats
@@ -133,7 +226,9 @@ municipalities:
       - shelter: oskar
         source: pmp-2023
   - name: Cerkvenjak
-    coverage: []
+    coverage:
+      - shelter: mala-hisa
+        source: email-cerkvenjak-2026-08-27
   - name: Cirkulane
     coverage: []
   - name: Črenšovci
@@ -162,8 +257,8 @@ municipalities:
         source: pmp-2023
   - name: Dobrna
     coverage:
-      - shelter: zonzani
-        source: mojpes-2018
+      - shelter: potepuhi
+        source: email-dobrna-2026-08-26
   - name: Dobrova - Polhov Gradec
     coverage:
       - shelter: horjul
@@ -173,7 +268,7 @@ municipalities:
   - name: Dol pri Ljubljani
     coverage:
       - shelter: meli
-        source: pmp-2023
+        source: email-dol-pri-ljubljani-2026-08-26
   - name: Dolenjske Toplice
     coverage:
       - shelter: meli
@@ -235,7 +330,9 @@ municipalities:
       - shelter: mala-hisa
         source: pmp-2023
   - name: Horjul
-    coverage: []
+    coverage:
+      - shelter: ljubljana
+        source: email-horjul-2026-09-01
   - name: Hrastnik
     coverage:
       - shelter: sevnica
@@ -273,6 +370,8 @@ municipalities:
       - shelter: horjul
         source: pmp-2023
   - name: Juršinci
+    # VIR: email-jursinci-2026-08-31. Brez pogodbe z zavetiščem;
+    # občina sodeluje z veterinarjem KRI & ZA.
     coverage: []
   - name: Kamnik
     coverage:
@@ -407,7 +506,9 @@ municipalities:
       - shelter: maribor
         source: mb-2026
   - name: Markovci
-    coverage: []
+    coverage:
+      - shelter: maribor
+        source: email-markovci-2026-09-07
   - name: Medvode
     coverage:
       - shelter: horjul
@@ -487,6 +588,8 @@ municipalities:
   - name: Ormož
     coverage: []
   - name: Osilnica
+    # VIR: email-osilnica-2026-08-28. Brez pogodbe; posamično sodelovanje
+    # z Meli, preteklo z Ljubljano in pomoč društva iz Kočevja.
     coverage: []
   - name: Pesnica
     coverage:
@@ -520,8 +623,8 @@ municipalities:
         source: lj-2026
   - name: Prebold
     coverage:
-      - shelter: zonzani
-        source: mojpes-2018
+      - shelter: potepuhi
+        source: email-prebold-2026-08-28
   - name: Preddvor
     coverage:
       - shelter: horjul
@@ -643,7 +746,9 @@ municipalities:
       - shelter: mala-hisa
         source: pmp-2023
   - name: Sveti Jurij v Slovenskih goricah
-    coverage: []
+    coverage:
+      - shelter: mala-hisa
+        source: email-sveti-jurij-v-slovenskih-goricah-2026-08-31
   - name: Sveti Tomaž
     coverage: []
   - name: Šalovci
@@ -693,7 +798,7 @@ municipalities:
   - name: Šmarje pri Jelšah
     coverage:
       - shelter: zonzani
-        source: mojpes-2018
+        source: email-smarje-pri-jelsah-2026-09-03
   - name: Šmarješke Toplice
     coverage:
       - shelter: turk
@@ -713,7 +818,9 @@ municipalities:
       - shelter: zonzani
         source: mojpes-2018
   - name: Tabor
-    coverage: []
+    coverage:
+      - shelter: potepuhi
+        source: email-tabor-2026-08-28
   - name: Tišina
     coverage:
       - shelter: mala-hisa
@@ -777,13 +884,17 @@ municipalities:
       - shelter: zonzani
         source: mojpes-2018
   - name: Vransko
-    coverage: []
+    coverage:
+      - shelter: muri
+        source: email-vransko-2026-09-04
   - name: Vrhnika
     coverage:
       - shelter: ljubljana
         source: lj-2026
   - name: Vuzenica
-    coverage: []
+    coverage:
+      - shelter: maribor
+        source: email-vuzenica-2026-09-03
   - name: Zagorje ob Savi
     coverage:
       - shelter: zonzani

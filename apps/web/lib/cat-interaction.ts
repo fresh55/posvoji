@@ -1,16 +1,19 @@
 import type { ModelViewerElement } from "@google/model-viewer";
 import { createCatAttention } from "./cat-attention";
+import type { CatLeg, CatPick } from "./cat-picking";
 
 export type CatReaction = "Notice" | "Slow blink" | "Paw hello" | "Nuzzle" | "Head rub" |
   "Sniff" | "Face wash" | "Stretch" | "Yawn" | "Playful reach left" | "Playful reach right" |
-  "Back pet" | "Tail flick" | "Head pet" | "Chin scratch" | "Back warning" | "Drowse" | "Wake";
+  "Back pet" | "Tail flick" | "Head pet" | "Chin scratch" | "Back warning" | "Drowse" | "Wake" |
+  `Paw withdraw ${CatLeg}` | "Nose sniff";
 type Gesture = Exclude<CatReaction, "Playful reach left" | "Playful reach right"> | "Playful reach";
-type TouchRegion = "back" | "tail" | "head" | "chin";
-type TapRequest = { side?: "left" | "right"; region?: TouchRegion; stronger?: boolean };
-const regionReactions: Record<TouchRegion, CatReaction> = { back: "Back pet", tail: "Tail flick", head: "Head pet", chin: "Chin scratch" };
+type TouchRegion = "back" | "tail" | "head" | "chin" | "nose";
+type TapRequest = { side?: "left" | "right"; region?: TouchRegion; stroke?: boolean; leg?: CatLeg };
+const regionReactions: Record<TouchRegion, CatReaction> = { back: "Back warning", tail: "Tail flick", head: "Head pet", chin: "Chin scratch", nose: "Nose sniff" };
 const regionOf = (materialName: string | undefined): TouchRegion | undefined =>
   materialName === "Back touch region" ? "back" : materialName === "Tail touch region" ? "tail" :
-    materialName === "Head touch region" ? "head" : materialName === "Chin touch region" ? "chin" : undefined;
+    materialName === "Chin touch region" ? "chin" :
+      ["Head touch region", "Natural olive iris", "Soft fur over healed socket", "Dark rim along the eyelids", "Soft ivory whiskers"].includes(materialName ?? "") ? "head" : undefined;
 const tapGestures: Gesture[] = ["Slow blink", "Paw hello", "Nuzzle", "Head rub", "Sniff",
   "Face wash", "Stretch", "Yawn", "Playful reach", "Notice"];
 // The authored rig's sagittal plane after its export transform, in metres.
@@ -18,7 +21,8 @@ const MODEL_MIDLINE_X = -.074;
 const gestureOf = (name: CatReaction): Gesture => name.startsWith("Playful reach") ? "Playful reach" : name as Gesture;
 
 /** Small authored reactions, using only model-viewer's public animation API. */
-export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () => boolean) {
+export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () => boolean,
+  pick?: (x: number, y: number) => CatPick | null) {
   let disposed = false;
   let reaction: CatReaction | null = null;
   let switching = false;
@@ -30,14 +34,12 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
   let completionTimer: ReturnType<typeof setTimeout> | undefined;
   let noticedThisVisit = false;
-  let pointer: { id: number; x: number; y: number; time: number; dragged: boolean; stroking?: boolean; region?: TouchRegion; material?: string | null } | null = null;
+  let pointer: { id: number; x: number; y: number; time: number; dragged: boolean; stroking?: boolean; region?: TouchRegion; material?: string | null; hit?: CatPick | null } | null = null;
   let holdTimer: ReturnType<typeof setTimeout> | undefined;
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let cameraBeforeStroke: boolean | undefined;
   let sleepState: "awake" | "drowsing" | "asleep" | "waking" = "awake";
   let lastActivity = performance.now();
-  let lastBackTouch = -Infinity;
-  let backTouches = 0;
   const contacts = new Set<number>();
   const attention = createCatAttention(viewer, () => canAnimate() && !disposed && !reaction && !switching && !routineBusy() && sleepState === "awake" && !contacts.size);
   const releaseStroke = () => {
@@ -64,7 +66,7 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
     clearTimeout(hoverTimer);
     hoverTimer = undefined;
   };
-  const hitCat = (x: number, y: number) => viewer.positionAndNormalFromPoint(x, y) !== null;
+  const hitCat = (x: number, y: number) => pick ? pick(x, y) !== null : viewer.positionAndNormalFromPoint(x, y) !== null;
   // Revision 10's authored wash and paw lift should reach their resting pose.
   const routineBusy = () => sleepState === "awake" && !reaction && (
     (viewer.currentTime >= 6 && viewer.currentTime < 13.5) ||
@@ -85,8 +87,7 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
       else if (!reaction && pendingTap && !routineBusy()) {
         const request = pendingTap;
         pendingTap = null;
-        // This request was already counted when it arrived. Replaying the
-        // input handler would count a back touch twice and escalate too soon.
+        // Play the saved anatomical request once the protected routine ends.
         startTapReaction(request);
       }
       watchCompletion();
@@ -132,6 +133,9 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
       syncPlayback();
       return;
     }
+    // Let the quick back flinch reach its authored peak instead of spending
+    // most of that movement fading in. Other transitions remain gentle.
+    viewer.animationCrossfadeDuration = name === "Back warning" || name === "Nose sniff" ? 100 : 220;
     const fade = viewer.animationCrossfadeDuration / 1000;
     // currentTime seeks the entire mixer, including the outgoing pose. Prepare
     // only the incoming action through the public blending API instead. Stop
@@ -162,9 +166,19 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
     ? ["Playful reach left", "Playful reach right"] as CatReaction[] : [gesture])
     .filter(name => viewer.availableAnimations.includes(name));
   const startTapReaction = (request: TapRequest) => {
-    const targeted = request.stronger && viewer.availableAnimations.includes("Back warning") ? "Back warning" : request.region && regionReactions[request.region];
+    if (request.leg) {
+      const name: CatReaction = `Paw withdraw ${request.leg}`;
+      if (viewer.availableAnimations.includes(name)) { startReaction(name); resumeTime = 0; }
+      return true;
+    }
+    const targeted = request.region === "head" && request.stroke && viewer.availableAnimations.includes("Head rub")
+      ? "Head rub" : request.region === "back" && !viewer.availableAnimations.includes("Back warning")
+      ? "Back pet" : request.region && regionReactions[request.region];
     if (targeted && viewer.availableAnimations.includes(targeted)) {
       startReaction(targeted);
+      // Petting ends in quiet seated idle, not halfway through the automatic
+      // paw greeting or washing pose that the touch may have interrupted.
+      if (request.region === "head" || request.region === "chin" || request.region === "nose") resumeTime = 0;
       return true;
     }
     const choices = tapGestures.filter(name => variants(name).length);
@@ -199,13 +213,28 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
   const respondToTap = (request: TapRequest = {}) => {
     if (disposed || !canAnimate()) return;
     activity();
-    if (request.region === "back") {
-      backTouches = performance.now() - lastBackTouch < 8000 ? backTouches + 1 : 1;
-      lastBackTouch = performance.now();
-      request = { ...request, stronger: backTouches >= 3 };
-    } else if (request.region === "head" || request.region === "chin") backTouches = 0;
     clearHover();
     attention.stop();
+    // Each leg tap is one complete, gentle response, with no repeat escalation.
+    if (request.leg && reaction?.startsWith("Paw withdraw ")) return;
+    if (request.region === "nose" && reaction === "Nose sniff") return;
+    if ((request.leg || request.region === "head" || request.region === "chin" || request.region === "nose") && sleepState === "awake" && !switching &&
+        (!reaction || ["Paw hello", "Playful reach left", "Playful reach right", "Face wash", "Stretch"].includes(reaction) ||
+          (request.region === "nose" && (reaction === "Notice" || reaction === "Sniff")))) {
+      pendingTap = null;
+      if (startTapReaction(request)) return;
+    }
+    // A back poke should visibly startle him now, even during a quiet sleep
+    // or a long grooming gesture. Further pokes let this response finish.
+    if (request.region === "back" && reaction !== "Back warning" && !switching &&
+        viewer.availableAnimations.includes("Back warning")) {
+      const wasSleeping = sleepState !== "awake";
+      sleepState = "awake";
+      pendingTap = null;
+      startReaction("Back warning");
+      if (wasSleeping) resumeTime = 0;
+      return;
+    }
     if (sleepState === "asleep") {
       pendingTap = request;
       sleepState = "waking";
@@ -262,8 +291,9 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
       const press = pointer;
       holdTimer = setTimeout(() => {
         if (pointer !== press || press.dragged || contacts.size !== 1 || !canAnimate()) return;
-        press.material = viewer.materialFromPoint(press.x, press.y)?.name ?? null;
-        press.region = regionOf(press.material ?? undefined);
+        if (pick) press.hit = pick(press.x, press.y);
+        press.material = pick ? press.hit?.material ?? null : viewer.materialFromPoint(press.x, press.y)?.name ?? null;
+        press.region = press.hit?.nose ? "nose" : regionOf(press.material ?? undefined);
         if (press.region !== "head" && press.region !== "chin") return;
         press.stroking = true;
         cameraBeforeStroke = viewer.cameraControls;
@@ -308,13 +338,22 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
     pointer = null;
     if (!canAnimate() || !press || press.id !== event.pointerId || press.dragged || contacts.size ||
       performance.now() - press.time > (press.stroking ? 5000 : 700) || Math.hypot(event.clientX - press.x, event.clientY - press.y) > (press.stroking ? 100 : 8)) return;
-    const material = press.material === undefined ? viewer.materialFromPoint(event.clientX, event.clientY)?.name : press.material;
+    if (pick && press.hit === undefined) press.hit = pick(event.clientX, event.clientY);
+    if (press.hit?.nose) {
+      if (performance.now() - press.time < 420) respondToTap({ region: "nose" });
+      return;
+    }
+    if (press.hit?.leg) {
+      if (performance.now() - press.time < 420) respondToTap({ leg: press.hit.leg });
+      return;
+    }
+    const material = pick ? press.hit?.material : press.material === undefined ? viewer.materialFromPoint(event.clientX, event.clientY)?.name : press.material;
     if (!material) return;
     const region = press.region ?? regionOf(material);
-    if (region) { respondToTap({ region }); return; }
+    if (region) { respondToTap({ region, stroke: press.stroking }); return; }
     // Only an unlabelled body touch needs the second lookup for a model-space
     // left/right reaching direction. Labelled head/chin/back/tail taps need one.
-    const hit = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
+    const hit = pick ? press.hit : viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
     if (hit) {
       // Hit positions are in the model's coordinates, so the choice remains
       // tied to the touched side when the visitor rotates the camera.

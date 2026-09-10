@@ -1,6 +1,7 @@
 import type { ModelViewerElement } from "@google/model-viewer";
 
 const directions = ["left", "right", "up", "down"] as const;
+const names = [...directions.map(direction => `Gaze ${direction}`), "Ear left", "Ear right", "Curious tilt left", "Curious tilt right"];
 
 /** Brief, bounded head/eye tracking through public animation layers. No raycasts. */
 export function createCatAttention(viewer: ModelViewerElement, allowed: () => boolean) {
@@ -10,8 +11,9 @@ export function createCatAttention(viewer: ModelViewerElement, allowed: () => bo
   let pixels = { x: 0, y: 0 };
   let dirty = false;
   let previousTick = 0;
-  const weights = [0, 0, 0, 0];
-  const sent = [0, 0, 0, 0];
+  let started = 0;
+  const weights = names.map(() => 0);
+  const sent = names.map(() => 0);
   const attached = new Set<string>();
   const stop = (immediate = false) => {
     clearTimeout(timer);
@@ -44,10 +46,14 @@ export function createCatAttention(viewer: ModelViewerElement, allowed: () => bo
     // Only follow while the visitor can see his face, never twist toward
     // someone behind him. Orbit rotation remains completely independent.
     const front = Math.max(0, Math.cos(viewer.getCameraOrbit().theta));
-    const target = [Math.max(0, -point.x), Math.max(0, point.x), Math.max(0, -point.y), Math.max(0, point.y)];
-    directions.forEach((direction, i) => {
+    const earFirst = viewer.availableAnimations.includes("Ear left") && viewer.availableAnimations.includes("Ear right");
+    const head = !earFirst || now - started >= 260 ? 1 : 0;
+    const left = Math.max(0, -point.x), right = Math.max(0, point.x);
+    const target = [left * head, right * head, Math.max(0, -point.y) * head, Math.max(0, point.y) * head,
+      point.x <= 0 ? .65 : 0, point.x > 0 ? .65 : 0, left * head * .35, right * head * .35];
+    names.forEach((name, i) => {
+      if (!viewer.availableAnimations.includes(name)) return;
       weights[i] += (target[i] * front - weights[i]) * ease;
-      const name = `Gaze ${direction}`;
       if (weights[i] < .002 && attached.has(name)) {
         viewer.detachAnimation(name, { fade: false });
         attached.delete(name);
@@ -66,8 +72,8 @@ export function createCatAttention(viewer: ModelViewerElement, allowed: () => bo
       if (!directions.every(d => viewer.availableAnimations.includes(`Gaze ${d}`))) return false;
       stop();
       // Clear cached fade-out state before reusing a frozen pose layer.
-      for (const direction of directions) viewer.detachAnimation(`Gaze ${direction}`, { fade: false });
-      update(x, y); until = performance.now() + 6000; previousTick = performance.now() - 33; tick();
+      for (const name of names) if (viewer.availableAnimations.includes(name)) viewer.detachAnimation(name, { fade: false });
+      update(x, y); started = performance.now(); until = started + 6000; previousTick = started - 33; tick();
       return true;
     },
     stop,

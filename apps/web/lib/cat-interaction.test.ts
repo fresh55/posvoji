@@ -61,6 +61,105 @@ afterEach(() => {
 });
 
 describe("cat reactions", () => {
+  it("a single nose tap overrides head affection, uses a quick recoil fade and ends quietly", async () => {
+    controller.dispose();
+    const pick = vi.fn(() => ({ material: "Head touch region", position: { x: 0, y: 0, z: 0 }, nose: true }));
+    controller = createCatInteraction(viewer as unknown as ModelViewerElement, () => allowed, pick);
+    viewer.availableAnimations.push("Nose sniff", "Head pet");
+    viewer.currentTime = 21;
+    tap(); await Promise.resolve();
+    expect(viewer.animationName).toBe("Nose sniff");
+    expect(viewer.animationCrossfadeDuration).toBe(100);
+    expect(pick).toHaveBeenCalledOnce();
+    viewer.currentTime = .4;
+    tap(); await Promise.resolve();
+    expect(viewer.currentTime).toBe(.4);
+    await finish();
+    expect(viewer.appendAnimation).toHaveBeenLastCalledWith("Companion", expect.objectContaining({ time: 0 }));
+  });
+
+  it("a held nose contact neither reserves the camera nor starts a cheek rub", async () => {
+    controller.dispose();
+    const pick = () => ({ material: "Head touch region", position: { x: 0, y: 0, z: 0 }, nose: true });
+    controller = createCatInteraction(viewer as unknown as ModelViewerElement, () => allowed, pick);
+    Object.assign(viewer, { cameraControls: true });
+    viewer.availableAnimations.push("Nose sniff", "Head rub", "Head pet");
+    pointer("pointerdown"); await vi.advanceTimersByTimeAsync(500);
+    expect((viewer as unknown as ModelViewerElement).cameraControls).toBe(true);
+    pointer("pointerup"); await Promise.resolve();
+    expect(viewer.animationName).toBe("Companion");
+  });
+
+  it("nose taps immediately interrupt a hover sniff", async () => {
+    controller.dispose();
+    const pick = () => ({ material: "Head touch region", position: { x: 0, y: 0, z: 0 }, nose: true });
+    controller = createCatInteraction(viewer as unknown as ModelViewerElement, () => allowed, pick);
+    viewer.availableAnimations.push("Sniff", "Nose sniff");
+    controller.react("Sniff"); await Promise.resolve();
+    tap(); await Promise.resolve();
+    expect(viewer.animationName).toBe("Nose sniff");
+  });
+
+  it.each(["front left", "front right", "rear left", "rear right"] as const)("one quick %s leg tap starts only that paw and returns to rest", async leg => {
+    controller.dispose();
+    const pick = vi.fn(() => ({ material: "White coat", position: { x: 0, y: 0, z: 0 }, leg }));
+    controller = createCatInteraction(viewer as unknown as ModelViewerElement, () => allowed, pick);
+    const name = `Paw withdraw ${leg}`;
+    viewer.availableAnimations.push(name);
+    viewer.currentTime = 21;
+    tap(); await Promise.resolve();
+    expect(viewer.animationName).toBe(name);
+    expect(pick).toHaveBeenCalledOnce();
+    await finish();
+    expect(viewer.appendAnimation).toHaveBeenLastCalledWith("Companion", expect.objectContaining({ time: 0 }));
+  });
+
+  it("ignores held leg contacts and does not queue or strengthen a second tap", async () => {
+    controller.dispose();
+    const pick = () => ({ material: "White coat", position: { x: 0, y: 0, z: 0 }, leg: "front left" as const });
+    controller = createCatInteraction(viewer as unknown as ModelViewerElement, () => allowed, pick);
+    viewer.availableAnimations.push("Paw withdraw front left");
+    pointer("pointerdown"); await vi.advanceTimersByTimeAsync(500); pointer("pointerup");
+    expect(viewer.animationName).toBe("Companion");
+    tap(); await Promise.resolve();
+    viewer.currentTime = .4;
+    tap(); await Promise.resolve();
+    expect(viewer.currentTime).toBe(.4);
+    await finish();
+    expect(viewer.animationName).toBe("Companion");
+  });
+
+  it.each(["Natural olive iris", "Soft fur over healed socket", "Dark rim along the eyelids", "Soft ivory whiskers"])("treats %s as head affection, not a random paw invitation", async material => {
+    viewer.availableAnimations.push("Head pet");
+    viewer.materialFromPoint.mockReturnValue({ name: material });
+    viewer.currentTime = 21;
+    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Head pet");
+    await finish();
+    expect(viewer.appendAnimation).toHaveBeenLastCalledWith("Companion", expect.objectContaining({ time: 0 }));
+  });
+
+  it("replaces an active paw greeting with head affection and distinguishes a held cheek rub", async () => {
+    viewer.availableAnimations.push("Head pet", "Head rub");
+    controller.react("Paw hello"); await Promise.resolve();
+    viewer.materialFromPoint.mockReturnValue({ name: "Head touch region" });
+    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Head pet");
+    await finish();
+    pointer("pointerdown"); await vi.advanceTimersByTimeAsync(500);
+    pointer("pointermove", { clientX: 65, buttons: 1 }); pointer("pointerup", { clientX: 65 });
+    await Promise.resolve(); expect(viewer.animationName).toBe("Head rub");
+  });
+  it("uses one proxy lookup for a body tap and its model-space reaching side", async () => {
+    controller.dispose();
+    const pick = vi.fn(() => ({ material: "White coat", position: { x: .1, y: .2, z: 0 } }));
+    controller = createCatInteraction(viewer as unknown as ModelViewerElement, () => allowed, pick);
+    viewer.availableAnimations = ["Companion", "Playful reach left", "Playful reach right"];
+    tap(); await Promise.resolve();
+    expect(pick).toHaveBeenCalledOnce();
+    expect(viewer.materialFromPoint).not.toHaveBeenCalled();
+    expect(viewer.positionAndNormalFromPoint).not.toHaveBeenCalled();
+    expect(viewer.animationName).toBe("Playful reach left");
+  });
+
   it("does no mesh picking during an orbit drag and only one for a head tap", async () => {
     viewer.availableAnimations.push("Head pet");
     viewer.materialFromPoint.mockReturnValue({ name: "Head touch region" });
@@ -75,14 +174,13 @@ describe("cat reactions", () => {
     expect(viewer.animationName).toBe("Head pet");
   });
 
-  it("counts a queued back touch once when washing finishes", async () => {
+  it("responds to the first back touch immediately during washing", async () => {
     viewer.availableAnimations.push("Back pet", "Back warning");
     viewer.materialFromPoint.mockReturnValue({ name: "Back touch region" });
-    viewer.currentTime = 8; tap();
-    viewer.currentTime = 14; await vi.advanceTimersByTimeAsync(100);
-    expect(viewer.animationName).toBe("Back pet");
+    viewer.currentTime = 8; tap(); await Promise.resolve();
+    expect(viewer.animationName).toBe("Back warning");
     tap(); await finish();
-    expect(viewer.animationName).toBe("Back pet");
+    expect(viewer.animationName).toBe("Back warning");
   });
 
   it("recovers after release outside the viewer or window blur during a hold", async () => {
@@ -109,6 +207,16 @@ describe("cat reactions", () => {
   });
 
   const affection = ["Head pet", "Chin scratch", "Back pet", "Back warning", "Drowse", "Sleep", "Wake"];
+
+  it("a sleeping cat answers a back poke immediately and resumes awake at idle", async () => {
+    viewer.availableAnimations.push(...affection);
+    controller.syncPlayback(); await vi.advanceTimersByTimeAsync(45000);
+    await finish(); expect(viewer.animationName).toBe("Sleep");
+    viewer.materialFromPoint.mockReturnValue({ name: "Back touch region" });
+    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Back warning");
+    await finish(); expect(viewer.animationName).toBe("Companion");
+    expect(viewer.appendAnimation).toHaveBeenLastCalledWith("Companion", expect.objectContaining({ time: 0 }));
+  });
 
   it("reserves a held head stroke but leaves an immediate drag for orbiting", async () => {
     viewer.availableAnimations.push(...affection);
@@ -141,10 +249,12 @@ describe("cat reactions", () => {
     expect(viewer.animationName).toBe("Companion");
   });
 
-  it("escalates the queued back response and calms after affection or a break", async () => {
+  it("uses the strong response on the first back touch, including after affection or a break", async () => {
     viewer.availableAnimations.push(...affection);
     viewer.materialFromPoint.mockReturnValue({ name: "Back touch region" });
-    tap(); await Promise.resolve(); viewer.currentTime = .8;
+    tap(); await Promise.resolve();
+    expect(viewer.animationName).toBe("Back warning");
+    viewer.currentTime = .8;
     tap(); tap(); tap();
     expect(viewer.currentTime).toBe(.8);
     await finish(); expect(viewer.animationName).toBe("Back warning");
@@ -152,9 +262,9 @@ describe("cat reactions", () => {
     tap(); await finish(); expect(viewer.animationName).toBe("Chin scratch");
     await finish();
     viewer.materialFromPoint.mockReturnValue({ name: "Back touch region" });
-    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Back pet");
+    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Back warning");
     await finish(); await vi.advanceTimersByTimeAsync(9000);
-    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Back pet");
+    tap(); await Promise.resolve(); expect(viewer.animationName).toBe("Back warning");
   });
 
   it("drowses after inactivity, loops sleep and wakes before answering a touch", async () => {

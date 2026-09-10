@@ -1,6 +1,257 @@
 # About-page cat
 
-`cat.glb` is revision 19: revision 15's likeness with twenty full-body clips and four isolated gaze layers for affection, attention and sleep interactions. `poster.webp` is recaptured from the page's own renderer at device pixel ratio 2 to match the first live frame.
+`cat.glb` is revision 26: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2.
+
+## Single nose tap, revision 26
+
+One quick nose tap triggers `Nose sniff`: a small recoil with a reflexive eye
+squint, two short sniff movements, then a curious head tilt before settling.
+The three-second Blender clip moves only the head, ears and eyelids; all four
+paws remain planted. Its 100 ms entry fade preserves the quick recoil.
+Held nose contacts do not reserve the camera or trigger cheek rubbing, and
+additional taps during the clip do not queue another response. A nose tap
+interrupts a hover notice/sniff and returns to quiet seated idle afterwards.
+
+The contact region is a small ellipsoid in the animated head bone's coordinates,
+restricted to the head surface. It follows head movement and camera rotation,
+with no extra visible mesh, material or draw call. Tests check nose/forehead
+separation at three camera angles in four poses, native nose taps on desktop
+and phones, and planted paws throughout the new clip.
+
+The asset is 2,134,152 bytes. All 32 previous clips, geometry, rig and textures
+are unchanged; the invisible picker remains 8,820 triangles. glTF validation
+reports zero errors and warnings. The editable source is
+`posvoji-cat-work/revision-26/our-cat-web.blend`. From revision 25:
+
+```sh
+blender --background --python apps/web/scripts/animate-cat-nose.py -- SOURCE.blend OUTPUT_DIR
+node apps/web/scripts/install-cat-back.mjs OUTPUT_DIR/nose-reaction.glb "Nose sniff"
+node apps/web/scripts/prepare-cat-play.mjs
+node apps/web/scripts/preview-cat-back.mjs OUTPUT_DIR/preview "Nose sniff"
+```
+
+## One-tap leg response, revision 25
+
+A quick leg tap (released within 420 ms) plays the matching 2.5-second
+`Paw withdraw front left`, `front right`, `rear left` or `rear right` clip.
+He glances down toward that side, draws the selected paw back slightly, then
+returns to his seated rest. The other three paws remain planted. There is no
+hold response, repeat escalation, queued second withdrawal or grooming follow-up.
+
+The four clips are authored in Blender using a two-bone solve that preserves
+limb lengths and the resting foot orientation. Front paws retract about 22.5 mm,
+rear paws about 13.8 mm, with a 4.5 mm lift. The head glance starts before the
+paw moves. Tests sample every frame, require quiet endpoints and stationary
+untouched paws, and bound both displacement and lift. Blender surface checks
+find no paw-tail intersection (7.398 mm minimum sampled gap across all four).
+
+Leg selection interpolates the hit triangle's skin weights, so it follows
+the animated limb and camera rotation. The invisible proxy preserves limb
+boundaries during simplification. This adds no rendered geometry, material
+or draw call. Its 8,820 triangles are 83.7% fewer than the visible model's
+54,236. The GLB is 2,083,500 bytes; all 28 earlier clips and the original
+geometry, rig, materials and textures are unchanged. glTF validation reports
+zero errors and warnings.
+
+The editable source is `posvoji-cat-work/revision-25/our-cat-web.blend`.
+Starting from revision 24's Blender source and web asset:
+
+```sh
+blender --background --python apps/web/scripts/animate-cat-legs.py -- SOURCE.blend OUTPUT_DIR
+node apps/web/scripts/install-cat-back.mjs OUTPUT_DIR/leg-reactions.glb "Paw withdraw front left" "Paw withdraw front right" "Paw withdraw rear left" "Paw withdraw rear right"
+node apps/web/scripts/prepare-cat-play.mjs
+node apps/web/scripts/preview-cat-back.mjs OUTPUT_DIR/preview "Paw withdraw front left"
+```
+
+## Calm head affection, revision 24
+
+Head taps now give a gentle forehead lean, relaxed asymmetric ears and a slow
+eye close. Holding still for 420 ms before a short stroke selects the longer
+`Head rub` cheek sweep. Both Blender-authored clips keep all four paws planted,
+ease back to their neutral endpoints, and return to quiet seated idle rather
+than resuming a paw greeting or face wash halfway through. Head and chin touches
+can interrupt those gestures; the stronger back warning still finishes first.
+
+The head material now includes 7,340 previously unlabelled face/ear triangles.
+Eye, eyelid, healed-socket and whisker materials also select head affection,
+preventing these touches from choosing generic body gestures. Shape, textures
+and the 54,236 visible triangles are preserved. The asset is 1,964,844 bytes;
+the regenerated invisible picker has 8,312 triangles (84.7% fewer). Only
+`Head pet` and `Head rub` change; the other 26 clips retain revision 23's data.
+
+The editable source is `posvoji-cat-work/revision-24/our-cat-web.blend`.
+To reproduce from revision 23's Blender source and web asset:
+
+```sh
+blender --background --python apps/web/scripts/animate-cat-affection.py -- SOURCE.blend OUTPUT_DIR
+node apps/web/scripts/install-cat-back.mjs OUTPUT_DIR/head-affection.glb "Head pet" "Head rub"
+node apps/web/scripts/expand-cat-touch-region.mjs head
+node apps/web/scripts/prepare-cat-play.mjs
+node apps/web/scripts/preview-cat-back.mjs OUTPUT_DIR/preview "Head pet"
+```
+
+Every-frame exported-animation tests require less than 0.01 mm paw movement.
+Blender surface checks find no paw-tail intersections, with a 46.881 mm
+minimum sampled gap. The glTF validator reports zero errors and warnings.
+
+
+## Visible, immediate back reaction, revisions 22–23
+
+The first back touch now produces a sharp shoulder flinch, ears pinned back,
+a fast 60-degree head turn and an upright tail with a twitching tip. The
+100 ms entrance fade preserves the initial flinch; returning to idle uses
+the original 220 ms fade. Back pokes take priority over sleep or grooming.
+Repeated back pokes finish the current warning before one queued replay.
+
+The original touch strip missed the upper flanks and rump. Revision 22 moved
+672 existing torso triangles into the identically shaded back material using
+bind-pose skin weights, height and surface direction. Head, chin, tail, limbs
+and underside keep their previous assignments. This changes no surface shape,
+textures or triangle count. Both public picking and the fast proxy now detect
+the broader back area. Regression tests use a fixed upper-flank point that
+previously selected a generic body reaction, and verify motion starts on a
+fresh load without manually seeking the animation.
+
+The final asset is 1,903,036 bytes with 54,236 visible triangles and an
+8,372-triangle picking proxy. The stronger clip changes 16 existing tracks;
+the other 27 clips are unchanged from revision 22. The editable animation
+project and previews are in `posvoji-cat-work/revision-23`. After installing
+Blender's animation export, apply `node apps/web/scripts/expand-cat-touch-region.mjs back`
+and regenerate picking data with `prepare-cat-play.mjs`. The touch-region
+adjustment is a web export step; it does not modify the Blender geometry.
+
+Every-frame Blender checks find no paw-tail intersections (32.014 mm minimum
+sampled gap for the strong clip) and no tail-body intersections during the
+raised sweep. The resting tail-rump contact is unchanged. The raised tail
+reuses revision 19's arc.
+
+## Irritated back touch, revision 21
+
+The two back responses are authored in Blender at 24 fps and last 3.5 seconds.
+A click triggers a quick shoulder twitch, asymmetric ears folding back before
+the head moves, a firm narrowed-eye look over the shoulder, and three short
+low tail flicks. The first back touch plays the stronger `Back warning` clip;
+there is no repeat-touch threshold or cooldown that softens it. The response
+finishes before one queued follow-up. B is the equivalent keyboard shortcut.
+`Back pet` remains available as a fallback for older assets without `Back warning`.
+
+The new animation replaces `Back pet` and `Back warning` under their existing
+runtime names. The other 26 clips, geometry, textures and rig are unchanged.
+Only 16 tracks in each edited clip are replaced, with no additional runtime
+animation layers or rendering work. The model is 1,848,964 bytes, an increase
+of 27,496 bytes (1.51%). The picking data is regenerated for its new hash.
+
+The saved editable source is `posvoji-cat-work/revision-21/our-cat-web.blend`.
+It retains revision 19's complete action library with the two revised actions;
+revision 20's four isolated curiosity layers remain in the web asset. To rebuild:
+
+```sh
+blender --background --python apps/web/scripts/animate-cat-back.py -- SOURCE.blend OUTPUT_DIR
+node apps/web/scripts/install-cat-back.mjs OUTPUT_DIR/back-reactions.glb
+node apps/web/scripts/prepare-cat-play.mjs
+node apps/web/scripts/preview-cat-back.mjs
+```
+
+Use revision 19's editable project as `SOURCE.blend`. Installation refuses
+incompatible endpoints and preserves the original embedded asset payload.
+An every-frame Blender scan of both clips finds no paw-tail intersections;
+the minimum sampled gap is 35.501 mm. Tests check low-tail export, neutral
+endpoints, ear-before-head timing, strong first-touch responses, and actual rotated back taps
+on desktop Chromium, mobile Chromium and WebKit. The changed warning pose and
+new side-view back response have reviewed screenshot references.
+
+## Faster picking and curiosity, revision 20
+
+The visible model remains 54,236 triangles. `picking.json` describes detached,
+invisible CPU meshes with 8,350 triangles (84.6% fewer). Each anatomical material
+is simplified separately with locked borders, retaining the original boundary
+vertices and skin weights. Runtime proxies share the live skeleton and update
+their bounds for each pick; skinning each compact vertex once per lookup avoids
+repeating the transform for adjacent triangles. They add no draw calls, shadows,
+frame loop or rendered geometry. Body taps now obtain material and model-space
+position in one lookup. All contacts, holds, hover and original reactions use
+the same controller rules.
+
+`cat-viewer-runtime.ts` isolates the version-sensitive bridge to model-viewer's
+exported `$scene` symbol. If the asset or adapter no longer matches, interaction
+falls back to the public full-mesh picking API. The generated data records the
+GLB hash; a test requires regeneration when the model changes. Proxies dispose
+their own geometries without disposing the shared skeleton or visible model.
+
+Two isolated ear rotations lead the gaze by 260 ms. Two small head-roll layers
+then blend in with the existing head/eye tracking, attenuated toward a rear
+view. Each added clip has just one rotation track and uses the existing rig;
+the previous twenty-four clips and their binary samples are unchanged.
+
+Local Chromium profile, 30 measured samples after five warm-ups:
+
+| Configuration | Full-mesh lookup median / p95 | Proxy tap handler median / p95 |
+| --- | --- | --- |
+| 1280 × 900, DPR 2 | 22.4 / 23.3 ms | 1.4 / 1.7 ms |
+| 390 × 844, DPR 3, 4× CPU throttling | 95.2 / 97.7 ms | 6.3 / 6.5 ms |
+
+The proxy measurement includes the controller's pointer-up handler; neither
+configuration used fallback picking. This is a synchronous input-cost sample,
+not a physical-phone, GPU, battery or end-to-end latency guarantee. The proxy
+agrees with the full mesh on more than 98% of sampled anatomical hits across
+five poses and three camera headings; tiny silhouette/boundary differences are
+possible. Geometry tests include the raised tail, stretch and sleeping pose.
+The JSON adds 147,327 raw bytes (30,315 with Node's default Brotli); it is loaded
+with the deferred viewer code. The GLB is 1,821,468 bytes.
+
+All eight existing pose baselines pass without new reference images. Their
+test normalizes the fractional-pixel
+crop, resolving the previously recorded Windows one-row mismatch. Browser tests
+cover proxy taps, orbit dragging, keyboard reactions in Chromium/WebKit,
+reduced motion, cancellation and sleep/wake. Unit tests verify ear-first timing.
+
+```sh
+# Rebuild curiosity layers (once) and regenerate the matching proxy data:
+node apps/web/scripts/prepare-cat-play.mjs
+# Profile a running local site and capture the composed poses:
+node apps/web/scripts/profile-cat-play.mjs
+# Behaviour and the unchanged visual baselines:
+pnpm --filter web test:e2e:cat
+```
+
+Offline generation uses [Meshoptimizer's simplifier](https://github.com/zeux/meshoptimizer/tree/master/js)
+and accepts embedded assets only. The authored source is retained in the model;
+the tool does not need an online asset service or Blender at runtime.
+
+## Lossless animation cleanup, revision 19.2
+
+At revision 19.2, the web asset became 1,820,112 bytes, down from 1,871,436 (51,324 bytes,
+2.74%). Cleanup removes 80 tracks whose samples equal the node's rest transform
+exactly in every referencing clip, and 948 unused or duplicate sampler entries.
+Each full-body clip now evaluates 182 tracks instead of 186; each gaze clip
+retains its six tracks. A target that changes in any clip keeps its reset tracks
+in every other clip, preserving crossfades. Clip durations and all remaining
+sampler definitions are unchanged. The entire binary chunk, including geometry,
+textures and sample values, is byte-for-byte identical; the poster is retained.
+
+This primarily reduces metadata and a small amount of animation evaluation.
+With Node's default Brotli compression the file changes from 1,069,448 to
+1,068,728 bytes (720 bytes saved), so the raw size reduction is not a claim of
+51 KB saved over an already compressed connection or a measured frame-rate gain.
+Loading also waits when the tab is hidden and rechecks visibility after the
+renderer import, avoiding model download and WebGL setup after scrolling away.
+
+To repeat the conservative cleanup after a new export:
+
+```sh
+node apps/web/scripts/optimize-cat-animation.mjs apps/web/public/models/our-cat/cat.glb
+```
+
+The script is idempotent and rejects changes to clip duration. Its tests cover
+cross-clip resets, unchanged binary data and shared samplers. Run the dedicated
+cat browser suite and repository checks after regenerating the asset.
+
+Same-browser before/after captures of the eight reviewed poses have zero changed
+pixels after cleanup. The existing stored screenshot baseline currently expects
+a 449 × 497 crop; both the original and optimized model produced 449 × 496 in
+that Windows run. Revision 20 fixes the capture rounding without accepting
+new reference images. The mobile test setup now scrolls the poster's stage
+before waiting for the lazily created viewer.
 
 ## Browser hardening after revision 19
 
@@ -102,7 +353,7 @@ There are no visible controls, captions or sounds. Animation pauses offscreen an
 
 ## Web preparation and verification
 
-- Twenty full-body animation clips plus four isolated gaze layers; 54,236 triangles; 1,871,436 bytes (about 1.87 MB). No triangles or textures were added.
+- Twenty full-body animation clips plus eight isolated attention layers; 54,236 visible triangles; 1,903,036 bytes (about 1.90 MB). Picking uses a separate 8,372-triangle CPU proxy. No visible triangles or textures were added.
 - WebP textures, 16-bit skin weights, resampled animation and Meshopt compression. No artificial 1 MB limit was applied.
 - The detailed Blender project retains fine fur. The web version uses the coat texture, sheen, sparse ear tufts and soft tapered whisker ribbons.
 - Local occlusion has strength 0.16. Neutral browser lighting and tone mapping use exposure 0.9. The eye retains revision 9's restrained reflection.
@@ -110,7 +361,7 @@ There are no visible controls, captions or sounds. Animation pauses offscreen an
 - Live browser checks cover successive tap responses, keyboard response after focusing the cat, gesture continuity and drag rotation without a reaction.
 - Automated interaction checks cover shuffled variety, direction-aware reaches, rapid taps, pending clip changes, stale completion events, hover visits, gesture rejection, reduced motion, visibility and cleanup.
 
-The current editable web Blender project, model, pose previews and validation reports are in `posvoji-cat-work/revision-19`; the interaction authoring script is `posvoji-cat-work/animate_affection_v19.py` (loading revision 18). Web export uses `verify/optimize-v19.mjs` and `verify/share-coat-attributes.mjs`. The previous likeness revision 15 remains beside it, authored by `refine_likeness_v15.py`. Earlier web and detailed projects remain in `our-cat-active-v10`; the revision 12 eye build and texture pass remain in `our-cat-v10-work`. `meshopt-decoder.js` is served locally; its MIT licence is in `meshopt-LICENSE.md`.
+The latest editable project and back-reaction previews are in `posvoji-cat-work/revision-23`, authored with the scripts above. The preceding complete export, pose previews and validation reports are in `posvoji-cat-work/revision-19`; its interaction authoring script is `posvoji-cat-work/animate_affection_v19.py` (loading revision 18). That web export uses `verify/optimize-v19.mjs` and `verify/share-coat-attributes.mjs`. The previous likeness revision 15 remains beside it, authored by `refine_likeness_v15.py`. Earlier web and detailed projects remain in `our-cat-active-v10`; the revision 12 eye build and texture pass remain in `our-cat-v10-work`. `meshopt-decoder.js` is served locally; its MIT licence is in `meshopt-LICENSE.md`.
 
 ## Asset licence and attribution
 
@@ -123,4 +374,4 @@ Adaptations: coat markings, facial geometry, closed right eye, olive left eye, w
 
 Runtime animation API reference: https://modelviewer.dev/docs/index.html#entrydocs-animation-methods-appendAnimation
 
-This asset and its rendered poster retain the recorded asset licence; they are not relicensed under the application's AGPL licence. No reference photographs are embedded in the model.
+The model, derived picking data and rendered poster retain the recorded asset licence; they are not relicensed under the application's AGPL licence. No reference photographs are embedded in the model.

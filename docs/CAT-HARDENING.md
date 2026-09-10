@@ -1,5 +1,9 @@
 # Interactive cat hardening
 
+This is the revision 19 report. [Revision 20](../apps/web/public/models/our-cat/README.md#faster-picking-and-curiosity-revision-20)
+adds a validated animated picking proxy, ear-first curiosity and
+new timing measurements; it supersedes the remaining full-mesh picking cost below.
+
 This pass keeps the revision 19 model, textures, camera and lighting. It changes
 the browser controller and adds repeatable interaction and appearance checks.
 
@@ -89,14 +93,15 @@ The dedicated suite uses desktop Chromium, Pixel 7 Chromium emulation and iPhone
 14 WebKit emulation. Set `CAT_TEST_URL` to use an already-running site; otherwise
 it uses the repository's Playwright server configuration.
 
-It covers native anatomical taps, rapid queued input, zero-pick drags, held-touch
+It covers native anatomical taps (including each of the four legs), held head strokes and quiet recovery, rapid queued input, zero-pick drags, held-touch
 cancellation, multiple contacts, offscreen pause/resume, reduced motion and the
 sleep/wake chain. Sleep tests advance the clock and seek transition endpoints;
 they validate state handling without waiting 45 seconds per browser. Synthetic
 pointer events exercise cancellation separately from the native tap checks.
 
-Eight fixed desktop poses protect the reviewed appearance: Companion, Slow blink,
-Face wash, Back warning, Head pet, Sleep, Stretch and Playful reach left. These
+Fifteen fixed desktop poses protect the reviewed appearance: Companion, Slow blink,
+Face wash, Back pet, Back warning, Head pet, Head rub, Nose sniff, all four Paw withdraw clips,
+Sleep, Stretch and Playful reach left. These
 screenshots are regression references, not substitutes for geometric collision
 testing or comparison with the original cat photographs. Mobile projects skip
 the desktop-only screenshot test and run the behavioural checks.

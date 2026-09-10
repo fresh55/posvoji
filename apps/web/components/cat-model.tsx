@@ -5,9 +5,10 @@ import { memo, useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import type { Locale } from "@/lib/i18n";
 import { type CatReaction, createCatInteraction } from "@/lib/cat-interaction";
+import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
-const MODEL = "/models/our-cat/cat.glb?v=19.1";
+const MODEL = "/models/our-cat/cat.glb?v=26";
 // The poster uses the same resting pose and camera as the interactive model.
 const POSTER = "/models/our-cat/poster.webp?v=19.1";
 
@@ -81,6 +82,8 @@ export const CatModel = memo(function CatModel({
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let viewer: ModelViewerElement | undefined;
     let interaction: ReturnType<typeof createCatInteraction> | undefined;
+    let makePicker: typeof createViewerCatPicker | undefined;
+    let picker: ReturnType<typeof createViewerCatPicker> | undefined;
     let disposed = false;
     let started = false;
     let visible = false;
@@ -95,6 +98,9 @@ export const CatModel = memo(function CatModel({
     const onLoad = () => {
       // Apply the seated first frame even when reduced motion starts paused.
       if (viewer) viewer.currentTime = 0;
+      picker?.dispose();
+      try { if (viewer) picker = makePicker?.(viewer); }
+      catch { picker = undefined; }
       ready = true;
       setStatus("ready");
       syncPlayback();
@@ -112,11 +118,17 @@ export const CatModel = memo(function CatModel({
     // Importing the custom element on the server would access browser globals.
     // The model and renderer also stay out of other routes and offscreen loads.
     const start = async () => {
-      if (started) return;
+      if (started || disposed || !visible || document.hidden) return;
       started = true;
       try {
-        const { ModelViewerElement: Viewer } = await import("@google/model-viewer");
+        const [{ ModelViewerElement: Viewer }, runtime] = await Promise.all([
+          import("@google/model-viewer"), import("@/lib/cat-viewer-runtime"),
+        ]);
+        makePicker = runtime.createViewerCatPicker;
         if (disposed) return;
+        // The visitor may have scrolled away or hidden the tab during import.
+        // Keep the module cached, but postpone model download and WebGL setup.
+        if (!visible || document.hidden) { started = false; return; }
         Viewer.meshoptDecoderLocation = "/models/our-cat/meshopt-decoder.js";
         viewer = document.createElement("model-viewer") as ModelViewerElement;
         const attributes = {
@@ -179,7 +191,14 @@ export const CatModel = memo(function CatModel({
         };
         viewer.addEventListener("load", onLoad);
         viewer.addEventListener("error", onError);
-        interaction = createCatInteraction(viewer, canAnimate);
+        const element = viewer;
+        interaction = createCatInteraction(viewer, canAnimate, (x, y) => {
+          if (picker) return picker.pick(x, y);
+          const material = element.materialFromPoint(x, y)?.name;
+          if (!material) return null;
+          const hit = element.positionAndNormalFromPoint(x, y);
+          return hit ? { material, position: hit.position } : null;
+        });
         container.append(viewer);
       } catch {
         if (!disposed) onError();
@@ -196,15 +215,20 @@ export const CatModel = memo(function CatModel({
       visible = true;
       void start();
     }
-    document.addEventListener("visibilitychange", syncPlayback);
+    const onVisibilityChange = () => {
+      void start();
+      syncPlayback();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     motion.addEventListener("change", syncPlayback);
     return () => {
       disposed = true;
       observer?.disconnect();
-      document.removeEventListener("visibilitychange", syncPlayback);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       motion.removeEventListener("change", syncPlayback);
       handOver.current?.(null);
       interaction?.dispose();
+      picker?.dispose();
       viewer?.removeEventListener("load", onLoad);
       viewer?.removeEventListener("error", onError);
       viewer?.pause();

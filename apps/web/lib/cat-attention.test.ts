@@ -5,6 +5,25 @@ import { createCatAttention } from "./cat-attention";
 
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
+it("turns an ear before adding the head turn and curious tilt", async () => {
+  vi.useFakeTimers();
+  const viewer = Object.assign(document.createElement("div"), {
+    availableAnimations: ["Gaze left", "Gaze right", "Gaze up", "Gaze down", "Ear left", "Ear right", "Curious tilt left", "Curious tilt right"],
+    getCameraOrbit: () => ({ theta: 0 }), appendAnimation: vi.fn(), detachAnimation: vi.fn(),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 400 }),
+  });
+  const attention = createCatAttention(viewer as unknown as ModelViewerElement, () => true);
+  attention.start(350, 100);
+  await vi.advanceTimersByTimeAsync(240);
+  expect(viewer.appendAnimation.mock.calls.every(([name]) => name === "Ear right")).toBe(true);
+  expect(viewer.appendAnimation).toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(100);
+  expect(viewer.appendAnimation.mock.calls.some(([name]) => name === "Gaze right")).toBe(true);
+  expect(viewer.appendAnimation.mock.calls.some(([name]) => name === "Curious tilt right")).toBe(true);
+  attention.stop(true);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
 it("smooths gaze, stops after six seconds, and never seeks the main clip", async () => {
   vi.useFakeTimers();
   const viewer = Object.assign(document.createElement("div"), {

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CatModel } from "./cat-model";
 import { renderToStaticMarkup } from "react-dom/server";
 
+vi.mock("@/lib/cat-viewer-runtime", () => ({ createViewerCatPicker: vi.fn() }));
+
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
     availableAnimations: string[] = [];
@@ -55,6 +57,24 @@ async function loadViewer() {
 }
 
 describe("the cat model", () => {
+  it("defers 3D setup in a hidden tab until the visible page needs it", async () => {
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => intersect(true));
+    expect(document.querySelector("model-viewer")).toBeNull();
+    hidden.mockReturnValue(false);
+    fireEvent(document, new Event("visibilitychange"));
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+  });
+
+  it("postpones WebGL setup if the cat leaves view while the module loads", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => { intersect(true); intersect(false); });
+    expect(document.querySelector("model-viewer")).toBeNull();
+    await loadViewer();
+    expect(document.querySelector("model-viewer")).not.toBeNull();
+  });
+
   it("renders an immediately loadable fallback without a speculative poster preload", () => {
     const html = renderToStaticMarkup(<CatModel sizes="100vw" locale="sl" />);
     const document = new DOMParser().parseFromString(html, "text/html");
@@ -64,7 +84,7 @@ describe("the cat model", () => {
     expect(document.querySelector('link[rel="preload"][as="image"]')).toBeNull();
   });
 
-  it("loads when visible and automatically plays the continuous animation without controls", async () => {
+  it("loads when visible and plays the continuous animation without extra controls", async () => {
     render(<CatModel sizes="100vw" locale="en" />);
     expect(document.querySelector("model-viewer")).toBeNull();
     expect(screen.getByRole("img").getAttribute("alt")).toContain("closed right eye");

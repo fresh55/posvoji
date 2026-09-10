@@ -14,7 +14,6 @@ import { MUTED_LINK } from "@/lib/link-styles";
 import { HOME_PATHS } from "@/lib/shelter-path";
 import { CONTENT_ID } from "@/lib/skip-link";
 import { CONTACT_EMAIL } from "@/lib/site";
-import { cn } from "@/lib/utils";
 
 const copy = {
   sl: {
@@ -49,6 +48,8 @@ const copy = {
 const GREETING_MS = 900;
 
 const subscribeNothing = () => () => {};
+
+const FOOTER_LINK = `${MUTED_LINK} underline`;
 
 /**
  * The page a visitor meets while the site is open to invited shelters only.
@@ -132,112 +133,114 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
     // no layout to inherit it from, and site-shell.tsx would bring a header
     // and a footer this page has no use for.
     <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-      <main id={CONTENT_ID} tabIndex={-1} className="flex flex-1 flex-col items-center justify-center py-page-y">
-        {/* Three groups, one gap between them, and each group owns its own
-            inner spacing. One scale rather than a chain of margins is what
-            keeps "greeting, the thing to do, the way out" readable as three
-            steps instead of six loose lines. */}
-        <div className="flex w-full max-w-md flex-col items-center gap-10">
-          <div className="flex w-full flex-col items-center gap-5 text-center">
-            <a
-              href={HOME_PATHS[locale]}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-ui text-lg font-semibold",
-                "focus-visible:outline-2 focus-visible:outline-offset-4",
-              )}
-              aria-label="posvoji.si"
-            >
-              <Logo className="h-8 w-auto shrink-0" />
-              <span>posvoji.si</span>
-            </a>
-            {/* The cat is the page. He gets the vertical room; everything
-                else is one line of type and one field. */}
-            <figure className="w-full">
-              <CatModel
-                locale={locale}
-                className="h-56 sm:h-72"
-                sizes="(min-width: 640px) 448px, 100vw"
-                posterPriority
-                onHandle={takeHandle}
-              />
-            </figure>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-                {text.title}
-              </h1>
-              <p className="text-sm text-pretty text-muted-foreground sm:text-base">
-                {text.lead}
-              </p>
-            </div>
+      {/* Three groups, one gap between them, and each group owns its own
+          inner spacing. One scale rather than a chain of margins is what
+          keeps "greeting, the thing to do, the way out" readable as three
+          steps instead of six loose lines. */}
+      <main
+        id={CONTENT_ID}
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-10 py-page-y"
+      >
+        <div className="flex flex-col items-center gap-5 text-center">
+          {/* The drawn logo is 32px, so the link needs the utility to reach a
+              finger; site-header.tsx carries it on the same lockup. */}
+          <a
+            href={HOME_PATHS[locale]}
+            className="inline-flex items-center gap-2 rounded-sm text-lg font-semibold max-lg:tap-target focus-visible:outline-2 focus-visible:outline-offset-4"
+            aria-label="posvoji.si"
+          >
+            <Logo className="h-8 w-auto shrink-0" />
+            <span>posvoji.si</span>
+          </a>
+          {/* The cat is the page. He gets the vertical room; everything
+              else is one line of type and one field. */}
+          <figure className="w-full">
+            <CatModel
+              locale={locale}
+              className="h-56 sm:h-72"
+              sizes="(min-width: 640px) 448px, 100vw"
+              posterPriority
+              onHandle={takeHandle}
+            />
+          </figure>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+              {text.title}
+            </h1>
+            <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+              {text.lead}
+            </p>
           </div>
+        </div>
 
-          {/* Left aligned on purpose, against the centred block above: a
-              label belongs over the field it names, not over the middle. */}
-          <form onSubmit={submit} noValidate className="w-full space-y-2 text-left">
-            <Label htmlFor="demo-password">{text.label}</Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="relative flex-1">
-                <Input
-                  ref={input}
-                  id="demo-password"
-                  name="password"
-                  type={shown ? "text" : "password"}
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  autoFocus
-                  value={password}
-                  onChange={(event) => { setPassword(event.target.value); setBlank(false); }}
-                  aria-invalid={error !== null || undefined}
-                  aria-describedby="demo-password-error"
-                  disabled={leaving}
-                  className="h-11 pr-11"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={shown ? text.hide : text.show}
-                  aria-pressed={shown}
-                  onClick={() => setShown((value) => !value)}
-                  disabled={leaving}
-                  className="absolute inset-y-0 right-0 size-11 text-muted-foreground hover:bg-transparent hover:text-foreground"
-                >
-                  {shown ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
-                </Button>
-              </div>
-              <Button type="submit" disabled={leaving} className="h-11 sm:px-8">
-                {text.submit}
+        <form onSubmit={submit} noValidate className="flex flex-col gap-2">
+          <Label htmlFor="demo-password">{text.label}</Label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Input
+                ref={input}
+                id="demo-password"
+                name="password"
+                type={shown ? "text" : "password"}
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                autoFocus
+                value={password}
+                onChange={(event) => { setPassword(event.target.value); setBlank(false); }}
+                aria-invalid={error !== null || undefined}
+                aria-describedby="demo-password-error"
+                disabled={leaving}
+                className="h-11 pr-11"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={shown ? text.hide : text.show}
+                aria-pressed={shown}
+                onClick={() => setShown((value) => !value)}
+                disabled={leaving}
+                className="absolute right-0 top-0 size-11 text-muted-foreground"
+              >
+                {shown ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
               </Button>
             </div>
-            {/* One line of room is always reserved. An error that appears
-                must not push the button out from under the pointer. */}
-            <p
-              id="demo-password-error"
-              role="alert"
-              className="min-h-5 text-sm text-destructive"
-            >
-              {error === "wrong" ? text.wrong : error === "empty" ? text.empty : ""}
-            </p>
-          </form>
-
-          <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-            <span>
-              {text.noPassword}{" "}
-              <a href={mailtoHref(CONTACT_EMAIL)} className={cn(MUTED_LINK, "underline")}>
-                {text.write}
-              </a>
-            </span>
-            <span aria-hidden>·</span>
-            <a
-              href={text.other.href}
-              hrefLang={locale === "sl" ? "en" : "sl"}
-              className={cn(MUTED_LINK, "underline")}
-            >
-              {text.other.label}
-            </a>
+            <Button type="submit" disabled={leaving} className="h-11 sm:px-8">
+              {text.submit}
+            </Button>
+          </div>
+          {/* One line of room is always reserved. An error that appears
+              must not push the button out from under the pointer. */}
+          <p
+            id="demo-password-error"
+            role="alert"
+            className="min-h-5 text-sm text-destructive"
+          >
+            {error === "wrong" ? text.wrong : error === "empty" ? text.empty : ""}
           </p>
-        </div>
+        </form>
+
+        {/* gap-y-6, not less: MUTED_LINK carries a 44px tap overlay over a
+            20px line, so two wrapped rows any closer would take each
+            other's presses. site-footer.tsx measured it. */}
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-6 text-sm text-muted-foreground">
+          <span>
+            {text.noPassword}{" "}
+            <a href={mailtoHref(CONTACT_EMAIL)} className={FOOTER_LINK}>
+              {text.write}
+            </a>
+          </span>
+          <span aria-hidden>·</span>
+          <a
+            href={text.other.href}
+            hrefLang={locale === "sl" ? "en" : "sl"}
+            className={FOOTER_LINK}
+          >
+            {text.other.label}
+          </a>
+        </p>
       </main>
     </div>
   );

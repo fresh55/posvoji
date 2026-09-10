@@ -13,8 +13,8 @@
  * the header and the <main> it aims at together, so the nine get the pair or
  * neither, and site-shell.test.tsx is where the two are checked against each
  * other. What is left hand written is the portal's own shell, which holds both
- * halves in one file, and error-page.tsx, which draws the landmark with no
- * header to link to it.
+ * halves in one file, and error-page.tsx and demo-gate-page.tsx, which draw
+ * the landmark with no header to link to it.
  *
  * lib and not a component, for the reason lib/link-styles.ts records: server
  * components need these too, and a "use client" module's exports cross the

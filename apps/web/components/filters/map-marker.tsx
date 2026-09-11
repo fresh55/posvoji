@@ -899,7 +899,7 @@ function MarkerDisc({
           "group-hover/pin:scale-110 motion-reduce:group-hover/pin:scale-100",
         highlighted && "scale-110 motion-reduce:scale-100",
         selected
-          ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
+          ? "fill-brand-strong stroke-brand-strong text-background"
           : cn(
               "fill-background stroke-foreground/75 text-foreground/75",
               groupHover &&
@@ -1106,9 +1106,9 @@ function CountDisc({
         COIN_SHADOW,
         highlighted && "scale-110 motion-reduce:scale-100",
         state === true
-          ? "fill-[var(--filter-accent-strong)] stroke-[var(--filter-accent-strong)] text-background"
+          ? "fill-brand-strong stroke-brand-strong text-background"
           : state === "mixed"
-            ? "fill-[var(--filter-accent)] stroke-[var(--filter-accent-strong)] text-[var(--filter-accent-foreground)]"
+            ? "fill-brand stroke-brand-strong text-brand-foreground"
             : live
               ? cn(
                   "fill-background stroke-foreground/75 text-foreground/75 group-hover/pin:stroke-foreground group-hover/pin:text-foreground",

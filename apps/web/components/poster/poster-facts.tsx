@@ -32,7 +32,7 @@ import {
  * What the sheet knows about the animal, as tiles.
  *
  * The same facts the animal's own page states, wearing the same marks and the
- * same three tones: neutral for who the animal is, the filter green for what
+ * same three tones: neutral for who the animal is, the brand green for what
  * the health record says, amber for the wait. A poster read across a room
  * cannot hold a sentence, and a middot list of five words is a sentence with
  * the punctuation taken out. A row of small drawings can be read at a glance

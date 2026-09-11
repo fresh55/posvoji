@@ -59,7 +59,11 @@ export function SitePage({ locale }: { locale: Locale }) {
       }
     >
       <div className="space-y-1.5">
-        <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+        {/* 600, which is the weight of the card names in the grid under it
+            and the weight every page title on the site now carries. At 500
+            the title was the lighter of the two, so the page was headed by
+            something quieter than the rows it introduces. */}
+        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
           {messages.heroTitle}
         </h1>
         {/* One wrapping line at every width, where this used to be a text

@@ -121,7 +121,7 @@ export function MapLegend({
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span
             aria-hidden
-            className="size-2.5 shrink-0 rounded-[2px] border border-[var(--filter-accent-strong)] bg-[var(--map-selected-fill)]"
+            className="size-2.5 shrink-0 rounded-[2px] border border-brand-strong bg-[var(--map-selected-fill)]"
           />
           {messages.selectedRegionLegend}
         </span>
@@ -132,7 +132,7 @@ export function MapLegend({
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span
             aria-hidden
-            className="size-2.5 shrink-0 rounded-[2px] border border-dashed border-[var(--filter-accent-strong)] bg-[var(--map-selected-fill)]/20"
+            className="size-2.5 shrink-0 rounded-[2px] border border-dashed border-brand-strong bg-[var(--map-selected-fill)]/20"
           />
           {messages.mixedRegionLegend}
         </span>

@@ -38,7 +38,6 @@ import {
   fold,
   locateAndSort,
   pickerText,
-  shelterNamesByRegion,
   toPins,
   type LocatedRow,
 } from "./model";
@@ -274,17 +273,6 @@ export function useLocationPickerController({
   const offRows: LocatedRow[] = useMemo(
     () => locateAndSort(offSite ?? [], origin),
     [offSite, origin],
-  );
-
-  // Which shelters answer for the municipalities inside each region, by region
-  // id. An empty region on this map is not an empty part of the country:
-  // somebody is still responsible for a stray found there, and the coverage
-  // table already knows who, so the map can say it instead of stopping at "no
-  // shelters here". How a municipality is placed in a region is with the
-  // helper, in model.ts, which the found-animal page shares.
-  const regionShelterNames = useMemo(
-    () => (open ? shelterNamesByRegion(municipalities ?? []) : undefined),
-    [municipalities, open],
   );
 
   // Whether the map is drawing markers right now, as the map itself answers
@@ -645,7 +633,6 @@ export function useLocationPickerController({
     setHoveredMarkerValues,
     highlightedDensity,
     setHighlightedDensity,
-    regionShelterNames,
     markersVisible,
     setMarkersVisible,
     setMapFacts,

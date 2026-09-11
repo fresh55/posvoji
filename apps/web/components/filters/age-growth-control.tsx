@@ -18,6 +18,7 @@ import {
   CountRoll,
   FilterSelectionMark,
   filterCardVariants,
+  SIDEBAR_ROW,
 } from "@/components/filters/filter-card";
 import {
   CollapsibleBody,
@@ -46,23 +47,27 @@ type Stage = {
   swayDegrees: number;
 };
 
+// The grove's colours come from --grove-* in globals.css, which is where the
+// dark values and the contrast measurements live. They were hex literals here,
+// which meant the sprout and the two woods were drawn at their light-theme
+// lightness over a near-black page.
 const STAGES: Record<AgeStage, Stage> = {
   mladicek: {
-    colorClassName: "text-[#2f7d50]",
+    colorClassName: "text-grove-leaf",
     groveClassName: "size-7",
     rowClassName: "size-5",
     rangeKey: "ageRangeYoung",
     swayDegrees: 4.5,
   },
   odrasel: {
-    colorClassName: "text-[#92763b]",
+    colorClassName: "text-grove-wood",
     groveClassName: "size-9",
     rowClassName: "size-5.5",
     rangeKey: "ageRangeAdult",
     swayDegrees: 3,
   },
   senior: {
-    colorClassName: "text-[#92763b]",
+    colorClassName: "text-grove-wood",
     groveClassName: "size-11",
     rowClassName: "size-6",
     rangeKey: "ageRangeSenior",
@@ -234,7 +239,10 @@ export function AgeGrowthControl({
                   className="relative flex h-full items-end justify-center pb-1"
                 >
                   <m.span
-                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-[#2f6f4e]/55"
+                    // The alpha belongs to this line rather than to the token,
+                    // which globals.css records; --grove-ground is registered
+                    // as a Tailwind colour there, so the modifier works here.
+                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-grove-ground/55"
                     initial={false}
                     animate={{
                       opacity: active ? 1 : 0.12,
@@ -255,7 +263,7 @@ export function AgeGrowthControl({
                       <PlaysOnMount>
                         <m.span
                           key={celebration?.id}
-                          className="size-[3px] rounded-full bg-[#2f6f4e]"
+                          className="size-[3px] rounded-full bg-grove-ground"
                           initial={{ opacity: 0.65, scale: 0.5 }}
                           animate={{ opacity: 0, scale: 2.5 }}
                           transition={{ duration: 0.3, ease: "easeOut" }}
@@ -440,7 +448,10 @@ export function AgeGrowthControl({
                           className:
                             layout === "sheet"
                               ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                              : "grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left",
+                              : // SIDEBAR_ROW for the reason filter-card.tsx
+                                // records: a sidebar row is a line in a list,
+                                // not a tile.
+                                `${SIDEBAR_ROW} grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left`,
                         })}
                       >
                         <FilterSelectionMark

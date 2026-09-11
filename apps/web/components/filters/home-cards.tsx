@@ -139,7 +139,7 @@ function HomeGlyph({
             width={WINDOW_SIZE}
             height={WINDOW_SIZE}
             rx={0.35}
-            fill="var(--filter-accent-strong)"
+            fill="var(--brand-strong)"
             stroke="none"
             initial={{ opacity: 0 }}
             animate={{ opacity: checked ? LIGHT_OPACITY : 0 }}
@@ -186,7 +186,7 @@ function HomeGlyph({
         ))}
       </g>
       <m.g
-        stroke="var(--filter-accent-strong)"
+        stroke="var(--brand-strong)"
         initial={false}
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
@@ -383,7 +383,7 @@ export function HomeCards({
                       layout === "sheet" ? "size-12" : "size-9",
                     )}
                     fill="none"
-                    stroke="var(--filter-accent-strong)"
+                    stroke="var(--brand-strong)"
                     strokeWidth={1.75}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -409,7 +409,7 @@ export function HomeCards({
                     <m.span
                       key={`glow-${celebration?.id}`}
                       className={cn(
-                        "pointer-events-none absolute rounded-full bg-[var(--filter-accent-strong)] blur-[6px]",
+                        "pointer-events-none absolute rounded-full bg-brand-strong blur-[6px]",
                         layout === "sheet" ? "size-7" : "size-7.5",
                       )}
                       initial={{ opacity: 0, scale: 0.55 }}

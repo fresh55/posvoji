@@ -219,16 +219,17 @@ export function ShelterDetailPage({
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8">
           <div className="min-w-0 flex-1 space-y-5">
             <div className="flex flex-wrap items-center gap-4">
-              <ShelterAvatar
-                name={shelter.name}
-                logo={logos[shelter.id]}
-                size="lg"
-                // Green here only where the notice below it is also green.
-                // The hero and that notice are the one statement this page
-                // makes about the shelter's data, so they say it together or
-                // not at all.
-                accent={hasData}
-              />
+              {/* Only a real mark, the rule the register card follows
+                  (shelter-card.tsx): a disc with an initial beside a 30px
+                  name was a placeholder, not a mark. Without one the name
+                  starts the row. */}
+              {logos[shelter.id] && (
+                <ShelterAvatar
+                  name={shelter.name}
+                  logo={logos[shelter.id]}
+                  size="lg"
+                />
+              )}
               {/* A floor under this column rather than min-w-0. The mark
                   beside it draws up to 170px wide (SIZE.lg in
                   shelter-avatar.tsx), which at a 320px viewport left this
@@ -242,7 +243,7 @@ export function ShelterDetailPage({
                 {/* break-words is the last resort under it: a name whose
                     longest word is wider than the column breaks the word
                     rather than the page. */}
-                <h1 className="break-words text-2xl font-medium tracking-tight sm:text-3xl">
+                <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
                   {shelter.name}
                 </h1>
                 {/* Wrapping, not truncation: the town and the count are
@@ -315,7 +316,7 @@ export function ShelterDetailPage({
               className={cn(
                 "flex items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
                 hasData
-                  ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
+                  ? "border-brand-border bg-brand text-brand-foreground"
                   : "bg-muted/40 text-muted-foreground",
               )}
             >

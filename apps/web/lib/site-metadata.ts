@@ -96,9 +96,9 @@ export function rootMetadata(locale: Locale): Metadata {
  * near-black, so the top of the screen never matches the site in either theme.
  * Hex and not the oklch() the tokens are written in, because meta theme-color
  * support for oklch is not universal; these two are the sRGB values of
- * oklch(1 0 0) and oklch(0.145 0 0), the light and dark --background.
+ * oklch(1 0 0) and oklch(0.147 0.004 49.25), the light and dark --background.
  */
-export const THEME_COLOR = { light: "#ffffff", dark: "#0a0a0a" } as const;
+export const THEME_COLOR = { light: "#ffffff", dark: "#0c0a09" } as const;
 
 export const rootViewport: Viewport = {
   viewportFit: "cover",

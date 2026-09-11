@@ -77,22 +77,37 @@ export function SiteShell({
 }: SiteShellProps) {
   return (
     <I18nProvider locale={locale}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
+      {/* The column is the viewport's width and the page frame sits inside
+          it, around the main alone. The header and the footer each draw a
+          rule, and while the frame held all three the rules stopped at the
+          frame's edge: at 1440 they ended 80px short of the viewport on each
+          side, and a rule that stops short reads as unfinished. So the two
+          bands are the column's full width and centre their own contents on
+          the same max-w-7xl the frame here uses (site-header.tsx,
+          site-footer.tsx). Below 1344px nothing changes, because the frame
+          already reached the viewport there. */}
+      <div className="flex min-h-dvh flex-col">
         {before}
 
         <SiteHeader locale={locale} languagePaths={languagePaths} />
 
-        {/* Where the header's skip link lands, on every page that has one.
-            One id for both locales rather than a Slovenian and an English
-            spelling: these mains live in components the two share, and a
-            second name would buy a locale branch in nine files for a fragment
-            nobody reads. tabIndex so focus moves here rather than only
-            scrolling the page. */}
-        <main id={CONTENT_ID} tabIndex={-1} className={mainClassName}>
-          {children}
-        </main>
+        {/* The page frame: the measure every page's main used to share with
+            the chrome. flex-1 so the footer stays at the foot of a short page
+            the way it did when this was the outer column, and flex-col so a
+            main asking for flex-1 of its own still fills it. */}
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-gutter">
+          {/* Where the header's skip link lands, on every page that has one.
+              One id for both locales rather than a Slovenian and an English
+              spelling: these mains live in components the two share, and a
+              second name would buy a locale branch in nine files for a
+              fragment nobody reads. tabIndex so focus moves here rather than
+              only scrolling the page. */}
+          <main id={CONTENT_ID} tabIndex={-1} className={mainClassName}>
+            {children}
+          </main>
 
-        {afterMain}
+          {afterMain}
+        </div>
 
         {footer}
       </div>

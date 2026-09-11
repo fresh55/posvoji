@@ -31,6 +31,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { thumbnailUrl } from "@/lib/animal-images";
 import type {
   PortalAnimal,
@@ -184,20 +190,30 @@ export const PortalAnimalRow = memo(function PortalAnimalRow({
           {missing.length > 0 ? (
             // The shortest way in: it opens the editor at the first field it
             // counts, instead of leaving the shelter to find that field in the
-            // form. What it does goes in the title, not in an aria-label: the
+            // form. What it does is neither the label nor an aria-label: the
             // visible text has to stay the accessible name, or voice control
-            // has no way to say this link (WCAG 2.5.3).
-            <Link
-              href={portalAnimalPath(shelter.slug, animal.id, missing[0].key)}
-              title={fill(portalText.missingOpen, { name })}
-              className="rounded-ui text-xs whitespace-nowrap text-muted-foreground underline decoration-dotted underline-offset-2 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
-            >
-              {missingCountLabel(missing.length)}
-            </Link>
+            // has no way to say this link (WCAG 2.5.3). It was a title, which
+            // only a pointer ever reached; a tooltip opens on focus as well,
+            // and Radix hangs it off the link as a description.
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={portalAnimalPath(shelter.slug, animal.id, missing[0].key)}
+                    className="rounded-ui text-xs whitespace-nowrap text-muted-foreground underline decoration-dotted underline-offset-2 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
+                  >
+                    {missingCountLabel(missing.length)}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {fill(portalText.missingOpen, { name })}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : (
             <>
               <Check
-                className="size-3.5 text-[var(--filter-accent-foreground)]"
+                className="size-3.5 text-brand-foreground"
                 aria-hidden
               />
               <span className="sr-only">{portalText.missingNone}</span>

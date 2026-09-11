@@ -48,7 +48,7 @@ export function ShelterBlock({
         {stay && (
           <div className="flex w-full items-start gap-2 text-sm">
             <Hourglass
-              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+              className="mt-0.5 size-4 shrink-0 text-warn-mark"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -61,15 +61,43 @@ export function ShelterBlock({
         )}
         <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
 
-        <div className="min-w-0 flex-1">
+        {/* A floor of 12rem under the name, so a row that cannot hold the
+            mark, the name and the button wraps the button under them
+            instead of shrinking the name. min-w-0 alone let flex-1 give the
+            name up first: in the animal page's 31rem column beside the photo
+            it drew "Obalno zavetišč..." with the button still on the line.
+            The dialog's card is wide enough to keep one row, and below sm
+            the button is already full width on a row of its own. */}
+        <div className="min-w-[12rem] flex-1">
           {/* The name goes to the shelter's own page, which holds its other
               contacts, the občine it answers for and the rest of its animals.
               Until now the only way out of this box left the site.
 
-              title, because the line truncates: a long name such as "Obalno
-              zavetišče (Marjetica Koper)" is cut, and the tooltip is the only
-              place the rest of it can be read without leaving. */}
-          <p className="truncate font-medium">
+              Two lines below sm, one from sm up. On a 390px phone the box is
+              the 12rem floor plus whatever the mark leaves, and "Obalno
+              zavetišče (Marjetica Koper)" was cut to "Obalno zavetišče
+              (Marjetica..." in the dialog and on the animal page both: the part
+              that says which of the two Koper entries this is was the part that
+              went. A phone has the vertical room a desktop row does not, and
+              the second line costs nothing there because the button below sm is
+              already full width on a line of its own. From sm up the button is
+              back on this row and one line is what keeps it there.
+
+              The two are spelled as max-sm and sm rather than as truncate with
+              a clamp laid over it: truncate carries white-space: nowrap, which
+              a line clamp cannot survive, so leaving both on at once would
+              depend on which utility the cascade happened to put last.
+
+              title stays, and is what the sm-and-up truncation leaves to read
+              without going anywhere. Below sm it is also still the fallback for
+              a name long enough to run past two lines.
+
+              The row keeps items-center. The mark is a fixed 48px row and the
+              text beside it is now up to three lines on a phone, which a
+              centred mark reads as one unit with; from sm up this same row also
+              carries the call to action, and items-start would lift that button
+              to the top of a row whose name is one line there anyway. */}
+          <p className="font-medium max-sm:line-clamp-2 sm:truncate">
             <a
               href={shelterPath(shelter.id, locale)}
               title={shelter.name}
@@ -89,7 +117,7 @@ export function ShelterBlock({
           // The listing still has to be reachable: every animal here names
           // its source and links back to it, adopted or not.
           <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto">
-            <p className="flex w-full items-center gap-2 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-3 py-2 text-xs text-[var(--filter-accent-foreground)]">
+            <p className="flex w-full items-center gap-2 rounded-ui border border-brand-border bg-brand px-3 py-2 text-xs text-brand-foreground">
               <Heart className="size-4 shrink-0" aria-hidden />
               {messages.foundHome}
             </p>

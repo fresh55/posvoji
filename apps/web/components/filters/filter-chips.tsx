@@ -78,7 +78,7 @@ const CHIP_PILL =
 // The look a pill wears when pressing it takes its filter off, which is every
 // pill but the "+N".
 const CHIP_REMOVABLE =
-  "group border-border bg-background text-foreground hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted";
+  "group border-border bg-background text-foreground hover:border-brand-border hover:bg-muted active:bg-muted";
 
 type Run = { facet: FilterFacet; chips: Chip[] };
 
@@ -535,7 +535,7 @@ export function UndoOffer({
         type="button"
         onClick={onUndo}
         aria-label={messages.undoClearFilters}
-        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-[var(--filter-accent-strong)] outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-brand-strong outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
       >
         <Undo2 className="size-3.5" aria-hidden />
         {messages.undoClear}
@@ -634,7 +634,7 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
       ? { Icon: FACET_ICONS[facet], className: undefined }
       : filterValueGlyph(facet, value);
   return (
-    <span className="grid size-[1.125rem] shrink-0 place-items-center text-[var(--filter-accent-strong)]">
+    <span className="grid size-[1.125rem] shrink-0 place-items-center text-brand-strong">
       {/* 1.75, the same weight the species tabs draw at. This was 1.8, which
           is invisible on its own and exactly the kind of near-miss that makes
           a row of marks read as unresolved. */}
@@ -688,7 +688,7 @@ function ChipButton({
         className,
         CHIP_REMOVABLE,
         blocked &&
-          "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+          "border-brand-border bg-brand text-brand-foreground",
       )}
     >
       <ChipGlyph facet={chip.facet} value={chip.value} />
@@ -716,7 +716,7 @@ function ChipButton({
         className={cn(
           "size-3 shrink-0 transition-colors",
           blocked
-            ? "text-[var(--filter-accent-foreground)]"
+            ? "text-brand-foreground"
             : "text-muted-foreground group-hover:text-foreground",
         )}
         strokeWidth={2}

@@ -105,9 +105,12 @@ const EMAIL_SHAPE = /^[^\s<>()[\]\\,;:@"]+@[^\s<>()[\]\\,;:@"]+\.[a-z]{2,}$/i;
 /** The round mark every step opens with. Its tone carries the outcome. */
 const MARK_TONES = {
   accent:
-    "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+    "border-brand-border bg-brand text-brand-foreground",
   quiet: "border-border bg-muted/50 text-muted-foreground",
-  warn: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  // The warn family, the way ui/badge.tsx's warn variant spells it. The ink is
+  // amber-800 rather than the amber-700 this held, which on the 15% wash is
+  // 6.34:1 where amber-700 was 4.49:1.
+  warn: "border-warn-border bg-warn text-warn-foreground",
 } as const;
 
 function Mark({
@@ -152,7 +155,8 @@ function StepHeading({
       ref={ref}
       tabIndex={focusable ? -1 : undefined}
       className={cn(
-        "text-lg font-medium tracking-tight",
+        // Semibold like every other page title on the site; see site-page.tsx.
+        "text-lg font-semibold tracking-tight",
         focusable && "outline-none",
       )}
     >

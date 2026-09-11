@@ -210,7 +210,7 @@ function MiniMapImpl({
                 // is noise; the same accent fill both states wear on the big
                 // map's hover look is the honest answer at this size.
                 (stateName === "selected" || stateName === "mixed") &&
-                  "fill-[var(--filter-accent-strong)]",
+                  "fill-brand-strong",
                 plate && "stroke-background",
               )}
             />
@@ -232,13 +232,13 @@ function MiniMapImpl({
           data-minimap-town-dot={dot.selected ? "selected" : "idle"}
           className={
             dot.selected
-              ? // Not --filter-accent-strong: a picked town always stands on a
-                // region wearing exactly that fill, so the dot would vanish
-                // into it. --filter-accent-foreground is the same family's
-                // ink, a step deeper on light and a step lighter on dark,
+              ? // Not --brand-strong: a picked town always stands on a region
+                // wearing exactly that fill, so the dot would vanish into it.
+                // --brand-foreground is the same family's ink, a step deeper
+                // on light and a step lighter on dark,
                 // which clears about 1.6:1 against the selected fill in both
                 // themes and stays plainly green over any density step.
-                "fill-[var(--filter-accent-foreground)]"
+                "fill-brand-foreground"
               : // Quiet, and the same quiet for an off-site town: present,
                 // findable against every step of the ramp, and never
                 // competing with a pick.
@@ -274,7 +274,7 @@ function MiniMapImpl({
             d={MINI_REGION_PATHS.get(celebratingRegionId) ?? ""}
             data-minimap-celebration-region={celebratingRegionId}
             aria-hidden
-            className="pointer-events-none fill-[var(--filter-accent-strong)]"
+            className="pointer-events-none fill-brand-strong"
             initial={{ opacity: 0.85 }}
             animate={{ opacity: 0 }}
             transition={{

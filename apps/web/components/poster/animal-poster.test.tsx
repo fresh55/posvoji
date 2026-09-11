@@ -229,7 +229,7 @@ describe("the fact tiles", () => {
     expect(bare.textContent).not.toMatch(/ni znano|not known/i);
   });
 
-  it("gives the health record the filter green and identity the neutral", () => {
+  it("gives the health record the brand green and identity the neutral", () => {
     const { container } = poster({
       animal: animal({
         sex: "female",

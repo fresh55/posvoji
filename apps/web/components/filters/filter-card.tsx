@@ -22,7 +22,7 @@ export const filterCardVariants = cva(
   {
     variants: {
       selected: {
-        true: "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] shadow-xs hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] data-[state=on]:bg-[var(--filter-accent)]",
+        true: "border-brand-border bg-brand text-brand-foreground shadow-xs hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
         false:
           "text-muted-foreground data-[state=off]:bg-background data-[state=off]:hover:bg-muted/40",
       },
@@ -39,11 +39,32 @@ export function isDeadOption(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
+/**
+ * What takes a sidebar row off the tile surface.
+ *
+ * The sheet draws tiles and the sidebar draws rows, and both wore the same
+ * border, shadow and ground. In a column that already holds the map plate and
+ * the sex and size tiles, three or four more bordered boxes per section made
+ * the panel read as a form: on the home page at 1440 the first screen was
+ * seventy-odd outlined rectangles. A row is a line in a list. It keeps the
+ * icon, the drawn check and the count, and it keeps the hover ground and the
+ * green fill when picked, because those are states rather than furniture;
+ * only the box at rest goes.
+ *
+ * Border transparent rather than none, so the row keeps its 1px and the text
+ * does not shift when a picked row draws its fill or a focused one its ring.
+ * Every state that set a border colour is overridden here by name, and this
+ * string has to come after filterCardVariants' own classes in cn() to do so,
+ * which filterCardLayoutClass and the age rows both arrange.
+ */
+export const SIDEBAR_ROW =
+  "border-transparent bg-transparent shadow-none hover:border-transparent data-[state=on]:border-transparent";
+
 /** The class the caller hands filterCardVariants for its layout. */
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
   return layout === "sheet"
     ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-    : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left";
+    : `${SIDEBAR_ROW} h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`;
 }
 
 function markClass(layout: FilterCardLayout): string {
@@ -122,7 +143,11 @@ export function FilterSelectionMark({
         className={cn(
           "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150",
           checked
-            ? "border-[var(--filter-accent-strong)] bg-[var(--filter-accent-strong)] text-white"
+            ? // The ink is a token and not text-white, because this is the one
+              // place the strong accent is a ground and that ground is light in
+              // dark mode: a white tick on it measured 2.39:1. See
+              // --brand-strong-foreground in globals.css.
+              "border-brand-strong bg-brand-strong text-brand-strong-foreground"
             : "border-muted-foreground/40 bg-background text-transparent",
           className,
         )}
@@ -279,7 +304,7 @@ export function FilterCardRipple({
   return (
     <m.span
       className={cn(
-        "pointer-events-none absolute rounded-full border border-[var(--filter-accent-strong)]",
+        "pointer-events-none absolute rounded-full border border-brand-strong",
         iconSizeClass(layout),
       )}
       initial={{ opacity, scale: 0.7 }}

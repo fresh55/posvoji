@@ -1221,7 +1221,7 @@ export function ShelterMap({
             cy={town.y}
             r={town.r + SPOTLIGHT_RING}
             strokeWidth={1.5}
-            className="fill-none stroke-[var(--filter-accent-strong)]"
+            className="fill-none stroke-brand-strong"
           />
           {/* No second, travelling ring over this one. A pulse repeating for
               as long as the spotlight stands is motion with nothing left to
@@ -1233,7 +1233,7 @@ export function ShelterMap({
             cx={town.x}
             cy={town.y}
             r={2.2}
-            className="fill-[var(--filter-accent-strong)] md:hidden"
+            className="fill-brand-strong md:hidden"
           />
         </g>
       ))}

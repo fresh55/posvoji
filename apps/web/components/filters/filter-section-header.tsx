@@ -218,7 +218,23 @@ export function FilterSectionHeader({
       // case while every heading that never folds printed uppercase. The
       // summary chip below sets its own case and tracking, so it still reads
       // as a value rather than a heading.
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground max-lg:tap-target"
+      //
+      // rounded-ui and not shadcn's stock rounded-md. The hover box this draws
+      // is the same box a ghost button draws (the sort trigger beside it, via
+      // buttonVariants), it is within a few px of their height, and it sits in
+      // the same column; rounded-md's 8px against their 10px was a corner off
+      // the site's scale by an amount nobody can see and every reader of this
+      // file has to re-decide. Not rounded-sm either: that step is for the
+      // small marks inside a card, and this box runs the panel's full width.
+      //
+      // The focus ring is drawn inset, which is the one thing that survives
+      // from the outline this replaced. -mx-1 puts this button's left edge
+      // exactly on the sidebar's padding edge, measured at 0px of room there:
+      // the aside is -mx-1 px-1 and clips at lg (lg:overflow-x-hidden in
+      // animal-grid.tsx), so a ring drawn outside the box loses its whole left
+      // side. ring-inset puts the same green the rest of the site answers the
+      // keyboard with where the black outline used to be, and keeps it.
+      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring max-lg:tap-target"
     >
       <span className="truncate">{label}</span>
       {hint ? (
@@ -232,7 +248,7 @@ export function FilterSectionHeader({
         // motion-reduce:duration-0, not motion-reduce:animate-none: see the
         // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
         // guard does not actually take effect here.
-        <span className="max-w-28 truncate rounded-full border border-[var(--filter-accent-border)]/50 bg-[var(--filter-accent)] px-2 py-px text-3xs font-medium normal-case tracking-normal text-[var(--filter-accent-foreground)] animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
+        <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
           {collapse.summary}
         </span>
       ) : null}

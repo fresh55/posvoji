@@ -8,7 +8,6 @@ import { AnimalPageGallery } from "@/components/animal-page-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
-import { Badge } from "@/components/ui/badge";
 import { animalFields } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { animalPath, findAnimalBySlug, posterPath } from "@/lib/animal-path";
@@ -16,7 +15,7 @@ import { loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { homePath, shelterPath } from "@/lib/shelter-path";
-import { speciesLabel } from "@/lib/labels";
+import { animalSubtitle } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 /** The label names the destination, not the mechanism.
@@ -135,16 +134,27 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             // and there it is a little under half the viewport, and below
             // sm it is the whole column.
             sizes="(min-width: 1024px) 31rem, (min-width: 640px) 47vw, 100vw"
-            className="relative aspect-[4/3] overflow-hidden rounded-ui border bg-muted"
+            // rounded-xl and no border, which is the grid card's photo
+            // frame (PHOTO_FRAME in animal-card.tsx): a visitor arrives
+            // here from that photo, and the same picture should not change
+            // shape or grow an edge of its own on the way. bg-muted stays,
+            // as the ground the photo loads onto.
+            className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted"
           />
         )}
 
         <div className="space-y-5">
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
-                {animal.name ?? messages.unnamed}
-              </h1>
+              {/* The status beside the name, the way the dialog sets it: a
+                  reserved or adopted animal is a fact about the whole page
+                  and belongs on the line that names it. */}
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {animal.name ?? messages.unnamed}
+                </h1>
+                <StatusBadge status={animal.status} locale={locale} />
+              </div>
               {/* A visitor who arrived by a shared link is the one most
                   likely to pass it on again. */}
               <ShareButton
@@ -152,41 +162,48 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 name={animal.name ?? messages.unnamed}
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">
-                {speciesLabel(animal.species, locale)}
-              </Badge>
-              <StatusBadge status={animal.status} locale={locale} />
-            </div>
+            {/* The species and the breed as one muted line, which is how the
+                dialog prints them. This page drew the species as a filled
+                pill on a line of its own above the outlined fact badges, so
+                one fact wore a third badge style the dialog never used. */}
+            <p className="text-sm text-muted-foreground">
+              {animalSubtitle(animal, locale)}
+            </p>
           </div>
 
           <AnimalFacts animal={fields} reference={reference} />
+
+          {/* The shelter and the one call to action, in the column beside
+              the photo rather than in a band under both. At 1440 the facts
+              ended a third of the way down the photo and the box then ran
+              the full width below it, so the page's one button sat under an
+              empty half-column. Beside the photo the column reads as the
+              dialog's card does: name, facts, then who to write to. Below
+              sm there is one column and nothing moves. */}
+          <ShelterBlock
+            animal={fields}
+            logos={getShelterLogos()}
+            reference={reference}
+          />
         </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <ShelterBlock
-          animal={fields}
-          logos={getShelterLogos()}
-          reference={reference}
-        />
-
-        {/* ?zival= is how a page outside the list asks the list to open
-            an animal. The index swaps it for this page's own address as
-            soon as it has read it, so the two agree on where the animal
-            lives, and old links written before that address existed keep
-            working. */}
-        {/* A link, not an outline button. The page has one call to
-            action, on the shelter block above, and a second bordered
-            control under it asked the visitor to choose between leaving
-            for the shelter and staying on the site. This is the quiet way
-            on, so it is drawn as the quiet thing it is. */}
-        {/* Both ways on off this page, in one row and in one voice. The
-            gap is wide enough that the two read as two links rather than
-            as one wrapped sentence, and they stack at a width that cannot
-            hold both. */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      {/* ?zival= is how a page outside the list asks the list to open
+          an animal. The index swaps it for this page's own address as
+          soon as it has read it, so the two agree on where the animal
+          lives, and old links written before that address existed keep
+          working. */}
+      {/* A link, not an outline button. The page has one call to
+          action, on the shelter block above, and a second bordered
+          control under it asked the visitor to choose between leaving
+          for the shelter and staying on the site. This is the quiet way
+          on, so it is drawn as the quiet thing it is. */}
+      {/* Both ways on off this page, in one row and in one voice. The
+          gap is wide enough that the two read as two links rather than
+          as one wrapped sentence, and they stack at a width that cannot
+          hold both. */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <a
             href={`${indexHref}?zival=${encodeURIComponent(animal.id)}`}
             className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
@@ -210,7 +227,6 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             <Printer className="size-4 shrink-0" aria-hidden />
             {text.printPoster}
           </a>
-        </div>
       </div>
     </SiteShell>
   );

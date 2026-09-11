@@ -22,6 +22,12 @@ import { telHref } from "@/lib/contact-links";
 import { CoverageCard } from "@/components/municipality-coverage-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useNearby } from "@/hooks/use-nearby";
 import { FOUND_ANIMAL_PLACE_PARAMS } from "@/lib/found-animal";
 import {
@@ -388,9 +394,9 @@ export function MunicipalityFinder({
               The location button lives in the field because it is another way
               of filling it and not a separate step; as a text link under the
               box it read as a footnote. Icon only, named for screen readers
-              and on hover: the arrow is the glyph every map app uses for the
-              same thing, and the pressed state plus the placeholder say when
-              it is the answer. Below lg each is its own 44px target. */}
+              and in a tooltip: the arrow is the glyph every map app uses for
+              the same thing, and the pressed state plus the placeholder say
+              when it is the answer. Below lg each is its own 44px target. */}
           <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
             {query !== "" && (
               <Button
@@ -407,36 +413,47 @@ export function MunicipalityFinder({
                 <X className="size-4" aria-hidden />
               </Button>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => {
-                // Let the location toggle cancel an active or pending fix;
-                // typing's turnOff would reset it before toggle reads it.
-                setAsked(NOT_ASKED);
-                setHighlighted(null);
-                setDismissed(false);
-                locate();
-              }}
-              aria-pressed={state.status === "on"}
-              aria-label={
-                state.status === "locating" ? messages.locating : messages.muniHere
-              }
-              title={messages.muniHere}
-              className={cn(
-                "max-lg:size-11",
-                state.status === "on"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground",
-              )}
-            >
-              {state.status === "locating" ? (
-                <LoaderCircle className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Navigation className="size-4" aria-hidden />
-              )}
-            </Button>
+            {/* The name was drawn on hover by a title, which a keyboard never
+                reaches. The tooltip opens on focus too, and says whatever the
+                accessible name says, so the two can never disagree. */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      // Let the location toggle cancel an active or pending fix;
+                      // typing's turnOff would reset it before toggle reads it.
+                      setAsked(NOT_ASKED);
+                      setHighlighted(null);
+                      setDismissed(false);
+                      locate();
+                    }}
+                    aria-pressed={state.status === "on"}
+                    aria-label={
+                      state.status === "locating" ? messages.locating : messages.muniHere
+                    }
+                    className={cn(
+                      "max-lg:size-11",
+                      state.status === "on"
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {state.status === "locating" ? (
+                      <LoaderCircle className="size-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Navigation className="size-4" aria-hidden />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {state.status === "locating" ? messages.locating : messages.muniHere}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>

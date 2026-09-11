@@ -71,6 +71,6 @@ describe("the phone jump strip", () => {
     // only be a second copy to keep in step.
     expect(maribor.getAttribute("aria-label")).toBeNull();
     expect(maribor.querySelector("svg")).toBeNull();
-    expect(maribor.className).not.toContain("filter-accent");
+    expect(maribor.className).not.toContain("brand");
   });
 });

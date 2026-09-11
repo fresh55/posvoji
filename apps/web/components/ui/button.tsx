@@ -11,8 +11,21 @@ import { cn } from "@/lib/utils"
 // itself, and those three measured 1.49:1, 1.91:1 and 2.29:1. What stays
 // washed is decoration standing behind a border that is now solid on its own:
 // the variant's fill and hover, and the aria-invalid ring below.
+//
+// The transition names its properties instead of shadcn's transition-all,
+// which eases every animatable one including width, height and padding. A
+// button's label is not fixed here: the sort trigger's value changes with the
+// order, the picker trigger's with the shelter, a count inside one changes
+// with the filters. Under transition-all each of those slid its own edges for
+// 150ms after the text had already been replaced, which reads as the control
+// being dragged rather than as its contents changing. The list is what the
+// variants and sizes above actually move: colour, fill and border on hover and
+// on the expanded state, box-shadow for the focus ring and shadow-xs, opacity
+// for disabled, and transform for the active:translate-y-px press. The two
+// that have to stay in it are box-shadow, which is the focus ring
+// (toolbar-trigger.ts documents what dropping it costs), and transform.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-ui border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-ui border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,opacity,transform] outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

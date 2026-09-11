@@ -51,9 +51,9 @@ describe("the site shell", () => {
     expect(main?.getAttribute("tabindex")).toBe("-1");
   });
 
-  // The frame in one order for every page. The slots are what the nine
-  // disagreed about: the home page's redirect above the header, BackToTop
-  // between the main and the footer on the two long pages.
+  // The slots in one order for every page. They are what the nine disagreed
+  // about: the home page's redirect above the header, BackToTop between the
+  // main and the footer on the two long pages.
   it("draws its slots in one order", () => {
     const { container } = render(
       <SiteShell
@@ -67,20 +67,32 @@ describe("the site shell", () => {
       </SiteShell>,
     );
 
-    const frame = container.firstElementChild;
+    // Document order, whatever the nesting: the header and the footer are
+    // bands of their own and the main sits inside the page frame between
+    // them, so the five are no longer siblings.
     expect(
-      [...(frame?.children ?? [])].map(
+      [...container.querySelectorAll("[data-testid], header, main")].map(
         (node) => node.getAttribute("data-testid") ?? node.tagName.toLowerCase(),
       ),
-    ).toEqual(["before", "header", "main", "after-main", "footer"]);
-    // The frame's own classes, which every page shared to the byte and which
-    // this is now the only copy of.
-    expect(frame?.className).toBe(
-      "mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter",
+    ).toEqual(["before", "header", "main", "content", "after-main", "footer"]);
+    // The column is the viewport's width and the frame is the main's alone,
+    // so the header's and the footer's rules can run edge to edge while the
+    // content keeps the measure every page shared. Both strings live here
+    // and nowhere else.
+    const column = container.firstElementChild;
+    expect(column?.className).toBe("flex min-h-dvh flex-col");
+    const main = container.querySelector("main");
+    expect(main?.parentElement?.className).toBe(
+      "mx-auto flex w-full max-w-7xl flex-1 flex-col px-gutter",
     );
+    // BackToTop's slot is inside the frame with the main, not out in the
+    // column: a page's after-main is part of the page.
+    expect(
+      container.querySelector('[data-testid="after-main"]')?.parentElement,
+    ).toBe(main?.parentElement);
     // The one part the pages genuinely vary, and nothing else lands on the
     // main with it.
-    expect(container.querySelector("main")?.className).toBe("page-main");
+    expect(main?.className).toBe("page-main");
     expect(container.querySelector('main [data-testid="content"]')).not.toBeNull();
   });
 

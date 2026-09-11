@@ -341,7 +341,7 @@ export function SizePawCards({
                   card's own overflow. */}
               <m.span
                 aria-hidden
-                className="pointer-events-none absolute -bottom-2 -right-1.5 -z-10 text-[var(--filter-accent-strong)]"
+                className="pointer-events-none absolute -bottom-2 -right-1.5 -z-10 text-brand-strong"
                 // A real initial, so a card checked from the URL stamps its
                 // mark on load instead of having it already there.
                 initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
@@ -401,7 +401,7 @@ export function SizePawCards({
                 {celebrating && landing.dust && !shouldReduceMotion ? (
                   <m.span
                     key={`dust-${celebration?.id}`}
-                    className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full bg-[var(--filter-accent-strong)]"
+                    className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full bg-brand-strong"
                     initial={{ opacity: 0.4, scaleX: 0.7 }}
                     animate={{ opacity: 0, scaleX: 1.6 }}
                     transition={{
@@ -470,7 +470,7 @@ export function SizePawCards({
                             landing.iconClassName,
                             "transition-[color,transform,opacity] duration-200",
                             checked
-                              ? "text-[var(--filter-accent-strong)]"
+                              ? "text-brand-strong"
                               : "text-muted-foreground",
                             // A dead option has nothing to stand up for, so
                             // its paw tips over.

@@ -129,15 +129,11 @@ function HeaderActions() {
         <Button asChild variant="outline" size="sm">
           {/* A new tab, so a shelter checking the public page does not
               lose the workspace it was halfway through. */}
-          <a
-            href={`/zavetisca/${active}`}
-            target="_blank"
-            rel="noreferrer"
-            title={portalText.publicPage}
-          >
+          <a href={`/zavetisca/${active}`} target="_blank" rel="noreferrer">
             <ExternalLink aria-hidden />
             {/* The label collapses on a phone but stays readable to a
-                screen reader, so the icon is never the only name. */}
+                screen reader, so the icon is never the only name. A title
+                said the same words a second time, and only to a pointer. */}
             <span className="sr-only sm:not-sr-only">
               {portalText.publicPage}
             </span>

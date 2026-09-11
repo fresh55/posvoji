@@ -28,6 +28,17 @@ function shelter(over: Partial<ShelterCardData> = {}): ShelterCardData {
   };
 }
 
+// A mark, for the cases that turn on whether the card has one. A wordmark's
+// proportions, because that is what most of the register's logos are.
+const LOGO = {
+  url: "/media/shelter-logos/abc.webp",
+  chipOnLight: false,
+  chipOnDark: true,
+  opaque: false,
+  width: 300,
+  height: 100,
+};
+
 describe("the shelter card", () => {
   it("names the link with the shelter and nothing else on the card", () => {
     render(<ShelterCard shelter={shelter()} text={text} />);
@@ -125,7 +136,7 @@ describe("the shelter card", () => {
     expect(within(link).getByText("zonzani.si")).toBeTruthy();
   });
 
-  it("falls back to an initial when the shelter has no logo", () => {
+  it("draws no mark when the shelter has no logo", () => {
     render(
       <ShelterCard
         shelter={shelter({ name: "Veterinarska bolnica Brežice" })}
@@ -134,15 +145,12 @@ describe("the shelter card", () => {
     );
 
     // The manifest is read at build time, so a shelter without a logo never
-    // risks a 404: it gets a letter, and that letter is decoration the name
-    // beside it already says.
-    //
-    // The letter is the first distinctive word's, not the name's first
-    // character: half the register opens with "Zavetišče" or "Veterina", so
-    // the head of the name drew the same plate on card after card. See
-    // lib/shelter-initial.ts.
+    // risks a 404. It used to get a letter in a disc instead, which beside
+    // the real marks read as a placeholder; the left of the row is empty now
+    // and the no-list line on the right holds it.
     expect(screen.queryByRole("img")).toBeNull();
-    expect(screen.getByText("B")).toBeTruthy();
+    expect(screen.queryByText("B")).toBeNull();
+    expect(screen.getByText(text.noAnimals)).toBeTruthy();
   });
 
   it("draws the logo when the manifest has one", () => {
@@ -220,24 +228,23 @@ describe("the shelter card", () => {
     expect(area(wordmark) / area(portrait)).toBeLessThan(2);
   });
 
-  it("keeps the green off a mark for a shelter that shares no list", () => {
-    // Green says one thing on this site, and the count pill beside the mark
-    // says it too. An avatar wearing it on a contact-only shelter would be
-    // claiming a list we do not have.
-    const plate = (over: Partial<ShelterCardData>) => {
-      const { container } = render(
-        <ShelterCard
-          shelter={shelter({ name: "Zavetišče Potepuhi", ...over })}
-          text={text}
-        />,
-      );
-      // The letter is the shelter's own initial, cut past the generic first
-      // word: "Zavetišče Potepuhi" draws a P. See lib/shelter-initial.ts.
-      return within(container).getByText("P").className;
-    };
+  it("draws no mark for a shelter without a logo, whatever it shares", () => {
+    // Green says one thing on this site, and the count pill is where the
+    // card says it. The mark used to be a lettered disc for a shelter with
+    // no logo, and it wore the same green on a provider; with no disc drawn
+    // at all, the pill carries the statement alone.
+    const { container } = render(
+      <ShelterCard
+        shelter={shelter({ name: "Zavetišče Potepuhi", animals: 4 })}
+        text={text}
+      />,
+    );
 
-    expect(plate({ animals: 4 })).toContain("--filter-accent");
-    expect(plate({})).not.toContain("--filter-accent");
+    expect(within(container).queryByText("P")).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+    expect(within(container).getByText("4 živali").className).toContain(
+      "bg-brand",
+    );
   });
 
   it("says how many animals a shelter that shares its list holds", () => {
@@ -283,7 +290,10 @@ describe("the shelter card", () => {
 
   it("puts the name above the mark on a phone and leaves the band alone", () => {
     const { container } = render(
-      <ShelterCard shelter={shelter({ animals: 2 })} text={text} />,
+      <ShelterCard
+        shelter={shelter({ animals: 2, logo: LOGO })}
+        text={text}
+      />,
     );
 
     // Below sm the grid is one column, so the card has no row to align its
@@ -303,6 +313,55 @@ describe("the shelter card", () => {
     expect(order("item-content")).toContain("max-sm:order-first");
     expect(order("item-media")).not.toContain("order-");
     expect(order("item-footer")).not.toContain("order-");
+  });
+
+  it("folds the count onto the town's line on a phone with no mark", () => {
+    const { container } = render(
+      <ShelterCard shelter={shelter({ animals: 2 })} text={text} />,
+    );
+
+    // With no mark the media row is one short phrase, and under the town it
+    // took a line of the card to say it. Below sm the card wraps instead: the
+    // row is pushed to the right edge and set against the bottom of the name
+    // block, which is the town's line, and the contacts take a full basis so
+    // they keep a line under both. Everything asserted here is max-sm, so the
+    // subgrid band from sm up is the same on every card, mark or no mark.
+    const card = container.querySelector("li");
+    expect(card?.className).toContain("max-sm:flex-wrap");
+    expect(card?.className).not.toContain("max-sm:flex-col");
+
+    const media = container.querySelector('[data-slot="item-media"]');
+    expect(media?.className).toContain("max-sm:ml-auto");
+    expect(media?.className).toContain("max-sm:self-end");
+    // The name block grows from a zero basis, or a long name's own width
+    // takes the whole first line and the count drops under it again.
+    const content = container.querySelector('[data-slot="item-content"]');
+    expect(content?.className).toContain("max-sm:basis-0");
+    expect(content?.className).toContain("max-sm:flex-1");
+    expect(
+      container.querySelector('[data-slot="item-footer"]')?.className,
+    ).toContain("max-sm:basis-full");
+  });
+
+  it("states the count once per card, whichever phone layout it gets", () => {
+    const card = (over: Partial<ShelterCardData>) =>
+      render(<ShelterCard shelter={shelter(over)} text={text} />).container;
+
+    // The browser suite adds data-animals up against the census line and
+    // counts the cards that carry data-no-list, so a card that drew either of
+    // them twice, one copy hidden behind a breakpoint, would be a card
+    // counted twice. That is why the fold is CSS over one element rather than
+    // a second element for the phone.
+    expect(card({ animals: 2 }).querySelectorAll("[data-animals]")).toHaveLength(
+      1,
+    );
+    expect(
+      card({ animals: 2, logo: LOGO }).querySelectorAll("[data-animals]"),
+    ).toHaveLength(1);
+    expect(card({}).querySelectorAll("[data-no-list]")).toHaveLength(1);
+    expect(card({ logo: LOGO }).querySelectorAll("[data-no-list]")).toHaveLength(
+      1,
+    );
   });
 
   it("draws the phone card tighter and its name larger", () => {

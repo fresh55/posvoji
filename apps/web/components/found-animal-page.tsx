@@ -77,7 +77,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
     >
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.muniTab} />
-        <h1 className="text-balance text-xl font-medium tracking-tight sm:text-2xl md:text-3xl">
+        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
           {messages.muniPromptTitle}
         </h1>
       </div>

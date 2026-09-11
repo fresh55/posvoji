@@ -27,7 +27,12 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
   const messages = getMessages(locale);
 
   return (
-    <header className="bleed relative flex items-center justify-between gap-4 border-b py-4">
+    /* The band is the viewport's width and its rule runs edge to edge; the
+       row inside it is the page frame, so the brand and the controls line up
+       with the main below (site-shell.tsx). It used to bleed out of the
+       frame instead, and the rule stopped where the frame did. */
+    <header className="border-b">
+    <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-gutter py-4">
       {/* The first focusable thing in the document, before the brand. Every
           navigation on this site is a document load, so the chrome's tab
           stops are paid again on every page a keyboard visitor opens rather
@@ -35,12 +40,12 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
           them. The two bypass links inside the page skip a list; this one
           skips the chrome, which nothing else could.
 
-          relative on the header above, because the link goes absolute on
+          relative on the row above, because the link goes absolute on
           focus and an absolutely positioned flex item otherwise resolves
           against the initial containing block and lands on top of the logo.
-          left-gutter and not left-0: the header bleeds to the shell edge, so
-          the padding box an absolute child measures from starts outside the
-          page's own column. */}
+          left-gutter and not left-0: the row's padding is the page gutter,
+          and an absolute child measures from the padding box's edge, so the
+          gutter puts the link on the page's own column. */}
       <a
         href={`#${CONTENT_ID}`}
         className={SKIP_LINK_PINNED}
@@ -106,6 +111,7 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
         <ShelterLogin />
         <SiteMenu paths={languagePaths} />
       </div>
+    </div>
     </header>
   );
 }

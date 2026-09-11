@@ -359,15 +359,21 @@ export const STATUS_META: Record<PortalStatus, StatusMeta> = {
     label: "Na voljo",
     icon: PawPrint,
     badge:
-      "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+      "border-brand-border bg-brand text-brand-foreground",
   },
   reserved: {
     label: "Rezerviran",
     icon: BookmarkCheck,
+    // The warn family, spelled as ui/badge.tsx's warn variant spells it. The
+    // hover half repeats the resting values on purpose: it is there to stop
+    // the choice card's own hover wash from taking the tone off a card that is
+    // already picked, so it has to be the same three tokens and not quieter
+    // ones. The ink is amber-800 rather than the amber-700 this held, which on
+    // the 15% wash moves the 2xs badge from 4.49:1 to 6.34:1.
     selected:
-      "border-amber-500/40 bg-amber-500/15 text-amber-700 hover:border-amber-500/40 hover:bg-amber-500/15 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-300",
+      "border-warn-border bg-warn text-warn-foreground hover:border-warn-border hover:bg-warn hover:text-warn-foreground",
     badge:
-      "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+      "border-warn-border bg-warn text-warn-foreground",
   },
   adopted: {
     label: "Oddan",

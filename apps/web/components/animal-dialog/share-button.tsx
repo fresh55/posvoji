@@ -76,7 +76,7 @@ function WhatsAppMark() {
 // use rather than each brand's own colour, which would turn the popover into
 // a logo wall.
 const TARGET_CLASS =
-  "flex size-11 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none";
+  "flex size-11 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-xs transition-colors hover:border-brand-border hover:bg-brand hover:text-brand-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none";
 
 function Target({
   label,
@@ -281,7 +281,7 @@ export function ShareButton({
             aria-label={copied ? text.copied : text.copy}
             className={cn(
               copied &&
-                "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+                "border-brand-border bg-brand text-brand-foreground",
             )}
           >
             {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
@@ -297,7 +297,7 @@ export function ShareButton({
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="min-h-4 text-center text-xs text-[var(--filter-accent-strong)]"
+          className="min-h-4 text-center text-xs text-brand-strong"
         >
           {copied ? messages.linkCopied : null}
         </p>

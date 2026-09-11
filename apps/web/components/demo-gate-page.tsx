@@ -144,10 +144,13 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
       >
         <div className="flex flex-col items-center gap-5 text-center">
           {/* The drawn logo is 32px, so the link needs the utility to reach a
-              finger; site-header.tsx carries it on the same lockup. */}
+              finger; site-header.tsx carries it on the same lockup. rounded-ui
+              and not rounded-sm with it: a lockup the size of a button is a
+              control, and the small step is for the ring of a link inside a
+              line of text. */}
           <a
             href={HOME_PATHS[locale]}
-            className="inline-flex items-center gap-2 rounded-sm text-lg font-semibold max-lg:tap-target focus-visible:outline-2 focus-visible:outline-offset-4"
+            className="inline-flex items-center gap-2 rounded-ui text-lg font-semibold max-lg:tap-target focus-visible:outline-2 focus-visible:outline-offset-4"
             aria-label="posvoji.si"
           >
             <Logo className="h-8 w-auto shrink-0" />
@@ -165,7 +168,7 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
             />
           </figure>
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
               {text.title}
             </h1>
             <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

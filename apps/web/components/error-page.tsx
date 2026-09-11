@@ -56,7 +56,7 @@ export function ErrorPage({
         tabIndex={-1}
         className="flex flex-1 flex-col items-center justify-center gap-4 py-page-y text-center"
       >
-        <h1 className="text-2xl font-medium tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {messages.errorTitle}
         </h1>
         <div className="flex flex-wrap items-center justify-center gap-3">

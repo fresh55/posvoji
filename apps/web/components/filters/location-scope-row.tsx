@@ -200,9 +200,16 @@ export function LocationScopeRow({
 
             Not drawn at all in the one-row layout: there the glyph moves down
             into the sentence's own line and the plate, the wash and the whole
-            96px card go with it. */}
+            96px card go with it.
+
+            rounded-ui, the radius the button around it already carries. This
+            is a content surface, which is what that step is for (--radius-ui in
+            globals.css), and the wash is inset only 8px from the button's
+            border, so its corner is read against that one rather than on its
+            own: rounded-md's 8px beside 10px was two shapes disagreeing by an
+            amount too small to look deliberate. */}
         {!oneRow && (
-          <span className="flex justify-center rounded-md bg-muted/40 py-1">
+          <span className="flex justify-center rounded-ui bg-muted/40 py-1">
             {/* The same live preview the toolbar trigger draws, from the same
                 region shapes and the same density computation, grown from a
                 glyph into a centered plate so the row shows what is behind it

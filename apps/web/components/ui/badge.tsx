@@ -13,8 +13,17 @@ import { cn } from "@/lib/utils"
 // paired line-height on purpose (see globals.css), so a badge that sets only a
 // font size inherits its leading from whatever it happens to sit in and changes
 // height when the webfont swaps. Any tier added back here brings its own h-*.
+//
+// The transition names its properties rather than easing all of them, which
+// bites harder here than on a button: most badges hold a number, and w-fit
+// means a number that grows a digit grows the box. Under transition-all the
+// count beside "Filtri" eased its width every time it changed, so the badge
+// crept outwards after the digit inside it had already swapped, and CountRoll's
+// own roll played against a box still moving under it. What is left is what the
+// variants change: colour, fill, border, the focus ring's box-shadow, opacity
+// and transform.
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,opacity,transform] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {

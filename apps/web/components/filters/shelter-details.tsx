@@ -117,7 +117,7 @@ export function ShelterDetails({
               {faces.map((face) => (
                 <span
                   key={face.src}
-                  className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-md border border-border/60 bg-muted"
+                  className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-ui border border-border/60 bg-muted"
                 >
                   <Image
                     src={thumbnailUrl(face.src)}

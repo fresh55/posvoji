@@ -486,10 +486,12 @@ export function ShelterRows({
                 </span>
                 {/* A stable count column makes the roster easy to compare.
                   The checkbox carries selection; every count keeps the same
-                  neutral badge and tabular figures. */}
+                  neutral badge and tabular figures. The badge keeps its own
+                  pill corners: an 8px override here was the one squared
+                  badge on the site. */}
                 <Badge
                   variant="secondary"
-                  className="h-6 min-w-8 shrink-0 rounded-md px-1.5 text-xs font-medium tabular-nums"
+                  className="h-6 min-w-8 shrink-0 px-1.5 text-xs font-medium tabular-nums"
                 >
                   {countLabel ? (
                     <>

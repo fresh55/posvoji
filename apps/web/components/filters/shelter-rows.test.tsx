@@ -172,7 +172,7 @@ describe("ShelterRows selection and counts", () => {
     const countIndex = row.indexOf(">5<");
     expect(countIndex).toBeGreaterThan(-1);
     expect(countIndex).toBeGreaterThan(labelIndex);
-    expect(row).toContain("rounded-md");
+    expect(row).not.toContain("rounded-md");
     expect(row).toContain("min-w-8");
     expect(row).toContain("tabular-nums");
   });

@@ -136,22 +136,38 @@ describe("AnimalCard long-stay mark", () => {
   });
 
   // Off only where the list around the card is already ordered by the wait,
-  // which is one caller (animal-grid.tsx under its default sort). Every test
-  // above renders without the prop, which is the other half of this: the mark
-  // is on unless somebody says otherwise.
-  it("drops the mark when the caller says the order already carries it", () => {
+  // which both grids are under their default sort. Every test above renders
+  // without an order, which is the other half of this: a caller that has no
+  // order to declare gets the mark.
+  it("drops the mark where the order already carries it", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
           animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) })}
           reference={NOW}
-          showWaitMark={false}
+          order="longest-in-shelter"
           onOpen={() => undefined}
         />
       </I18nProvider>,
     );
 
     expect(screen.queryByText(/Čaka/)).toBeNull();
+  });
+
+  // Any other order leaves the mark on: the list is not saying it.
+  it("draws the mark under an order that says nothing about the wait", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) })}
+          reference={NOW}
+          order="name"
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText(/Čaka/)).toBeTruthy();
   });
 });
 
@@ -203,9 +219,12 @@ describe("AnimalCard status", () => {
 
 /** The card's fact line, found through the heading it sits under rather than
  *  by taking the document's first <p>. */
+function metaEl() {
+  return screen.getByRole("heading").parentElement?.querySelector("p");
+}
+
 function metaLine() {
-  return screen.getByRole("heading").parentElement?.querySelector("p")
-    ?.textContent;
+  return metaEl()?.textContent;
 }
 
 describe("AnimalCard meta line", () => {
@@ -278,7 +297,7 @@ describe("AnimalCard meta line", () => {
       </I18nProvider>,
     );
 
-    const line = screen.getByRole("heading").parentElement?.querySelector("p");
+    const line = metaEl();
     expect(line?.className).toContain("text-foreground");
     expect(line?.className).not.toContain("text-muted-foreground");
     expect(

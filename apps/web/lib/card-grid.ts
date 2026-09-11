@@ -20,11 +20,20 @@ export const CARD_GRID =
 // band below is the column itself. When the card was a bordered surface each
 // band ended in "- 2px" for the two edges the photo sat inside.
 //
-// Widths only, which is why the frame's aspect ratio never appears here. The
-// photo is square below sm and 4/3 above it (PHOTO_FRAME in animal-card.tsx);
-// a browser picks its rung off the declared width and the image's own
-// dimensions, and object-cover crops the rest, so changing the frame's height
-// moves nothing in this list.
+// Widths only, because a width is what a browser reads here: it picks a rung
+// off the declared width and its own pixel ratio, and never off the box's
+// height.
+//
+// Which makes the square phone frame a trade rather than a non-event. A 4/3
+// photo covering a square box is scaled until it is as tall as the box and then
+// cropped at the sides, so below sm a card draws about a third fewer source
+// pixels per drawn pixel than it did at 4/3: on a 412px screen at 1.75x the 320
+// rung used to land exactly and now stretches about 1.3x. Declaring these two
+// bands 4/3 wider would buy that back and move most phones up a rung, from a
+// mean 13KB to a mean 24KB a photo across sixty cards, which is the wrong way
+// to spend a phone connection on a 163px thumbnail. Sources that are already
+// square or portrait, 29% of the register's first photos, lose nothing either
+// way.
 //
 // The page is `max-w-7xl px-gutter`, --gutter is 1rem below sm, 1.5rem from sm
 // and 2rem from lg (globals.css), and the grid's own gap is 1rem throughout.
@@ -51,6 +60,18 @@ export const CARD_GRID =
 //
 // Understating any band picks a rung too small and the photo goes soft, so
 // where a band is stated as a single length it is the widest card in it.
+// The card photo's box, in one place because three of them have to agree: the
+// frame itself, the skeleton the grid draws in its place before hydration, and
+// card-paint's height estimate in globals.css.
+//
+// Square below sm and 4/3 from there. Below sm the grid is two hard-coded
+// columns (CARD_GRID above), so a 375px screen draws a 163px card: a 4/3 photo
+// in it is 123px tall under a text block of about 100px, and the card is nearly
+// half words. The square gives the picture back 40px of height without touching
+// the column count, and from sm the card is wide enough that 4/3 is the better
+// frame for a photograph.
+export const CARD_PHOTO_ASPECT = "aspect-square sm:aspect-[4/3]";
+
 export const CARD_PHOTO_SIZES =
   "(max-width: 639px) calc(50vw - 24px)," +
   " (max-width: 703px) calc(50vw - 32px)," +

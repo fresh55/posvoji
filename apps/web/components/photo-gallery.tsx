@@ -90,28 +90,61 @@ const OWN_BUTTON_CLASS =
 // Behaviour is untouched. Everything the card changes here is paint: the
 // opacity and pointer-events gating, the press exemption and the aria come
 // from OWN_BUTTON_CLASS and the buttons themselves, whatever the surface.
-const CARD_BUTTON_CLASS = "bg-background/85 shadow-none ring-1 ring-black/10";
+//
+// Two whole descriptions rather than five questions asked one after another,
+// so what a chevron looks like on either surface is one thing to read. The
+// icon size is stated only where it departs from the button's own: the base
+// rule in ui/button.tsx sizes a bare icon at 16px, which is what the plain
+// surface wants, and icon-xs takes it to 12px, which is a step small for a
+// chevron a thumb is aiming at.
+const CARD_CHEVRON = {
+  size: "icon-xs",
+  icon: "size-3.5",
+  previous: "left-2",
+  next: "right-2",
+  className: `${OWN_BUTTON_CLASS} bg-background/85 shadow-none ring-1 ring-black/10`,
+} as const;
 
-// The dots inside a grid card, which the chevrons' own conditions bring back.
-// A card's dots used to stand on the photograph the whole time the grid was
-// open: sixty rows of them across a screen of paws and legs, on cards nobody
-// was pointing at. They are a hint about the photo under the pointer, so they
-// wait for it, and they arrive with the chevrons rather than a beat before
-// them: the same group, the same hover, the same focus.
+const PLAIN_CHEVRON = {
+  size: "icon-sm",
+  icon: undefined,
+  previous: "left-1.5",
+  next: "right-1.5",
+  className: OWN_BUTTON_CLASS,
+} as const;
+
+// The dots inside a grid card, which the card's own hover and focus bring
+// back. They used to stand on the photograph the whole time the grid was open:
+// sixty rows of them across a screen of paws and legs, on cards nobody was
+// pointing at.
 //
-// pointer-fine, because a hide has to be paid for by a reveal. Tailwind wraps
-// hover in @media (hover: hover), so on a phone the reveal never fires, and a
-// hide that was not gated would leave a swipeable gallery with nothing at all
-// saying there is more than one photo. A coarse pointer keeps them standing.
+// The card's conditions and not the photo's, which is what the chevrons use.
+// The dots say which picture of how many this is, and the visitor who cannot
+// read that off the picture is the one stepping through the gallery from the
+// keyboard: those arrow keys live on the card's link (stepPhoto in
+// animal-card.tsx), which is a sibling of this frame, so a focus condition
+// scoped to the photo never fires for them and they would drive a gallery with
+// nothing on screen keeping their place. group-focus-within/card does fire, and
+// a pointer that is on the photo is on the card anyway.
 //
-// The card only. The animal page and the dialog draw one photo the visitor
-// came for, and there the row is the only marker of the set.
+// can-hover and not pointer-fine, because a hide has to be paid for by a
+// reveal and it has to be written against the same question. The reveal is a
+// hover variant, which Tailwind wraps in @media (hover: hover); a hide gated on
+// (pointer: fine) instead also catches the fine pointers that never hover, a
+// stylus and a TV remote among them, and left those with a swipeable gallery
+// and nothing saying there was more than one photo. A touch screen keeps its
+// dots for the same reason.
+//
+// The card only. The animal page and the dialog draw one photo the visitor came
+// for, and there the row is the only marker of the set.
 const CARD_DOTS_CLASS =
-  "pointer-fine:opacity-0 pointer-fine:group-hover/photo:opacity-100 pointer-fine:group-focus-within/photo:opacity-100";
+  "transition-opacity can-hover:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100";
 
-// What a caller that names no frame gets. The grid card names its own
-// (PHOTO_FRAME in animal-card.tsx) and this repeats it, so a gallery mounted
-// bare draws the same box the cards do rather than a third shape.
+// What a caller that names no frame gets. Deliberately not the card's shape:
+// the card's box is square below sm (CARD_PHOTO_ASPECT in lib/card-grid.ts)
+// because sixty of them at two columns is mostly words otherwise, and a gallery
+// standing on its own is not in that grid. 4/3 is the plain frame for a
+// photograph and this is the only place that still says so.
 const DEFAULT_WRAPPER_CLASS =
   "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted";
 
@@ -161,6 +194,12 @@ type PhotoGalleryProps = {
   tone?: string;
   /** Set to make the photo a link; leave out for a plain surface. */
   href?: string;
+  /** Which surface is drawing this gallery, for the handful of paint rules
+   *  that belong to the grid card alone: smaller chevrons, dots that wait for
+   *  the pointer, a photo dimmed in the dark theme. All three follow from the
+   *  photo being small and one of sixty, not from anything this component can
+   *  work out for itself, so the card says so. */
+  variant?: "card" | "plain";
   // Runs only for a click the swipe handler did not already swallow. The
   // event comes along because the caller decides whether to keep the
   // navigation (a modified click) or take it over.
@@ -185,6 +224,7 @@ export function PhotoGallery({
   className,
   tone,
   href,
+  variant = "plain",
   onNavigate,
   index,
   onIndexChange,
@@ -228,13 +268,13 @@ export function PhotoGallery({
   const image = images[imageIndex];
   const hasGallery = images.length > 1;
   const dots = photoDotWindow(images.length, imageIndex);
-  // The grid card is the one surface that hands this gallery an href: it is
-  // the only one whose photo opens something, and the rule above
-  // (CARD_DOTS_CLASS) is the card's alone. Read off the prop
-  // rather than off a CSS ancestor, because the card's marker is group/card,
-  // and a variant naming it has to escape the slash, which a JSX string
-  // literal then eats before Tailwind and the DOM can agree on the class.
-  const cardSurface = href !== undefined;
+  // The card's own paint rules, and nothing else's. This used to read the
+  // href, which the grid card happens to be the only caller to pass: true
+  // today, and a trap for the first caller with a good reason to link a photo
+  // that is not a 163px thumbnail, who would get card chevrons and hiding dots
+  // with no way to decline either. The href says the photo is a link, which is
+  // all it ever said.
+  const cardSurface = variant === "card";
   // Without an href there is no card link for the arrows to live on, and the
   // chevrons' way out of the tab order (see the comment on them below) was
   // written for that link. The animal's own page has no such link, so on a
@@ -244,18 +284,11 @@ export function PhotoGallery({
   // The dialog handles its own arrows in photo-spread.tsx, and mounts this
   // component only for an animal with no photo at all, where hasGallery is
   // false. So the two can never answer the same key press.
-  const keyboardGallery = hasGallery && !cardSurface;
-  // The card's smaller chevrons (CARD_BUTTON_CLASS above). The disc is the
-  // button's own icon-xs rather than a size class laid over icon-sm, so
-  // nothing has to out-rank the variant's h/w, and the icon and the inset are
-  // written out per surface because Tailwind reads whole class names.
-  const chevronSize = cardSurface ? "icon-xs" : "icon-sm";
-  const chevronIconClass = cardSurface ? "size-3.5" : "size-4";
-  const chevronClass = cardSurface
-    ? `${OWN_BUTTON_CLASS} ${CARD_BUTTON_CLASS}`
-    : OWN_BUTTON_CLASS;
-  const previousEdge = cardSurface ? "left-2" : "left-1.5";
-  const nextEdge = cardSurface ? "right-2" : "right-1.5";
+  //
+  // Still the href and not the variant: this one really is about the link
+  // existing, because the link is what the keys are bound to.
+  const keyboardGallery = hasGallery && href === undefined;
+  const chevron = cardSurface ? CARD_CHEVRON : PLAIN_CHEVRON;
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -597,7 +630,7 @@ export function PhotoGallery({
           <Button
             type="button"
             variant="outline"
-            size={chevronSize}
+            size={chevron.size}
             // Out of the tab order on a card: two chevrons on every card came
             // to 850 of the grid's tab stops. The keyboard route through a
             // card's gallery is the arrow keys on the card's own link, which
@@ -621,22 +654,22 @@ export function PhotoGallery({
             // the card's case only: where there is no link these are the
             // announced way through the gallery.
             aria-hidden={keyboardGallery ? undefined : "true"}
-            className={`${chevronClass} ${previousEdge}`}
+            className={`${chevron.className} ${chevron.previous}`}
           >
-            <ChevronLeft className={chevronIconClass} aria-hidden />
+            <ChevronLeft className={chevron.icon} aria-hidden />
           </Button>
           <Button
             type="button"
             variant="outline"
-            size={chevronSize}
+            size={chevron.size}
             tabIndex={keyboardGallery ? undefined : -1}
             data-press-exempt
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
             aria-hidden={keyboardGallery ? undefined : "true"}
-            className={`${chevronClass} ${nextEdge}`}
+            className={`${chevron.className} ${chevron.next}`}
           >
-            <ChevronRight className={chevronIconClass} aria-hidden />
+            <ChevronRight className={chevron.icon} aria-hidden />
           </Button>
           {/* Dots, not a fraction. "1 / 13" is bookkeeping; a row of dots says
               "there are more photos" and which one this is in a glance, and it
@@ -649,15 +682,16 @@ export function PhotoGallery({
               photo's link, the way the fraction badge was. The sr-only line
               below still speaks the exact count.
 
-              Always here on the animal page and in the dialog, and on a phone.
-              Inside a card, on a pointer that can hover, they wait for that
-              pointer and come in with the chevrons: see CARD_DOTS_CLASS for
-              why the grid is the one place a resting row is worth hiding. */}
+              Always here on the animal page and in the dialog, and on a
+              screen that cannot hover. Inside a card, on a pointer that can,
+              they wait for it: see CARD_DOTS_CLASS for why the grid is the one
+              place a resting row is worth hiding, and why the condition is the
+              card's rather than this photo's. */}
           <div
             data-slot="photo-dots"
             aria-hidden
             className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1 transition-opacity",
+              "pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1",
               cardSurface && CARD_DOTS_CLASS,
             )}
           >

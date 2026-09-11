@@ -78,6 +78,10 @@ export function ShelterAnimalGrid({
             key={animal.id}
             animal={animal}
             reference={reference}
+            // Sorted by the wait, like the home grid's default, so the card
+            // leaves the long-stay mark off: on a shelter's own page every
+            // card in the list would otherwise wear one.
+            order={DEFAULT_ANIMAL_SORT}
             onOpen={handleOpen}
           />
         ))}

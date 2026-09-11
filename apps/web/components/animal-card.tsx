@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ClientAnimal } from "@/lib/animal";
 import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
+import { CARD_PHOTO_ASPECT, CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
   ageLabel,
@@ -28,6 +28,7 @@ import {
   shelterChipLabel,
 } from "@/lib/labels";
 import { shelterPath } from "@/lib/shelter-path";
+import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 
 // Adopted and hold are over, and the photo says so quietly: about a fifth of
@@ -46,13 +47,9 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
 // wants the larger corner; a 10px corner on a 228px picture read as tight.
 //
-// Square on a phone and 4/3 from sm. Below sm the grid is two hard-coded
-// columns (CARD_GRID), so a 375px screen draws a 163px card: a 4/3 photo in it
-// is 123px tall under a text block of about 100px, and the card is nearly half
-// words. The square gives the picture back 40px of height without touching the
-// column count, and from sm the card is wide enough that 4/3 is the better
-// frame for a photograph. CARD_PHOTO_SIZES is stated in widths only, so the
-// rung a browser downloads does not move with this.
+// The box itself is CARD_PHOTO_ASPECT, which lib/card-grid.ts owns because the
+// grid's loading skeleton and card-paint's height estimate have to agree with
+// it. Square on a phone, 4/3 from sm, and the reasoning is over there with it.
 //
 // The card's focus ring is drawn here, as an inset ring on a ::after that
 // covers the frame, whenever either of the card's links has keyboard focus.
@@ -84,7 +81,7 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  "relative aspect-square overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]" +
+  `relative ${CARD_PHOTO_ASPECT} overflow-hidden rounded-xl bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl" +
   " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
@@ -96,7 +93,7 @@ export function AnimalCard({
   eager = false,
   onOpen,
   showShelter = false,
-  showWaitMark = true,
+  order,
   className,
   style,
 }: {
@@ -113,10 +110,11 @@ export function AnimalCard({
    *  page already names itself in its heading, so a line under every card
    *  there would be the page linking to itself. */
   showShelter?: boolean;
-  /** Draws the long-stay mark on a photo that has earned one. On by default,
-   *  and the one caller that turns it off is the results grid under its own
-   *  default order; see the Badge below. */
-  showWaitMark?: boolean;
+  /** The order the list around this card is in, where it has one. The card
+   *  reads it to decide whether the long-stay mark is worth drawing; see the
+   *  Badge below. Left out on a surface with no order of its own, and then the
+   *  mark is drawn. */
+  order?: AnimalSort;
   /** The grid's, for the entrance stagger; the card has no opinion of its own. */
   className?: string;
   style?: CSSProperties;
@@ -136,6 +134,13 @@ export function AnimalCard({
   // exist, and computing it on the client would not survive hydration. A
   // modified click therefore deep links to the animal without them, while a
   // plain click keeps them and opens the dialog in place.
+  // A mark saying how long this animal has waited, except where the list it
+  // sits in is already ordered by the wait and every card would wear one. The
+  // rule lives here rather than at the call site because there are two grids
+  // and the shelter page's sorts by the wait too, so a caller passing the
+  // answer rather than the fact had to remember a rule that is really about
+  // this badge.
+  const showWaitMark = order !== "longest-in-shelter";
   const settled = animal.status === "adopted" || animal.status === "hold";
   const href = animalPath(animal, locale);
   // The href is a real deep link, so a middle click or a held modifier gets
@@ -257,6 +262,7 @@ export function AnimalCard({
           // grid's bundle.
           warmSizes={FAN_PHOTO_SIZES}
           tone={settled ? QUIET_PHOTO : undefined}
+          variant="card"
           href={href}
           onNavigate={openDialog}
           index={photoIndex}
@@ -301,13 +307,14 @@ export function AnimalCard({
           // does not work either: the default sort is longest in shelter, so
           // every card above the fold would wear it.
           //
-          // Which is also the rule showWaitMark carries. A mark on every card
-          // in a list that is already ordered by the wait says nothing the
-          // order has not said: under the default sort the first hundred cards
-          // all wore it. The results grid turns it off there and back on for
-          // every other order (animal-grid.tsx); every other surface draws it,
-          // because none of them is sorted by the wait. The animal's own page
-          // still says how long it has been waiting either way.
+          // Which is also the rule the order prop carries. A mark on every
+          // card in a list already ordered by the wait says nothing the order
+          // has not said: under the default sort the first hundred cards all
+          // wore it, and the shelter page sorts the same way. So both grids
+          // hand over the order they sorted by and the mark stays off there,
+          // while every other order and every caller with no order of its own
+          // draws it. The animal's own page says how long it has been waiting
+          // either way.
           //
           // Top right, opposite the status. The bottom edge belongs to the
           // gallery dots now, and on a phone card the two met in the middle.

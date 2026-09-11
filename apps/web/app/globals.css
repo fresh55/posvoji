@@ -21,6 +21,14 @@
 /* A phone held sideways. */
 @custom-variant short (@media (max-height: 32rem));
 
+/* A device whose pointer can hover, which is the question Tailwind's own
+   hover variant asks before it applies anything. Needed on its own wherever
+   something is hidden at rest and a hover brings it back: the hide has to be
+   written against the same query as the reveal, or a device that cannot hover
+   keeps the hide forever. `pointer-fine` is not that question. A stylus and a
+   TV remote are both fine pointers that never hover. */
+@custom-variant can-hover (@media (hover: hover));
+
 /* Keep the page frame, vertical bands, and desktop columns independent. They
    grow with the viewport, but changing one relationship must not loosen every
    other part of the page. */
@@ -677,11 +685,16 @@
    card's last real height and falls back to the length only until it has one,
    so the estimate has to hold for the first pass and no longer. A card is a
    photo over a name, a meta line and a shelter row. The photo is square below
-   sm and 4/3 above it (PHOTO_FRAME in animal-card.tsx), which puts a 375px
-   phone card at about 163 + 100 = 263px and a desktop column at about 261px.
-   16rem sits between them, and every card corrects itself the first time it is
-   drawn. It was 15rem while the phone photo was 4/3 and the phone card the
-   shorter of the two.
+   sm and 4/3 above it (CARD_PHOTO_ASPECT in lib/card-grid.ts, which CSS cannot
+   import, so this is the copy that has to be kept honest by hand), and that
+   measures 263px on a 375px phone and 261px in a desktop column.
+
+   16.5rem is 264px, a whisker above the taller of the two rather than between
+   them. Above, because the fallback is what the scrollbar believes until a card
+   has been drawn once: an estimate under the real height promises a shorter
+   page than the grid delivers, and a phone list is twice as many rows as a
+   desktop one to be wrong about. It was 15rem while the phone photo was 4/3 and
+   the phone card the shorter of the two.
 
    Safe on this element in particular: the card is already overflow-hidden and
    its one focus ring is an inset ring on an overlay inside the photo frame
@@ -691,7 +704,7 @@
    fall outside the box and be cut off. */
 @utility card-paint {
   content-visibility: auto;
-  contain-intrinsic-size: auto 16rem;
+  contain-intrinsic-size: auto 16.5rem;
 }
 
 /* A filtered link opens on a page that cannot know it was filtered. next.config

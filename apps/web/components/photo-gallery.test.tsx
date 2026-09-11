@@ -247,7 +247,7 @@ describe("photo gallery dwell", () => {
 
   it("asks for nothing extra on a gallery that opens no such surface", () => {
     const preloads = capturePreloads();
-    const surface = setupPlain({ images: CACHED_FOUR })!;
+    const surface = setupPlain({ images: CACHED_FOUR });
 
     fireEvent.pointerEnter(surface);
     vi.advanceTimersByTime(PAST_DWELL_MS);
@@ -405,12 +405,16 @@ function setupPlain(rest: Partial<Animal> = {}) {
       <PhotoGallery images={animal(rest).images} name="Rex" sizes="100vw" />
     </I18nProvider>,
   );
-  return document.querySelector('[data-slot="photo-frame"] > div');
+  // Guarded like setup() above, so a caller gets the element rather than a
+  // maybe-null every test has to assert away.
+  const surface = document.querySelector('[data-slot="photo-frame"] > div');
+  if (!surface) throw new Error("no photo surface");
+  return surface;
 }
 
 describe("photo gallery without a link", () => {
   it("takes the focus and walks the photos with the arrow keys", () => {
-    const surface = setupPlain()!;
+    const surface = setupPlain();
 
     expect(surface.getAttribute("tabindex")).toBe("0");
     expect(surface.getAttribute("role")).toBe("group");
@@ -428,7 +432,7 @@ describe("photo gallery without a link", () => {
   });
 
   it("jumps to the ends of a long gallery with Home and End", () => {
-    const surface = setupPlain()!;
+    const surface = setupPlain();
 
     fireEvent.keyDown(surface, { key: "End" });
     expect(counter()).toBe("3 / 3");
@@ -437,7 +441,7 @@ describe("photo gallery without a link", () => {
   });
 
   it("leaves a key it does not answer to the page", () => {
-    const surface = setupPlain()!;
+    const surface = setupPlain();
 
     expect(fireEvent.keyDown(surface, { key: "ArrowDown" })).toBe(true);
     expect(counter()).toBe("1 / 3");
@@ -476,7 +480,7 @@ describe("photo gallery without a link", () => {
           rights: "display-permitted" as const,
         },
       ],
-    })!;
+    });
 
     // Nothing to walk: a lone photo is a picture, not a gallery, and a tab
     // stop that answers no key is a tab stop wasted.
@@ -524,34 +528,21 @@ describe("photo gallery controls", () => {
     expect(dots?.childElementCount).toBe(3);
   });
 
-  it("holds the card's dots back until the pointer is on the card", () => {
+  it("holds the card's dots back until the card is hovered or focused", () => {
     setup();
 
     // jsdom applies no media query and has no hover, so this reads the class
     // list rather than a computed opacity: what is asserted is that the card
     // renders the gating, not that a browser resolved it.
     const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("transition-opacity");
-    // Hidden at rest only where a hover can bring them back.
-    expect(dots?.className).toContain("pointer-fine:opacity-0");
-    // The chevrons' own two conditions, on the chevrons' own group, so the
-    // controls on a photo appear together rather than one after the other.
-    expect(dots?.className).toContain(
-      "pointer-fine:group-hover/photo:opacity-100",
-    );
-    expect(dots?.className).toContain(
-      "pointer-fine:group-focus-within/photo:opacity-100",
-    );
-  });
-
-  it("leaves the dots standing where the gallery is not a card", () => {
-    setupPlain();
-
-    // The animal page and the dialog draw the one photo the visitor came for.
-    // The row is the only thing there saying the set has more.
-    const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("pointer-events-none");
-    expect(dots?.className).not.toContain("opacity-0");
+    // Hidden at rest only where a hover can bring them back. can-hover and not
+    // pointer-fine is the whole rule: a stylus is a fine pointer that never
+    // hovers, and the hide has to ask the same question the reveal does.
+    expect(dots?.className).toContain("can-hover:opacity-0");
+    // Brought back by the card and not by the photo. The gallery's arrow keys
+    // live on the card's link, which is a sibling of the photo frame, so a
+    // focus condition scoped to the photo would never fire for a keyboard.
+    expect(dots?.className).toContain("group-focus-within/card:opacity-100");
   });
 
   it("caps a long gallery at five dots and slides the window", () => {
@@ -591,23 +582,31 @@ describe("photo gallery controls", () => {
     expect(photo?.className).toContain("dark:brightness-90");
   });
 
-  it("leaves the photo at full brightness where the gallery is not a card", () => {
-    setupPlain();
+  it("leaves every one of the card's paint rules off a plain surface", () => {
+    const surface = setupPlain();
 
-    // The animal page and the dialog draw the one large photograph the
-    // visitor asked for.
-    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    // The animal page and the dialog draw the one large photograph the visitor
+    // asked for: nothing is dimmed, nothing waits for a hover, and the
+    // chevrons are the full-size pair. One render, because the claim is one
+    // claim.
+    const photo = surface.querySelector("img");
     expect(photo?.className).not.toContain("brightness");
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("pointer-events-none");
+    expect(dots?.className).not.toContain("opacity-0");
+    for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
+      const button = screen.getByLabelText(label);
+      expect(button.className).toContain("size-8");
+      expect(button.className).not.toContain("ring-1");
+    }
   });
 
   it("keeps the settled tone and the dark dimming on separate elements", () => {
-    setup({ status: "adopted" });
-
     // The card's quiet tone lands on the swipe surface and the brightness on
     // the picture inside it, so the two filters nest instead of meeting in one
     // class list, where a merge would have to decide between them.
-    const surface = document.querySelector('[data-slot="photo-frame"] a');
-    const photo = surface?.querySelector("img");
+    const surface = setup({ status: "adopted" });
+    const photo = surface.querySelector("img");
     expect(surface?.className).toContain("saturate-[60%]");
     expect(surface?.className).toContain("opacity-80");
     expect(photo?.className).toContain("dark:brightness-90");
@@ -630,16 +629,6 @@ describe("photo gallery controls", () => {
       expect(button.className).toContain("pointer-events-none");
       expect(button.className).toContain("active:translate-y-0!");
       expect(button.getAttribute("data-press-exempt")).toBe("true");
-    }
-  });
-
-  it("keeps the heavier chevrons where the photo is drawn large", () => {
-    setupPlain();
-
-    for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
-      const button = screen.getByLabelText(label);
-      expect(button.className).toContain("size-8");
-      expect(button.className).not.toContain("ring-1");
     }
   });
 

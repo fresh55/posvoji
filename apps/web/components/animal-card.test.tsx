@@ -136,22 +136,38 @@ describe("AnimalCard long-stay mark", () => {
   });
 
   // Off only where the list around the card is already ordered by the wait,
-  // which is one caller (animal-grid.tsx under its default sort). Every test
-  // above renders without the prop, which is the other half of this: the mark
-  // is on unless somebody says otherwise.
-  it("drops the mark when the caller says the order already carries it", () => {
+  // which both grids are under their default sort. Every test above renders
+  // without an order, which is the other half of this: a caller that has no
+  // order to declare gets the mark.
+  it("drops the mark where the order already carries it", () => {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
           animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) })}
           reference={NOW}
-          showWaitMark={false}
+          order="longest-in-shelter"
           onOpen={() => undefined}
         />
       </I18nProvider>,
     );
 
     expect(screen.queryByText(/Čaka/)).toBeNull();
+  });
+
+  // Any other order leaves the mark on: the list is not saying it.
+  it("draws the mark under an order that says nothing about the wait", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) })}
+          reference={NOW}
+          order="name"
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText(/Čaka/)).toBeTruthy();
   });
 });
 
@@ -203,9 +219,12 @@ describe("AnimalCard status", () => {
 
 /** The card's fact line, found through the heading it sits under rather than
  *  by taking the document's first <p>. */
+function metaEl() {
+  return screen.getByRole("heading").parentElement?.querySelector("p");
+}
+
 function metaLine() {
-  return screen.getByRole("heading").parentElement?.querySelector("p")
-    ?.textContent;
+  return metaEl()?.textContent;
 }
 
 describe("AnimalCard meta line", () => {
@@ -246,6 +265,44 @@ describe("AnimalCard meta line", () => {
     );
 
     expect(metaLine()).toBe("3 leta · srednja");
+  });
+
+  // An animal with no age used to leave the line reading "Pes" alone, which
+  // looks unfinished next to a card that has two facts.
+  it("falls through to the next fact when the age is missing", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ sex: "male", size: "large" })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(metaLine()).toBe("Pes · velika");
+  });
+
+  // The facts are what a visitor scans; the shelter line under them is
+  // provenance. Muted on both read as one grey block.
+  it("carries the facts in ink and the shelter line in muted", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ approximateAgeMonths: 36 })}
+          reference={NOW}
+          showShelter
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const line = metaEl();
+    expect(line?.className).toContain("text-foreground");
+    expect(line?.className).not.toContain("text-muted-foreground");
+    expect(
+      screen.getByRole("link", { name: /Test/ }).className,
+    ).toContain("text-muted-foreground");
   });
 });
 

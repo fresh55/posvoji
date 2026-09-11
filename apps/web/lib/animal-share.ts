@@ -9,7 +9,7 @@ import type { Locale } from "@/lib/i18n";
 import {
   ageLabel,
   META_SEPARATOR,
-  sexLabel,
+  sexFact,
   speciesLabel,
   statusLabel,
 } from "@/lib/labels";
@@ -105,11 +105,7 @@ export function animalDescription(
   const months = ageInMonths(animal, reference);
   const facts = [
     speciesLabel(animal.species, locale),
-    // sexLabel hands back the filter option's capitalised label, and a middot
-    // list of lowercase attributes wants it lowercase.
-    animal.sex && animal.sex !== "unknown"
-      ? sexLabel(animal.sex, locale).toLocaleLowerCase(locale)
-      : undefined,
+    sexFact(animal, locale),
     months !== undefined ? ageLabel(months, locale) : undefined,
   ]
     .filter(Boolean)

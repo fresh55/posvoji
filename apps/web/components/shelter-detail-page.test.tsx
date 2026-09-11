@@ -44,6 +44,9 @@ const { ANIMALS } = vi.hoisted(() => ({
       city: "Moravske Toplice",
     },
     name: `Muri ${n}`,
+    // Long enough ago to have earned the long-stay mark, which is what makes
+    // the test below about the order rather than about the animals.
+    intakeDate: "2019-01-01",
     species: "cat" as const,
     status: "available" as const,
     medical: {},
@@ -178,6 +181,20 @@ describe("the shelter page's ways past its animals", () => {
     expect(
       skip.compareDocumentPosition(pad) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  // The grid here sorts by the wait (DEFAULT_ANIMAL_SORT in
+  // shelter-animal-grid.tsx), so a mark on each card would be the order
+  // repeating itself, exactly as on the home grid under its default sort. The
+  // card applies that rule; this is the wiring that tells it which order it is
+  // in, and it was missed the first time the rule was written.
+  it("leaves the long-stay mark off a list already ordered by the wait", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    expect(container.querySelectorAll("article").length).toBe(ANIMALS.length);
+    expect(container.textContent).not.toContain("Čaka");
   });
 
   it("mounts back-to-top over a footer that reserves the strip it parks in", () => {

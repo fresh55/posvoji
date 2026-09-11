@@ -213,7 +213,7 @@ export const PortalAnimalRow = memo(function PortalAnimalRow({
           ) : (
             <>
               <Check
-                className="size-3.5 text-[var(--filter-accent-foreground)]"
+                className="size-3.5 text-brand-foreground"
                 aria-hidden
               />
               <span className="sr-only">{portalText.missingNone}</span>

@@ -114,9 +114,10 @@ describe("what the card says about the listing", () => {
     const heading = screen.getByRole("heading", { name: "Luna" });
     const badge = heading.parentElement?.querySelector("span");
     expect(badge?.textContent).toBe(STATUS_META.reserved.label);
-    // The warm family comes from the --status-warn tokens now, not from a
-    // Tailwind amber class, so the badge is looked for by the token.
-    expect(badge?.className).toContain("status-warn");
+    // The warm family comes from the --warn tokens now, not from a
+    // Tailwind amber class, so the badge is looked for by the utility those
+    // tokens are registered as.
+    expect(badge?.className).toContain("bg-warn");
   });
 
   it("shows the first photo, sized by the stored copy", () => {

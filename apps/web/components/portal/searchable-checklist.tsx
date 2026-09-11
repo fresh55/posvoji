@@ -34,13 +34,13 @@ export function SearchableChecklist({
             <li key={field.key} className="flex items-center gap-1.5 text-xs">
               {done ? (
                 <Check
-                  className="size-3.5 shrink-0 text-[var(--filter-accent-foreground)]"
+                  className="size-3.5 shrink-0 text-brand-foreground"
                   strokeWidth={2.4}
                   aria-hidden
                 />
               ) : (
                 <Search
-                  className="size-3.5 shrink-0 text-[var(--status-warn-mark)]"
+                  className="size-3.5 shrink-0 text-warn-mark"
                   strokeWidth={1.75}
                   aria-hidden
                 />

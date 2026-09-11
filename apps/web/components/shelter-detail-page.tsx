@@ -316,7 +316,7 @@ export function ShelterDetailPage({
               className={cn(
                 "flex items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
                 hasData
-                  ? "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]"
+                  ? "border-brand-border bg-brand text-brand-foreground"
                   : "bg-muted/40 text-muted-foreground",
               )}
             >

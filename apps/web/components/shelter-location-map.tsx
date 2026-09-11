@@ -93,13 +93,13 @@ export function ShelterLocationMap({
         cy={round(y)}
         r={HALO_RADIUS}
         strokeWidth={HALO_STROKE_WIDTH}
-        className="fill-[var(--filter-accent)] stroke-[var(--filter-accent-border)]"
+        className="fill-brand stroke-brand-border"
       />
       <circle
         cx={round(x)}
         cy={round(y)}
         r={DOT_RADIUS}
-        className="fill-[var(--filter-accent-strong)]"
+        className="fill-brand-strong"
       />
     </svg>
   );

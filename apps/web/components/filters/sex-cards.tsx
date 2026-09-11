@@ -91,7 +91,7 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
         ))}
       </m.g>
       <m.g
-        stroke="var(--filter-accent-strong)"
+        stroke="var(--brand-strong)"
         initial={false}
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{

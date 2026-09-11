@@ -40,7 +40,7 @@ export function PickerFooter({ controller }: { controller: LocationPickerControl
                 }}
                 aria-label={`${copy.removeSelection}: ${firstSelected.label}`}
                 title={firstSelected.label}
-                className="h-11 min-w-0 shrink gap-2 border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-3 text-[var(--filter-accent-foreground)] shadow-none hover:bg-[var(--filter-accent)] hover:text-[var(--filter-accent-foreground)]"
+                className="h-11 min-w-0 shrink gap-2 border-brand-border bg-brand px-3 text-brand-foreground shadow-none hover:bg-brand hover:text-brand-foreground"
               >
                 <span className="max-w-64 truncate">{firstSelected.label}</span>
                 <X className="size-3.5 shrink-0" aria-hidden />

@@ -104,7 +104,7 @@ export function ShelterJumpStrip({
             className={cn(
               "inline-flex min-h-11 items-center gap-1.5 rounded-ui border px-3 text-sm whitespace-nowrap text-muted-foreground outline-hidden hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring",
               chip.count &&
-                "border-[var(--filter-accent-border)] text-[var(--filter-accent-foreground)]",
+                "border-brand-border text-brand-foreground",
             )}
           >
             {chip.city}

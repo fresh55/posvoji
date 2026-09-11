@@ -31,7 +31,7 @@ export function OverrideMark({
         PORTAL_BADGE,
         pending
           ? "border-border bg-muted text-muted-foreground"
-          : "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+          : "border-brand-border bg-brand text-brand-foreground",
         className,
       )}
     >
@@ -53,9 +53,9 @@ export function MissingMark() {
         PORTAL_BADGE,
         // The warn family, the way ui/badge.tsx's warn variant spells it. The
         // raw amber pair this replaced carried no wash, so the ink sits on the
-        // page rather than on --status-warn: amber-800 there is 7.14:1 where
+        // page rather than on --warn: amber-800 there is 7.14:1 where
         // amber-700 was 5.07:1.
-        "border-[var(--status-warn-border)] text-[var(--status-warn-foreground)]",
+        "border-warn-border text-warn-foreground",
       )}
     >
       <Search className="size-2.5" aria-hidden />

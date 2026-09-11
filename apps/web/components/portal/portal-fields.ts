@@ -359,7 +359,7 @@ export const STATUS_META: Record<PortalStatus, StatusMeta> = {
     label: "Na voljo",
     icon: PawPrint,
     badge:
-      "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+      "border-brand-border bg-brand text-brand-foreground",
   },
   reserved: {
     label: "Rezerviran",
@@ -371,9 +371,9 @@ export const STATUS_META: Record<PortalStatus, StatusMeta> = {
     // ones. The ink is amber-800 rather than the amber-700 this held, which on
     // the 15% wash moves the 2xs badge from 4.49:1 to 6.34:1.
     selected:
-      "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)] hover:border-[var(--status-warn-border)] hover:bg-[var(--status-warn)] hover:text-[var(--status-warn-foreground)]",
+      "border-warn-border bg-warn text-warn-foreground hover:border-warn-border hover:bg-warn hover:text-warn-foreground",
     badge:
-      "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
+      "border-warn-border bg-warn text-warn-foreground",
   },
   adopted: {
     label: "Oddan",

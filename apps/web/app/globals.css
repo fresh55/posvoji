@@ -161,6 +161,32 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* The three families the site draws that shadcn does not ship: the brand
+     green, the warm status family, and the Starost grove. Registered as
+     colours for the same reason every token above is, which is that an
+     unregistered one has to be spelled bg-[var(--brand)] at the call site.
+     That spelling costs the alpha modifier, which is compiled into a real
+     colour and cannot reach through a var(), so a fainter shade had to be
+     written as a color-mix by hand (the grove's ground line did exactly
+     that). Registered, bg-brand, text-warn-foreground and bg-grove-ground/55
+     are all plain utilities, and cn() can merge them against bg-background
+     and border-border the way it merges the rest.
+     The map tokens stay unregistered: they are fills for one drawing, read
+     by SVG attributes rather than by utilities. */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-border: var(--brand-border);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-strong-foreground: var(--brand-strong-foreground);
+  --color-warn: var(--warn);
+  --color-warn-border: var(--warn-border);
+  --color-warn-foreground: var(--warn-foreground);
+  --color-warn-mark: var(--warn-mark);
+  --color-warn-solid: var(--warn-solid);
+  --color-warn-solid-foreground: var(--warn-solid-foreground);
+  --color-grove-leaf: var(--grove-leaf);
+  --color-grove-wood: var(--grove-wood);
+  --color-grove-ground: var(--grove-ground);
   /* Two steps below text-xs, because the site has been writing them as raw
      pixels all along: text-[11px] at 36 call sites and text-[10px] at 7.
      That is not a pair of one-offs, it is the tier the captions, sublabels,
@@ -207,10 +233,18 @@
   /* One application radius for interactive controls and content surfaces.
      Pills, badges, and truly circular controls remain intentionally round. */
   --radius-ui: var(--radius);
-  --filter-accent: oklch(0.92 0.045 151);
-  --filter-accent-foreground: oklch(0.32 0.075 151);
-  --filter-accent-border: oklch(0.68 0.075 151);
-  --filter-accent-strong: oklch(0.44 0.1 151);
+  /* The site's green, and the reason it is called the brand rather than the
+     filter accent, which is the name it carried while the filter panel was
+     the only thing wearing it. It is now what every "ours" on the site is
+     drawn in: a shelter that shares its data (the register's count pill, the
+     shelter page's notice, the provider avatars), an answer the visitor has
+     chosen (the picker rows, the filter cards, the chips), the health record
+     in the dialog, and the hue --ring and the map fills are taken from. One
+     statement, so one name. */
+  --brand: oklch(0.92 0.045 151);
+  --brand-foreground: oklch(0.32 0.075 151);
+  --brand-border: oklch(0.68 0.075 151);
+  --brand-strong: oklch(0.44 0.1 151);
   /* The ink for the one place that green is a ground rather than a line: the
      check inside a selected filter card's mark (filter-card.tsx). It spelled
      text-white, which is one colour over both themes, and the ground under it
@@ -221,9 +255,9 @@
      goes light.
      Method as everywhere else here: OKLCH to linear sRGB to WCAG relative
      luminance. */
-  --filter-accent-strong-foreground: oklch(1 0 0);
+  --brand-strong-foreground: oklch(1 0 0);
   /* The one warm family on the site: a reserved animal, a long wait, a portal
-     warning. Held apart from --filter-accent because it says "not settled yet"
+     warning. Held apart from --brand because it says "not settled yet"
      rather than "chosen". It was raw amber-500/700/600 at ten call sites,
      spelled identically at every one, which is a tier rather than a pair of
      one-offs.
@@ -240,12 +274,12 @@
      -solid is for a badge that sits on a photograph instead of on the page. A
      15% wash tints an arbitrary backdrop, it does not cover one, and
      backdrop-blur softens detail without moving luminance. */
-  --status-warn: oklch(0.769 0.188 70.08 / 15%);
-  --status-warn-border: oklch(0.769 0.188 70.08 / 40%);
-  --status-warn-foreground: oklch(0.473 0.137 46.201);
-  --status-warn-mark: oklch(0.666 0.179 58.318);
-  --status-warn-solid: oklch(0.962 0.059 95.617);
-  --status-warn-solid-foreground: oklch(0.414 0.112 45.904);
+  --warn: oklch(0.769 0.188 70.08 / 15%);
+  --warn-border: oklch(0.769 0.188 70.08 / 40%);
+  --warn-foreground: oklch(0.473 0.137 46.201);
+  --warn-mark: oklch(0.666 0.179 58.318);
+  --warn-solid: oklch(0.962 0.059 95.617);
+  --warn-solid-foreground: oklch(0.414 0.112 45.904);
   /* The choropleth's ink. The density ramp is this one colour at the alphas in
      DENSITY_STEPS, so a busy region and a picked one share a hue family and a
      selected region reads as the same green, committed. Muted on purpose: it
@@ -257,7 +291,7 @@
      Empty regions are not on this ramp. They stay neutral foreground, because
      "no shelters here" is a different statement from "few animals here". */
   --map-density-fill: oklch(0.52 0.085 151);
-  /* The chosen region's own fill, apart from --filter-accent-border. That
+  /* The chosen region's own fill, apart from --brand-border. That
      token sits in the same luminance band as the ramp's darkest step: at its
      usual 0.9 fill-opacity it composited to a contrast of only 1.09:1 against
      the top density step's 0.727 luminance, so on a busy map colour alone
@@ -292,7 +326,7 @@
      in age-growth-control.tsx and so had no dark value at all: the sprout, the
      shrub and the tree were drawn at their light-theme lightness over a
      near-black page. Beside the map tokens because they are the site's other
-     drawing, and apart from --filter-accent, which says "chosen": the grove
+     drawing, and apart from --brand, which says "chosen": the grove
      says how old an animal is and is drawn whether or not its row is selected.
      Three tokens and not two, because the grove draws three colours. The ground
      line under each plant and the burst dot under one that has just grown are a
@@ -301,17 +335,17 @@
      its colours come from.
      The light values are those hex literals converted, so nothing moved:
      5.04:1, 4.31:1 and 5.99:1 against the white page. The dark values keep each
-     hue exactly and take lightness up the way --filter-accent-strong and --ring
+     hue exactly and take lightness up the way --brand-strong and --ring
      do, chroma eased back so the extra lightness does not read as louder:
      9.22:1, 9.84:1 and 8.23:1 against the dark page, and 8.16:1, 8.71:1 and
      7.29:1 on --popover, which is the lightest ground a dark theme puts them
      on (the filter sheet). Every one of those clears what the light value is
      worth on white, which is the bar for a drawing.
      No faint fourth token for the ground line's 55%. That alpha belongs to the
-     one line rather than to the colour, and border-dashed-muted below already
-     spells the same thing with color-mix, so the call site keeps it where the
-     /55 used to be. Composited it measures 2.38:1 on white and 3.16:1 on the
-     dark page, a hairline under a drawing either way. */
+     one line rather than to the colour, and the token is registered as a
+     Tailwind colour above, so the call site writes bg-grove-ground/55 and the
+     alpha stays where it is read. Composited it measures 2.38:1 on white and
+     3.16:1 on the dark page, a hairline under a drawing either way. */
   --grove-leaf: oklch(0.529 0.105 154.9);
   --grove-wood: oklch(0.58 0.085 84.2);
   --grove-ground: oklch(0.49 0.085 158.4);
@@ -353,7 +387,7 @@
      against the worst surface it can actually land on rather than against
      white: the light stack bottoms out on --muted, --secondary and --accent,
      all three at 0.97, and the dark stack on those same three at 0.269.
-     The hue is the brand's, 151, the family --filter-accent-strong is drawn
+     The hue is the brand's, 151, the family --brand-strong is drawn
      from. Neutral grey cleared the bar and nothing more: oklch(0.62 0 0)
      measured 3.34:1 on 0.97, and oklch(0.556 0 0) below it 3.19:1 on 0.269.
      Both sat close enough to the line that a panel the arithmetic had not
@@ -392,18 +426,18 @@
 .dark {
   --background: oklch(0.147 0.004 49.25);
   --foreground: oklch(0.985 0.001 106.423);
-  --filter-accent: oklch(0.25 0.035 151);
-  --filter-accent-foreground: oklch(0.88 0.055 151);
-  --filter-accent-border: oklch(0.48 0.06 151);
-  --filter-accent-strong: oklch(0.72 0.09 151);
+  --brand: oklch(0.25 0.035 151);
+  --brand-foreground: oklch(0.88 0.055 151);
+  --brand-border: oklch(0.48 0.06 151);
+  --brand-strong: oklch(0.72 0.09 151);
   /* The page's ink, not white. See the light block: on this lightness white is
      a 2.39:1 tick. */
-  --filter-accent-strong-foreground: oklch(0.147 0.004 49.25);
+  --brand-strong-foreground: oklch(0.147 0.004 49.25);
   /* Only the ink flips; the wash and its border hold over either page. */
-  --status-warn-foreground: oklch(0.879 0.169 91.605);
-  --status-warn-mark: oklch(0.828 0.189 84.429);
-  --status-warn-solid: oklch(0.279 0.077 45.635);
-  --status-warn-solid-foreground: oklch(0.924 0.12 95.746);
+  --warn-foreground: oklch(0.879 0.169 91.605);
+  --warn-mark: oklch(0.828 0.189 84.429);
+  --warn-solid: oklch(0.279 0.077 45.635);
+  --warn-solid-foreground: oklch(0.924 0.12 95.746);
   /* Lighter than the light theme's ink, because here the ramp lays a colour
      over a near-black page rather than under-painting a white one. Same hue,
      lower chroma again, so the top step composites to oklch(0.425 0.041)
@@ -411,7 +445,7 @@
      saturated of the two, and less than half the weight the grey ramp used to
      reach on dark. */
   --map-density-fill: oklch(0.6 0.065 151);
-  /* Same reasoning as the light block, mirrored: --filter-accent-border on
+  /* Same reasoning as the light block, mirrored: --brand-border on
      dark composited to a contrast of only 1.15:1 against the top density
      step, and the audit measured it reading darker than the busiest region
      rather than plainly picked. Lightness moves up from 0.48 to 0.56 here,
@@ -473,19 +507,19 @@
     color-scheme: dark;
     --background: oklch(0.147 0.004 49.25);
     --foreground: oklch(0.985 0.001 106.423);
-    --filter-accent: oklch(0.25 0.035 151);
-    --filter-accent-foreground: oklch(0.88 0.055 151);
-    --filter-accent-border: oklch(0.48 0.06 151);
-    --filter-accent-strong: oklch(0.72 0.09 151);
+    --brand: oklch(0.25 0.035 151);
+    --brand-foreground: oklch(0.88 0.055 151);
+    --brand-border: oklch(0.48 0.06 151);
+    --brand-strong: oklch(0.72 0.09 151);
     /* Kept in step with the .dark block above. */
-    --filter-accent-strong-foreground: oklch(0.147 0.004 49.25);
+    --brand-strong-foreground: oklch(0.147 0.004 49.25);
     --grove-leaf: oklch(0.75 0.09 154.9);
     --grove-wood: oklch(0.78 0.075 84.2);
     --grove-ground: oklch(0.72 0.075 158.4);
-    --status-warn-foreground: oklch(0.879 0.169 91.605);
-    --status-warn-mark: oklch(0.828 0.189 84.429);
-    --status-warn-solid: oklch(0.279 0.077 45.635);
-    --status-warn-solid-foreground: oklch(0.924 0.12 95.746);
+    --warn-foreground: oklch(0.879 0.169 91.605);
+    --warn-mark: oklch(0.828 0.189 84.429);
+    --warn-solid: oklch(0.279 0.077 45.635);
+    --warn-solid-foreground: oklch(0.924 0.12 95.746);
     --map-density-fill: oklch(0.6 0.065 151);
     --map-selected-fill: oklch(0.56 0.06 151);
     --map-sea: oklch(0.245 0.032 230);

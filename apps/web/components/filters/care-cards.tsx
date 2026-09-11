@@ -131,7 +131,7 @@ function CareGlyph({ checked, className }: { checked: boolean; className: string
         ))}
       </g>
       <m.g
-        stroke="var(--filter-accent-strong)"
+        stroke="var(--brand-strong)"
         initial={false}
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
@@ -338,7 +338,7 @@ export function CareCards({
                       layout === "sheet" ? "size-12" : "size-9",
                     )}
                     fill="none"
-                    stroke="var(--filter-accent-strong)"
+                    stroke="var(--brand-strong)"
                     strokeWidth={1.75}
                     strokeLinecap="round"
                     strokeLinejoin="round"

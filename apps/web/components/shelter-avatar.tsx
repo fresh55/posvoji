@@ -206,7 +206,7 @@ const FALLBACK_PLATE = "border-border bg-muted text-muted-foreground";
 
 // Green says one thing on this site. See the accent prop.
 const FALLBACK_ACCENT =
-  "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]";
+  "border-brand-border bg-brand text-brand-foreground";
 
 /**
  * A shelter's mark, or a drawn stand-in where we have no right to one.

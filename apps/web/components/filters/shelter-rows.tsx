@@ -445,7 +445,7 @@ export function ShelterRows({
                   className={cn(
                     "inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
                     checked
-                      ? "border-[var(--filter-accent-strong)] bg-[var(--filter-accent)] text-[var(--filter-accent-strong)]"
+                      ? "border-brand-strong bg-brand text-brand-strong"
                       : "border-muted-foreground/70",
                   )}
                   aria-hidden
@@ -473,10 +473,10 @@ export function ShelterRows({
                       // shelter panel already draw beside the same sentence.
                       <span
                         data-row-wait
-                        className="inline-flex items-center gap-1 text-[var(--status-warn-foreground)]"
+                        className="inline-flex items-center gap-1 text-warn-foreground"
                       >
                         <Hourglass
-                          className="size-3 shrink-0 text-[var(--status-warn-mark)]"
+                          className="size-3 shrink-0 text-warn-mark"
                           aria-hidden
                         />
                         {waitLabel(summary.longestWaiting.duration)}

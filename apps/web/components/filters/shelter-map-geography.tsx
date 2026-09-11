@@ -41,20 +41,20 @@ export function MixedHatch({ id }: { id: string }) {
       width={HATCH_TILE}
       height={HATCH_TILE}
     >
-      {/* The ground under the lines. --filter-accent is pale green on light
-          and deep green on dark, and --filter-accent-strong inverts with it,
-          so the hatch keeps its contrast in both themes. */}
+      {/* The ground under the lines. --brand is pale green on light and deep
+          green on dark, and --brand-strong inverts with it, so the hatch keeps
+          its contrast in both themes. */}
       <rect
         width={HATCH_TILE}
         height={HATCH_TILE}
-        fill="var(--filter-accent)"
+        fill="var(--brand)"
       />
       <line
         x1={HATCH_TILE / 2}
         y1={0}
         x2={HATCH_TILE / 2}
         y2={HATCH_TILE}
-        stroke="var(--filter-accent-strong)"
+        stroke="var(--brand-strong)"
         strokeWidth={HATCH_LINE_WIDTH}
       />
     </pattern>

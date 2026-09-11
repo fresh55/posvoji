@@ -85,7 +85,7 @@ describe("the active filters row", () => {
       name: "Remove filter Mala hiša",
     });
     expect(shelter.querySelector("span")?.className).toContain(
-      "filter-accent-strong",
+      "text-brand-strong",
     );
     expect(glyphOf(shelter)).not.toBe(
       glyphOf(screen.getByRole("button", { name: "Remove filter Odrasel" })),
@@ -277,7 +277,7 @@ describe("the active filters row", () => {
 
     const blocker = screen.getByRole("button", { name: "Remove filter Cats" });
     expect(blocker.textContent).toContain("+9");
-    expect(blocker.className).toContain("filter-accent");
+    expect(blocker.className).toContain("bg-brand");
     // Only the one. Five numbers over five labels is not a way out.
     expect(
       screen.getByRole("button", { name: "Remove filter Dogs" }).textContent,

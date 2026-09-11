@@ -48,7 +48,7 @@ export function ShelterBlock({
         {stay && (
           <div className="flex w-full items-start gap-2 text-sm">
             <Hourglass
-              className="mt-0.5 size-4 shrink-0 text-[var(--status-warn-mark)]"
+              className="mt-0.5 size-4 shrink-0 text-warn-mark"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -117,7 +117,7 @@ export function ShelterBlock({
           // The listing still has to be reachable: every animal here names
           // its source and links back to it, adopted or not.
           <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto">
-            <p className="flex w-full items-center gap-2 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-3 py-2 text-xs text-[var(--filter-accent-foreground)]">
+            <p className="flex w-full items-center gap-2 rounded-ui border border-brand-border bg-brand px-3 py-2 text-xs text-brand-foreground">
               <Heart className="size-4 shrink-0" aria-hidden />
               {messages.foundHome}
             </p>

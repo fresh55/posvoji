@@ -39,16 +39,16 @@ const badgeVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         // The status family, in one place. It used to be spelled out in three:
         // two Record maps in status-badge.tsx and five utilities inline on the
-        // card's long-stay mark, two of them raw var(--status-warn-*) reads.
+        // card's long-stay mark, two of them raw var(--warn-*) reads.
         // A badge is where a badge's colours belong.
-        warn: "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
-        // The filter green, for the same reason warn is here: it is the mark
+        warn: "border-warn-border bg-warn text-warn-foreground",
+        // The brand green, for the same reason warn is here: it is the mark
         // the site puts on a shelter that shares its animals, and every call
         // site was spelling the three tokens itself. As a link it keeps its
         // colour and moves the border, because outline's wash to bg-muted is
         // the one hover this badge cannot take.
         accent:
-          "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] [a]:hover:border-[var(--filter-accent-strong)]",
+          "border-brand-border bg-brand text-brand-foreground [a]:hover:border-brand-strong",
         quiet: "border-transparent bg-muted text-muted-foreground",
         // On a photograph a wash has nothing to sit on. A 15% fill tints an
         // arbitrary backdrop rather than covering it, so amber ink over a
@@ -64,7 +64,7 @@ const badgeVariants = cva(
         // it blurs pixels that are then completely covered. It was buying
         // nothing on either of these.
         "overlay-warn":
-          "border-transparent bg-[var(--status-warn-solid)] text-[var(--status-warn-solid-foreground)] shadow-xs",
+          "border-transparent bg-warn-solid text-warn-solid-foreground shadow-xs",
         "overlay-quiet":
           "border-transparent bg-background text-muted-foreground shadow-xs",
       },

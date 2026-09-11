@@ -93,7 +93,7 @@ describe("MiniMap regions", () => {
       /<path[^>]*data-minimap-region-state="selected"[^>]*>/,
     )?.[0];
     expect(region).toBeTruthy();
-    expect(region).toContain("fill-[var(--filter-accent-strong)]");
+    expect(region).toContain("fill-brand-strong");
   });
 
   // Hatching cannot survive at trigger-icon size, so a mixed region gets the
@@ -110,7 +110,7 @@ describe("MiniMap regions", () => {
       /<path[^>]*data-minimap-region-state="mixed"[^>]*>/,
     )?.[0];
     expect(region).toBeTruthy();
-    expect(region).toContain("fill-[var(--filter-accent-strong)]");
+    expect(region).toContain("fill-brand-strong");
     expect(html).not.toContain("<pattern");
   });
 
@@ -210,7 +210,7 @@ describe("MiniMap plate detail", () => {
     );
     expect(picked).toHaveLength(1);
     // Not the selected region's own fill: the dot stands on that fill.
-    expect(picked[0]).toContain("fill-[var(--filter-accent-foreground)]");
+    expect(picked[0]).toContain("fill-brand-foreground");
     for (const tag of dots.filter((one) => !picked.includes(one))) {
       expect(tag).toContain('data-minimap-town-dot="idle"');
       expect(tag).toContain("fill-foreground/50");

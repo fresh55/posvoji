@@ -96,7 +96,7 @@ const REGION_LOOK: Record<
   { rest: string; highlighted: string }
 > = {
   selected: {
-    // fill is --map-selected-fill, not --filter-accent-border: the accent
+    // fill is --map-selected-fill, not --brand-border: the accent
     // token sits in the same luminance band as the density ramp's darkest
     // step (1.09:1 on light, 1.15:1 on dark, both under the ramp's own
     // smallest step), so on dark the chosen region could composite darker
@@ -110,16 +110,16 @@ const REGION_LOOK: Record<
     // rest is already heavier than any other region ever draws (idle tops out
     // at 1 on hover), and 1.8 on hover/highlighted keeps it the heaviest line
     // on the plate even against an idle region's own hover step.
-    rest: "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.9] [stroke-width:1.5] hover:[fill-opacity:1] hover:[stroke-width:1.8]",
+    rest: "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.9] [stroke-width:1.5] hover:[fill-opacity:1] hover:[stroke-width:1.8]",
     highlighted:
-      "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:1] [stroke-width:1.8]",
+      "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:1] [stroke-width:1.8]",
   },
   // A partial choice outlines the region without striping every place inside
   // it. The dashed boundary remains distinct from a fully selected region.
   mixed: {
-    rest: "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.2] [stroke-width:1.2] [stroke-dasharray:3_2] hover:[fill-opacity:0.3] hover:[stroke-width:1.5]",
+    rest: "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.2] [stroke-width:1.2] [stroke-dasharray:3_2] hover:[fill-opacity:0.3] hover:[stroke-width:1.5]",
     highlighted:
-      "fill-[var(--map-selected-fill)] stroke-[var(--filter-accent-strong)] [fill-opacity:0.3] [stroke-width:1.5] [stroke-dasharray:3_2]",
+      "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.3] [stroke-width:1.5] [stroke-dasharray:3_2]",
   },
   idle: {
     rest: cn(
@@ -382,7 +382,7 @@ export const Region = memo(function Region({
         interactive ? "cursor-pointer" : "pointer-events-none",
         MAP_MORPH,
         REGION_LOOK[stateName][lit || armedNote ? "highlighted" : "rest"],
-        armedNote && "stroke-[var(--filter-accent-strong)] [stroke-width:1.8]",
+        armedNote && "stroke-brand-strong [stroke-width:1.8]",
         // 2.1: the selected region's own hover/highlighted stroke now runs at
         // 1.8, so the old 1.75 focus ring would have tied it rather than
         // outranked it. Keyboard focus has to stay the single heaviest line

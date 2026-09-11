@@ -105,12 +105,12 @@ const EMAIL_SHAPE = /^[^\s<>()[\]\\,;:@"]+@[^\s<>()[\]\\,;:@"]+\.[a-z]{2,}$/i;
 /** The round mark every step opens with. Its tone carries the outcome. */
 const MARK_TONES = {
   accent:
-    "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)]",
+    "border-brand-border bg-brand text-brand-foreground",
   quiet: "border-border bg-muted/50 text-muted-foreground",
   // The warn family, the way ui/badge.tsx's warn variant spells it. The ink is
   // amber-800 rather than the amber-700 this held, which on the 15% wash is
   // 6.34:1 where amber-700 was 4.49:1.
-  warn: "border-[var(--status-warn-border)] bg-[var(--status-warn)] text-[var(--status-warn-foreground)]",
+  warn: "border-warn-border bg-warn text-warn-foreground",
 } as const;
 
 function Mark({

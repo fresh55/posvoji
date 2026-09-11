@@ -598,7 +598,7 @@ describe("ShelterMap regions", () => {
 
     expect(html).toContain('data-region-state="mixed"');
     expect(html).toContain('data-region-state="selected"');
-    expect(html).toContain("var(--filter-accent-strong)");
+    expect(html).toContain("stroke-brand-strong");
   });
 
   it("marks partial selection with a dashed boundary without covering the region in stripes", () => {
@@ -1372,12 +1372,12 @@ describe("ShelterMap density colour", () => {
 
     const region = regionTag(html, "Podravska");
     expect(region).toContain('data-region-state="selected"');
-    // --map-selected-fill, not --filter-accent-border: that token sits too
+    // --map-selected-fill, not --brand-border: that token sits too
     // close to the ramp's darkest step to read as a distinct colour (see its
     // definition in globals.css), so the chosen region gets its own.
     expect(region).toContain("fill-[var(--map-selected-fill)]");
     expect(region).not.toContain("--map-density-fill");
-    expect(region).not.toContain("fill-[var(--filter-accent-border)]");
+    expect(region).not.toContain("fill-brand-border");
   });
 
   it("gives the selected region the heaviest stroke on the plate, keyboard focus heavier still", () => {
@@ -1854,7 +1854,7 @@ describe("ShelterMap municipality connector", () => {
     expect(group).not.toBe("");
     // Under the ring it explains, so it is never drawn across it.
     expect(html.indexOf("data-map-connector")).toBeLessThan(
-      html.indexOf("stroke-[var(--filter-accent-strong)]"),
+      html.indexOf("stroke-brand-strong"),
     );
   });
 });

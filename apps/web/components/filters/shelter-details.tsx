@@ -139,7 +139,7 @@ export function ShelterDetails({
         {summary?.longestWaiting && (
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <Hourglass
-              className="mt-0.5 size-3.5 shrink-0 text-[var(--status-warn-mark)]"
+              className="mt-0.5 size-3.5 shrink-0 text-warn-mark"
               strokeWidth={1.75}
               aria-hidden
             />

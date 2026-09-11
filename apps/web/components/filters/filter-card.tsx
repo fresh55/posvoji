@@ -22,7 +22,7 @@ export const filterCardVariants = cva(
   {
     variants: {
       selected: {
-        true: "border-[var(--filter-accent-border)] bg-[var(--filter-accent)] text-[var(--filter-accent-foreground)] shadow-xs hover:border-[var(--filter-accent-border)] hover:bg-[var(--filter-accent)] data-[state=on]:bg-[var(--filter-accent)]",
+        true: "border-brand-border bg-brand text-brand-foreground shadow-xs hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
         false:
           "text-muted-foreground data-[state=off]:bg-background data-[state=off]:hover:bg-muted/40",
       },
@@ -146,8 +146,8 @@ export function FilterSelectionMark({
             ? // The ink is a token and not text-white, because this is the one
               // place the strong accent is a ground and that ground is light in
               // dark mode: a white tick on it measured 2.39:1. See
-              // --filter-accent-strong-foreground in globals.css.
-              "border-[var(--filter-accent-strong)] bg-[var(--filter-accent-strong)] text-[var(--filter-accent-strong-foreground)]"
+              // --brand-strong-foreground in globals.css.
+              "border-brand-strong bg-brand-strong text-brand-strong-foreground"
             : "border-muted-foreground/40 bg-background text-transparent",
           className,
         )}
@@ -304,7 +304,7 @@ export function FilterCardRipple({
   return (
     <m.span
       className={cn(
-        "pointer-events-none absolute rounded-full border border-[var(--filter-accent-strong)]",
+        "pointer-events-none absolute rounded-full border border-brand-strong",
         iconSizeClass(layout),
       )}
       initial={{ opacity, scale: 0.7 }}

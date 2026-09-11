@@ -39,7 +39,7 @@ export function SaveStatusPip({ state }: { state: PortalSaveState }) {
           initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="inline-flex items-center gap-1 rounded-4xl border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-1.5 py-0.5 text-2xs font-medium text-[var(--filter-accent-foreground)]"
+          className="inline-flex items-center gap-1 rounded-4xl border border-brand-border bg-brand px-1.5 py-0.5 text-2xs font-medium text-brand-foreground"
         >
           <Check className="size-3" strokeWidth={2.6} aria-hidden />
           {portalText.saved}

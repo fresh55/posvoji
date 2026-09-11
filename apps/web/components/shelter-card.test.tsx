@@ -243,7 +243,7 @@ describe("the shelter card", () => {
     expect(within(container).queryByText("P")).toBeNull();
     expect(container.querySelector("img")).toBeNull();
     expect(within(container).getByText("4 živali").className).toContain(
-      "--filter-accent",
+      "bg-brand",
     );
   });
 

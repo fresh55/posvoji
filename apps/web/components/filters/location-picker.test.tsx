@@ -182,7 +182,7 @@ describe("LocationPicker trigger", () => {
 
     expect(selectedRegion).toBeTruthy();
     expect(selectedRegion?.getAttribute("class")).toContain(
-      "fill-[var(--filter-accent-strong)]",
+      "fill-brand-strong",
     );
   });
 
@@ -1098,11 +1098,11 @@ describe("LocationPicker legend", () => {
     const label = screen.getAllByText("Izbrana regija")[0];
     const swatch = label.querySelector("span[aria-hidden]") as HTMLElement;
     // The same token the map's selected region fills with (shelter-map.tsx
-    // REGION_LOOK.selected), not --filter-accent-border: that token sits too
+    // REGION_LOOK.selected), not --brand-border: that token sits too
     // close to the ramp's darkest step for the legend to teach the right
     // colour. See --map-selected-fill's definition in globals.css.
     expect(swatch.className).toContain("bg-[var(--map-selected-fill)]");
-    expect(swatch.className).not.toContain("--filter-accent-border");
+    expect(swatch.className).not.toContain("brand-border");
   });
 
   it("explains the hollow circle only while an empty shelter is on the map", async () => {

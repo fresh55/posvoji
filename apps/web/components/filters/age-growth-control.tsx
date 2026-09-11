@@ -53,21 +53,21 @@ type Stage = {
 // lightness over a near-black page.
 const STAGES: Record<AgeStage, Stage> = {
   mladicek: {
-    colorClassName: "text-[var(--grove-leaf)]",
+    colorClassName: "text-grove-leaf",
     groveClassName: "size-7",
     rowClassName: "size-5",
     rangeKey: "ageRangeYoung",
     swayDegrees: 4.5,
   },
   odrasel: {
-    colorClassName: "text-[var(--grove-wood)]",
+    colorClassName: "text-grove-wood",
     groveClassName: "size-9",
     rowClassName: "size-5.5",
     rangeKey: "ageRangeAdult",
     swayDegrees: 3,
   },
   senior: {
-    colorClassName: "text-[var(--grove-wood)]",
+    colorClassName: "text-grove-wood",
     groveClassName: "size-11",
     rowClassName: "size-6",
     rangeKey: "ageRangeSenior",
@@ -239,11 +239,10 @@ export function AgeGrowthControl({
                   className="relative flex h-full items-end justify-center pb-1"
                 >
                   <m.span
-                    // color-mix and not /55, which a var() ground cannot take:
-                    // the slash alpha is compiled into the colour and there is
-                    // no colour here until the page resolves the token. Same
-                    // expression border-dashed-muted uses in globals.css.
-                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-[color-mix(in_oklch,var(--grove-ground)_55%,transparent)]"
+                    // The alpha belongs to this line rather than to the token,
+                    // which globals.css records; --grove-ground is registered
+                    // as a Tailwind colour there, so the modifier works here.
+                    className="absolute inset-x-2 bottom-1 h-px origin-center bg-grove-ground/55"
                     initial={false}
                     animate={{
                       opacity: active ? 1 : 0.12,
@@ -264,7 +263,7 @@ export function AgeGrowthControl({
                       <PlaysOnMount>
                         <m.span
                           key={celebration?.id}
-                          className="size-[3px] rounded-full bg-[var(--grove-ground)]"
+                          className="size-[3px] rounded-full bg-grove-ground"
                           initial={{ opacity: 0.65, scale: 0.5 }}
                           animate={{ opacity: 0, scale: 2.5 }}
                           transition={{ duration: 0.3, ease: "easeOut" }}

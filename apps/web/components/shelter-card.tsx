@@ -311,7 +311,7 @@ export function ShelterCard({
           {/* Which shelters the census is counting, and with how many animals
               each.
 
-              The site's provider green, the same --filter-accent tokens the
+              The site's provider green, the same --brand tokens the
               shelter page's hero avatar and its notice wear, because it is the
               same fact stated in the same place in the visual system: this
               shelter shares its list with us.
@@ -354,7 +354,7 @@ export function ShelterCard({
             // the noun with it and a test should not be parsing the dual.
             <p
               data-animals={animals}
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-brand-border bg-brand px-2 py-0.5 text-xs font-medium tabular-nums text-brand-foreground"
             >
               <PawPrint className="size-3 shrink-0" aria-hidden />
               {text.animals(animals)}

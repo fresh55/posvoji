@@ -181,7 +181,7 @@ export function LocationScopeRow({
         {...(isPickerTrigger ? { "data-picker-trigger": "" } : {})}
         className={cn(
           "flex w-full flex-col gap-1.5 rounded-ui border bg-background p-2 text-sm outline-none transition-colors",
-          "hover:border-[var(--filter-accent-border)] hover:bg-muted active:bg-muted",
+          "hover:border-brand-border hover:bg-muted active:bg-muted",
           "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring",
           // 52px, the same height the sheet pays for its sort select. It is a
           // floor and not a height, so it is one rule for both layouts rather

@@ -427,7 +427,7 @@ function EnergyGlyph({
           <path key={d} d={d} />
         ))}
       </g>
-      <g stroke="var(--filter-accent-strong)">
+      <g stroke="var(--brand-strong)">
         {tempo.glyph.map((d, index) => (
           <m.path
             key={d}
@@ -634,7 +634,7 @@ export function EnergyCards({
                       layout === "sheet" ? "size-12" : "size-9",
                     )}
                     fill="none"
-                    stroke="var(--filter-accent-strong)"
+                    stroke="var(--brand-strong)"
                     strokeWidth={1.75}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -672,10 +672,10 @@ export function EnergyCards({
                           className={cn(
                             // Absolute, so nothing here can move the label or
                             // the count.
-                            "pointer-events-none absolute text-[var(--filter-accent-strong)]",
+                            "pointer-events-none absolute text-brand-strong",
                             particle.glyph
                               ? undefined
-                              : "bg-[var(--filter-accent-strong)]",
+                              : "bg-brand-strong",
                             particle.className,
                           )}
                           initial={false}

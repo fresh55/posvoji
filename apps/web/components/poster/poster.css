@@ -218,8 +218,8 @@
 
 /* Amber, the site's one warm family, which is what a status wears on the grid
    card and in the dialog (ui/badge.tsx, variant "warn"). Literal copies of
-   --status-warn-border, --status-warn over white and
-   --status-warn-foreground. */
+   --warn-border, --warn over white and
+   --warn-foreground. */
 .poster-status {
   border: calc(0.35 * var(--u)) solid #ffd799;
   border-radius: calc(4 * var(--u));
@@ -307,8 +307,8 @@
   color: #292524;
 }
 
-/* What the health record says, in the filter green: literal copies of
-   --filter-accent-border, --filter-accent and --filter-accent-foreground,
+/* What the health record says, in the brand green: literal copies of
+   --brand-border, --brand and --brand-foreground,
    which is the "accent" badge in ui/badge.tsx. */
 .poster-tile--health {
   border-color: #76a681;

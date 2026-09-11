@@ -243,7 +243,7 @@ function HealthToggleCards({
                     className={cn(
                       "size-5 transition-colors duration-150",
                       checked
-                        ? "text-[var(--filter-accent-strong)]"
+                        ? "text-brand-strong"
                         : "text-muted-foreground",
                     )}
                     strokeWidth={1.65}

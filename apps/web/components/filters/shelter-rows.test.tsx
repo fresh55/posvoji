@@ -93,11 +93,11 @@ describe("ShelterRows selection and counts", () => {
     // The check turns visible and green. Any shared fill on the row surface,
     // however faint, made two adjacent picked rows read as one shape across
     // the 2px gap between them, so the surface carries no selection at all.
-    expect(selected).toContain("text-[var(--filter-accent-strong)]");
+    expect(selected).toContain("text-brand-strong");
     expect(selected).toContain("font-medium");
-    expect(selected).toContain("bg-[var(--filter-accent)]");
-    expect(selected).not.toContain("bg-[var(--filter-accent)]/");
-    expect(unselected).not.toContain("var(--filter-accent)");
+    expect(selected).toContain("bg-brand");
+    expect(selected).not.toContain("bg-brand/");
+    expect(unselected).not.toContain("brand");
   });
 
   it("keeps the hover and marker highlight the same on a selected row", () => {

@@ -248,7 +248,7 @@ export function FilterSectionHeader({
         // motion-reduce:duration-0, not motion-reduce:animate-none: see the
         // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
         // guard does not actually take effect here.
-        <span className="max-w-28 truncate rounded-full border border-[var(--filter-accent-border)]/50 bg-[var(--filter-accent)] px-2 py-px text-3xs font-medium normal-case tracking-normal text-[var(--filter-accent-foreground)] animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
+        <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
           {collapse.summary}
         </span>
       ) : null}

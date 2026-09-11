@@ -12,7 +12,7 @@ import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { ClientAnimal } from "@/lib/animal";
 import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
-import { CARD_GRID } from "@/lib/card-grid";
+import { CARD_GRID, CARD_PHOTO_ASPECT } from "@/lib/card-grid";
 import {
   applyFilters,
   type FilterOption,
@@ -175,14 +175,11 @@ function ResultsPending() {
       <Skeleton className="h-9 w-48" />
       <div className={CARD_GRID}>
         {PENDING_CARDS.map((n) => (
-          // The card's photo box, which at this size is most of the card
-          // (PHOTO_FRAME in animal-card.tsx), with the same corners and the
-          // same square-on-a-phone shape, so the stand-in and the cards that
-          // replace it claim the same height.
-          <Skeleton
-            key={n}
-            className="aspect-square rounded-xl sm:aspect-[4/3]"
-          />
+          // The card's photo box, which at this size is most of the card,
+          // with the same corners and the same shape, so the stand-in and the
+          // cards that replace it claim the same height. The shape comes from
+          // the constant the card itself uses rather than a copy of it.
+          <Skeleton key={n} className={cn(CARD_PHOTO_ASPECT, "rounded-xl")} />
         ))}
       </div>
     </div>
@@ -610,14 +607,12 @@ export function AnimalGrid({
                   key={animal.id}
                   animal={animal}
                   reference={reference}
-                  // The long-stay mark, except where this list is already
-                  // ordered by the wait. Under the default order the mark is
-                  // on every card down to the hundredth, which is the order
-                  // repeating itself on each photo rather than telling anyone
-                  // anything. Read off the order the list is actually in and
-                  // not off the picked one: nearest with no origin is sorted
-                  // as the default (effectiveSort).
-                  showWaitMark={order !== "longest-in-shelter"}
+                  // The order this list is actually in, which the card
+                  // reads to decide whether the long-stay mark would be
+                  // repeating it. The order the list is in and not the one
+                  // picked: nearest with no origin is sorted as the default
+                  // (effectiveSort).
+                  order={order}
                   // The entrance: a short fade and rise, staggered across the
                   // first dozen cards so a filter change reads as the grid
                   // answering rather than the page blinking. Keyed by id, so a

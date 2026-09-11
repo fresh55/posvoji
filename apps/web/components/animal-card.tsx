@@ -46,18 +46,22 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
 // wants the larger corner; a 10px corner on a 228px picture read as tight.
 //
-// The card's focus ring is drawn here, as an outline three pixels inside the
-// photo's edge, whenever either of the card's links has keyboard focus. Here
-// and as an outline for two reasons. An inset box-shadow on the article was
-// painted under its children, so the photo covered the top of it and the
-// rest cut through the first letters of the name. And nothing may reach
-// outside the card's box, because card-paint (globals.css) clips there. An
-// outline is painted after the element's descendants, so it sits over the
-// picture, and a negative offset keeps it inside the frame, following the
-// same corners. The shelter row underlines itself as well, which is what says
-// which of the two links the ring is standing for.
+// The card's focus ring is drawn here, as an inset ring on a ::after that
+// covers the frame, whenever either of the card's links has keyboard focus.
+// Here and on an overlay for two reasons. An inset box-shadow on the article
+// was painted under its children, so the photo covered the top of it and the
+// rest cut through the first letters of the name; an outline on this frame
+// computed but never showed either, because Chrome paints the absolutely
+// positioned photo inside it after the frame's own outline. A pseudo-element
+// positioned last in the frame is painted over the photo and its chevrons by
+// tree order. And nothing may reach outside the card's box, because
+// card-paint (globals.css) clips there; an inset ring on a box the size of
+// the frame stays inside it and follows its corners. pointer-events-none, so
+// the overlay never takes a press meant for the photo. The shelter row
+// underlines itself as well, which is what says which of the two links the
+// ring is standing for.
 const PHOTO_FRAME =
-  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted group-has-[a:focus-visible]/card:outline-3 group-has-[a:focus-visible]/card:-outline-offset-3 group-has-[a:focus-visible]/card:outline-ring";
+  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({
   animal,

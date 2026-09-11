@@ -281,26 +281,38 @@ export const META_SEPARATOR = " · ";
  *  the card's meta line and the shelter header's do not drift apart. */
 export const META_DOT_CLASS = "text-muted-foreground/50";
 
+/** How many facts the line may carry. Two is what the card's width buys on a
+ *  phone: measured at 375px, a third fact wrapped onto a second line on most
+ *  cards, which makes every card in that grid row taller. */
+const META_PART_LIMIT = 2;
+
 /** The card's fact line, as its parts: "Mačka · 2 leti", skipping whatever we
  *  don't know. The card maps over these so it can style the separators without
  *  splitting a joined string back apart.
  *
- *  Two facts, and which two depends on the tab. That is what the card's width
- *  buys on a phone, and a third wraps onto a second line, which makes every
- *  card in that grid row taller.
+ *  At most two facts, taken from a ranked list: the first two we know. An
+ *  empty slot falls through to the next fact rather than leaving the line
+ *  short, because a card whose age is missing used to read "Mačka" alone,
+ *  which looks like something failed to load rather than like a fact we do
+ *  not have.
  *
- *  `species` is the grid's active tab. When it names one species the word comes
- *  off, because the tab already said it and "Mačka" is nearly twice the width
- *  of "Pes", which is why the wrapping read as a cat problem. Size takes that
- *  vacated slot and only that slot: it is on 44% of dogs and 16% of cats, which
- *  is thin, but it is the only field left with the coverage to be worth a place
- *  and it is a thing people decide on. Lowercased, because in a middot list of
+ *  `species` is the grid's active tab, and it decides where the ranking
+ *  starts. When the tab names one species the word comes off the front,
+ *  because the tab already said it and "Mačka" is nearly twice the width of
+ *  "Pes", which is why the wrapping read as a cat problem. The merged Ostale
+ *  tab holds rabbits and whatever else, so there the line still has to say
+ *  which animal this is.
+ *
+ *  The order after that is how much each fact moves a decision. Age first.
+ *  Then size: it is on 44% of dogs and 16% of cats, which is thin, but it is a
+ *  thing people decide on. Then sex, which is the one here that does not
+ *  change what a visitor taps next, so it only appears when nothing above it
+ *  is known. Size and sex are lowercased, because in a middot list of
  *  lowercase attributes "Srednja" reads as the start of a new sentence.
  *
- *  Sex is the fact that gave up its place once size took the species word's: it
- *  is the one here that does not change what a visitor taps next. It stays a
- *  filter, a fact on the animal's own page, and a word in the link preview's
- *  sentence, which composes its own list for that reason (animal-share.ts). */
+ *  Sex stays a filter, a fact on the animal's own page, and a word in the link
+ *  preview's sentence, which composes its own list for that reason
+ *  (animal-share.ts). */
 export function animalMetaParts(
   animal: AnimalFields,
   locale: Locale = "sl",
@@ -309,22 +321,18 @@ export function animalMetaParts(
 ): string[] {
   const months = ageInMonths(animal, now);
   const age = months !== undefined ? ageLabel(months, locale) : "";
-  // Only a tab that names one species has already said the word. The merged
-  // Ostale tab holds rabbits and whatever else, so there the line still has
-  // to say which animal this is. Two literals of two rather than one of three
-  // with a hole in it, so "at most two, and which two" is what the code says
-  // rather than something the reader derives from a flag read twice.
+  const size = animal.size
+    ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)
+    : "";
+  const sex =
+    animal.sex && animal.sex !== "unknown"
+      ? sexLabel(animal.sex, locale).toLocaleLowerCase(locale)
+      : "";
   const named = species === "dog" || species === "cat";
-  return (
-    named
-      ? [
-          age,
-          animal.size
-            ? sizeLabel(animal.size, locale).toLocaleLowerCase(locale)
-            : "",
-        ]
-      : [speciesLabel(animal.species, locale), age]
-  ).filter(Boolean);
+  const ranked = named
+    ? [age, size, sex]
+    : [speciesLabel(animal.species, locale), age, size, sex];
+  return ranked.filter(Boolean).slice(0, META_PART_LIMIT);
 }
 
 // Whole months since intake, same arithmetic as ageInMonths in filters.ts but

@@ -85,6 +85,51 @@ describe("the card's meta line on the species tabs", () => {
     });
     expect(meta(dog, "en", "all")).toBe("Dog · 3 years");
   });
+
+  // A missing age used to leave the card reading "Mačka" on its own, which
+  // looks like something failed to load. The slot falls through to the next
+  // fact we know instead.
+  it("fills an unknown age with the next fact it knows", () => {
+    const cat = animal({ species: "cat", sex: "female", size: "medium" });
+    expect(meta(cat, "sl", "all")).toBe("Mačka · srednja");
+    expect(meta(cat, "sl", "cat")).toBe("srednja · samica");
+  });
+
+  it("reaches sex only when nothing above it is known", () => {
+    const cat = animal({ species: "cat", sex: "female" });
+    expect(meta(cat, "sl", "all")).toBe("Mačka · samica");
+    expect(meta(cat, "sl", "cat")).toBe("samica");
+  });
+
+  // Nothing invented to fill the second slot: a line of one fact is what an
+  // animal we know one fact about gets, and on a named tab that is no line.
+  it("says only what it knows", () => {
+    const cat = animal({ species: "cat" });
+    expect(meta(cat, "sl", "all")).toBe("Mačka");
+    expect(meta(cat, "sl", "cat")).toBe("");
+    expect(animalMetaParts(cat, "sl", NOW, "cat")).toEqual([]);
+  });
+
+  // An unknown sex is not a fact, so it does not take the slot a real one
+  // would.
+  it("treats an unknown sex as nothing to say", () => {
+    const cat = animal({ species: "cat", sex: "unknown" });
+    expect(meta(cat, "sl", "all")).toBe("Mačka");
+  });
+
+  // Three facts on the line is the thing the limit exists to stop: at 375px a
+  // third wrapped onto a second line and made the whole grid row taller.
+  it("never prints more than two facts", () => {
+    const dog = animal({
+      species: "dog",
+      sex: "male",
+      size: "large",
+      approximateAgeMonths: 36,
+    });
+    expect(animalMetaParts(dog, "sl", NOW, "all")).toHaveLength(2);
+    expect(animalMetaParts(dog, "sl", NOW, "dog")).toHaveLength(2);
+    expect(meta(dog, "sl", "dog")).toBe("3 leta · velika");
+  });
 });
 
 describe("longStayMonths", () => {

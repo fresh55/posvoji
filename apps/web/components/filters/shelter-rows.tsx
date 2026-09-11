@@ -461,11 +461,24 @@ export function ShelterRows({
                       <span className="min-w-0 truncate">{sublabel}</span>
                     )}
                     {count > 0 && summary?.longestWaiting && waitLabel && (
+                      // Two tokens rather than the one amber pair that used to
+                      // colour the whole line, because the line is a sentence
+                      // and an hourglass, and the warm family holds one value
+                      // for each. The 12px text gains by the swap: amber-700
+                      // was 5.07:1 on the white panel, the ink token is
+                      // 7.14:1, and on the sheet's dark popover 10.14:1
+                      // becomes 12.12:1. The hourglass gives some back, 5.07:1
+                      // to 3.21:1 on white, which is a drawing clearing
+                      // SC 1.4.11's 3:1 and is the same mark the dialog and the
+                      // shelter panel already draw beside the same sentence.
                       <span
                         data-row-wait
-                        className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400"
+                        className="inline-flex items-center gap-1 text-[var(--status-warn-foreground)]"
                       >
-                        <Hourglass className="size-3 shrink-0" aria-hidden />
+                        <Hourglass
+                          className="size-3 shrink-0 text-[var(--status-warn-mark)]"
+                          aria-hidden
+                        />
                         {waitLabel(summary.longestWaiting.duration)}
                       </span>
                     )}

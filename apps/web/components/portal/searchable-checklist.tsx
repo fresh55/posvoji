@@ -40,7 +40,7 @@ export function SearchableChecklist({
                 />
               ) : (
                 <Search
-                  className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+                  className="size-3.5 shrink-0 text-[var(--status-warn-mark)]"
                   strokeWidth={1.75}
                   aria-hidden
                 />

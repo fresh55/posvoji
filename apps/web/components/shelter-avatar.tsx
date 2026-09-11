@@ -127,9 +127,22 @@ const SIZE = {
 // counted as light ink: it was boxed on the dark card, where all of it
 // already cleared 3:1, and left bare on white, where none of it did.
 //
-// Both chips are the same pair of neutrals, so the cases read as one
-// treatment rather than as two different components. Neither can be a themed
-// token: a chip exists to disagree with the card it is on.
+// Both chips are the same pair of greys, so the cases read as one treatment
+// rather than as two different components. Neither can be a themed token: a
+// chip exists to disagree with the card it is on. They are stone rather than
+// neutral because the rest of the page moved to stone this week (see the head
+// of the light :root block in globals.css), and two chips at chroma 0 were the
+// last cold grey left on a warm wall.
+//
+// What a chip is worth is unchanged by that move. The flags come from
+// logoSurface in apps/ingest/src/cache-logos.ts, which sets one when under 20%
+// of a mark's ink clears 3:1 against the white card, or under 60% against the
+// dark one. The palest ink a dark chip therefore has to rescue is whatever
+// just failed on white, relative luminance 0.30: on neutral-800 that ink read
+// 5.04:1 and on stone-800 it reads 5.07:1. The darkest ink a light chip has to
+// rescue is 0.126, which was 5.47:1 on neutral-100 and is 5.48:1 on stone-100.
+// The stone chroma moves both by under 0.05, the same as everything else that
+// changed with the palette.
 //
 // The padding and the border box are on the base class and are drawn whether
 // or not a chip is filled, so a mark keeps its exact position when the theme
@@ -149,12 +162,12 @@ const CHIP_BASE =
 // Off rather than merely not on, or the plate stays painted over a card that
 // is darker than it and draws exactly the box this design exists to remove.
 const CHIP_ON_LIGHT =
-  "border-white/15 bg-neutral-800 dark:border-transparent dark:bg-transparent";
+  "border-white/15 bg-stone-800 dark:border-transparent dark:bg-transparent";
 
 // Dark ink on the dark card: a light chip, in dark mode only. Written after
 // CHIP_ON_LIGHT at the call site so that a mark wanting both gets this one in
 // dark mode, which is the pair tailwind-merge keeps.
-const CHIP_ON_DARK = "dark:border-black/10 dark:bg-neutral-100";
+const CHIP_ON_DARK = "dark:border-black/10 dark:bg-stone-100";
 
 /** The pixel box a logo is drawn in, from the cached copy's own dimensions.
  *

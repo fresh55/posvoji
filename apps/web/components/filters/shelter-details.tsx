@@ -133,12 +133,13 @@ export function ShelterDetails({
         )}
 
         {/* The one animal a number cannot stand in for. Same hourglass and same
-            amber the animal card gives a long wait, so the two marks are one
-            mark. */}
+            warm mark the animal card gives a long wait, so the two marks are
+            one mark. The token carries the dark value the raw amber pair spelled
+            by hand. */}
         {summary?.longestWaiting && (
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <Hourglass
-              className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+              className="mt-0.5 size-3.5 shrink-0 text-[var(--status-warn-mark)]"
               strokeWidth={1.75}
               aria-hidden
             />

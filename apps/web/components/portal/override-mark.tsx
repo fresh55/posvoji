@@ -51,7 +51,11 @@ export function MissingMark() {
     <span
       className={cn(
         PORTAL_BADGE,
-        "border-amber-500/40 text-amber-700 dark:text-amber-300",
+        // The warn family, the way ui/badge.tsx's warn variant spells it. The
+        // raw amber pair this replaced carried no wash, so the ink sits on the
+        // page rather than on --status-warn: amber-800 there is 7.14:1 where
+        // amber-700 was 5.07:1.
+        "border-[var(--status-warn-border)] text-[var(--status-warn-foreground)]",
       )}
     >
       <Search className="size-2.5" aria-hidden />

@@ -48,7 +48,7 @@ export function ShelterBlock({
         {stay && (
           <div className="flex w-full items-start gap-2 text-sm">
             <Hourglass
-              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+              className="mt-0.5 size-4 shrink-0 text-[var(--status-warn-mark)]"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -73,10 +73,31 @@ export function ShelterBlock({
               contacts, the občine it answers for and the rest of its animals.
               Until now the only way out of this box left the site.
 
-              title, because the line truncates: a long name such as "Obalno
-              zavetišče (Marjetica Koper)" is cut, and the tooltip is the only
-              place the rest of it can be read without leaving. */}
-          <p className="truncate font-medium">
+              Two lines below sm, one from sm up. On a 390px phone the box is
+              the 12rem floor plus whatever the mark leaves, and "Obalno
+              zavetišče (Marjetica Koper)" was cut to "Obalno zavetišče
+              (Marjetica..." in the dialog and on the animal page both: the part
+              that says which of the two Koper entries this is was the part that
+              went. A phone has the vertical room a desktop row does not, and
+              the second line costs nothing there because the button below sm is
+              already full width on a line of its own. From sm up the button is
+              back on this row and one line is what keeps it there.
+
+              The two are spelled as max-sm and sm rather than as truncate with
+              a clamp laid over it: truncate carries white-space: nowrap, which
+              a line clamp cannot survive, so leaving both on at once would
+              depend on which utility the cascade happened to put last.
+
+              title stays, and is what the sm-and-up truncation leaves to read
+              without going anywhere. Below sm it is also still the fallback for
+              a name long enough to run past two lines.
+
+              The row keeps items-center. The mark is a fixed 48px row and the
+              text beside it is now up to three lines on a phone, which a
+              centred mark reads as one unit with; from sm up this same row also
+              carries the call to action, and items-start would lift that button
+              to the top of a row whose name is one line there anyway. */}
+          <p className="font-medium max-sm:line-clamp-2 sm:truncate">
             <a
               href={shelterPath(shelter.id, locale)}
               title={shelter.name}

@@ -143,7 +143,11 @@ export function FilterSelectionMark({
         className={cn(
           "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150",
           checked
-            ? "border-[var(--filter-accent-strong)] bg-[var(--filter-accent-strong)] text-white"
+            ? // The ink is a token and not text-white, because this is the one
+              // place the strong accent is a ground and that ground is light in
+              // dark mode: a white tick on it measured 2.39:1. See
+              // --filter-accent-strong-foreground in globals.css.
+              "border-[var(--filter-accent-strong)] bg-[var(--filter-accent-strong)] text-[var(--filter-accent-strong-foreground)]"
             : "border-muted-foreground/40 bg-background text-transparent",
           className,
         )}

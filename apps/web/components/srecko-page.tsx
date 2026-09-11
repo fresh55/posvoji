@@ -24,7 +24,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} trail={[{ label: getMessages(locale).about, href: ABOUT_PATHS[locale] }]} current={SRECKO.name} />
         <header className="space-y-3">
-          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">{SRECKO.name}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{SRECKO.name}</h1>
           <p className="text-lg font-medium">{text.memorial}</p>
           <p className="max-w-prose text-base leading-relaxed text-muted-foreground sm:text-lg">{text.intro}</p>
         </header>
@@ -53,7 +53,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
       )}
       <p className="max-w-prose text-base leading-relaxed">{text.purpose}</p>
       <details className="group border-y py-4">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-ui font-medium focus-visible:outline-2 focus-visible:outline-offset-4">
           {text.facts}<ChevronDown aria-hidden className="size-4 group-open:rotate-180" />
         </summary>
         <dl className="space-y-5 pb-2 pt-4">
@@ -76,7 +76,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
           {homeRange && <p className="text-sm text-muted-foreground">{text.home}: {homeRange}</p>}
         </section>
       )}
-      <a href={SRECKO_POSTER_PATHS[locale]} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-sm text-sm text-muted-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">
+      <a href={SRECKO_POSTER_PATHS[locale]} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-ui text-sm text-muted-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">
         <Printer aria-hidden className="size-4" />{text.poster}
       </a>
       <p className="border-t pt-6 text-sm leading-relaxed text-muted-foreground">{text.dedication}</p>

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  */
 export function PortalPageHeading() {
   return (
-    <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
+    <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
       {portalText.brand}
     </h1>
   );

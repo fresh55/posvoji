@@ -36,7 +36,7 @@ export function NotFoundPage({
       mainClassName="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center"
       footer={<SiteFooter locale={locale} />}
     >
-      <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
         {messages.notFoundTitle}
       </h1>
       <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

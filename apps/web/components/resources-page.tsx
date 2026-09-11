@@ -301,7 +301,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.resources} />
         <div className="max-w-3xl space-y-3">
-          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

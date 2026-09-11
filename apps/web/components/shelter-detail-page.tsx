@@ -243,7 +243,7 @@ export function ShelterDetailPage({
                 {/* break-words is the last resort under it: a name whose
                     longest word is wider than the column breaks the word
                     rather than the page. */}
-                <h1 className="break-words text-2xl font-medium tracking-tight sm:text-3xl">
+                <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
                   {shelter.name}
                 </h1>
                 {/* Wrapping, not truncation: the town and the count are

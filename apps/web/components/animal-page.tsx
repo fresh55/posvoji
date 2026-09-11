@@ -134,10 +134,12 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             // and there it is a little under half the viewport, and below
             // sm it is the whole column.
             sizes="(min-width: 1024px) 31rem, (min-width: 640px) 47vw, 100vw"
-            // rounded-xl, the grid card's photo corner (animal-card.tsx): a
-            // visitor arrives here from that photo, and the same picture
-            // should not change shape on the way.
-            className="relative aspect-[4/3] overflow-hidden rounded-xl border bg-muted"
+            // rounded-xl and no border, which is the grid card's photo
+            // frame (PHOTO_FRAME in animal-card.tsx): a visitor arrives
+            // here from that photo, and the same picture should not change
+            // shape or grow an edge of its own on the way. bg-muted stays,
+            // as the ground the photo loads onto.
+            className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted"
           />
         )}
 
@@ -148,7 +150,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                   reserved or adopted animal is a fact about the whole page
                   and belongs on the line that names it. */}
               <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   {animal.name ?? messages.unnamed}
                 </h1>
                 <StatusBadge status={animal.status} locale={locale} />

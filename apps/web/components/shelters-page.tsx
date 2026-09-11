@@ -226,7 +226,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             phone's 390, and 8px still separates them. Nothing else about the
             intro changes with the height. */}
         <div className="max-w-3xl space-y-3 short:space-y-2">
-          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

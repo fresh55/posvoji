@@ -226,7 +226,7 @@ export function PortalWorkspace() {
   return (
     <>
       {!hasOwnHeading && (
-        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
           {portalText.brand}
         </h1>
       )}
@@ -287,7 +287,7 @@ export function PortalWorkspace() {
           <section className="space-y-4">
             <div className="space-y-2 border-b pb-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h1 className="text-xl font-medium tracking-tight sm:text-2xl">
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                   {portalText.animalsTitle}
                 </h1>
                 {listState.status === "ready" &&

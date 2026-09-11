@@ -28,6 +28,17 @@ function shelter(over: Partial<ShelterCardData> = {}): ShelterCardData {
   };
 }
 
+// A mark, for the cases that turn on whether the card has one. A wordmark's
+// proportions, because that is what most of the register's logos are.
+const LOGO = {
+  url: "/media/shelter-logos/abc.webp",
+  chipOnLight: false,
+  chipOnDark: true,
+  opaque: false,
+  width: 300,
+  height: 100,
+};
+
 describe("the shelter card", () => {
   it("names the link with the shelter and nothing else on the card", () => {
     render(<ShelterCard shelter={shelter()} text={text} />);
@@ -279,7 +290,10 @@ describe("the shelter card", () => {
 
   it("puts the name above the mark on a phone and leaves the band alone", () => {
     const { container } = render(
-      <ShelterCard shelter={shelter({ animals: 2 })} text={text} />,
+      <ShelterCard
+        shelter={shelter({ animals: 2, logo: LOGO })}
+        text={text}
+      />,
     );
 
     // Below sm the grid is one column, so the card has no row to align its
@@ -299,6 +313,50 @@ describe("the shelter card", () => {
     expect(order("item-content")).toContain("max-sm:order-first");
     expect(order("item-media")).not.toContain("order-");
     expect(order("item-footer")).not.toContain("order-");
+  });
+
+  it("folds the count onto the town's line on a phone with no mark", () => {
+    const { container } = render(
+      <ShelterCard shelter={shelter({ animals: 2 })} text={text} />,
+    );
+
+    // With no mark the media row is one short phrase, and under the town it
+    // took a line of the card to say it. Below sm the card wraps instead: the
+    // row is pushed to the right edge and set against the bottom of the name
+    // block, which is the town's line, and the contacts take a full basis so
+    // they keep a line under both. Everything asserted here is max-sm, so the
+    // subgrid band from sm up is the same on every card, mark or no mark.
+    const card = container.querySelector("li");
+    expect(card?.className).toContain("max-sm:flex-wrap");
+    expect(card?.className).not.toContain("max-sm:flex-col");
+
+    const media = container.querySelector('[data-slot="item-media"]');
+    expect(media?.className).toContain("max-sm:ml-auto");
+    expect(media?.className).toContain("max-sm:self-end");
+    expect(
+      container.querySelector('[data-slot="item-footer"]')?.className,
+    ).toContain("max-sm:basis-full");
+  });
+
+  it("states the count once per card, whichever phone layout it gets", () => {
+    const card = (over: Partial<ShelterCardData>) =>
+      render(<ShelterCard shelter={shelter(over)} text={text} />).container;
+
+    // The browser suite adds data-animals up against the census line and
+    // counts the cards that carry data-no-list, so a card that drew either of
+    // them twice, one copy hidden behind a breakpoint, would be a card
+    // counted twice. That is why the fold is CSS over one element rather than
+    // a second element for the phone.
+    expect(card({ animals: 2 }).querySelectorAll("[data-animals]")).toHaveLength(
+      1,
+    );
+    expect(
+      card({ animals: 2, logo: LOGO }).querySelectorAll("[data-animals]"),
+    ).toHaveLength(1);
+    expect(card({}).querySelectorAll("[data-no-list]")).toHaveLength(1);
+    expect(card({ logo: LOGO }).querySelectorAll("[data-no-list]")).toHaveLength(
+      1,
+    );
   });
 
   it("draws the phone card tighter and its name larger", () => {

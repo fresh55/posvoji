@@ -70,6 +70,28 @@ export const GALLERY_BUTTON_CLASS =
 const OWN_BUTTON_CLASS =
   "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
+// What a grid card adds to the chevrons above. OWN_BUTTON_CLASS serves all
+// three surfaces this component is mounted on, and only the card's photo is
+// small: 228px wide in the grid, where a 28px disc with a drop shadow and a
+// blurred ground is a control bar sitting on the picture. On a card the
+// chevrons are a hint that there are more photos, so they get a 24px disc
+// (size icon-xs on the buttons below), a 14px chevron and 8px of air from the
+// frame, which stops the left one reading as a dark blob pushed against the
+// edge.
+//
+// A hairline ring instead of the drop shadow, for the reason DOT_CLASS gives:
+// a photograph can be any colour, and shadow-xs is tuned to lift a control off
+// a known surface. Black at low alpha draws the disc's own edge on a light
+// photo and disappears into a dark one, where a near-white disc needs no help.
+// The blur stays: the card's photo stands still, so there is nothing to
+// re-sample every frame, and it is what keeps a chevron legible over a busy
+// picture at this size.
+//
+// Behaviour is untouched. Everything the card changes here is paint: the
+// opacity and pointer-events gating, the press exemption and the aria come
+// from OWN_BUTTON_CLASS and the buttons themselves, whatever the surface.
+const CARD_BUTTON_CLASS = "bg-background/85 shadow-none ring-1 ring-black/10";
+
 // The dots inside a grid card, which the chevrons' own conditions bring back.
 // A card's dots used to stand on the photograph the whole time the grid was
 // open: sixty rows of them across a screen of paws and legs, on cards nobody
@@ -223,6 +245,17 @@ export function PhotoGallery({
   // component only for an animal with no photo at all, where hasGallery is
   // false. So the two can never answer the same key press.
   const keyboardGallery = hasGallery && !cardSurface;
+  // The card's smaller chevrons (CARD_BUTTON_CLASS above). The disc is the
+  // button's own icon-xs rather than a size class laid over icon-sm, so
+  // nothing has to out-rank the variant's h/w, and the icon and the inset are
+  // written out per surface because Tailwind reads whole class names.
+  const chevronSize = cardSurface ? "icon-xs" : "icon-sm";
+  const chevronIconClass = cardSurface ? "size-3.5" : "size-4";
+  const chevronClass = cardSurface
+    ? `${OWN_BUTTON_CLASS} ${CARD_BUTTON_CLASS}`
+    : OWN_BUTTON_CLASS;
+  const previousEdge = cardSurface ? "left-2" : "left-1.5";
+  const nextEdge = cardSurface ? "right-2" : "right-1.5";
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -473,7 +506,23 @@ export function PhotoGallery({
       // that happens to carry `group`. Surfaces that are not a card (the
       // animal page, the dialog) have no group/card and get a still photo,
       // which is right for both.
-      className="object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]"
+      //
+      // Dimmed in the dark theme, on the card only. Shelter photos are mostly
+      // white studio shots, and sixty of them at full brightness on the
+      // stone-950 grid glare. 90% is the value photo apps and GitHub settled
+      // on for images in a dark theme: enough to take the glare off a white
+      // background, not enough to muddy a photo that is already dark. The
+      // animal page and the dialog draw one large photograph the visitor
+      // asked to see, so there it stays at full brightness.
+      //
+      // A separate filter from the card's `tone`, which lands on the surface
+      // (surfaceClassName below) and not here, so the settled animals' 60%
+      // saturation and this brightness are two nested filters rather than two
+      // utilities competing on one element.
+      className={cn(
+        "object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
+        cardSurface && "dark:brightness-90",
+      )}
     />
   ) : (
     <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
@@ -548,7 +597,7 @@ export function PhotoGallery({
           <Button
             type="button"
             variant="outline"
-            size="icon-sm"
+            size={chevronSize}
             // Out of the tab order on a card: two chevrons on every card came
             // to 850 of the grid's tab stops. The keyboard route through a
             // card's gallery is the arrow keys on the card's own link, which
@@ -572,22 +621,22 @@ export function PhotoGallery({
             // the card's case only: where there is no link these are the
             // announced way through the gallery.
             aria-hidden={keyboardGallery ? undefined : "true"}
-            className={`${OWN_BUTTON_CLASS} left-1.5`}
+            className={`${chevronClass} ${previousEdge}`}
           >
-            <ChevronLeft className="size-4" aria-hidden />
+            <ChevronLeft className={chevronIconClass} aria-hidden />
           </Button>
           <Button
             type="button"
             variant="outline"
-            size="icon-sm"
+            size={chevronSize}
             tabIndex={keyboardGallery ? undefined : -1}
             data-press-exempt
             onClick={() => changeImage(1)}
             aria-label={messages.nextPhoto}
             aria-hidden={keyboardGallery ? undefined : "true"}
-            className={`${OWN_BUTTON_CLASS} right-1.5`}
+            className={`${chevronClass} ${nextEdge}`}
           >
-            <ChevronRight className="size-4" aria-hidden />
+            <ChevronRight className={chevronIconClass} aria-hidden />
           </Button>
           {/* Dots, not a fraction. "1 / 13" is bookkeeping; a row of dots says
               "there are more photos" and which one this is in a glance, and it

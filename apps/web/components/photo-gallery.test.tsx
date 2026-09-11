@@ -581,6 +581,68 @@ describe("photo gallery controls", () => {
     expect(surface.className).toContain("touch-pinch-zoom");
   });
 
+  it("dims the card's photo in the dark theme", () => {
+    setup();
+
+    // White studio shots on the stone-950 grid. jsdom resolves no theme, so
+    // this reads the class list: what is asserted is that the card renders the
+    // dark-mode rule, not that a browser applied it.
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    expect(photo?.className).toContain("dark:brightness-90");
+  });
+
+  it("leaves the photo at full brightness where the gallery is not a card", () => {
+    setupPlain();
+
+    // The animal page and the dialog draw the one large photograph the
+    // visitor asked for.
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    expect(photo?.className).not.toContain("brightness");
+  });
+
+  it("keeps the settled tone and the dark dimming on separate elements", () => {
+    setup({ status: "adopted" });
+
+    // The card's quiet tone lands on the swipe surface and the brightness on
+    // the picture inside it, so the two filters nest instead of meeting in one
+    // class list, where a merge would have to decide between them.
+    const surface = document.querySelector('[data-slot="photo-frame"] a');
+    const photo = surface?.querySelector("img");
+    expect(surface?.className).toContain("saturate-[60%]");
+    expect(surface?.className).toContain("opacity-80");
+    expect(photo?.className).toContain("dark:brightness-90");
+  });
+
+  it("draws the card's chevrons as a hint rather than a control bar", () => {
+    setup();
+
+    for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
+      const button = screen.getByLabelText(label);
+      // A 24px disc on a 228px photo, edged with a hairline rather than lifted
+      // with a drop shadow that a photograph of the wrong colour swallows.
+      expect(button.className).toContain("size-6");
+      expect(button.className).toContain("ring-1");
+      expect(button.className).not.toContain("shadow-xs");
+      // The blur stays: the card's photo stands still, and it is what keeps a
+      // chevron legible over a busy picture this small.
+      expect(button.className).toContain("backdrop-blur-sm");
+      // Paint only. The gating and the press exemption are untouched.
+      expect(button.className).toContain("pointer-events-none");
+      expect(button.className).toContain("active:translate-y-0!");
+      expect(button.getAttribute("data-press-exempt")).toBe("true");
+    }
+  });
+
+  it("keeps the heavier chevrons where the photo is drawn large", () => {
+    setupPlain();
+
+    for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
+      const button = screen.getByLabelText(label);
+      expect(button.className).toContain("size-8");
+      expect(button.className).not.toContain("ring-1");
+    }
+  });
+
   it("stays silent until the visitor has actually driven it", () => {
     setup();
 

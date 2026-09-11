@@ -20,6 +20,12 @@ export const CARD_GRID =
 // band below is the column itself. When the card was a bordered surface each
 // band ended in "- 2px" for the two edges the photo sat inside.
 //
+// Widths only, which is why the frame's aspect ratio never appears here. The
+// photo is square below sm and 4/3 above it (PHOTO_FRAME in animal-card.tsx);
+// a browser picks its rung off the declared width and the image's own
+// dimensions, and object-cover crops the rest, so changing the frame's height
+// moves nothing in this list.
+//
 // The page is `max-w-7xl px-gutter`, --gutter is 1rem below sm, 1.5rem from sm
 // and 2rem from lg (globals.css), and the grid's own gap is 1rem throughout.
 // From lg the results section is a 14rem sidebar plus a 2rem column gap ahead

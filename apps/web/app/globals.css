@@ -675,11 +675,13 @@
    without it the scrollbar would lie and the page would jump. `auto` in front
    of the length is the part that keeps this quiet: the browser remembers each
    card's last real height and falls back to the length only until it has one,
-   so the estimate has to hold for the first pass and no longer. A card is a 4/3
-   photo over a name, a meta line and a shelter row, which measures about 227px
-   in the two-column phone grid and about 261px at a desktop column width. 15rem
-   sits between them, and every card corrects itself the first time it is
-   drawn.
+   so the estimate has to hold for the first pass and no longer. A card is a
+   photo over a name, a meta line and a shelter row. The photo is square below
+   sm and 4/3 above it (PHOTO_FRAME in animal-card.tsx), which puts a 375px
+   phone card at about 163 + 100 = 263px and a desktop column at about 261px.
+   16rem sits between them, and every card corrects itself the first time it is
+   drawn. It was 15rem while the phone photo was 4/3 and the phone card the
+   shorter of the two.
 
    Safe on this element in particular: the card is already overflow-hidden and
    its one focus ring is an inset ring on an overlay inside the photo frame
@@ -689,7 +691,7 @@
    fall outside the box and be cut off. */
 @utility card-paint {
   content-visibility: auto;
-  contain-intrinsic-size: auto 15rem;
+  contain-intrinsic-size: auto 16rem;
 }
 
 /* A filtered link opens on a page that cannot know it was filtered. next.config

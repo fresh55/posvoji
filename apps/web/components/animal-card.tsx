@@ -46,6 +46,14 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
 // wants the larger corner; a 10px corner on a 228px picture read as tight.
 //
+// Square on a phone and 4/3 from sm. Below sm the grid is two hard-coded
+// columns (CARD_GRID), so a 375px screen draws a 163px card: a 4/3 photo in it
+// is 123px tall under a text block of about 100px, and the card is nearly half
+// words. The square gives the picture back 40px of height without touching the
+// column count, and from sm the card is wide enough that 4/3 is the better
+// frame for a photograph. CARD_PHOTO_SIZES is stated in widths only, so the
+// rung a browser downloads does not move with this.
+//
 // The card's focus ring is drawn here, as an inset ring on a ::after that
 // covers the frame, whenever either of the card's links has keyboard focus.
 // Here and on an overlay for two reasons. An inset box-shadow on the article
@@ -76,7 +84,7 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted" +
+  "relative aspect-square overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]" +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl" +
   " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";

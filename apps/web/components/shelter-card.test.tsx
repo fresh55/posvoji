@@ -125,7 +125,7 @@ describe("the shelter card", () => {
     expect(within(link).getByText("zonzani.si")).toBeTruthy();
   });
 
-  it("falls back to an initial when the shelter has no logo", () => {
+  it("draws no mark when the shelter has no logo", () => {
     render(
       <ShelterCard
         shelter={shelter({ name: "Veterinarska bolnica Brežice" })}
@@ -134,15 +134,12 @@ describe("the shelter card", () => {
     );
 
     // The manifest is read at build time, so a shelter without a logo never
-    // risks a 404: it gets a letter, and that letter is decoration the name
-    // beside it already says.
-    //
-    // The letter is the first distinctive word's, not the name's first
-    // character: half the register opens with "Zavetišče" or "Veterina", so
-    // the head of the name drew the same plate on card after card. See
-    // lib/shelter-initial.ts.
+    // risks a 404. It used to get a letter in a disc instead, which beside
+    // the real marks read as a placeholder; the left of the row is empty now
+    // and the no-list line on the right holds it.
     expect(screen.queryByRole("img")).toBeNull();
-    expect(screen.getByText("B")).toBeTruthy();
+    expect(screen.queryByText("B")).toBeNull();
+    expect(screen.getByText(text.noAnimals)).toBeTruthy();
   });
 
   it("draws the logo when the manifest has one", () => {
@@ -220,24 +217,23 @@ describe("the shelter card", () => {
     expect(area(wordmark) / area(portrait)).toBeLessThan(2);
   });
 
-  it("keeps the green off a mark for a shelter that shares no list", () => {
-    // Green says one thing on this site, and the count pill beside the mark
-    // says it too. An avatar wearing it on a contact-only shelter would be
-    // claiming a list we do not have.
-    const plate = (over: Partial<ShelterCardData>) => {
-      const { container } = render(
-        <ShelterCard
-          shelter={shelter({ name: "Zavetišče Potepuhi", ...over })}
-          text={text}
-        />,
-      );
-      // The letter is the shelter's own initial, cut past the generic first
-      // word: "Zavetišče Potepuhi" draws a P. See lib/shelter-initial.ts.
-      return within(container).getByText("P").className;
-    };
+  it("draws no mark for a shelter without a logo, whatever it shares", () => {
+    // Green says one thing on this site, and the count pill is where the
+    // card says it. The mark used to be a lettered disc for a shelter with
+    // no logo, and it wore the same green on a provider; with no disc drawn
+    // at all, the pill carries the statement alone.
+    const { container } = render(
+      <ShelterCard
+        shelter={shelter({ name: "Zavetišče Potepuhi", animals: 4 })}
+        text={text}
+      />,
+    );
 
-    expect(plate({ animals: 4 })).toContain("--filter-accent");
-    expect(plate({})).not.toContain("--filter-accent");
+    expect(within(container).queryByText("P")).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+    expect(within(container).getByText("4 živali").className).toContain(
+      "--filter-accent",
+    );
   });
 
   it("says how many animals a shelter that shares its list holds", () => {

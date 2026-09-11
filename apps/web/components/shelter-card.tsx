@@ -216,19 +216,20 @@ export function ShelterCard({
               row it is centred in is what holds the grid together: whatever
               shape the mark turns out to be, the row below it starts at the
               same y on every card. */}
-          <ShelterAvatar
-            name={shelter.name}
-            logo={shelter.logo}
-            size="register"
-            // The same test the count pill below is drawn on, so the two can
-            // never disagree: green is one statement on this site, and a ring
-            // wearing it on a shelter with no list would be making it falsely.
-            // No shelter in the register is both logo-less and a data
-            // provider today, so this draws nothing yet; it is here so that
-            // the first one to grant us a list is coloured by the rule rather
-            // than by a later patch.
-            accent={animals !== undefined}
-          />
+          {/* Only a real mark. A shelter without a logo used to get a grey
+              disc with an initial in it, which is the avatar placeholder of
+              an admin panel and not a shelter's mark: beside eleven real
+              logos the six discs read as the cards that were not finished.
+              With nothing on the left the row still holds its place in the
+              subgrid, and the count or the no-list line below keeps the
+              right edge, so the column the eye runs down is unchanged. */}
+          {shelter.logo && (
+            <ShelterAvatar
+              name={shelter.name}
+              logo={shelter.logo}
+              size="register"
+            />
+          )}
 
           {/* Which shelters the census is counting, and with how many animals
               each.
@@ -260,7 +261,9 @@ export function ShelterCard({
             // in that column is a sum that is not a number.
             <p
               data-no-list
-              className="min-w-0 text-right text-xs text-muted-foreground"
+              // ml-auto, because on a card with no mark this is the row's
+              // only child and justify-between would set it on the left.
+              className="ml-auto min-w-0 text-right text-xs text-muted-foreground"
             >
               {text.noAnimals}
             </p>
@@ -274,7 +277,7 @@ export function ShelterCard({
             // the noun with it and a test should not be parsing the dual.
             <p
               data-animals={animals}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-[var(--filter-accent-border)] bg-[var(--filter-accent)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--filter-accent-foreground)]"
             >
               <PawPrint className="size-3 shrink-0" aria-hidden />
               {text.animals(animals)}

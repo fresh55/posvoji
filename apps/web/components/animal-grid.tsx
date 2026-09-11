@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimalCard } from "@/components/animal-card";
-import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { AnimalFilters } from "@/components/filters/animal-filters";
 import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
@@ -32,6 +31,7 @@ import { SKIP_LINK } from "@/lib/skip-link";
 import { sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import { PawPrint } from "lucide-react";
+import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
@@ -42,6 +42,41 @@ import {
 import { CARDS_PER_CLICK } from "./grid-rendering";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 import { useIncrementalGrid } from "./use-incremental-grid";
+
+// The dialog and everything under it: the photo fan, the lightbox, the share
+// sheet, the shelter block and the dialog's own motion, which is the largest
+// single thing this page used to load before anyone had asked for an animal.
+// The grid, the filters and the cards need none of it to draw. Measured with
+// scripts/measure-chunks.mjs: the home document asked for 397.3 KB of script
+// gzipped with it imported and 373.7 KB with it fetched.
+//
+// ssr: false because there is nothing here to prerender. Which animal is open
+// is an address, the export has no server to read one with
+// (getServerLocationSnapshot in lib/location-search.ts returns "" and has to),
+// and the component returns null until an animal is selected, so the server
+// pass would emit the chunk's preload for markup that is empty either way.
+//
+// loading is null for the same reason the empty state has no skeletons: until
+// an animal is chosen there is no surface here, and a placeholder over the
+// grid would be a promise of a dialog nobody opened. What a visitor who did
+// open one waits on is warmAnimalDialog below, not a fallback.
+const AnimalDialog = dynamic(
+  () =>
+    import("@/components/animal-dialog/animal-dialog").then(
+      (module) => module.AnimalDialog,
+    ),
+  { ssr: false, loading: () => null },
+);
+
+// Fetches the dialog's chunk on the first sign that a card is about to be
+// opened, rather than on the click itself. It is the same import() the lazy
+// component resolves from, so the module cache is already filled by the time
+// the press lands and the dialog opens without a gap. Called on any pointer or
+// focus reaching the grid, which is as early as intent can be read, and
+// repeated calls cost nothing: a module is fetched once.
+function warmAnimalDialog() {
+  void import("@/components/animal-dialog/animal-dialog");
+}
 
 // How long a cleared filter state can still be taken back. Long enough to
 // read the row and reach for it, short enough that the offer is gone before
@@ -228,6 +263,18 @@ export function AnimalGrid({
       shown: sorted,
       basePath: locale === "sl" ? "/" : "/en",
     });
+
+  // Whether the dialog is on the page at all. False until the first animal
+  // opens, which is what keeps its chunk off the visit of anyone who only
+  // reads the grid, and true from then on: the closing animation is drawn by
+  // the dialog itself out of the animal it last held (lastAnimal in
+  // animal-dialog.tsx), and a dialog taken off the page as the selection
+  // clears would have nothing left to close with. Adjusted during render
+  // rather than in an effect so a link that arrives with an animal already
+  // named mounts it in the same pass it is read in, the way the dialog itself
+  // tracks that animal.
+  const [dialogMounted, setDialogMounted] = useState(false);
+  if (selected && !dialogMounted) setDialogMounted(true);
 
   const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
     useIncrementalGrid(sorted, selected !== undefined);
@@ -541,6 +588,12 @@ export function AnimalGrid({
               // one class to CARD_GRID would have quietly cost the tests their
               // column count and left them charging the two-column fallback.
               data-card-grid
+              // Where the dialog's chunk is asked for. Capture rather than
+              // bubble so it runs before the card's own handlers, and both a
+              // pointer and a focus because the two ways into a card are a
+              // press and a Tab. Neither opens anything on its own.
+              onPointerDownCapture={warmAnimalDialog}
+              onFocusCapture={warmAnimalDialog}
               className={CARD_GRID}
             >
               {page.map((animal, ordinal) => (
@@ -640,15 +693,17 @@ export function AnimalGrid({
           <div id="za-rezultati" tabIndex={-1} />
         </div>
 
-        <AnimalDialog
-          animal={selected}
-          logos={logos}
-          origin={origin}
-          siblingIds={shownIds}
-          reference={reference}
-          onNavigate={handleNavigate}
-          onClose={close}
-        />
+        {dialogMounted && (
+          <AnimalDialog
+            animal={selected}
+            logos={logos}
+            origin={origin}
+            siblingIds={shownIds}
+            reference={reference}
+            onNavigate={handleNavigate}
+            onClose={close}
+          />
+        )}
       </section>
     </>
   );

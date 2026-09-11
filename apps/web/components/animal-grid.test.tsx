@@ -639,11 +639,21 @@ describe("how much of the grid is drawn", () => {
   // Counted off the grid element rather than by role: radix hides the rest of
   // the page from the accessibility tree while a modal dialog is open, so the
   // cards behind it answer no role query at all.
-  function oneStep(at: string) {
+  async function oneStep(at: string) {
     window.history.replaceState(null, "", at);
     stubGridColumns(columnTracks(4));
     const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(pastTheBudget(4, 0));
+    // The dialog is fetched rather than imported (animal-grid.tsx), so an
+    // address that names an animal gets it a tick after the render that asked
+    // for it. What the step budget below reads is the address and not the
+    // mount, so the wait is only so that this measurement can say which of the
+    // two states it took.
+    if (at.includes("zival=")) {
+      await waitFor(() =>
+        expect(document.querySelector('[role="dialog"]')).toBeTruthy(),
+      );
+    }
     const dialog = document.querySelector('[role="dialog"]') !== null;
 
     act(() => {
@@ -655,15 +665,15 @@ describe("how much of the grid is drawn", () => {
     return { drawn, dialog };
   }
 
-  it("steps by fewer rows while a dialog stands over the grid", () => {
+  it("steps by fewer rows while a dialog stands over the grid", async () => {
     // The same observer entry mounts fewer cards while the dialog is open.
     // Traced on the production build on 4 September 2026 with the CPU
     // throttled four times, the commit of a sixty-card step was a 50ms task,
     // and behind a dialog that is a dropped frame in the middle of a drag of
     // the photo fan. The step behind a dialog is a dozen cards instead, which
     // commits inside a frame.
-    const closed = oneStep("/");
-    const behind = oneStep("/?zival=dog-0");
+    const closed = await oneStep("/");
+    const behind = await oneStep("/?zival=dog-0");
 
     expect(closed.dialog).toBe(false);
     expect(closed.drawn).toBe(INITIAL_CARDS + ROWS_PER_STEP * 4);
@@ -671,7 +681,7 @@ describe("how much of the grid is drawn", () => {
     expect(behind.drawn).toBe(INITIAL_CARDS + ROWS_PER_STEP_BEHIND_DIALOG * 4);
   });
 
-  it("reaches the same budget behind an open dialog, in more steps", () => {
+  it("reaches the same budget behind an open dialog, in more steps", async () => {
     // Nothing is held back behind the dialog, only sliced: the grid walks to
     // the same TARGET_ROWS budget and settles there the same way, so the
     // dialog's own previous and next arrows, which walk the drawn cards, keep
@@ -683,7 +693,10 @@ describe("how much of the grid is drawn", () => {
     const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
 
-    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+    // One tick for the dialog's own chunk. See oneStep above.
+    await waitFor(() =>
+      expect(document.querySelector('[role="dialog"]')).toBeTruthy(),
+    );
 
     // A three-row step is shorter than the watched band, so in the browser
     // every step re-arms straight into the next one. Here that is a delivered

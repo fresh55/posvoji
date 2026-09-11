@@ -134,6 +134,25 @@ describe("AnimalCard long-stay mark", () => {
 
     expect(screen.getByText(/Čaka/).dataset.variant).toBe("overlay-quiet");
   });
+
+  // Off only where the list around the card is already ordered by the wait,
+  // which is one caller (animal-grid.tsx under its default sort). Every test
+  // above renders without the prop, which is the other half of this: the mark
+  // is on unless somebody says otherwise.
+  it("drops the mark when the caller says the order already carries it", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) })}
+          reference={NOW}
+          showWaitMark={false}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.queryByText(/Čaka/)).toBeNull();
+  });
 });
 
 describe("AnimalCard status", () => {

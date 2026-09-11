@@ -867,3 +867,27 @@ describe("the chips row inside the grid", () => {
     for (const chip of chips) expect(chip.textContent).toContain("+1");
   });
 });
+
+describe("the long-stay mark in the grid", () => {
+  // Every one of these has waited well past the threshold, so the mark is a
+  // question about the order and not about the animals.
+  const WAITING = ANIMALS.map((entry) => ({
+    ...entry,
+    intakeDate: "2018-01-01",
+  }));
+
+  it("leaves the mark off under the order that already tells the wait", () => {
+    // The default sort is longest in shelter, so the mark would be on every
+    // card in the list, saying what the order has already said.
+    renderGrid(WAITING);
+
+    expect(screen.queryByText(/Čaka/)).toBeNull();
+  });
+
+  it("draws it again under any other order", () => {
+    window.history.replaceState(null, "", "/?razvrsti=novi");
+    renderGrid(WAITING);
+
+    expect(screen.getAllByText(/Čaka/)).toHaveLength(WAITING.length);
+  });
+});

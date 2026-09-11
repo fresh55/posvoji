@@ -88,6 +88,7 @@ export function AnimalCard({
   eager = false,
   onOpen,
   showShelter = false,
+  showWaitMark = true,
   className,
   style,
 }: {
@@ -104,6 +105,10 @@ export function AnimalCard({
    *  page already names itself in its heading, so a line under every card
    *  there would be the page linking to itself. */
   showShelter?: boolean;
+  /** Draws the long-stay mark on a photo that has earned one. On by default,
+   *  and the one caller that turns it off is the results grid under its own
+   *  default order; see the Badge below. */
+  showWaitMark?: boolean;
   /** The grid's, for the entrance stagger; the card has no opinion of its own. */
   className?: string;
   style?: CSSProperties;
@@ -264,7 +269,7 @@ export function AnimalCard({
           overlay
           className="absolute left-2 top-2"
         />
-        {waitMonths !== undefined && (
+        {showWaitMark && waitMonths !== undefined && (
           // On the photo, opposite the counter, for the same reason the
           // status is: it is a flag about the animal's situation, not one of
           // the animal's own facts. Off the text block it stops competing
@@ -287,6 +292,14 @@ export function AnimalCard({
           // disqualify a card. A second, louder tier for the longest waits
           // does not work either: the default sort is longest in shelter, so
           // every card above the fold would wear it.
+          //
+          // Which is also the rule showWaitMark carries. A mark on every card
+          // in a list that is already ordered by the wait says nothing the
+          // order has not said: under the default sort the first hundred cards
+          // all wore it. The results grid turns it off there and back on for
+          // every other order (animal-grid.tsx); every other surface draws it,
+          // because none of them is sorted by the wait. The animal's own page
+          // still says how long it has been waiting either way.
           //
           // Top right, opposite the status. The bottom edge belongs to the
           // gallery dots now, and on a phone card the two met in the middle.

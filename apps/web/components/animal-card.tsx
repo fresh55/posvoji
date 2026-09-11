@@ -45,7 +45,19 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // rounded-xl is 14px on this site's scale, where the bordered surfaces sit at
 // rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
 // wants the larger corner; a 10px corner on a 228px picture read as tight.
-const PHOTO_FRAME = "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted";
+//
+// The card's focus ring is drawn here, as an outline three pixels inside the
+// photo's edge, whenever either of the card's links has keyboard focus. Here
+// and as an outline for two reasons. An inset box-shadow on the article was
+// painted under its children, so the photo covered the top of it and the
+// rest cut through the first letters of the name. And nothing may reach
+// outside the card's box, because card-paint (globals.css) clips there. An
+// outline is painted after the element's descendants, so it sits over the
+// picture, and a negative offset keeps it inside the frame, following the
+// same corners. The shelter row underlines itself as well, which is what says
+// which of the two links the ring is standing for.
+const PHOTO_FRAME =
+  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted group-has-[a:focus-visible]/card:outline-3 group-has-[a:focus-visible]/card:-outline-offset-3 group-has-[a:focus-visible]/card:outline-ring";
 
 export function AnimalCard({
   animal,
@@ -181,16 +193,13 @@ export function AnimalCard({
         // one. The same reasoning the gallery's own chevrons already follow
         // with group/photo.
         //
-        // One focus ring for the whole card, drawn here and not on the links
-        // inside it. The text block sits flush with the photo's edge, so an
-        // outline on the link itself either cuts through the first letters
-        // (inset) or falls outside the card's box (offset), and card-paint in
-        // globals.css clips everything outside that box. An inset ring on the
-        // article follows the photo's corners and stays inside. :has() and
-        // not focus-within, so a mouse press on the way to the dialog does
-        // not flash it; the shelter row underlines itself as well, which is
-        // what says which of the two links the ring is standing for.
-        "group/card flex flex-col overflow-hidden rounded-xl transition-transform has-[a:focus-visible]:ring-3 has-[a:focus-visible]:ring-inset has-[a:focus-visible]:ring-ring motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99]",
+        // No focus styling on the article or on the links inside it: the
+        // photo frame draws one ring for the whole card (PHOTO_FRAME above).
+        // The text block sits flush with the photo's edge, so an outline on
+        // the link itself either cuts through the first letters (inset) or
+        // falls outside the card's box (offset), and card-paint in
+        // globals.css clips everything outside that box.
+        "group/card flex flex-col overflow-hidden transition-transform motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99]",
         className,
       )}
       style={style}
@@ -295,8 +304,8 @@ export function AnimalCard({
         // it through an anchor with no bottom padding. That shipped once,
         // when the wait line was still in this block.
         //
-        // outline-none, because the article draws the focus ring for both
-        // of the card's links; see its className.
+        // outline-none, because the photo frame draws the focus ring for
+        // both of the card's links; see PHOTO_FRAME.
         className="flex flex-col gap-0.5 pt-2.5 outline-none"
       >
         {/* The name owns its line. It used to share one with the status

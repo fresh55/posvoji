@@ -599,8 +599,9 @@
    drawn.
 
    Safe on this element in particular: the card is already overflow-hidden and
-   its one focus ring is drawn inset (animal-card.tsx), so paint containment
-   clips nothing that was reaching outside the box anyway. It is also why the
+   its one focus ring is an outline drawn inside the photo frame
+   (animal-card.tsx), so paint containment clips nothing that was reaching
+   outside the box anyway. It is also why the
    card draws no hover shadow and no hover ground wider than itself: both would
    fall outside the box and be cut off. */
 @utility card-paint {

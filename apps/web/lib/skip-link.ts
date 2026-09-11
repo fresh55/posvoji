@@ -43,8 +43,8 @@ export const SKIP_LINK =
  * The three in-flow links sit where they are written, inside the block they
  * skip, so focus:absolute resolves against the nearest positioned ancestor and
  * lands them there. A header link has no such block: it is the first thing in
- * the document, so it pins itself to the top left of the header, which carries
- * `relative` for it. left-gutter and not left-2, so it lines up with the page
- * frame rather than the viewport edge under a notch.
+ * the document, so it pins itself to the top left of the header's row, which
+ * carries `relative` for it. left-gutter and not left-2, so it lines up with
+ * the page frame rather than the viewport edge under a notch.
  */
 export const SKIP_LINK_PINNED = `${SKIP_LINK} focus:top-2 focus:left-gutter`;

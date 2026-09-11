@@ -167,9 +167,13 @@ export function SiteFooter({
   const links = siteLinks(locale, messages).filter((link) => shown[link.key]);
 
   return (
+    // The band is the viewport's width and its rule runs edge to edge; the
+    // row inside it is the page frame, so the links line up with the header
+    // and the main (site-shell.tsx). It used to bleed out of the frame, and
+    // the rule stopped where the frame did.
     <footer
       className={cn(
-        "bleed border-t py-6 text-xs leading-relaxed text-muted-foreground",
+        "border-t py-6 text-xs leading-relaxed text-muted-foreground",
         // Only below lg, which is where the dock is; above it the dock is
         // gone and the extra air would just be a hole under the page.
         // Measured off back-to-top's own inset rather than restated: that
@@ -204,7 +208,7 @@ export function SiteFooter({
           ran to 12px short of "Zavetišča" and the first line read on into the
           link row as one sentence. 40px makes the prose wrap a word earlier
           and leaves the two columns legibly apart. */}
-      <div className="flex flex-col gap-4 sm:flex-row-reverse sm:items-start sm:justify-between sm:gap-x-10">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-gutter sm:flex-row-reverse sm:items-start sm:justify-between sm:gap-x-10">
         {links.length > 0 && (
           <nav
             // Not moreInformation, which is the header nav's. On the shelters

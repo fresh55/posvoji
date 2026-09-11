@@ -28,17 +28,20 @@ export function PortalShell({
       {/* One motion feature bundle for the whole portal, so no page or card
           has to carry its own. */}
       <LazyMotion features={domAnimation}>
-        <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-gutter">
-          <header className="bleed relative flex items-center justify-between gap-3 border-b py-4">
+        {/* The same shape as site-shell.tsx: a full-width column, a header
+            band whose rule runs edge to edge, the page frame around the main,
+            and the footer band under it. */}
+        <div className="flex min-h-dvh flex-col">
+          <header className="border-b">
+          <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-gutter py-4">
             {/* The public header's bypass, spelled again here because this
                 header is hand-rolled and does not render SiteHeader. Fewer
                 stops to skip than on the public site, but the list is a long
                 table and the editor a long form, and a keyboard visitor pays
                 the brand and the actions again on every step between them.
-                relative on the header and left-gutter here for the reason
-                site-header.tsx records: the header bleeds, so an absolutely
-                positioned child otherwise measures from outside the page's
-                own column. */}
+                relative on the row and left-gutter here for the reason
+                site-header.tsx records: the row's padding is the gutter, so
+                an absolutely positioned child lands on the page's column. */}
             <a
               href={`#${CONTENT_ID}`}
               className={SKIP_LINK_PINNED}
@@ -71,23 +74,26 @@ export function PortalShell({
               </span>
             </a>
             {actions}
+          </div>
           </header>
 
-          {/* The same id the public pages use, so there is one name for
-              "the content" across the whole export. tabIndex so focus moves
-              here rather than only scrolling the page. */}
-          <main
-            id={CONTENT_ID}
-            tabIndex={-1}
-            className={cn(
-              "mx-auto flex w-full flex-1 flex-col py-page-y",
-              narrow
-                ? "max-w-md justify-center gap-6"
-                : "max-w-5xl gap-8 sm:gap-10",
-            )}
-          >
-            {children}
-          </main>
+          <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-gutter">
+            {/* The same id the public pages use, so there is one name for
+                "the content" across the whole export. tabIndex so focus moves
+                here rather than only scrolling the page. */}
+            <main
+              id={CONTENT_ID}
+              tabIndex={-1}
+              className={cn(
+                "mx-auto flex w-full flex-1 flex-col py-page-y",
+                narrow
+                  ? "max-w-md justify-center gap-6"
+                  : "max-w-5xl gap-8 sm:gap-10",
+              )}
+            >
+              {children}
+            </main>
+          </div>
 
           {/* The portal states the address itself, under the login form and in
               the workspace's no-shelters lead, and takes it away again on the

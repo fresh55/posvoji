@@ -60,8 +60,26 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // the overlay never takes a press meant for the photo. The shelter row
 // underlines itself as well, which is what says which of the two links the
 // ring is standing for.
+//
+// That same overlay carries a permanent hairline. Many shelter photos are
+// studio shots on a white ground, and on the white page such a photo has no
+// edge at all: the corners disappear and the wait mark at the top right sits
+// in what reads as empty page. 6% black in light mode and 8% white in dark
+// closes the shape without reading as a border around the picture. It covers
+// the empty frame as well, because an animal with no photo draws its caption
+// inside this same box (photo-gallery.tsx).
+//
+// An inset box-shadow and not a second ring, because the focus ring above is a
+// ring and an element has one --tw-ring-shadow: two ring utilities here would
+// be one value, and whichever the compiler emitted last would take it.
+// Tailwind builds box-shadow out of --tw-ring-shadow and --tw-shadow together,
+// so the two coexist, and the ring comes first in that list, which is what
+// paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
+  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted" +
+  " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl" +
+  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({
   animal,

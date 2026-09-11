@@ -192,9 +192,21 @@ const DOT_CLASS =
 // is dark whatever the theme is, so a dot that follows the theme would be
 // stone-950 on near-black in the dark one. The scrim decided the colour under
 // the dots, which is the whole point of it.
+// The scrim carries the row, and each dot still carries its own edge.
+//
+// The edge looked like five shadows doing one job and the scrim was supposed
+// to replace it. Measured, it cannot. A white dot on a white studio photo is
+// 1.09:1 against what is under it; the scrim at black/30 takes that to 1.52:1
+// and even black/60 only reaches 2.53:1, which is a strip dark enough to read
+// as a bar across the picture and still not enough to see a dot through. The
+// scrim earns its place on the mid tones, where it moves 3.67:1 to 4.87:1, and
+// the 1px edge is what makes the dot a shape on the worst photo in the set.
+//
+// Both, then. The measurement is in the session notes; the short version is
+// that neither alone works and together they cost one inset ring.
 const CARD_DOTS = {
   container: `${CARD_DOTS_CLASS} bottom-0 z-0 h-12 items-end pb-1.5 bg-linear-to-t from-black/30 via-black/10 to-transparent`,
-  dot: "size-1.5 rounded-full transition-colors",
+  dot: "size-1.5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.28)] transition-colors",
   current: "bg-white",
   rest: "bg-white/55",
 } as const;

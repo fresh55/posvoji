@@ -35,7 +35,12 @@ const MOBILE_SPECS = [
 // Map snapshots use playwright.visual.config.ts; cat behaviour and snapshots
 // use playwright.cat.config.ts. Keep these dedicated suites out of the broader
 // browser run so `test:e2e` retains its existing scope and setup requirements.
-const VISUAL_SPECS = ["shelter-map.visual.spec.ts", "cat-visual.spec.ts", "cat-hardening.spec.ts"];
+const VISUAL_SPECS = [
+  "shelter-map.visual.spec.ts",
+  "grid.visual.spec.ts",
+  "cat-visual.spec.ts",
+  "cat-hardening.spec.ts",
+];
 
 export default defineConfig({
   testDir: "./e2e",

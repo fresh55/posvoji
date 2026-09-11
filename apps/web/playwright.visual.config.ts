@@ -46,5 +46,25 @@ export default defineConfig({
         },
       },
     },
+    {
+      // Desktop Chrome here, and the phone context declared per describe block
+      // inside the spec, the way the map gallery already does it. Three
+      // projects would be three copies of the same base and three snapshot
+      // directories for one gallery, and the snapshot names have to stay flat
+      // anyway: snapshotPathTemplate above deliberately carries no project or
+      // platform segment, so a per-project split would collide rather than
+      // separate.
+      name: "grid-visual",
+      testMatch: "grid.visual.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...baseConfig.use,
+        colorScheme: "light",
+        contextOptions: {
+          ...baseConfig.use?.contextOptions,
+          reducedMotion: "reduce",
+        },
+      },
+    },
   ],
 });

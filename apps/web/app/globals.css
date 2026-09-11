@@ -684,17 +684,18 @@
    of the length is the part that keeps this quiet: the browser remembers each
    card's last real height and falls back to the length only until it has one,
    so the estimate has to hold for the first pass and no longer. A card is a
-   photo over a name, a meta line and a shelter row. The photo is square below
-   sm and 4/3 above it (CARD_PHOTO_ASPECT in lib/card-grid.ts, which CSS cannot
-   import, so this is the copy that has to be kept honest by hand), and that
-   measures 263px on a 375px phone and 261px in a desktop column.
+   photo over a name, a meta line and a shelter row, and the photo is square at
+   every width now (CARD_PHOTO_ASPECT in lib/card-grid.ts, which CSS cannot
+   import, so this is the copy that has to be kept honest by hand). Square means
+   the card's height follows its width, and its width is not one number any
+   more: about 163px on a 375px phone, about 309px in an xl column.
 
-   16.5rem is 264px, a whisker above the taller of the two rather than between
-   them. Above, because the fallback is what the scrollbar believes until a card
-   has been drawn once: an estimate under the real height promises a shorter
-   page than the grid delivers, and a phone list is twice as many rows as a
-   desktop one to be wrong about. It was 15rem while the phone photo was 4/3 and
-   the phone card the shorter of the two.
+   So this takes two values rather than one. 17rem is 272px, a little above the
+   263px phone card; 25rem is 400px, just under the 409px an xl card measures
+   and above the 324px a card beside the sidebar does. Above the real height
+   rather than under it wherever there is a choice: the fallback is what the
+   scrollbar believes until a card has been drawn once, and an estimate under it
+   promises a shorter page than the grid delivers.
 
    Safe on this element in particular: the card is already overflow-hidden and
    its one focus ring is an inset ring on an overlay inside the photo frame
@@ -704,7 +705,11 @@
    fall outside the box and be cut off. */
 @utility card-paint {
   content-visibility: auto;
-  contain-intrinsic-size: auto 16.5rem;
+  contain-intrinsic-size: auto 17rem;
+
+  @media (width >= 40rem) {
+    contain-intrinsic-size: auto 25rem;
+  }
 }
 
 /* A filtered link opens on a page that cannot know it was filtered. next.config

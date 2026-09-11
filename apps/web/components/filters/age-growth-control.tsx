@@ -18,6 +18,7 @@ import {
   CountRoll,
   FilterSelectionMark,
   filterCardVariants,
+  SIDEBAR_ROW,
 } from "@/components/filters/filter-card";
 import {
   CollapsibleBody,
@@ -440,7 +441,10 @@ export function AgeGrowthControl({
                           className:
                             layout === "sheet"
                               ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                              : "grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left",
+                              : // SIDEBAR_ROW for the reason filter-card.tsx
+                                // records: a sidebar row is a line in a list,
+                                // not a tile.
+                                `${SIDEBAR_ROW} grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left`,
                         })}
                       >
                         <FilterSelectionMark

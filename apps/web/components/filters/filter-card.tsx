@@ -39,11 +39,32 @@ export function isDeadOption(count: number, checked: boolean): boolean {
   return count === 0 && !checked;
 }
 
+/**
+ * What takes a sidebar row off the tile surface.
+ *
+ * The sheet draws tiles and the sidebar draws rows, and both wore the same
+ * border, shadow and ground. In a column that already holds the map plate and
+ * the sex and size tiles, three or four more bordered boxes per section made
+ * the panel read as a form: on the home page at 1440 the first screen was
+ * seventy-odd outlined rectangles. A row is a line in a list. It keeps the
+ * icon, the drawn check and the count, and it keeps the hover ground and the
+ * green fill when picked, because those are states rather than furniture;
+ * only the box at rest goes.
+ *
+ * Border transparent rather than none, so the row keeps its 1px and the text
+ * does not shift when a picked row draws its fill or a focused one its ring.
+ * Every state that set a border colour is overridden here by name, and this
+ * string has to come after filterCardVariants' own classes in cn() to do so,
+ * which filterCardLayoutClass and the age rows both arrange.
+ */
+export const SIDEBAR_ROW =
+  "border-transparent bg-transparent shadow-none hover:border-transparent data-[state=on]:border-transparent";
+
 /** The class the caller hands filterCardVariants for its layout. */
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
   return layout === "sheet"
     ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-    : "h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left";
+    : `${SIDEBAR_ROW} h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`;
 }
 
 function markClass(layout: FilterCardLayout): string {

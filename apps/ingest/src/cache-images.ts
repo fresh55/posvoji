@@ -14,7 +14,9 @@ import type {
 } from "@posvoji/provider-sdk";
 import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
 import { mapByHost } from "./by-host";
+import { QUALITY_VERSION, scoreImage } from "./image-quality";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
+import { listingSourceUrl } from "./portal-listings";
 import { writeFileAtomic } from "./write-atomic";
 import { writeContentAddressed } from "./write-content-addressed";
 
@@ -92,6 +94,14 @@ export interface CachedImageEntry {
   // Which DERIVATIVE_VERSION cut the files above. Absent on entries written
   // before the field existed, which is what v1 means.
   derivativeVersion?: number;
+  // How good the cached master looks, from image-quality.ts. Higher is
+  // better, and it is only ever compared against the other photos of the same
+  // animal. Absent on an entry nothing has scored yet, and on one whose
+  // master would not decode.
+  quality?: number;
+  // Which QUALITY_VERSION produced it. Absent means "not this one", so an
+  // entry written before scoring existed is rescored on the next run.
+  qualityVersion?: number;
   etag?: string;
   lastModified?: string;
   fetchedAt: string;
@@ -148,6 +158,10 @@ export function isDrawableImage(image: AnimalImage): boolean {
 // that is not in the manifest and leave the real hero without an AVIF. A
 // display-permitted lead does stop the search: it is the photo the page shows,
 // it has no cached copy to cut from, and the photo behind it is not a hero.
+//
+// Feed this the ordered animals. orderAnimalImages below is what decides
+// which photo leads, so reading the source order here would cut the avif for
+// a photo the card no longer shows.
 export function heroSourceUrls(animals: Animal[]): Set<string> {
   const urls = new Set<string>();
   for (const animal of animals) {
@@ -199,11 +213,140 @@ export function stripCacheDerivedFields(image: AnimalImage): AnimalImage {
   return stripped as AnimalImage;
 }
 
+// A manual listing's photos are already in an order somebody chose: a shelter
+// typed that listing into the portal and uploaded its photos in the order it
+// meant them to be seen. Reordering is for the photos a crawl found in
+// whatever order a listing page emitted, so a portal record is left alone.
+//
+// The marker is the record's own source link. portal-listings.ts builds it
+// with listingSourceUrl, and a crawled animal cannot carry one, because a
+// crawled animal links to the page on the shelter's own site it came from.
+// The Animal schema has no field that says "manual", and adding one to
+// packages/schema needs an issue first.
+function isPortalListing(animal: Animal): boolean {
+  return animal.source.sourceUrl === listingSourceUrl(animal.source.providerId);
+}
+
+// The score of the cached master behind an image, if there is one. Only
+// cache-permitted images have a master to score; a display-permitted photo is
+// hotlinked and a photo with unknown rights is never drawn at all, so neither
+// can be ranked and both keep their place.
+function qualityOf(
+  image: AnimalImage,
+  manifest: ImageCacheManifest,
+): number | undefined {
+  if (!isCacheableImage(image)) return undefined;
+  return manifest.entries[image.sourceUrl]?.quality;
+}
+
+// The order a card and a detail page draw an animal's photos in. Shelter
+// listing pages emit their photos in no particular order, so a blurry snap or
+// a dark cage shot in front of a sharp portrait is common; the scored photos
+// go first, best first, and everything we could not score keeps its relative
+// place behind them.
+//
+// Stable in both halves. Two photos with the same score, and every photo
+// without one, stay in the order the provider listed them. An array with no
+// scored photo at all, and one that is already in this order, come back as
+// the same reference.
+export function orderedImages(
+  images: AnimalImage[],
+  manifest: ImageCacheManifest,
+): AnimalImage[] {
+  const ranked = images.map((image, index) => ({
+    image,
+    index,
+    quality: qualityOf(image, manifest),
+  }));
+  if (!ranked.some((entry) => entry.quality !== undefined)) return images;
+
+  // The index tiebreak carries the source order through, rather than leaning
+  // on the sort being stable.
+  const sorted = [...ranked].sort((a, b) => {
+    if (a.quality === undefined && b.quality === undefined) {
+      return a.index - b.index;
+    }
+    if (a.quality === undefined) return 1;
+    if (b.quality === undefined) return -1;
+    if (a.quality !== b.quality) return b.quality - a.quality;
+    return a.index - b.index;
+  });
+  if (sorted.every((entry, index) => entry.index === index)) return images;
+  return sorted.map((entry) => entry.image);
+}
+
+// orderedImages over a dataset. Nothing but the order of animal.images
+// changes: the same image objects come back, with the same fields, and an
+// animal whose order is unchanged comes back as the same object.
+export function orderAnimalImages(
+  animals: Animal[],
+  manifest: ImageCacheManifest,
+): Animal[] {
+  return animals.map((animal) => {
+    if (isPortalListing(animal)) return animal;
+    const images = orderedImages(animal.images, manifest);
+    return images === animal.images ? animal : { ...animal, images };
+  });
+}
+
+// Scores the cached masters that have no current score, in place. Reads
+// files and writes nothing but the manifest entries it was handed.
+//
+// A separate pass from deriveVariants, and it has to run before it: the hero
+// avif is cut for the photo that leads, which is decided by the order, which
+// is decided by these scores. Cheap to run every time, since an entry already
+// scored under QUALITY_VERSION is skipped without opening its file.
+export async function scoreCachedImages(
+  manifest: ImageCacheManifest,
+  mediaDir: string,
+): Promise<number> {
+  // Content addressing lets several URLs share one file, so the work is
+  // grouped by file, exactly as deriveVariants does: one decode, and every
+  // entry pointing at it records the same score.
+  const groups = new Map<string, CachedImageEntry[]>();
+  for (const entry of Object.values(manifest.entries)) {
+    const group = groups.get(entry.file);
+    if (group) group.push(entry);
+    else groups.set(entry.file, [entry]);
+  }
+
+  let scored = 0;
+  for (const [file, entries] of groups) {
+    const current = entries.every(
+      (entry) =>
+        entry.quality !== undefined && entry.qualityVersion === QUALITY_VERSION,
+    );
+    if (current) continue;
+    const sourcePath = join(mediaDir, file);
+    if (!existsSync(sourcePath)) continue;
+
+    let quality: number;
+    try {
+      quality = await scoreImage(readFileSync(sourcePath));
+    } catch (error) {
+      // A master that will not decode keeps whatever it had. The photo still
+      // reaches the page; it just cannot be ranked, so it sorts behind the
+      // ones that could be read.
+      console.warn(`image ${file}: quality scoring failed (${error})`);
+      continue;
+    }
+    for (const entry of entries) {
+      entry.quality = quality;
+      entry.qualityVersion = QUALITY_VERSION;
+    }
+    scored++;
+  }
+  return scored;
+}
+
 export function withCachedUrls(
   animals: Animal[],
   manifest: ImageCacheManifest,
 ): Animal[] {
-  return animals.map((animal) => ({
+  // Both entry points order before they work out the heroes, so this is
+  // already done by the time it gets here. It runs anyway, and is a no-op
+  // when it is, so a caller that only grafts still ships the right order.
+  return orderAnimalImages(animals, manifest).map((animal) => ({
     ...animal,
     images: animal.images.map((image) => {
       const entry =
@@ -498,6 +641,7 @@ export interface CacheImagesResult {
   fetched: number;
   reused: number;
   deleted: number;
+  scored: number;
   derived: DerivedCounts;
 }
 
@@ -677,11 +821,17 @@ export async function cacheImages(
     else if (outcome.counted === "reused") reused++;
   });
 
+  // Score, then order, then derive, and the order matters. The lead photo is
+  // the one the score picked, and the hero avif is cut for the lead, so both
+  // of the steps below read the ordered list rather than the source order.
+  const scored = await scoreCachedImages(next, mediaDir);
+  const ordered = orderAnimalImages(animals, next);
+
   // Thumbs, rungs, placeholders and the hero AVIF are all cut from our own
   // processed copies, without a single request.
   const derived = await deriveVariants(
     next,
-    heroSourceUrls(animals),
+    heroSourceUrls(ordered),
     mediaDir,
   );
 
@@ -717,10 +867,11 @@ export async function cacheImages(
   writeFileAtomic(manifestPath, JSON.stringify(next, null, 2));
 
   return {
-    animals: withCachedUrls(animals, next),
+    animals: withCachedUrls(ordered, next),
     fetched,
     reused,
     deleted,
+    scored,
     derived,
   };
 }

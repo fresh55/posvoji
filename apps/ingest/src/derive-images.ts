@@ -12,7 +12,9 @@ import { holdArtifactLock } from "./artifact-lock";
 import {
   deriveVariants,
   heroSourceUrls,
+  orderAnimalImages,
   readImageCacheManifest,
+  scoreCachedImages,
   withCachedUrls,
 } from "./cache-images";
 import {
@@ -47,9 +49,15 @@ if (cached === 0) {
   console.warn(`images: no cached copies in ${imageCacheManifestPath}`);
 }
 
+// Same sequence as the export run: score the masters, order each animal's
+// photos by those scores, and only then work out which photo leads and cut
+// its avif. A backfill of the scores therefore moves the avif with the lead.
+const scored = await scoreCachedImages(manifest, cachedImagesDir);
+const ordered = orderAnimalImages(dataset.animals, manifest);
+
 const derived = await deriveVariants(
   manifest,
-  heroSourceUrls(dataset.animals),
+  heroSourceUrls(ordered),
   cachedImagesDir,
 );
 writeFileAtomic(imageCacheManifestPath, JSON.stringify(manifest, null, 2));
@@ -57,7 +65,7 @@ writeFileAtomic(imageCacheManifestPath, JSON.stringify(manifest, null, 2));
 // Only the images change, so everything else in the dataset is carried over
 // as it stands. generatedAt records when the data was fetched, and this run
 // fetched nothing, so it keeps the time of the export that did.
-const animals = withCachedUrls(dataset.animals, manifest);
+const animals = withCachedUrls(ordered, manifest);
 writeFileAtomic(
   datasetPath,
   JSON.stringify(Dataset.parse({ ...dataset, animals }), null, 2),
@@ -68,6 +76,7 @@ console.log(
   `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
     `${derived.blurs} placeholders, ${derived.avifs} avif derived`,
 );
+console.log(`image quality: ${scored} master(s) scored`);
 console.log(
   `derived over ${cached} cached images, rewrote ${animals.length} animals ` +
     `in ${datasetDir} (generatedAt ${dataset.generatedAt} unchanged, ` +

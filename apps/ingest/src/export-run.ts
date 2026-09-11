@@ -498,20 +498,22 @@ export async function runExport(
     // a full export. Preserved providers stay in scope for the deletion sweep but
     // out of scope for requests, so their cached files and URLs are neither
     // deleted nor needlessly rechecked.
-    const { animals, fetched, reused, deleted, derived } = await cacheImages(
-      overridden,
-      client,
-      imagePolicies,
-      requestedProviderId || republish
-        ? { refreshProviderIds: crawledProviderIds }
-        : {},
-    );
+    const { animals, fetched, reused, deleted, scored, derived } =
+      await cacheImages(
+        overridden,
+        client,
+        imagePolicies,
+        requestedProviderId || republish
+          ? { refreshProviderIds: crawledProviderIds }
+          : {},
+      );
     logger.log(
       `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
     );
     logger.log(
       `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
-        `${derived.blurs} placeholders, ${derived.avifs} avif derived`,
+        `${derived.blurs} placeholders, ${derived.avifs} avif derived, ` +
+        `${scored} scored`,
     );
 
     // cachedUrl is set by cacheImages above, so this catches whatever it could

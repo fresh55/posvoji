@@ -24,15 +24,20 @@ import {
   cacheImages,
   cacheableUrls,
   heroSourceUrls,
+  orderAnimalImages,
+  orderedImages,
   processImage,
   publicUrlFor,
   rungFileFor,
   thumbFileFor,
+  type ImageCacheManifest,
 } from "./cache-images";
+import { QUALITY_VERSION } from "./image-quality";
 
 function animal(overrides: {
   id: string;
   providerId?: string;
+  sourceUrl?: string;
   images: Animal["images"];
 }): Animal {
   const providerId = overrides.providerId ?? "macja-hisa";
@@ -40,7 +45,7 @@ function animal(overrides: {
     id: overrides.id,
     source: {
       providerId,
-      sourceUrl: `https://example.si/${overrides.id}`,
+      sourceUrl: overrides.sourceUrl ?? `https://example.si/${overrides.id}`,
       fetchedAt: "2026-08-16T06:00:00Z",
       firstSeenAt: "2026-08-16T06:00:00Z",
       lastSeenAt: "2026-08-16T06:00:00Z",
@@ -137,6 +142,29 @@ async function pngFixture(
   return sharp({ create: { width, height, channels: 3, background } })
     .png()
     .toBuffer();
+}
+
+// Every flat fixture scores the same, which is what the ordering tests need
+// to get away from: this one has edges the quality score can see, and a
+// blurred copy of it does not.
+async function blocksPngFixture(
+  width = 800,
+  height = 600,
+  block = 40,
+): Promise<Buffer> {
+  const channels = 3;
+  const raw = Buffer.alloc(width * height * channels);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const value =
+        (Math.floor(x / block) + Math.floor(y / block)) % 2 === 0 ? 220 : 40;
+      const i = (y * width + x) * channels;
+      raw[i] = value;
+      raw[i + 1] = value;
+      raw[i + 2] = value;
+    }
+  }
+  return sharp(raw, { raw: { width, height, channels } }).png().toBuffer();
 }
 
 describe("cacheableUrls", () => {
@@ -307,6 +335,188 @@ describe("heroSourceUrls", () => {
       }),
     ];
     expect([...heroSourceUrls(animals)]).toEqual([]);
+  });
+});
+
+// A manifest with nothing in it but the scores a test cares about.
+function manifestOf(
+  scores: Record<string, number | undefined>,
+): ImageCacheManifest {
+  const entries: ImageCacheManifest["entries"] = {};
+  for (const [url, quality] of Object.entries(scores)) {
+    entries[url] = {
+      file: `${url.replace(/\W/g, "")}.webp`,
+      width: 800,
+      height: 600,
+      fetchedAt: "2026-08-16T06:00:00Z",
+      ...(quality === undefined
+        ? {}
+        : { quality, qualityVersion: QUALITY_VERSION }),
+    };
+  }
+  return { entries };
+}
+
+const photo = (name: string, rights: Animal["images"][number]["rights"]) => ({
+  sourceUrl: `https://img.si/${name}.jpg`,
+  rights,
+});
+
+const bySourceUrl = (
+  a: Animal["images"][number],
+  b: Animal["images"][number],
+) => a.sourceUrl.localeCompare(b.sourceUrl);
+
+describe("orderedImages", () => {
+  it("leads with the best scored photo", () => {
+    const images = [
+      photo("dark", "cache-permitted"),
+      photo("sharp", "cache-permitted"),
+      photo("soft", "cache-permitted"),
+    ];
+    const manifest = manifestOf({
+      "https://img.si/dark.jpg": 0.31,
+      "https://img.si/sharp.jpg": 0.88,
+      "https://img.si/soft.jpg": 0.54,
+    });
+
+    expect(orderedImages(images, manifest).map((i) => i.sourceUrl)).toEqual([
+      "https://img.si/sharp.jpg",
+      "https://img.si/soft.jpg",
+      "https://img.si/dark.jpg",
+    ]);
+  });
+
+  it("keeps a photo it could not score behind the ones it could", () => {
+    // A hotlinked photo has no cached master to measure, and an unknown-rights
+    // one is never drawn. Neither can be ranked, so both stay put behind the
+    // scored photos, in the order the provider listed them.
+    const images = [
+      photo("remote", "display-permitted"),
+      photo("unknown", "unknown"),
+      photo("cached", "cache-permitted"),
+    ];
+    const manifest = manifestOf({ "https://img.si/cached.jpg": 0.6 });
+
+    expect(orderedImages(images, manifest).map((i) => i.sourceUrl)).toEqual([
+      "https://img.si/cached.jpg",
+      "https://img.si/remote.jpg",
+      "https://img.si/unknown.jpg",
+    ]);
+  });
+
+  it("keeps a cache-permitted photo the manifest has no score for", () => {
+    // A fetch that failed leaves the URL out of the manifest, and an entry
+    // whose master would not decode carries no quality.
+    const images = [
+      photo("uncached", "cache-permitted"),
+      photo("scored", "cache-permitted"),
+    ];
+    const manifest = manifestOf({
+      "https://img.si/scored.jpg": 0.4,
+      "https://img.si/unreadable.jpg": undefined,
+    });
+
+    expect(orderedImages(images, manifest).map((i) => i.sourceUrl)).toEqual([
+      "https://img.si/scored.jpg",
+      "https://img.si/uncached.jpg",
+    ]);
+  });
+
+  it("keeps the source order between equal scores", () => {
+    const images = [
+      photo("first", "cache-permitted"),
+      photo("second", "cache-permitted"),
+      photo("third", "cache-permitted"),
+    ];
+    const manifest = manifestOf({
+      "https://img.si/first.jpg": 0.5,
+      "https://img.si/second.jpg": 0.5,
+      "https://img.si/third.jpg": 0.9,
+    });
+
+    expect(orderedImages(images, manifest).map((i) => i.sourceUrl)).toEqual([
+      "https://img.si/third.jpg",
+      "https://img.si/first.jpg",
+      "https://img.si/second.jpg",
+    ]);
+  });
+
+  it("hands back the same array when nothing is scored", () => {
+    const images = [
+      photo("a", "cache-permitted"),
+      photo("b", "cache-permitted"),
+    ];
+    expect(orderedImages(images, { entries: {} })).toBe(images);
+  });
+
+  it("hands back the same array when it is already in order", () => {
+    const images = [
+      photo("best", "cache-permitted"),
+      photo("rest", "cache-permitted"),
+    ];
+    const manifest = manifestOf({
+      "https://img.si/best.jpg": 0.8,
+      "https://img.si/rest.jpg": 0.2,
+    });
+    expect(orderedImages(images, manifest)).toBe(images);
+  });
+});
+
+describe("orderAnimalImages", () => {
+  const manifest = manifestOf({
+    "https://img.si/soft.jpg": 0.2,
+    "https://img.si/sharp.jpg": 0.9,
+  });
+  const twoPhotos = () => [
+    photo("soft", "cache-permitted"),
+    photo("sharp", "cache-permitted"),
+  ];
+
+  it("changes the order and nothing else", () => {
+    const before = animal({ id: "luna", images: twoPhotos() });
+    const [after] = orderAnimalImages([before], manifest);
+
+    expect(after!.images.map((i) => i.sourceUrl)).toEqual([
+      "https://img.si/sharp.jpg",
+      "https://img.si/soft.jpg",
+    ]);
+    // The same image objects, with the same fields, and the same animal
+    // around them.
+    expect([...after!.images].sort(bySourceUrl)).toEqual(
+      [...before.images].sort(bySourceUrl),
+    );
+    expect(after!.images[0]).toBe(before.images[1]);
+    expect(after!.images[1]).toBe(before.images[0]);
+    expect({ ...after, images: [] }).toEqual({ ...before, images: [] });
+  });
+
+  it("leaves a portal listing in the order the shelter uploaded", () => {
+    // A manual listing links to its own page on this site, which is the only
+    // marker in the dataset that says the photos are somebody's choice.
+    const manual = animal({
+      id: "johanca:luna",
+      providerId: "johanca",
+      sourceUrl: "https://posvoji.si/zavetisca/johanca",
+      images: twoPhotos(),
+    });
+    const [after] = orderAnimalImages([manual], manifest);
+
+    expect(after).toBe(manual);
+    expect(after!.images.map((i) => i.sourceUrl)).toEqual([
+      "https://img.si/soft.jpg",
+      "https://img.si/sharp.jpg",
+    ]);
+  });
+
+  it("hands back the same animal when its order does not move", () => {
+    const settled = animal({ id: "luna", images: twoPhotos().reverse() });
+    expect(orderAnimalImages([settled], manifest)[0]).toBe(settled);
+  });
+
+  it("leaves an animal with nothing scored alone", () => {
+    const unscored = animal({ id: "luna", images: twoPhotos() });
+    expect(orderAnimalImages([unscored], { entries: {} })[0]).toBe(unscored);
   });
 });
 
@@ -708,12 +918,114 @@ describe("cacheImages", () => {
     });
 
     // The unknown-rights photo is never cached, so the cache-permitted one
-    // behind it is the hero the page shows.
-    const drawn = result.animals[0]!.images[1]!;
+    // behind it is the hero the page shows. It is also the only photo with a
+    // quality score, so the ordering has moved it to the front.
+    const drawn = result.animals[0]!.images.find(
+      (image) => image.sourceUrl === lead,
+    )!;
+    expect(result.animals[0]!.images[0]).toBe(drawn);
     expect(drawn.avif).toBe(true);
     expect(result.derived.avifs).toBe(1);
     const drawnFile = drawn.cachedUrl!.split("/").pop()!;
     expect(existsSync(join(mediaDir, avifFileFor(drawnFile)))).toBe(true);
+  });
+
+  it("leads with the sharper photo and moves the avif onto it", async () => {
+    const soft = "https://img.si/luna-soft.jpg";
+    const crisp = "https://img.si/luna-crisp.jpg";
+    const crispBytes = await blocksPngFixture();
+    const softBytes = await sharp(crispBytes).blur(8).png().toBuffer();
+    // The shelter listed the blurry one first, which is the case this exists
+    // for.
+    const twoPhotos = [
+      animal({
+        id: "luna",
+        images: [
+          { sourceUrl: soft, rights: "cache-permitted" },
+          { sourceUrl: crisp, rights: "cache-permitted" },
+        ],
+      }),
+    ];
+    const client = new StubClient(
+      new Map([
+        [soft, { status: 200, body: softBytes }],
+        [crisp, { status: 200, body: crispBytes }],
+      ]),
+    );
+
+    const result = await cacheImages(twoPhotos, client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    const [lead, behind] = result.animals[0]!.images;
+    expect(lead!.sourceUrl).toBe(crisp);
+    expect(behind!.sourceUrl).toBe(soft);
+    // The avif follows the lead rather than staying on images[0].
+    expect(lead!.avif).toBe(true);
+    expect(behind!.avif).toBeUndefined();
+    expect(result.derived.avifs).toBe(1);
+    const leadFile = lead!.cachedUrl!.split("/").pop()!;
+    const behindFile = behind!.cachedUrl!.split("/").pop()!;
+    expect(existsSync(join(mediaDir, avifFileFor(leadFile)))).toBe(true);
+    expect(existsSync(join(mediaDir, avifFileFor(behindFile)))).toBe(false);
+
+    // Both photos are still there, with everything they had.
+    expect(result.animals[0]!.images).toHaveLength(2);
+    expect(AnimalSchema.safeParse(result.animals[0]).success).toBe(true);
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(result.scored).toBe(2);
+    expect(manifest.entries[crisp].qualityVersion).toBe(QUALITY_VERSION);
+    expect(manifest.entries[crisp].quality).toBeGreaterThan(
+      manifest.entries[soft].quality,
+    );
+  });
+
+  it("rescores a master the recorded quality version has moved past", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), first, CACHE_ONLY, { mediaDir, manifestPath });
+
+    const stale = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const before = stale.entries[url].quality;
+    expect(before).toBeGreaterThan(0);
+    stale.entries[url].qualityVersion = QUALITY_VERSION - 1;
+    stale.entries[url].quality = 0;
+    writeFileSync(manifestPath, JSON.stringify(stale));
+
+    const second = new StubClient(new Map());
+    const result = await cacheImages(animals(), second, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+
+    // Read off the master that is already on disk, without a request.
+    expect(second.calls).toHaveLength(0);
+    expect(result.scored).toBe(1);
+    const rescored = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(rescored.entries[url].quality).toBe(before);
+    expect(rescored.entries[url].qualityVersion).toBe(QUALITY_VERSION);
+  });
+
+  it("scores a master once and leaves it alone on the next run", async () => {
+    const first = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const before = await cacheImages(animals(), first, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+    });
+    expect(before.scored).toBe(1);
+
+    const second = await cacheImages(
+      animals(),
+      new StubClient(new Map()),
+      CACHE_ONLY,
+      { mediaDir, manifestPath },
+    );
+    expect(second.scored).toBe(0);
   });
 
   it("carries the derived fields onto a schema-valid animal", async () => {

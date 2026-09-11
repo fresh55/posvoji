@@ -80,6 +80,7 @@ function harness(previous: Animal[] = []) {
       fetched: 0,
       reused: 0,
       deleted: 0,
+      scored: 0,
       derived: { thumbs: 0, rungs: 0, blurs: 0, avifs: 0 },
     };
   });

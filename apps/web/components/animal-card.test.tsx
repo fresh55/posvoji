@@ -247,6 +247,44 @@ describe("AnimalCard meta line", () => {
 
     expect(metaLine()).toBe("3 leta · srednja");
   });
+
+  // An animal with no age used to leave the line reading "Pes" alone, which
+  // looks unfinished next to a card that has two facts.
+  it("falls through to the next fact when the age is missing", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ sex: "male", size: "large" })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    expect(metaLine()).toBe("Pes · velika");
+  });
+
+  // The facts are what a visitor scans; the shelter line under them is
+  // provenance. Muted on both read as one grey block.
+  it("carries the facts in ink and the shelter line in muted", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ approximateAgeMonths: 36 })}
+          reference={NOW}
+          showShelter
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const line = screen.getByRole("heading").parentElement?.querySelector("p");
+    expect(line?.className).toContain("text-foreground");
+    expect(line?.className).not.toContain("text-muted-foreground");
+    expect(
+      screen.getByRole("link", { name: /Test/ }).className,
+    ).toContain("text-muted-foreground");
+  });
 });
 
 describe("AnimalCard element placement", () => {

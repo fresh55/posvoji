@@ -377,8 +377,17 @@ export function AnimalCard({
             nothing else. The shelter line itself truncates instead, because
             a shortened shelter name still names the shelter.
 
-            text-pretty so the last word does not end up alone on it. */}
-        <p className="text-pretty text-sm text-muted-foreground tabular-nums">
+            text-pretty so the last word does not end up alone on it.
+
+            Ink, not muted, at the same size and weight. The facts are what a
+            visitor scans a card for; the shelter line under them is
+            provenance. Both were muted, and two muted lines stacked read as
+            one grey block with the name above it, so nothing said which of
+            the two to read first. Lightening the shelter line instead was the
+            other way to separate them and it is the one contrast rules out:
+            muted-foreground on white is about 4.7:1, so anything lighter
+            fails AA, and that line is a link. */}
+        <p className="text-pretty text-sm text-foreground tabular-nums">
           {/* The middots recede to half strength so the facts between them
               read as three words rather than one string. The parts come from
               labels.ts already separate, so nothing here has to know how the

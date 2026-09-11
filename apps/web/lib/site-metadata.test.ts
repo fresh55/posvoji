@@ -49,7 +49,7 @@ describe("rootViewport", () => {
   it("names a theme colour for each scheme", () => {
     expect(rootViewport.themeColor).toEqual([
       { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-      { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+      { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
     ]);
   });
 });

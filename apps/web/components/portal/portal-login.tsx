@@ -155,7 +155,8 @@ function StepHeading({
       ref={ref}
       tabIndex={focusable ? -1 : undefined}
       className={cn(
-        "text-lg font-medium tracking-tight",
+        // Semibold like every other page title on the site; see site-page.tsx.
+        "text-lg font-semibold tracking-tight",
         focusable && "outline-none",
       )}
     >

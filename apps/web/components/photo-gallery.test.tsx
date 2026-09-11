@@ -524,6 +524,36 @@ describe("photo gallery controls", () => {
     expect(dots?.childElementCount).toBe(3);
   });
 
+  it("holds the card's dots back until the pointer is on the card", () => {
+    setup();
+
+    // jsdom applies no media query and has no hover, so this reads the class
+    // list rather than a computed opacity: what is asserted is that the card
+    // renders the gating, not that a browser resolved it.
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("transition-opacity");
+    // Hidden at rest only where a hover can bring them back.
+    expect(dots?.className).toContain("pointer-fine:opacity-0");
+    // The chevrons' own two conditions, on the chevrons' own group, so the
+    // controls on a photo appear together rather than one after the other.
+    expect(dots?.className).toContain(
+      "pointer-fine:group-hover/photo:opacity-100",
+    );
+    expect(dots?.className).toContain(
+      "pointer-fine:group-focus-within/photo:opacity-100",
+    );
+  });
+
+  it("leaves the dots standing where the gallery is not a card", () => {
+    setupPlain();
+
+    // The animal page and the dialog draw the one photo the visitor came for.
+    // The row is the only thing there saying the set has more.
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("pointer-events-none");
+    expect(dots?.className).not.toContain("opacity-0");
+  });
+
   it("caps a long gallery at five dots and slides the window", () => {
     setup({
       images: Array.from({ length: 14 }, (_, i) => ({

@@ -28,7 +28,7 @@ import {
 } from "@/lib/prehydration-script";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { SKIP_LINK } from "@/lib/skip-link";
-import { sortAnimals } from "@/lib/sort";
+import { effectiveSort, sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import { PawPrint } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -176,8 +176,13 @@ function ResultsPending() {
       <div className={CARD_GRID}>
         {PENDING_CARDS.map((n) => (
           // The card's photo box, which at this size is most of the card
-          // (PHOTO_FRAME in animal-card.tsx), with the same corners.
-          <Skeleton key={n} className="aspect-[4/3] rounded-xl" />
+          // (PHOTO_FRAME in animal-card.tsx), with the same corners and the
+          // same square-on-a-phone shape, so the stand-in and the cards that
+          // replace it claim the same height.
+          <Skeleton
+            key={n}
+            className="aspect-square rounded-xl sm:aspect-[4/3]"
+          />
         ))}
       </div>
     </div>
@@ -252,6 +257,10 @@ export function AnimalGrid({
     () => sortAnimals(visible, sort, locale, reference, nearby?.at),
     [visible, sort, locale, reference, nearby],
   );
+  // The order the cards are in, which is what the long-stay mark below asks
+  // about. sortAnimals resolves the same thing for itself, so this reads it
+  // from the one function that decides it rather than restating the fallback.
+  const order = effectiveSort(sort, nearby?.at);
 
   // What the dialog steps through is what the visitor is looking at: the list
   // as filtered and sorted on screen, in that order. Read here, above the
@@ -601,6 +610,14 @@ export function AnimalGrid({
                   key={animal.id}
                   animal={animal}
                   reference={reference}
+                  // The long-stay mark, except where this list is already
+                  // ordered by the wait. Under the default order the mark is
+                  // on every card down to the hundredth, which is the order
+                  // repeating itself on each photo rather than telling anyone
+                  // anything. Read off the order the list is actually in and
+                  // not off the picked one: nearest with no origin is sorted
+                  // as the default (effectiveSort).
+                  showWaitMark={order !== "longest-in-shelter"}
                   // The entrance: a short fade and rise, staggered across the
                   // first dozen cards so a filter change reads as the grid
                   // answering rather than the page blinking. Keyed by id, so a

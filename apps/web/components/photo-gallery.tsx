@@ -70,6 +70,23 @@ export const GALLERY_BUTTON_CLASS =
 const OWN_BUTTON_CLASS =
   "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
+// The dots inside a grid card, which the chevrons' own conditions bring back.
+// A card's dots used to stand on the photograph the whole time the grid was
+// open: sixty rows of them across a screen of paws and legs, on cards nobody
+// was pointing at. They are a hint about the photo under the pointer, so they
+// wait for it, and they arrive with the chevrons rather than a beat before
+// them: the same group, the same hover, the same focus.
+//
+// pointer-fine, because a hide has to be paid for by a reveal. Tailwind wraps
+// hover in @media (hover: hover), so on a phone the reveal never fires, and a
+// hide that was not gated would leave a swipeable gallery with nothing at all
+// saying there is more than one photo. A coarse pointer keeps them standing.
+//
+// The card only. The animal page and the dialog draw one photo the visitor
+// came for, and there the row is the only marker of the set.
+const CARD_DOTS_CLASS =
+  "pointer-fine:opacity-0 pointer-fine:group-hover/photo:opacity-100 pointer-fine:group-focus-within/photo:opacity-100";
+
 // What a caller that names no frame gets. The grid card names its own
 // (PHOTO_FRAME in animal-card.tsx) and this repeats it, so a gallery mounted
 // bare draws the same box the cards do rather than a third shape.
@@ -189,6 +206,13 @@ export function PhotoGallery({
   const image = images[imageIndex];
   const hasGallery = images.length > 1;
   const dots = photoDotWindow(images.length, imageIndex);
+  // The grid card is the one surface that hands this gallery an href: it is
+  // the only one whose photo opens something, and the rule above
+  // (CARD_DOTS_CLASS) is the card's alone. Read off the prop
+  // rather than off a CSS ancestor, because the card's marker is group/card,
+  // and a variant naming it has to escape the slash, which a JSX string
+  // literal then eats before Tailwind and the DOM can agree on the class.
+  const cardSurface = href !== undefined;
   // Without an href there is no card link for the arrows to live on, and the
   // chevrons' way out of the tab order (see the comment on them below) was
   // written for that link. The animal's own page has no such link, so on a
@@ -198,7 +222,7 @@ export function PhotoGallery({
   // The dialog handles its own arrows in photo-spread.tsx, and mounts this
   // component only for an animal with no photo at all, where hasGallery is
   // false. So the two can never answer the same key press.
-  const keyboardGallery = hasGallery && href === undefined;
+  const keyboardGallery = hasGallery && !cardSurface;
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -574,11 +598,19 @@ export function PhotoGallery({
 
               aria-hidden and pointer-events-none: decoration on top of the
               photo's link, the way the fraction badge was. The sr-only line
-              below still speaks the exact count. */}
+              below still speaks the exact count.
+
+              Always here on the animal page and in the dialog, and on a phone.
+              Inside a card, on a pointer that can hover, they wait for that
+              pointer and come in with the chevrons: see CARD_DOTS_CLASS for
+              why the grid is the one place a resting row is worth hiding. */}
           <div
             data-slot="photo-dots"
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1"
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1 transition-opacity",
+              cardSurface && CARD_DOTS_CLASS,
+            )}
           >
             {Array.from({ length: dots.count }, (_, dot) => (
               <span

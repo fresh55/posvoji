@@ -46,6 +46,14 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
 // wants the larger corner; a 10px corner on a 228px picture read as tight.
 //
+// Square on a phone and 4/3 from sm. Below sm the grid is two hard-coded
+// columns (CARD_GRID), so a 375px screen draws a 163px card: a 4/3 photo in it
+// is 123px tall under a text block of about 100px, and the card is nearly half
+// words. The square gives the picture back 40px of height without touching the
+// column count, and from sm the card is wide enough that 4/3 is the better
+// frame for a photograph. CARD_PHOTO_SIZES is stated in widths only, so the
+// rung a browser downloads does not move with this.
+//
 // The card's focus ring is drawn here, as an inset ring on a ::after that
 // covers the frame, whenever either of the card's links has keyboard focus.
 // Here and on an overlay for two reasons. An inset box-shadow on the article
@@ -60,8 +68,26 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // the overlay never takes a press meant for the photo. The shelter row
 // underlines itself as well, which is what says which of the two links the
 // ring is standing for.
+//
+// That same overlay carries a permanent hairline. Many shelter photos are
+// studio shots on a white ground, and on the white page such a photo has no
+// edge at all: the corners disappear and the wait mark at the top right sits
+// in what reads as empty page. 6% black in light mode and 8% white in dark
+// closes the shape without reading as a border around the picture. It covers
+// the empty frame as well, because an animal with no photo draws its caption
+// inside this same box (photo-gallery.tsx).
+//
+// An inset box-shadow and not a second ring, because the focus ring above is a
+// ring and an element has one --tw-ring-shadow: two ring utilities here would
+// be one value, and whichever the compiler emitted last would take it.
+// Tailwind builds box-shadow out of --tw-ring-shadow and --tw-shadow together,
+// so the two coexist, and the ring comes first in that list, which is what
+// paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
+  "relative aspect-square overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]" +
+  " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl" +
+  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({
   animal,
@@ -70,6 +96,7 @@ export function AnimalCard({
   eager = false,
   onOpen,
   showShelter = false,
+  showWaitMark = true,
   className,
   style,
 }: {
@@ -86,6 +113,10 @@ export function AnimalCard({
    *  page already names itself in its heading, so a line under every card
    *  there would be the page linking to itself. */
   showShelter?: boolean;
+  /** Draws the long-stay mark on a photo that has earned one. On by default,
+   *  and the one caller that turns it off is the results grid under its own
+   *  default order; see the Badge below. */
+  showWaitMark?: boolean;
   /** The grid's, for the entrance stagger; the card has no opinion of its own. */
   className?: string;
   style?: CSSProperties;
@@ -246,7 +277,7 @@ export function AnimalCard({
           overlay
           className="absolute left-2 top-2"
         />
-        {waitMonths !== undefined && (
+        {showWaitMark && waitMonths !== undefined && (
           // On the photo, opposite the counter, for the same reason the
           // status is: it is a flag about the animal's situation, not one of
           // the animal's own facts. Off the text block it stops competing
@@ -269,6 +300,14 @@ export function AnimalCard({
           // disqualify a card. A second, louder tier for the longest waits
           // does not work either: the default sort is longest in shelter, so
           // every card above the fold would wear it.
+          //
+          // Which is also the rule showWaitMark carries. A mark on every card
+          // in a list that is already ordered by the wait says nothing the
+          // order has not said: under the default sort the first hundred cards
+          // all wore it. The results grid turns it off there and back on for
+          // every other order (animal-grid.tsx); every other surface draws it,
+          // because none of them is sorted by the wait. The animal's own page
+          // still says how long it has been waiting either way.
           //
           // Top right, opposite the status. The bottom edge belongs to the
           // gallery dots now, and on a phone card the two met in the middle.

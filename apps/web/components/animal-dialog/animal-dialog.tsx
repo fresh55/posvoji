@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import type { ClientAnimal } from "@/lib/animal";
 import { animalPath, photoFromSearch } from "@/lib/animal-path";
-import { speciesLabel } from "@/lib/labels";
+import { animalSubtitle } from "@/lib/labels";
 import {
   getSearchSnapshot,
   getServerSearchSnapshot,
@@ -297,15 +297,9 @@ export function AnimalDialog({
   const name = lastAnimal.name ?? messages.unnamed;
   // The subtitle carries what the fact badges below it do not: the species and
   // the breed. Sex and age used to be repeated here, one line above their own
-  // badges, and the two "10 let" read as a mistake. Slovenian writes breed
-  // names lowercase, and the providers deliver them in every casing.
-  const breed =
-    lastAnimal.breed && locale === "sl"
-      ? lastAnimal.breed.toLocaleLowerCase("sl")
-      : lastAnimal.breed;
-  const subtitle = [speciesLabel(lastAnimal.species, locale), breed]
-    .filter(Boolean)
-    .join(" · ");
+  // badges, and the two "10 let" read as a mistake. The words come from
+  // labels.ts, where the animal's own page reads the same line.
+  const subtitle = animalSubtitle(lastAnimal, locale);
   const transition = shouldReduceMotion ? { duration: 0 } : undefined;
 
   // Whether the phone gets the sticky bar at the bottom of the dialog. There

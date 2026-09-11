@@ -250,6 +250,27 @@ export function speciesLabel(species: Species, locale: Locale): string {
   return SPECIES[locale][species];
 }
 
+/** The line under an animal's name: the species, then the breed where the
+ *  shelter gave one. The dialog and the animal's own page both print it, and
+ *  they used to answer differently: the dialog as this sentence, the page as
+ *  a filled pill above a row of outlined ones. One helper, so the same fact
+ *  is drawn one way wherever a name has a line under it.
+ *
+ *  Slovenian writes breed names lowercase, and the providers deliver them in
+ *  every casing. English keeps the casing it was given. */
+export function animalSubtitle(
+  animal: { species: Species; breed?: string | null },
+  locale: Locale,
+): string {
+  const breed =
+    animal.breed && locale === "sl"
+      ? animal.breed.toLocaleLowerCase("sl")
+      : animal.breed;
+  return [speciesLabel(animal.species, locale), breed]
+    .filter(Boolean)
+    .join(META_SEPARATOR);
+}
+
 /** The separator between the meta line's facts. Exported because the card
  *  draws the parts itself to dim these, and a private literal split back out
  *  of the joined string in another file is a contract nothing enforces. */

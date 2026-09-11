@@ -44,8 +44,10 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // The photo's own frame. Rounded on all four corners and not only the top
 // two, because nothing is drawn around it any more: the card stands on the
 // page ground, and the photo is the one shape on it (see the article below).
-// rounded-xl is 14px on this site's scale, where the bordered surfaces sit at
-// rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
+// rounded-2xl is 18px on this site's scale, where the bordered surfaces sit at
+// rounded-ui's 10px. It was 14px, chosen when the picture was 228px wide; at
+// 309px that corner read timid, and a photograph is the one thing on the page
+// that can carry a generous one. A photograph is the largest rounded thing in the grid and
 // wants the larger corner; a 10px corner read as tight even on the 228px card
 // the narrower desktop bands still draw, and the xl card is 309px.
 //
@@ -83,8 +85,8 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  `relative ${CARD_PHOTO_ASPECT} overflow-hidden rounded-xl bg-muted` +
-  " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl" +
+  `relative ${CARD_PHOTO_ASPECT} overflow-hidden rounded-2xl bg-muted` +
+  " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-2xl" +
   " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
@@ -417,7 +419,13 @@ export function AnimalCard({
             this heading. At the default offset the rule cuts through the
             descenders of a name like "Srečko"; 4px clears them, and it is
             what the shelter line below already underlines at. */}
-        <h3 id={headingId} className="line-clamp-2 font-semibold underline-offset-4">
+        {/* One step up where the cards are large. At xl the photo is 309px and
+            the name was still 16px under it, so the picture dwarfed the one
+            thing on the card that names the animal. Below xl the cards are
+            208px to 273px and 16px is right. */}
+        <h3
+          id={headingId}
+          className="line-clamp-2 font-semibold underline-offset-4 xl:text-lg">
           {animal.name ?? messages.unnamed}
         </h3>
         {/* Allowed to wrap: an ellipsis here eats the animal's age, and

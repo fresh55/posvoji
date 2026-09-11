@@ -17,6 +17,16 @@ import type { PortalListing } from "@/lib/portal-api";
 
 afterEach(cleanup);
 
+// The missing-fields line carries a tooltip, and Radix positions one with an
+// observer jsdom does not ship.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  NoopResizeObserver as unknown as typeof ResizeObserver;
+
 const IDLE = { status: "idle" } as const;
 
 const PHOTO = {
@@ -104,7 +114,9 @@ describe("what the card says about the listing", () => {
     const heading = screen.getByRole("heading", { name: "Luna" });
     const badge = heading.parentElement?.querySelector("span");
     expect(badge?.textContent).toBe(STATUS_META.reserved.label);
-    expect(badge?.className).toContain("amber");
+    // The warm family comes from the --status-warn tokens now, not from a
+    // Tailwind amber class, so the badge is looked for by the token.
+    expect(badge?.className).toContain("status-warn");
   });
 
   it("shows the first photo, sized by the stored copy", () => {
@@ -204,10 +216,15 @@ describe("fields the public filters need", () => {
     );
   });
 
-  it("names the line by what it says, not by a hidden label", () => {
+  it("names the line by what it says, and says what it opens on focus", () => {
     show();
 
-    expect(missingLine().getAttribute("title")).toBe(
+    // The visible text is still the whole accessible name (WCAG 2.5.3). What
+    // following the line does is a tooltip, which a keyboard reaches and the
+    // title it replaced never did.
+    expect(missingLine().getAttribute("title")).toBeNull();
+    fireEvent.focus(missingLine());
+    expect(screen.getByRole("tooltip").textContent).toBe(
       fill(portalText.missingOpen, { name: "Luna" }),
     );
   });

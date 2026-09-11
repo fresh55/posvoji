@@ -237,9 +237,11 @@ export function Fan(props: FanProps) {
               "after:absolute after:-inset-2 pointer-coarse:after:-inset-3",
             )}
           >
+            {/* The name is the only place what this opens is said. A title
+                repeated those words to a pointer and to nothing else, and the
+                count is how a phone reaches the rest of the set. */}
             <button
               type="button"
-              title={messages.allPhotos}
               aria-label={`${messages.allPhotos} (${count})`}
               onClick={(event) => {
                 // The sheet grows out of the photograph, not out of the mark

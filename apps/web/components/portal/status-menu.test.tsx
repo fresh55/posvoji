@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StatusMenu } from "@/components/portal/status-menu";
 import { portalText } from "@/components/portal/portal-text";
@@ -199,7 +205,14 @@ describe("giving the status back to the crawl", () => {
     const revert = screen.getByRole("menuitem", {
       name: portalText.statusRevertItem,
     });
-    expect(revert.getAttribute("title")).toBe(portalText.revertHint);
+    // The sentence is drawn under the label rather than hidden in a title, and
+    // described rather than named, so the item still says one thing.
+    expect(within(revert).getByText(portalText.revertHint)).toBeTruthy();
+    expect(revert.getAttribute("title")).toBeNull();
+    const hintId = revert.getAttribute("aria-describedby") ?? "";
+    expect(document.getElementById(hintId)?.textContent).toBe(
+      portalText.revertHint,
+    );
 
     fireEvent.click(revert);
     expect(onSave).toHaveBeenCalledWith({ status: null });

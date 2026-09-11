@@ -22,6 +22,12 @@ import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
 import { portalAnimalPath } from "@/hooks/use-portal-session";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { PortalListing } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
 
@@ -122,18 +128,29 @@ export function PortalListingCard({
       {missing.length > 0 && (
         // Sits directly above the link that opens the editor, and is itself
         // the shortest way in: it opens the page at the first field it names.
-        // What it does goes in the title, not in an aria-label: the visible
-        // text has to stay the accessible name (WCAG 2.5.3).
-        <Link
-          href={portalAnimalPath(shelter, listing.id, missing[0].key)}
-          title={fill(portalText.missingOpen, { name: listing.name })}
-          className="block w-full rounded-ui text-left text-2xs leading-relaxed text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
-        >
-          <span className="font-medium">{portalText.missingTitle}</span>{" "}
-          <span className="underline decoration-dotted underline-offset-2">
-            {missing.map((field) => field.label).join(", ")}
-          </span>
-        </Link>
+        // What it does is neither the label nor an aria-label: the visible
+        // text has to stay the accessible name (WCAG 2.5.3). It was a title,
+        // which a pointer is the only way to reach; a tooltip says it to a
+        // pointer and to a keyboard, and rides along as a description rather
+        // than joining the name.
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={portalAnimalPath(shelter, listing.id, missing[0].key)}
+                className="block w-full rounded-ui text-left text-2xs leading-relaxed text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
+              >
+                <span className="font-medium">{portalText.missingTitle}</span>{" "}
+                <span className="underline decoration-dotted underline-offset-2">
+                  {missing.map((field) => field.label).join(", ")}
+                </span>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              {fill(portalText.missingOpen, { name: listing.name })}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">

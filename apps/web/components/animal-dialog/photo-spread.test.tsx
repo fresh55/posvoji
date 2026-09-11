@@ -369,6 +369,17 @@ describe("fan count control", () => {
     expect(count.className).toContain("text-3xs");
     expect(count.textContent).toBe("1 / 7");
   });
+
+  it("says what the count opens in its name and not in a hover title", () => {
+    const { stage } = renderFan(gallery(7));
+    const count = within(stage()).getByRole("button", {
+      name: "Vse fotografije (7)",
+    });
+
+    // The fan is a phone's gallery, and a title is a mouse and nothing else.
+    // The name already said the same words, so the name is where it stays.
+    expect(count.getAttribute("title")).toBeNull();
+  });
 });
 
 describe("useWheelStep", () => {

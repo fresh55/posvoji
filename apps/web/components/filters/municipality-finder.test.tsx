@@ -15,6 +15,16 @@ afterEach(() => {
   resetNearbyStore();
 });
 
+// The location button carries a tooltip, and Radix positions one with an
+// observer jsdom does not ship.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  NoopResizeObserver as unknown as typeof ResizeObserver;
+
 // Three občine from different corners of the country, each with real coverage,
 // so a lookup that resolves has a card to show.
 const ENTRIES: LookupEntry[] = [
@@ -526,6 +536,22 @@ describe("MunicipalityFinder typed text against the device position", () => {
     fireEvent.click(screen.getByRole("button", { name: "Počisti iskanje" }));
     expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
     expect(window.location.search).toBe("");
+  });
+
+  it("names the location button on focus, not on hover alone", () => {
+    renderReal();
+
+    // The arrow is the only thing drawn in the button, and the name used to
+    // appear in a title, which is a pointer and nothing else. It says the same
+    // words as the accessible name, so the two cannot drift apart.
+    const locate = screen.getByRole("button", { name: "Uporabi mojo lokacijo" });
+    expect(locate.getAttribute("title")).toBeNull();
+
+    fireEvent.focus(locate);
+
+    expect(screen.getByRole("tooltip").textContent).toBe(
+      "Uporabi mojo lokacijo",
+    );
   });
 
   it("turns off an active fix with a second press of the location button", () => {

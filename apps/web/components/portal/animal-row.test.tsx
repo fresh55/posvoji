@@ -12,6 +12,15 @@ afterEach(cleanup);
 // animations reach for while they measure themselves.
 Element.prototype.scrollTo = vi.fn();
 Element.prototype.scrollIntoView = vi.fn();
+// The count of missing fields carries a tooltip, and Radix positions one with
+// an observer jsdom does not ship either.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  NoopResizeObserver as unknown as typeof ResizeObserver;
 
 const IDLE = { status: "idle" } as const;
 
@@ -149,12 +158,15 @@ describe("the fields the public filters need", () => {
     expect(href).toContain("polje=energy");
   });
 
-  it("names the cell by what it says, not by a hidden label", () => {
+  it("names the cell by what it says, and says what it opens on focus", () => {
     row();
 
     // WCAG 2.5.3: the visible text is the accessible name, so voice control
-    // can say it. The explanation rides along as the title.
-    expect(missingLink().getAttribute("title")).toBe(
+    // can say it. The explanation rides along as a tooltip, which a keyboard
+    // reaches and the title it replaced never did.
+    expect(missingLink().getAttribute("title")).toBeNull();
+    fireEvent.focus(missingLink());
+    expect(screen.getByRole("tooltip").textContent).toBe(
       fill(portalText.missingOpen, { name: "Muri" }),
     );
   });

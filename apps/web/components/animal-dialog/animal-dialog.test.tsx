@@ -1605,7 +1605,9 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
 
     const count = region(dialog, "photo-spread").getByText("1 / 7");
-    expect(count.getAttribute("title")).toBe("Vse fotografije");
+    // No title on the count any more: its aria-label already says "Vse
+    // fotografije" with the number, and a phone could never reach a title.
+    // photo-spread.test.tsx asserts the accessible name.
     expect(count.className).toContain("cursor-pointer");
 
     fireEvent.click(count);

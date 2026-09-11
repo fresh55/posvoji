@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   Check,
   ChevronDown,
@@ -56,6 +57,8 @@ export function StatusMenu({
   const sourceText = inherited
     ? portalText.statusSourceSite
     : portalText.statusSourceOwn;
+  const revertLabelId = useId();
+  const revertHintId = useId();
 
   return (
     <DropdownMenu>
@@ -143,12 +146,27 @@ export function StatusMenu({
         {!inherited && (
           <>
             <DropdownMenuSeparator />
+            {/* The one item whose label does not say what it leaves behind,
+                so the sentence is drawn under it. It was a title, which
+                renders on pointer hover and nowhere else. Named and described
+                separately, so the item's name stays the single line that says
+                what pressing it does. */}
             <DropdownMenuItem
-              title={portalText.revertHint}
+              aria-labelledby={revertLabelId}
+              aria-describedby={revertHintId}
+              className="items-start"
               onSelect={() => onSave({ status: null })}
             >
-              <Undo2 aria-hidden />
-              {portalText.statusRevertItem}
+              <Undo2 className="mt-0.5" aria-hidden />
+              <span className="flex flex-col gap-0.5">
+                <span id={revertLabelId}>{portalText.statusRevertItem}</span>
+                <span
+                  id={revertHintId}
+                  className="text-xs leading-snug text-muted-foreground"
+                >
+                  {portalText.revertHint}
+                </span>
+              </span>
             </DropdownMenuItem>
           </>
         )}

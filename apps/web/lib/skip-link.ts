@@ -29,13 +29,27 @@ export const CONTENT_ID = "vsebina";
  * A bypass link: nothing until it takes focus, then a legible box over the
  * content it skips.
  *
- * The outline is stated rather than left to the browser. globals.css sets a
+ * The indicator is stated rather than left to the browser. globals.css sets a
  * ring colour in @layer base and not a ring, so a link that says nothing
  * further draws whatever the engine likes at whatever width it likes, and this
  * is the one control on the page whose whole job happens while it is focused.
+ *
+ * It is the ring every other focusable thing on the site draws and not a black
+ * outline of its own. The rest of the page answers the keyboard in the ring
+ * green; a bypass link that answered in black was teaching the first Tab of a
+ * visit that focus looks like something it never looks like again.
+ *
+ * Around the box rather than inset. The link is absolutely positioned over the
+ * block it skips and nothing clips it, so it has the room; the two places that
+ * draw the ring inside their box (the gallery surface, the section trigger) do
+ * it because an overflow clip is sitting on their edge.
+ *
+ * focus: and not focus-visible:, as the rest of this string already is: the
+ * link is sr-only until it takes focus by any route, and a pointer cannot
+ * reach it to focus it any other way.
  */
 export const SKIP_LINK =
-  "sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 focus:not-sr-only focus:absolute focus:z-50 focus:outline-2 focus:outline-offset-2 focus:outline-foreground";
+  "sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 outline-none focus:not-sr-only focus:absolute focus:z-50 focus:ring-3 focus:ring-ring";
 
 /**
  * The header's variant, which has to place itself.

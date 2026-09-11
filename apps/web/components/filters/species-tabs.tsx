@@ -547,7 +547,23 @@ export function SpeciesTabs({
                     // its own background. See `hydrated` above.
                     !hydrated && "bg-foreground",
                   )
-                : "text-muted-foreground transition-colors duration-100 hover:text-foreground",
+                : // The muted pill under a hovered tab is the one the quiet
+                  // triggers in the same row already draw: the shelter picker
+                  // beside them is a ui/button outline wearing
+                  // QUIET_TRIGGER_CLASS (toolbar-trigger.ts), and both the
+                  // outline and the ghost variant wash to bg-muted on hover.
+                  // Darkening the ink alone left the tabs as the only
+                  // pressable things in the toolbar that answered a pointer
+                  // with no ground at all. The resting look is unchanged:
+                  // there is still nothing drawn under a tab until the pointer
+                  // is on it.
+                  //
+                  // It cannot fight the sliding fill. The fill travels on boxes
+                  // measured from the buttons (fillX/fillWidth above) and a
+                  // background changes no box, and the tab it is travelling to
+                  // is the pressed one, which takes the branch above and has no
+                  // hover ground to put over it while it arrives.
+                  "text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground",
             )}
           >
             {tab !== "all" && (

@@ -82,13 +82,27 @@ export function FilterSidebar({
       // The negative margin and padding give focus rings room inside the
       // overflow clip. Hairlines between sections read the stack as one list.
       //
+      // pb-1 is the vertical half of that same arithmetic, and it pays for a
+      // bleed rather than for a ring. A folding section's trigger is -my-1 over
+      // py-1 (filter-section-header.tsx), so its border box stands 4px taller
+      // than the 20px row it is centred in and hangs 2px below it. With one
+      // filter and no results (/?vrsta=zajcek&zavetisce=macji-dol at 1440x900)
+      // this panel is a 32px heading, a 189px Kje section and a 33px collapsed
+      // Zdravje: 290px of content in a box that is 290px tall, since nothing
+      // here is long enough for lg:max-h to cap. The last trigger's 2px put
+      // scrollHeight at 292 against a clientHeight of 290, and Windows answers
+      // 2px of overflow with a full scrollbar, arrows and all, beside a panel
+      // that has nothing to scroll. A 4px floor takes the bleed: 292 against
+      // 294. It costs the scrolling state nothing, where the height is capped
+      // and 4px more to scroll past is 4px nobody meets.
+      //
       // fade-scroll-thin and not fade-scroll: the picker lists this fade is
       // shared with sit inside a dialog the visitor has just opened and are
       // read as scrollable, while this panel is fixed beside the results and
       // silently cut its last sections off on a short screen. It keeps the
       // same edge mask and adds a thin scrollbar (globals.css).
       className={cn(
-        "fade-scroll-thin -mx-1 space-y-3 px-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
+        "fade-scroll-thin -mx-1 space-y-3 px-1 pb-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
         className,
       )}
     >

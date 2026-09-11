@@ -497,10 +497,20 @@ export function PhotoGallery({
           onKeyDown={stepPhoto}
           {...surface}
           // Inside the frame's own rounded, clipping box, so the ring is drawn
-          // as an inset outline the way the grid card draws it.
+          // inset, the way the grid card draws its own (PHOTO_FRAME in
+          // animal-card.tsx). This surface is inset-0 inside a frame that is
+          // overflow-hidden, inside a card that card-paint clips again
+          // (globals.css), so anything reaching outside the box is cut off;
+          // ring-inset keeps all three px of it on the picture.
+          //
+          // The same ring as every other control, not a black outline. The
+          // outline this replaces had to carry its own colour in both themes
+          // because --ring was not what it was drawing, and a keyboard walking
+          // the page met green on every card link and black on the one surface
+          // that turns the photos.
           className={cn(
             surfaceClassName,
-            "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground dark:focus-visible:outline-background",
+            "outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring",
           )}
         >
           {imageContent}

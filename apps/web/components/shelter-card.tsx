@@ -127,11 +127,15 @@ const CARD_PHONE_STACK = "max-sm:flex max-sm:flex-col max-sm:gap-3";
  * per card by the browser suite, which adds them against the census line.
  *
  * So the card is a wrapping flex row here instead of a column. The content
- * takes the width it needs, the media is pushed to the right edge and aligned
- * to the bottom of the content, which is the town's line, and the contacts are
- * given a full basis so they keep a line of their own under both. The gap is
- * the column's own 12px, now read in both axes: 12px between the town and the
- * count, and 12px above the contacts.
+ * grows from a zero basis (CONTENT_FOLD below), so it shares the first line
+ * with the media whatever the name's length: left at its own width, a long
+ * name's max-content claimed the whole line and pushed the count onto a line
+ * of its own again, which is what happened to "Veterinarska bolnica Brežice"
+ * at 390. The media is pushed to the right edge and aligned to the bottom of
+ * the content, which is the town's line, and the contacts are given a full
+ * basis so they keep a line of their own under both. The gap is the column's
+ * own 12px, now read in both axes: 12px between the town and the count, and
+ * 12px above the contacts.
  *
  * content-start because the card can be handed more height than it asked for,
  * and a wrapping row spreads its lines into slack where a column left it at
@@ -144,6 +148,11 @@ const CARD_PHONE_STACK = "max-sm:flex max-sm:flex-col max-sm:gap-3";
  */
 const CARD_PHONE_FOLD =
   "max-sm:flex max-sm:flex-wrap max-sm:content-start max-sm:gap-3";
+/** The content's half of the fold: grow to whatever the media leaves on the
+ *  first line, from nothing, so the name wraps inside that width instead of
+ *  taking the line for itself. Only on a card without a mark; with one, the
+ *  column layout gives the name the whole width. */
+const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-0";
 
 /** A website as the part of it worth reading. The scheme and the www are on
  *  every one of them, and the card has room for the host, not the URL. */
@@ -375,7 +384,13 @@ export function ShelterCard({
             is decoration with an empty alt and the count is a paragraph. The
             two things that take focus are the name and the contact rows, and
             they are first and last in both orders. */}
-        <ItemContent className="max-sm:order-first">
+        <ItemContent
+          className={
+            shelter.logo
+              ? "max-sm:order-first"
+              : `max-sm:order-first ${CONTENT_FOLD}`
+          }
+        >
           {/* No reserved second line here any more.
 
               A sm:max-xl:min-h-[2lh] used to sit on this title, because in the

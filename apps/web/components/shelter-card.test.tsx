@@ -333,6 +333,11 @@ describe("the shelter card", () => {
     const media = container.querySelector('[data-slot="item-media"]');
     expect(media?.className).toContain("max-sm:ml-auto");
     expect(media?.className).toContain("max-sm:self-end");
+    // The name block grows from a zero basis, or a long name's own width
+    // takes the whole first line and the count drops under it again.
+    const content = container.querySelector('[data-slot="item-content"]');
+    expect(content?.className).toContain("max-sm:basis-0");
+    expect(content?.className).toContain("max-sm:flex-1");
     expect(
       container.querySelector('[data-slot="item-footer"]')?.className,
     ).toContain("max-sm:basis-full");

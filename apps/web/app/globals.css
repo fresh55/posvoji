@@ -580,17 +580,19 @@
    of the length is the part that keeps this quiet: the browser remembers each
    card's last real height and falls back to the length only until it has one,
    so the estimate has to hold for the first pass and no longer. A card is a 4/3
-   photo over a name, a meta line and a shelter row, which measures about 232px
-   in the two-column phone grid and about 290px at a desktop column width. 18rem
+   photo over a name, a meta line and a shelter row, which measures about 227px
+   in the two-column phone grid and about 261px at a desktop column width. 15rem
    sits between them, and every card corrects itself the first time it is
    drawn.
 
    Safe on this element in particular: the card is already overflow-hidden and
-   both its focus outlines are drawn inset (animal-card.tsx), so paint
-   containment clips nothing that was reaching outside the box anyway. */
+   its one focus ring is drawn inset (animal-card.tsx), so paint containment
+   clips nothing that was reaching outside the box anyway. It is also why the
+   card draws no hover shadow and no hover ground wider than itself: both would
+   fall outside the box and be cut off. */
 @utility card-paint {
   content-visibility: auto;
-  contain-intrinsic-size: auto 18rem;
+  contain-intrinsic-size: auto 15rem;
 }
 
 /* A filtered link opens on a page that cannot know it was filtered. next.config

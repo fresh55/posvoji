@@ -70,8 +70,11 @@ export const GALLERY_BUTTON_CLASS =
 const OWN_BUTTON_CLASS =
   "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
+// What a caller that names no frame gets. The grid card names its own
+// (PHOTO_FRAME in animal-card.tsx) and this repeats it, so a gallery mounted
+// bare draws the same box the cards do rather than a third shape.
 const DEFAULT_WRAPPER_CLASS =
-  "relative aspect-[4/3] overflow-hidden rounded-ui-top bg-muted";
+  "relative aspect-[4/3] overflow-hidden rounded-xl bg-muted";
 
 // One dot's shape, hoisted so the ~1500 of them the grid draws are not 1500
 // string builds per render.

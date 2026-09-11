@@ -141,8 +141,8 @@ function ResultsPending() {
       <div className={CARD_GRID}>
         {PENDING_CARDS.map((n) => (
           // The card's photo box, which at this size is most of the card
-          // (aspect-[4/3] in photo-gallery.tsx).
-          <Skeleton key={n} className="aspect-[4/3] rounded-ui" />
+          // (PHOTO_FRAME in animal-card.tsx), with the same corners.
+          <Skeleton key={n} className="aspect-[4/3] rounded-xl" />
         ))}
       </div>
     </div>

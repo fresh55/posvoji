@@ -8,7 +8,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-provider";
@@ -137,6 +137,11 @@ const PLAIN_CHEVRON = {
 //
 // The card only. The animal page and the dialog draw one photo the visitor came
 // for, and there the row is the only marker of the set.
+//
+// It rides on the row's own element, which on a card is also the scrim
+// (CARD_DOTS below), so the gradient and the dots appear and disappear
+// together. Two elements would be two things to keep in step, and a scrim that
+// outlived its dots is a smudge on the bottom of the photograph.
 const CARD_DOTS_CLASS =
   "transition-opacity can-hover:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100";
 
@@ -159,6 +164,47 @@ const DEFAULT_WRAPPER_CLASS =
 // white dots never needed help.
 const DOT_CLASS =
   "size-1.5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)] transition-colors";
+
+// What a grid card draws instead, and why it can draw less.
+//
+// DOT_CLASS above makes every dot carry its own ground: a ring and a two-part
+// shadow, so one dot survives whatever colour is under it. That is the right
+// answer for the animal page and the dialog, where the row stands on one large
+// photograph and there is nothing else to put it on. On a card it is five
+// shadows doing one job, and five hairline rings on a 24px-wide row read as
+// grit rather than as a marker.
+//
+// So the card puts the ground under the row once, as a gradient on the row's
+// own element, and the dots on top of it are flat. h-12 is the strip the
+// gradient occupies: shorter and the top of it is a visible edge across the
+// photograph, taller and it starts dimming the animal rather than the last few
+// pixels under it. black/30 at the bottom is enough to carry a white dot over a
+// white cat on a white blanket; by the midpoint it is black/10, which is below
+// what the eye picks out as a band on a bright photo.
+//
+// z-0 and not the row's usual z-10. The dots never overlapped the chevrons, but
+// a full-width strip does, and at z-10 it would be painted after them (it comes
+// later in the DOM) and lay a wash over the bottom of both discs. z-0 still
+// paints above the photo, which is the only thing the scrim has to cover, and
+// leaves the chevrons at z-10 and the frame's focus ring at z-20 above it.
+//
+// White dots in both themes, where the plain row uses bg-background. The scrim
+// is dark whatever the theme is, so a dot that follows the theme would be
+// stone-950 on near-black in the dark one. The scrim decided the colour under
+// the dots, which is the whole point of it.
+const CARD_DOTS = {
+  container: `${CARD_DOTS_CLASS} bottom-0 z-0 h-12 items-end pb-1.5 bg-linear-to-t from-black/30 via-black/10 to-transparent`,
+  dot: "size-1.5 rounded-full transition-colors",
+  current: "bg-white",
+  rest: "bg-white/55",
+} as const;
+
+const PLAIN_DOTS = {
+  container: "bottom-1.5",
+  dot: DOT_CLASS,
+  current: "bg-background",
+  rest: "bg-background/50",
+} as const;
 
 type SwipeStart = { x: number; y: number; time: number; width: number };
 
@@ -200,6 +246,17 @@ type PhotoGalleryProps = {
    *  photo being small and one of sixty, not from anything this component can
    *  work out for itself, so the card says so. */
   variant?: "card" | "plain";
+  /** The mark drawn on an animal with no photo this surface may draw. Sixty
+   *  cards to a grid and a box holding one small grey sentence reads as a
+   *  picture that failed to load; a species silhouette says the shelter
+   *  published none, which is a fact about the animal and not a fault.
+   *
+   *  Handed in rather than looked up, so this component keeps knowing nothing
+   *  about the schema: the caller that has the animal maps the species (see
+   *  SPECIES_ICONS in lib/animal-icons.ts). Left out on the animal page and in
+   *  the dialog, where the empty state is one box on a page that is already
+   *  about one animal, and the sentence alone is enough. */
+  emptyMark?: LucideIcon;
   // Runs only for a click the swipe handler did not already swallow. The
   // event comes along because the caller decides whether to keep the
   // navigation (a modified click) or take it over.
@@ -225,6 +282,7 @@ export function PhotoGallery({
   tone,
   href,
   variant = "plain",
+  emptyMark: EmptyMark,
   onNavigate,
   index,
   onIndexChange,
@@ -289,6 +347,7 @@ export function PhotoGallery({
   // existing, because the link is what the keys are bound to.
   const keyboardGallery = hasGallery && href === undefined;
   const chevron = cardSurface ? CARD_CHEVRON : PLAIN_CHEVRON;
+  const dotPaint = cardSurface ? CARD_DOTS : PLAIN_DOTS;
 
   useEffect(() => {
     return () => window.clearTimeout(preloadTimer.current);
@@ -558,8 +617,29 @@ export function PhotoGallery({
       )}
     />
   ) : (
-    <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-      {messages.photoAtShelter}
+    // The mark is drawn on the frame's own bg-muted rather than on anything of
+    // its own: this is the one case where the box's colour is what the visitor
+    // sees, and a silhouette sitting in a second, differently coloured shape
+    // would be a placeholder inside a placeholder. So it is a large outline at
+    // a low alpha, which reads as the box being marked rather than as something
+    // laid on it. strokeWidth 1.25 because lucide's default 2 at size-16 is a
+    // poster of a dog, and what this has to be is quiet.
+    //
+    // The sentence stays and goes under it, smaller and fainter than it is on
+    // its own: with the mark above, the words are the caption and no longer the
+    // whole message. Without the mark nothing about it moves, which is what
+    // keeps the animal page and the dialog where they were.
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground">
+      {EmptyMark ? (
+        <EmptyMark
+          className="size-16 text-muted-foreground/40"
+          strokeWidth={1.25}
+          aria-hidden
+        />
+      ) : null}
+      <span className={cn(EmptyMark && "text-[0.6875rem] opacity-80")}>
+        {messages.photoAtShelter}
+      </span>
     </div>
   );
 
@@ -686,23 +766,29 @@ export function PhotoGallery({
               screen that cannot hover. Inside a card, on a pointer that can,
               they wait for it: see CARD_DOTS_CLASS for why the grid is the one
               place a resting row is worth hiding, and why the condition is the
-              card's rather than this photo's. */}
+              card's rather than this photo's.
+
+              On a card this element is also the scrim the dots stand on, which
+              is why the gradient and the reveal are one class list. Drawn only
+              where the dots are drawn, inside hasGallery: a single-photo card
+              has no row to carry and a gradient with nothing on it is a
+              shadow across the bottom of the photograph for no reason. */}
           <div
             data-slot="photo-dots"
             aria-hidden
             className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1",
-              cardSurface && CARD_DOTS_CLASS,
+              "pointer-events-none absolute inset-x-0 z-10 flex justify-center gap-1",
+              dotPaint.container,
             )}
           >
             {Array.from({ length: dots.count }, (_, dot) => (
               <span
                 key={dot}
                 className={cn(
-                  DOT_CLASS,
+                  dotPaint.dot,
                   dots.start + dot === imageIndex
-                    ? "bg-background"
-                    : "bg-background/50",
+                    ? dotPaint.current
+                    : dotPaint.rest,
                 )}
               />
             ))}

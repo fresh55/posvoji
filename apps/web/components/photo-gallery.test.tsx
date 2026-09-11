@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { Dog, type LucideIcon } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
@@ -399,10 +400,18 @@ describe("photo gallery swipe", () => {
 // The animal's own page mounts the same gallery with no href. There is no card
 // link there for the arrow keys to live on, so the frame itself has to be the
 // way through the photos.
-function setupPlain(rest: Partial<Animal> = {}) {
+// emptyMark is the card's to pass and nobody else's, so it is a second
+// argument here rather than part of the animal: the tests that are about the
+// empty state need a plain gallery both with it and without it.
+function setupPlain(rest: Partial<Animal> = {}, emptyMark?: LucideIcon) {
   render(
     <I18nProvider locale="sl">
-      <PhotoGallery images={animal(rest).images} name="Rex" sizes="100vw" />
+      <PhotoGallery
+        images={animal(rest).images}
+        name="Rex"
+        sizes="100vw"
+        emptyMark={emptyMark}
+      />
     </I18nProvider>,
   );
   // Guarded like setup() above, so a caller gets the element rather than a
@@ -545,6 +554,62 @@ describe("photo gallery controls", () => {
     expect(dots?.className).toContain("group-focus-within/card:opacity-100");
   });
 
+  it("carries the card's dots on a scrim instead of five shadows", () => {
+    setup();
+
+    // jsdom paints nothing, so this reads the class list: what is asserted is
+    // that the card renders the gradient and the flat dots, not that a browser
+    // resolved either.
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("bg-linear-to-t");
+    expect(dots?.className).toContain("from-black/30");
+    // The strip the gradient occupies, anchored to the bottom of the frame.
+    expect(dots?.className).toContain("h-12");
+    expect(dots?.className).toContain("bottom-0");
+    // Under the chevrons, which are z-10, and under the frame's focus ring,
+    // which is z-20. A full-width strip overlaps the discs where a row of dots
+    // never did, and later in the DOM at the same z-index it would wash over
+    // them.
+    expect(dots?.className).toContain("z-0");
+    expect(dots?.className).not.toContain("z-10");
+
+    // The ground is under the row once, so no dot carries its own any more.
+    for (const dot of Array.from(dots?.children ?? [])) {
+      expect(dot.className).not.toContain("shadow-");
+      expect(dot.className).not.toContain("ring-");
+    }
+    // White in both themes: the scrim is dark whatever the theme is, so a dot
+    // following bg-background would be stone-950 on near-black in the dark one.
+    expect(dots?.children[0]?.className).toContain("bg-white");
+    expect(dots?.children[1]?.className).toContain("bg-white/55");
+  });
+
+  it("keeps the scrim on the dots' own element so the two move together", () => {
+    setup();
+
+    // One element carries the gradient and the reveal, so a card at rest has
+    // neither and a hovered card has both. A scrim that outlived its dots
+    // would be a smudge across the bottom of the photograph.
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("can-hover:opacity-0");
+    expect(dots?.className).toContain("group-hover/card:opacity-100");
+  });
+
+  it("draws no scrim on a card with a single photo", () => {
+    setup({
+      images: [
+        {
+          sourceUrl: "https://example.test/photo-0.jpg",
+          rights: "display-permitted" as const,
+        },
+      ],
+    });
+
+    // The scrim is the dots' element, and one photo has no dots. A gradient
+    // with nothing standing on it is a shadow on the photo for no reason.
+    expect(document.querySelector('[data-slot="photo-dots"]')).toBeNull();
+  });
+
   it("caps a long gallery at five dots and slides the window", () => {
     setup({
       images: Array.from({ length: 14 }, (_, i) => ({
@@ -594,6 +659,13 @@ describe("photo gallery controls", () => {
     const dots = document.querySelector('[data-slot="photo-dots"]');
     expect(dots?.className).toContain("pointer-events-none");
     expect(dots?.className).not.toContain("opacity-0");
+    // And no scrim: here the row stands on one large photograph the visitor
+    // asked for, so every dot keeps carrying its own ground.
+    expect(dots?.className).not.toContain("bg-linear-to-t");
+    expect(dots?.children[0]?.className).toContain(
+      "shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]",
+    );
+    expect(dots?.children[0]?.className).toContain("bg-background");
     for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
       const button = screen.getByLabelText(label);
       expect(button.className).toContain("size-8");
@@ -643,5 +715,38 @@ describe("photo gallery controls", () => {
 
     fireEvent.click(screen.getByLabelText("Naslednja fotografija"));
     expect(live()?.getAttribute("aria-live")).toBe("polite");
+  });
+});
+
+const NO_PHOTOS: Partial<Animal> = { images: [] };
+const NOTE = "Fotografija na strani zavetišča";
+
+describe("photo gallery with nothing to draw", () => {
+  it("marks an empty frame with the species the caller hands it", () => {
+    setupPlain(NO_PHOTOS, Dog);
+
+    // jsdom lays nothing out, so the claim is that the mark is rendered at the
+    // size and weight the empty state asks for, not that it looks right.
+    const mark = document.querySelector('[data-slot="photo-frame"] svg');
+    expect(mark?.getAttribute("class")).toContain("size-16");
+    expect(mark?.getAttribute("class")).toContain("text-muted-foreground/40");
+    // lucide's default 2 at this size is a poster; the mark has to be quiet.
+    expect(mark?.getAttribute("stroke-width")).toBe("1.25");
+    // Decoration. The sentence under it is what says why the box is empty.
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+
+    // The sentence stays, as the caption rather than the whole message.
+    expect(screen.getByText(NOTE).className).toContain("text-[0.6875rem]");
+  });
+
+  it("keeps the empty frame text-only where no mark is handed in", () => {
+    setupPlain(NO_PHOTOS);
+
+    // The animal page and the dialog pass none: one box on a page that is
+    // already about one animal, where the sentence alone was never the problem.
+    // No photos means no chevrons either, so any svg in the frame would be the
+    // mark.
+    expect(document.querySelector('[data-slot="photo-frame"] svg')).toBeNull();
+    expect(screen.getByText(NOTE).className).toBe("");
   });
 });

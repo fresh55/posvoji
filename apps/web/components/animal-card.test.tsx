@@ -1,15 +1,31 @@
 // @vitest-environment jsdom
 
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { LucideIcon } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { ClientAnimal } from "@/lib/animal";
+import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { animalsForClient } from "@/lib/dataset";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
 
 afterEach(cleanup);
+
+/** What one lucide icon draws, as the DOM serialises it. The card's empty
+ *  frame is compared against this rather than against a class name, because
+ *  the class is lucide's to rename and the paths are what identify the
+ *  species. Round-tripped through a detached element so both sides of the
+ *  comparison are jsdom's own serialisation: renderToStaticMarkup writes
+ *  self-closing tags that innerHTML does not. */
+function iconMarkup(Icon: LucideIcon) {
+  const host = document.createElement("div");
+  host.innerHTML = renderToStaticMarkup(createElement(Icon));
+  return host.firstElementChild!.innerHTML;
+}
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
 
@@ -407,6 +423,91 @@ describe("AnimalCard shelter line", () => {
     expect(
       screen.getByRole("link", { name: "Test" }).getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
+  });
+});
+
+describe("AnimalCard hover", () => {
+  // Asserted on the class list, because jsdom resolves neither :hover nor the
+  // media query the can-hover variant compiles to: it lays nothing out and
+  // never moves a pointer, so the rule can only be checked for being rendered,
+  // not for firing. What that leaves worth pinning is the shape of the
+  // selector, and the shape is the whole point of this rule.
+  it("underlines the name on hover, and not from the shelter row", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          showShelter
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const card = screen.getByRole("article");
+    expect(card.className).toContain(
+      "can-hover:[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline",
+    );
+    // The :not(:has()) above is only worth anything while the shelter row
+    // really carries the attribute it holds out. This is the other half of
+    // that rule, and it is the half that can silently stop being true.
+    expect(
+      screen.getByRole("link", { name: "Test" }).hasAttribute("data-press-exempt"),
+    ).toBe(true);
+    // Gated on the repo's own can-hover variant, so a tap on a phone cannot
+    // leave the name underlined with nothing to clear it.
+    expect(card.className).not.toContain("[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline hover:");
+    // The offset keeps the rule off the descenders of a name like "Srečko".
+    expect(screen.getByRole("heading").className).toContain("underline-offset-4");
+  });
+});
+
+describe("AnimalCard empty photo", () => {
+  // An animal the shelter published with no photo at all. The frame is the
+  // only picture in the grid with nothing in it, so it draws the species
+  // rather than a grey sentence alone.
+  it.each([
+    ["dog", "cat"],
+    ["cat", "rabbit"],
+  ] as const)("marks a %s card with its own species, not a %s", (species, other) => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ species, images: [] })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const frame = document.querySelector('[data-slot="photo-frame"]')!;
+    // The caption is still there; the mark goes above it rather than instead
+    // of it.
+    expect(frame.textContent).toContain("Fotografija na strani zavetišča");
+    const mark = frame.querySelector("svg");
+    expect(mark).toBeTruthy();
+    // Compared against the icon map itself rather than against a class name,
+    // which is lucide's to rename. This is what proves the card passes the
+    // ANIMAL's species and not the grid's active tab: the tab is left unset
+    // here, so a card reading the prop would draw "all" and match neither.
+    expect(mark!.innerHTML).toBe(iconMarkup(SPECIES_ICONS[species]));
+    expect(mark!.innerHTML).not.toBe(iconMarkup(SPECIES_ICONS[other]));
+  });
+
+  it("leaves a card that has a photo unmarked", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal({ images: photos(1) })}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const frame = document.querySelector('[data-slot="photo-frame"]')!;
+    expect(frame.textContent).not.toContain("Fotografija na strani zavetišča");
+    expect(frame.querySelector("svg")).toBeNull();
   });
 });
 

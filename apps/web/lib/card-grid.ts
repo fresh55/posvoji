@@ -8,8 +8,23 @@
 // Its own module rather than an export off animal-grid: a page that shows the
 // cards without the filters around them would otherwise pull the whole filter
 // UI into its bundle to read one string.
+// Rows are further apart than columns. Both gaps used to be 1rem, which put
+// every card's shelter line as close to the photo of the card below it as to
+// the photo it belongs to, and the grid read as one mesh rather than as sixty
+// cards: the eye had nothing telling it where a card ended. The column gap is
+// what the widths below are derived from and it does not move.
+//
+// From xl the cards are larger and there are three of them. A 228px photo is a
+// thumbnail, and the photograph is the thing this page is for, so where there
+// is room the picture takes it. The floor cannot simply be raised for every
+// width: auto-fill drops a column the moment the floor stops fitting, and a
+// 15rem floor at lg would leave two enormous cards beside the sidebar. xl is
+// where the page's max-w-7xl has already stopped it growing, so the count
+// settles at three and stays there however wide the screen is.
 export const CARD_GRID =
-  "grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]";
+  "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8" +
+  " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
+  " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]";
 
 // How wide a card's photo actually renders, which is what decides the rung a
 // browser downloads. Derived from CARD_GRID above and from the page's own
@@ -24,16 +39,34 @@ export const CARD_GRID =
 // off the declared width and its own pixel ratio, and never off the box's
 // height.
 //
-// Which makes the square phone frame a trade rather than a non-event. A 4/3
-// photo covering a square box is scaled until it is as tall as the box and then
-// cropped at the sides, so below sm a card draws about a third fewer source
-// pixels per drawn pixel than it did at 4/3: on a 412px screen at 1.75x the 320
-// rung used to land exactly and now stretches about 1.3x. Declaring these two
-// bands 4/3 wider would buy that back and move most phones up a rung, from a
-// mean 13KB to a mean 24KB a photo across sixty cards, which is the wrong way
-// to spend a phone connection on a 163px thumbnail. Sources that are already
-// square or portrait, 29% of the register's first photos, lose nothing either
-// way.
+// Which is why a square box has to ask for more than its own width. cover
+// scales a photo until it fills the box and a photo wider than the box is
+// scaled to the box's HEIGHT, so a square box showing a 4/3 source needs a file
+// 4/3 as wide as the box or it is stretched. 52% of the register's first photos
+// are wider than 4/3 and another 17% are near square; the 31% that are portrait
+// never wanted the extra and lose nothing by it.
+//
+// So every band from sm up is stated at 4/3 of the card, and the two phone
+// bands are not.
+//
+// That split is the payload, measured over the 1775 cached masters: the rungs
+// average 12.6KB at 320, 24.0KB at 480 and 36.8KB at 640, and a master 51.7KB.
+// A desktop at 1x moves from the 320 rung to the 480 one, and draws three of
+// them to a row instead of four, so a row costs 72KB where it cost 50KB and the
+// photograph it is spent on is 309px rather than 228px. Above the fold that is
+// close to a wash, because the row is 431px tall now and fewer of them fit.
+//
+// A desktop at 2x asks for 618px of height and the ladder's top rung is 640
+// wide, which is 480 tall on a 4/3 source and not enough, so it takes the
+// master. That is the right file for the box and the most expensive line here.
+// A rung between 640 and the master, 800 or 960, would land it nearer 40KB; the
+// ladder lives in apps/ingest (DERIVATIVE_VERSION in cache-images.ts) and
+// adding one re-cuts every derivative in the cache, so it is its own change.
+//
+// On a phone the widening buys almost nothing, because a 2x or 3x screen is
+// already asking for the 480 or 640 rung at the plain width. Only a 1.75x
+// screen would move up, and a 164px thumbnail on a phone connection is the one
+// place this trade is not worth making.
 //
 // The page is `max-w-7xl px-gutter`, --gutter is 1rem below sm, 1.5rem from sm
 // and 2rem from lg (globals.css), and the grid's own gap is 1rem throughout.
@@ -48,7 +81,12 @@ export const CARD_GRID =
 //   928-1023 4 cols, 1.5rem:       (100vw - 48 - 48)/4  →  208-232px
 //   1024-1199 3 cols beside the sidebar, 2rem gutter:
 //                                  (100vw - 64 - 256 - 32)/3
-//   1200+    4 cols, and max-w-7xl stops the growth at 1280 →  208-228px
+//   1200-1279 4 cols beside the sidebar                    →  208-228px
+//   1280+    the xl floor takes over: 3 cols of a grid that
+//           max-w-7xl has capped at 960px                  →  309px
+//
+// Every band from 704 up is then multiplied by 4/3 for the square box, which is
+// what turns "/3" into "* 4 / 9" and 232 into 309.
 //
 // The two narrow bands are stated as their widest card rather than as a calc,
 // because across each of them every plausible device ratio lands on the same
@@ -64,18 +102,22 @@ export const CARD_GRID =
 // frame itself, the skeleton the grid draws in its place before hydration, and
 // card-paint's height estimate in globals.css.
 //
-// Square below sm and 4/3 from there. Below sm the grid is two hard-coded
-// columns (CARD_GRID above), so a 375px screen draws a 163px card: a 4/3 photo
-// in it is 123px tall under a text block of about 100px, and the card is nearly
-// half words. The square gives the picture back 40px of height without touching
-// the column count, and from sm the card is wide enough that 4/3 is the better
-// frame for a photograph.
-export const CARD_PHOTO_ASPECT = "aspect-square sm:aspect-[4/3]";
+// Square at every width. It started as the phone's answer to a card that was
+// nearly half words, and it is the better frame everywhere for the same reason:
+// a sitting dog or cat is a vertical subject, and 4/3 spent a third of the box
+// on what is beside the animal. One shape also means the grid keeps its rhythm
+// across every breakpoint instead of changing proportion at sm.
+//
+// It costs height: a desktop card goes from about 261px to about 409px, so
+// roughly a fifth fewer fit a screen. CARD_PHOTO_SIZES below pays the other
+// half of the bill.
+export const CARD_PHOTO_ASPECT = "aspect-square";
 
 export const CARD_PHOTO_SIZES =
   "(max-width: 639px) calc(50vw - 24px)," +
   " (max-width: 703px) calc(50vw - 32px)," +
-  " (max-width: 927px) calc((100vw - 80px) / 3)," +
-  " (max-width: 1023px) 232px," +
-  " (max-width: 1199px) calc((100vw - 352px) / 3)," +
-  " 228px";
+  " (max-width: 927px) calc((100vw - 80px) * 4 / 9)," +
+  " (max-width: 1023px) 309px," +
+  " (max-width: 1199px) calc((100vw - 352px) * 4 / 9)," +
+  " (max-width: 1279px) 304px," +
+  " 412px";

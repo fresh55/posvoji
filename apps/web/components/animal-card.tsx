@@ -15,6 +15,7 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { ClientAnimal } from "@/lib/animal";
+import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { CARD_PHOTO_ASPECT, CARD_PHOTO_SIZES } from "@/lib/card-grid";
@@ -45,11 +46,12 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // page ground, and the photo is the one shape on it (see the article below).
 // rounded-xl is 14px on this site's scale, where the bordered surfaces sit at
 // rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
-// wants the larger corner; a 10px corner on a 228px picture read as tight.
+// wants the larger corner; a 10px corner read as tight even on the 228px card
+// the narrower desktop bands still draw, and the xl card is 309px.
 //
 // The box itself is CARD_PHOTO_ASPECT, which lib/card-grid.ts owns because the
 // grid's loading skeleton and card-paint's height estimate have to agree with
-// it. Square on a phone, 4/3 from sm, and the reasoning is over there with it.
+// it. Square at every width, and the reasoning is over there with it.
 //
 // The card's focus ring is drawn here, as an inset ring on a ::after that
 // covers the frame, whenever either of the card's links has keyboard focus.
@@ -239,7 +241,24 @@ export function AnimalCard({
         // the link itself either cuts through the first letters (inset) or
         // falls outside the card's box (offset), and card-paint in
         // globals.css clips everything outside that box.
-        "group/card flex flex-col overflow-hidden transition-transform motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99]",
+        //
+        // On hover the name underlines, which is the text block's half of
+        // the card answering a pointer at all. Hovering used to zoom the
+        // photo and bring in the chevrons and the dots while the words under
+        // it did nothing, although those words are the card's main link and
+        // half its height, so nothing said the two were one target.
+        //
+        // The underline and nothing else. A hover colour, a ground or a
+        // shadow would all be paint the design does not have, and card-paint
+        // clips at the card's box anyway, so a ground could not reach past
+        // the text to read as a row.
+        //
+        // Held off the shelter row by the same :has() the press feedback
+        // above uses, for the same reason: that row is a link to another
+        // page, and underlining the animal's name while the pointer is on it
+        // would promise the wrong destination. can-hover (globals.css) keeps
+        // it off touch, where :hover sticks after a tap.
+        "group/card flex flex-col overflow-hidden transition-transform motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99] can-hover:[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline",
         className,
       )}
       style={style}
@@ -253,8 +272,8 @@ export function AnimalCard({
           // A plain click here opens the dialog, whose fan mounts its five
           // prints at once at 24rem. The rung ladder is 320/480/640 plus the
           // original, so at every common density that is a different file
-          // from the 229px card's: the front print would otherwise be a cold
-          // fetch the moment the dialog opens. Tied to openDialog below,
+          // from the card's: the front print would otherwise be a cold fetch
+          // the moment the dialog opens. Tied to openDialog below,
           // which is what makes this photo open the fan at all.
           //
           // The constant comes from lib and not from the fan itself: an
@@ -262,6 +281,26 @@ export function AnimalCard({
           // grid's bundle.
           warmSizes={FAN_PHOTO_SIZES}
           tone={settled ? QUIET_PHOTO : undefined}
+          // What the empty frame draws above its caption, for an animal the
+          // shelter published without a photo. A frame holding one grey
+          // sentence is the only card in the grid with nothing in its
+          // picture, and at a glance it reads as a card that failed to load
+          // rather than as a dog whose photo is on the shelter's own page.
+          //
+          // The card is what knows the species. The gallery is handed images
+          // and a name and nothing else, and it is drawn on the animal's own
+          // page and in the dialog as well, so teaching it to read an animal
+          // would tie a photo component to the schema for one caller's sake.
+          //
+          // It takes the component and not the species for the same reason:
+          // a species would make the gallery import the icon map and own the
+          // mapping, which is animal-icons.ts's job and is already shared by
+          // the filter panel and the dialog. Handed the component, the
+          // gallery only draws what it is given.
+          //
+          // animal.species, not the species prop above, which is the grid's
+          // active tab and is "all" on most of these cards.
+          emptyMark={SPECIES_ICONS[animal.species]}
           variant="card"
           href={href}
           onNavigate={openDialog}
@@ -372,8 +411,13 @@ export function AnimalCard({
             the fallback for the clipping, and it is one touch cannot open.
 
             font-semibold is shadcn's own card-title weight. The name sits
-            next to a photograph four times its size and was losing. */}
-        <h3 id={headingId} className="line-clamp-2 font-semibold">
+            next to a photograph four times its size and was losing.
+
+            underline-offset-4 for the hover underline the article draws on
+            this heading. At the default offset the rule cuts through the
+            descenders of a name like "Srečko"; 4px clears them, and it is
+            what the shelter line below already underlines at. */}
+        <h3 id={headingId} className="line-clamp-2 font-semibold underline-offset-4">
           {animal.name ?? messages.unnamed}
         </h3>
         {/* Allowed to wrap: an ellipsis here eats the animal's age, and

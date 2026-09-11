@@ -61,7 +61,14 @@ export function ShelterBlock({
         )}
         <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />
 
-        <div className="min-w-0 flex-1">
+        {/* A floor of 12rem under the name, so a row that cannot hold the
+            mark, the name and the button wraps the button under them
+            instead of shrinking the name. min-w-0 alone let flex-1 give the
+            name up first: in the animal page's 31rem column beside the photo
+            it drew "Obalno zavetišč..." with the button still on the line.
+            The dialog's card is wide enough to keep one row, and below sm
+            the button is already full width on a row of its own. */}
+        <div className="min-w-[12rem] flex-1">
           {/* The name goes to the shelter's own page, which holds its other
               contacts, the občine it answers for and the rest of its animals.
               Until now the only way out of this box left the site.

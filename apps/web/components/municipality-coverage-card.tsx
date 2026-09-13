@@ -73,17 +73,23 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
+        {/* The invisible 44px layer below lg: a line of text is under the
+            24px a target needs, and the nearest-shelter card's names carry
+            the same. */}
         <a
           href={coverage.detailHref}
-          className="font-medium underline-offset-4 hover:underline"
+          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
         >
           {coverage.shelterName}
         </a>
         <SpeciesTag species={coverage.species} />
       </div>
 
+      {/* 44px tall below lg: the call is the card, and a phone borrowed to
+          make it is held in one hand. The same height as the call on the
+          nearest-shelter card, so the two states share one shape. */}
       {coverage.phone && (
-        <Button asChild className="w-full">
+        <Button asChild className="w-full max-lg:h-11">
           <a href={telHref(coverage.phone)}>
             <Phone className="size-4 shrink-0" aria-hidden />
             {t("muniCall", { phone: coverage.phone })}

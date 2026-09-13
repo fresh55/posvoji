@@ -21,6 +21,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { telHref } from "@/lib/contact-links";
 import { CoverageCard } from "@/components/municipality-coverage-card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Tooltip,
@@ -38,7 +39,7 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import { looksLikePostcode } from "@/lib/postal-lookup";
-import type { LookupEntry } from "@/lib/municipality-coverage";
+import type { LookupEntry, NearbyShelter } from "@/lib/municipality-coverage";
 import {
   municipalitiesForInput,
   municipalitiesNear,
@@ -46,17 +47,6 @@ import {
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
 
-// The authority that keeps the register of shelters. It used to point at
-// gov.si/teme/zascita-zivali/, which returns 404 and has no snapshot in the
-// Wayback Machine, so it is unlikely to have ever resolved: the one piece of
-// help offered to the 50 občine with no verified coverage was a dead link.
-//
-// gov.si no longer publishes the register itself at a findable address. The
-// PDF it used to sit in (assets/.../REG-zavetisc-*.pdf) is gone too, and the
-// site search finds no replacement, so this points at UVHVVR's own page, which
-// resolves and is the office to ask. Checked 2026-09-01.
-const REGISTER_URL =
-  "https://www.gov.si/drzavni-organi/organi-v-sestavi/uprava-za-varno-hrano-veterinarstvo-in-varstvo-rastlin/";
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
 // Enough to disambiguate any prefix without becoming a directory. The page
@@ -82,18 +72,28 @@ const NOT_ASKED: Ask = { query: "", picked: null };
 // own page, which is where its animals already are.
 //
 // Practical guidance stays available before a location is known.
+/** What the finder settled on, for the map to draw. Null while no občina is
+ *  picked. */
+export type FinderAnswer = {
+  /** Where the question was asked from, by the register's name. */
+  municipality: string;
+  /** The shelters the map keeps bright: the responsible ones, or, where none
+   *  is on record, the nearest shortlist. */
+  shelters: string[];
+  /** The ones to ring and name: the responsible ones, or the nearest with a
+   *  number, which is the one the card tells the reader to call. */
+  spotlight: string[];
+  /** Whether shelters are on record for the občina. Decides what the ring's
+   *  callout calls them. */
+  verified: boolean;
+};
+
 export function MunicipalityFinder({
   entries,
-  onActiveShelters,
-  onActiveMunicipality,
+  onAnswer,
 }: {
   entries: LookupEntry[];
-  /** Shelter ids of the picked municipality, for the map to light up.
-   *  Null when no municipality is picked. */
-  onActiveShelters: (values: string[] | null) => void;
-  /** Name of the picked municipality, which is the only thing that knows
-   *  where the question was asked from. Null when none is picked. */
-  onActiveMunicipality?: (name: string | null) => void;
+  onAnswer: (answer: FinderAnswer | null) => void;
 }) {
   const { messages, t } = useI18n();
   // What the box holds and which občina is settled, as one value: they change
@@ -285,12 +285,41 @@ export function MunicipalityFinder({
     if (merged !== linked.replace(/^\?/, "")) commitSearch(merged, "replace");
   }, [active, asked, linked, query]);
 
+  // Where no shelter is on record, the nearest one with a number: the card's
+  // one primary call, and the shelter the map rings. Two of the register's
+  // seventeen shelters have no phone, so the nearest is not always it, and
+  // a hero without a button would be a heading that says "call" over
+  // nothing to press.
+  const hero = useMemo(
+    () =>
+      active && active.coverage.length === 0
+        ? active.nearest.find(
+            (shelter): shelter is NearbyShelter & { phone: string } =>
+              Boolean(shelter.phone),
+          )
+        : undefined,
+    [active],
+  );
+  const others = active
+    ? active.nearest.filter((shelter) => shelter.shelterId !== hero?.shelterId)
+    : [];
+
   useEffect(() => {
-    onActiveShelters(
-      active ? active.coverage.map((coverage) => coverage.shelterId) : null,
-    );
-    onActiveMunicipality?.(active ? active.name : null);
-  }, [active, onActiveMunicipality, onActiveShelters]);
+    if (!active) {
+      onAnswer(null);
+      return;
+    }
+    const verified = active.coverage.length > 0;
+    const shelters = verified
+      ? active.coverage.map((coverage) => coverage.shelterId)
+      : active.nearest.map((shelter) => shelter.shelterId);
+    onAnswer({
+      municipality: active.name,
+      shelters,
+      spotlight: verified ? shelters : hero ? [hero.shelterId] : [],
+      verified,
+    });
+  }, [active, hero, onAnswer]);
 
   // Both trailing controls start a new question; they differ by where they
   // send it next.
@@ -603,61 +632,124 @@ export function MunicipalityFinder({
               />
             ))
           ) : (
-            <div className="space-y-3">
-                <div className="space-y-1.5 rounded-ui border border-dashed p-4 text-sm text-muted-foreground">
-                  <p>{messages.muniUnverifiedAdvice}</p>
-                  <a
-                    href={REGISTER_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 underline underline-offset-4 hover:text-foreground"
-                  >
-                    {messages.muniRegister}
-                    <ExternalLink className="size-3" aria-hidden />
-                  </a>
-                </div>
-
-                {/* Not an answer, but better than none: somewhere to call. */}
-                {active.nearest.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-medium">
-                      {messages.muniNearestTitle}
+            // No verified shelter: the answer is a card all the same, on the
+            // coverage card's surface, so both states of the one question
+            // look like the same thing. It used to be a dashed box of muted
+            // advice with the nearest shelters loose under it, and on a phone
+            // nothing in it outranked anything else.
+            //
+            // The nearest shelters lead, because a number to dial is what
+            // somebody standing over an animal can act on, and a shelter
+            // knows whose contract an občina is under. The registry's rule,
+            // that none of them is offered as responsible, is kept by the
+            // line over the card and by the heading's own word, "nearest";
+            // the note under the heading is only the script for the call.
+            // The občina is the last resort, under the list.
+            //
+            // The block used to open with a link to UVHVVR, the office that
+            // keeps the register of shelters. gov.si publishes no list at any
+            // address (checked 2026-09-01), so the link led to an office's
+            // homepage: the one thing on the answer nobody could act on.
+            <Card className="space-y-3 p-4">
+              {active.nearest.length > 0 && (
+                <>
+                  <div className="space-y-1">
+                    {/* The heading is the action, and the shelter under it
+                        is the one to take it with, so it only says "call"
+                        when there is a number to call. */}
+                    <p className="font-medium">
+                      {hero ? messages.muniNearestCall : messages.muniNearestTitle}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {messages.muniNearestNote}
                     </p>
-                    <ul className="space-y-0.5 pt-0.5">
-                      {active.nearest.map((shelter) => (
-                        <li
-                          key={shelter.shelterId}
-                          className="flex items-center justify-between gap-2 rounded-ui px-2 py-1.5 text-sm"
-                        >
-                          <span className="min-w-0">
-                            <a
-                              href={shelter.detailHref}
-                              className="block truncate underline-offset-4 hover:underline"
-                            >
-                              {shelter.shelterName}
-                            </a>
-                            <span className="block truncate text-xs text-muted-foreground">
-                              {shelter.city} · {shelter.km} km
-                            </span>
-                          </span>
-                          {shelter.phone && (
-                            <a
-                              href={telHref(shelter.phone)}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2.5 py-1 text-sm transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
-                            >
-                              <Phone className="size-3.5" aria-hidden />
-                              {shelter.phone}
-                            </a>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
                   </div>
-                )}
-            </div>
+
+                  {/* One primary call, in the coverage card's own shape, so
+                      the answer looks the same whether or not a shelter is
+                      on record: the name, where it is and how far, and the
+                      button. The rest of the shortlist is the fallback and
+                      is drawn as one, under a label that says when to use
+                      it. Three equal rows with three equal buttons had no
+                      first call in them. */}
+                  {hero && (
+                    <div className="space-y-3">
+                      <p className="text-sm">
+                        <a
+                          href={hero.detailHref}
+                          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+                        >
+                          {hero.shelterName}
+                        </a>
+                        <span className="block text-muted-foreground">
+                          {hero.city} ·&nbsp;{hero.km}&nbsp;km
+                        </span>
+                      </p>
+                      {/* 44px tall below lg, like the pills under it: the
+                          one call on the card cannot be its smallest
+                          target. The coverage card keeps the same height. */}
+                      <Button asChild className="w-full max-lg:h-11">
+                        <a href={telHref(hero.phone)}>
+                          <Phone className="size-4 shrink-0" aria-hidden />
+                          {t("muniCall", { phone: hero.phone })}
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+
+                  {others.length > 0 && (
+                    <div className="space-y-1">
+                      {hero && (
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {messages.muniNearestOthers}
+                        </p>
+                      )}
+                      <ul className="divide-y">
+                        {others.map((shelter) => (
+                          <li
+                            key={shelter.shelterId}
+                            className="flex items-center justify-between gap-3 py-2.5 last:pb-0"
+                          >
+                            <span className="min-w-0 text-sm">
+                              <a
+                                href={shelter.detailHref}
+                                className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+                              >
+                                {shelter.shelterName}
+                              </a>
+                              <span className="block text-muted-foreground">
+                                {shelter.city} ·&nbsp;{shelter.km}&nbsp;km
+                              </span>
+                            </span>
+                            {/* The number is the control here too, and its
+                                label is the number itself: a phone borrowed
+                                to make the call needs it read out. 44px
+                                tall below lg. */}
+                            {shelter.phone && (
+                              <Button
+                                asChild
+                                variant="outline"
+                                className="max-lg:h-11"
+                              >
+                                <a href={telHref(shelter.phone)}>
+                                  <Phone aria-hidden />
+                                  {shelter.phone}
+                                </a>
+                              </Button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {active.nearest.length > 0
+                  ? messages.muniUnverifiedAlso
+                  : messages.muniUnverifiedAdvice}
+              </p>
+            </Card>
           ))}
 
         {/* The guidance, under whatever the search has answered, in the

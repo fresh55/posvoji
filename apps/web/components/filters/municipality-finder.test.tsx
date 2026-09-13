@@ -83,8 +83,7 @@ function renderFinder() {
     <I18nProvider locale="sl">
       <MunicipalityFinder
         entries={ENTRIES}
-        onActiveShelters={() => undefined}
-        onActiveMunicipality={() => undefined}
+        onAnswer={() => undefined}
       />
     </I18nProvider>,
   );
@@ -156,7 +155,7 @@ describe("MunicipalityFinder deep link", () => {
     const view = render(
       <I18nProvider locale="sl">
         <LanguageSwitcher paths={FOUND_ANIMAL_PATHS} />
-        <MunicipalityFinder entries={ENTRIES} onActiveShelters={() => undefined} />
+        <MunicipalityFinder entries={ENTRIES} onAnswer={() => undefined} />
       </I18nProvider>,
     );
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "Maribor" } });
@@ -172,7 +171,7 @@ describe("MunicipalityFinder deep link", () => {
     window.history.replaceState({}, "", destination);
     render(
       <I18nProvider locale="en">
-        <MunicipalityFinder entries={ENTRIES} onActiveShelters={() => undefined} />
+        <MunicipalityFinder entries={ENTRIES} onAnswer={() => undefined} />
       </I18nProvider>,
     );
     expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("Maribor");
@@ -290,8 +289,7 @@ describe("MunicipalityFinder enter key", () => {
       <I18nProvider locale="sl">
         <MunicipalityFinder
           entries={AMBIGUOUS}
-          onActiveShelters={() => undefined}
-          onActiveMunicipality={() => undefined}
+          onAnswer={() => undefined}
         />
       </I18nProvider>,
     );
@@ -421,7 +419,7 @@ describe("MunicipalityFinder search feedback", () => {
   });
 
   it("uses English postcode feedback on the English page", () => {
-    render(<I18nProvider locale="en"><MunicipalityFinder entries={ENTRIES} onActiveShelters={() => undefined} /></I18nProvider>);
+    render(<I18nProvider locale="en"><MunicipalityFinder entries={ENTRIES} onAnswer={() => undefined} /></I18nProvider>);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "9999" } });
     expect(screen.getByText("No such postcode. Check the number.")).toBeTruthy();
   });
@@ -464,8 +462,7 @@ function renderReal() {
     <I18nProvider locale="sl">
       <MunicipalityFinder
         entries={REAL}
-        onActiveShelters={() => undefined}
-        onActiveMunicipality={() => undefined}
+        onAnswer={() => undefined}
       />
     </I18nProvider>,
   );
@@ -623,5 +620,150 @@ describe("MunicipalityFinder postal guess beside the občina name", () => {
     expect(screen.getByText("Zavetišče Videm")).toBeTruthy();
     expect(screen.queryByText("Zavetišče Dobrepolje")).toBeNull();
     expect(screen.queryByText("Zavetišče Grosuplje")).toBeNull();
+  });
+});
+
+// An občina the registry cannot answer for. Real data holds 42 of them, and
+// every one has a centroid, so the nearest list is only ever empty here.
+// Mala hiša has no number on purpose: two of the register's shelters have
+// none, and the card's one call must skip such a shelter.
+const CIRKULANE: LookupEntry = {
+  name: "Cirkulane",
+  coverage: [],
+  nearest: [
+    {
+      shelterId: "maribor",
+      shelterName: "Zavetišče Maribor (Snaga)",
+      city: "Maribor",
+      phone: "02 480 16 60",
+      detailHref: "/zavetisca/maribor",
+      km: 36,
+    },
+    {
+      shelterId: "mala-hisa",
+      shelterName: "Zavetišče Mala hiša",
+      city: "Moravske Toplice",
+      detailHref: "/zavetisca/mala-hisa",
+      km: 42,
+    },
+    {
+      shelterId: "zonzani",
+      shelterName: "Zavetišče Zonzani",
+      city: "Dramlje",
+      phone: "03 749 06 00",
+      detailHref: "/zavetisca/zonzani",
+      km: 48,
+    },
+  ],
+};
+
+describe("MunicipalityFinder without a verified shelter", () => {
+  function renderCirkulane(nearest = CIRKULANE.nearest) {
+    const onAnswer = vi.fn();
+    render(
+      <I18nProvider locale="sl">
+        <MunicipalityFinder
+          entries={[...ENTRIES, { ...CIRKULANE, nearest }]}
+          onAnswer={onAnswer}
+        />
+      </I18nProvider>,
+    );
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Cirkulane" },
+    });
+    return onAnswer;
+  }
+
+  const follows = (a: Element, b: Element) =>
+    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it("leads with one call to the nearest shelter, then the fallbacks, then the občina", () => {
+    const onAnswer = renderCirkulane();
+
+    expect(
+      document.querySelectorAll('[aria-live="polite"]')[1]?.textContent,
+    ).toBe("Cirkulane · pristojnost ni preverjena");
+
+    // The heading is the action, the note is the script for it and says
+    // nothing the line above the card already said, and the nearest
+    // shelter's number is the card's one primary call, in the coverage
+    // card's own words.
+    const heading = screen.getByText("Pokliči najbližje zavetišče");
+    const note = screen.getByText("Vprašaj, kdo prevzame žival.");
+    expect(heading.closest('[data-slot="card"]')?.textContent).not.toMatch(
+      /ni potrjeno|ni preverjen/,
+    );
+    const call = screen.getByRole("link", { name: "Pokliči 02 480 16 60" });
+    expect(call.getAttribute("href")).toMatch(/^tel:/);
+    expect(screen.getByText("Maribor · 36 km")).toBeTruthy();
+
+    // The rest of the shortlist under a label that says when it is for,
+    // each number a control of its own; a shelter without a number keeps
+    // its name and its page and gets no button.
+    const label = screen.getByText("Če se ne oglasijo");
+    const fallback = screen.getByRole("link", { name: "03 749 06 00" });
+    expect(
+      screen
+        .getByRole("link", { name: "Zavetišče Mala hiša" })
+        .getAttribute("href"),
+    ).toBe("/zavetisca/mala-hisa");
+    expect(screen.getAllByRole("link", { name: /^\d/ })).toHaveLength(1);
+
+    // The občina is the last resort, under the list, and the general
+    // guidance stays under the answer.
+    const obcina = screen.getByText(/lahko pove tudi občina/);
+    const guidance = screen.getByText(/Poškodovane živali ne premikaj/);
+    expect(follows(heading, note)).toBe(true);
+    expect(follows(note, call)).toBe(true);
+    expect(follows(call, label)).toBe(true);
+    expect(follows(label, fallback)).toBe(true);
+    expect(follows(fallback, obcina)).toBe(true);
+    expect(follows(obcina, guidance)).toBe(true);
+
+    // Nothing that cannot be acted on: the office that keeps the register
+    // publishes no list, so its link is gone.
+    expect(screen.queryByRole("link", { name: /gov\.si/ })).toBeNull();
+
+    // The map hears the same answer: the shortlist to keep bright, the one
+    // call to ring, and that none of it is on record.
+    expect(onAnswer).toHaveBeenLastCalledWith({
+      municipality: "Cirkulane",
+      shelters: ["maribor", "mala-hisa", "zonzani"],
+      spotlight: ["maribor"],
+      verified: false,
+    });
+  });
+
+  it("skips a nearer shelter without a number when choosing the call", () => {
+    const [maribor, malaHisa, zonzani] = CIRKULANE.nearest;
+    const onAnswer = renderCirkulane([malaHisa, maribor, zonzani]);
+
+    expect(
+      screen.getByRole("link", { name: "Pokliči 02 480 16 60" }),
+    ).toBeTruthy();
+    // The nearer shelter is still on the list, as a row without a button.
+    expect(screen.getByRole("link", { name: "Zavetišče Mala hiša" })).toBeTruthy();
+    expect(onAnswer).toHaveBeenLastCalledWith({
+      municipality: "Cirkulane",
+      shelters: ["mala-hisa", "maribor", "zonzani"],
+      spotlight: ["maribor"],
+      verified: false,
+    });
+  });
+
+  it("falls back to the občina alone when there is nothing near to call", () => {
+    const onAnswer = renderCirkulane([]);
+
+    expect(screen.queryByText("Pokliči najbližje zavetišče")).toBeNull();
+    expect(screen.queryByText("Najbližja zavetišča")).toBeNull();
+    expect(
+      screen.getByText(/^Pokliči občino, kjer je bila žival najdena/),
+    ).toBeTruthy();
+    expect(onAnswer).toHaveBeenLastCalledWith({
+      municipality: "Cirkulane",
+      shelters: [],
+      spotlight: [],
+      verified: false,
+    });
   });
 });

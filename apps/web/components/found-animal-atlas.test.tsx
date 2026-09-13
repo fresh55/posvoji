@@ -30,6 +30,29 @@ const ENTRIES: LookupEntry[] = [
       },
     ],
   },
+  // Nothing on record, and Maribor the nearest with a number.
+  {
+    name: "Cirkulane",
+    coverage: [],
+    nearest: [
+      {
+        shelterId: "maribor",
+        shelterName: "Zavetišče Maribor",
+        city: "Maribor",
+        phone: "02 480 16 60",
+        detailHref: "/zavetisca/maribor",
+        km: 36,
+      },
+      {
+        shelterId: "ljubljana",
+        shelterName: "Zavetišče Ljubljana",
+        city: "Ljubljana",
+        phone: "01 256 02 79",
+        detailHref: "/zavetisca/ljubljana",
+        km: 140,
+      },
+    ],
+  },
 ];
 
 const PINS: ShelterPin[] = [
@@ -115,5 +138,29 @@ describe("the found-animal atlas", () => {
     expect(
       container.querySelector("[data-callout-title]")?.textContent,
     ).toContain("Zavetišče Ljubljana");
+  });
+
+  it("rings the nearest shelter with a number where none is on record", () => {
+    const { container } = renderAtlas();
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Cirkulane" },
+    });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
+
+    // The card's one call is the map's one ring, and the callout says what
+    // it is: the nearest, not the responsible one. Ljubljana is on the
+    // shortlist and stays bright, but is not ringed.
+    const rings = container.querySelectorAll("[data-map-spotlight]");
+    expect(rings).toHaveLength(1);
+    expect(rings[0].getAttribute("data-map-spotlight")).toContain("maribor");
+    expect(
+      container.querySelector("[data-callout-metadata]")?.textContent,
+    ).toBe("najbližje zavetišče");
+    expect(
+      container.querySelector("[data-callout-title]")?.textContent,
+    ).toContain("Zavetišče Maribor");
+    // And the line from the občina to it, which is the distance drawn.
+    expect(container.querySelector("[data-map-connector-from]")).toBeTruthy();
   });
 });

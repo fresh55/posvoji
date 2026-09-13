@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { MapAttribution } from "@/components/filters/map-attribution";
-import { MunicipalityFinder } from "@/components/filters/municipality-finder";
+import {
+  MunicipalityFinder,
+  type FinderAnswer,
+} from "@/components/filters/municipality-finder";
 import { MUNICIPALITY_AT } from "@/components/filters/location-picker/municipality-places";
 import { ShelterMap } from "@/components/filters/shelter-map";
 import { useI18n } from "@/components/i18n-provider";
@@ -47,18 +50,15 @@ export function FoundAnimalAtlas({
   pins: ShelterPin[];
 }) {
   const { messages } = useI18n();
-  const [shelterIds, setShelterIds] = useState<string[] | null>(null);
-  const [municipality, setMunicipality] = useState<string | null>(null);
-  const from = municipality ? (MUNICIPALITY_AT.get(municipality) ?? null) : null;
+  const [answer, setAnswer] = useState<FinderAnswer | null>(null);
+  const from = answer
+    ? (MUNICIPALITY_AT.get(answer.municipality) ?? null)
+    : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[24rem_minmax(0,1fr)] lg:items-start lg:gap-column-gap">
       <div className="min-w-0">
-        <MunicipalityFinder
-          entries={entries}
-          onActiveShelters={setShelterIds}
-          onActiveMunicipality={setMunicipality}
-        />
+        <MunicipalityFinder entries={entries} onAnswer={setAnswer} />
       </div>
 
       {/* The plate: the map's paper ground with the credit floated on its
@@ -82,9 +82,19 @@ export function FoundAnimalAtlas({
           // it, both together: a dimmed-versus-darker marker alone was not
           // readable, and on phones markers are not drawn at all, so the
           // ring and its named card are what make the answer visible there.
-          matchedValues={shelterIds}
-          spotlightValues={shelterIds}
-          spotlightNote={messages.muniResponsible}
+          //
+          // Where no shelter is on record the shortlist stays bright and the
+          // one the card says to call is ringed, named for what it is: the
+          // nearest, not the responsible one. The map used to answer that
+          // state with an empty list, which dimmed every marker and ringed
+          // nothing: a grey country under the card, on a phone.
+          matchedValues={answer?.shelters ?? null}
+          spotlightValues={answer?.spotlight ?? null}
+          spotlightNote={
+            answer?.verified === false
+              ? messages.muniNearest
+              : messages.muniResponsible
+          }
           // The other half of that answer: where it was asked from. Only
           // when the občina is one we hold a centroid for.
           spotlightFrom={from}

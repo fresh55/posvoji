@@ -325,18 +325,38 @@ const sl = {
   muniCostSource: "Zakon o zaščiti živali, 31. člen",
   muniInjured:
     "Poškodovane živali ne premikaj na silo. Če se ji ni varno približati, ostani na razdalji.",
+  // The card's heading is the action, and the shelter under it is the one
+  // to take it with: the nearest that has a number. muniNearestTitle is the
+  // heading only when none on the shortlist has one, which the register does
+  // not produce today (two of its seventeen shelters have no phone).
+  muniNearestCall: "Pokliči najbližje zavetišče",
   muniNearestTitle: "Najbližja zavetišča",
-  muniNearestNote:
-    "Ni potrjeno, da so pristojna za to občino. Pokliči in vprašaj.",
-  muniUnverified: "ni preverjenega podatka",
+  // Only the script for the call. The line over the card has already said
+  // that nothing is verified, and the note used to say it again in other
+  // words three lines later: the one sentence on the card that said nothing
+  // new.
+  muniNearestNote: "Vprašaj, kdo prevzame žival.",
+  // Over the rest of the shortlist, under the number to try first.
+  muniNearestOthers: "Če se ne oglasijo",
+  // The map's callout beside the ringed shelter, in the register of
+  // muniResponsible: what the ring means, and not a claim.
+  muniNearest: "najbližje zavetišče",
+  // Says what is unverified, in the verified state's own noun: "pristojno
+  // zavetišče" over one card, "pristojnost ni preverjena" over the other.
+  // "ni preverjenega podatka" was the data file's phrase, and left the reader
+  // to guess what the missing datum was.
+  muniUnverified: "pristojnost ni preverjena",
   // "kjer je bila žival najdena" and not "kjer si našel žival": the reader is
   // being told what to do, not quoted, so nothing here has to guess their
   // gender. Same construction as muniPostcodeInstead above.
+  //
+  // The imperative is for an občina the map cannot place, which has no
+  // nearest shelters to call first. Under that list the občina is the second
+  // call, and muniUnverifiedAlso says so without a second "pokliči".
   muniUnverifiedAdvice:
     "Pokliči občino, kjer je bila žival najdena, in vprašaj, katero zavetišče jo lahko prevzame.",
-  // Names the office, not a register: gov.si no longer publishes the list of
-  // shelters at any address, so the link goes to UVHVVR itself.
-  muniRegister: "Uprava za varno hrano, veterinarstvo in varstvo rastlin (gov.si)",
+  muniUnverifiedAlso:
+    "Katero zavetišče je pristojno, lahko pove tudi občina, kjer je bila žival najdena.",
   muniSource: "Vir:",
   muniDatedSource:
     "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
@@ -623,13 +643,16 @@ const en: Messages = {
   muniCostSource: "Animal Protection Act, Article 31",
   muniInjured:
     "Do not force an injured animal to move. Keep your distance if it is unsafe to approach.",
+  muniNearestCall: "Call the nearest shelter",
   muniNearestTitle: "Nearest shelters",
-  muniNearestNote:
-    "Not confirmed as responsible for this municipality. Call and ask.",
-  muniUnverified: "no verified data",
+  muniNearestNote: "Ask who will collect the animal.",
+  muniNearestOthers: "If there is no answer",
+  muniNearest: "nearest shelter",
+  muniUnverified: "responsible shelter not verified",
   muniUnverifiedAdvice:
     "Call the municipality where you found the animal and ask which shelter can collect it.",
-  muniRegister: "Food Safety, Veterinary and Plant Protection Administration (gov.si)",
+  muniUnverifiedAlso:
+    "The municipality where you found the animal can also say which shelter is responsible.",
   muniSource: "Source:",
   muniDatedSource:
     "This comes from an older source; confirm with the shelter or municipality before visiting.",

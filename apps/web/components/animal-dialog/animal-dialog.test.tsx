@@ -2151,6 +2151,34 @@ describe("animal dialog", () => {
     }
   });
 
+  // The arrows are level with the name, and from sm up the name rides a sticky
+  // bar: at rest its centre is 64px under the card's top, pinned it is 40px.
+  // The arrows are absolute against the frame, which does not scroll, so they
+  // stayed at 64px and straddled the pinned bar's edge. The card hands the
+  // frame its own scroll, capped at the 24px the bar travels, and the two top
+  // offsets subtract it. Written as a custom property and not as state, so a
+  // scroll renders nothing.
+  it("lifts the edge arrows with the name as the title bar pins", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+    const frame = slot(dialog, "animal-dialog-frame");
+    const card = slot(dialog, "animal-dialog-card");
+
+    // Well past the cap: the bar has stopped moving and so have they.
+    card.scrollTop = 120;
+    fireEvent.scroll(card);
+    expect(frame.style.getPropertyValue("--nav-shift")).toBe("24px");
+
+    // Mid-travel, where the shift is the scroll itself.
+    card.scrollTop = 10;
+    fireEvent.scroll(card);
+    expect(frame.style.getPropertyValue("--nav-shift")).toBe("10px");
+
+    card.scrollTop = 0;
+    fireEvent.scroll(card);
+    expect(frame.style.getPropertyValue("--nav-shift")).toBe("0px");
+  });
+
   // With the arrows last, the first focusable child is the leftmost print,
   // and Radix would open on it. The front print is the animal, so the open
   // lands there, and the arrow keys walk the fan from the first key.

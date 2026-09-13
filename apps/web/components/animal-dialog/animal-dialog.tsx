@@ -139,8 +139,21 @@ const CARD_FRAME_CLASS = "relative flex flex-1 flex-col sm:-mt-4 sm:min-h-0";
 // row's pair is hidden from sm up and the page keys need a keyboard. A finger
 // gets the 44px floor; a mouse keeps the smaller circle, and each size takes
 // half of itself off the 64px so both stay centred on the same row.
+//
+// --nav-shift is the rest of "level with the name": the name is in a sticky
+// bar and the arrows are absolute against the frame, which does not scroll, so
+// once the bar pinned the arrows stayed at 64px and straddled its bottom edge.
+// The bar's top is the card's top plus its border, then sm:pt-6 and half of the
+// 32px row, which puts the pinned name's centre at 40px. The frame carries the
+// number (see syncNavShift) and the default keeps the class honest on its own,
+// for the first paint and for the phone, where these are hidden anyway.
 const ANIMAL_NAV_CLASS =
-  "absolute top-[calc(4rem-1.125rem)] z-40 hidden size-9 rounded-full bg-popover shadow-xs sm:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4rem-1.375rem)] pointer-coarse:size-11";
+  "absolute top-[calc(4rem-1.125rem-var(--nav-shift,0px))] z-40 hidden size-9 rounded-full bg-popover shadow-xs sm:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4rem-1.375rem-var(--nav-shift,0px))] pointer-coarse:size-11";
+
+// How far the title bar travels before it is pinned: 64px at rest less the
+// 40px the pinned name sits at. The card's scroll past that moves the bar no
+// further, so the arrows stop with it.
+const NAV_SHIFT_MAX = 24;
 
 // The same two steps for a phone, which has neither the edge arrows above nor
 // the PageUp and PageDown keys they double for: without these the only way to
@@ -233,6 +246,23 @@ export function AnimalDialog({
   const shouldReduceMotion = useReducedMotion();
   const open = animal !== undefined;
   const contentRef = useRef<HTMLDivElement>(null);
+  // The card, which is the scrollport from sm up, and the frame around it,
+  // which is what the edge arrows are absolute against.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  // The arrows follow the name down as the sticky title bar pins. The shift is
+  // the card's own scroll, capped at the distance the bar travels, so no
+  // element has to be measured to know it.
+  //
+  // Written straight onto the frame's style rather than held in state: a
+  // scroll must not re-render the dialog, and a custom property is read by the
+  // two arrows' top offsets without React hearing about it. The floor at 0 is
+  // for the elastic overscroll a trackpad can put on the card, which reports a
+  // negative scrollTop and would otherwise push the arrows down.
+  const syncNavShift = useCallback((scrollTop: number) => {
+    const shift = Math.min(Math.max(scrollTop, 0), NAV_SHIFT_MAX);
+    frameRef.current?.style.setProperty("--nav-shift", `${shift}px`);
+  }, []);
   // A phone can throw the dialog away downwards. The offset lives in a motion
   // value so a finger drag does not re-render the dialog on every frame.
   const dragY = useMotionValue(0);
@@ -266,6 +296,16 @@ export function AnimalDialog({
     drag.current = null;
     dragY.set(0);
   }, [animal, dragY]);
+
+  // A step to another animal keeps the card element, and with it whatever it
+  // was scrolled to. Nothing here sends it back to the top, so the shift is
+  // re-read from the card rather than assumed to be zero; a listing short
+  // enough for the browser to clamp the scroll is the case a scroll event
+  // alone cannot be relied on to report. Reading scrollTop settles the layout
+  // first, so the number is the clamped one.
+  useEffect(() => {
+    syncNavShift(cardRef.current?.scrollTop ?? 0);
+  }, [animal, syncNavShift]);
 
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
   // none. What the visitor left behind is the card they clicked, kept for the
@@ -565,8 +605,24 @@ export function AnimalDialog({
                 />
               </m.div>
 
-              <div className={CARD_FRAME_CLASS}>
-                <div className={CARD_CLASS}>
+              <div
+                ref={frameRef}
+                data-slot="animal-dialog-frame"
+                className={CARD_FRAME_CLASS}
+              >
+                <div
+                  ref={cardRef}
+                  data-slot="animal-dialog-card"
+                  className={CARD_CLASS}
+                  // The whole handler is one clamp and one custom property
+                  // written on the frame above, so a scroll neither renders
+                  // anything nor reads any layout back. Below sm this box is
+                  // not a scrollport and the arrows are hidden, so it never
+                  // fires there.
+                  onScroll={(event) =>
+                    syncNavShift(event.currentTarget.scrollTop)
+                  }
+                >
                   {/* The title line stays put while the card scrolls under it.
 
                       The card is its own scrollport on sm and up, and the

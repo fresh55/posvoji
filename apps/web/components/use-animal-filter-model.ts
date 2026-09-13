@@ -111,8 +111,8 @@ export function useAnimalFilterModel({
     () => facetCounts(animals, filters, reference),
     [animals, filters, reference],
   );
-  // The panel follows the species tab: measured against the whole dataset it
-  // would offer groups the animals on screen don't vary on.
+  // The panel follows the species tab and keeps every applicable group available
+  // so a zero-count option remains visible and explains its unknown state.
   const pool = useMemo(
     () => bySpecies(animals, filters.species),
     [animals, filters.species],
@@ -127,7 +127,7 @@ export function useAnimalFilterModel({
   // (visibleGroups in lib/filters.ts). Every visible* call below is passed its
   // own selection for the same reason.
   const shown = useMemo(
-    () => visibleGroups(pool, filters, reference),
+    () => visibleGroups(pool, filters, reference, true),
     [pool, filters, reference],
   );
   const groups = useMemo(
@@ -171,7 +171,7 @@ export function useAnimalFilterModel({
   );
   const toggles = useMemo(
     () =>
-      visibleToggles(pool, filters.species, filters.toggles).map((toggle) => ({
+      visibleToggles(pool, filters.species, filters.toggles, true).map((toggle) => ({
         ...toggle,
         label: toggleLabel(toggle.key, locale),
       })),
@@ -184,7 +184,7 @@ export function useAnimalFilterModel({
   // The section carries its own options, tally and actions, and is left out
   // entirely while no facet has enough answers to narrow anything.
   const goodWith = useMemo(() => {
-    const keys = visibleGoodWith(pool, filters.goodWith);
+    const keys = visibleGoodWith(pool, filters.goodWith, true);
     if (keys.length === 0) return undefined;
     return {
       options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
@@ -208,7 +208,7 @@ export function useAnimalFilterModel({
   // Same rule as the household section: absent until the shelters have
   // answered for some animals and not for all of them.
   const home = useMemo(() => {
-    const keys = visibleHome(pool, filters.home);
+    const keys = visibleHome(pool, filters.home, true);
     if (keys.length === 0) return undefined;
     return {
       options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
@@ -230,7 +230,7 @@ export function useAnimalFilterModel({
   ]);
 
   const care = useMemo(() => {
-    const keys = visibleCare(pool, filters.care);
+    const keys = visibleCare(pool, filters.care, true);
     if (keys.length === 0) return undefined;
     return {
       options: careOptions(locale).filter(({ key }) => keys.includes(key)),

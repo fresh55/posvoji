@@ -343,3 +343,22 @@ describe("the special care line", () => {
     ).toBeTruthy();
   });
 });
+
+describe("reviewed adoption requirements", () => {
+  it("shows confirmed requirements in the animal facts", () => {
+    renderFacts({ adoptionRequirements: {
+      indoorOnly: true, bondedPair: true, experiencedCarer: true, ongoingCare: true,
+    } }, "en");
+    for (const label of ["Indoor-only home", "Adopt together", "Experienced carer", "Ongoing care"]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+  });
+
+  it("does not present false or absent requirements as confirmed", () => {
+    renderFacts({ adoptionRequirements: { indoorOnly: false, bondedPair: true } }, "en");
+    expect(screen.getByText("Adopt together")).toBeTruthy();
+    for (const label of ["Indoor-only home", "Experienced carer", "Ongoing care"]) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
+  });
+});

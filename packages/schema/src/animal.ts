@@ -114,6 +114,16 @@ export const AnimalGoodWith = z.strictObject({
 });
 export type AnimalGoodWith = z.infer<typeof AnimalGoodWith>;
 
+// Explicit placement/care requirements stated for this animal. Absence means
+// unanswered, never false. Kept separate from temperament and apartment fit.
+export const AnimalAdoptionRequirements = z.strictObject({
+  indoorOnly: z.boolean().optional(),
+  bondedPair: z.boolean().optional(),
+  experiencedCarer: z.boolean().optional(),
+  ongoingCare: z.boolean().optional(),
+});
+export type AnimalAdoptionRequirements = z.infer<typeof AnimalAdoptionRequirements>;
+
 // Strict: owner contacts, adopter data and microchip numbers must never reach
 // the dataset, so any unknown key is an error rather than a passthrough.
 export const Animal = z.strictObject({
@@ -147,6 +157,7 @@ export const Animal = z.strictObject({
   // than a Compatibility: a shelter either says so or has not, and there is
   // no useful "no" to record.
   specialNeeds: z.boolean().optional(),
+  adoptionRequirements: AnimalAdoptionRequirements.optional(),
 
   images: z.array(AnimalImage),
 

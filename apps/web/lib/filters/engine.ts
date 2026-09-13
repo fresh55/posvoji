@@ -66,6 +66,8 @@ export function homeMatches(animal: AnimalFields, key: HomeKey): boolean {
   switch (key) {
     case "apartment":
       return animal.apartmentOk === "yes";
+    case "indoor-only":
+      return animal.adoptionRequirements?.indoorOnly === true;
   }
 }
 
@@ -74,6 +76,12 @@ export function careMatches(animal: AnimalFields, key: CareKey): boolean {
   switch (key) {
     case "patient":
       return animal.specialNeeds === true;
+    case "bonded-pair":
+      return animal.adoptionRequirements?.bondedPair === true;
+    case "experienced-carer":
+      return animal.adoptionRequirements?.experiencedCarer === true;
+    case "ongoing-care":
+      return animal.adoptionRequirements?.ongoingCare === true;
   }
 }
 
@@ -568,7 +576,6 @@ function orSectionCounts(
   keys: readonly string[],
 ): Map<string, number> {
   const counts = new Map<string, number>(keys.map((key) => [key, 0]));
-  const picked = pass.query[section];
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
     if (!sectionsPass(pass, slot, section)) continue;
     if (groupsFailedAt(pass, slot) !== 0) continue;
@@ -576,7 +583,6 @@ function orSectionCounts(
     for (let bit = 0; bit < keys.length; bit += 1) {
       const own = 1 << bit;
       if ((answered & own) === 0) continue;
-      if (!answersAny(answered, picked & ~own)) continue;
       bump(counts, keys[bit]);
     }
   }
@@ -796,13 +802,14 @@ export function visibleToggles(
   animals: AnimalFields[],
   species: SpeciesFilter,
   selected: readonly ToggleKey[],
+  includeUnavailable = false,
 ): ToggleDef[] {
   const counts = answeredCounts(indexOf(animals).toggles, TOGGLES.length);
   return TOGGLES.filter(
     (toggle, bit) =>
       selected.includes(toggle.key) ||
       (toggleFitsSpecies(toggle.species, species) &&
-        narrows(counts[bit], animals.length)),
+        (includeUnavailable || narrows(counts[bit], animals.length))),
   );
 }
 
@@ -817,32 +824,39 @@ function visibleFacet<Key extends string>(
   column: "goodWith" | "home" | "care",
   animals: AnimalFields[],
   selected: readonly Key[],
+  includeUnavailable = false,
 ): Key[] {
   const counts = answeredCounts(indexOf(animals)[column], keys.length);
   return keys.filter(
-    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
+    (key, bit) =>
+      selected.includes(key) ||
+      includeUnavailable ||
+      narrows(counts[bit], animals.length),
   );
 }
 
 export function visibleGoodWith(
   animals: AnimalFields[],
   selected: readonly GoodWithKey[],
+  includeUnavailable = false,
 ): GoodWithKey[] {
-  return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected);
+  return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected, includeUnavailable);
 }
 
 export function visibleHome(
   animals: AnimalFields[],
   selected: readonly HomeKey[],
+  includeUnavailable = false,
 ): HomeKey[] {
-  return visibleFacet(HOME_KEYS, "home", animals, selected);
+  return visibleFacet(HOME_KEYS, "home", animals, selected, includeUnavailable);
 }
 
 export function visibleCare(
   animals: AnimalFields[],
   selected: readonly CareKey[],
+  includeUnavailable = false,
 ): CareKey[] {
-  return visibleFacet(CARE_KEYS, "care", animals, selected);
+  return visibleFacet(CARE_KEYS, "care", animals, selected, includeUnavailable);
 }
 
 /** The number each species tab shows: everything the visitor asked for
@@ -914,6 +928,7 @@ export function visibleGroups(
   animals: AnimalFields[],
   filters: Filters,
   now: Date,
+  includeUnavailable = false,
 ): Record<MultiGroup, boolean> {
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
@@ -936,6 +951,7 @@ export function visibleGroups(
   }
   const shown = (group: MultiGroup) =>
     filters[group].length > 0 ||
+    (includeUnavailable && groupFitsSpecies(group, filters.species)) ||
     (groupFitsSpecies(group, filters.species) && distinct[group].size >= 2);
   return {
     sex: shown("sex"),

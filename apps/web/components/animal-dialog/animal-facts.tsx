@@ -555,6 +555,22 @@ export function AnimalFacts({
           <Aside icon={HeartHandshake}>{messages.specialNeedsNote}</Aside>
         </p>
       )}
+      {animal.adoptionRequirements && (
+        <ul className="flex flex-wrap gap-2 text-xs text-muted-foreground" aria-label={messages.home}>
+          {animal.adoptionRequirements.indoorOnly && (
+            <li><Aside icon={Building2}>{messages.adoptionIndoorOnly}</Aside></li>
+          )}
+          {animal.adoptionRequirements.bondedPair && (
+            <li><Aside icon={HeartHandshake}>{messages.adoptionBondedPair}</Aside></li>
+          )}
+          {animal.adoptionRequirements.experiencedCarer && (
+            <li><Aside icon={HeartHandshake}>{messages.adoptionExperiencedCarer}</Aside></li>
+          )}
+          {animal.adoptionRequirements.ongoingCare && (
+            <li><Aside icon={HeartHandshake}>{messages.adoptionOngoingCare}</Aside></li>
+          )}
+        </ul>
+      )}
 
       {/* Nothing here until the fetch lands, which is what an animal with no
           description draws too. No spinner and no skeleton: it is one

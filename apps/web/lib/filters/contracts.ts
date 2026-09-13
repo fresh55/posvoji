@@ -28,12 +28,17 @@ export type GoodWithKey = (typeof GOOD_WITH_KEYS)[number];
 // every other section so the URL codec and a second value later need no new
 // shape. Only a recorded yes counts, the same principle as Družba: a maybe is
 // never sold as a yes to someone who has only a flat to offer.
-export const HOME_KEYS = ["apartment"] as const;
+export const HOME_KEYS = ["apartment", "indoor-only"] as const;
 export type HomeKey = (typeof HOME_KEYS)[number];
 
 // Not a warning but a way in: it exists for visitors who came looking for the
 // animal that needs more from them, and who would otherwise never find it.
-export const CARE_KEYS = ["patient"] as const;
+export const CARE_KEYS = [
+  "patient",
+  "bonded-pair",
+  "experienced-carer",
+  "ongoing-care",
+] as const;
 export type CareKey = (typeof CARE_KEYS)[number];
 
 export type Filters = {

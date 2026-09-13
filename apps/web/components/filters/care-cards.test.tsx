@@ -50,7 +50,7 @@ describe("CareCards", () => {
     expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Za tiste, ki želijo pomagati živali, ki potrebuje več časa in razumevanja.",
+        "Prikaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
       ),
     ).toBeTruthy();
   });
@@ -58,9 +58,15 @@ describe("CareCards", () => {
   it("labels the card as a whole phrase in both locales", () => {
     expect(options.map(({ label }) => label)).toEqual([
       "Potrebuje potrpežljivega človeka",
+      "Posvojitev v paru",
+      "Izkušen skrbnik",
+      "Potrebuje redno oskrbo",
     ]);
     expect(careOptions("en").map(({ label }) => label)).toEqual([
       "Needs a patient person",
+      "Adopt together",
+      "Experienced carer",
+      "Ongoing care",
     ]);
   });
 
@@ -82,9 +88,7 @@ describe("CareCards", () => {
     const cards = screen
       .getAllByRole("button")
       .filter((button) => button.getAttribute("aria-pressed") !== null);
-    expect(cards.map((card) => card.getAttribute("aria-pressed"))).toEqual([
-      "true",
-    ]);
+    expect(cards).toHaveLength(4);
   });
 
   it("calls onToggle with the facet key", () => {
@@ -141,14 +145,14 @@ describe("the outcome sentence", () => {
   it("names both numbers", () => {
     renderCards({ selected: ["patient"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki iščejo potrpežljivega človeka. 70 od 489.",
+      "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. 70 od 489.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["patient"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Showing animals looking for a patient person. 70 of 489.",
+      "Showing animals with an explicitly reported care requirement. 70 of 489.",
     );
   });
 });
@@ -197,6 +201,6 @@ describe("FilterGroupList", () => {
     expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
     expect(
       screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
-    ).toHaveLength(1);
+    ).toHaveLength(4);
   });
 });

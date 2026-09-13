@@ -82,6 +82,12 @@ function dataset(count: number): Animal[] {
     const flag = () => pick([true, false, undefined] as const);
     const months = pick([undefined, 3, 11, 12, 40, 95, 96, 130]);
     const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20"]);
+    const adoptionRequirements = {
+      indoorOnly: flag(),
+      bondedPair: flag(),
+      experiencedCarer: flag(),
+      ongoingCare: flag(),
+    };
     animals.push({
       id: `a${at}`,
       source: {
@@ -113,6 +119,7 @@ function dataset(count: number): Animal[] {
       goodWith: { kids: answer(), dogs: answer(), cats: answer() },
       apartmentOk: answer(),
       specialNeeds: flag(),
+      adoptionRequirements,
       images: [],
       attribution: "Vir: Zavetisce",
     });
@@ -295,7 +302,7 @@ function slowHomeCounts(
   for (const key of HOME_KEYS) {
     const applied = {
       ...filters,
-      home: filters.home.filter((selected) => selected !== key),
+      home: [],
     };
     let total = 0;
     for (const animal of animals) {
@@ -315,7 +322,7 @@ function slowCareCounts(
   for (const key of CARE_KEYS) {
     const applied = {
       ...filters,
-      care: filters.care.filter((selected) => selected !== key),
+      care: [],
     };
     let total = 0;
     for (const animal of animals) {

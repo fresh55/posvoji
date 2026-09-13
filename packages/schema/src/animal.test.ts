@@ -31,6 +31,13 @@ const validAnimal = {
 };
 
 describe("Animal", () => {
+  it("keeps unanswered placement requirements distinct from explicit answers", () => {
+    expect(Animal.parse(validAnimal).adoptionRequirements).toBeUndefined();
+    expect(Animal.parse({ ...validAnimal, adoptionRequirements: { indoorOnly: true, ongoingCare: false } })
+      .adoptionRequirements).toEqual({ indoorOnly: true, ongoingCare: false });
+    expect(Animal.safeParse({ ...validAnimal, adoptionRequirements: { indoorOnly: "yes" } }).success).toBe(false);
+    expect(Animal.safeParse({ ...validAnimal, adoptionRequirements: { unreviewedTrait: true } }).success).toBe(false);
+  });
   it("accepts a valid animal", () => {
     expect(Animal.parse(validAnimal)).toMatchObject({ name: "Luna" });
   });

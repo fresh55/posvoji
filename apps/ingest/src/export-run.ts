@@ -13,6 +13,7 @@ import {
 } from "./crawled-snapshot";
 import { exitCodeForRun } from "./exit-codes";
 import { preparePublication } from "./export-animals";
+import { loadEnrichment } from "./enrichment";
 import { crawlProviders } from "./export-crawl";
 import { writeGenerationReceipt } from "./generation-receipt";
 import { checkPreviousGenerationSealed } from "./generation-seal";
@@ -69,6 +70,7 @@ const defaultServices = {
   holdArtifactLock,
   reserveInputRevision,
   loadPolicies,
+  loadEnrichment,
   readPreviousDataset,
   readPreviousCrawledDataset,
   checkPreviousGenerationSealed,
@@ -117,6 +119,7 @@ export async function runExport(
     holdArtifactLock,
     reserveInputRevision,
     loadPolicies,
+    loadEnrichment,
     readPreviousDataset,
     readPreviousCrawledDataset,
     checkPreviousGenerationSealed,
@@ -159,6 +162,7 @@ export async function runExport(
   try {
     const inputRevision = reserveInputRevision(datasetDir);
     const codeSha = getCodeSha();
+    const enrichment = loadEnrichment();
     const providerSnapshots = createSnapshots(datasetDir);
     const snapshotReferences: Record<string, SnapshotReference> = {};
 
@@ -475,7 +479,7 @@ export async function runExport(
     // they take the same firstSeenAt carry, the same uniqueness and removal
     // guards, the same allowedFields backstop, the same image cache, and they land
     // in animals.crawled.json like everything else. See docs/MANUAL-LISTINGS.md.
-    const { crawledSnapshot, overridden, overrideResult } = preparePublication({
+    const { crawledSnapshot, overridden, overrideResult, enrichmentResult } = preparePublication({
       crawled,
       listingAnimals: listings.kind === "ok" ? listings.result.animals : [],
       previousAnimals: previousCrawled?.animals ?? [],
@@ -483,6 +487,7 @@ export async function runExport(
       policyById,
       portalPayload,
       acceptRemovals,
+      enrichment,
       crawledProviderIds,
       logger,
     });
@@ -637,12 +642,14 @@ export async function runExport(
     writeFileAtomic(
       overrideReportPath,
       JSON.stringify(
-        buildOverrideReport(
-          generatedAt,
-          portalPayload,
-          overrideResult,
-          listingsReport,
-        ),
+        {
+          ...buildOverrideReport(generatedAt, portalPayload, overrideResult, listingsReport),
+          enrichment: {
+            reviewedAt: enrichment.reviewedAt,
+            applied: enrichmentResult?.applied ?? [],
+            skipped: enrichmentResult?.issues ?? [],
+          },
+        },
         null,
         2,
       ),
@@ -696,6 +703,7 @@ export async function runExport(
       join(datasetDir, "crawl-manifest.json"),
       JSON.stringify(
         buildCrawlManifest({
+          enrichment,
           generatedAt,
           inputRevision,
           codeSha,

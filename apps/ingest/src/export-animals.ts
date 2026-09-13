@@ -1,6 +1,7 @@
 import type { Animal, ProviderPolicy } from "@posvoji/schema";
 import { applyAllowedFields } from "./allowed-fields";
 import { captureCrawledSnapshot } from "./crawled-snapshot";
+import { applyEnrichment, type EnrichmentManifest } from "./enrichment";
 import { normalizeAnimalOrigin } from "./normalize-origin";
 import { isManualPolicy, type LoadedPolicy } from "./policies";
 import { applyOverrides, type PortalExportPayload } from "./portal-overrides";
@@ -20,6 +21,7 @@ export function preparePublication({
   policies,
   policyById,
   portalPayload,
+  enrichment,
   acceptRemovals = new Set<string>(),
   crawledProviderIds,
   logger = console,
@@ -30,6 +32,7 @@ export function preparePublication({
   policies: LoadedPolicy[];
   policyById: ReadonlyMap<string, ProviderPolicy>;
   portalPayload: PortalExportPayload | null;
+  enrichment?: EnrichmentManifest;
   acceptRemovals?: Set<string>;
   crawledProviderIds: Set<string>;
   logger?: Pick<Console, "log" | "warn">;
@@ -156,15 +159,28 @@ export function preparePublication({
   // file is for.
   const crawledSnapshot = captureCrawledSnapshot(restricted.animals);
 
+  const enrichmentResult = enrichment
+    ? applyEnrichment(restricted.animals, enrichment, policyById, portalPayload)
+    : null;
+  const enriched = enrichmentResult?.animals ?? restricted.animals;
+  if (enrichmentResult) {
+    logger.log(`enrichment: ${enrichmentResult.applied.length} fields applied, ${enrichmentResult.issues.length} skipped`);
+    for (const issue of enrichmentResult.issues) {
+      if (issue.reason !== "existing-value") {
+        logger.warn(`enrichment: ${issue.animalId}${issue.field ? ` ${issue.field}` : ""}: ${issue.reason}`);
+      }
+    }
+  }
+
   // Shelter corrections from the portal are merged in after the crawl (and
   // after firstSeenAt is carried over) so a re-crawl can never silently
   // clobber them, and before image caching and the change-set diff so an
   // overridden field — including a status change — shows up in changes.json
   // as an update and ships in the written dataset.
   const overrideResult = portalPayload
-    ? applyOverrides(restricted.animals, portalPayload)
+    ? applyOverrides(enriched, portalPayload)
     : null;
-  const overridden = overrideResult?.animals ?? restricted.animals;
+  const overridden = overrideResult?.animals ?? enriched;
   if (overrideResult) {
     const moved = overrideResult.conflicts.filter((c) => c.kind === "moved");
     logger.log(
@@ -208,5 +224,5 @@ export function preparePublication({
     crawledProviderIds,
   });
 
-  return { crawledSnapshot, overridden, overrideResult };
+  return { crawledSnapshot, overridden, overrideResult, enrichmentResult };
 }

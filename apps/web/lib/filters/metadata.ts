@@ -216,6 +216,11 @@ export const FILTER_METADATA = {
       slug: "stanovanje",
       labels: { sl: "Primeren za stanovanje", en: "Apartment-friendly" },
     },
+    {
+      value: "indoor-only",
+      slug: "samo-notranje-bivanje",
+      labels: { sl: "Samo notranje bivanje", en: "Indoor-only home" },
+    },
   ],
   care: [
     {
@@ -225,6 +230,21 @@ export const FILTER_METADATA = {
         sl: "Potrebuje potrpežljivega človeka",
         en: "Needs a patient person",
       },
+    },
+    {
+      value: "bonded-pair",
+      slug: "posvojitev-v-paru",
+      labels: { sl: "Posvojitev v paru", en: "Adopt together" },
+    },
+    {
+      value: "experienced-carer",
+      slug: "izkusen-skrbnik",
+      labels: { sl: "Izkušen skrbnik", en: "Experienced carer" },
+    },
+    {
+      value: "ongoing-care",
+      slug: "potrebuje-redno-oskrbo",
+      labels: { sl: "Potrebuje redno oskrbo", en: "Ongoing care" },
     },
   ],
 } as const satisfies {

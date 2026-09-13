@@ -1,0 +1,1073 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-09-13T20:07:37.329Z",
+  "records": [
+    {
+      "animalId": "macja-hisa:3938",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/3938",
+      "descriptionSha256": "48ba6e12cd7f2b4699e6d79c3764429cafc29e3c01c2c2f991e7fcbc60698916",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 475,
+            "end": 514,
+            "sha256": "91ef55aee16112af3e9d51a3dae88a78fb9bcff423a7ac707e2466ac2065b1ea"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4057",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4057",
+      "descriptionSha256": "472a485d1d33172ed7a0a0a087211d3ba03a09e7f05c5ca9822beb1dd3de0ab4",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 0,
+            "end": 33,
+            "sha256": "c135711fd3eb0bbedc20073defdc7ac128724e0bc9e16dc28659af1d555cd181"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4263",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4263",
+      "descriptionSha256": "d05acdcc7155d75d3bf6042f537de5b7aa2747ee7207ae858ec7ce76d9097dc4",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 48,
+            "end": 68,
+            "sha256": "cff760bd0719d3db758a5a9812148d65f9e213d8bc3e9f3435b5d77c4f191789"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4353",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4353",
+      "descriptionSha256": "0e8527489240f9d4ff33dc4b945f37a81c3b7618abc914ec35956037683a3479",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 123,
+            "sha256": "19ee16e2d11550317ed8cac5d4000e3de70cdd241ee44128204a68d71ef8c085"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4503",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4503",
+      "descriptionSha256": "fdcba1d8d32cdd01fef5aa2b419fac144e58f9a39f217e5bdc99e5c9745c3d0e",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 38,
+            "sha256": "ee45655d278b5d4dcf995de386b0c8f053bb8bc0a3843970f1d508136b2cf089"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4572",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4572",
+      "descriptionSha256": "1114ac2d919e3d31bdfdf9f7c232757610194a1054396d7289d16f83b4a8fc97",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 55,
+            "end": 76,
+            "sha256": "90baf39177dbf7270fc82035aa2b32ce36c3dfaa3b0367985c11d0639cdf42ce"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4594",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4594",
+      "descriptionSha256": "83ada6a50b1380d68139326c4a7bbeda684a31be4d9aa98c385e5a3c7b8deb6b",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 29,
+            "sha256": "2d4836c3e7baef27f3c746aef11511f90d450037fda4e0be12d47319c6958ecb"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4614",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4614",
+      "descriptionSha256": "92cf2e5a4e0582d4c516cec03823992a4c44e72d935bf0e9ca387fc3b9f51f76",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 32,
+            "sha256": "d9f98c51a6306043c1ca0f6af26a4868656a6f02c96ebb613ff809b678e6872a"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4724",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4724",
+      "descriptionSha256": "785aa6ca8fd1ab991497efd3ccae161f4f09d4052789c683243be8506299e22b",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 63,
+            "end": 149,
+            "sha256": "78685fc1a4a484d414d9176a6111c7582a9ae3758f21e6499b150fb932cfdb50"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4828",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4828",
+      "descriptionSha256": "e796f530642aa1e6b63970518d37ab0dbec0195e8ac6946fef88bdbcbcc65441",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 189,
+            "sha256": "393117737e377114c3a65721ae618da84e4820c40a1837765ddde9b6cf87be78"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4873",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4873",
+      "descriptionSha256": "1ca47bec1d8feffe9c5e72598caac7702360e872c9cd314de63a352667cffa15",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 42,
+            "sha256": "44eefb9d7360f130bb696471928d7822ffdb34c406230f4bf01c9f7767b3d457"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4931",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4931",
+      "descriptionSha256": "d438f454d0cb7545b07b4faa9d6f25d23f4e2912c6fb06b0f0385b2e137a7ea4",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 34,
+            "sha256": "4c8b9992f59b915df6504437ca7fdb1682e943a76969176c4935c69abcf15721"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4949",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4949",
+      "descriptionSha256": "2ec030070cb06d8507f66c60b476d0c4c3ee4c3ddc32b05fda1d2446c107a26c",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 43,
+            "sha256": "fb6edf82f0511c3feb59e1c426ddc2388d002e8e1feafa9214af082ae3ffb507"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4969",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4969",
+      "descriptionSha256": "a7f77a1b4bff1896d9b881d3b203226bef2f57d97a904d2c0b7ca22308684d35",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 116,
+            "end": 200,
+            "sha256": "8253795c42d7bf73e9892ff3700c295164bc8b15fce6619f074821a347f52885"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-a"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4979",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4979",
+      "descriptionSha256": "3fd98600b481afe65bca6bd385c5d798b4076a49cb88b9ccd5ba7304b510338d",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 133,
+            "end": 224,
+            "sha256": "9ccf3a701747e62a1ee9b5009991ef0a8298f679dd05a736f727f806c43f046a"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-a"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:15696",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/maxitom",
+      "descriptionSha256": "34fbe04ecb99a02e415304a6790a86be281fe99f03a1ca291809711e2a095f79",
+      "claims": [
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 1245,
+            "end": 1273,
+            "sha256": "b71d3dafcd723c3f3f608b931d4bcaf3448c5c987ad9735ea2e7f55608e53286"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        },
+        {
+          "field": "medical.felv",
+          "value": "positive",
+          "evidence": {
+            "start": 690,
+            "end": 761,
+            "sha256": "40bd20ffd431b4eb8c258db3e38163bd71583ecac0d8048232bf27a3e2ce2217"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:15839",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/nono",
+      "descriptionSha256": "7009d91c4649b29d8b550a07089224f47352b0ab4074bf49998971b3ae9738ad",
+      "claims": [
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 538,
+            "end": 576,
+            "sha256": "bab2a23313a38ed47d03243da8ad758d01c021b7c94a65f39d5aa35c7139fc94"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 579,
+            "end": 609,
+            "sha256": "784dff53706fe9d432b4407c4c50b8fa0bd3aca01bf7745cbdae76dbedf95b59"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16024",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/lola",
+      "descriptionSha256": "c02e9b68160774b6a6ab586bb786123ada2825f856c47139e4ed03e1d8a21e8b",
+      "claims": [
+        {
+          "field": "medical.felv",
+          "value": "positive",
+          "evidence": {
+            "start": 179,
+            "end": 188,
+            "sha256": "1efaf0d220fd16f51557334162b45c1c80bc377c3beb24cd4749e412f16991c5"
+          },
+          "reviewedBy": [
+            "luna-b",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16046",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/romana",
+      "descriptionSha256": "149e9487b7a4cbc1f4c4d6e7c57f908cd8167377a9bd531b1ff667ac246b5bfd",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 301,
+            "end": 340,
+            "sha256": "ebe8733f114313e8584b59fce55e4cafc5eb387e58b9018e686edb1e5348b9ae"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16051",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/vila",
+      "descriptionSha256": "11762355c1558f08ba7a323f88cb46fb5749bb3777cad4e6e025087449cd7511",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 262,
+            "end": 286,
+            "sha256": "b10a4b795600ceca142dfbe4aa47fdbbbe9984d3df9187830eb13c4b83a96ea2"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16056",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/metka",
+      "descriptionSha256": "ed3c1ed67765146e4e46f582dfd0611988d7d71de9ec82f9cc49b69a305f22bf",
+      "claims": [
+        {
+          "field": "adoptionRequirements.indoorOnly",
+          "value": true,
+          "evidence": {
+            "start": 378,
+            "end": 406,
+            "sha256": "6322980e3c57903359f9332e0177ac7f8745d8a44d77fd23cc0fa86f6fa78425"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16120",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/archie",
+      "descriptionSha256": "d483de942c94f9a5ef04e8b22cbce65aceca022cbe2910606b35c975f47038b4",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 25,
+            "end": 54,
+            "sha256": "d2664f9f71f58b281d5a6c1201271f34c7a0eea7ef6ebbc17c13f2b6595d7fe9"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16209",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/jagi",
+      "descriptionSha256": "9a7b1eaac4db02123686bbe852708d89c30eb233fc73bf040786d2f01194849e",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 260,
+            "end": 297,
+            "sha256": "b7bca485a48cc805d84d8a86e9f14bba188534bb131de03b1f2808320f3f9cc8"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16760",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/nitro-2",
+      "descriptionSha256": "5e69a96f1be896c81aebf05a93df8c1a0313e40275c56d0c9ef041f89821e925",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 546,
+            "end": 569,
+            "sha256": "b762c828e25123703d2a7c9205a3d589032a513166ae547239c6090adda12dd4"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16773",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/toto",
+      "descriptionSha256": "50dbd5626c59ea9d22d2a3932742571c59e9b2b638f5563df57d8e8c6cde094f",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 798,
+            "end": 857,
+            "sha256": "b52f85812b5a7794be035ee91548deae847dbaeebf61757505cd295f210b394f"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:16836",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/coko-lina",
+      "descriptionSha256": "017f64a070e4c3b05fa12fa91344806e7c6956b00bc486f20afeb3376f3a8d1f",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 698,
+            "end": 730,
+            "sha256": "7229b8b4e023c1b19e1816b3e27802cb944e90fce5a642283698f7a1fc34878e"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17455",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/miska-2",
+      "descriptionSha256": "b82b8b6c432e0ec6630ac5b4d3733eecb5476f37f663e0066ef95c751b0d5233",
+      "claims": [
+        {
+          "field": "adoptionRequirements.indoorOnly",
+          "value": true,
+          "evidence": {
+            "start": 552,
+            "end": 593,
+            "sha256": "3befaacaa461a2b6602418489303fcde58a853c1020dffe696d5f9c309ac4496"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-a"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17791",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/mici-3",
+      "descriptionSha256": "ac7633d934c88ecd2fb4b2b1809061ee29909f68cd991f712e04f703efc84b0d",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 111,
+            "sha256": "baacc9989ff671b17d26b807b6b0c87950714d90c091ace0de35c3c33267ac4d"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17801",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/donatella",
+      "descriptionSha256": "5af36399f9b54cd8e94ece184e7c31217e222e4997ac6305053718fbd02b6a04",
+      "claims": [
+        {
+          "field": "adoptionRequirements.bondedPair",
+          "value": true,
+          "evidence": {
+            "start": 106,
+            "end": 168,
+            "sha256": "aadf8f0c3cc7d3c45d0b9228fdc2a06fed002284e16cf1c0340c90f4ec2c6430"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17805",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/mikey",
+      "descriptionSha256": "5af36399f9b54cd8e94ece184e7c31217e222e4997ac6305053718fbd02b6a04",
+      "claims": [
+        {
+          "field": "adoptionRequirements.bondedPair",
+          "value": true,
+          "evidence": {
+            "start": 106,
+            "end": 168,
+            "sha256": "aadf8f0c3cc7d3c45d0b9228fdc2a06fed002284e16cf1c0340c90f4ec2c6430"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17935",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/srecko-2",
+      "descriptionSha256": "0e0de54ce29fd6b215af677e26264ccf6de4b463ec794532a64e0a49f8e4029b",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 611,
+            "end": 649,
+            "sha256": "df278e5483d9d1df373918f2b13f0a14e7f5c917afb7a4f72dc2f6450088625b"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17979",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/tine-2",
+      "descriptionSha256": "7712086d5957e306aeead7da49cdd036ac1a88b20cbb4cc4941c18ea8e2d1121",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 346,
+            "end": 374,
+            "sha256": "68cee69dcd81f2c246b94da9684fdc02bcb4e3674770527bf6b6d5d3ee83c009"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18063",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/bazilika",
+      "descriptionSha256": "f69bdd08dca445482f0e80345606477b2f839a0b00ff9551700b0e3ff4dd8a2b",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 253,
+            "end": 288,
+            "sha256": "f7126e4e71adfef9b5aa2106fe3ec3928e171e0479cfef77ab7b13a9d0c40c6e"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18068",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/sivka",
+      "descriptionSha256": "be46cf66876fe2db8b85152647210bd800a15c6f0cbb8d9b21c2f1d6c015177d",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 247,
+            "end": 282,
+            "sha256": "f7126e4e71adfef9b5aa2106fe3ec3928e171e0479cfef77ab7b13a9d0c40c6e"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18073",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/melisa",
+      "descriptionSha256": "d6c767e3b8b90fabb503a9153b2c984211cea059f851eb81390ebd3f4d27d111",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 249,
+            "end": 284,
+            "sha256": "f7126e4e71adfef9b5aa2106fe3ec3928e171e0479cfef77ab7b13a9d0c40c6e"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18131",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/milica",
+      "descriptionSha256": "74572999e2898005061ad0aba081621c878a222e502746bf69654cb51eccd2d1",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 421,
+            "end": 460,
+            "sha256": "be5d51f4caecc2598a05febba0ac094d72f7aa626bd050f03e9b82eb78a9829f"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18139",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/bor",
+      "descriptionSha256": "1e225e7e05a872ba9303edb4c751f7e718df379feca3574ccd9805736dad659f",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 316,
+            "end": 355,
+            "sha256": "be5d51f4caecc2598a05febba0ac094d72f7aa626bd050f03e9b82eb78a9829f"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18143",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/lipa",
+      "descriptionSha256": "8fcba32398a0a6d09ef7be821e35dddeb67b010031a3abb6a3e56d434d2b60c9",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 248,
+            "end": 287,
+            "sha256": "be5d51f4caecc2598a05febba0ac094d72f7aa626bd050f03e9b82eb78a9829f"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18146",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/breza",
+      "descriptionSha256": "62e3396b11bde8a58d72bc9058b3211b1d882396c8dc8a6b76fd7439f720e1b1",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 236,
+            "end": 275,
+            "sha256": "be5d51f4caecc2598a05febba0ac094d72f7aa626bd050f03e9b82eb78a9829f"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18151",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/tisa",
+      "descriptionSha256": "51b25cda0a8b3b0ac2a01f9b6620a4bbe01f924a6b7f4b75e0eec5e56e0c0ab4",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 230,
+            "end": 269,
+            "sha256": "be5d51f4caecc2598a05febba0ac094d72f7aa626bd050f03e9b82eb78a9829f"
+          },
+          "reviewedBy": [
+            "luna-c",
+            "luna-a",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18277",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/viktor",
+      "descriptionSha256": "281a860a3d08dfdd385ccf67ec9ce859a630740d36ce406cbb4e61ba0565c81a",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 248,
+            "end": 289,
+            "sha256": "3e5d97de8f772829f1f5a6d86ad804faa7057f4890629d3d101eb76d001fc52e"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-b"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "yes",
+          "evidence": {
+            "start": 293,
+            "end": 323,
+            "sha256": "f3b419743d308547d58022497f17d69332bbe099926fb9900a70923048e17f71"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18281",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/spot",
+      "descriptionSha256": "b4920ff9d70ec8ba5d5209d94cd8ba3ededc2fb13258fb90da48c370564e93a5",
+      "claims": [
+        {
+          "field": "adoptionRequirements.bondedPair",
+          "value": true,
+          "evidence": {
+            "start": 163,
+            "end": 220,
+            "sha256": "6d21aab126714615a9e3d412a2c8d6cfb983ececfc773729ba257153620e560b"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "yes",
+          "evidence": {
+            "start": 293,
+            "end": 464,
+            "sha256": "d5fb6a22a7df780acd72b533e49c7609153121c69083debd8b9c10074279baf4"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18285",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/dot",
+      "descriptionSha256": "129e2ac2e5751b2492b61d6f73077bcfb65512c15fa433ee56bd7ccc22f285b4",
+      "claims": [
+        {
+          "field": "adoptionRequirements.bondedPair",
+          "value": true,
+          "evidence": {
+            "start": 163,
+            "end": 220,
+            "sha256": "6d21aab126714615a9e3d412a2c8d6cfb983ececfc773729ba257153620e560b"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "yes",
+          "evidence": {
+            "start": 294,
+            "end": 465,
+            "sha256": "36e0bd9569a76d27ffff17e4969b7494d48a7aaa481b44b62246fa8beeb6dcd2"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18293",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/windy",
+      "descriptionSha256": "4f8ae5c8e6e83eecbdc488a9c69d37d99ef604dad91ff41125130d0a4bbfefd8",
+      "claims": [
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 74,
+            "end": 142,
+            "sha256": "fbe9904ad72b3471e2aba6ae5a0fd9f96cd9ab8abd04be321fe2797463ebb6bb"
+          },
+          "reviewedBy": [
+            "lead",
+            "luna-b"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 74,
+            "end": 142,
+            "sha256": "fbe9904ad72b3471e2aba6ae5a0fd9f96cd9ab8abd04be321fe2797463ebb6bb"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:3326",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2023/09/24/biba/",
+      "descriptionSha256": "35222318bc2ed5ebc735c7073b04a382cec98faf4abdc23176288e412df8d102",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 132,
+            "end": 158,
+            "sha256": "8e393a4e1d05a700038a038e32368e186f58a9e515c1574b5a0a397c43479442"
+          },
+          "reviewedBy": [
+            "luna-a",
+            "luna-b",
+            "lead"
+          ]
+        }
+      ]
+    }
+  ]
+}

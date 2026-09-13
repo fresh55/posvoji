@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
-import { registerDateLabel } from "@/lib/labels";
+import { verificationTime } from "@/lib/source-freshness";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
@@ -89,17 +89,17 @@ describe("SiteFooter", () => {
     const stamp = "2026-09-07T03:12:00.000Z";
 
     const sl = render(<SiteFooter locale="sl" updatedAt={stamp} />);
-    expect(sl.container.textContent).toContain(registerDateLabel(stamp, "sl"));
+    expect(sl.container.textContent).toContain(verificationTime(stamp, "sl"));
     // The placeholder is filled, not printed.
     expect(sl.container.textContent).not.toContain("{date}");
 
     cleanup();
 
-    // registerDateLabel and not toLocaleDateString, which is the pair that
+    // verificationTime and not toLocaleDateString, which is the pair that
     // would drift: in Slovenian the two agree, and in English one says
     // "7 September 2026" and the other "07/09/2026".
     const en = render(<SiteFooter locale="en" updatedAt={stamp} />);
-    expect(en.container.textContent).toContain(registerDateLabel(stamp, "en"));
+    expect(en.container.textContent).toContain(verificationTime(stamp, "en"));
   });
 
   it("says nothing about a dataset on a page that has none", () => {
@@ -165,7 +165,7 @@ describe("SiteFooter", () => {
     const [opening] = messages.footerUpdated.split("{date}");
     expect(container.textContent).not.toContain(opening);
     expect(container.textContent).not.toContain(
-      registerDateLabel(stamp, "sl"),
+      verificationTime(stamp, "sl"),
     );
 
     // What a reader is still owed: the way to the other pages, the address to

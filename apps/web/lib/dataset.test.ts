@@ -112,7 +112,8 @@ describe("animalsForClient", () => {
 
     // The shelter's own listing, which the dialog and the shelter block link
     // to, and none of the crawl's bookkeeping.
-    expect(Object.keys(projected!.source)).toEqual(["sourceUrl"]);
+    expect(Object.keys(projected!.source)).toEqual(["sourceUrl", "fetchedAt"]);
+    expect(projected!.source.fetchedAt).toBe(source.source.fetchedAt);
     expect(projected!.source.sourceUrl).toBe(source.source.sourceUrl);
 
     // Dropped, not blanked: an explicit undefined still ships as a key.

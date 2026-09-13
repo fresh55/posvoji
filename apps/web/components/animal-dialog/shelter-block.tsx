@@ -10,6 +10,7 @@ import { shelterPath } from "@/lib/shelter-path";
 import { ageLabel, longStayMonths } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SourceFreshness } from "@/components/source-freshness";
 
 // The logo-or-initial fallback lives in ShelterAvatar so one place decides it.
 export function ShelterBlock({
@@ -171,6 +172,7 @@ export function ShelterBlock({
       >
         {animal.attribution}
       </p>
+      <SourceFreshness checkedAt={animal.source.fetchedAt} reference={reference} />
     </div>
   );
 }

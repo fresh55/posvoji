@@ -133,11 +133,9 @@ export function shelterAnimals(shelterId: string): Animal[] {
  * background, which is the path animal-photo.tsx already takes for a hotlinked
  * image that never had one.
  *
- * The `source` bookkeeping: `providerId`, `sourceAnimalId`, `fetchedAt`,
- * `firstSeenAt` and `lastSeenAt`. Two ids and three ISO timestamps that say
- * how the crawl found this listing, which is a question no surface asks.
- * app/sitemap.ts reads `lastSeenAt`, on the server, off the dataset animal.
- * Only the shelter's own listing URL crosses; see ClientAnimalSource.
+ * Source identity and first/last-seen bookkeeping remain on the server.
+ * The listing URL and fetchedAt cross so the shelter block can link to the
+ * source and show when that particular listing was actually verified.
  *
  * `shortDescription`, the shelter's own words. One component renders it,
  * AnimalFacts, for the one animal a dialog is open on, and it is the longest
@@ -160,7 +158,7 @@ export function animalsForClient(animals: Animal[]): ClientAnimal[] {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
     ({ source, shortDescription, ...animal }) => ({
       ...animal,
-      source: { sourceUrl: source.sourceUrl },
+      source: { sourceUrl: source.sourceUrl, fetchedAt: source.fetchedAt },
       // permittedPhotos has already dropped the images no surface may draw, so
       // the first photo left is the one that leads: what a card shows and what
       // a dialog opens on.

@@ -12,24 +12,11 @@ import { stripCacheDerivedFields } from "./cache-images";
 import { excludedPathFor } from "./crawl-guard";
 import { datasetDir } from "./paths";
 
-// The crawl used to fetch every animal's detail page on every run: 500 pages
-// twice a day, at polite pacing, for a set of pages that almost never change.
-// The list page is what says who is still listed, and removals are detected
-// from it, so a detail page only has to be re-read often enough to catch an
-// edit the shelter made to a listing it kept. This module decides, per animal,
-// whether that re-read is due.
-//
-// A skipped animal is still present: its previous record is republished, so it
-// ships, it is not a removal, and it counts as present for the removal guard.
-
-// The refresh window. Three days is the compromise: shorter re-reads more
-// pages for edits that are rare, longer lets a fact a shelter corrected on its
-// own page (a name, an age, a "posvojen" note in the text) sit stale for
-// longer. Status changes do not wait for it, because a listing that is gone
-// disappears from the list page and is removed the same run, and an animal
-// whose status is already not "available" is re-read on every run below.
+// Recovery and optional incremental helpers. Production export forces detail
+// verification on every admitted provider crawl; a discovery list alone cannot
+// reveal reservation edits on a still-listed animal. The provider schedule
+// enforces request frequency before this function is called.
 export const REFRESH_WINDOW_DAYS = 3;
-
 const DAY_MS = 24 * 60 * 60_000;
 
 // Which generation of the parsers produced the records we are holding.

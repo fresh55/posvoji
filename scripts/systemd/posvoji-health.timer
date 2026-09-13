@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Posvoji health every ten minutes independently of GitHub scheduling
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+Unit=posvoji-health.service
+
+[Install]
+WantedBy=timers.target

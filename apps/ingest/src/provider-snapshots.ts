@@ -171,6 +171,7 @@ export function buildCrawlManifest(options: {
   codeSha: string;
   policies: readonly ProviderPolicy[];
   references: Record<string, SnapshotReference>;
+  animals?: readonly Animal[];
   overrides: unknown;
   listings?: unknown;
 }) {
@@ -184,7 +185,13 @@ export function buildCrawlManifest(options: {
     overridesRevision: hash(JSON.stringify(options.overrides)),
     listingsRevision: hash(JSON.stringify(options.listings ?? null)),
     providers: Object.fromEntries(policies.filter((p) => p.enabled && p.permission.status === "granted").map((p) => [
-      p.providerId, options.references[p.providerId] ?? { snapshotId: null, checkedAt: null },
+      p.providerId, {
+        ...(options.references[p.providerId] ?? { snapshotId: null, checkedAt: null }),
+        intervalHours: p.crawl.intervalHours,
+        detailsCheckedAt: options.animals === undefined ? null :
+          options.animals.filter((a) => a.source.providerId === p.providerId)
+            .map((a) => a.source.fetchedAt).sort()[0] ?? options.references[p.providerId]?.checkedAt ?? null,
+      },
     ])),
   };
 }

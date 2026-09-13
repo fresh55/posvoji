@@ -140,6 +140,26 @@ function harness(previous: Animal[] = []) {
 }
 
 describe("the export command's production pipeline", () => {
+  it("checks a still-listed available animal's reservation on the next permitted crawl", async () => {
+    const held = animal();
+    held.source.fetchedAt = BEFORE;
+    const h = harness([held]);
+    h.services.providers![0]!.normalize = async () => ({ ...animal(), status: "reserved" });
+    const result = await runExport({}, h.services);
+    expect(result.dataset.animals[0]?.status).toBe("reserved");
+    expect(result.dataset.animals[0]?.source.fetchedAt).toBe(NOW);
+  });
+
+  it("a forced manual refresh cannot bypass the provider interval or invent observations", async () => {
+    const h = harness();
+    const first = await runExport({}, h.services);
+    h.services.now = () => new Date(Date.parse(NOW) + 3600000);
+    const second = await runExport({ refreshAll: true }, h.services);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(second.dataset.animals[0]?.source.fetchedAt).toBe(first.dataset.animals[0]?.source.fetchedAt);
+    expect(h.cacheImages.mock.calls[1]?.[3]?.refreshProviderIds?.size).toBe(0);
+  });
+
   it("keeps corrections out of crawl truth and seals only after every publication write", async () => {
     const h = harness();
     h.services.fetchPortalOverrides = async () => ({

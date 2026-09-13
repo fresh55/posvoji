@@ -23,7 +23,11 @@ const sl = {
   // listing is, which is this site's whole claim over a shelter's Facebook
   // page. {date} comes from registerDateLabel, numeric in Slovenian, so there
   // is no month name here to decline.
-  footerUpdated: "Podatki zavetišč, osveženi {date}.",
+  footerUpdated: "Seznam objavljen {date}. Čas preverjanja je naveden pri posamezni živali.",
+  sourceVerified: "Objava pri viru preverjena:",
+  listPublished: "Seznam objavljen",
+  sourceVerificationUnknown: "čas ni znan",
+  sourceVerificationOld: "Preverjanje je starejše ali ni potrjeno. Pred obiskom preverite razpoložljivost pri zavetišču.",
   // The line the contact address follows, on every page rather than only on
   // /o-nas. A wrong listing is the likeliest reason anyone writes, and the
   // page it is wrong on is not the about page. The address itself stays the
@@ -536,7 +540,11 @@ const en: Messages = {
   updated: "updated",
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
-  footerUpdated: "Shelter data updated {date}.",
+  footerUpdated: "List published {date}. Each animal shows when its source was checked.",
+  sourceVerified: "Source listing checked:",
+  listPublished: "List published",
+  sourceVerificationUnknown: "time unknown",
+  sourceVerificationOld: "Verification is older or unconfirmed. Check availability with the shelter before visiting.",
   footerContact: "A correction or a question?",
   moreInformation: "More information",
   footerLinks: "Footer links",

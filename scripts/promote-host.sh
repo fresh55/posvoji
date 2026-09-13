@@ -14,7 +14,7 @@ as_app git -C "$repo" fetch origin +refs/heads/main:refs/remotes/origin/main
 as_app git -C "$repo" merge-base --is-ancestor "$target" origin/main || { echo 'target must be reachable from origin/main' >&2; exit 1; }
 old=$(as_app git -C "$repo" rev-parse HEAD)
 active_timers=()
-for timer in posvoji-crawl.timer posvoji-backup.timer; do
+for timer in posvoji-crawl.timer posvoji-backup.timer posvoji-health.timer; do
   if systemctl is-active --quiet "$timer"; then active_timers+=("$timer"); fi
 done
 changed=false
@@ -49,8 +49,8 @@ trap cleanup EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
 trap 'exit 129' HUP
-systemctl stop posvoji-crawl.timer posvoji-backup.timer
-for unit in posvoji-crawl.service posvoji-backup.service; do
+for timer in "${active_timers[@]}"; do systemctl stop "$timer"; done
+for unit in posvoji-crawl.service posvoji-backup.service posvoji-health.service; do
   if [[ $(systemctl show "$unit" -p ActiveState --value) != inactive && $(systemctl show "$unit" -p ActiveState --value) != failed ]]; then
     echo 'A host job is active; retry promotion after it finishes.' >&2; exit 1
   fi

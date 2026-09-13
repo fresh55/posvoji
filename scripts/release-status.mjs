@@ -16,7 +16,9 @@ export function validateStatus(value) {
     throw new Error("invalid input revision");
   }
   if (!Array.isArray(value.providers) || value.providers.some((p) =>
-    !/^[a-z0-9-]+$/.test(p.providerId) || (p.checkedAt !== null && !timestamp(p.checkedAt)))) {
+    !/^[a-z0-9-]+$/.test(p.providerId) || (p.checkedAt !== null && !timestamp(p.checkedAt)) ||
+    (p.intervalHours !== undefined && (!Number.isFinite(p.intervalHours) || p.intervalHours <= 0)) ||
+    (p.detailsCheckedAt !== undefined && p.detailsCheckedAt !== null && !timestamp(p.detailsCheckedAt)))) {
     throw new Error("invalid provider freshness");
   }
   return value;
@@ -40,6 +42,8 @@ export function createStatus(dist, releaseId, codeSha, indexPath) {
     ...(provenance ? { inputRevision: provenance.inputRevision } : {}),
     providers: provenance ? Object.entries(provenance.providers).map(([providerId, p]) => ({
       providerId, checkedAt: p.checkedAt ?? null,
+      ...(p.intervalHours !== undefined ? { intervalHours: p.intervalHours } : {}),
+      ...(p.detailsCheckedAt !== undefined ? { detailsCheckedAt: p.detailsCheckedAt } : {}),
     })).sort((a, b) => a.providerId.localeCompare(b.providerId)) : [],
   });
 }
@@ -79,7 +83,16 @@ export function assertFresh(status, now = Date.now(), maxAgeHours = 30) {
   if (now - Date.parse(status.datasetGeneratedAt) > maxAgeHours * 3600000 || Date.parse(status.datasetGeneratedAt) > now + 300000) {
     throw new Error("pipeline dataset is stale or future-dated");
   }
-  return status.providers.filter((p) => !p.checkedAt || now - Date.parse(p.checkedAt) > maxAgeHours * 3600000 || Date.parse(p.checkedAt) > now + 300000).map((p) => p.providerId);
+  if (status.providers.length === 0) throw new Error("missing provider freshness observations");
+  const stale = status.providers.filter((p) => {
+    // A 48-hour permission is not a 30-hour freshness failure. Allow one crawl
+    // interval plus six hours for the hourly runner and publication to finish.
+    const allowed = (p.intervalHours === undefined ? maxAgeHours : p.intervalHours + 6) * 3600000;
+    return [p.checkedAt, ...(p.detailsCheckedAt === undefined ? [] : [p.detailsCheckedAt])]
+      .some((at) => !at || now - Date.parse(at) > allowed || Date.parse(at) > now + 300000);
+  }).map((p) => p.providerId);
+  if (stale.length) throw new Error(`stale or unknown source verification: ${stale.join(", ")}`);
+  return [];
 }
 
 export function assertOperations(value, now = Date.now()) {
@@ -106,8 +119,7 @@ function main([command, ...args]) {
     const [current, next] = args;
     assertNotSuperseded(existsSync(current) ? read(current) : null, read(next));
   } else if (command === "fresh") {
-    const stale = assertFresh(read(args[0]), Date.now(), Number(args[1] ?? 30));
-    if (stale.length) console.log(`::warning::Shelter checks need attention: ${stale.join(", ")}`);
+    assertFresh(read(args[0]), Date.now(), Number(args[1] ?? 30));
     if (args[2] && createHash("sha256").update(readFileSync(args[2])).digest("hex") !== read(args[0]).indexSha256) {
       throw new Error("public homepage does not match the served release status");
     }

@@ -48,8 +48,8 @@ describe("computeBackoffMs", () => {
     expect(computeBackoffMs(0, 45_000)).toBe(45_000);
   });
 
-  it("caps Retry-After at ten minutes", () => {
-    expect(computeBackoffMs(0, 3_600_000)).toBe(600_000);
+  it("does not shorten the server's Retry-After", () => {
+    expect(computeBackoffMs(0, 3_600_000)).toBe(3_600_000);
   });
 });
 
@@ -387,6 +387,59 @@ describe("PoliteClient", () => {
   });
 
   describe("robots.txt handling", () => {
+    it("retries robots 429 before fetching content", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(429, "", { headers: { "retry-after": "0" } });
+      pool.intercept({ path: "/robots.txt" }).reply(200, "User-agent: *\nDisallow: /private/");
+      await expect(client({ maxRetries: 1 }).get(`${ORIGIN}/private/cat`)).rejects.toThrow(/disallows/);
+      agent.assertNoPendingInterceptors();
+    });
+
+    it("preserves a long robots cooldown across client instances and never fetches content", async () => {
+      const pool = agent.get(ORIGIN);
+      pool.intercept({ path: "/robots.txt" }).reply(429, "", { headers: { "retry-after": "3600" } });
+      const cooldowns = new Map<string, number>();
+      const started = Date.now();
+      await expect(client({ cooldowns }).get(`${ORIGIN}/cat`)).rejects.toThrow(/unreachable/);
+      expect(cooldowns.get(new URL(ORIGIN).host)).toBeGreaterThanOrEqual(started + 3600000);
+      await expect(client({ cooldowns }).get(`${ORIGIN}/dog`)).rejects.toThrow(/unreachable/);
+      agent.assertNoPendingInterceptors();
+    });
+
+    it("defers rather than shortening a long Crawl-delay", async () => {
+      agent.get(ORIGIN).intercept({ path: "/robots.txt" }).reply(200, "User-agent: *\nCrawl-delay: 120");
+      const cooldowns = new Map<string, number>();
+      const started = Date.now();
+      await expect(client({ cooldowns }).get(`${ORIGIN}/cat`)).rejects.toThrow(/deferred/);
+      expect(cooldowns.get(new URL(ORIGIN).host)).toBeGreaterThanOrEqual(started + 120000);
+    });
+
+    it("does not deadlock when two origins redirect robots to each other's hosts", async () => {
+      const other = "https://other.example";
+      const first = agent.get(ORIGIN);
+      const second = agent.get(other);
+      first.intercept({ path: "/robots.txt" }).reply(302, "", { headers: { location: `${other}/first-rules` } });
+      second.intercept({ path: "/robots.txt" }).reply(302, "", { headers: { location: `${ORIGIN}/second-rules` } });
+      first.intercept({ path: "/second-rules" }).reply(200, "User-agent: *");
+      second.intercept({ path: "/first-rules" }).reply(200, "User-agent: *");
+      first.intercept({ path: "/cat" }).reply(200, "cat");
+      second.intercept({ path: "/dog" }).reply(200, "dog");
+      const c = client();
+      const results = await Promise.all([c.get(`${ORIGIN}/cat`), c.get(`${other}/dog`)]);
+      expect(results.map((r) => r.status)).toEqual([200, 200]);
+    });
+
+    it("paces every robots redirect hop", async () => {
+      const pool = agent.get(ORIGIN);
+      const times: number[] = [];
+      pool.intercept({ path: "/robots.txt" }).reply(302, () => { times.push(Date.now()); return ""; }, { headers: { location: "/rules" } });
+      pool.intercept({ path: "/rules" }).reply(200, () => { times.push(Date.now()); return "User-agent: *"; });
+      pool.intercept({ path: "/cat" }).reply(200, () => { times.push(Date.now()); return "cat"; });
+      await client({ minDelayMs: 80 }).get(`${ORIGIN}/cat`);
+      expect(times[1]! - times[0]!).toBeGreaterThanOrEqual(75);
+      expect(times[2]! - times[1]!).toBeGreaterThanOrEqual(75);
+    });
+
     it("uses and caches the first 512 KiB of an oversized robots.txt", async () => {
       let requests = 0;
       const header = "User-agent: *\n";

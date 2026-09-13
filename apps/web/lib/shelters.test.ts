@@ -71,11 +71,14 @@ describe("shelter registry loader", () => {
     });
   });
 
+  // Johanca stood here until its operator's number was copied into the
+  // registry. Every shelter has a phone now, so the sparse entries left are
+  // the ones with no site of their own and the one with no address.
   it("leaves missing optional fields undefined rather than guessing", () => {
-    const johanca = getShelterBySlug("johanca");
-    expect(johanca?.city).toBe("Tolmin");
-    expect(johanca?.website).toBeUndefined();
-    expect(johanca?.phone).toBeUndefined();
+    const potepuhi = getShelterBySlug("potepuhi");
+    expect(potepuhi?.city).toBe("Podlog");
+    expect(potepuhi?.website).toBeUndefined();
+    expect(getShelterBySlug("mala-hisa")?.email).toBeUndefined();
   });
 
   it("returns undefined for a slug that isn't in the registry", () => {

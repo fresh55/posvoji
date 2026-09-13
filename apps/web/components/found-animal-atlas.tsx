@@ -90,10 +90,18 @@ export function FoundAnimalAtlas({
           // nothing: a grey country under the card, on a phone.
           matchedValues={answer?.shelters ?? null}
           spotlightValues={answer?.spotlight ?? null}
+          // Where the record is an unconfirmed list, the callout says so in
+          // the two words the line under the search box uses, joined by the
+          // same separator. The ring means what it meant: a shelter to call.
+          // It is the claim over it that is weaker, and a reader who sees
+          // the map before the card has to be told that here, because the
+          // card admits it in 12px at its foot.
           spotlightNote={
             answer?.verified === false
               ? messages.muniNearest
-              : messages.muniResponsible
+              : answer?.confirmed === false
+                ? `${messages.muniResponsible} · ${messages.muniDatedShort}`
+                : messages.muniResponsible
           }
           // The other half of that answer: where it was asked from. Only
           // when the občina is one we hold a centroid for.

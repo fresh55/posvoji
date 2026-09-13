@@ -239,6 +239,54 @@ describe("MunicipalityFinder empty state", () => {
     expect(live[1].textContent).toBe("Koper · pristojno zavetišče");
   });
 
+  // Bled's coverage comes from an unconfirmed 2023 list, and the answer used
+  // to name its shelter as responsible in exactly the words Ptuj's checked
+  // record gets. Only the card's 12px source line said otherwise.
+  it("says in the same line when the record is an older source", () => {
+    const onAnswer = vi.fn();
+    render(
+      <I18nProvider locale="sl">
+        <MunicipalityFinder
+          entries={[
+            {
+              name: "Bled",
+              nearest: [],
+              coverage: [
+                {
+                  shelterId: "horjul",
+                  shelterName: "Zavetišče Horjul",
+                  city: "Horjul",
+                  detailHref: "/zavetisca/horjul",
+                  animals: 0,
+                  sourceLabel: "Test 2023",
+                  sourceDate: "2023-01-01",
+                  confirmed: false,
+                },
+              ],
+            },
+          ]}
+          onAnswer={onAnswer}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Bled" },
+    });
+
+    expect(
+      document.querySelectorAll('[aria-live="polite"]')[1]?.textContent,
+    ).toBe("Bled · pristojno zavetišče · starejši vir");
+    // And the map hears it, so its callout can say the same thing.
+    expect(onAnswer).toHaveBeenLastCalledWith({
+      municipality: "Bled",
+      shelters: ["horjul"],
+      spotlight: ["horjul"],
+      verified: true,
+      confirmed: false,
+    });
+  });
+
   it("names the shelter once a single občina is typed", () => {
     renderFinder();
 
@@ -732,6 +780,7 @@ describe("MunicipalityFinder without a verified shelter", () => {
       shelters: ["maribor", "mala-hisa", "zonzani"],
       spotlight: ["maribor"],
       verified: false,
+      confirmed: true,
     });
   });
 
@@ -754,6 +803,7 @@ describe("MunicipalityFinder without a verified shelter", () => {
       shelters: ["mala-hisa", "maribor", "zonzani"],
       spotlight: ["maribor"],
       verified: false,
+      confirmed: true,
     });
   });
 
@@ -857,6 +907,7 @@ describe("MunicipalityFinder without a verified shelter", () => {
       shelters: ["johanca", "oskar"],
       spotlight: ["oskar"],
       verified: false,
+      confirmed: true,
     });
   });
 
@@ -873,6 +924,7 @@ describe("MunicipalityFinder without a verified shelter", () => {
       shelters: [],
       spotlight: [],
       verified: false,
+      confirmed: true,
     });
   });
 });

@@ -30,6 +30,23 @@ const ENTRIES: LookupEntry[] = [
       },
     ],
   },
+  // On record, but from an unconfirmed 2023 list rather than a checked one.
+  {
+    name: "Bled",
+    nearest: [],
+    coverage: [
+      {
+        shelterId: "ljubljana",
+        shelterName: "Zavetišče Ljubljana",
+        city: "Ljubljana",
+        detailHref: "/zavetisca/ljubljana",
+        animals: 5,
+        sourceLabel: "Test 2023",
+        sourceDate: "2023-01-01",
+        confirmed: false,
+      },
+    ],
+  },
   // Nothing on record, and Maribor the nearest with a number.
   {
     name: "Cirkulane",
@@ -138,6 +155,25 @@ describe("the found-animal atlas", () => {
     expect(
       container.querySelector("[data-callout-title]")?.textContent,
     ).toContain("Zavetišče Ljubljana");
+  });
+
+  it("says in the callout when the record is an older source", () => {
+    const { container } = renderAtlas();
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Bled" },
+    });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
+
+    // The ring still means a shelter to call; what is weaker is the claim
+    // that it is the responsible one, and the callout says so in the words
+    // the line under the search box uses.
+    expect(container.querySelector("[data-map-spotlight]")).toBeTruthy();
+    expect(
+      container.querySelector("[data-callout-metadata]")?.textContent,
+    ).toBe("pristojno zavetišče · starejši vir");
+    // No second treatment for it: no badge, no ramp, no legend to read.
+    expect(container.querySelector("[data-map-legend]")).toBeNull();
   });
 
   it("rings the nearest shelter with a number where none is on record", () => {

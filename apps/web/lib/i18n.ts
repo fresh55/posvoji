@@ -380,6 +380,13 @@ const sl = {
   muniSource: "Vir:",
   muniDatedSource:
     "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
+  // The same caveat where there is room for two words and not for a sentence:
+  // after "pristojno zavetišče" in the line under the search box, and in the
+  // map's callout beside the ring. Both places named the shelter as
+  // responsible with nothing to say the claim rests on an unconfirmed 2023
+  // source, which only the 12px source line at the foot of the card admitted.
+  // Two words at the point of use, not a badge or a legend.
+  muniDatedShort: "starejši vir",
   speciesDogs: "Psi",
   speciesCats: "Mačke",
   // Genitive plural of each species tab, for sentences built around "nima"
@@ -678,6 +685,7 @@ const en: Messages = {
   muniSource: "Source:",
   muniDatedSource:
     "This comes from an older source; confirm with the shelter or municipality before visiting.",
+  muniDatedShort: "older source",
   speciesDogs: "Dogs",
   speciesCats: "Cats",
   speciesAbsenceAll: "animals",

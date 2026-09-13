@@ -117,6 +117,12 @@ export type FinderAnswer = {
   /** Whether shelters are on record for the občina. Decides what the ring's
    *  callout calls them. */
   verified: boolean;
+  /** Whether every source behind that record is confirmed. Bled's coverage
+   *  comes from an unconfirmed 2023 list, and the map used to name its
+   *  shelter as responsible in the same words as Ptuj's, which is checked.
+   *  Vacuously true where there is no coverage at all: what is unverified
+   *  there is the responsibility, which `verified` already says. */
+  confirmed: boolean;
 };
 
 export function MunicipalityFinder({
@@ -351,6 +357,14 @@ export function MunicipalityFinder({
     (shelter) => !shelter.phone && !shelter.onCallPhone,
   );
 
+  // Whether the record behind the answer is confirmed, for the line under the
+  // box and for the map's callout. One unconfirmed row is enough: the card
+  // cites its sources one by one, but the line over it speaks for all of
+  // them at once and cannot claim more than the weakest.
+  const confirmed = active
+    ? active.coverage.every((coverage) => coverage.confirmed)
+    : true;
+
   useEffect(() => {
     if (!active) {
       onAnswer(null);
@@ -365,8 +379,9 @@ export function MunicipalityFinder({
       shelters,
       spotlight: verified ? shelters : hero ? [hero.shelterId] : [],
       verified,
+      confirmed,
     });
-  }, [active, hero, onAnswer]);
+  }, [active, confirmed, hero, onAnswer]);
 
   // Both trailing controls start a new question; they differ by where they
   // send it next.
@@ -583,6 +598,10 @@ export function MunicipalityFinder({
                   : active.coverage.length > 1
                     ? messages.muniResponsiblePlural
                     : messages.muniUnverified}
+                {/* What the noun before it rests on, where that is an
+                    unconfirmed list. Only the card's 12px source line said
+                    so, under the shelter's address and website. */}
+                {!confirmed && <> · {messages.muniDatedShort}</>}
               </span>
             </>
           ) : noMatch || showSuggestions ? (

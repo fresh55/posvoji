@@ -16,7 +16,7 @@ import {
 } from "@/components/filters/age-stage-icon";
 import {
   CountRoll,
-  FilterSelectionMark,
+  FilterCardMark,
   filterCardVariants,
   SIDEBAR_ROW,
 } from "@/components/filters/filter-card";
@@ -451,15 +451,28 @@ export function AgeGrowthControl({
                               : // SIDEBAR_ROW for the reason filter-card.tsx
                                 // records: a sidebar row is a line in a list,
                                 // not a tile.
-                                `${SIDEBAR_ROW} grid h-11 w-full shrink grid-cols-[1.25rem_1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 text-left`,
+                                // The columns are the icon, the label and
+                                // the count. The mark is not among them: it
+                                // is pinned to the right edge the way every
+                                // other facet pins it, and pr-9 is the room
+                                // it sits in. It used to have the first
+                                // column instead, which left this the one
+                                // section in the sidebar whose check was on
+                                // the other side of the row from the rest.
+                                `${SIDEBAR_ROW} grid h-11 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left`,
                         })}
                       >
-                        <FilterSelectionMark
+                        {/* The shared mark, so the check's position and
+                            its two layouts are stated once in
+                            filter-card.tsx rather than again here. It stays
+                            first in the markup because it is aria-hidden and
+                            absolutely positioned in both layouts, so where
+                            it sits in the DOM decides nothing; the row's own
+                            aria-pressed is what says it is chosen. */}
+                        <FilterCardMark
+                          layout={layout}
                           checked={checked}
                           appearDelay={GROWTH_CHECK_DELAY}
-                          className={cn(
-                            layout === "sheet" && "absolute right-1.5 top-1.5",
-                          )}
                         />
                         <m.span
                           className="origin-bottom"

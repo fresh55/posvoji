@@ -119,6 +119,16 @@ export function AnimalPhoto({
   const avifSrc = avif ? photoAvifUrl(photo) : undefined;
   const placeholder = blur ? photo.blurDataURL : undefined;
   const portrait = crop === "subject" && photo.aspect !== undefined && photo.aspect < 1;
+  // Worked out once and handed to both layers, because the placeholder and the
+  // photo are the same picture in the same box and have to be cropped the same
+  // way. The placeholder used to be bg-center whatever the photo did, so on a
+  // portrait lead photo the head sat low in the blur and jumped up the moment
+  // the file landed, and a subject crop that moves the photo further from the
+  // middle would have made the jump bigger.
+  //
+  // undefined is the box's own default, which for both layers is the middle:
+  // object-position defaults to 50% 50% and the placeholder keeps bg-center
+  // below.
   const objectPosition =
     crop === "subject"
       ? ((frame !== undefined ? subjectPosition(photo, frame) : undefined) ??
@@ -208,7 +218,10 @@ export function AnimalPhoto({
         <div
           aria-hidden
           className="absolute inset-0 size-full bg-cover bg-center"
-          style={{ backgroundImage: `url("${placeholder}")` }}
+          style={{
+            backgroundImage: `url("${placeholder}")`,
+            backgroundPosition: objectPosition,
+          }}
         />
       )}
       {avifSrc ? (

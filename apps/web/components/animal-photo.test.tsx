@@ -151,6 +151,30 @@ describe("AnimalPhoto placeholder", () => {
     const { container } = draw({ blur: false });
     expect(container.querySelector("div[aria-hidden]")).toBeNull();
   });
+
+  it("draws the blur where the photo will land", () => {
+    // The same crop on both layers, or the head sits low in the blur and jumps
+    // up the moment the file arrives. 140 of the register's lead photos are
+    // portrait.
+    const { container, img } = draw({ photo: { ...CACHED, aspect: 0.75 } });
+
+    const layer = container.querySelector("div[aria-hidden]");
+    expect(img.style.objectPosition).toBe("50% 20%");
+    expect((layer as HTMLElement).style.backgroundPosition).toBe("50% 20%");
+    // The blur covers the frame, the way the photo does.
+    expect(layer?.className).toContain("bg-cover");
+  });
+
+  it("leaves the blur on the box's own middle where the photo is", () => {
+    // Nothing is crossed out, so both layers keep their default: the photo's
+    // 50% 50% and the placeholder's bg-center are the same place.
+    const { container, img } = draw();
+
+    const layer = container.querySelector("div[aria-hidden]");
+    expect(img.style.objectPosition).toBe("");
+    expect((layer as HTMLElement).style.backgroundPosition).toBe("");
+    expect(layer?.className).toContain("bg-center");
+  });
 });
 
 describe("AnimalPhoto crop", () => {

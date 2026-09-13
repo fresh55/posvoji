@@ -71,8 +71,13 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // That same overlay carries a permanent hairline. Many shelter photos are
 // studio shots on a white ground, and on the white page such a photo has no
 // edge at all: the corners disappear and the wait mark at the top right sits
-// in what reads as empty page. 6% black in light mode and 8% white in dark
-// closes the shape without reading as a border around the picture. It covers
+// in what reads as empty page. 9% black in light mode and 8% white in dark
+// close the shape without reading as a border around the picture. It was 6%,
+// and at 6% the edge is rgb(240) on the white page: the top of the frame read,
+// but where a studio photo runs to pure white at the bottom the corners
+// vanished and the picture ended nowhere. 9% is rgb(232), an edge the eye
+// finds at the corners and still the photo's own rim rather than a line drawn
+// round it. It covers
 // the empty frame as well, because an animal with no photo draws its caption
 // inside this same box (photo-gallery.tsx).
 //
@@ -86,7 +91,7 @@ const PHOTO_FRAME =
   `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
   ` after:${CARD_PHOTO_RADIUS}` +
-  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({

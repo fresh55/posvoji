@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  contactName,
-  mailtoHref,
-  telHref,
-  websiteHost,
-  websiteName,
-} from "./contact-links";
+import { mailtoHref, telHref, websiteName } from "./contact-links";
 import { loadShelters } from "./shelters";
 
 describe("telHref", () => {
@@ -83,33 +77,24 @@ describe("the register the site is built from", () => {
   });
 });
 
-describe("websiteHost", () => {
-  it("keeps the part of the address worth reading", () => {
-    expect(websiteHost("https://www.zonzani.si/")).toBe("zonzani.si");
-    expect(websiteHost("http://zavetisce-malahisa.si")).toBe(
-      "zavetisce-malahisa.si",
-    );
-    expect(websiteHost("https://example.si/zavetisce/")).toBe(
-      "example.si/zavetisce",
-    );
-  });
-});
-
-// The names three surfaces print. They were three hand-written templates, and
-// the third of them dropped the new-window sentence: the found-animal card's
-// site link opened a window and said so to nobody.
-describe("contactName", () => {
-  it("puts the channel in front of the value the link already shows", () => {
-    expect(contactName("Telefon", "05 663 37 66")).toBe(
-      "Telefon: 05 663 37 66",
-    );
-  });
-});
-
+// The name three surfaces print. The register card and the shelter page pin
+// their own rendered copies of it; this is the rule they now share, and the
+// case neither of them covers: a host the register wrote with a path.
 describe("websiteName", () => {
   it("trims the host and says the link leaves the site, together", () => {
     expect(
-      websiteName("Spletna stran", "https://www.zonzani.si/", "(odpre se v novem oknu)"),
+      websiteName(
+        "Spletna stran",
+        "https://www.zonzani.si/",
+        "(odpre se v novem oknu)",
+      ),
     ).toBe("Spletna stran: zonzani.si (odpre se v novem oknu)");
+    expect(
+      websiteName(
+        "Spletna stran",
+        "https://example.si/zavetisce/",
+        "(odpre se v novem oknu)",
+      ),
+    ).toBe("Spletna stran: example.si/zavetisce (odpre se v novem oknu)");
   });
 });

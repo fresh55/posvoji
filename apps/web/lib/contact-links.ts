@@ -107,22 +107,22 @@ export function websiteHost(url: string): string {
  *
  * The visible label is the number or the address, so the name adds the
  * channel in front of it rather than replacing it, which is what WCAG 2.5.3
- * asks of a control with a visible label. One line of string work, kept here
- * because three components wrote it out by hand and the third of them wrote
- * it out wrong.
+ * asks of a control with a visible label.
  */
 export function contactName(channel: string, value: string): string {
   return `${channel}: ${value}`;
 }
 
 /**
- * The same for the one contact that leaves the site.
+ * The same for the one contact that leaves the site, and the half of this
+ * pair that carries an invariant.
  *
- * It takes the URL rather than the host because the two facts a site link
- * keeps losing travel together: the name is read from the trimmed host, and
- * it ends with the new-window sentence because target="_blank" announces
- * nothing on its own. A caller that cannot forget the second while
- * remembering the first is the point of the function.
+ * It takes the URL rather than the host so the two facts a site link keeps
+ * losing cannot be remembered separately: the name is read from the trimmed
+ * host, and it ends with the new-window sentence because target="_blank"
+ * announces nothing on its own. Three components wrote this name out by hand
+ * and the third of them trimmed the host and dropped the sentence. A caller
+ * that cannot half-call it is the point.
  */
 export function websiteName(
   channel: string,

@@ -1013,7 +1013,7 @@ export function MunicipalityFinder({
                     it the same way, so this flow announces its outbound links
                     one way rather than three. */}
                 <span className="sr-only"> {messages.newWindow}</span>
-                <ExternalLink className="size-3" aria-hidden />
+                <ExternalLink data-external className="size-3" aria-hidden />
               </a>
             </li>
           </ul>

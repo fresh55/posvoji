@@ -560,11 +560,11 @@ export function ShelterCard({
                 <li>
                   {/* The only link on the card that leaves the site, and
                       target="_blank" is silent about it, so the accessible
-                      name says so. It is built by the same helper the shelter
-                      page and the found-animal card use, which trims the host
-                      and appends the sentence together: the name and the
-                      visible text are the same string by construction, which
-                      is what the sentence above promises. */}
+                      name says so. websiteName builds it, here and on the
+                      other two surfaces, and it trims the host the same way
+                      this row prints it: the sentence above promises the name
+                      and the visible text agree, and one pure function of one
+                      URL is what keeps that promise. */}
                   <a
                     href={shelter.website}
                     target="_blank"

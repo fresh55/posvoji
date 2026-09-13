@@ -35,34 +35,31 @@ function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   );
 }
 
-/** One line of contact detail: a glyph, an optional label, and the fact.
+/** One line of contact detail: a glyph, an optional spoken label, and the
+ *  fact.
  *
- *  The rows differ only in whether the label is drawn or only spoken, so the
- *  decision is this one prop rather than a different flex alignment and a
- *  different label treatment per row. items-start throughout: opening hours
- *  are free text from a shelter's own site and wrap to two lines on a phone,
- *  and a glyph centred against two lines sits in the gap between them. */
+ *  A label is never drawn. Every row here names itself to a reader who can
+ *  see the glyph, so the label exists for the one who cannot. The rows that
+ *  hold a link name it on the anchor instead, where it reaches the link's own
+ *  accessible name; this label is a sibling of the fact and would not.
+ *
+ *  items-start throughout: opening hours are free text from a shelter's own
+ *  site and wrap to two lines on a phone, and a glyph centred against two
+ *  lines sits in the gap between them. */
 function ContactRow({
   icon: Icon,
   label,
-  labelHidden = false,
   children,
 }: {
   icon: typeof MapPin;
   label?: string;
-  labelHidden?: boolean;
   children: ReactNode;
 }) {
   return (
     <li className="flex items-start gap-2">
       <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0">
-        {label &&
-          (labelHidden ? (
-            <span className="sr-only">{label}: </span>
-          ) : (
-            <>{label}: </>
-          ))}
+        {label && <span className="sr-only">{label}: </span>}
         {children}
       </span>
     </li>
@@ -83,6 +80,7 @@ function ContactRow({
 // files.
 export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
   const { messages, t } = useI18n();
+  const host = coverage.website ? websiteHost(coverage.website) : undefined;
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -142,19 +140,18 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             not drawn. The number to dial outside them is a button above, not
             a row here: the card states each number once. */}
         {coverage.hours && (
-          <ContactRow icon={Clock} label={messages.muniHours} labelHidden>
+          <ContactRow icon={Clock} label={messages.muniHours}>
             {coverage.hours}
           </ContactRow>
         )}
-        {/* The visible label is the address, so the accessible name puts the
-            channel in front of it (WCAG 2.5.3). The two calls above need no
-            such prefix: muniCall and muniCallOnCall already begin with the
-            act, so their visible text is the announcement.
+        {/* The two calls above need no channel in their names: muniCall and
+            muniCallOnCall begin with the act, so their visible text is
+            already the announcement. These two rows print a bare value, so
+            contactName and websiteName put the channel in front of it.
 
-            title carries the value a mouse cannot otherwise read: both rows
+            title carries what a mouse cannot otherwise read: both rows
             truncate, and a long address that ends in an ellipsis is left
-            only in the accessible name. Same treatment as the register
-            card's rows, which truncate for the same reason. */}
+            only in the accessible name. */}
         {coverage.email && (
           <ContactRow icon={Mail}>
             <a
@@ -184,12 +181,10 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
                 coverage.website,
                 messages.newWindow,
               )}
-              title={websiteHost(coverage.website)}
+              title={host}
               className="flex items-center gap-1 underline-offset-4 hover:text-foreground"
             >
-              <span className="truncate hover:underline">
-                {websiteHost(coverage.website)}
-              </span>
+              <span className="truncate hover:underline">{host}</span>
               <ExternalLink className="size-3 shrink-0" aria-hidden data-external />
             </a>
           </ContactRow>

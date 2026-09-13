@@ -54,16 +54,21 @@ function GrantOrigin({ resolved }: { resolved: ResolvedOrigin }) {
   return null;
 }
 
+// The id of the caption the filter sheet draws above its sort row, standing in
+// for the sheet itself: the component takes the id and nothing else of it.
+const CAPTION_ID = "sheet-sort-caption";
+
 // The two dresses, by the props each one is mounted with: the quiet trigger
 // the toolbar wears (on the desktop row and on the md-to-lg one, which mount
 // it identically) and the sheet header's full-width control, which is drawn
-// below md only. See the component's own "Three placements, two dresses"
-// note.
+// below md only and takes its name from the caption over it. See the
+// component's own "Three placements, two dresses" note.
 const PLACEMENTS = {
   "toolbar row": {},
   "mobile sheet header": {
     quiet: false,
-    className: "mt-3 h-11 w-full",
+    labelledBy: CAPTION_ID,
+    className: "mt-1.5 h-11 w-full text-sm",
   },
 } as const;
 
@@ -75,15 +80,22 @@ function mount(
   return render(
     <I18nProvider locale="sl">
       <GrantOrigin resolved={resolved} />
+      {typeof props.labelledBy === "string" ? (
+        <div id={props.labelledBy}>{sl.sortCaption}</div>
+      ) : null}
       <SortPicker value={value} onChange={vi.fn()} {...props} />
     </I18nProvider>,
   );
 }
 
-function openList() {
+function openOptions() {
   const trigger = screen.getByRole("combobox");
   fireEvent.keyDown(trigger, { key: "ArrowDown" });
-  return screen.getAllByRole("option").map((option) => option.textContent);
+  return screen.getAllByRole("option");
+}
+
+function openList() {
+  return openOptions().map((option) => option.textContent);
 }
 
 beforeEach(() => resetNearbyOriginStore());
@@ -146,6 +158,68 @@ describe("SortPicker label placement", () => {
       // And the name still gives way rather than pushing the chevron off.
       const value = trigger.querySelector('[data-slot="select-value"]');
       expect(value?.querySelector("span")?.className).toContain("truncate");
+    });
+  }
+});
+
+describe("SortPicker menu heading", () => {
+  it("names the list its options belong to", () => {
+    mount(NOTHING);
+
+    const options = openOptions();
+    const label = screen.getByText(sl.sortBy);
+    expect(label.dataset.slot).toBe("select-label");
+    // Radix hands the label the group's own id and points the group back at
+    // it, so the heading is announced with the list rather than as a line of
+    // text that happens to sit above it.
+    expect(
+      label
+        .closest('[data-slot="select-group"]')
+        ?.getAttribute("aria-labelledby"),
+    ).toBe(label.id);
+    // A heading and not a seventh order: nothing focuses it and nothing picks
+    // it.
+    expect(label.getAttribute("role")).toBeNull();
+    expect(label.hasAttribute("tabindex")).toBe(false);
+    expect(options.map((option) => option.textContent)).not.toContain(
+      sl.sortBy,
+    );
+  });
+});
+
+describe("SortPicker option rows", () => {
+  it("keeps every option thumb-sized below md", () => {
+    mount(LJUBLJANA);
+
+    // The stock item measures 32px, which is what a phone was getting while
+    // every other control in the filter sheet kept 44px. jsdom lays nothing
+    // out, so the floor is asserted on the class that sets it.
+    const options = openOptions();
+    expect(options.length).toBeGreaterThan(0);
+    for (const option of options) {
+      expect(option.className.split(" ")).toContain("max-md:min-h-11");
+    }
+  });
+});
+
+describe("SortPicker accessible name", () => {
+  for (const [placement, props] of Object.entries(PLACEMENTS)) {
+    it(`says both the sorting and the order in the ${placement}`, () => {
+      mount(NOTHING, props);
+
+      // Two ways to the same name. The toolbar's trigger stands alone and
+      // names itself, aria-label first. The sheet's has a caption above it and
+      // borrows that, plus the value it draws, through aria-labelledby; saying
+      // "Razvrsti" a second time in an aria-label would be the only thing a
+      // screen reader heard twice. Either way a control showing an order and
+      // two glyphs announces what it orders and where it stands.
+      expect(
+        screen.getByRole("combobox", {
+          name: (name: string) =>
+            name.includes(sl.sortCaption) &&
+            name.includes(sl.sortLongestInShelter),
+        }),
+      ).toBeTruthy();
     });
   }
 });

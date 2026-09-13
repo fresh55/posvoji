@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
@@ -66,9 +66,24 @@ const DRAWER_CLOSE_MS = 500;
  *  bargain `DESKTOP_QUERY` strikes in use-desktop-breakpoint-close.ts. */
 export const SORT_ROW_HIDDEN = "md:hidden";
 
-/** The sort row's own dress, resolved once: both halves are constants, so
- *  there is one answer and no reason to ask cn for it per render. */
-const SORT_ROW_CLASS = cn("mt-3 h-11 w-full text-sm", SORT_ROW_HIDDEN);
+/** The caption over the sort row, and the row itself, each resolved once:
+ *  every half is a constant, so there is one answer and no reason to ask cn
+ *  for either per render.
+ *
+ *  The caption is the recipe FilterSectionHeader prints a section heading in
+ *  (filter-section-header.tsx), copied rather than imported: that component
+ *  carries a reset link and a disclosure trigger, and this row wants neither.
+ *  It wears SORT_ROW_HIDDEN too, so the label and the control it labels leave
+ *  at the same width.
+ *
+ *  mt-3 moved up to the caption and the row kept mt-1.5, which is the gap that
+ *  makes the two read as one labelled control rather than as a heading and a
+ *  separate setting under it. */
+const SORT_CAPTION_CLASS = cn(
+  "mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground",
+  SORT_ROW_HIDDEN,
+);
+const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
 
 /** What is behind the Filtri button, or undefined when nothing is.
  *
@@ -183,6 +198,11 @@ export function FilterSheet({
   const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // The caption's id, which the sort trigger takes half of its accessible name
+  // from. Generated rather than written out: nothing stops a page from
+  // mounting two of these, and a duplicate id points aria-labelledby at
+  // whichever one the document happens to hold first.
+  const sortCaptionId = useId();
 
   // FilterSheet never unmounts, so a divider left "scrolled" from a previous
   // visit would otherwise still be there the next time the sheet opens at
@@ -276,14 +296,23 @@ export function FilterSheet({
               and inside the header block rather than the scrolling body, so
               it stays put while the filter list moves under it.
 
+              The caption above it is the fix for what the row looked like
+              without one: a bordered full-width select directly under "Filtri"
+              showing an order and a glyph, with nothing on screen saying it
+              ordered the list rather than narrowing it. Baymard's product-list
+              work asks for a visible "Sort by" on the control, and a phone has
+              no toolbar around it to imply the rest. The word alone is enough
+              here because the control under it names the order in full.
+
               From md the toolbar behind this sheet carries the order itself:
               that row is 720px wide at 768 with the tabs ending at 384, so
               the control is on screen and one tap away instead of three, and
               a copy in here would be the same control twice on one screen.
-              The header's own pb-3 is what sits under the title once the row
-              is gone, and the row takes its mt-3 with it, so nothing dangles.
-              The sheet is only reachable below lg, so this is the md-to-lg
-              band and nothing else.
+              Caption and row wear the same SORT_ROW_HIDDEN and go together, so
+              no label is left standing over nothing; the header's own pb-3 is
+              what sits under the title once the pair is gone. The sheet is
+              only reachable below lg, so this is the md-to-lg band and nothing
+              else.
 
               It shared the title's row for one pass and could not: the close
               button is absolutely positioned in that corner at 44px, and the
@@ -293,19 +322,24 @@ export function FilterSheet({
               have fixed the collision and left three things crowded into one
               band anyway.
 
-              A row costs about 52px of the sheet, which is affordable because
-              the control is one Select and not the five orders spelled out:
-              the filters still begin about a quarter of the way down. Full
-              width also stops the longest order from truncating, and reads as
-              a setting for the whole sheet rather than an ornament on the
-              heading. */}
+              The pair costs about 78px of the sheet: 12px over the caption,
+              16px of caption, the 6px gap and the control's 44px. That is
+              affordable because the control is one Select and not every order
+              spelled out on a row of its own, and the filters still begin
+              about a quarter of the way down. Full width also stops the longest order from
+              truncating, and reads as a setting for the whole sheet rather
+              than an ornament on the heading. */}
           <DrawerTitle className="mt-3 text-base">
             {messages.filters}
           </DrawerTitle>
+          <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
+            {messages.sortCaption}
+          </div>
           <SortPicker
             value={sort}
             onChange={onSortChange}
             quiet={false}
+            labelledBy={sortCaptionId}
             className={SORT_ROW_CLASS}
           />
         </div>

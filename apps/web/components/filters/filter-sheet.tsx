@@ -345,7 +345,7 @@ export function FilterSheet({
             onToggleMany={onToggleMany}
             onToggleProperty={onToggleProperty}
             onToggleManyProperties={onToggleManyProperties}
-            ageLayout="sheet"
+            layout="sheet"
           />
         </div>
 

@@ -407,3 +407,36 @@ describe("the sidebar heading", () => {
     expect(screen.queryByText("Počisti vse")).toBeNull();
   });
 });
+
+describe("the sidebar's surfaces", () => {
+  // The panel stands beside a grid of borderless cards, and for a while it
+  // answered with five surfaces of its own: the map plate, sex tiles, size
+  // tiles, the rows and the chips. Everything that can be pressed in a
+  // section is a row now, on the one treatment filter-card.tsx describes: a
+  // transparent border, no ground, no shadow at rest, and the 44px line a
+  // finger needs. A section that arrives as a tile fails here.
+  it("draws every facet option in a section as a row", () => {
+    const { container } = renderStatic(EMPTY_FILTERS);
+    // A folded section leaves its options out of the DOM, so every header
+    // that is closed is opened first and the sweep sees the whole panel.
+    for (const trigger of container.querySelectorAll<HTMLElement>(
+      'button[aria-expanded="false"]',
+    )) {
+      fireEvent.click(trigger);
+    }
+
+    const options = container.querySelectorAll<HTMLElement>(
+      '[data-slot="toggle-group-item"], button[aria-pressed]',
+    );
+    // Two sexes, three ages, three sizes, three energies, two health traits
+    // and two household answers: every option the fixture can show.
+    expect(options).toHaveLength(15);
+
+    for (const option of options) {
+      expect(option.className).toContain("border-transparent");
+      expect(option.className).toContain("bg-transparent");
+      expect(option.className).toContain("shadow-none");
+      expect(option.className).toContain("h-11");
+    }
+  });
+});

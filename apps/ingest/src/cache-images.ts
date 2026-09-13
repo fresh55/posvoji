@@ -15,6 +15,11 @@ import type {
 import type { Animal, AnimalImage, ImagePolicy } from "@posvoji/schema";
 import { mapByHost } from "./by-host";
 import { cachedImagesDir, imageCacheManifestPath } from "./paths";
+import {
+  SUBJECT_VERSION,
+  type SubjectBox,
+  type SubjectDetector,
+} from "./subject-detector";
 import { writeFileAtomic } from "./write-atomic";
 import { writeContentAddressed } from "./write-content-addressed";
 
@@ -92,6 +97,13 @@ export interface CachedImageEntry {
   // Which DERIVATIVE_VERSION cut the files above. Absent on entries written
   // before the field existed, which is what v1 means.
   derivativeVersion?: number;
+  // Where the animal is in the master, from the subject detector. Absent
+  // when it found none, or when it has not read this copy yet: the version
+  // below says which of those it is.
+  subject?: SubjectBox;
+  // Which SUBJECT_VERSION read the master. Absent until the pass has run
+  // over it with a model at hand.
+  subjectVersion?: number;
   etag?: string;
   lastModified?: string;
   fetchedAt: string;
@@ -189,6 +201,7 @@ export const CACHE_DERIVED_IMAGE_FIELDS = [
   "widths",
   "avif",
   "blurDataURL",
+  "subject",
 ] as const;
 
 // An image with every cache-derived field taken off. The caller decides what
@@ -223,6 +236,7 @@ export function withCachedUrls(
       if (entry.widths && entry.widths.length > 0) cached.widths = entry.widths;
       if (entry.blurDataURL) cached.blurDataURL = entry.blurDataURL;
       if (entry.avif) cached.avif = true;
+      if (entry.subject) cached.subject = entry.subject;
       return cached;
     }),
   }));
@@ -453,6 +467,63 @@ export async function deriveVariants(
   return counts;
 }
 
+export interface SubjectCounts {
+  /** Masters read this run that hold an animal. */
+  detected: number;
+  /** Masters read this run in which the model found no animal. */
+  empty: number;
+  /** Masters that could not be read or run; left unversioned for a retry. */
+  failed: number;
+}
+
+// The subject box, like every derivative, is cut from our own cached copy,
+// so an entry gains one without a request to the shelter. It is a backfill
+// in the same shape as deriveVariants: an entry already read under the
+// current SUBJECT_VERSION is left alone, and one read under an older version
+// (or never) is read again from the master on disk. Without a detector the
+// pass does nothing and says nothing: the loader already said why.
+export async function detectSubjects(
+  manifest: ImageCacheManifest,
+  mediaDir: string,
+  detector: SubjectDetector | undefined,
+): Promise<SubjectCounts> {
+  const counts: SubjectCounts = { detected: 0, empty: 0, failed: 0 };
+  if (!detector) return counts;
+
+  const groups = new Map<string, CachedImageEntry[]>();
+  for (const entry of Object.values(manifest.entries)) {
+    const group = groups.get(entry.file) ?? [];
+    group.push(entry);
+    groups.set(entry.file, group);
+  }
+
+  for (const [file, entries] of groups) {
+    const stale = entries.some(
+      (entry) => entry.subjectVersion !== SUBJECT_VERSION,
+    );
+    if (!stale) continue;
+    const sourcePath = join(mediaDir, file);
+    if (!existsSync(sourcePath)) continue;
+    let subject: SubjectBox | undefined;
+    try {
+      subject = await detector.detect(sourcePath);
+    } catch (error) {
+      console.warn(`image ${file}: subject detection failed (${error})`);
+      counts.failed++;
+      continue;
+    }
+    if (subject) counts.detected++;
+    else counts.empty++;
+    for (const entry of entries) {
+      if (subject) entry.subject = subject;
+      else delete entry.subject;
+      entry.subjectVersion = SUBJECT_VERSION;
+    }
+  }
+
+  return counts;
+}
+
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -499,6 +570,7 @@ export interface CacheImagesResult {
   reused: number;
   deleted: number;
   derived: DerivedCounts;
+  subjects: SubjectCounts;
 }
 
 export interface CacheImagesOptions {
@@ -511,6 +583,9 @@ export interface CacheImagesOptions {
   // shelter's photos without revalidating hundreds of unrelated ones. Left
   // unset, every provider is in scope.
   refreshProviderIds?: ReadonlySet<string>;
+  // Reads each newly cached master for the animal's place in it. Left unset,
+  // the manifest keeps whatever boxes it had and gains none.
+  subjectDetector?: SubjectDetector;
 }
 
 // What one URL's turn produced. An absent entry drops the URL from the
@@ -684,6 +759,7 @@ export async function cacheImages(
     heroSourceUrls(animals),
     mediaDir,
   );
+  const subjects = await detectSubjects(next, mediaDir, options.subjectDetector);
 
   // Content addressing can share one file between URLs, so deletion goes by
   // "no longer referenced", not by "my URL was dropped". Sweeping the whole
@@ -722,5 +798,6 @@ export async function cacheImages(
     reused,
     deleted,
     derived,
+    subjects,
   };
 }

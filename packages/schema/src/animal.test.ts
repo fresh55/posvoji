@@ -231,6 +231,43 @@ describe("Animal", () => {
     }
   });
 
+  it("accepts a subject box inside the cached copy", () => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          cachedUrl: "/media/animals/0123456789abcdef.webp",
+          width: 800,
+          height: 600,
+          subject: { x: 0.18, y: 0.08, w: 0.36, h: 0.82 },
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    { x: 1.2, y: 0, w: 0.5, h: 0.5 },
+    { x: 0, y: 0, w: 0, h: 0.5 },
+    { x: 0, y: 0, w: 0.5 },
+    { x: 0, y: 0, w: 0.5, h: 0.5, score: 0.9 },
+  ])("rejects a subject box that is not four fractions %o", (subject) => {
+    const result = Animal.safeParse({
+      ...validAnimal,
+      images: [
+        {
+          sourceUrl: "https://www.macjahisa.si/media/luna.jpg",
+          cachedUrl: "/media/animals/0123456789abcdef.webp",
+          subject,
+          rights: "cache-permitted",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects a blurDataURL that is not an inline image", () => {
     for (const bad of [
       "https://www.macjahisa.si/media/luna.jpg",

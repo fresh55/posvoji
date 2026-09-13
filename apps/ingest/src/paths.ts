@@ -40,6 +40,12 @@ export const imageCacheManifestPath = join(datasetDir, "image-cache.json");
 // reads, and this is what a maintainer reads.
 export const overrideReportPath = join(datasetDir, "overrides.json");
 
+// The subject detector's weights, fetched by `pnpm models:fetch` and
+// gitignored like the dataset: 29 MB of model zoo output is an artifact of
+// somebody else's training, not repository content.
+export const modelsDir = join(repoRoot, "data", "models");
+export const subjectModelPath = join(modelsDir, "ssd_mobilenet_v1_12.onnx");
+
 // Shelter logos live beside the cached photos for the same reason: a logo is
 // the shelter's mark, not repository content, so it is fetched rather than
 // committed.

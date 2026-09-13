@@ -11,6 +11,7 @@ import { Dataset } from "@posvoji/schema";
 import { holdArtifactLock } from "./artifact-lock";
 import {
   deriveVariants,
+  detectSubjects,
   heroSourceUrls,
   readImageCacheManifest,
   withCachedUrls,
@@ -25,6 +26,7 @@ import {
   datasetPath,
   imageCacheManifestPath,
 } from "./paths";
+import { loadSubjectDetector } from "./subject-detector";
 import { writeFileAtomic } from "./write-atomic";
 
 holdArtifactLock("derive-images");
@@ -52,6 +54,11 @@ const derived = await deriveVariants(
   heroSourceUrls(dataset.animals),
   cachedImagesDir,
 );
+const subjects = await detectSubjects(
+  manifest,
+  cachedImagesDir,
+  await loadSubjectDetector(),
+);
 writeFileAtomic(imageCacheManifestPath, JSON.stringify(manifest, null, 2));
 
 // Only the images change, so everything else in the dataset is carried over
@@ -67,6 +74,10 @@ const generationId = writeGenerationReceipt();
 console.log(
   `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
     `${derived.blurs} placeholders, ${derived.avifs} avif derived`,
+);
+console.log(
+  `subjects: ${subjects.detected} found, ${subjects.empty} without an animal, ` +
+    `${subjects.failed} failed`,
 );
 console.log(
   `derived over ${cached} cached images, rewrote ${animals.length} animals ` +

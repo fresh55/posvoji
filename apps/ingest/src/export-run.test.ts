@@ -81,6 +81,7 @@ function harness(previous: Animal[] = []) {
       reused: 0,
       deleted: 0,
       derived: { thumbs: 0, rungs: 0, blurs: 0, avifs: 0 },
+      subjects: { detected: 0, empty: 0, failed: 0 },
     };
   });
   const seal = vi.fn(() => {
@@ -109,6 +110,7 @@ function harness(previous: Animal[] = []) {
       },
     ],
     cacheImages,
+    loadSubjectDetector: async () => undefined,
     cacheLogos: async () => ({
       manifest: { entries: {} },
       fetched: 0,

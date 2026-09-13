@@ -10,6 +10,8 @@ next-env.d.ts
 
 # ingest output (dataset is an artifact, not source)
 data/dist/
+# fetched model weights (pnpm models:fetch)
+data/models/
 .artifact-lock/
 .artifact-lock.candidate-*/
 .artifact-lock.retired-*/

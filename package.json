@@ -21,6 +21,7 @@
     "dataset:export": "pnpm --filter @posvoji/ingest export",
     "logos:fetch": "pnpm --filter @posvoji/ingest fetch:logos",
     "images:derive": "pnpm --filter @posvoji/ingest derive:images",
+    "models:fetch": "pnpm --filter @posvoji/ingest fetch:model",
     "media:verify": "node scripts/verify-media.mjs"
   }
 }

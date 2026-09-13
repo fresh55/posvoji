@@ -18,6 +18,7 @@ import type {
 import { Animal as AnimalSchema } from "@posvoji/schema";
 import type { Animal, ImagePolicy } from "@posvoji/schema";
 import { MAX_HOSTS_IN_FLIGHT } from "./by-host";
+import { SUBJECT_VERSION, type SubjectDetector } from "./subject-detector";
 import {
   DERIVATIVE_VERSION,
   avifFileFor,
@@ -1210,5 +1211,145 @@ describe("cacheImages", () => {
       const cached = result.animals.map((a) => a.images[0]!.cachedUrl);
       expect(cached).toEqual([publicUrlFor(masters[0]!), publicUrlFor(masters[0]!)]);
     });
+  });
+});
+
+describe("subject boxes", () => {
+  let dir: string;
+  let mediaDir: string;
+  let manifestPath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "posvoji-image-subjects-"));
+    mediaDir = join(dir, "media");
+    manifestPath = join(dir, "image-cache.json");
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const url = "https://img.si/luna.jpg";
+  const animals = () =>
+    [animal({ id: "luna", images: [{ sourceUrl: url, rights: "cache-permitted" }] })];
+  const box = { x: 0.18, y: 0.08, w: 0.36, h: 0.82 };
+  const finding = (subject: typeof box | undefined): SubjectDetector => ({
+    detect: vi.fn(async () => subject),
+  });
+
+  it("reads each cached master once and ships the box with the animal", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const detector = finding(box);
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+      subjectDetector: detector,
+    });
+
+    expect(result.subjects).toEqual({ detected: 1, empty: 0, failed: 0 });
+    expect(result.animals[0]!.images[0]!.subject).toEqual(box);
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url]).toMatchObject({
+      subject: box,
+      subjectVersion: SUBJECT_VERSION,
+    });
+    // The master is read from disk, not from the response.
+    expect(detector.detect).toHaveBeenCalledWith(
+      join(mediaDir, manifest.entries[url].file),
+    );
+
+    // A second run finds the entry already read and does not open the file.
+    const again = finding(box);
+    const second = await cacheImages(
+      animals(),
+      new StubClient(new Map()),
+      CACHE_ONLY,
+      { mediaDir, manifestPath, subjectDetector: again },
+    );
+    expect(again.detect).not.toHaveBeenCalled();
+    expect(second.subjects).toEqual({ detected: 0, empty: 0, failed: 0 });
+    expect(second.animals[0]!.images[0]!.subject).toEqual(box);
+  });
+
+  it("records that a photo holds no animal, so it is not read again", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+      subjectDetector: finding(undefined),
+    });
+    expect(result.subjects).toEqual({ detected: 0, empty: 1, failed: 0 });
+    expect(result.animals[0]!.images[0]!).not.toHaveProperty("subject");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url].subjectVersion).toBe(SUBJECT_VERSION);
+    expect(manifest.entries[url]).not.toHaveProperty("subject");
+  });
+
+  it("keeps a box it already has when there is no detector", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+      subjectDetector: finding(box),
+    });
+    const result = await cacheImages(
+      animals(),
+      new StubClient(new Map()),
+      CACHE_ONLY,
+      { mediaDir, manifestPath },
+    );
+    expect(result.subjects).toEqual({ detected: 0, empty: 0, failed: 0 });
+    expect(result.animals[0]!.images[0]!.subject).toEqual(box);
+  });
+
+  it("reads a master again when the recorded version moved on", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+      subjectDetector: finding(box),
+    });
+    const stale = JSON.parse(readFileSync(manifestPath, "utf8"));
+    stale.entries[url].subjectVersion = SUBJECT_VERSION - 1;
+    writeFileSync(manifestPath, JSON.stringify(stale));
+
+    const moved = { x: 0.5, y: 0.5, w: 0.25, h: 0.25 };
+    const result = await cacheImages(
+      animals(),
+      new StubClient(new Map()),
+      CACHE_ONLY,
+      { mediaDir, manifestPath, subjectDetector: finding(moved) },
+    );
+    expect(result.subjects.detected).toBe(1);
+    expect(result.animals[0]!.images[0]!.subject).toEqual(moved);
+  });
+
+  it("leaves a master the detector could not read for the next run", async () => {
+    const client = new StubClient(
+      new Map([[url, { status: 200, body: await pngFixture() }]]),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await cacheImages(animals(), client, CACHE_ONLY, {
+      mediaDir,
+      manifestPath,
+      subjectDetector: {
+        detect: async () => {
+          throw new Error("session lost");
+        },
+      },
+    });
+    warn.mockRestore();
+    expect(result.subjects).toEqual({ detected: 0, empty: 0, failed: 1 });
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(manifest.entries[url]).not.toHaveProperty("subjectVersion");
+    expect(result.animals[0]!.images[0]!).not.toHaveProperty("subject");
   });
 });

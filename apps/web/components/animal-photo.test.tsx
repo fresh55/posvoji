@@ -1,11 +1,40 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalPhoto } from "@/components/animal-photo";
 import type { PermittedPhoto } from "@/lib/animal-images";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+// What the element says about itself when it is handed over, which is what
+// this component reads to tell a photo still on its way from one that already
+// failed. jsdom fetches nothing, so it makes every image incomplete and every
+// naturalWidth 0 forever, and a test has to say which of the three cases it is
+// about.
+function stillOnItsWay() {
+  state(false, 0);
+}
+
+function alreadyDrawn() {
+  state(true, 800);
+}
+
+function alreadyFailed() {
+  state(true, 0);
+}
+
+function state(complete: boolean, naturalWidth: number) {
+  vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(
+    complete,
+  );
+  vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(
+    naturalWidth,
+  );
+}
 
 const SIZES = "(max-width: 639px) 50vw, 15rem";
 
@@ -139,6 +168,30 @@ describe("AnimalPhoto placeholder", () => {
     const { container } = draw({ blur: false });
     expect(container.querySelector("div[aria-hidden]")).toBeNull();
   });
+
+  it("draws the blur where the photo will land", () => {
+    // The same crop on both layers, or the head sits low in the blur and jumps
+    // up the moment the file arrives. 140 of the register's lead photos are
+    // portrait.
+    const { container, img } = draw({ photo: { ...CACHED, aspect: 0.75 } });
+
+    const layer = container.querySelector("div[aria-hidden]");
+    expect(img.style.objectPosition).toBe("50% 20%");
+    expect((layer as HTMLElement).style.backgroundPosition).toBe("50% 20%");
+    // The blur covers the frame, the way the photo does.
+    expect(layer?.className).toContain("bg-cover");
+  });
+
+  it("leaves the blur on the box's own middle where the photo is", () => {
+    // Nothing is crossed out, so both layers keep their default: the photo's
+    // 50% 50% and the placeholder's bg-center are the same place.
+    const { container, img } = draw();
+
+    const layer = container.querySelector("div[aria-hidden]");
+    expect(img.style.objectPosition).toBe("");
+    expect((layer as HTMLElement).style.backgroundPosition).toBe("");
+    expect(layer?.className).toContain("bg-center");
+  });
 });
 
 describe("AnimalPhoto crop", () => {
@@ -232,6 +285,65 @@ describe("AnimalPhoto loading", () => {
     const { img } = draw({ eager: true, loading: "lazy" });
     expect(img.getAttribute("loading")).toBe("eager");
     expect(img.getAttribute("fetchpriority")).toBe("high");
+  });
+});
+
+describe("AnimalPhoto arrival", () => {
+  it("marks a photo that is still on its way", () => {
+    stillOnItsWay();
+    const { img } = draw();
+
+    // The mark is the opacity, and taking it off is the fade. Nothing here is
+    // in the server's markup: the ref that writes it runs on the client.
+    expect(img.dataset.arriving).toBe("true");
+    expect(img.className).toContain("motion-safe:data-[arriving]:opacity-0");
+    // Under a reduced-motion setting neither the mark nor the transition
+    // applies, so the photo is simply there.
+    expect(img.className).toContain("motion-safe:transition-opacity");
+  });
+
+  it("leaves a photo that is already in hand alone", () => {
+    // The warm cache, which is most of them: a photo that is complete when the
+    // element is handed over never waited, so there is nothing to fade in.
+    alreadyDrawn();
+    expect(draw().img.dataset.arriving).toBeUndefined();
+  });
+
+  it("takes the mark off when the photo lands", () => {
+    stillOnItsWay();
+    const { img } = draw();
+    fireEvent.load(img);
+
+    expect(img.dataset.arriving).toBeUndefined();
+  });
+
+  it("catches a photo that failed before React was listening", () => {
+    // The site is a static export, so the markup is served complete and a
+    // photo that 404s does it while the page is still loading: the error event
+    // is over before hydration attaches the handler. Complete with no pixels
+    // behind it is what the element says about that afterwards, and it has to
+    // be handled the way the error would have been.
+    alreadyFailed();
+    const { container, img } = draw({ fallback: UNAVAILABLE });
+
+    expect(img.hidden).toBe(true);
+    expect(img.dataset.broken).toBe("true");
+    expect(img.dataset.arriving).toBeUndefined();
+    expect(fallback(container)?.textContent).toBe("Fotografije ni.");
+  });
+
+  it("leaves the failure handling as it was", () => {
+    // The fade rides on the same two handlers the failure does, so a photo
+    // that errors still goes out of the box and still comes back.
+    stillOnItsWay();
+    const { img } = draw();
+    fireEvent.error(img);
+    expect(img.hidden).toBe(true);
+    expect(img.dataset.broken).toBe("true");
+
+    fireEvent.load(img);
+    expect(img.hidden).toBe(false);
+    expect(img.dataset.arriving).toBeUndefined();
   });
 });
 

@@ -172,6 +172,20 @@ describe("photo gallery candidates", () => {
     ).toBeNull();
   });
 
+  it("keeps the hover zoom and the arrival fade on one transition", () => {
+    setup({ images: CACHED });
+
+    // Two transition utilities on one element are one property, and cn merges
+    // them: transition-transform alone swallowed the fade AnimalPhoto writes,
+    // and the photo went back to cutting in the moment the file landed.
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    expect(photo?.className).toContain(
+      "motion-safe:transition-[transform,opacity]",
+    );
+    expect(photo?.className).toContain("motion-safe:data-[arriving]:opacity-0");
+    expect(photo?.className).not.toContain("motion-safe:transition-transform");
+  });
+
   it("preloads the rung the layout would pick, not the largest file", () => {
     const preloads = capturePreloads();
     setup({ images: CACHED });
@@ -745,6 +759,44 @@ describe("photo gallery with nothing to draw", () => {
 
     // The sentence stays, as the caption rather than the whole message.
     expect(screen.getByText(NOTE).className).toContain("text-[0.6875rem]");
+  });
+
+  it("marks the frame when the card's photo never arrives", () => {
+    setup({ images: CACHED });
+
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    // Before the failure the frame is a photo on its way, and says nothing:
+    // the ground is the frame's own, and the only svgs are the chevrons.
+    expect(
+      document.querySelector('[data-slot="photo-frame"] .bg-muted'),
+    ).toBeNull();
+    expect(screen.queryByText(NOTE)).toBeNull();
+
+    fireEvent.error(photo!);
+
+    // The same two things the empty frame draws, so a 404 reads as a frame
+    // with no picture in it rather than as one still loading.
+    const mark = document.querySelector(
+      '[data-slot="photo-frame"] .bg-muted svg',
+    );
+    expect(mark?.getAttribute("class")).toContain("size-16");
+    expect(mark?.getAttribute("class")).toContain("text-muted-foreground/40");
+    expect(mark?.getAttribute("stroke-width")).toBe("1.25");
+    expect(screen.getByText(NOTE).className).toContain("text-[0.6875rem]");
+    // Opaque, over the whole frame: the blur under it is a picture that is not
+    // coming.
+    expect(
+      document.querySelector('[data-slot="photo-frame"] .bg-muted')?.className,
+    ).toContain("absolute inset-0");
+  });
+
+  it("says nothing about a failed photo where no mark is handed in", () => {
+    // The animal page and the dialog keep the ground they had: the sentence
+    // belongs to the card's frame, where sixty boxes have to be told apart.
+    setupPlain({ images: CACHED });
+
+    fireEvent.error(document.querySelector('[data-slot="photo-frame"] img')!);
+    expect(screen.queryByText(NOTE)).toBeNull();
   });
 
   it("keeps the empty frame text-only where no mark is handed in", () => {

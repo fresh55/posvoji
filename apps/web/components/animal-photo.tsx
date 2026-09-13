@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import {
   photoAvifUrl,
   photoSrcSet,
@@ -83,6 +83,7 @@ type AnimalPhotoProps = {
 // state, and the first paint is already anchored.
 const SUBJECT_OBJECT_POSITION = "50% 20%";
 
+
 export function AnimalPhoto({
   photo,
   alt,
@@ -106,11 +107,55 @@ export function AnimalPhoto({
   const avifSrc = avif ? photoAvifUrl(photo) : undefined;
   const placeholder = blur ? photo.blurDataURL : undefined;
   const portrait = crop === "subject" && photo.aspect !== undefined && photo.aspect < 1;
+  // Worked out once and handed to both layers, because the placeholder and the
+  // photo are the same picture in the same box and have to be cropped the same
+  // way. The placeholder used to be bg-center whatever the photo did, so on a
+  // portrait lead photo the head sat low in the blur and jumped up the moment
+  // the file landed, and a subject crop that moves the photo further from the
+  // middle would have made the jump bigger.
+  //
+  // undefined is the box's own default, which for both layers is the middle:
+  // object-position defaults to 50% 50% and the placeholder keeps bg-center
+  // below.
   const objectPosition =
     crop === "subject"
       ? ((frame !== undefined ? subjectPosition(photo, frame) : undefined) ??
         (portrait ? SUBJECT_OBJECT_POSITION : undefined))
       : undefined;
+
+  // What the element itself says the moment it is handed over, which is the
+  // only account there is of a photo whose fate was settled before React was
+  // listening. This is a static export: the markup is served complete, so a
+  // photo that 404s usually does it while the page is still loading, and the
+  // error event is over before hydration attaches the handler below. On the
+  // grid that was 15 broken images per screen with nothing said about any of
+  // them.
+  //
+  // Two states are legible here and they are the two this component has.
+  // Incomplete is a photo still on its way, which is the fade (see the class
+  // list on the <img>): the mark is opacity 0 and the load takes it off.
+  // Complete with no pixels behind it is a photo that already failed, and it
+  // is handled exactly as the error handler would have.
+  //
+  // useCallback keyed to the source, so this is a new function per photo and
+  // not per render: React re-runs a ref whose identity changed, and an inline
+  // one ran again on every state change here, re-marking a photo the load had
+  // just cleared.
+  const trackArrival = useCallback(
+    (node: HTMLImageElement | null) => {
+      if (!node) return;
+      if (!node.complete) {
+        node.dataset.arriving = "true";
+        return;
+      }
+      if (node.naturalWidth === 0) {
+        node.hidden = true;
+        node.dataset.broken = "true";
+        setFailedSrc(photo.src);
+      }
+    },
+    [photo.src],
+  );
 
   const image = (
     // The rule asks for next/image so the image gets a srcset. Under
@@ -133,6 +178,12 @@ export function AnimalPhoto({
       loading={eager ? "eager" : loading}
       fetchPriority={eager ? "high" : undefined}
       decoding="async"
+      // Written to the node and never to the server's markup, which is what
+      // keeps the fade out of hydration. A photo that is already drawn when
+      // this runs, which is every photo a warm cache serves, is neither marked
+      // nor faded: the mark is only ever about the wait. See trackArrival
+      // above.
+      ref={trackArrival}
       // A photo that fails to arrive (a cached copy renamed under a stale
       // page, a shelter file gone) would otherwise sit as a broken image over
       // the box's own ground. Hidden, the ground shows instead, which is the
@@ -151,12 +202,30 @@ export function AnimalPhoto({
       // load that lands afterwards is that failure being over. Only the source
       // being complained about clears it, so a photo arriving somewhere else in
       // the set cannot take the line off a different one.
+      // It is also where the photo the ref above marked stops waiting, which
+      // is the fade.
       onLoad={(event) => {
         event.currentTarget.hidden = false;
         delete event.currentTarget.dataset.broken;
+        delete event.currentTarget.dataset.arriving;
         setFailedSrc((current) => (current === photo.src ? null : current));
       }}
-      className={cn("absolute inset-0 size-full", className)}
+      // The fade is written as utilities here rather than as a rule of its own,
+      // and it is the caller's class list that decides whether it survives: cn
+      // merges the two, and two transition utilities on one element are one
+      // property, not two. The grid card animates the hover zoom on this same
+      // image, so it names both properties at once
+      // (motion-safe:transition-[transform,opacity] in photo-gallery.tsx); a
+      // caller that names transform alone would take the fade off without
+      // saying so.
+      //
+      // motion-safe on the mark as well as on the transition, so a visitor who
+      // asked for less motion gets the photo at once rather than an untransitioned
+      // jump from an invisible one.
+      className={cn(
+        "absolute inset-0 size-full motion-safe:transition-opacity motion-safe:duration-200 motion-safe:data-[arriving]:opacity-0",
+        className,
+      )}
       style={objectPosition ? { objectPosition } : undefined}
     />
   );
@@ -171,7 +240,10 @@ export function AnimalPhoto({
         <div
           aria-hidden
           className="absolute inset-0 size-full bg-cover bg-center"
-          style={{ backgroundImage: `url("${placeholder}")` }}
+          style={{
+            backgroundImage: `url("${placeholder}")`,
+            backgroundPosition: objectPosition,
+          }}
         />
       )}
       {avifSrc ? (

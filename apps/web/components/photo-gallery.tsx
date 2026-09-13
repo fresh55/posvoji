@@ -601,6 +601,35 @@ export function PhotoGallery({
     },
   };
 
+  // The frame with no photograph in it.
+  //
+  // The mark is drawn on the frame's own bg-muted rather than on anything of
+  // its own: this is the one case where the box's colour is what the visitor
+  // sees, and a silhouette sitting in a second, differently coloured shape
+  // would be a placeholder inside a placeholder. So it is a large outline at
+  // a low alpha, which reads as the box being marked rather than as something
+  // laid on it. strokeWidth 1.25 because lucide's default 2 at size-16 is a
+  // poster of a dog, and what this has to be is quiet.
+  //
+  // The sentence stays and goes under it, smaller and fainter than it is on
+  // its own: with the mark above, the words are the caption and no longer the
+  // whole message. Without the mark nothing about it moves, which is what
+  // keeps the animal page and the dialog where they were.
+  const emptyFrame = (
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground">
+      {EmptyMark ? (
+        <EmptyMark
+          className="size-16 text-muted-foreground/40"
+          strokeWidth={1.25}
+          aria-hidden
+        />
+      ) : null}
+      <span className={cn(EmptyMark && "text-[0.6875rem] opacity-80")}>
+        {messages.photoAtShelter}
+      </span>
+    </div>
+  );
+
   const imageContent = image ? (
     <AnimalPhoto
       photo={image}
@@ -629,6 +658,22 @@ export function PhotoGallery({
       eager={eager}
       avif={avif}
       frame={frame}
+      // A photo that 404s leaves the frame on its blur placeholder, and with
+      // the dots still standing on it that is indistinguishable from a photo
+      // still on its way. So the frame says what it says for an animal whose
+      // shelter published nothing: the same mark, the same caption, on an
+      // opaque ground, because the blur underneath is a picture that is not
+      // coming.
+      //
+      // The card's case only. The mark is what makes this a statement about
+      // the animal rather than a smaller apology, and the animal page and the
+      // dialog hand none in: there the box is one box on a page already about
+      // one animal, and they keep the ground they had.
+      fallback={
+        EmptyMark ? (
+          <div className="absolute inset-0 bg-muted">{emptyFrame}</div>
+        ) : undefined
+      }
       // The zoom is the card's hover lift reaching the photograph: the frame
       // clips it, so nothing moves but the picture inside its box. Named to
       // the card's group rather than an unqualified one, so it answers a
@@ -650,35 +695,16 @@ export function PhotoGallery({
       // saturation and this brightness are two nested filters rather than two
       // utilities competing on one element.
       className={cn(
-        "object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
+        // Both properties named in one utility, because that is what a
+        // transition is: one property on the element. AnimalPhoto fades a
+        // photo in when it lands after hydration, and transition-transform on
+        // its own merged that fade away (see the class list there).
+        "object-cover motion-safe:transition-[transform,opacity] motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
         cardSurface && "dark:brightness-90",
       )}
     />
   ) : (
-    // The mark is drawn on the frame's own bg-muted rather than on anything of
-    // its own: this is the one case where the box's colour is what the visitor
-    // sees, and a silhouette sitting in a second, differently coloured shape
-    // would be a placeholder inside a placeholder. So it is a large outline at
-    // a low alpha, which reads as the box being marked rather than as something
-    // laid on it. strokeWidth 1.25 because lucide's default 2 at size-16 is a
-    // poster of a dog, and what this has to be is quiet.
-    //
-    // The sentence stays and goes under it, smaller and fainter than it is on
-    // its own: with the mark above, the words are the caption and no longer the
-    // whole message. Without the mark nothing about it moves, which is what
-    // keeps the animal page and the dialog where they were.
-    <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground">
-      {EmptyMark ? (
-        <EmptyMark
-          className="size-16 text-muted-foreground/40"
-          strokeWidth={1.25}
-          aria-hidden
-        />
-      ) : null}
-      <span className={cn(EmptyMark && "text-[0.6875rem] opacity-80")}>
-        {messages.photoAtShelter}
-      </span>
-    </div>
+    emptyFrame
   );
 
   return (

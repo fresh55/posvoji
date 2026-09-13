@@ -312,13 +312,17 @@ const sl = {
   muniResponsible: "pristojno zavetišče",
   muniResponsiblePlural: "pristojni zavetišči",
   muniCall: "Pokliči {phone}",
-  // Two rows the card draws when the register holds them: when the phone is
-  // answered, and the number that is answered outside those hours. The hours
-  // are free text from the shelter's own site, copied in Slovenian for both
-  // locales: times read the same in either, and a translation of "pon-pet"
-  // would be the one thing on the card the shelter did not say.
+  // When the number above is answered. Free text from the shelter's own site,
+  // copied in Slovenian for both locales: times read the same in either, and
+  // a translation of "pon-pet" would be the one thing on the card the shelter
+  // did not say.
   muniHours: "Uradne ure",
-  muniOnCall: "Dežurna številka",
+  // The number that is answered outside those hours, as the second button
+  // under the first. It used to be a line of contact detail among the address
+  // and the website, which made the one thing to press at eleven at night the
+  // smallest target on the card. Same shape as muniCall, so the two calls
+  // read as one choice with two times of day.
+  muniCallOnCall: "Dežurna {phone}",
   muniCallAdvice:
     "Po telefonu povej točno lokacijo, opis živali in morebitne poškodbe.",
   muniCost: "Odlov in oskrbo plača občina, ne ti.",
@@ -652,7 +656,7 @@ const en: Messages = {
   muniResponsiblePlural: "responsible shelters",
   muniCall: "Call {phone}",
   muniHours: "Office hours",
-  muniOnCall: "On-call number",
+  muniCallOnCall: "On-call {phone}",
   muniCallAdvice:
     "On the phone, give the exact location, a description of the animal and any injuries.",
   muniCost: "The municipality pays for capture and care, not you.",

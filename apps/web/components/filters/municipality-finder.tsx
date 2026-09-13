@@ -339,11 +339,17 @@ export function MunicipalityFinder({
   // with a number belong under it. The others are still worth naming, because
   // a shelter 21 km away is the one an občina is likeliest to be under
   // contract with, but what they offer is a page and not a call.
-  const callable = others.filter(
-    (shelter): shelter is NearbyShelter & { phone: string } =>
-      Boolean(shelter.phone),
+  // A row offers the main number, or the dežurna one where the register holds
+  // only that. No shelter in the register is in the second case today, but a
+  // row that has a number to dial and draws no button would be the bug this
+  // whole card was rebuilt to remove.
+  const callable = others.flatMap((shelter) => {
+    const number = shelter.phone ?? shelter.onCallPhone;
+    return number ? [{ shelter, number, onCall: !shelter.phone }] : [];
+  });
+  const unlisted = others.filter(
+    (shelter) => !shelter.phone && !shelter.onCallPhone,
   );
-  const unlisted = others.filter((shelter) => !shelter.phone);
 
   useEffect(() => {
     if (!active) {
@@ -729,13 +735,29 @@ export function MunicipalityFinder({
                       </p>
                       {/* 44px tall below lg, like the pills under it: the
                           one call on the card cannot be its smallest
-                          target. The coverage card keeps the same height. */}
-                      <Button asChild className="w-full max-lg:h-11">
-                        <a href={telHref(hero.phone)}>
-                          <Phone className="size-4 shrink-0" aria-hidden />
-                          {t("muniCall", { phone: hero.phone })}
-                        </a>
-                      </Button>
+                          target. The coverage card keeps the same height,
+                          and the same second button for the hours the first
+                          number is not answered. */}
+                      <div className="space-y-2">
+                        <Button asChild className="w-full max-lg:h-11">
+                          <a href={telHref(hero.phone)}>
+                            <Phone className="size-4 shrink-0" aria-hidden />
+                            {t("muniCall", { phone: hero.phone })}
+                          </a>
+                        </Button>
+                        {hero.onCallPhone && (
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="w-full max-lg:h-11"
+                          >
+                            <a href={telHref(hero.onCallPhone)}>
+                              <Phone className="size-4 shrink-0" aria-hidden />
+                              {t("muniCallOnCall", { phone: hero.onCallPhone })}
+                            </a>
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -745,23 +767,27 @@ export function MunicipalityFinder({
                         {messages.muniNearestOthers}
                       </p>
                       <ul className="divide-y">
-                        {callable.map((shelter) => (
+                        {callable.map(({ shelter, number, onCall }) => (
                           <NearestRow
                             key={shelter.shelterId}
                             shelter={shelter}
                           >
                             {/* The number is the control here too, and its
                                 label is the number itself: a phone borrowed
-                                to make the call needs it read out. 44px
-                                tall below lg. */}
+                                to make the call needs it read out. A dežurna
+                                number says which kind it is, because it is
+                                not the one to try first. 44px tall below
+                                lg. */}
                             <Button
                               asChild
                               variant="outline"
                               className="max-lg:h-11"
                             >
-                              <a href={telHref(shelter.phone)}>
+                              <a href={telHref(number)}>
                                 <Phone aria-hidden />
-                                {shelter.phone}
+                                {onCall
+                                  ? t("muniCallOnCall", { phone: number })
+                                  : number}
                               </a>
                             </Button>
                           </NearestRow>

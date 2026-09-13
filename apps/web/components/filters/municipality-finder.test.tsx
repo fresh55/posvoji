@@ -757,6 +757,38 @@ describe("MunicipalityFinder without a verified shelter", () => {
     });
   });
 
+  it("offers the first call's dežurna number as a second button", () => {
+    const [maribor, malaHisa, zonzani] = CIRKULANE.nearest;
+    renderCirkulane([
+      { ...maribor, onCallPhone: "031 788 822" },
+      malaHisa,
+      zonzani,
+    ]);
+
+    const call = screen.getByRole("link", { name: "Pokliči 02 480 16 60" });
+    const onCall = screen.getByRole("link", { name: "Dežurna 031 788 822" });
+    expect(onCall.getAttribute("href")).toMatch(/^tel:/);
+    // The same pair the coverage card draws: one call, then the quieter one
+    // for the hours the first is not answered.
+    expect(onCall.getAttribute("data-variant")).toBe("outline");
+    expect(follows(call, onCall)).toBe(true);
+  });
+
+  it("rings a fallback shelter on its dežurna number when it has no other", () => {
+    const [maribor, malaHisa, zonzani] = CIRKULANE.nearest;
+    renderCirkulane([
+      maribor,
+      { ...malaHisa, onCallPhone: "041 609 240" },
+      zonzani,
+    ]);
+
+    // A row with a number to dial draws a button whatever kind of number it
+    // is, and says which kind, because it is not the one to try first.
+    const row = screen.getByRole("link", { name: "Dežurna 041 609 240" });
+    expect(row.getAttribute("href")).toMatch(/^tel:/);
+    expect(screen.queryByText("brez objavljene številke")).toBeNull();
+  });
+
   // Bovec, from the real register: Johanca is the nearest shelter and has no
   // published number, and the nearest one that has is 28 km further on. The
   // heading used to say "call the nearest shelter" over the far one while the

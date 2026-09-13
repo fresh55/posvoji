@@ -24,8 +24,11 @@ describe("the home cat", () => {
     expect(caption.textContent).toBe(locale === "sl" ? "Spoznajte Srečka" : "Meet Srečko");
   });
 
-  it("stays out of the phone hero", () => {
+  it("stays out of the phone hero and out of the row's flow", () => {
     const { container } = render(<HomeCat locale="sl" />);
-    expect(container.querySelector("figure")?.className).toMatch(/\bhidden\b.*\bmd:flex\b/);
+    const classes = container.querySelector("figure")!.className.split(" ");
+    expect(classes).toContain("hidden");
+    expect(classes).toContain("md:block");
+    expect(classes).toContain("absolute");
   });
 });

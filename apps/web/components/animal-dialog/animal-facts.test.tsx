@@ -145,6 +145,29 @@ describe("the zdravje row", () => {
     expect(buttons[0].textContent).toContain("Brez FeLV");
   });
 
+  // Which of them can be pressed was a pointer's cursor and nothing else, so a
+  // thumb had no way to tell. The dotted underline is the mark, and it is on
+  // the labels that open an explainer and on no others.
+  it("underlines the pills that explain themselves and nothing else", () => {
+    renderFacts({
+      medical: { fiv: "unknown", felv: "negative" },
+      adoptionRequirements: { indoorOnly: true },
+    });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    expect(within(row).getByText("Brez FeLV").className).toContain(
+      "decoration-dotted",
+    );
+    // The gap pill opens nothing, and neither does a condition.
+    expect(within(row).getByText("Ni podatka o FIV").className).not.toContain(
+      "decoration-dotted",
+    );
+    const conditions = screen.getByRole("list", { name: "Pogoji posvojitve" });
+    expect(within(conditions).getByRole("listitem").innerHTML).not.toContain(
+      "decoration-dotted",
+    );
+  });
+
   // A result is a result. The shelter's own words carry a positive one, and a
   // pill saying the opposite of what they say would be worse than silence.
   it("says nothing about a recorded positive", () => {

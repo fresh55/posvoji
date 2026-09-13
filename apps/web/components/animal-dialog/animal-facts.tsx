@@ -110,6 +110,23 @@ const FACT_POPOVER_CLASS =
 const HEALTH_PILL_CLASS =
   "inline-flex cursor-help items-center gap-1.5 rounded-ui border border-brand-border/70 bg-brand/60 px-2.5 py-1 text-xs text-brand-foreground transition-colors hover:bg-brand/80 focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none";
 
+// The mark that separates a pill you can press from the inert ones standing in
+// the same row. The pills that open an explainer looked exactly like the
+// dashed unknown pill, the "no" answers and the requirement pills, and
+// cursor-help above only reaches a pointer: a thumb had nothing to go on and
+// the popovers went unfound.
+//
+// A dotted underline on the label is the conventional "this word explains
+// itself" sign, the one abbr has worn since the browser default, and it spends
+// no colour: the green already means something here, so a second tier could
+// not be another fill. decoration-current so the line is the pill's own ink at
+// half strength, quiet enough not to read as a link.
+//
+// Only the label carries it, not the icon beside it, and only the triggers:
+// the collapsed summary button has its chevron and needs no second mark.
+const HEALTH_LABEL_CLASS =
+  "underline decoration-current/50 decoration-dotted decoration-1 underline-offset-4";
+
 // A health badge explains itself when asked. A popover rather than a hover
 // tooltip, because a thumb cannot hover.
 function HealthFact({
@@ -131,7 +148,7 @@ function HealthFact({
             strokeWidth={1.75}
             aria-hidden
           />
-          {label}
+          <span className={HEALTH_LABEL_CLASS}>{label}</span>
         </PopoverTrigger>
         <PopoverContent
           side="top"
@@ -235,7 +252,7 @@ function GoodWithFact({
         <Popover>
           <PopoverTrigger className={HEALTH_PILL_CLASS}>
             {icon}
-            {label}
+            <span className={HEALTH_LABEL_CLASS}>{label}</span>
           </PopoverTrigger>
           <PopoverContent
             side="top"
@@ -295,7 +312,7 @@ function ApartmentFact({
       <Popover>
         <PopoverTrigger className={HEALTH_PILL_CLASS}>
           {icon}
-          {label}
+          <span className={HEALTH_LABEL_CLASS}>{label}</span>
         </PopoverTrigger>
         <PopoverContent
           side="top"

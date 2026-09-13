@@ -182,7 +182,17 @@ export function ShelterBlock({
           // The listing still has to be reachable: every animal here names
           // its source and links back to it, adopted or not.
           <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto">
-            <p className="flex w-full items-center gap-2 rounded-ui border border-brand-border bg-brand px-3 py-2 text-xs text-brand-foreground">
+            {/* The same tokens the status badge on the title row wears for
+                this animal (the quiet badge variant), because the two print
+                the same fact and the reader sees them at once. The brand
+                green it used to carry is the mark for a shelter that shares
+                its data, for a chosen answer and for the health record, not
+                for an outcome, so a green box here read as a fourth meaning
+                and outshouted the grey badge saying the same thing.
+
+                The heart stays: it is what keeps this from reading as one
+                more muted aside. */}
+            <p className="flex w-full items-center gap-2 rounded-ui border border-transparent bg-muted px-3 py-2 text-xs text-muted-foreground">
               <Heart className="size-4 shrink-0" aria-hidden />
               {messages.foundHome}
             </p>

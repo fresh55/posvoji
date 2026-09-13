@@ -35,6 +35,10 @@ export function SitePage({ locale }: { locale: Locale }) {
   return (
     <SiteShell
       locale={locale}
+      // The animal grid is the one thing on this site that is better for
+      // having room: at 1920 the page used to draw three cards in a 1280px
+      // column and leave 320px of empty page on each side.
+      wide
       mainClassName="flex flex-1 flex-col gap-section-gap py-page-y"
       // /?najdena, which municipality websites published back when the lookup
       // was a mode of the map dialog. It draws nothing; it sends those

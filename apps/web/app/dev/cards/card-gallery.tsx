@@ -4,7 +4,8 @@ import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { ClientAnimal } from "@/lib/animal";
 import type { PermittedPhoto } from "@/lib/animal-images";
-import { CARD_GRID } from "@/lib/card-grid";
+import { CARD_GRID, CARD_GRID_PAGE_MAX } from "@/lib/card-grid";
+import { cn } from "@/lib/utils";
 
 // Every shape a grid card can take, side by side, so a change to the card can
 // be seen in one glance and caught by one snapshot. Dev-only: page.tsx renders
@@ -187,7 +188,7 @@ function CardRow() {
     // where they fall on the site rather than wherever a bare full-width grid
     // would put them: max-w-7xl and px-gutter are what every page centres its
     // content with, and CARD_PHOTO_SIZES is derived from exactly that pair.
-    <div className="mx-auto w-full max-w-7xl px-gutter">
+    <div className={cn("mx-auto w-full max-w-(--page-max) px-gutter", CARD_GRID_PAGE_MAX)}>
       <div className={CARD_GRID}>
         {ANIMALS.map((subject) => (
           <AnimalCard

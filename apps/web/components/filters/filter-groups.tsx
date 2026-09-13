@@ -86,7 +86,7 @@ const RIPPLE_DURATION = 0.35;
 
 type GroupProps = {
   group: CardGroup;
-  ageLayout: "sidebar" | "sheet";
+  layout: FilterCardLayout;
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
@@ -274,7 +274,8 @@ function SizeGroup({
   onToggle,
   onToggleMany,
   collapse,
-}: Omit<GroupProps, "group" | "ageLayout">) {
+  layout,
+}: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
   const { isResetting, beginReset } = useResetStagger(selected.length);
 
@@ -297,6 +298,7 @@ function SizeGroup({
           selected={selected}
           onToggle={onToggle}
           isResetting={isResetting}
+          layout={layout}
         />
       </CollapsibleBody>
     </section>
@@ -310,7 +312,8 @@ function SexGroup({
   onToggle,
   onToggleMany,
   collapse,
-}: Omit<GroupProps, "group" | "ageLayout">) {
+  layout,
+}: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
 
   return (
@@ -328,6 +331,7 @@ function SexGroup({
           counts={counts}
           selected={selected}
           onToggle={onToggle}
+          layout={layout}
         />
       </CollapsibleBody>
     </section>
@@ -347,7 +351,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           selected={rest.selected}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
-          layout={rest.ageLayout}
+          layout={rest.layout}
           collapse={rest.collapse}
         />
       );
@@ -360,6 +364,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           collapse={rest.collapse}
+          layout={rest.layout}
         />
       );
     case "size":
@@ -371,6 +376,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           collapse={rest.collapse}
+          layout={rest.layout}
         />
       );
     case "energy":
@@ -381,7 +387,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           selected={rest.selected}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
-          layout={rest.ageLayout}
+          layout={rest.layout}
           collapse={rest.collapse}
         />
       );
@@ -414,7 +420,7 @@ export function FilterGroupList({
   onToggleMany,
   onToggleProperty,
   onToggleManyProperties,
-  ageLayout = "sidebar",
+  layout = "sidebar",
   collapsible = false,
 }: {
   filters: Filters;
@@ -425,7 +431,11 @@ export function FilterGroupList({
   goodWith?: GoodWithSection;
   home?: HomeSection;
   care?: CareSection;
-  ageLayout?: "sidebar" | "sheet";
+  /** Which surface these sections are drawn on. The sheet draws tiles, the
+      sidebar draws rows, and every section takes the same answer: it was the
+      age control's alone once, and by the time the sex and size sections were
+      brought onto the row treatment it was deciding all of them. */
+  layout?: FilterCardLayout;
   /** Folds sections behind their headers. The sidebar turns this on; the
       sheet scrolls as one page and leaves it off. */
   collapsible?: boolean;
@@ -454,7 +464,7 @@ export function FilterGroupList({
         <FilterGroup
           key={group}
           group={group}
-          ageLayout={ageLayout}
+          layout={layout}
           options={options}
           counts={counts[group]}
           selected={filters[group]}
@@ -477,7 +487,7 @@ export function FilterGroupList({
           selected={filters.toggles}
           onToggle={onToggleProperty}
           onToggleMany={onToggleManyProperties}
-          layout={ageLayout}
+          layout={layout}
           collapse={collapseFor(
             "health",
             selectionSummary(
@@ -497,7 +507,7 @@ export function FilterGroupList({
           total={goodWith.total}
           onToggle={goodWith.onToggle}
           onToggleMany={goodWith.onToggleMany}
-          layout={ageLayout}
+          layout={layout}
           collapse={collapseFor(
             "goodWith",
             selectionSummary(
@@ -521,7 +531,7 @@ export function FilterGroupList({
           total={home.total}
           onToggle={home.onToggle}
           onToggleMany={home.onToggleMany}
-          layout={ageLayout}
+          layout={layout}
           collapse={collapseFor(
             "home",
             selectionSummary(
@@ -542,7 +552,7 @@ export function FilterGroupList({
           total={care.total}
           onToggle={care.onToggle}
           onToggleMany={care.onToggleMany}
-          layout={ageLayout}
+          layout={layout}
           collapse={collapseFor(
             "care",
             selectionSummary(

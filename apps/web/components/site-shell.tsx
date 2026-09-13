@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { I18nProvider } from "@/components/i18n-provider";
 import { SiteHeader } from "@/components/site-header";
 import type { Locale } from "@/lib/i18n";
+import { CARD_GRID_PAGE_MAX } from "@/lib/card-grid";
 import { CONTENT_ID } from "@/lib/skip-link";
+import { cn } from "@/lib/utils";
 
 type SiteShellProps = {
   locale: Locale;
@@ -16,6 +18,10 @@ type SiteShellProps = {
    *  genuinely disagree about. They pick a measure, a gap and whether the
    *  column is a grid; everything around it is the same on all nine. */
   mainClassName?: string;
+  /** Let the page frame grow past 80rem on a large screen. For a page whose
+   *  content is a grid that gets better with room, which is the results page
+   *  and so far only the results page. */
+  wide?: boolean;
   /** Inside the frame, above the header. The home page's /?najdena redirect
    *  is the only thing that wants to be there. */
   before?: ReactNode;
@@ -70,6 +76,7 @@ export function SiteShell({
   locale,
   languagePaths,
   mainClassName,
+  wide = false,
   before,
   afterMain,
   footer,
@@ -83,10 +90,20 @@ export function SiteShell({
           frame's edge: at 1440 they ended 80px short of the viewport on each
           side, and a rule that stops short reads as unfinished. So the two
           bands are the column's full width and centre their own contents on
-          the same max-w-7xl the frame here uses (site-header.tsx,
+          the same --page-max the frame here uses (site-header.tsx,
           site-footer.tsx). Below 1344px nothing changes, because the frame
           already reached the viewport there. */}
-      <div className="flex min-h-dvh flex-col">
+      {/* --page-max is set here rather than on the frame, because the header
+          and footer bands are siblings of the frame and all three have to
+          read the same number. The value is CARD_GRID_PAGE_MAX, which
+          lib/card-grid.ts owns beside the column floor and the sizes bands it
+          has to agree with. Below 2xl nothing moves. */}
+      <div
+        className={cn(
+          "flex min-h-dvh flex-col",
+          wide && CARD_GRID_PAGE_MAX,
+        )}
+      >
         {before}
 
         <SiteHeader locale={locale} languagePaths={languagePaths} />
@@ -95,7 +112,7 @@ export function SiteShell({
             the chrome. flex-1 so the footer stays at the foot of a short page
             the way it did when this was the outer column, and flex-col so a
             main asking for flex-1 of its own still fills it. */}
-        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-gutter">
+        <div className="mx-auto flex w-full max-w-(--page-max) flex-1 flex-col px-gutter">
           {/* Where the header's skip link lands, on every page that has one.
               One id for both locales rather than a Slovenian and an English
               spelling: these mains live in components the two share, and a

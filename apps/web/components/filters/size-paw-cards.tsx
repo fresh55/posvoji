@@ -3,12 +3,16 @@
 import { PawPrint } from "lucide-react";
 import type { TargetAndTransition, Transition } from "motion/react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   CountRoll,
-  FilterSelectionMark,
+  FilterCardIconWell,
+  FilterCardMark,
+  FilterCardTail,
+  filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
   RESET_STAGGER,
@@ -126,6 +130,11 @@ const LIFT_DURATION = 0.25;
 // after its impact.
 const LANDING_MS = 900;
 const CROUCH_DURATION = 0.1;
+// The tallest fall a sidebar row can show. The row is 44px and centres a 30px
+// icon well in it, which leaves the paw's box starting 12px down; the large
+// landing's own 15px would release it 3px above the row's top edge, where the
+// card's overflow cuts it. Ten keeps the whole arc inside the line.
+const ROW_DROP_CEILING = 10;
 // The mark the paw leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
 const WATERMARK_IN_DURATION = 0.3;
@@ -150,11 +159,21 @@ const REST_TRANSITION: Transition = { duration: 0.16 };
 // The paw drops in on its own landing, or leans away from the one that landed.
 type DropPose = "celebrating" | "reacting" | "rest";
 
-function dropPose(pose: DropPose, landing: Landing, shift: number): Pose {
+// distance rather than landing.drop, because a sidebar row is 44px against
+// the sheet tile's 76 and the card clips its own overflow: the largest fall
+// would begin above the line it is drawn in. Only the height the paw is
+// released from is capped there. The spring, the squash and the timings are
+// the landing's own either way, so the three weights still read.
+function dropPose(
+  pose: DropPose,
+  landing: Landing,
+  shift: number,
+  distance: number,
+): Pose {
   switch (pose) {
     case "celebrating":
       return {
-        animate: { y: [-landing.drop, 0], x: 0 },
+        animate: { y: [-distance, 0], x: 0 },
         transition: { type: "spring", ...landing.spring },
       };
     case "reacting":
@@ -222,18 +241,44 @@ function squashPose(
   return { animate: { scaleX: 1, scaleY: 1 }, transition: REST_TRANSITION };
 }
 
+// A sidebar row gives the paw the icon well every other row in the column
+// draws its glyph in, halo included, so a picked size lights the same way a
+// picked trait does. The tile has no well: there the paw stands alone in the
+// middle of the card and the halo would be a second circle behind it.
+function PawWell({
+  layout,
+  checked,
+  exitDelay,
+  children,
+}: {
+  layout: FilterCardLayout;
+  checked: boolean;
+  exitDelay: number;
+  children: ReactNode;
+}) {
+  if (layout === "sheet") return <>{children}</>;
+
+  return (
+    <FilterCardIconWell layout={layout} checked={checked} exitDelay={exitDelay}>
+      {children}
+    </FilterCardIconWell>
+  );
+}
+
 export function SizePawCards({
   options,
   counts,
   selected,
   onToggle,
   isResetting = false,
+  layout = "sidebar",
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
   isResetting?: boolean;
+  layout?: FilterCardLayout;
 }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -256,9 +301,14 @@ export function SizePawCards({
       ? landingFor(options[celebrationIndex].value)
       : undefined;
 
+  const sheet = layout === "sheet";
+
   return (
     <LazyMotion features={domAnimation}>
-      <div className="grid grid-cols-3 gap-1.5">
+      {/* Three tiles across in the sheet, three stacked rows in the sidebar.
+          The weights are told by the paws, which keep their three sizes in
+          either direction. */}
+      <div className={cn("grid gap-1.5", sheet ? "grid-cols-3" : "grid-cols-1")}>
         {options.map(({ value, label }, index) => {
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
@@ -288,6 +338,7 @@ export function SizePawCards({
             celebrating ? "celebrating" : reacting ? "reacting" : "rest",
             landing,
             shift,
+            sheet ? landing.drop : Math.min(landing.drop, ROW_DROP_CEILING),
           );
           const squash = squashPose(
             celebrating
@@ -301,6 +352,32 @@ export function SizePawCards({
             celebrationLanding,
           );
           const hover = hoverHandlers(value);
+          // The count takes the thud of a heavy landing wherever it is drawn,
+          // so both layouts hand their own class to the same jolt.
+          const joltedCount = (className: string) => (
+            <m.span
+              className={className}
+              initial={false}
+              animate={
+                celebrating && landing.countJolt && !shouldReduceMotion
+                  ? { y: [0, 1, 0] }
+                  : { y: 0 }
+              }
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : celebrating && landing.countJolt
+                    ? {
+                        duration: COUNT_JOLT_DURATION,
+                        delay: landing.impactDelay,
+                        ease: "easeOut",
+                      }
+                    : { duration: 0.16 }
+              }
+            >
+              <CountRoll value={count} />
+            </m.span>
+          );
 
           return (
             <button
@@ -331,183 +408,193 @@ export function SizePawCards({
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
                 selected: checked,
-                className:
-                  // isolate keeps the watermark's negative z-index above the
-                  // card's own background instead of behind it.
-                  "isolate flex min-h-[4.75rem] flex-col items-center justify-center gap-1 px-1.5 py-2 text-center",
+                className: sheet
+                  ? // isolate keeps the watermark's negative z-index above the
+                    // card's own background instead of behind it.
+                    "isolate flex min-h-[4.75rem] flex-col items-center justify-center gap-1 px-1.5 py-2 text-center"
+                  : cn("flex", filterCardLayoutClass(layout)),
               })}
             >
               {/* The mark the landed paw leaves on the card, clipped by the
-                  card's own overflow. */}
-              <m.span
-                aria-hidden
-                className="pointer-events-none absolute -bottom-2 -right-1.5 -z-10 text-brand-strong"
-                // A real initial, so a card checked from the URL stamps its
-                // mark on load instead of having it already there.
-                initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
-                animate={{
-                  opacity: checked ? WATERMARK_OPACITY : 0,
-                  scale: shouldReduceMotion || checked ? 1 : 1.06,
-                }}
-                transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : checked
-                      ? {
-                          duration: WATERMARK_IN_DURATION,
-                          delay: landing.checkDelay,
-                          ease: "easeOut",
-                        }
-                      : {
-                          duration: WATERMARK_OUT_DURATION,
-                          delay: resetDelay,
-                          ease: "easeOut",
-                        }
-                }
-              >
-                {/* The rotation stays on the icon; the span owns transform. */}
-                <PawPrint
-                  className="size-12 rotate-[-15deg]"
-                  strokeWidth={1.75}
-                  fill="none"
-                />
-              </m.span>
-              <FilterSelectionMark
-                checked={checked}
-                // The check confirms once the paw is down, not while it falls.
-                appearDelay={landing.checkDelay}
-                className="absolute right-1.5 top-1.5"
-              />
-              <span aria-hidden className="relative flex h-5 items-end">
-                {celebrating && !shouldReduceMotion ? (
-                  <m.span
-                    key={`shadow-${celebration?.id}`}
-                    className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-muted-foreground"
-                    initial={{ opacity: 0, scaleX: 0.5 }}
-                    animate={{
-                      opacity: [0, 0.15, 0.25 * landing.shadowWeight, 0],
-                      scaleX: [0.5, 0.7, 1.3, 1.1],
-                    }}
-                    transition={{
-                      duration: shadowDuration(landing),
-                      times: impactTimes(
-                        landing.impactDelay,
-                        shadowDuration(landing),
-                      ),
-                      ease: "easeOut",
-                    }}
-                  />
-                ) : null}
-                {celebrating && landing.dust && !shouldReduceMotion ? (
-                  <m.span
-                    key={`dust-${celebration?.id}`}
-                    className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full bg-brand-strong"
-                    initial={{ opacity: 0.4, scaleX: 0.7 }}
-                    animate={{ opacity: 0, scaleX: 1.6 }}
-                    transition={{
-                      duration: DUST_DURATION,
-                      delay: landing.impactDelay,
-                      ease: "easeOut",
-                    }}
-                  />
-                ) : null}
+                  card's own overflow. The tile only: it is a stamp on a card
+                  ground, and a row has no ground to stamp. A 48px paw behind
+                  a 44px line would be a smudge under the count rather than a
+                  mark left in a corner, and the row says "chosen" the way
+                  every other row in the column does. */}
+              {sheet && (
                 <m.span
-                  className="flex items-end"
-                  initial={false}
-                  animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
+                  aria-hidden
+                  className="pointer-events-none absolute -bottom-2 -right-1.5 -z-10 text-brand-strong"
+                  // A real initial, so a card checked from the URL stamps its
+                  // mark on load instead of having it already there.
+                  initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
+                  animate={{
+                    opacity: checked ? WATERMARK_OPACITY : 0,
+                    scale: shouldReduceMotion || checked ? 1 : 1.06,
+                  }}
                   transition={
                     shouldReduceMotion
                       ? { duration: 0 }
-                      : { type: "spring", ...landing.hoverSpring }
+                      : checked
+                        ? {
+                            duration: WATERMARK_IN_DURATION,
+                            delay: landing.checkDelay,
+                            ease: "easeOut",
+                          }
+                        : {
+                            duration: WATERMARK_OUT_DURATION,
+                            delay: resetDelay,
+                            ease: "easeOut",
+                          }
                   }
                 >
+                  {/* The rotation stays on the icon; the span owns transform. */}
+                  <PawPrint
+                    className="size-12 rotate-[-15deg]"
+                    strokeWidth={1.75}
+                    fill="none"
+                  />
+                </m.span>
+              )}
+              {/* One call for both surfaces. The sheet arm used to spell
+                  FilterSelectionMark with "absolute right-1.5 top-1.5", which
+                  is markClass("sheet") character for character, so the two
+                  branches rendered the same element and the tile's check had
+                  quietly acquired a second owner.
+
+                  The delay is the paw's: the check confirms once it is down,
+                  not while it falls. */}
+              <FilterCardMark
+                layout={layout}
+                checked={checked}
+                appearDelay={landing.checkDelay}
+              />
+              <PawWell
+                layout={layout}
+                checked={checked}
+                exitDelay={resetDelay}
+              >
+                <span aria-hidden className="relative flex h-5 items-end">
+                  {celebrating && !shouldReduceMotion ? (
+                    <m.span
+                      key={`shadow-${celebration?.id}`}
+                      className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-muted-foreground"
+                      initial={{ opacity: 0, scaleX: 0.5 }}
+                      animate={{
+                        opacity: [0, 0.15, 0.25 * landing.shadowWeight, 0],
+                        scaleX: [0.5, 0.7, 1.3, 1.1],
+                      }}
+                      transition={{
+                        duration: shadowDuration(landing),
+                        times: impactTimes(
+                          landing.impactDelay,
+                          shadowDuration(landing),
+                        ),
+                        ease: "easeOut",
+                      }}
+                    />
+                  ) : null}
+                  {celebrating && landing.dust && !shouldReduceMotion ? (
+                    <m.span
+                      key={`dust-${celebration?.id}`}
+                      className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full bg-brand-strong"
+                      initial={{ opacity: 0.4, scaleX: 0.7 }}
+                      animate={{ opacity: 0, scaleX: 1.6 }}
+                      transition={{
+                        duration: DUST_DURATION,
+                        delay: landing.impactDelay,
+                        ease: "easeOut",
+                      }}
+                    />
+                  ) : null}
                   <m.span
                     className="flex items-end"
                     initial={false}
-                    animate={
-                      shouldReduceMotion
-                        ? { y: 0, x: 0 }
-                        : drop.animate
-                    }
+                    animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
                     transition={
-                      shouldReduceMotion ? { duration: 0 } : drop.transition
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : { type: "spring", ...landing.hoverSpring }
                     }
                   >
                     <m.span
-                      className="flex origin-bottom items-end"
+                      className="flex items-end"
                       initial={false}
                       animate={
                         shouldReduceMotion
-                          ? { scaleX: 1, scaleY: 1 }
-                          : squash.animate
+                          ? { y: 0, x: 0 }
+                          : drop.animate
                       }
                       transition={
-                        shouldReduceMotion ? { duration: 0 } : squash.transition
+                        shouldReduceMotion ? { duration: 0 } : drop.transition
                       }
                     >
                       <m.span
-                        className="flex items-end"
+                        className="flex origin-bottom items-end"
                         initial={false}
                         animate={
-                          !shouldReduceMotion && !checked && !celebrating
-                            ? // The paw steps away rather than fading; the icon
-                              // itself never leaves the card.
-                              { y: [0, -3, 0] }
-                            : { y: 0 }
+                          shouldReduceMotion
+                            ? { scaleX: 1, scaleY: 1 }
+                            : squash.animate
                         }
                         transition={
-                          shouldReduceMotion
-                            ? { duration: 0 }
-                            : {
-                                duration: LIFT_DURATION,
-                                delay: resetDelay,
-                                ease: "easeOut",
-                              }
+                          shouldReduceMotion ? { duration: 0 } : squash.transition
                         }
                       >
-                        <PawPrint
-                          className={cn(
-                            landing.iconClassName,
-                            "transition-[color,transform,opacity] duration-200",
-                            checked
-                              ? "text-brand-strong"
-                              : "text-muted-foreground",
-                            // A dead option has nothing to stand up for, so
-                            // its paw tips over.
-                            dead && "rotate-[20deg] opacity-80",
-                          )}
-                          strokeWidth={1.75}
-                        />
+                        <m.span
+                          className="flex items-end"
+                          initial={false}
+                          animate={
+                            !shouldReduceMotion && !checked && !celebrating
+                              ? // The paw steps away rather than fading; the icon
+                                // itself never leaves the card.
+                                { y: [0, -3, 0] }
+                              : { y: 0 }
+                          }
+                          transition={
+                            shouldReduceMotion
+                              ? { duration: 0 }
+                              : {
+                                  duration: LIFT_DURATION,
+                                  delay: resetDelay,
+                                  ease: "easeOut",
+                                }
+                          }
+                        >
+                          <PawPrint
+                            className={cn(
+                              landing.iconClassName,
+                              "transition-[color,transform,opacity] duration-200",
+                              checked
+                                ? "text-brand-strong"
+                                : "text-muted-foreground",
+                              // A dead option has nothing to stand up for, so
+                              // its paw tips over.
+                              dead && "rotate-[20deg] opacity-80",
+                            )}
+                            strokeWidth={1.75}
+                          />
+                        </m.span>
                       </m.span>
                     </m.span>
                   </m.span>
-                </m.span>
-              </span>
-              <span className={cn("text-xs", checked && "font-medium")}>
-                {label}
-              </span>
-              <m.span
-                className="text-2xs tabular-nums text-muted-foreground"
-                initial={false}
-                animate={
-                  celebrating && landing.countJolt && !shouldReduceMotion
-                    ? { y: [0, 1, 0] }
-                    : { y: 0 }
-                }
-                transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : celebrating && landing.countJolt
-                      ? {
-                          duration: COUNT_JOLT_DURATION,
-                          delay: landing.impactDelay,
-                          ease: "easeOut",
-                        }
-                      : { duration: 0.16 }
-                }
-              >
-                <CountRoll value={count} />
-              </m.span>
+                </span>
+              </PawWell>
+              {sheet ? (
+                <>
+                  <span className={cn("text-xs", checked && "font-medium")}>
+                    {label}
+                  </span>
+                  {joltedCount("text-2xs tabular-nums text-muted-foreground")}
+                </>
+              ) : (
+                <FilterCardTail
+                  layout={layout}
+                  label={label}
+                  checked={checked}
+                  renderCount={joltedCount}
+                />
+              )}
             </button>
           );
         })}

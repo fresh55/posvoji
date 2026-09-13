@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-import { ChevronRight, House } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -18,7 +18,11 @@ import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { CARD_PHOTO_ASPECT, CARD_PHOTO_SIZES } from "@/lib/card-grid";
+import {
+  CARD_PHOTO_ASPECT,
+  CARD_PHOTO_RADIUS,
+  CARD_PHOTO_SIZES,
+} from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
   ageLabel,
@@ -44,14 +48,10 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // The photo's own frame. Rounded on all four corners and not only the top
 // two, because nothing is drawn around it any more: the card stands on the
 // page ground, and the photo is the one shape on it (see the article below).
-// rounded-xl is 14px on this site's scale, where the bordered surfaces sit at
-// rounded-ui's 10px. A photograph is the largest rounded thing in the grid and
-// wants the larger corner; a 10px corner read as tight even on the 228px card
-// the narrower desktop bands still draw, and the xl card is 309px.
-//
-// The box itself is CARD_PHOTO_ASPECT, which lib/card-grid.ts owns because the
-// grid's loading skeleton and card-paint's height estimate have to agree with
-// it. Square at every width, and the reasoning is over there with it.
+// The corner and the box are CARD_PHOTO_RADIUS and CARD_PHOTO_ASPECT, which
+// lib/card-grid.ts owns because the grid's loading skeleton has to draw both
+// of them and card-paint's height estimate depends on the second. Their
+// reasoning is over there with them.
 //
 // The card's focus ring is drawn here, as an inset ring on a ::after that
 // covers the frame, whenever either of the card's links has keyboard focus.
@@ -83,8 +83,9 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  `relative ${CARD_PHOTO_ASPECT} overflow-hidden rounded-xl bg-muted` +
-  " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-xl" +
+  `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
+  " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
+  ` after:${CARD_PHOTO_RADIUS}` +
   " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
@@ -417,6 +418,15 @@ export function AnimalCard({
             this heading. At the default offset the rule cuts through the
             descenders of a name like "Srečko"; 4px clears them, and it is
             what the shelter line below already underlines at. */}
+        {/* Stays 16px at every width. It was briefly 18px on the large
+            cards, where the 309px photo does dwarf it, and that is a real
+            observation with no safe way to act on it here: at 18px the
+            longest name in the /dev/cards fixture lands exactly on its
+            wrapping point, so the card is one line taller on the Linux
+            runner CI uses than on the machine the snapshot was taken on, and
+            the grid baseline fails by 28px. Reserving the second line would
+            fix the flake and is the thing PR #132 measured and rejected,
+            because it costs every card a row of pixels for three animals. */}
         <h3 id={headingId} className="line-clamp-2 font-semibold underline-offset-4">
           {animal.name ?? messages.unnamed}
         </h3>
@@ -503,14 +513,20 @@ export function AnimalCard({
           // distance under the meta line at every pointer, and the target's
           // extra height falls to the card's bottom edge, where on a card
           // with no border it is only the gap before the next row.
-          className="mt-auto flex w-full items-start gap-1 pt-1.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
+          className="mt-auto flex w-full items-start pt-1.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
         >
-          {/* House and not MapPin. The pin means "place" everywhere else on
+          {/* No mark at all. This used to carry a House, and the argument for
+              it was that the pin means "place" everywhere else on the site
+              while this line means "who has this animal". That argument is
+              about which icon, and the better answer turned out to be
+              neither: sixty of them run down a page whose whole point is the
+              photographs, they repeat a thing the name already says, and the
+              line is the quietest on the card by design. The reasoning that
+              chose the house over the pin, kept in case this comes back:
+
+              House and not MapPin. The pin means "place" everywhere else on
               the site (shelter-card.tsx draws it beside a city), and this
-              line is not where the animal is, it is who is keeping it.
-              mt-0.5 puts the 12px glyph on the 16px line's centre, which
-              items-start alone no longer does. */}
-          <House className="mt-0.5 size-3 shrink-0" strokeWidth={1.75} aria-hidden />
+              line is not where the animal is, it is who is keeping it. */}
           {/* The link's own text is its accessible name, the way the shelter
               card's is. An aria-label here could only repeat the name with
               words around it, and WCAG 2.5.3 asks that what is spoken start
@@ -519,8 +535,9 @@ export function AnimalCard({
             {shelterChipLabel(animal.shelter.name)}
           </span>
           {/* The chevron appears when a pointer or the keyboard is already
-              on the card. At rest the icon and the muted line are enough,
-              and on touch, where hover never fires, the whole row is the
+              on the card. At rest the muted line is enough on its own, now
+              that the house that used to sit beside it is gone, and on
+              touch, where hover never fires, the whole row is the
               affordance. */}
           <ChevronRight
             aria-hidden

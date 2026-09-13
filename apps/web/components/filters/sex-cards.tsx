@@ -4,9 +4,14 @@ import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
   FilterCardHoverLift,
+  FilterCardIconWell,
+  FilterCardMark,
+  FilterCardTail,
   FilterSelectionMark,
+  filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
   useFilterCardHover,
@@ -129,11 +134,13 @@ export function SexCards({
   counts,
   selected,
   onToggle,
+  layout = "sidebar",
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
+  layout?: FilterCardLayout;
 }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -162,8 +169,16 @@ export function SexCards({
           onToggle(changed);
         }}
         aria-label={groupLabel("sex", locale)}
+        // The sheet keeps the two tiles side by side, where a drawer three
+        // columns wide has the room for them. The sidebar stacks them as rows
+        // for the reason filter-card.tsx records: one column of rows reads as
+        // a list, and two outlined boxes in it read as a form.
+        orientation={layout === "sheet" ? "horizontal" : "vertical"}
         spacing={1.5}
-        className="grid w-full grid-cols-2 items-stretch"
+        className={cn(
+          "w-full items-stretch",
+          layout === "sheet" && "grid grid-cols-2",
+        )}
       >
         {options.map(({ value, label }) => {
           const count = counts.get(value) ?? 0;
@@ -173,6 +188,29 @@ export function SexCards({
 
           const celebrating = celebration?.value === value && checked;
           const hovered = hoveredSex === value;
+
+          // The glyph and its two gestures are the same drawing on both
+          // surfaces; only what stands around it changes.
+          const glyph = (
+            <FilterCardHoverLift hovered={hovered}>
+              <m.span
+                className="flex items-center justify-center"
+                initial={false}
+                animate={
+                  !shouldReduceMotion && celebrating
+                    ? { scale: [1, 1.1, 1] }
+                    : { scale: 1 }
+                }
+                transition={
+                  shouldReduceMotion
+                    ? { duration: 0 }
+                    : { duration: POP_DURATION, ease: "easeOut" }
+                }
+              >
+                <SexGlyph paths={paths} checked={checked} />
+              </m.span>
+            </FilterCardHoverLift>
+          );
 
           return (
             <ToggleGroupItem
@@ -184,39 +222,49 @@ export function SexCards({
               className={filterCardVariants({
                 selected: checked,
                 className:
-                  "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
+                  layout === "sheet"
+                    ? "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center"
+                    : cn("flex", filterCardLayoutClass(layout)),
               })}
             >
-              <FilterSelectionMark
-                checked={checked}
-                className="absolute right-2 top-2"
-              />
-
-              <FilterCardHoverLift hovered={hovered}>
-                <m.span
-                  className="flex items-center justify-center"
-                  initial={false}
-                  animate={
-                    !shouldReduceMotion && celebrating
-                      ? { scale: [1, 1.1, 1] }
-                      : { scale: 1 }
-                  }
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : { duration: POP_DURATION, ease: "easeOut" }
-                  }
-                >
-                  <SexGlyph paths={paths} checked={checked} />
-                </m.span>
-              </FilterCardHoverLift>
-              <span className={cn("text-xs", checked && "font-medium")}>
-                {label}
-              </span>
-              <CountRoll
-                value={count}
-                className="text-2xs tabular-nums text-muted-foreground"
-              />
+              {layout === "sheet" ? (
+                <>
+                  <FilterSelectionMark
+                    checked={checked}
+                    className="absolute right-2 top-2"
+                  />
+                  {glyph}
+                  <span className={cn("text-xs", checked && "font-medium")}>
+                    {label}
+                  </span>
+                  <CountRoll
+                    value={count}
+                    className="text-2xs tabular-nums text-muted-foreground"
+                  />
+                </>
+              ) : (
+                <>
+                  {/* No appearDelay: the draw is the confirmation here and it
+                      starts at once, unlike the paw landing or the plant
+                      growing, which the check waits out. */}
+                  <FilterCardMark
+                    layout={layout}
+                    checked={checked}
+                    appearDelay={0}
+                  />
+                  <FilterCardIconWell layout={layout} checked={checked}>
+                    {glyph}
+                  </FilterCardIconWell>
+                  <FilterCardTail
+                    layout={layout}
+                    label={label}
+                    checked={checked}
+                    renderCount={(className) => (
+                      <CountRoll value={count} className={className} />
+                    )}
+                  />
+                </>
+              )}
             </ToggleGroupItem>
           );
         })}

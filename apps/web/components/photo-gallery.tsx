@@ -162,25 +162,30 @@ const DEFAULT_WRAPPER_CLASS =
 // the row disappears. The ring is drawn in black at low alpha, so it reads as
 // the dot's own edge on a light photo and disappears into a dark one, where the
 // white dots never needed help.
+// The edge on its own, because both surfaces draw it and only one of them
+// draws the drop shadow behind it. Splitting the two is what lets the card's
+// dot say "the ring, without the lift" instead of repeating the value.
+const DOT_EDGE = "shadow-[0_0_0_1px_rgba(0,0,0,0.28)]";
+
 const DOT_CLASS =
   "size-1.5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)] transition-colors";
 
 // What a grid card draws instead, and why it can draw less.
 //
 // DOT_CLASS above makes every dot carry its own ground: a ring and a two-part
-// shadow, so one dot survives whatever colour is under it. That is the right
-// answer for the animal page and the dialog, where the row stands on one large
-// photograph and there is nothing else to put it on. On a card it is five
-// shadows doing one job, and five hairline rings on a 24px-wide row read as
-// grit rather than as a marker.
+// drop shadow, so one dot survives whatever colour is under it. That is the
+// right answer for the animal page and the dialog, where the row stands on one
+// large photograph and there is nothing else to put it on. On a card the drop
+// shadow is five lifts doing one job; the ring is not, and it stays (see the
+// note on CARD_DOTS below, which has the numbers).
 //
 // So the card puts the ground under the row once, as a gradient on the row's
-// own element, and the dots on top of it are flat. h-12 is the strip the
-// gradient occupies: shorter and the top of it is a visible edge across the
-// photograph, taller and it starts dimming the animal rather than the last few
-// pixels under it. black/30 at the bottom is enough to carry a white dot over a
-// white cat on a white blanket; by the midpoint it is black/10, which is below
-// what the eye picks out as a band on a bright photo.
+// own element, and the dots on top of it keep their edge and lose their lift.
+// h-12 is the strip the gradient occupies: shorter and the top of it is a
+// visible edge across the photograph, taller and it starts dimming the animal
+// rather than the last few pixels under it. It reaches black/30 at the bottom
+// and black/10 by the midpoint, which is below what the eye picks out as a band
+// on a bright photo.
 //
 // z-0 and not the row's usual z-10. The dots never overlapped the chevrons, but
 // a full-width strip does, and at z-10 it would be painted after them (it comes
@@ -192,9 +197,21 @@ const DOT_CLASS =
 // is dark whatever the theme is, so a dot that follows the theme would be
 // stone-950 on near-black in the dark one. The scrim decided the colour under
 // the dots, which is the whole point of it.
+// The scrim carries the row, and each dot still carries its own edge.
+//
+// The edge looked like five shadows doing one job and the scrim was supposed
+// to replace it. Measured, it cannot. A white dot on a white studio photo is
+// 1.09:1 against what is under it; the scrim at black/30 takes that to 1.52:1
+// and even black/60 only reaches 2.53:1, which is a strip dark enough to read
+// as a bar across the picture and still not enough to see a dot through. The
+// scrim earns its place on the mid tones, where it moves 3.67:1 to 4.87:1, and
+// the 1px edge is what makes the dot a shape on the worst photo in the set.
+//
+// Both, then. The measurement is in the session notes; the short version is
+// that neither alone works and together they cost one inset ring.
 const CARD_DOTS = {
   container: `${CARD_DOTS_CLASS} bottom-0 z-0 h-12 items-end pb-1.5 bg-linear-to-t from-black/30 via-black/10 to-transparent`,
-  dot: "size-1.5 rounded-full transition-colors",
+  dot: `size-1.5 rounded-full ${DOT_EDGE} transition-colors`,
   current: "bg-white",
   rest: "bg-white/55",
 } as const;

@@ -19,12 +19,20 @@
 // is room the picture takes it. The floor cannot simply be raised for every
 // width: auto-fill drops a column the moment the floor stops fitting, and a
 // 15rem floor at lg would leave two enormous cards beside the sidebar. xl is
-// where the page's max-w-7xl has already stopped it growing, so the count
-// settles at three and stays there however wide the screen is.
+// where the page frame stops growing at 80rem, so the count settles at three.
+//
+// From 2xl the frame itself grows to 100rem (--page-max, set by the results
+// page in site-shell.tsx) and the floor goes up with it, to 18rem. Both halves
+// are needed and neither works alone: a wider frame at the 15rem floor packs
+// five 243px columns into the new room, which is smaller cards and more of
+// them, the opposite of the point. 18rem is the floor that makes the answer
+// four, and four is what keeps the card at 308px, the size it already is at
+// xl. So a 1920 screen draws the same card as a 1440 one, and draws one more.
 export const CARD_GRID =
   "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
-  " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]";
+  " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" +
+  " 2xl:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]";
 
 // How wide a card's photo actually renders, which is what decides the rung a
 // browser downloads. Derived from CARD_GRID above and from the page's own
@@ -68,7 +76,9 @@ export const CARD_GRID =
 // screen would move up, and a 164px thumbnail on a phone connection is the one
 // place this trade is not worth making.
 //
-// The page is `max-w-7xl px-gutter`, --gutter is 1rem below sm, 1.5rem from sm
+// The page is `max-w-(--page-max) px-gutter` and --page-max is 80rem except on
+// the results page from 2xl, where CARD_GRID_PAGE_MAX above takes it to 100rem.
+// --gutter is 1rem below sm, 1.5rem from sm
 // and 2rem from lg (globals.css), and the grid's own gap is 1rem throughout.
 // From lg the results section is a 14rem sidebar plus a 2rem column gap ahead
 // of the grid. Columns are two fixed ones below sm and auto-fill minmax(13rem)
@@ -82,8 +92,17 @@ export const CARD_GRID =
 //   1024-1199 3 cols beside the sidebar, 2rem gutter:
 //                                  (100vw - 64 - 256 - 32)/3
 //   1200-1279 4 cols beside the sidebar                    →  208-228px
-//   1280+    the xl floor takes over: 3 cols of a grid that
-//           max-w-7xl has capped at 960px                  →  309px
+//   1280-1535 the xl floor takes over: 3 cols of a grid that
+//           an 80rem frame has capped at 960px             →  309px
+//   1536+    the 2xl floor and a 100rem frame: 4 cols of a
+//           grid that is 1216px at the breakpoint and
+//           1280px once the frame caps                     →  292-308px
+//
+// That last band clears its floor by 16px and no more: four 18rem columns and
+// three 1rem gaps need 1200 of the 1216 the breakpoint leaves. Anything that
+// moves the sidebar's 14rem, the 2rem gutter or the grid's own gap at 2xl
+// spends that slack and drops the row to three columns of 395px, which the
+// 412px band below would then under-declare by a quarter.
 //
 // Every band from 704 up is then multiplied by 4/3 for the square box, which is
 // what turns "/3" into "* 4 / 9" and 232 into 309.
@@ -113,6 +132,23 @@ export const CARD_GRID =
 // half of the bill.
 export const CARD_PHOTO_ASPECT = "aspect-square";
 
+// The corner, here for the same reason the aspect is: the frame draws it and
+// the skeleton has to match, and when it was a literal in each of them the two
+// silently disagreed the moment one moved. 18px on this site's scale, against
+// rounded-ui's 10px for the bordered surfaces. It was 14px while the picture
+// was 228px wide and read timid at 309px, which is a photograph's licence to
+// take the larger corner rather than a licence the rest of the page has.
+export const CARD_PHOTO_RADIUS = "rounded-2xl";
+
+// What the results page hands SiteShell to widen the frame it centres on.
+//
+// It lives here and not at the shell, because the number is only right in
+// company: 100rem is the frame that leaves 1280px of grid after the gutters and
+// the sidebar, which is four 308px columns at the 18rem floor above, which is
+// what the last band of CARD_PHOTO_SIZES is declared for. Those three move
+// together or not at all, so they are read from one file.
+export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
+
 export const CARD_PHOTO_SIZES =
   "(max-width: 639px) calc(50vw - 24px)," +
   " (max-width: 703px) calc(50vw - 32px)," +
@@ -121,3 +157,8 @@ export const CARD_PHOTO_SIZES =
   " (max-width: 1199px) calc((100vw - 352px) * 4 / 9)," +
   " (max-width: 1279px) 304px," +
   " 412px";
+// The last band covers xl and 2xl together. At xl the card is 309px and 412 is
+// exactly its 4/3; from 2xl it is 292px at the breakpoint and 308px once the
+// frame has capped, so 412 over-declares by at most 6% at the narrow end of
+// that range. Over-declaring costs a fraction of a rung and never softness,
+// and a seventh band to save it would be a band nobody can check by eye.

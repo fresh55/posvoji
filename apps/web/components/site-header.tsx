@@ -32,7 +32,7 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
        with the main below (site-shell.tsx). It used to bleed out of the
        frame instead, and the rule stopped where the frame did. */
     <header className="border-b">
-    <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-gutter py-4">
+    <div className="relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-4 px-gutter py-4">
       {/* The first focusable thing in the document, before the brand. Every
           navigation on this site is a document load, so the chrome's tab
           stops are paid again on every page a keyboard visitor opens rather

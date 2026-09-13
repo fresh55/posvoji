@@ -573,9 +573,16 @@ describe("photo gallery controls", () => {
     expect(dots?.className).toContain("z-0");
     expect(dots?.className).not.toContain("z-10");
 
-    // The ground is under the row once, so no dot carries its own any more.
+    // Each dot keeps its own 1px edge on top of the scrim, which is not
+    // belt and braces but the measurement: a white dot on a white studio
+    // photo is 1.09:1 against what is under it, the scrim at black/30 takes
+    // that to 1.52:1, and a scrim heavy enough to carry it alone would read
+    // as a bar across the picture. The scrim earns its place on the mid
+    // tones, 3.67:1 to 4.87:1, and the edge is what draws the shape on the
+    // worst photos in the set. An earlier version of this test asserted the
+    // opposite; the numbers, not taste, are what changed it.
     for (const dot of Array.from(dots?.children ?? [])) {
-      expect(dot.className).not.toContain("shadow-");
+      expect(dot.className).toContain("shadow-[0_0_0_1px_rgba(0,0,0,0.28)]");
       expect(dot.className).not.toContain("ring-");
     }
     // White in both themes: the scrim is dark whatever the theme is, so a dot

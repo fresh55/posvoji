@@ -591,3 +591,33 @@ describe("mobile filter hardening", () => {
     expect(row?.className).toContain("overflow-x-auto");
   });
 });
+
+describe("the sheet's surfaces", () => {
+  // The sidebar took the sex and size sections onto the row treatment the
+  // rest of that column already wore. The sheet did not come with them: it
+  // is three columns of a drawer with the room for tiles, and a tile is what
+  // a thumb aims at there. One prop apart, same components, so this is the
+  // half of the change that has to stay put.
+  it("keeps the sex and size options as tiles", async () => {
+    renderSheet({
+      groups: [
+        { group: "sex", options: [{ value: "male", label: "Male" }] },
+        { group: "size", options: [{ value: "small", label: "Small" }] },
+      ],
+      counts: {
+        ...emptyCounts,
+        sex: new Map([["male", 1]]),
+        size: new Map([["small", 1]]),
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const dialog = await screen.findByRole("dialog");
+
+    for (const name of [/^Male, /, /^Small, /]) {
+      const option = within(dialog).getByRole("button", { name });
+      expect(option.className).toContain("4.75rem");
+      expect(option.className).not.toContain("border-transparent");
+    }
+  });
+});

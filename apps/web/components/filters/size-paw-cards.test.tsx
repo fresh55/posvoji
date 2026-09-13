@@ -18,6 +18,7 @@ function renderCards(overrides: {
   selected?: string[];
   onToggle?: (value: string) => void;
   isResetting?: boolean;
+  layout?: "sidebar" | "sheet";
 } = {}) {
   const onToggle = overrides.onToggle ?? vi.fn();
   render(
@@ -28,6 +29,7 @@ function renderCards(overrides: {
         selected={overrides.selected ?? []}
         onToggle={onToggle}
         isResetting={overrides.isResetting}
+        layout={overrides.layout}
       />
     </I18nProvider>,
   );
@@ -169,8 +171,8 @@ function pointer(
 }
 
 describe("SizePawCards watermark", () => {
-  it("gives every card an aria-hidden watermark paw that does not carry the card's label", () => {
-    renderCards();
+  it("gives every sheet tile an aria-hidden watermark paw that does not carry the card's label", () => {
+    renderCards({ layout: "sheet" });
 
     for (const { label } of options) {
       const button = screen.getByRole("button", {
@@ -184,6 +186,40 @@ describe("SizePawCards watermark", () => {
       expect(host?.textContent ?? "").not.toContain(label);
     }
   });
+
+  // The watermark is a stamp on a card ground, and a sidebar row has no
+  // ground: it would land behind the count as a smudge rather than in an
+  // empty corner. The row says "chosen" with the green fill and the check,
+  // like every other row in that column.
+  it("leaves the watermark off a sidebar row", () => {
+    renderCards();
+
+    for (const { label } of options) {
+      const button = screen.getByRole("button", {
+        name: new RegExp(`^${label}, `),
+      });
+      expect(button.querySelector("svg.size-12")).toBeNull();
+      // The paw itself stays. Quieting the surface never takes the drawing.
+      expect(button.querySelector("svg.lucide-paw-print")).not.toBeNull();
+    }
+  });
+
+  // The row treatment filter-card.tsx describes: a transparent border, no
+  // ground and no shadow at rest, and the 44px line the column keeps.
+  it("draws a sidebar row on the shared row surface", () => {
+    renderCards();
+
+    for (const { label } of options) {
+      const button = screen.getByRole("button", {
+        name: new RegExp(`^${label}, `),
+      });
+      expect(button.className).toContain("border-transparent");
+      expect(button.className).toContain("bg-transparent");
+      expect(button.className).toContain("shadow-none");
+      expect(button.className).toContain("h-11");
+      expect(button.className).not.toContain("min-h-[4.75rem]");
+    }
+  });
 });
 
 describe("SizePawCards sleeping paw", () => {
@@ -194,9 +230,9 @@ describe("SizePawCards sleeping paw", () => {
     const deadButton = screen.getByRole("button", {
       name: new RegExp(`^${options[0].label}, `),
     });
-    const deadIcon = deadButton.querySelector(
-      "svg.lucide-paw-print:not(.size-12)",
-    );
+    // These render at the sidebar default, where there is no watermark paw to
+    // tell the real one apart from, so the selector says only what it means.
+    const deadIcon = deadButton.querySelector("svg.lucide-paw-print");
     expect(deadIcon?.getAttribute("class")).toContain("rotate-[20deg]");
     expect(deadIcon?.getAttribute("class")).toContain("opacity-80");
   });
@@ -207,9 +243,7 @@ describe("SizePawCards sleeping paw", () => {
     const liveButton = screen.getByRole("button", {
       name: new RegExp(`^${options[0].label}, `),
     });
-    const liveIcon = liveButton.querySelector(
-      "svg.lucide-paw-print:not(.size-12)",
-    );
+    const liveIcon = liveButton.querySelector("svg.lucide-paw-print");
     expect(liveIcon?.getAttribute("class")).not.toContain("rotate-[20deg]");
   });
 });

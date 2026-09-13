@@ -43,13 +43,19 @@ export function isDeadOption(count: number, checked: boolean): boolean {
  * What takes a sidebar row off the tile surface.
  *
  * The sheet draws tiles and the sidebar draws rows, and both wore the same
- * border, shadow and ground. In a column that already holds the map plate and
- * the sex and size tiles, three or four more bordered boxes per section made
- * the panel read as a form: on the home page at 1440 the first screen was
- * seventy-odd outlined rectangles. A row is a line in a list. It keeps the
- * icon, the drawn check and the count, and it keeps the hover ground and the
- * green fill when picked, because those are states rather than furniture;
- * only the box at rest goes.
+ * border, shadow and ground. In a column that already holds the map plate,
+ * three or four more bordered boxes per section made the panel read as a
+ * form: on the home page at 1440 the first screen was seventy-odd outlined
+ * rectangles. A row is a line in a list. It keeps the icon, the drawn check
+ * and the count, and it keeps the hover ground and the green fill when
+ * picked, because those are states rather than furniture; only the box at
+ * rest goes.
+ *
+ * Sex and size were the last two sections holding out as tiles, which left
+ * the column saying "press me" in three different surfaces beside a grid of
+ * borderless cards. They are rows here now and tiles in the sheet, like
+ * everything else. What is left in the sidebar is rows and the map plate, and
+ * the plate stays because it frames a picture.
  *
  * Border transparent rather than none, so the row keeps its 1px and the text
  * does not shift when a picked row draws its fill or a focused one its ring.

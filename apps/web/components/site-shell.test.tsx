@@ -82,8 +82,12 @@ describe("the site shell", () => {
     const column = container.firstElementChild;
     expect(column?.className).toBe("flex min-h-dvh flex-col");
     const main = container.querySelector("main");
+    // The frame's width is --page-max rather than a literal, because the
+    // header band and the footer band centre on the same number and a page
+    // that wants more room (the results grid, from 2xl) has to move all
+    // three at once. The default lives in globals.css.
     expect(main?.parentElement?.className).toBe(
-      "mx-auto flex w-full max-w-7xl flex-1 flex-col px-gutter",
+      "mx-auto flex w-full max-w-(--page-max) flex-1 flex-col px-gutter",
     );
     // BackToTop's slot is inside the frame with the main, not out in the
     // column: a page's after-main is part of the page.

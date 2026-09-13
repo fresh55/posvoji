@@ -33,7 +33,7 @@ export function PortalShell({
             and the footer band under it. */}
         <div className="flex min-h-dvh flex-col">
           <header className="border-b">
-          <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-gutter py-4">
+          <div className="relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-3 px-gutter py-4">
             {/* The public header's bypass, spelled again here because this
                 header is hand-rolled and does not render SiteHeader. Fewer
                 stops to skip than on the public site, but the list is a long
@@ -77,7 +77,12 @@ export function PortalShell({
           </div>
           </header>
 
-          <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-gutter">
+          {/* The same --page-max the site shell centres on, because the
+              SiteFooter below is the site's own and reads it. While the
+              portal wrote 80rem as a literal the two agreed only by
+              coincidence, and the first page to widen the token would have
+              left this header and main behind their own footer's rule. */}
+          <div className="mx-auto flex w-full max-w-(--page-max) flex-1 flex-col px-gutter">
             {/* The same id the public pages use, so there is one name for
                 "the content" across the whole export. tabIndex so focus moves
                 here rather than only scrolling the page. */}

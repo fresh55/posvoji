@@ -152,13 +152,12 @@ export function ShelterDetailPage({
         en: `/en/shelters/${shelter.id}`,
       }}
       mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10"
-      // The longest document on the site. This shelter's grid is uncapped, and
-      // the largest of them holds 186 cards: two to a row at the 300 to 330px
-      // a row measured in grid-rendering.ts, that is some 28,000px and 186 tab
-      // stops between the top of the page and the footer, which is the only
-      // way to any other page at phone width. The home grid caps itself at 60
-      // with a load-more (grid-rendering.ts) and the register carries this
-      // control already (shelters-page.tsx); this page had neither.
+      // A long document. The grid below draws in the home grid's steps
+      // (use-incremental-grid.ts) and settles at TARGET_ROWS, which at the 300
+      // to 330px a row measures is still some 12,000px between the top of the
+      // page and the footer, which is the only way to any other page at phone
+      // width. The home grid and the register carry this control already
+      // (shelters-page.tsx); this page had it last.
       //
       // A client component under a server one, the same as on the register: it
       // reads scroll position and measures the footer, so mounting it here

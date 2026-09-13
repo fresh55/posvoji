@@ -294,10 +294,21 @@ const sl = {
   // and that one is neutral.
   muniPromptTitle: "Si našel žival?",
   muniTab: "Najdena žival",
+  // The field's name, said in full, and the hint drawn inside it. They are
+  // two keys because the box is 196px wide inside its padding on a 360px
+  // phone and the full wording is clipped there, which leaves the reader
+  // guessing at the half of it that decides what to type. The hint keeps both
+  // things the field takes and drops the words that only make them formal;
+  // English says "town" for the same reason the shelter picker's own field
+  // does, which is that a postal town is what most people can name.
   muniSearch: "Občina ali poštna številka …",
+  muniSearchPlaceholder: "Občina ali pošta",
   muniHere: "Uporabi mojo lokacijo",
-  // The field's placeholder while the device's position is the answer, so
-  // the pressed arrow beside it has a word to go with it.
+  // Two things at once: the field's placeholder while the device's position
+  // is the answer, so the pressed arrow beside it has a word to go with it,
+  // and the location button's own visible label on a phone. The button is an
+  // arrow with a tooltip, and a tooltip is a pointer with a mouse on it: on a
+  // phone the one control that fills this field without typing was unnamed.
   muniHereActive: "Moja lokacija",
   retryLocation: "Poskusi znova",
   muniPostcodeInstead:
@@ -647,6 +658,7 @@ const en: Messages = {
   muniPromptTitle: "Found an animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
+  muniSearchPlaceholder: "Town or postcode",
   muniHere: "Use my location",
   muniHereActive: "My location",
   retryLocation: "Try again",

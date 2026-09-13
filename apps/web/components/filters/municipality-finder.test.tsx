@@ -224,6 +224,35 @@ describe("MunicipalityFinder empty state", () => {
     expect(screen.queryByText("Kje si našel žival?")).toBeNull();
   });
 
+  it("keeps the hint short inside the box and the name on the field", () => {
+    renderFinder();
+    const search = screen.getByRole("combobox");
+
+    // The box is 196px wide inside its padding on a 360px phone, which the
+    // full name of the field does not fit in; it is spoken instead.
+    expect(search.getAttribute("placeholder")).toBe("Občina ali pošta");
+    expect(search.getAttribute("aria-label")).toBe(
+      "Občina ali poštna številka …",
+    );
+  });
+
+  it("names the location button in the field while the box is empty", () => {
+    renderFinder();
+
+    // A tooltip opens on hover and on focus, and a thumb does neither.
+    const locate = screen.getByRole("button", { name: "Uporabi mojo lokacijo" });
+    expect(locate.textContent).toContain("Moja lokacija");
+
+    // Once something is typed the clear X is beside it and the two together
+    // would leave the field no room for what was typed.
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Kop" } });
+
+    expect(
+      screen.getByRole("button", { name: "Uporabi mojo lokacijo" }).textContent,
+    ).not.toContain("Moja lokacija");
+    expect(screen.getByRole("button", { name: "Počisti iskanje" })).toBeTruthy();
+  });
+
   it("announces the answer through a live region that was already mounted", () => {
     renderFinder();
 

@@ -387,6 +387,14 @@ export function MunicipalityFinder({
   // send it next.
   const clearQuery = () => askFor("");
 
+  // Whether the location button draws its name beside the arrow. Only below
+  // lg, and only while there is nothing in the box: once something is typed
+  // the clear X is beside it and the two of them together would leave the
+  // field no room to show what was typed. It also stands down once the fix is
+  // the answer, because the placeholder then says "Moja lokacija" in the
+  // field itself and the button would be the same two words again.
+  const labelledLocation = query === "" && state.status !== "on";
+
   return (
     <div>
       <div>
@@ -461,8 +469,13 @@ export function MunicipalityFinder({
             }}
             // While the device's position is the answer the empty field says
             // so, in the placeholder's weight: a state, not something typed.
+            // Otherwise the short hint, because the full name of the field
+            // does not fit inside it on a phone; the name itself is spoken
+            // from aria-label below, where there is no width to run out of.
             placeholder={
-              state.status === "on" ? messages.muniHereActive : messages.muniSearch
+              state.status === "on"
+                ? messages.muniHereActive
+                : messages.muniSearchPlaceholder
             }
             aria-label={messages.muniSearch}
             // 44px tall below lg, the touch target the shelter picker's own
@@ -474,8 +487,13 @@ export function MunicipalityFinder({
             //
             // Room on the right for the two trailing controls, and Chrome's
             // own clear button on a search field switched off: it drew a
-            // second X under ours.
-            className="h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none"
+            // second X under ours. While the location button carries its
+            // name below lg it is wider than the two icons together, and the
+            // hint has to stop before it rather than run under it.
+            className={cn(
+              "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none",
+              labelledLocation && "max-lg:pr-36",
+            )}
           />
           <p id={keyboardHintId} className="sr-only">
             {messages.muniKeyboard}
@@ -484,10 +502,13 @@ export function MunicipalityFinder({
               reaching for: clear what was typed, then ask the device instead.
               The location button lives in the field because it is another way
               of filling it and not a separate step; as a text link under the
-              box it read as a footnote. Icon only, named for screen readers
-              and in a tooltip: the arrow is the glyph every map app uses for
-              the same thing, and the pressed state plus the placeholder say
-              when it is the answer. Below lg each is its own 44px target. */}
+              box it read as a footnote. Named for screen readers and in a
+              tooltip, and below lg in the button itself while the box is
+              empty: a tooltip opens on hover and on focus, and a thumb does
+              neither, so on the device this page is most often opened on the
+              arrow was a control with no name at all. The pressed state and
+              the placeholder say when it is the answer. Below lg each is its
+              own 44px target. */}
           <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
             {query !== "" && (
               <Button
@@ -527,7 +548,9 @@ export function MunicipalityFinder({
                       state.status === "locating" ? messages.locating : messages.muniHere
                     }
                     className={cn(
-                      "max-lg:size-11",
+                      labelledLocation
+                        ? "max-lg:h-11 max-lg:w-auto max-lg:gap-1.5 max-lg:px-3"
+                        : "max-lg:size-11",
                       state.status === "on"
                         ? "bg-muted text-foreground"
                         : "text-muted-foreground",
@@ -537,6 +560,15 @@ export function MunicipalityFinder({
                       <LoaderCircle className="size-4 animate-spin" aria-hidden />
                     ) : (
                       <Navigation className="size-4" aria-hidden />
+                    )}
+                    {/* The name, drawn where a tooltip cannot be reached.
+                        It stays the same two words while the fix is being
+                        found, so the control does not change width under
+                        the thumb that has just pressed it. */}
+                    {labelledLocation && (
+                      <span className="lg:hidden">
+                        {messages.muniHereActive}
+                      </span>
                     )}
                   </Button>
                 </TooltipTrigger>

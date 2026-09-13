@@ -3,25 +3,26 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HOME_CAT_FRAMING, HomeCat } from "./home-cat";
-import { SRECKO_PATHS } from "@/lib/srecko";
 
 // The model is covered by cat-model.test.tsx. What is this page's own is
-// the framing it asks for, the link at his side, and that nothing else is
-// written next to him.
+// the framing and the start it asks for, and that the figure carries
+// nothing else: his link lives in the hero's meta row (site-page.tsx).
 vi.mock("./cat-model", () => ({
-  CatModel: ({ framing }: { framing: { poster: string } }) => <div data-testid="cat" data-poster={framing.poster} />,
+  CatModel: ({ framing, startAfterLoad }: { framing: { poster: string }; startAfterLoad?: boolean }) => (
+    <div data-testid="cat" data-poster={framing.poster} data-after-load={String(startAfterLoad)} />
+  ),
 }));
 
 afterEach(cleanup);
 
 describe("the home cat", () => {
-  it.each(["sl", "en"] as const)("gives him his own poster and only the memorial link (%s)", (locale) => {
-    const { container } = render(<HomeCat locale={locale} />);
-    expect(container.querySelector('[data-testid="cat"]')?.getAttribute("data-poster")).toBe(HOME_CAT_FRAMING.poster);
-    const caption = container.querySelector("figcaption")!;
-    expect(caption.querySelector("a")?.getAttribute("href")).toBe(SRECKO_PATHS[locale]);
-    expect(caption.querySelector("p")).toBeNull();
-    expect(caption.textContent).toBe(locale === "sl" ? "Spoznajte Srečka" : "Meet Srečko");
+  it("asks for his own poster and waits for the page before fetching him", () => {
+    const { container } = render(<HomeCat locale="sl" />);
+    const cat = container.querySelector('[data-testid="cat"]')!;
+    expect(cat.getAttribute("data-poster")).toBe(HOME_CAT_FRAMING.poster);
+    expect(cat.getAttribute("data-after-load")).toBe("true");
+    expect(container.querySelector("figcaption")).toBeNull();
+    expect(container.querySelector("a")).toBeNull();
   });
 
   it("stays out of the phone hero and out of the row's flow", () => {

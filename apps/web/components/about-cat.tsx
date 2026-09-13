@@ -1,13 +1,7 @@
 import { CatModel } from "@/components/cat-model";
+import { SreckoLink } from "@/components/srecko-link";
 import type { Locale } from "@/lib/i18n";
-import { MUTED_LINK } from "@/lib/link-styles";
-import { SRECKO_PATHS, SRECKO_TEXT } from "@/lib/srecko";
-import { cn } from "@/lib/utils";
-
-const copy = {
-  sl: { story: "Spoznajte Srečka" },
-  en: { story: "Meet Srečko" },
-} satisfies Record<Locale, Record<string, string>>;
+import { SRECKO_TEXT } from "@/lib/srecko";
 
 /**
  * The cat on the about page: the shared model under his introduction.
@@ -17,7 +11,6 @@ const copy = {
  * below the fold on this page and is often never fetched at all.
  */
 export function AboutCat({ locale }: { locale: Locale }) {
-  const text = copy[locale];
   const memorial = SRECKO_TEXT[locale];
 
   return (
@@ -29,9 +22,7 @@ export function AboutCat({ locale }: { locale: Locale }) {
       />
       <figcaption className="mx-auto mt-3 max-w-xs space-y-2 text-center text-sm leading-relaxed text-muted-foreground">
         <p>{memorial.intro}</p>
-        <a href={SRECKO_PATHS[locale]} className={cn(MUTED_LINK, "rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4")}>
-          {text.story}
-        </a>
+        <SreckoLink locale={locale} />
       </figcaption>
     </figure>
   );

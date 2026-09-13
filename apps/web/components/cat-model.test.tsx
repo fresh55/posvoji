@@ -118,9 +118,9 @@ describe("the cat model", () => {
   });
 
   it("frames the camera and the poster as one choice", async () => {
-    const framing = { orbit: "0deg 80deg 1m", target: "0m 0.2m 0m", poster: "/models/our-cat/poster-home.webp" };
+    const framing = { orbit: "0deg 80deg 1m", target: "0m 0.2m 0m", poster: "/test-poster.webp" };
     render(<CatModel sizes="100vw" locale="en" framing={framing} />);
-    expect(screen.getByRole("img").getAttribute("src")).toContain("poster-home.webp");
+    expect(screen.getByRole("img").getAttribute("src")).toContain("test-poster.webp");
     const viewer = await loadViewer();
     expect(viewer.getAttribute("camera-orbit")).toBe(framing.orbit);
     expect(viewer.getAttribute("camera-target")).toBe(framing.target);
@@ -171,7 +171,7 @@ describe("the cat model", () => {
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
     expect(viewer.paused).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("still image");
+    expect(screen.getByRole("status").textContent).toContain("unavailable");
     expect(screen.getByRole("img").getAttribute("alt")).toContain("white cat");
     expect(screen.queryByRole("button")).toBeNull();
   });

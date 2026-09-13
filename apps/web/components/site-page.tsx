@@ -4,6 +4,7 @@ import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
 import { HomeCat } from "@/components/home-cat";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
+import { SreckoLink } from "@/components/srecko-link";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
@@ -108,6 +109,10 @@ export function SitePage({ locale }: { locale: Locale }) {
             </p>
           )}
           {hasLookup && <FoundAnimalButton />}
+          {/* The cat's link, at the row's right end so it stands beside him
+              (home-cat.tsx says why it is here and not under him). Hidden
+              with him below md. */}
+          <SreckoLink locale={locale} className="ml-auto hidden md:inline-flex" />
         </div>
         <HomeCat locale={locale} />
       </div>

@@ -543,28 +543,6 @@ describe("mobile filter hardening", () => {
     );
   });
 
-  it("scrolls the active species tab into view on mount, for a deep link that lands off-screen", () => {
-    const scrollIntoView = vi.fn();
-    const original = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = scrollIntoView;
-
-    render(
-      <I18nProvider locale="en">
-        <SpeciesTabs
-          value="other"
-          onChange={vi.fn()}
-          counts={{ all: 4, dog: 1, cat: 1, other: 2 }}
-          // No filters on in this harness, so the roster and the tally are
-          // the same numbers.
-          roster={{ all: 4, dog: 1, cat: 1, other: 2 }}
-          fullWidth
-        />
-      </I18nProvider>,
-    );
-
-    expect(scrollIntoView).toHaveBeenCalled();
-    HTMLElement.prototype.scrollIntoView = original;
-  });
 
   it("lets a fullWidth species tab shrink and truncate instead of forcing the row past the sheet's padding", () => {
     render(

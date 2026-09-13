@@ -305,6 +305,34 @@ describe("animal grid empty state", () => {
     expect(query()).toBe("");
   });
 
+  it("draws the phone way out under the pills rather than off the end of them", () => {
+    // Same state as above, read for where the clear is rather than how many
+    // there are. Measured at 390px with four filters active: the pills ran to
+    // x 497 and the clear, as the strip's last item, sat at x 514, off the
+    // right edge, with nothing on screen saying the strip scrolled sideways.
+    // This is the one state where clearing everything is the way out.
+    window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    const belowLg = screen
+      .getAllByRole("button", { name: "Počisti vse filtre" })
+      .filter((clear) => clear.closest('[class~="lg:hidden"]'));
+    expect(belowLg).toHaveLength(1);
+
+    // Out of the strip the pills scroll in and out of the row that walks them
+    // with the arrow keys, drawn as the same outline button this state offers
+    // when there are no chips at all to carry a clear.
+    const clear = belowLg[0];
+    expect(clear.closest(".fade-scroll-x")).toBeNull();
+    expect(clear.closest("[role='toolbar']")).toBeNull();
+    expect(clear.getAttribute("data-slot")).toBe("button");
+    expect(clear.getAttribute("data-variant")).toBe("outline");
+    expect(clear.getAttribute("data-size")).toBe("sm");
+
+    fireEvent.click(clear);
+    expect(query()).toBe("");
+  });
+
   it("offers the button where no chip row exists to carry the clear", () => {
     // The species tab is the one filter that makes no chip (it undoes itself
     // in a press of its own tab), so an empty tab with nothing else on has no

@@ -10,6 +10,7 @@ import {
 } from "motion/react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -130,6 +131,7 @@ export function FilterChips({
   onClearAll,
   undo,
   stuck = false,
+  clearPlacement = "inline",
   className,
 }: {
   chips: Chip[];
@@ -141,6 +143,12 @@ export function FilterChips({
    *  costing the most, because it is the way out and the visitor has no other
    *  means of telling which of five pills is the one to drop. */
   stuck?: boolean;
+  /** Where the clear-everything is drawn. Inline is the default and the
+   *  toolbar's: the last thing in the scroll strip, after the pills it
+   *  clears. Below takes it out of the strip and draws it as its own button
+   *  under the row, for the empty state, where the pills can be scrolled past
+   *  and clearing is the way out (animal-grid.tsx). */
+  clearPlacement?: "inline" | "below";
   className?: string;
 }) {
   const { locale, messages, t } = useI18n();
@@ -206,11 +214,18 @@ export function FilterChips({
       ? [...all.slice(0, MAX_VISIBLE), { id: "more", kind: "more", hidden }]
       : all;
 
-  // Every stop the arrow keys walk, in the order they are drawn. Clear is one
-  // of them: it belongs to this row, and leaving it out would mean the only
-  // way to reach it is to tab past every chip, which is the cost the roving
-  // tabindex is here to remove.
-  const stops = [...items.map((item) => item.id), "clear"];
+  const clearBelow = clearPlacement === "below";
+
+  // Every stop the arrow keys walk, in the order they are drawn. Inline, clear
+  // is one of them: it belongs to this row, and leaving it out would mean the
+  // only way to reach it is to tab past every chip, which is the cost the
+  // roving tabindex is here to remove. Drawn below the row it is outside the
+  // toolbar and a tab stop of its own, so it is not walked to and it must not
+  // be listed here either: a stop nobody renders takes the tabIndex 0 on an
+  // empty row and hands focus nowhere.
+  const stops = clearBelow
+    ? items.map((item) => item.id)
+    : [...items.map((item) => item.id), "clear"];
   const activeId = focusId && stops.includes(focusId) ? focusId : stops[0];
 
   const count = chips.length;
@@ -307,14 +322,25 @@ export function FilterChips({
         focusAfterRow(toolbarRef.current);
       } else {
         // The next pill along, or the one before it at the end of the row.
-        // Clear outlives every chip, so there is always somewhere to go.
-        refocusTo.current = stops[at + 1] ?? stops[at - 1] ?? "clear";
+        // Inline, clear outlives every chip and is the stop after the last of
+        // them; below, the row ends at the last pill, so the one before it is
+        // the last stop this row has to offer.
+        refocusTo.current = stops[at + 1] ?? stops[at - 1] ?? null;
       }
       item.chip.onRemove();
     }
   };
 
   const pill = CHIP_PILL;
+
+  // "Show me all of these" belonged to a filter state that is about to stop
+  // existing. Carried over, the next pills a visitor picks would arrive
+  // already unfolded and uncapped for no reason they could see.
+  const clearAll = () => {
+    setExpanded([]);
+    setShowAll(false);
+    onClearAll();
+  };
 
   const row = (
     <>
@@ -434,45 +460,80 @@ export function FilterChips({
           </AnimatePresence>
 
           {/* Inside the scroll, at the end of it, and that is the whole point
-              on a phone. Parked outside as a fixed column it reserved 81 of
-              the row's 358 pixels for a control that clears everything: the
-              pills got 242px to say four things in, and the widest of them is
-              180px on its own. It is one tap away in the sheet's footer at
-              any time, so a visitor who cannot see it here has not lost it.
+              in the toolbar row. Parked outside as a fixed column it reserved
+              81 of the row's 358 pixels for a control that clears everything:
+              the pills got 242px to say four things in, and the widest of them
+              is 180px on its own. Scrolling past it costs nothing there,
+              because it is one tap away in the sheet's footer the whole time.
+
+              The empty state is the exception, and it asks for the below
+              placement instead: with nothing matching, the sheet is a way back
+              to the filters and this is the way out of them, and at 390px with
+              four pills it sat at x 514 with no visible sign the strip
+              scrolled at all.
 
               A seam and not just a gap, so an overscroll flick that runs out
               of pills to eat meets a line rather than sliding straight into
               a clear-everything. Its own element and not a border-l on the
               button: a left border on a rounded box draws an arc, and on a
               phone, right where the fade leaves a half-drawn pill, that put
-              two stray parentheses side by side. */}
-          <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
+              two stray parentheses side by side.
 
-          {/* "Vse" is what separates this from the removes it sits among,
-              which take one thing off each. */}
-          <button
-            {...{ [STOP]: "clear" }}
-            type="button"
-            tabIndex={activeId === "clear" ? 0 : -1}
-            onFocus={() => setFocusId("clear")}
-            onClick={() => {
-              // "Show me all of these" belonged to a filter state that is
-              // about to stop existing. Carried over, the next pills a
-              // visitor picks would arrive already unfolded and uncapped for
-              // no reason they could see.
-              setExpanded([]);
-              setShowAll(false);
-              onClearAll();
-            }}
-            aria-label={messages.clearAllFilters}
-            className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
-          >
-            {messages.clearAll}
-          </button>
+              Both go together: the seam only means anything in front of the
+              button it guards. */}
+          {!clearBelow && (
+            <>
+              <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
+
+              {/* "Vse" is what separates this from the removes it sits among,
+                  which take one thing off each. */}
+              <button
+                {...{ [STOP]: "clear" }}
+                type="button"
+                tabIndex={activeId === "clear" ? 0 : -1}
+                onFocus={() => setFocusId("clear")}
+                onClick={clearAll}
+                aria-label={messages.clearAllFilters}
+                className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+              >
+                {messages.clearAll}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
     </>
+  );
+
+  const toolbar = (
+    <section
+      ref={toolbarRef}
+      role="toolbar"
+      aria-orientation="horizontal"
+      aria-label={
+        count > 0 ? t("activeFiltersCount", { count }) : messages.filtersCleared
+      }
+      onKeyDown={count > 0 ? onKeyDown : undefined}
+      // Below, the caller's classes belong to the column that holds both
+      // halves; all the row itself needs from them is the width it may not
+      // exceed, so that the pills scroll instead of pushing the page wide.
+      className={cn(
+        "flex items-center gap-2",
+        clearBelow ? "max-w-full" : className,
+      )}
+    >
+      {count > 0 ? (
+        row
+      ) : (
+        // Clearing is the only filter action that repeating the gesture
+        // cannot undo, so it is the only one that leaves a way back. The
+        // row holds its place for the few seconds this is offered, rather
+        // than collapsing and then jumping the page a second time when
+        // the offer expires.
+        <UndoOffer onUndo={undo} />
+      )}
+    </section>
   );
 
   return (
@@ -484,29 +545,35 @@ export function FilterChips({
     // AnimatePresence elsewhere.
     <LazyMotion features={domMax}>
       <TooltipProvider>
-        <section
-          ref={toolbarRef}
-          role="toolbar"
-          aria-orientation="horizontal"
-          aria-label={
-            count > 0
-              ? t("activeFiltersCount", { count })
-              : messages.filtersCleared
-          }
-          onKeyDown={count > 0 ? onKeyDown : undefined}
-          className={cn("flex items-center gap-2", className)}
-        >
-          {count > 0 ? (
-            row
-          ) : (
-            // Clearing is the only filter action that repeating the gesture
-            // cannot undo, so it is the only one that leaves a way back. The
-            // row holds its place for the few seconds this is offered, rather
-            // than collapsing and then jumping the page a second time when
-            // the offer expires.
-            <UndoOffer onUndo={undo} />
-          )}
-        </section>
+        {clearBelow ? (
+          <div className={cn("flex flex-col items-center gap-3", className)}>
+            {toolbar}
+            {/* Outside the toolbar, on purpose: it is not a stop on the row's
+                roving walk, so it is reached with a Tab like any other button
+                on the page and the arrow keys stay inside the pills.
+
+                Nothing under an undo offer. That state has no filters left to
+                clear, and the one press it offers is the way back to them. */}
+            {count > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                // 44px below lg: this is the primary way out on a phone, and
+                // the dock and the sheet's footer keep that height for a thumb.
+                className="max-lg:h-11"
+                onClick={clearAll}
+                // The same name the inline one answers to, because it is the
+                // same press: "Počisti vse" is the label a row of removes
+                // needs, and on its own it does not say what "vse" was.
+                aria-label={messages.clearAllFilters}
+              >
+                {messages.clearAll}
+              </Button>
+            )}
+          </div>
+        ) : (
+          toolbar
+        )}
       </TooltipProvider>
     </LazyMotion>
   );

@@ -557,26 +557,38 @@ export function AnimalGrid({
                   of telling which of them is the one to drop. The row's stuck
                   mode names it (filter-chips.tsx). Here it costs nothing that
                   matters, because there is no grid underneath for it to push
-                  down and nothing to scroll it past. */}
+                  down and nothing to scroll it past.
+
+                  The clear comes out of the strip and under the pills. At the
+                  end of the strip it is the row's last item, and at 390px with
+                  four filters the pills already ran to x 497: the way out sat
+                  at x 514, off the screen, behind a sideways scroll the state
+                  gave no sign of. It is still one clear and not two, because
+                  the row draws it in one place or the other. */}
               {chips.length > 0 && (
                 <FilterChips
                   chips={chips}
                   onClearAll={handleClearAll}
                   stuck
-                  className="max-w-full justify-center lg:hidden"
+                  clearPlacement="below"
+                  className="max-w-full lg:hidden"
                 />
               )}
               {shelterOnlyEmpty && (
                 <Button
                   variant="outline"
                   size="sm"
+                  // 44px below lg, the same line the empty state's clear and
+                  // the dock keep for a thumb (filter-chips.tsx).
+                  className="max-lg:h-11"
                   onClick={() => toggleMany("shelter", filters.shelter)}
                 >
                   {messages.showFromAllShelters}
                 </Button>
               )}
               {/* Only when no chips row can carry the clear. Every chips row
-                  already ends in "Počisti vse", the row above renders below lg
+                  carries its own "Počisti vse", under the pills here and at the
+                  end of them in the toolbar; the row above renders below lg
                   whenever there are chips, and at lg the sticky toolbar's own
                   row does (animal-filters.tsx), with the sidebar header carrying
                   a third copy. That put two clear-all controls under each other
@@ -589,7 +601,12 @@ export function AnimalGrid({
                   screen: a picked shelter is a chip, and a chip takes this
                   button off the page. */}
               {chips.length === 0 && (
-                <Button variant="outline" size="sm" onClick={handleClearAll}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="max-lg:h-11"
+                  onClick={handleClearAll}
+                >
                   {messages.clearFilters}
                 </Button>
               )}

@@ -384,6 +384,59 @@ describe("the active filters row", () => {
     expect(stops[stops.length - 1]).toBe("clear");
   });
 
+  it("draws the clear under the row instead of at the end of it when asked", () => {
+    // The empty state asks for this. At the end of the strip the clear is the
+    // row's last item, and at 390px with four filters the pills already ran
+    // past the right edge: the one control that ends the state sat at x 514
+    // behind a sideways scroll nothing on screen advertised.
+    renderChips(
+      [
+        chip({ key: "a", label: "Dogs" }),
+        chip({ key: "b", facet: "age", label: "Cats" }),
+      ],
+      { clearPlacement: "below" },
+    );
+
+    const clears = screen.getAllByRole("button", { name: "Clear all filters" });
+    expect(clears).toHaveLength(1);
+    // Outside the strip, and outside the toolbar the arrow keys walk.
+    expect(clears[0].closest(".fade-scroll-x")).toBeNull();
+    expect(clears[0].closest("[role='toolbar']")).toBeNull();
+
+    // No stop bookkeeping for a button that is not in the row: the last stop
+    // the arrows can reach is the last pill, and the button is a plain Tab
+    // stop like any other on the page.
+    const stops = [...pills()].map((button) =>
+      button.getAttribute("data-chip-stop"),
+    );
+    expect(stops).toEqual(["a", "b"]);
+    expect(clears[0].tabIndex).toBe(0);
+  });
+
+  it("still clears everything from the button under the row", () => {
+    const onClearAll = vi.fn();
+    renderChips([chip({ key: "a", label: "Dogs" })], {
+      clearPlacement: "below",
+      onClearAll,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear all filters" }));
+    expect(onClearAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the seam and the inline clear to the inline placement", () => {
+    // The seam guards the inline button against an overscroll flick. With the
+    // button drawn below there is nothing behind the pills for it to guard,
+    // and a line at the end of the strip is then a line to nowhere.
+    const { container } = renderChips([chip({ key: "a", label: "Dogs" })], {
+      clearPlacement: "below",
+    });
+    const strip = container.querySelector(".fade-scroll-x");
+
+    expect(strip?.querySelectorAll("span[aria-hidden]")).toHaveLength(0);
+    expect(strip?.querySelectorAll("button")).toHaveLength(1);
+  });
+
   it("brings the way out into view rather than leaving it past the scroll", () => {
     const scrollIntoView = vi.fn();
     const original = HTMLElement.prototype.scrollIntoView;

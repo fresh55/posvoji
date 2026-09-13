@@ -212,6 +212,20 @@ describe("shelterChipLabel", () => {
     );
   });
 
+  it("keeps the noun that heads a phrase rather than a name", () => {
+    // A municipal shelter is often named for its remit. Taking the noun off
+    // the front of that leaves the remit hanging off nothing: "za zapuščene
+    // živali Gorenjske in Notranjske" is not a name anybody would recognise.
+    expect(
+      shelterChipLabel(
+        "Zavetišče za zapuščene živali Gorenjske in Notranjske (Občina Kranj)",
+      ),
+    ).toBe("Zavetišče za zapuščene živali Gorenjske in Notranjske");
+    expect(shelterChipLabel("zavetišče v Trbovljah")).toBe(
+      "zavetišče v Trbovljah",
+    );
+  });
+
   it("keeps a noun the name cannot stand without", () => {
     // The adjective in front is what distinguishes this one, so the noun is
     // load-bearing where it sits; only the operator comes off.

@@ -18,7 +18,12 @@ import { ShelterLocationMap } from "@/components/shelter-location-map";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
-import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
+import {
+  contactName,
+  mailtoHref,
+  telHref,
+  websiteName,
+} from "@/lib/contact-links";
 import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -275,7 +280,7 @@ export function ShelterDetailPage({
                     channel="phone"
                     href={telHref(shelter.phone)}
                     icon={Phone}
-                    label={`${messages.contactPhone}: ${shelter.phone}`}
+                    label={contactName(messages.contactPhone, shelter.phone)}
                   >
                     {shelter.phone}
                   </ContactButton>
@@ -285,7 +290,7 @@ export function ShelterDetailPage({
                     channel="email"
                     href={mailtoHref(shelter.email)}
                     icon={Mail}
-                    label={`${messages.contactEmail}: ${shelter.email}`}
+                    label={contactName(messages.contactEmail, shelter.email)}
                   >
                     {shelter.email}
                   </ContactButton>
@@ -300,7 +305,11 @@ export function ShelterDetailPage({
                     href={shelter.website}
                     icon={Globe}
                     external
-                    label={`${messages.contactWebsite}: ${websiteHost(shelter.website)} ${messages.newWindow}`}
+                    label={websiteName(
+                      messages.contactWebsite,
+                      shelter.website,
+                      messages.newWindow,
+                    )}
                   >
                     {messages.contactWebsite}
                   </ContactButton>

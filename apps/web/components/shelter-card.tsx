@@ -8,7 +8,13 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
+import {
+  contactName,
+  mailtoHref,
+  telHref,
+  websiteHost,
+  websiteName,
+} from "@/lib/contact-links";
 import { publishedCount } from "@/lib/shelter-census";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import { shelterAnchorId } from "@/lib/shelter-path";
@@ -528,7 +534,7 @@ export function ShelterCard({
                     href={telHref(shelter.phone)}
                     data-contact="phone"
                     className={CONTACT_ROW}
-                    aria-label={`${text.phone}: ${shelter.phone}`}
+                    aria-label={contactName(text.phone, shelter.phone)}
                     title={shelter.phone}
                   >
                     <Phone className="size-3.5 shrink-0" aria-hidden />
@@ -542,7 +548,7 @@ export function ShelterCard({
                     href={mailtoHref(shelter.email)}
                     data-contact="email"
                     className={CONTACT_ROW}
-                    aria-label={`${text.email}: ${shelter.email}`}
+                    aria-label={contactName(text.email, shelter.email)}
                     title={shelter.email}
                   >
                     <Mail className="size-3.5 shrink-0" aria-hidden />
@@ -554,7 +560,9 @@ export function ShelterCard({
                 <li>
                   {/* The only link on the card that leaves the site, and
                       target="_blank" is silent about it, so the accessible
-                      name says so. One host, computed once: the name and the
+                      name says so. It is built by the same helper the shelter
+                      page and the found-animal card use, which trims the host
+                      and appends the sentence together: the name and the
                       visible text are the same string by construction, which
                       is what the sentence above promises. */}
                   <a
@@ -563,7 +571,7 @@ export function ShelterCard({
                     rel="noreferrer"
                     data-contact="website"
                     className={CONTACT_ROW}
-                    aria-label={`${text.website}: ${host} ${text.newWindow}`}
+                    aria-label={websiteName(text.website, shelter.website, text.newWindow)}
                     title={host}
                   >
                     <Globe className="size-3.5 shrink-0" aria-hidden />

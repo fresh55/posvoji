@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { mailtoHref, telHref } from "./contact-links";
+import {
+  contactName,
+  mailtoHref,
+  telHref,
+  websiteHost,
+  websiteName,
+} from "./contact-links";
 import { loadShelters } from "./shelters";
 
 describe("telHref", () => {
@@ -74,5 +80,36 @@ describe("the register the site is built from", () => {
     for (const phone of numbers) {
       expect(telHref(phone)).toMatch(/^tel:\+386\d{8}$/);
     }
+  });
+});
+
+describe("websiteHost", () => {
+  it("keeps the part of the address worth reading", () => {
+    expect(websiteHost("https://www.zonzani.si/")).toBe("zonzani.si");
+    expect(websiteHost("http://zavetisce-malahisa.si")).toBe(
+      "zavetisce-malahisa.si",
+    );
+    expect(websiteHost("https://example.si/zavetisce/")).toBe(
+      "example.si/zavetisce",
+    );
+  });
+});
+
+// The names three surfaces print. They were three hand-written templates, and
+// the third of them dropped the new-window sentence: the found-animal card's
+// site link opened a window and said so to nobody.
+describe("contactName", () => {
+  it("puts the channel in front of the value the link already shows", () => {
+    expect(contactName("Telefon", "05 663 37 66")).toBe(
+      "Telefon: 05 663 37 66",
+    );
+  });
+});
+
+describe("websiteName", () => {
+  it("trims the host and says the link leaves the site, together", () => {
+    expect(
+      websiteName("Spletna stran", "https://www.zonzani.si/", "(odpre se v novem oknu)"),
+    ).toBe("Spletna stran: zonzani.si (odpre se v novem oknu)");
   });
 });

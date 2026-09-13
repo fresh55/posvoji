@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { FILTER_FACETS } from "@/lib/filters";
+import { fakeStripLayout } from "@/test/strip-layout";
 import { FilterChips, type Chip } from "./filter-chips";
 
 afterEach(() => cleanup());
@@ -123,15 +124,32 @@ describe("the active filters row", () => {
   });
 
   it("brings a single new pill into view, and stays put for a whole restored set", () => {
+    // Never scrollIntoView: it moves Chrome's sequential focus navigation
+    // starting point, and a single-facet deep link makes this row fire on
+    // mount, which would hand the page's first Tab press to a remove button
+    // (lib/scroll-strip.ts).
+    // jsdom does not implement scrollIntoView at all, so it is installed here
+    // rather than spied on: the point is that nothing reaches for it.
     const scrollIntoView = vi.fn();
-    const original = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    // Four pills of 100px in a row 220px wide, so the fourth is off the end.
+    const layout = fakeStripLayout({ itemSelector: "[data-chip-stop]" });
 
     try {
-      const one = chip({ key: "sex:a", label: "Samec" });
-      const two = chip({ key: "age:b", facet: "age", label: "Mlad" });
-      const { rerender } = renderChips([one]);
-      scrollIntoView.mockClear();
+      // One value per facet: three of a kind would fold into a summary pill
+      // and the row would have no stop for the new one to be measured against.
+      const first = (["sex", "age", "size"] as const).map((facet, index) =>
+        chip({ key: `${facet}:a`, facet, label: `Filter ${index}` }),
+      );
+      const late = chip({ key: "energy:d", facet: "energy", label: "Mlad" });
+      const { container, rerender } = renderChips(first);
+      const strip = container.querySelector(
+        "[data-scroll-strip]",
+      ) as HTMLElement;
+      layout.writes.length = 0;
 
       const render2 = (chips: Chip[]) => (
         <I18nProvider locale="en">
@@ -141,16 +159,20 @@ describe("the active filters row", () => {
 
       // One pick, from a sheet that was covering this row: it has to be
       // visible when the sheet closes.
-      rerender(render2([one, two]));
-      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      rerender(render2([...first, late]));
+      expect(layout.writes).toHaveLength(1);
+      expect(layout.at(strip)).toBeGreaterThan(0);
 
       // Several at once is an undo or a fresh page. No single pill to point at.
-      scrollIntoView.mockClear();
+      layout.writes.length = 0;
       rerender(render2([]));
-      rerender(render2([one, two]));
+      rerender(render2([...first, late]));
+      expect(layout.writes).toHaveLength(0);
+
       expect(scrollIntoView).not.toHaveBeenCalled();
     } finally {
-      HTMLElement.prototype.scrollIntoView = original;
+      layout.restore();
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
     }
   });
 
@@ -384,75 +406,62 @@ describe("the active filters row", () => {
     expect(stops[stops.length - 1]).toBe("clear");
   });
 
-  it("draws the clear under the row instead of at the end of it when asked", () => {
-    // The empty state asks for this. At the end of the strip the clear is the
-    // row's last item, and at 390px with four filters the pills already ran
-    // past the right edge: the one control that ends the state sat at x 514
-    // behind a sideways scroll nothing on screen advertised.
-    renderChips(
+  it("hands the clear back to the caller when asked, stops and seam with it", () => {
+    // The empty state asks for this and draws its own way out instead
+    // (animal-grid.tsx). At the end of the strip the clear is the row's last
+    // item, and at 390px with four filters the pills already ran past the
+    // right edge: the one control that ends the state sat at x 514 behind a
+    // sideways scroll nothing on screen advertised.
+    const { container } = renderChips(
       [
         chip({ key: "a", label: "Dogs" }),
         chip({ key: "b", facet: "age", label: "Cats" }),
       ],
-      { clearPlacement: "below" },
+      { clear: false },
     );
 
-    const clears = screen.getAllByRole("button", { name: "Clear all filters" });
-    expect(clears).toHaveLength(1);
-    // Outside the strip, and outside the toolbar the arrow keys walk.
-    expect(clears[0].closest(".fade-scroll-x")).toBeNull();
-    expect(clears[0].closest("[role='toolbar']")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Clear all filters" }),
+    ).toBeNull();
 
-    // No stop bookkeeping for a button that is not in the row: the last stop
-    // the arrows can reach is the last pill, and the button is a plain Tab
-    // stop like any other on the page.
+    // No stop bookkeeping for a button nobody draws: the last stop the arrows
+    // can reach is the last pill.
     const stops = [...pills()].map((button) =>
       button.getAttribute("data-chip-stop"),
     );
     expect(stops).toEqual(["a", "b"]);
-    expect(clears[0].tabIndex).toBe(0);
-  });
 
-  it("still clears everything from the button under the row", () => {
-    const onClearAll = vi.fn();
-    renderChips([chip({ key: "a", label: "Dogs" })], {
-      clearPlacement: "below",
-      onClearAll,
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Clear all filters" }));
-    expect(onClearAll).toHaveBeenCalledTimes(1);
-  });
-
-  it("leaves the seam and the inline clear to the inline placement", () => {
-    // The seam guards the inline button against an overscroll flick. With the
-    // button drawn below there is nothing behind the pills for it to guard,
-    // and a line at the end of the strip is then a line to nowhere.
-    const { container } = renderChips([chip({ key: "a", label: "Dogs" })], {
-      clearPlacement: "below",
-    });
-    const strip = container.querySelector(".fade-scroll-x");
-
+    // The seam guards the inline button against an overscroll flick. With no
+    // button behind the pills there is nothing to guard, and a line at the end
+    // of the strip is then a line to nowhere.
+    const strip = container.querySelector("[data-scroll-strip]");
     expect(strip?.querySelectorAll("span[aria-hidden]")).toHaveLength(0);
-    expect(strip?.querySelectorAll("button")).toHaveLength(1);
+    expect(strip?.querySelectorAll("button")).toHaveLength(2);
   });
 
   it("brings the way out into view rather than leaving it past the scroll", () => {
-    const scrollIntoView = vi.fn();
-    const original = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    // The marked pill is the third of four, past the 220px the row shows, and
+    // this state arrives on a deep link, so it is another mount-time scroll
+    // that may not touch scrollIntoView.
+    const layout = fakeStripLayout({ itemSelector: "[data-chip-stop]" });
 
     try {
-      renderChips(
+      const { container } = renderChips(
         [
           chip({ key: "a", label: "Dogs", gain: 1 }),
-          chip({ key: "b", facet: "age", label: "Cats", gain: 8 }),
+          chip({ key: "b", facet: "age", label: "Cats", gain: 2 }),
+          chip({ key: "c", facet: "size", label: "Small", gain: 8 }),
         ],
         { stuck: true },
       );
-      expect(scrollIntoView).toHaveBeenCalled();
+      const strip = container.querySelector(
+        "[data-scroll-strip]",
+      ) as HTMLElement;
+
+      expect(layout.writes.length).toBeGreaterThan(0);
+      expect(layout.at(strip)).toBeGreaterThan(0);
     } finally {
-      HTMLElement.prototype.scrollIntoView = original;
+      layout.restore();
     }
   });
 

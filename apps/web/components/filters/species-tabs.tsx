@@ -19,6 +19,7 @@ import {
 } from "react";
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
+import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
 import { useI18n } from "@/components/i18n-provider";
 import {
   CAT_GLYPH,
@@ -284,33 +285,13 @@ export function SpeciesTabs({
     // if that tab sits past the fold of a scrolled 320px row the visitor never
     // sees what is selected. So the row brings the pressed tab into view
     // whenever the selection changes, on mount for the deep-link case and
-    // again for a later or programmatic one, by writing the scroll box's own
-    // scrollLeft and only when the tab is outside the visible range, by the
-    // smallest amount that puts its nearest edge inside. That is what
-    // scrollIntoView with inline "nearest" used to do here, and it is not used
-    // any more because Chrome moves its sequential focus navigation starting
-    // point to whatever element is passed to scrollIntoView: this effect ran
-    // on every page load, so the first Tab press landed on a species tab and
-    // skipped the skip link, the header, the language switch and every control
-    // above the row. A scroll offset moves no such point, and writing one axis
-    // cannot scroll the page vertically either.
-    const box = scrollRef.current;
-    const button = activeRef.current;
-    if (!box || !button) return;
-
-    // offsetLeft is already in the box's coordinates: the box is the
-    // offsetParent and carries no horizontal padding or border, so it shares
-    // its origin with scrollLeft. Same reading measure() below relies on.
-    const left = button.offsetLeft;
-    const right = left + button.offsetWidth;
-    const viewLeft = box.scrollLeft;
-    const viewRight = viewLeft + box.clientWidth;
-
-    // No smooth behaviour, the same as before: this lands the row where it
-    // belongs in one frame rather than animating a scroll a visitor who asked
-    // for less motion did not ask for.
-    if (left < viewLeft) box.scrollLeft = left;
-    else if (right > viewRight) box.scrollLeft = right - box.clientWidth;
+    // again for a later or programmatic one. Why it is this helper and not
+    // scrollIntoView, which would otherwise do the job in one line, is on the
+    // helper: the API decides where the page's first Tab press goes, and this
+    // effect runs on every load. No smooth behaviour, as before: the row lands
+    // where it belongs in one frame rather than animating a scroll nobody
+    // asked for.
+    scrollChildIntoViewX(activeRef.current);
   }, [value]);
 
   // Where the fill is, as four motion values rather than as state. A slide is
@@ -464,6 +445,7 @@ export function SpeciesTabs({
           scroll-and-fade escape hatch. */}
       <div
         ref={scrollRef}
+        {...{ [SCROLL_STRIP_MARK]: "" }}
         style={{
           maskImage: `linear-gradient(to right, ${
             edgeFade.left ? "transparent, black 1.5rem" : "black"

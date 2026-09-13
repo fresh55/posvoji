@@ -543,7 +543,6 @@ describe("mobile filter hardening", () => {
     );
   });
 
-
   it("lets a fullWidth species tab shrink and truncate instead of forcing the row past the sheet's padding", () => {
     render(
       <I18nProvider locale="en">

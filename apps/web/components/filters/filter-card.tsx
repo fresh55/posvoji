@@ -29,11 +29,14 @@ export type FilterCardLayout = "sidebar" | "sheet";
  * their fill only because ToggleGroupItem runs its className through cn(),
  * where toggleVariants' own accent outlived the merge.
  *
- * The rule now is that no two classes in an output may set the same property.
- * Every property the two surfaces disagree on is stated once, in the layout
- * variant that wants it, and the fill is a compound of layout and selected.
- * The output then goes through cn() as well, so a collision a later edit
- * introduces merges instead of racing.
+ * What makes the output safe is cn(). Every string this file builds runs
+ * through it, so a collision between two of its own classes is settled by
+ * position, the later one winning, rather than by the order Tailwind emits the
+ * two utilities in, and cva lays the layout variant down before the compound
+ * that answers it. A class spelled against an attribute sits outside that
+ * arithmetic: tailwind-merge reads data-[state=on]:bg-brand and bg-brand as two
+ * different keys, so anything an attribute selector sets has to be answered in
+ * the same selector.
  *
  * The data-[state=...] and aria-pressed: repeats are not duplicates of the
  * plain classes beside them. ToggleGroupItem hands cn its own
@@ -54,9 +57,16 @@ const cardVariants = cva(
           "border-border/80 bg-background shadow-xs hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:bg-muted/40",
         // Border transparent rather than none, so the row keeps its 1px and
         // the text does not shift when a picked row draws its fill or a
-        // focused one its ring. No ground at rest: the compounds below own it.
+        // focused one its ring. bg-transparent is the ground at rest, and the
+        // selected compound below is what answers it.
+        //
+        // The aria-pressed and data-[state=on] repeats say the same thing as
+        // the plain border-transparent and shadow-none beside them, in the two
+        // selectors toggleVariants spells its own border and shadow in. They
+        // belong to the layout and not to the state: a row has no box whether
+        // it is picked or not.
         sidebar:
-          "border-transparent shadow-none hover:border-transparent hover:bg-muted/40 hover:text-foreground active:bg-muted/40",
+          "border-transparent bg-transparent shadow-none hover:border-transparent hover:bg-muted/40 hover:text-foreground active:bg-muted/40 aria-pressed:border-transparent aria-pressed:shadow-none data-[state=on]:border-transparent data-[state=on]:shadow-none",
       },
       // Colour only. What the card is standing on is the layout's business.
       selected: {
@@ -64,6 +74,10 @@ const cardVariants = cva(
         false: "text-muted-foreground",
       },
     },
+    // The fill a picked card wears, which is the one thing the two layouts
+    // paint differently and the only thing selection decides. A resting card
+    // needs no compound of its own: nothing upstream is spelled against
+    // data-[state=off], so the layout's own ground stands unopposed.
     compoundVariants: [
       {
         layout: "sheet",
@@ -72,22 +86,10 @@ const cardVariants = cva(
           "border-brand-border bg-brand hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
       },
       {
-        layout: "sheet",
-        selected: false,
-        class:
-          "data-[state=off]:bg-background data-[state=off]:hover:bg-muted/40",
-      },
-      {
         layout: "sidebar",
         selected: true,
         class:
-          "bg-brand hover:bg-brand aria-pressed:border-transparent aria-pressed:bg-brand aria-pressed:shadow-none data-[state=on]:border-transparent data-[state=on]:bg-brand data-[state=on]:shadow-none",
-      },
-      {
-        layout: "sidebar",
-        selected: false,
-        class:
-          "bg-transparent data-[state=off]:bg-transparent data-[state=off]:hover:bg-muted/40",
+          "bg-brand hover:bg-brand aria-pressed:bg-brand data-[state=on]:bg-brand",
       },
     ],
     defaultVariants: {
@@ -246,6 +248,23 @@ export function FilterSelectionMark({
       </span>
     </LazyMotion>
   );
+}
+
+/**
+ * The sheetColumns a section with this many answers asks for.
+ *
+ * The columns exist to fit several short labels side by side, so a section the
+ * dataset answers only one facet of is a full-width tile rather than a third of
+ * a row nothing is in. max is the section's own ceiling: three is for short
+ * labels, and health and the household questions keep two because
+ * "Sterilizacija" clips badly in a third of a 320px sheet.
+ *
+ * The class names are written out rather than built, because Tailwind reads
+ * this file as text and generates only what it can see.
+ */
+export function sheetColumnsFor(count: number, max: 2 | 3 = 3): string {
+  if (max === 3 && count > 2) return "grid-cols-3";
+  return count > 1 ? "grid-cols-2" : "grid-cols-1";
 }
 
 // The section frame every card group shares: its heading and reset, the line
@@ -416,6 +435,22 @@ export function FilterCardHoverLift({
   );
 }
 
+/**
+ * The voice a sidebar row sets its label and its count in.
+ *
+ * Exported because the age rows cannot use FilterCardTail: that tail is a flex
+ * line and the age row is a three-column grid, so it draws its own label and
+ * count and borrows the sizes from here. Hand-copied they drifted, and Starost
+ * printed 11px over 10px while every other section printed 12 over 11.
+ */
+export const SIDEBAR_LABEL_CLASS = "truncate text-xs";
+export const SIDEBAR_COUNT_CLASS =
+  "w-8 text-right text-2xs tabular-nums text-muted-foreground";
+
+// Only a flex item can be squeezed by a long label, so shrink-0 rides with the
+// line below rather than with the voice the age grid shares.
+const SIDEBAR_COUNT_FLEX_CLASS = cn(SIDEBAR_COUNT_CLASS, "shrink-0");
+
 // The label and count after the icon. The count is a render prop because a
 // section may animate it, and its class comes from the layout either way.
 export function FilterCardTail({
@@ -450,12 +485,10 @@ export function FilterCardTail({
 
   return (
     <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-      <span className={cn("truncate text-xs", checked && "font-medium")}>
+      <span className={cn(SIDEBAR_LABEL_CLASS, checked && "font-medium")}>
         {label}
       </span>
-      {renderCount(
-        "w-8 shrink-0 text-right text-2xs tabular-nums text-muted-foreground",
-      )}
+      {renderCount(SIDEBAR_COUNT_FLEX_CLASS)}
     </span>
   );
 }

@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Cat, Dog, Rabbit } from "lucide-react";
 import { I18nProvider } from "@/components/i18n-provider";
+import { fakeStripLayout } from "@/test/strip-layout";
 import { SpeciesTabs } from "./species-tabs";
 
 afterEach(() => cleanup());
@@ -46,92 +47,13 @@ function pathData(root: Element) {
   );
 }
 
-// A fake layout for the row, because jsdom lays nothing out and reports every
-// offset and every scroll number as 0, which leaves the scrolling effect
-// nothing to answer to. It is installed on the prototypes rather than on the
-// elements: the effect the tests below are about runs on mount, so the numbers
-// have to be readable before any of those elements exist. Tabs are TAB_W wide
-// in row order, the row shows BOX_W of them, and the row's scrollLeft is a
-// real number that can be read, seeded and written, with every write recorded.
+// The row's fake layout, shared with the active filters row (test/strip-layout.ts).
+// Tabs are TAB_W wide in row order and the row shows BOX_W of them.
 const TAB_W = 100;
 const BOX_W = 220;
 
-function isRow(el: Element) {
-  return el instanceof HTMLElement && el.className.includes("overflow-x-auto");
-}
-
-/** Where a tab sits in the row, or -1 for anything that is not one. */
-function tabSlot(el: Element) {
-  const row = el.parentElement;
-  if (!row || !isRow(row)) return -1;
-  return Array.from(row.querySelectorAll(":scope > button")).indexOf(el);
-}
-
-function fakeLayout() {
-  const offsets = new WeakMap<Element, number>();
-  const writes: number[] = [];
-  const saved: {
-    proto: object;
-    name: string;
-    descriptor: PropertyDescriptor | undefined;
-  }[] = [];
-
-  const define = (proto: object, name: string, next: PropertyDescriptor) => {
-    saved.push({
-      proto,
-      name,
-      descriptor: Object.getOwnPropertyDescriptor(proto, name),
-    });
-    Object.defineProperty(proto, name, { configurable: true, ...next });
-  };
-
-  define(HTMLElement.prototype, "offsetLeft", {
-    get(this: HTMLElement) {
-      const slot = tabSlot(this);
-      return slot < 0 ? 0 : slot * TAB_W;
-    },
-  });
-  define(HTMLElement.prototype, "offsetWidth", {
-    get(this: HTMLElement) {
-      if (isRow(this)) return BOX_W;
-      return tabSlot(this) < 0 ? 0 : TAB_W;
-    },
-  });
-  define(Element.prototype, "clientWidth", {
-    get(this: Element) {
-      return isRow(this) ? BOX_W : 0;
-    },
-  });
-  define(Element.prototype, "scrollWidth", {
-    get(this: Element) {
-      return isRow(this) ? this.querySelectorAll("button").length * TAB_W : 0;
-    },
-  });
-  define(Element.prototype, "scrollLeft", {
-    get(this: Element) {
-      return offsets.get(this) ?? 0;
-    },
-    set(this: Element, value: number) {
-      offsets.set(this, value);
-      if (isRow(this)) writes.push(value);
-    },
-  });
-
-  return {
-    /** Every scrollLeft the row was given, in order. */
-    writes,
-    /** Where the row stands now, however it got there. */
-    at: (row: Element) => offsets.get(row) ?? 0,
-    /** Put the row somewhere without counting it as a write. */
-    seed: (row: Element, left: number) => offsets.set(row, left),
-    restore: () => {
-      for (const { proto, name, descriptor } of saved.reverse()) {
-        if (descriptor) Object.defineProperty(proto, name, descriptor);
-        else delete (proto as Record<string, unknown>)[name];
-      }
-    },
-  };
-}
+const fakeLayout = () =>
+  fakeStripLayout({ itemSelector: "button", itemWidth: TAB_W, boxWidth: BOX_W });
 
 /** The scroll box the tabs live in. */
 function row() {

@@ -14,6 +14,7 @@ import {
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
@@ -228,10 +229,9 @@ export function CareCards({
       resetAriaLabel={messages.resetCareFilters}
       layout={layout}
       collapse={collapse}
-      // The sheet columns exist to fit several short labels side by side. One
-      // long label is a full-width tile instead of a third of a row it cannot
-      // be read in.
-      sheetColumns={options.length > 1 ? "grid-cols-2" : "grid-cols-1"}
+      // Two at most: the care labels are long enough that a third of a 320px
+      // row cannot hold them.
+      sheetColumns={sheetColumnsFor(options.length, 2)}
       // What the section did to the list, and the one line the screen reader
       // hears. Nothing selected says nothing.
       footer={

@@ -12,6 +12,7 @@ import {
   type GoodWithSection,
   type HomeSection,
 } from "@/components/filters/filter-groups";
+import { SECTION_LABEL_CLASS } from "@/components/filters/filter-section-header";
 import { LocationScopeRow } from "@/components/filters/location-scope-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,19 +71,17 @@ export const SORT_ROW_HIDDEN = "md:hidden";
  *  every half is a constant, so there is one answer and no reason to ask cn
  *  for either per render.
  *
- *  The caption is the recipe FilterSectionHeader prints a section heading in
- *  (filter-section-header.tsx), copied rather than imported: that component
- *  carries a reset link and a disclosure trigger, and this row wants neither.
- *  It wears SORT_ROW_HIDDEN too, so the label and the control it labels leave
- *  at the same width.
+ *  The caption prints in SECTION_LABEL_CLASS, the voice every section heading
+ *  in the panel uses, so the one row that is not a filter section still reads
+ *  as one. FilterSectionHeader itself is not used: it carries a reset link and
+ *  a disclosure trigger, and this row wants neither. The caption wears
+ *  SORT_ROW_HIDDEN too, so the label and the control it labels leave at the
+ *  same width.
  *
  *  mt-3 moved up to the caption and the row kept mt-1.5, which is the gap that
  *  makes the two read as one labelled control rather than as a heading and a
  *  separate setting under it. */
-const SORT_CAPTION_CLASS = cn(
-  "mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground",
-  SORT_ROW_HIDDEN,
-);
+const SORT_CAPTION_CLASS = cn(SECTION_LABEL_CLASS, "mt-3", SORT_ROW_HIDDEN);
 const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
 
 /** What is behind the Filtri button, or undefined when nothing is.
@@ -305,14 +304,12 @@ export function FilterSheet({
               here because the control under it names the order in full.
 
               From md the toolbar behind this sheet carries the order itself:
-              that row is 720px wide at 768 with the tabs ending at 384, so
-              the control is on screen and one tap away instead of three, and
-              a copy in here would be the same control twice on one screen.
-              Caption and row wear the same SORT_ROW_HIDDEN and go together, so
-              no label is left standing over nothing; the header's own pb-3 is
-              what sits under the title once the pair is gone. The sheet is
-              only reachable below lg, so this is the md-to-lg band and nothing
-              else.
+              that row is 720px wide at 768 with the tabs ending at 384, so the
+              control is on screen and one tap away instead of three, and a
+              copy in here would be the same control twice on one screen. The
+              header's own pb-3 is what sits under the title once the pair is
+              gone. The sheet is only reachable below lg, so this is the
+              md-to-lg band and nothing else.
 
               It shared the title's row for one pass and could not: the close
               button is absolutely positioned in that corner at 44px, and the
@@ -322,11 +319,10 @@ export function FilterSheet({
               have fixed the collision and left three things crowded into one
               band anyway.
 
-              The pair costs about 78px of the sheet: 12px over the caption,
-              16px of caption, the 6px gap and the control's 44px. That is
-              affordable because the control is one Select and not every order
-              spelled out on a row of its own, and the filters still begin
-              about a quarter of the way down. Full width also stops the longest order from
+              The pair costs about 78px of the sheet. That is affordable
+              because the control is one Select and not every order spelled out
+              on a row of its own, and the filters still begin about a quarter
+              of the way down. Full width also stops the longest order from
               truncating, and reads as a setting for the whole sheet rather
               than an ornament on the heading. */}
           <DrawerTitle className="mt-3 text-base">

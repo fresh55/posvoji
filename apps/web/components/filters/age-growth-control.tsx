@@ -17,6 +17,9 @@ import {
 import {
   CountRoll,
   FilterCardMark,
+  FilterCardTail,
+  SIDEBAR_COUNT_CLASS,
+  SIDEBAR_LABEL_CLASS,
   filterCardVariants,
 } from "@/components/filters/filter-card";
 import {
@@ -506,30 +509,45 @@ export function AgeGrowthControl({
                             )}
                           />
                         </m.span>
-                        {/* The sheet's sizes are FilterCardTail's, not this
-                            section's own. Starost printed its label at 11px
-                            and its count at 10px while every other tile in
-                            the same drawer printed 12 and 11, which read as
-                            one section set in a smaller type. The longest
-                            label, "Mladiček", fits an 89px tile at 320px. */}
-                        <span
-                          className={cn(
-                            "min-w-0 truncate text-xs",
-                            layout === "sheet" && "max-w-full leading-tight",
-                            checked && "font-medium",
-                          )}
-                        >
-                          {label}
-                        </span>
-                        <CountRoll
-                          value={count}
-                          className={cn(
-                            "tabular-nums text-2xs text-muted-foreground",
-                            layout === "sheet"
-                              ? "leading-tight"
-                              : "w-8 text-right",
-                          )}
-                        />
+                        {/* The tile is the shared tail, so Starost cannot
+                            drift from the drawer around it again: it printed
+                            its label at 11px over a 10px count while every
+                            other tile printed 12 over 11, because the sizes
+                            were copied here by hand. The row cannot use the
+                            tail, which is a flex line, so it draws its own two
+                            grid cells in the tail's voice.
+
+                            leading-tight is the tile's own: the count sits
+                            under a label that is allowed two lines. */}
+                        {layout === "sheet" ? (
+                          <FilterCardTail
+                            layout={layout}
+                            label={label}
+                            checked={checked}
+                            renderCount={(className) => (
+                              <CountRoll
+                                value={count}
+                                className={cn(className, "leading-tight")}
+                              />
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <span
+                              className={cn(
+                                "min-w-0",
+                                SIDEBAR_LABEL_CLASS,
+                                checked && "font-medium",
+                              )}
+                            >
+                              {label}
+                            </span>
+                            <CountRoll
+                              value={count}
+                              className={SIDEBAR_COUNT_CLASS}
+                            />
+                          </>
+                        )}
                       </ToggleGroupItem>
                     </TooltipTrigger>
                     <TooltipContent

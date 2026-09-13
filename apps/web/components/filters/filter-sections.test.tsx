@@ -417,8 +417,10 @@ describe("the sidebar's surfaces", () => {
   // answered with five surfaces of its own: the map plate, sex tiles, size
   // tiles, the rows and the chips. Everything that can be pressed in a
   // section is a row now, on the one treatment filter-card.tsx describes: a
-  // transparent border, no ground, no shadow at rest, and the 44px line a
-  // finger needs. A section that arrives as a tile fails here.
+  // transparent border, no ground, no shadow at rest, and a 40px line. The
+  // row is 40px and not the 44px a finger needs because the sidebar is
+  // lg-only and mouse-driven; the sheet is what a phone gets. A section that
+  // arrives as a tile fails here.
   it("draws every facet option in a section as a row", () => {
     const { container } = renderStatic(EMPTY_FILTERS);
     // A folded section leaves its options out of the DOM, so every header

@@ -398,11 +398,7 @@ export const STATUS_META: Record<PortalStatus, StatusMeta> = {
 export function choiceCard(selected: boolean, className?: string): string {
   return cn(
     filterCardVariants({ selected }),
-    // font-medium is the weight these cards have always printed at. It used
-    // to arrive from the toggle base underneath; the card base now sets
-    // font-normal so the public filters can weight their labels themselves,
-    // and the portal keeps its look by saying its own weight here.
-    "flex items-center justify-center gap-1.5 font-medium",
+    "flex items-center justify-center gap-1.5",
     className,
   );
 }

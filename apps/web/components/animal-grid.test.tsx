@@ -323,7 +323,7 @@ describe("animal grid empty state", () => {
     // with the arrow keys, drawn as the same outline button this state offers
     // when there are no chips at all to carry a clear.
     const clear = belowLg[0];
-    expect(clear.closest(".fade-scroll-x")).toBeNull();
+    expect(clear.closest("[data-scroll-strip]")).toBeNull();
     expect(clear.closest("[role='toolbar']")).toBeNull();
     expect(clear.getAttribute("data-slot")).toBe("button");
     expect(clear.getAttribute("data-variant")).toBe("outline");

@@ -18,6 +18,7 @@ import {
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
@@ -174,7 +175,7 @@ function HealthToggleCards({
       collapse={collapse}
       // Health labels ("Sterilizacija", "Cepljenje") are long enough that
       // three sheet columns clip them badly at 320px; two leaves room.
-      sheetColumns={toggles.length > 1 ? "grid-cols-2" : "grid-cols-1"}
+      sheetColumns={sheetColumnsFor(toggles.length, 2)}
     >
       {toggles.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;

@@ -10,7 +10,6 @@ import {
 } from "motion/react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/components/i18n-provider";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -21,7 +20,11 @@ import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
 import { groupLabel, type FilterFacet } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
-import { SCROLL_STRIP } from "@/lib/scroll-strip";
+import {
+  SCROLL_STRIP,
+  SCROLL_STRIP_MARK,
+  scrollChildIntoViewX,
+} from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
 
 export type Chip = {
@@ -131,7 +134,7 @@ export function FilterChips({
   onClearAll,
   undo,
   stuck = false,
-  clearPlacement = "inline",
+  clear = true,
   className,
 }: {
   chips: Chip[];
@@ -143,12 +146,12 @@ export function FilterChips({
    *  costing the most, because it is the way out and the visitor has no other
    *  means of telling which of five pills is the one to drop. */
   stuck?: boolean;
-  /** Where the clear-everything is drawn. Inline is the default and the
-   *  toolbar's: the last thing in the scroll strip, after the pills it
-   *  clears. Below takes it out of the strip and draws it as its own button
-   *  under the row, for the empty state, where the pills can be scrolled past
-   *  and clearing is the way out (animal-grid.tsx). */
-  clearPlacement?: "inline" | "below";
+  /** Whether the row ends in its own clear-everything. On by default, which
+   *  is the toolbar's case: the last thing in the scroll strip, after the
+   *  pills it clears. The empty state turns it off and draws its own way out
+   *  under the row instead, because there the pills can be scrolled past and
+   *  clearing is the point of the screen (animal-grid.tsx). */
+  clear?: boolean;
   className?: string;
 }) {
   const { locale, messages, t } = useI18n();
@@ -214,18 +217,15 @@ export function FilterChips({
       ? [...all.slice(0, MAX_VISIBLE), { id: "more", kind: "more", hidden }]
       : all;
 
-  const clearBelow = clearPlacement === "below";
-
   // Every stop the arrow keys walk, in the order they are drawn. Inline, clear
   // is one of them: it belongs to this row, and leaving it out would mean the
   // only way to reach it is to tab past every chip, which is the cost the
-  // roving tabindex is here to remove. Drawn below the row it is outside the
-  // toolbar and a tab stop of its own, so it is not walked to and it must not
-  // be listed here either: a stop nobody renders takes the tabIndex 0 on an
-  // empty row and hands focus nowhere.
-  const stops = clearBelow
-    ? items.map((item) => item.id)
-    : [...items.map((item) => item.id), "clear"];
+  // roving tabindex is here to remove. Without one, the stop must not be
+  // listed either: a stop nobody renders takes the tabIndex 0 on an empty row
+  // and hands focus nowhere.
+  const stops = clear
+    ? [...items.map((item) => item.id), "clear"]
+    : items.map((item) => item.id);
   const activeId = focusId && stops.includes(focusId) ? focusId : stops[0];
 
   const count = chips.length;
@@ -237,10 +237,8 @@ export function FilterChips({
     // uncaps itself and can run well past a phone's width, and the pill worth
     // pressing is as likely to be at the end of that as at the start.
     if (!blockerKey) return;
-    stopNode(toolbarRef.current, blockerKey)?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-      behavior: reduceMotion ? "auto" : "smooth",
+    scrollChildIntoViewX(stopNode(toolbarRef.current, blockerKey), {
+      smooth: !reduceMotion,
     });
   }, [blockerKey, reduceMotion]);
   const chipsKey = chips.map((chip) => chip.key).join("|");
@@ -256,15 +254,16 @@ export function FilterChips({
     // into a facet's summary has no stop of its own either; folding takes
     // three, so that facet has been standing on screen for two picks already.
     //
-    // jsdom has no scrollIntoView, hence the guard rather than a polyfill.
+    // A page that opens on exactly one chip counts as one arrival, so this
+    // fires on mount for a single-facet deep link. That is the case the helper
+    // exists for: scrollIntoView would hand the visitor's first Tab press to
+    // this pill's remove button (see lib/scroll-strip.ts).
     const keys = chipsKey === "" ? [] : chipsKey.split("|");
     const added = keys.filter((key) => !seenChips.current.includes(key));
     seenChips.current = keys;
     if (added.length !== 1) return;
-    stopNode(toolbarRef.current, added[0])?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-      behavior: reduceMotion ? "auto" : "smooth",
+    scrollChildIntoViewX(stopNode(toolbarRef.current, added[0]), {
+      smooth: !reduceMotion,
     });
   }, [chipsKey, reduceMotion]);
 
@@ -372,6 +371,7 @@ export function FilterChips({
           margin gives the row back the height it had before. */}
       <div
         ref={scrollRef}
+        {...{ [SCROLL_STRIP_MARK]: "" }}
         // SCROLL_STRIP is the fade, the scroll padding that keeps a focused
         // pill out from under it, and the horizontal room the focus ring
         // needs; the couplings between those three are on the constant. The
@@ -481,7 +481,7 @@ export function FilterChips({
 
               Both go together: the seam only means anything in front of the
               button it guards. */}
-          {!clearBelow && (
+          {clear && (
             <>
               <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
 
@@ -515,13 +515,7 @@ export function FilterChips({
         count > 0 ? t("activeFiltersCount", { count }) : messages.filtersCleared
       }
       onKeyDown={count > 0 ? onKeyDown : undefined}
-      // Below, the caller's classes belong to the column that holds both
-      // halves; all the row itself needs from them is the width it may not
-      // exceed, so that the pills scroll instead of pushing the page wide.
-      className={cn(
-        "flex items-center gap-2",
-        clearBelow ? "max-w-full" : className,
-      )}
+      className={cn("flex items-center gap-2", className)}
     >
       {count > 0 ? (
         row
@@ -544,37 +538,7 @@ export function FilterChips({
     // because the projection engine it needs is already pulled in by
     // AnimatePresence elsewhere.
     <LazyMotion features={domMax}>
-      <TooltipProvider>
-        {clearBelow ? (
-          <div className={cn("flex flex-col items-center gap-3", className)}>
-            {toolbar}
-            {/* Outside the toolbar, on purpose: it is not a stop on the row's
-                roving walk, so it is reached with a Tab like any other button
-                on the page and the arrow keys stay inside the pills.
-
-                Nothing under an undo offer. That state has no filters left to
-                clear, and the one press it offers is the way back to them. */}
-            {count > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                // 44px below lg: this is the primary way out on a phone, and
-                // the dock and the sheet's footer keep that height for a thumb.
-                className="max-lg:h-11"
-                onClick={clearAll}
-                // The same name the inline one answers to, because it is the
-                // same press: "Počisti vse" is the label a row of removes
-                // needs, and on its own it does not say what "vse" was.
-                aria-label={messages.clearAllFilters}
-              >
-                {messages.clearAll}
-              </Button>
-            )}
-          </div>
-        ) : (
-          toolbar
-        )}
-      </TooltipProvider>
+      <TooltipProvider>{toolbar}</TooltipProvider>
     </LazyMotion>
   );
 }

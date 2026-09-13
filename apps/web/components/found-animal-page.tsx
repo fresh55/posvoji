@@ -66,12 +66,18 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
       // (see the atlas).
       mainClassName="flex w-full flex-1 flex-col gap-6 py-page-y"
       // The one footer that does not link to the found-animal page, because
-      // it is on it.
+      // it is on it, and the one that says nothing about the listings. The
+      // provenance sentence is about adopting an animal, which is the other
+      // task; the date under it is the animal export's, and printed below an
+      // answer that has just said the responsible shelter is not verified it
+      // reads as the day somebody checked the responsibility. So the page
+      // passes the dataset off as well as the note: the links, the address
+      // for a correction and the code are what a reader here is still owed.
       footer={
         <SiteFooter
           locale={locale}
           showFoundAnimalLink={false}
-          updatedAt={dataset?.generatedAt}
+          aboutListings={false}
         />
       }
     >

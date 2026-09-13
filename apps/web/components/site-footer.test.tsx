@@ -150,6 +150,33 @@ describe("SiteFooter", () => {
     ).not.toBeNull();
   });
 
+  // The found-animal page is not about the listings. The provenance sentence
+  // is about adopting an animal, and the date under it is the animal export's,
+  // which below an answer that says the responsible shelter is not verified
+  // reads as the day somebody checked the responsibility.
+  it("drops the listings note and its date on a page about another task", () => {
+    const messages = getMessages("sl");
+    const stamp = "2026-09-07T03:12:00.000Z";
+    const { container } = render(
+      <SiteFooter locale="sl" aboutListings={false} updatedAt={stamp} />,
+    );
+
+    expect(container.textContent).not.toContain(messages.footer);
+    const [opening] = messages.footerUpdated.split("{date}");
+    expect(container.textContent).not.toContain(opening);
+    expect(container.textContent).not.toContain(
+      registerDateLabel(stamp, "sl"),
+    );
+
+    // What a reader is still owed: the way to the other pages, the address to
+    // write a correction to, and the code.
+    expect(screen.getByRole("link", { name: "Zavetišča" })).toBeTruthy();
+    expect(container.querySelector('a[href^="mailto:"]')).not.toBeNull();
+    expect(
+      container.querySelector<HTMLAnchorElement>(`a[href="${REPO_URL}"]`),
+    ).not.toBeNull();
+  });
+
   // target="_blank" is silent, and this is the only link in the chrome that
   // leaves the site.
   it("says the repository link opens a new window", () => {

@@ -294,16 +294,36 @@ const sl = {
   // and that one is neutral.
   muniPromptTitle: "Si našel žival?",
   muniTab: "Najdena žival",
+  // The field's name, said in full, and the hint drawn inside it. They are
+  // two keys because the box is 196px wide inside its padding on a 360px
+  // phone and the full wording is clipped there, which leaves the reader
+  // guessing at the half of it that decides what to type. The hint keeps both
+  // things the field takes and drops the words that only make them formal;
+  // English says "town" for the same reason the shelter picker's own field
+  // does, which is that a postal town is what most people can name.
   muniSearch: "Občina ali poštna številka …",
+  muniSearchPlaceholder: "Občina ali pošta",
   muniHere: "Uporabi mojo lokacijo",
-  // The field's placeholder while the device's position is the answer, so
-  // the pressed arrow beside it has a word to go with it.
+  // Two things at once: the field's placeholder while the device's position
+  // is the answer, so the pressed arrow beside it has a word to go with it,
+  // and the location button's own visible label on a phone. The button is an
+  // arrow with a tooltip, and a tooltip is a pointer with a mouse on it: on a
+  // phone the one control that fills this field without typing was unnamed.
   muniHereActive: "Moja lokacija",
   retryLocation: "Poskusi znova",
   muniPostcodeInstead:
     "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
+  // The finder's own version of postcodeNotFound. The shared one tells the
+  // reader to check what they typed, which on this page is a dead end for
+  // somebody standing over an animal with the right number and a table that
+  // does not hold it. This one names the two other ways into the same answer,
+  // both of them controls already on screen. The shelter picker keeps the
+  // shared wording: its field takes a town, a postcode or a shelter, so
+  // "vpiši občino" would be advice about a field it does not have.
+  muniPostcodeNotFound:
+    "Te poštne številke ne najdem. Vpiši občino ali uporabi svojo lokacijo.",
   muniNoMatch: "Ni občine z imenom",
   muniSuggestions: "Predlagane občine",
   muniMatches: "Najdene občine: {count}. Izberi pravo.",
@@ -312,34 +332,85 @@ const sl = {
   muniResponsible: "pristojno zavetišče",
   muniResponsiblePlural: "pristojni zavetišči",
   muniCall: "Pokliči {phone}",
-  // Two rows the card draws when the register holds them: when the phone is
-  // answered, and the number that is answered outside those hours. The hours
-  // are free text from the shelter's own site, copied in Slovenian for both
-  // locales: times read the same in either, and a translation of "pon-pet"
-  // would be the one thing on the card the shelter did not say.
+  // When the number above is answered. Free text from the shelter's own site,
+  // copied in Slovenian for both locales: times read the same in either, and
+  // a translation of "pon-pet" would be the one thing on the card the shelter
+  // did not say.
   muniHours: "Uradne ure",
-  muniOnCall: "Dežurna številka",
+  // The number that is answered outside those hours, as the second button
+  // under the first. It used to be a line of contact detail among the address
+  // and the website, which made the one thing to press at eleven at night the
+  // smallest target on the card. Same shape as muniCall, so the two calls
+  // read as one choice with two times of day.
+  muniCallOnCall: "Dežurna {phone}",
+  // Over the three sentences under the answer. They are what to do while the
+  // call is being made and until somebody comes, and unheaded they read as
+  // three more muted lines after the card rather than as a set with a moment
+  // of their own.
+  muniGuidanceTitle: "Do prihoda pomoči",
   muniCallAdvice:
     "Po telefonu povej točno lokacijo, opis živali in morebitne poškodbe.",
   muniCost: "Odlov in oskrbo plača občina, ne ti.",
   muniCostSource: "Zakon o zaščiti živali, 31. člen",
   muniInjured:
     "Poškodovane živali ne premikaj na silo. Če se ji ni varno približati, ostani na razdalji.",
+  // The card's heading is the action, and the shelter under it is the one
+  // to take it with: the nearest that has a number. It does not say "the
+  // nearest", because that shelter is not always the nearest one. Two of the
+  // register's seventeen shelters publish no number, and in Bovec the nearest
+  // is one of them: the heading sat over a shelter 49 km away while the one
+  // at 21 km was on the list below it. muniNearestTitle is the heading only
+  // when nothing on the shortlist has a number at all, and then there is no
+  // call to put first.
+  muniNearestCall: "Najprej pokliči",
   muniNearestTitle: "Najbližja zavetišča",
-  muniNearestNote:
-    "Ni potrjeno, da so pristojna za to občino. Pokliči in vprašaj.",
-  muniUnverified: "ni preverjenega podatka",
+  // How far the shelter is. Measured between the občina's centroid and the
+  // shelter's town, in a straight line, so a road is longer and this is never
+  // a driving time. muniDistanceNote says so once, under the list: a
+  // qualifier on every row put every distance on two lines at 375px. The
+  // space before the unit is non-breaking.
+  muniDistance: "{km}\u00a0km",
+  muniDistanceNote: "Razdalje so zračne, od središča občine.",
+  // In place of the button, on a shortlist row for a shelter the register has
+  // no number for. Says which of the two it is: a number nobody published,
+  // not a page that failed to draw it.
+  muniNoNumber: "brez objavljene številke",
+  // Only the script for the call. The line over the card has already said
+  // that nothing is verified, and the note used to say it again in other
+  // words three lines later: the one sentence on the card that said nothing
+  // new.
+  muniNearestNote: "Vprašaj, kdo prevzame žival.",
+  // Over the rest of the shortlist, under the number to try first.
+  muniNearestOthers: "Če se ne oglasijo",
+  // The map's callout beside the ringed shelter, in the register of
+  // muniResponsible: what the ring means, and not a claim.
+  muniNearest: "najbližje zavetišče",
+  // Says what is unverified, in the verified state's own noun: "pristojno
+  // zavetišče" over one card, "pristojnost ni preverjena" over the other.
+  // "ni preverjenega podatka" was the data file's phrase, and left the reader
+  // to guess what the missing datum was.
+  muniUnverified: "pristojnost ni preverjena",
   // "kjer je bila žival najdena" and not "kjer si našel žival": the reader is
   // being told what to do, not quoted, so nothing here has to guess their
   // gender. Same construction as muniPostcodeInstead above.
+  //
+  // The imperative is for an občina the map cannot place, which has no
+  // nearest shelters to call first. Under that list the občina is the second
+  // call, and muniUnverifiedAlso says so without a second "pokliči".
   muniUnverifiedAdvice:
     "Pokliči občino, kjer je bila žival najdena, in vprašaj, katero zavetišče jo lahko prevzame.",
-  // Names the office, not a register: gov.si no longer publishes the list of
-  // shelters at any address, so the link goes to UVHVVR itself.
-  muniRegister: "Uprava za varno hrano, veterinarstvo in varstvo rastlin (gov.si)",
+  muniUnverifiedAlso:
+    "Katero zavetišče je pristojno, lahko pove tudi občina, kjer je bila žival najdena.",
   muniSource: "Vir:",
   muniDatedSource:
     "Podatek je iz starejšega vira; pred obiskom preveri pri zavetišču ali občini.",
+  // The same caveat where there is room for two words and not for a sentence:
+  // after "pristojno zavetišče" in the line under the search box, and in the
+  // map's callout beside the ring. Both places named the shelter as
+  // responsible with nothing to say the claim rests on an unconfirmed 2023
+  // source, which only the 12px source line at the foot of the card admitted.
+  // Two words at the point of use, not a badge or a legend.
+  muniDatedShort: "starejši vir",
   speciesDogs: "Psi",
   speciesCats: "Mačke",
   // Genitive plural of each species tab, for sentences built around "nima"
@@ -600,6 +671,7 @@ const en: Messages = {
   muniPromptTitle: "Found an animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
+  muniSearchPlaceholder: "Town or postcode",
   muniHere: "Use my location",
   muniHereActive: "My location",
   retryLocation: "Try again",
@@ -607,6 +679,8 @@ const en: Messages = {
     "Or type the postcode of the place where the animal was found.",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
+  muniPostcodeNotFound:
+    "No such postcode. Type the municipality or use your location.",
   muniNoMatch: "No municipality named",
   muniSuggestions: "Suggested municipalities",
   muniMatches: "Municipalities found: {count}. Choose the correct one.",
@@ -616,23 +690,31 @@ const en: Messages = {
   muniResponsiblePlural: "responsible shelters",
   muniCall: "Call {phone}",
   muniHours: "Office hours",
-  muniOnCall: "On-call number",
+  muniCallOnCall: "On-call {phone}",
+  muniGuidanceTitle: "Until help arrives",
   muniCallAdvice:
     "On the phone, give the exact location, a description of the animal and any injuries.",
   muniCost: "The municipality pays for capture and care, not you.",
   muniCostSource: "Animal Protection Act, Article 31",
   muniInjured:
     "Do not force an injured animal to move. Keep your distance if it is unsafe to approach.",
+  muniNearestCall: "Call first",
   muniNearestTitle: "Nearest shelters",
-  muniNearestNote:
-    "Not confirmed as responsible for this municipality. Call and ask.",
-  muniUnverified: "no verified data",
+  muniDistance: "{km}\u00a0km",
+  muniDistanceNote: "Distances are straight-line, from the municipality's centre.",
+  muniNoNumber: "no published number",
+  muniNearestNote: "Ask who will collect the animal.",
+  muniNearestOthers: "If there is no answer",
+  muniNearest: "nearest shelter",
+  muniUnverified: "responsible shelter not verified",
   muniUnverifiedAdvice:
     "Call the municipality where you found the animal and ask which shelter can collect it.",
-  muniRegister: "Food Safety, Veterinary and Plant Protection Administration (gov.si)",
+  muniUnverifiedAlso:
+    "The municipality where you found the animal can also say which shelter is responsible.",
   muniSource: "Source:",
   muniDatedSource:
     "This comes from an older source; confirm with the shelter or municipality before visiting.",
+  muniDatedShort: "older source",
   speciesDogs: "Dogs",
   speciesCats: "Cats",
   speciesAbsenceAll: "animals",

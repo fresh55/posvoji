@@ -31,17 +31,15 @@ function ContactRow({
   icon: Icon,
   label,
   labelHidden = false,
-  strong = false,
   children,
 }: {
   icon: typeof MapPin;
   label?: string;
   labelHidden?: boolean;
-  strong?: boolean;
   children: ReactNode;
 }) {
   return (
-    <li className={`flex items-start gap-2 ${strong ? "text-foreground" : ""}`}>
+    <li className="flex items-start gap-2">
       <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0">
         {label &&
@@ -73,46 +71,64 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
+        {/* The invisible 44px layer below lg: a line of text is under the
+            24px a target needs, and the nearest-shelter card's names carry
+            the same. */}
         <a
           href={coverage.detailHref}
-          className="font-medium underline-offset-4 hover:underline"
+          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
         >
           {coverage.shelterName}
         </a>
         <SpeciesTag species={coverage.species} />
       </div>
 
-      {coverage.phone && (
-        <Button asChild className="w-full">
-          <a href={telHref(coverage.phone)}>
-            <Phone className="size-4 shrink-0" aria-hidden />
-            {t("muniCall", { phone: coverage.phone })}
-          </a>
-        </Button>
+      {/* 44px tall below lg: the call is the card, and a phone borrowed to
+          make it is held in one hand. The same height as the call on the
+          nearest-shelter card, so the two states share one shape.
+
+          The dežurna številka is the same act at a different hour, so it is
+          the same control in the quieter variant rather than a line of text
+          among the addresses below. It was one: on Koper's card the number
+          to ring during office hours was a 44px button and the one to ring at
+          night was a 17px link, which is the wrong way round for the call
+          that is made in the dark over an animal by a road. */}
+      {(coverage.phone || coverage.onCallPhone) && (
+        <div className="space-y-2">
+          {coverage.phone && (
+            <Button asChild className="w-full max-lg:h-11">
+              <a href={telHref(coverage.phone)}>
+                <Phone className="size-4 shrink-0" aria-hidden />
+                {t("muniCall", { phone: coverage.phone })}
+              </a>
+            </Button>
+          )}
+          {coverage.onCallPhone && (
+            <Button
+              asChild
+              variant="outline"
+              className="w-full max-lg:h-11"
+            >
+              <a href={telHref(coverage.onCallPhone)}>
+                <Phone className="size-4 shrink-0" aria-hidden />
+                {t("muniCallOnCall", { phone: coverage.onCallPhone })}
+              </a>
+            </Button>
+          )}
+        </div>
       )}
 
       <ul className="space-y-1.5 text-sm text-muted-foreground">
         <ContactRow icon={MapPin}>{coverage.city}</ContactRow>
-        {/* When the number above is answered, and what to dial when it is
-            not. The call at eleven at night to a line nobody picks up is the
-            failure this card can otherwise do nothing about, so both rows
-            come before the email and the website, which are for daytime.
-            The hours name themselves ("Pon-pet 8.00-12.00"), so their label
-            is spoken and not drawn; the on-call number would otherwise be a
-            second bare phone number under the first. */}
+        {/* When the number above is answered. It comes before the email and
+            the website, which are for daytime, because it is what says
+            whether the call being made now will be picked up. The hours name
+            themselves ("Pon-pet 8.00-12.00"), so their label is spoken and
+            not drawn. The number to dial outside them is a button above, not
+            a row here: the card states each number once. */}
         {coverage.hours && (
           <ContactRow icon={Clock} label={messages.muniHours} labelHidden>
             {coverage.hours}
-          </ContactRow>
-        )}
-        {coverage.onCallPhone && (
-          <ContactRow icon={Phone} label={messages.muniOnCall} strong>
-            <a
-              href={telHref(coverage.onCallPhone)}
-              className="font-medium underline-offset-4 hover:underline"
-            >
-              {coverage.onCallPhone}
-            </a>
           </ContactRow>
         )}
         {coverage.email && (

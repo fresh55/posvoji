@@ -37,7 +37,15 @@ export type NearbyShelter = {
   shelterName: string;
   city: string;
   phone?: string;
+  /** The same two register fields LookupCoverage carries, for the same
+   *  reason: the shortlist's first call is a call, and when it is made out of
+   *  hours the number that is answered then is the one worth offering. */
+  hours?: string;
+  onCallPhone?: string;
   detailHref: string;
+  /** Straight-line kilometres from the municipality's centroid to the
+   *  shelter's town, rounded for printing only. The order of the list is
+   *  decided on the unrounded value. */
   km: number;
 };
 
@@ -191,20 +199,30 @@ export function buildMunicipalityEntries(
     return at ? [{ shelter, at }] : [];
   });
 
+  // Ordered on the measured distance and rounded only on the way out. Sorting
+  // on the rounded kilometre let two shelters a few hundred metres apart tie,
+  // and a tie is resolved by whatever order the register happens to list them
+  // in, which is not a fact about where they are.
   function nearestTo(name: string): NearbyShelter[] {
     const centroid = centroids.get(name);
     if (!centroid) return [];
     return placed
       .map(({ shelter, at }) => ({
+        shelter,
+        distance: distanceKm(centroid, at),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, NEAREST_COUNT)
+      .map(({ shelter, distance }) => ({
         shelterId: shelter.id,
         shelterName: shelter.name,
         city: shelter.city,
         phone: shelter.phone,
+        hours: shelter.hours,
+        onCallPhone: shelter.onCallPhone,
         detailHref: `${detailBase}/${shelter.id}`,
-        km: Math.round(distanceKm(centroid, at)),
-      }))
-      .sort((a, b) => a.km - b.km)
-      .slice(0, NEAREST_COUNT);
+        km: Math.round(distance),
+      }));
   }
 
   return municipalities.map((municipality) => ({

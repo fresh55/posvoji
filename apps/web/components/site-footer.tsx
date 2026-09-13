@@ -66,6 +66,7 @@ export function SiteFooter({
   showFoundAnimalLink = true,
   showAboutLink = true,
   showContact = true,
+  aboutListings = true,
   updatedAt,
   docked = false,
   children,
@@ -101,6 +102,22 @@ export function SiteFooter({
    * one underneath is the same contradiction, and portal-login.test.tsx pins it.
    */
   showContact?: boolean;
+  /**
+   * Whether this page is about the adoption listings. On by default, because
+   * every page but one is.
+   *
+   * The one is the found-animal lookup. Both halves of the provenance note
+   * are about the listings: the sentence says the animals' data comes from
+   * the shelters and that adoption goes through them, and the date says when
+   * that copy was taken. Neither is what the reader of that page is holding.
+   * Worse, the date is the animal export's, and under an answer that has just
+   * said the responsible shelter is not verified it reads as the day somebody
+   * checked the responsibility, which nobody did.
+   *
+   * Off, the footer keeps everything a page still owes a reader: the way to
+   * the other pages, the address to write a correction to, and the code.
+   */
+  aboutListings?: boolean;
   /**
    * When the dataset behind this page was written, as the ISO timestamp the
    * export stamps on it. The sentence above says whose the data is; this says
@@ -263,7 +280,7 @@ export function SiteFooter({
         {/* The provenance note, then when it was last true, then the two
             things a reader can do about it. */}
         <div className="max-w-3xl space-y-2">
-          <p>{messages.footer}</p>
+          {aboutListings && <p>{messages.footer}</p>}
           {/* When, beside where. The sentence above says the data is the
               shelters' and that adoption goes through them, and says nothing
               about how old the copy on the screen is.
@@ -277,7 +294,7 @@ export function SiteFooter({
               the same dataset near a boundary, it builds its two formatters
               once where this renders on every animal page in both locales,
               and lib/labels.test.ts fixes its output in both. */}
-          {updatedAt && (
+          {aboutListings && updatedAt && (
             <p>
               {interpolate(messages.footerUpdated, {
                 date: registerDateLabel(updatedAt, locale),

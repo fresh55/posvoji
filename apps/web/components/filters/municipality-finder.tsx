@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import {
   ExternalLink,
@@ -21,6 +22,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { telHref } from "@/lib/contact-links";
 import { CoverageCard } from "@/components/municipality-coverage-card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Tooltip,
@@ -38,7 +40,7 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import { looksLikePostcode } from "@/lib/postal-lookup";
-import type { LookupEntry } from "@/lib/municipality-coverage";
+import type { LookupEntry, NearbyShelter } from "@/lib/municipality-coverage";
 import {
   municipalitiesForInput,
   municipalitiesNear,
@@ -46,28 +48,102 @@ import {
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
 
-// The authority that keeps the register of shelters. It used to point at
-// gov.si/teme/zascita-zivali/, which returns 404 and has no snapshot in the
-// Wayback Machine, so it is unlikely to have ever resolved: the one piece of
-// help offered to the 50 občine with no verified coverage was a dead link.
-//
-// gov.si no longer publishes the register itself at a findable address. The
-// PDF it used to sit in (assets/.../REG-zavetisc-*.pdf) is gone too, and the
-// site search finds no replacement, so this points at UVHVVR's own page, which
-// resolves and is the office to ask. Checked 2026-09-01.
-const REGISTER_URL =
-  "https://www.gov.si/drzavni-organi/organi-v-sestavi/uprava-za-varno-hrano-veterinarstvo-in-varstvo-rastlin/";
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
 // Enough to disambiguate any prefix without becoming a directory. The page
 // this replaced listed all 212 občine; the finder answers one question.
 const MAX_MATCHES = 8;
 
+/**
+ * How wide the search field has to be before the location button can draw its
+ * name beside the arrow.
+ *
+ * Measured off the built page. The field spends 2.25rem on the leading glyph,
+ * 0.25rem on the trailing inset and 8.46rem on the labelled button, and the
+ * Slovenian placeholder "Občina ali pošta" wants 7.59rem, so the field needs
+ * 18.55rem before the two stop fighting. Under it the placeholder was cut
+ * mid-word: at 320px it read "Občina ali poš".
+ *
+ * A container query and not a width breakpoint, because the field runs out of
+ * room two ways. At 320px the window is narrow; at 375px with the browser's
+ * text at 125% the window is fine and the button has grown, and a media query
+ * cannot see the second one at all: its rem resolves against the initial font
+ * size, where a container query's follows the root. Measured both, which is
+ * what the 19rem is: 320px gives the field 18rem, 360px gives it 20.5rem, and
+ * 375px at 125% text gives it 16.75rem.
+ *
+ * Written out whole, the way map-marker.tsx writes PLATE_TOO_SMALL: Tailwind
+ * scans source text for complete class names, so a variant assembled from
+ * pieces at runtime compiles to nothing at all.
+ */
+const FIELD_LABEL_HIDDEN = "@max-[19rem]/finder-field:hidden";
+const FIELD_LABELLED_PADDING = "@min-[19rem]/finder-field:max-lg:pr-36";
+
+/**
+ * How wide the answer card has to be before a shortlist row can hold a name
+ * and a number button side by side.
+ *
+ * Same measurement, same reason. At 375px the card gives a row 19.31rem and
+ * the name sits on one line with the town and the distance under it; at 360px
+ * (18.38rem) the town wraps, at 320px (15.88rem) the name wraps too, and at
+ * 375px with 125% text (15.05rem) the distance was left alone on a third line
+ * behind its separator. Under the threshold the row stacks instead.
+ */
+const ROW_STACKED =
+  "@max-[19rem]/shortlist:flex-col @max-[19rem]/shortlist:items-start";
+
 /** The question as asked: what is in the box, and which občina is settled.
  *  picked is null while several still match, or while nothing does. */
 type Ask = { query: string; picked: string | null };
 
 const NOT_ASKED: Ask = { query: "", picked: null };
+
+/** One shelter on the shortlist under the first call: who it is, where it is
+ *  and how far, and then whatever can be done with it. The trailing control
+ *  comes from the caller, because half of these rows have a number to press;
+ *  the other half have to say that there is none, and say it under the town
+ *  as a third line, where a note reads as a fact about the shelter. Drawn on
+ *  the right in the button's place it read as a control that failed, and at
+ *  375px it squeezed the name into two lines beside it.
+ *
+ *  Side by side only while the card is wide enough to hold both. Under
+ *  ROW_STACKED's threshold the row stacks: the shelter, then the button under
+ *  it. The column left beside the button at 320px was 116px, which broke
+ *  "Zavetišče Mala hiša" over two lines and then pushed "· 29 km" onto a line
+ *  of its own behind its separator. */
+function NearestRow({
+  shelter,
+  note,
+  children,
+}: {
+  shelter: NearbyShelter;
+  note?: string;
+  children?: ReactNode;
+}) {
+  const { t } = useI18n();
+  return (
+    <li
+      className={cn(
+        "flex items-center justify-between gap-3 py-2.5 last:pb-0",
+        ROW_STACKED,
+      )}
+    >
+      <span className="min-w-0 text-sm">
+        <a
+          href={shelter.detailHref}
+          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+        >
+          {shelter.shelterName}
+        </a>
+        <span className="block text-muted-foreground">
+          {shelter.city} ·&nbsp;{t("muniDistance", { km: shelter.km })}
+        </span>
+        {note && <span className="block text-muted-foreground">{note}</span>}
+      </span>
+      {children}
+    </li>
+  );
+}
 
 // The found-animal lookup: say where the animal was found and get the shelter
 // responsible for it and what to do next. The občina
@@ -82,18 +158,34 @@ const NOT_ASKED: Ask = { query: "", picked: null };
 // own page, which is where its animals already are.
 //
 // Practical guidance stays available before a location is known.
+/** What the finder settled on, for the map to draw. Null while no občina is
+ *  picked. */
+export type FinderAnswer = {
+  /** Where the question was asked from, by the register's name. */
+  municipality: string;
+  /** The shelters the map keeps bright: the responsible ones, or, where none
+   *  is on record, the nearest shortlist. */
+  shelters: string[];
+  /** The ones to ring and name: the responsible ones, or the nearest with a
+   *  number, which is the one the card tells the reader to call. */
+  spotlight: string[];
+  /** Whether shelters are on record for the občina. Decides what the ring's
+   *  callout calls them. */
+  verified: boolean;
+  /** Whether every source behind that record is confirmed. Bled's coverage
+   *  comes from an unconfirmed 2023 list, and the map used to name its
+   *  shelter as responsible in the same words as Ptuj's, which is checked.
+   *  Vacuously true where there is no coverage at all: what is unverified
+   *  there is the responsibility, which `verified` already says. */
+  confirmed: boolean;
+};
+
 export function MunicipalityFinder({
   entries,
-  onActiveShelters,
-  onActiveMunicipality,
+  onAnswer,
 }: {
   entries: LookupEntry[];
-  /** Shelter ids of the picked municipality, for the map to light up.
-   *  Null when no municipality is picked. */
-  onActiveShelters: (values: string[] | null) => void;
-  /** Name of the picked municipality, which is the only thing that knows
-   *  where the question was asked from. Null when none is picked. */
-  onActiveMunicipality?: (name: string | null) => void;
+  onAnswer: (answer: FinderAnswer | null) => void;
 }) {
   const { messages, t } = useI18n();
   // What the box holds and which občina is settled, as one value: they change
@@ -183,7 +275,19 @@ export function MunicipalityFinder({
     setHighlighted(null);
     setDismissed(false);
     turnOff();
-    searchRef.current?.focus();
+    // A pick is the end of the typing, and where the typing was done with a
+    // software keyboard that keyboard is standing over the answer the pick
+    // just produced. So the field gives the focus up there instead of taking
+    // it back. With a pointer there is nothing in the way and the field is
+    // where the visitor was: the list they were arrowing through has gone,
+    // and focus goes with it if nothing catches it. matchMedia is optional
+    // because this runs in the click handler of a component that is rendered
+    // under jsdom as well as in a browser.
+    if (window.matchMedia?.("(pointer: coarse)").matches) {
+      searchRef.current?.blur();
+    } else {
+      searchRef.current?.focus();
+    }
   };
 
   // A postcode or town in the box, and the device's position, both answer
@@ -262,7 +366,7 @@ export function MunicipalityFinder({
   const noMatch =
     query.trim() && !guess && nameMatches.length === 0
       ? looksLikePostcode(query) || /^\d+$/.test(query.trim())
-        ? messages.postcodeNotFound
+        ? messages.muniPostcodeNotFound
         : `${messages.muniNoMatch} »${query.trim()}«`
       : "";
 
@@ -285,16 +389,78 @@ export function MunicipalityFinder({
     if (merged !== linked.replace(/^\?/, "")) commitSearch(merged, "replace");
   }, [active, asked, linked, query]);
 
+  // Where no shelter is on record, the nearest one with a number: the card's
+  // one primary call, and the shelter the map rings. Two of the register's
+  // seventeen shelters have no phone, so the nearest is not always it, and
+  // a hero without a button would be a heading that says "call" over
+  // nothing to press.
+  const hero = useMemo(
+    () =>
+      active && active.coverage.length === 0
+        ? active.nearest.find(
+            (shelter): shelter is NearbyShelter & { phone: string } =>
+              Boolean(shelter.phone),
+          )
+        : undefined,
+    [active],
+  );
+  const others = active
+    ? active.nearest.filter((shelter) => shelter.shelterId !== hero?.shelterId)
+    : [];
+  // The rest of the shortlist, in two groups. "Če se ne oglasijo" is an
+  // instruction, and an instruction has to be followable: only the shelters
+  // with a number belong under it. The others are still worth naming, because
+  // a shelter 21 km away is the one an občina is likeliest to be under
+  // contract with, but what they offer is a page and not a call.
+  // A row offers the main number, or the dežurna one where the register holds
+  // only that. No shelter in the register is in the second case today, but a
+  // row that has a number to dial and draws no button would be the bug this
+  // whole card was rebuilt to remove.
+  const callable = others.flatMap((shelter) => {
+    const number = shelter.phone ?? shelter.onCallPhone;
+    return number ? [{ shelter, number, onCall: !shelter.phone }] : [];
+  });
+  const unlisted = others.filter(
+    (shelter) => !shelter.phone && !shelter.onCallPhone,
+  );
+
+  // Whether the record behind the answer is confirmed, for the line under the
+  // box and for the map's callout. One unconfirmed row is enough: the card
+  // cites its sources one by one, but the line over it speaks for all of
+  // them at once and cannot claim more than the weakest.
+  const confirmed = active
+    ? active.coverage.every((coverage) => coverage.confirmed)
+    : true;
+
   useEffect(() => {
-    onActiveShelters(
-      active ? active.coverage.map((coverage) => coverage.shelterId) : null,
-    );
-    onActiveMunicipality?.(active ? active.name : null);
-  }, [active, onActiveMunicipality, onActiveShelters]);
+    if (!active) {
+      onAnswer(null);
+      return;
+    }
+    const verified = active.coverage.length > 0;
+    const shelters = verified
+      ? active.coverage.map((coverage) => coverage.shelterId)
+      : active.nearest.map((shelter) => shelter.shelterId);
+    onAnswer({
+      municipality: active.name,
+      shelters,
+      spotlight: verified ? shelters : hero ? [hero.shelterId] : [],
+      verified,
+      confirmed,
+    });
+  }, [active, confirmed, hero, onAnswer]);
 
   // Both trailing controls start a new question; they differ by where they
   // send it next.
   const clearQuery = () => askFor("");
+
+  // Whether the location button draws its name beside the arrow. Only below
+  // lg, and only while there is nothing in the box: once something is typed
+  // the clear X is beside it and the two of them together would leave the
+  // field no room to show what was typed. It also stands down once the fix is
+  // the answer, because the placeholder then says "Moja lokacija" in the
+  // field itself and the button would be the same two words again.
+  const labelledLocation = query === "" && state.status !== "on";
 
   return (
     <div>
@@ -302,7 +468,9 @@ export function MunicipalityFinder({
         {/* No label over the box: the page's h1 has asked the question, and
             the placeholder says what the box takes. The field keeps its name
             for screen readers from aria-label below. */}
-        <div className="relative">
+        {/* A size container, so the button inside can ask how much of the
+            field is left rather than how wide the window is. */}
+        <div className="relative @container/finder-field">
           <Search
             className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -370,8 +538,13 @@ export function MunicipalityFinder({
             }}
             // While the device's position is the answer the empty field says
             // so, in the placeholder's weight: a state, not something typed.
+            // Otherwise the short hint, because the full name of the field
+            // does not fit inside it on a phone; the name itself is spoken
+            // from aria-label below, where there is no width to run out of.
             placeholder={
-              state.status === "on" ? messages.muniHereActive : messages.muniSearch
+              state.status === "on"
+                ? messages.muniHereActive
+                : messages.muniSearchPlaceholder
             }
             aria-label={messages.muniSearch}
             // 44px tall below lg, the touch target the shelter picker's own
@@ -383,8 +556,18 @@ export function MunicipalityFinder({
             //
             // Room on the right for the two trailing controls, and Chrome's
             // own clear button on a search field switched off: it drew a
-            // second X under ours.
-            className="h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none"
+            // second X under ours. While the location button carries its
+            // name below lg it is wider than the two icons together, and the
+            // hint has to stop before it rather than run under it.
+            //
+            // Only while the name is actually drawn. Under the threshold the
+            // button is back to a square and the base pr-24 is the room it
+            // needs; the wider padding there was what cut the placeholder
+            // short of its own field.
+            className={cn(
+              "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none",
+              labelledLocation && FIELD_LABELLED_PADDING,
+            )}
           />
           <p id={keyboardHintId} className="sr-only">
             {messages.muniKeyboard}
@@ -393,10 +576,13 @@ export function MunicipalityFinder({
               reaching for: clear what was typed, then ask the device instead.
               The location button lives in the field because it is another way
               of filling it and not a separate step; as a text link under the
-              box it read as a footnote. Icon only, named for screen readers
-              and in a tooltip: the arrow is the glyph every map app uses for
-              the same thing, and the pressed state plus the placeholder say
-              when it is the answer. Below lg each is its own 44px target. */}
+              box it read as a footnote. Named for screen readers and in a
+              tooltip, and below lg in the button itself while the box is
+              empty: a tooltip opens on hover and on focus, and a thumb does
+              neither, so on the device this page is most often opened on the
+              arrow was a control with no name at all. The pressed state and
+              the placeholder say when it is the answer. Below lg each is its
+              own 44px target. */}
           <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
             {query !== "" && (
               <Button
@@ -432,11 +618,26 @@ export function MunicipalityFinder({
                       locate();
                     }}
                     aria-pressed={state.status === "on"}
+                    // The name follows the label while the label is drawn:
+                    // a control whose visible text is not in its accessible
+                    // name fails the reader who says what they see. Icon
+                    // alone, it keeps the fuller name.
                     aria-label={
-                      state.status === "locating" ? messages.locating : messages.muniHere
+                      state.status === "locating"
+                        ? messages.locating
+                        : labelledLocation
+                          ? messages.muniHereActive
+                          : messages.muniHere
                     }
+                    // min-w-11 is what makes the collapse under the
+                    // threshold land on a square: with the name hidden
+                    // the button is down to its padding and its arrow, which
+                    // is 40px, and the one control a thumb reaches for on
+                    // this page cannot be under 44.
                     className={cn(
-                      "max-lg:size-11",
+                      labelledLocation
+                        ? "max-lg:h-11 max-lg:w-auto max-lg:min-w-11 max-lg:gap-1.5 max-lg:px-3"
+                        : "max-lg:size-11",
                       state.status === "on"
                         ? "bg-muted text-foreground"
                         : "text-muted-foreground",
@@ -447,10 +648,31 @@ export function MunicipalityFinder({
                     ) : (
                       <Navigation className="size-4" aria-hidden />
                     )}
+                    {/* The name, drawn where a tooltip cannot be reached.
+                        It stays the same two words while the fix is being
+                        found, so the control does not change width under
+                        the thumb that has just pressed it.
+
+                        And only where the field can spare the width for it:
+                        under the threshold the placeholder and the name were
+                        sharing 288px and the placeholder lost. The
+                        accessible name is the short one either way, which is
+                        the rule kept rather than broken: what the button says
+                        out loud never contradicts what it shows, and with
+                        nothing shown there is nothing to contradict. */}
+                    {labelledLocation && (
+                      <span className={cn("lg:hidden", FIELD_LABEL_HIDDEN)}>
+                        {messages.muniHereActive}
+                      </span>
+                    )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {state.status === "locating" ? messages.locating : messages.muniHere}
+                  {state.status === "locating"
+                    ? messages.locating
+                    : labelledLocation
+                      ? messages.muniHereActive
+                      : messages.muniHere}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -507,6 +729,10 @@ export function MunicipalityFinder({
                   : active.coverage.length > 1
                     ? messages.muniResponsiblePlural
                     : messages.muniUnverified}
+                {/* What the noun before it rests on, where that is an
+                    unconfirmed list. Only the card's 12px source line said
+                    so, under the shelter's address and website. */}
+                {!confirmed && <> · {messages.muniDatedShort}</>}
               </span>
             </>
           ) : noMatch || showSuggestions ? (
@@ -603,87 +829,190 @@ export function MunicipalityFinder({
               />
             ))
           ) : (
-            <div className="space-y-3">
-                <div className="space-y-1.5 rounded-ui border border-dashed p-4 text-sm text-muted-foreground">
-                  <p>{messages.muniUnverifiedAdvice}</p>
-                  <a
-                    href={REGISTER_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 underline underline-offset-4 hover:text-foreground"
-                  >
-                    {messages.muniRegister}
-                    <ExternalLink className="size-3" aria-hidden />
-                  </a>
-                </div>
-
-                {/* Not an answer, but better than none: somewhere to call. */}
-                {active.nearest.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-medium">
-                      {messages.muniNearestTitle}
+            // No verified shelter: the answer is a card all the same, on the
+            // coverage card's surface, so both states of the one question
+            // look like the same thing. It used to be a dashed box of muted
+            // advice with the nearest shelters loose under it, and on a phone
+            // nothing in it outranked anything else.
+            //
+            // The nearest shelters lead, because a number to dial is what
+            // somebody standing over an animal can act on, and a shelter
+            // knows whose contract an občina is under. The registry's rule,
+            // that none of them is offered as responsible, is kept by the
+            // line over the card, which says the responsibility is not
+            // verified, and by the note under the heading, which asks the
+            // shelter who collects the animal rather than telling the reader
+            // it is them. The občina is the last resort, under the list.
+            //
+            // The block used to open with a link to UVHVVR, the office that
+            // keeps the register of shelters. gov.si publishes no list at any
+            // address (checked 2026-09-01), so the link led to an office's
+            // homepage: the one thing on the answer nobody could act on.
+            <Card className="space-y-3 p-4">
+              {active.nearest.length > 0 && (
+                <>
+                  <div className="space-y-1">
+                    {/* The heading is the action, and the shelter under it
+                        is the one to take it with, so it only says "call"
+                        when there is a number to call. */}
+                    <p className="font-medium">
+                      {hero ? messages.muniNearestCall : messages.muniNearestTitle}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {messages.muniNearestNote}
                     </p>
-                    <ul className="space-y-0.5 pt-0.5">
-                      {active.nearest.map((shelter) => (
-                        <li
-                          key={shelter.shelterId}
-                          className="flex items-center justify-between gap-2 rounded-ui px-2 py-1.5 text-sm"
+                  </div>
+
+                  {/* One primary call, in the coverage card's own shape, so
+                      the answer looks the same whether or not a shelter is
+                      on record: the name, where it is and how far, and the
+                      button. The rest of the shortlist is the fallback and
+                      is drawn as one, under a label that says when to use
+                      it. Three equal rows with three equal buttons had no
+                      first call in them. */}
+                  {hero && (
+                    <div className="space-y-3">
+                      <p className="text-sm">
+                        <a
+                          href={hero.detailHref}
+                          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
                         >
-                          <span className="min-w-0">
-                            <a
-                              href={shelter.detailHref}
-                              className="block truncate underline-offset-4 hover:underline"
-                            >
-                              {shelter.shelterName}
+                          {hero.shelterName}
+                        </a>
+                        <span className="block text-muted-foreground">
+                          {hero.city} ·&nbsp;{t("muniDistance", { km: hero.km })}
+                        </span>
+                      </p>
+                      {/* 44px tall below lg, like the pills under it: the
+                          one call on the card cannot be its smallest
+                          target. The coverage card keeps the same height,
+                          and the same second button for the hours the first
+                          number is not answered. */}
+                      <div className="space-y-2">
+                        <Button asChild className="w-full max-lg:h-11">
+                          <a href={telHref(hero.phone)}>
+                            <Phone className="size-4 shrink-0" aria-hidden />
+                            {t("muniCall", { phone: hero.phone })}
+                          </a>
+                        </Button>
+                        {hero.onCallPhone && (
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="w-full max-lg:h-11"
+                          >
+                            <a href={telHref(hero.onCallPhone)}>
+                              <Phone className="size-4 shrink-0" aria-hidden />
+                              {t("muniCallOnCall", { phone: hero.onCallPhone })}
                             </a>
-                            <span className="block truncate text-xs text-muted-foreground">
-                              {shelter.city} · {shelter.km} km
-                            </span>
-                          </span>
-                          {shelter.phone && (
-                            <a
-                              href={telHref(shelter.phone)}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-ui border px-2.5 py-1 text-sm transition-colors hover:bg-muted max-lg:min-h-11 max-lg:px-3"
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {callable.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {messages.muniNearestOthers}
+                      </p>
+                      <ul className="@container/shortlist divide-y">
+                        {callable.map(({ shelter, number, onCall }) => (
+                          <NearestRow
+                            key={shelter.shelterId}
+                            shelter={shelter}
+                          >
+                            {/* The number is the control here too, and its
+                                label is the number itself: a phone borrowed
+                                to make the call needs it read out. A dežurna
+                                number says which kind it is, because it is
+                                not the one to try first. 44px tall below
+                                lg. */}
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="max-lg:h-11"
                             >
-                              <Phone className="size-3.5" aria-hidden />
-                              {shelter.phone}
-                            </a>
-                          )}
-                        </li>
+                              <a href={telHref(number)}>
+                                <Phone aria-hidden />
+                                {onCall
+                                  ? t("muniCallOnCall", { phone: number })
+                                  : number}
+                              </a>
+                            </Button>
+                          </NearestRow>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* After the group that can be rung, because nothing here
+                      answers "če se ne oglasijo". The row stays a row: the
+                      name links to the shelter's page, which carries whatever
+                      else the register holds, and a line under the town says
+                      why there is no button. */}
+                  {unlisted.length > 0 && (
+                    <ul className="@container/shortlist divide-y">
+                      {unlisted.map((shelter) => (
+                        <NearestRow
+                          key={shelter.shelterId}
+                          shelter={shelter}
+                          note={messages.muniNoNumber}
+                        />
                       ))}
                     </ul>
-                  </div>
-                )}
-            </div>
+                  )}
+                </>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {active.nearest.length > 0
+                  ? messages.muniUnverifiedAlso
+                  : messages.muniUnverifiedAdvice}
+              </p>
+              {/* What kind of kilometres the rows above show, once, in the
+                  coverage card's source-line weight. */}
+              {active.nearest.length > 0 && (
+                <p className="text-xs leading-snug text-muted-foreground">
+                  {messages.muniDistanceNote}
+                </p>
+              )}
+            </Card>
           ))}
 
-        {/* The guidance, under whatever the search has answered, in the
-            muted weight: the card above it is the answer, this is what goes
-            with it. Three sentences: what not to do, what to say, who pays.
+        {/* The guidance, under whatever the search has answered, its
+            sentences in the muted weight: the card above it is the answer,
+            this is what goes with it. Three sentences under a heading that
+            says when they apply: what not to do, what to say, who pays.
             Call and safety guidance follows Zavetišče Ljubljana's procedure
             (zavetisce-ljubljana.si/najdene-zivali/kaj-storiti-ce-najdemo-
             zapusceno-zival). The list used to end with the emergency numbers
             112 and 113; a found animal is a call to the shelter, not to
             either, so they are gone. */}
-        <ul className="space-y-2 border-t pt-4 text-sm leading-relaxed text-muted-foreground">
-          <li>{messages.muniInjured}</li>
-          <li>{messages.muniCallAdvice}</li>
-          <li>
-            {messages.muniCost}{" "}
-            <a
-              href={LAW_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
-            >
-              {messages.muniCostSource}
-              <ExternalLink className="size-3" aria-hidden />
-            </a>
-          </li>
-        </ul>
+        <div className="space-y-2 border-t pt-4 text-sm leading-relaxed">
+          {/* The set's name. Under the answer card these three sat as three
+              more muted lines with nothing over them, so on a phone they read
+              as small print the card had trailed off into. A p and not an h2:
+              the answer above is headed by a p as well, and a page whose one
+              h2 is the advice under the answer describes an outline the page
+              does not have. */}
+          <p className="font-medium">{messages.muniGuidanceTitle}</p>
+          <ul className="space-y-2 text-muted-foreground">
+            <li>{messages.muniInjured}</li>
+            <li>{messages.muniCallAdvice}</li>
+            <li>
+              {messages.muniCost}{" "}
+              <a
+                href={LAW_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
+              >
+                {messages.muniCostSource}
+                <ExternalLink className="size-3" aria-hidden />
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );

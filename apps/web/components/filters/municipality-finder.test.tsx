@@ -532,7 +532,9 @@ describe("MunicipalityFinder search feedback", () => {
     renderFinder();
     const status = document.querySelectorAll('[aria-live="polite"]')[1];
     fireEvent.change(screen.getByRole("combobox"), { target: { value: query } });
-    expect(status.textContent).toBe("Te poštne številke ne najdem. Preveri vnos.");
+    expect(status.textContent).toBe(
+      "Te poštne številke ne najdem. Vpiši občino ali uporabi svojo lokacijo.",
+    );
     expect(screen.queryByText(/Ni občine z imenom/)).toBeNull();
   });
 
@@ -549,7 +551,11 @@ describe("MunicipalityFinder search feedback", () => {
   it("uses English postcode feedback on the English page", () => {
     render(<I18nProvider locale="en"><MunicipalityFinder entries={ENTRIES} onAnswer={() => undefined} /></I18nProvider>);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "9999" } });
-    expect(screen.getByText("No such postcode. Check the number.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "No such postcode. Type the municipality or use your location.",
+      ),
+    ).toBeTruthy();
   });
 });
 

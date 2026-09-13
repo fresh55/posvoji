@@ -311,7 +311,7 @@ export function MunicipalityFinder({
   const noMatch =
     query.trim() && !guess && nameMatches.length === 0
       ? looksLikePostcode(query) || /^\d+$/.test(query.trim())
-        ? messages.postcodeNotFound
+        ? messages.muniPostcodeNotFound
         : `${messages.muniNoMatch} »${query.trim()}«`
       : "";
 

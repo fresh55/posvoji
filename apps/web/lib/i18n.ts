@@ -315,6 +315,15 @@ const sl = {
     "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
+  // The finder's own version of postcodeNotFound. The shared one tells the
+  // reader to check what they typed, which on this page is a dead end for
+  // somebody standing over an animal with the right number and a table that
+  // does not hold it. This one names the two other ways into the same answer,
+  // both of them controls already on screen. The shelter picker keeps the
+  // shared wording: its field takes a town, a postcode or a shelter, so
+  // "vpiši občino" would be advice about a field it does not have.
+  muniPostcodeNotFound:
+    "Te poštne številke ne najdem. Vpiši občino ali uporabi svojo lokacijo.",
   muniNoMatch: "Ni občine z imenom",
   muniSuggestions: "Predlagane občine",
   muniMatches: "Najdene občine: {count}. Izberi pravo.",
@@ -666,6 +675,8 @@ const en: Messages = {
     "Or type the postcode of the place where the animal was found.",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
+  muniPostcodeNotFound:
+    "No such postcode. Type the municipality or use your location.",
   muniNoMatch: "No municipality named",
   muniSuggestions: "Suggested municipalities",
   muniMatches: "Municipalities found: {count}. Choose the correct one.",

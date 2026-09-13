@@ -210,15 +210,19 @@ function stored(): unknown {
 
 describe("collapsible filter sections", () => {
   it("opens what a visitor reaches for first and folds the rest away", () => {
+    // Two sections and no more. The panel scrolls on its own, so anything
+    // past its fold is reached by scrolling the panel and not the page, and
+    // open by default Velikost cost 185px of a first screen that was already
+    // 96px over at 1440x900.
     renderSidebar();
 
     expect(expanded("Spol")).toBe("true");
     expect(expanded("Starost")).toBe("true");
-    expect(expanded("Velikost")).toBe("true");
     expect(card(/^Samec/)).toBeTruthy();
     expect(card(/^Mladiček/)).toBeTruthy();
-    expect(card(/^Majhna/)).toBeTruthy();
 
+    expect(expanded("Velikost")).toBe("false");
+    expect(card(/^Majhna/)).toBeNull();
     expect(expanded("Energija")).toBe("false");
     expect(expanded("Zdravje")).toBe("false");
     expect(expanded("Doma imam")).toBe("false");
@@ -413,8 +417,10 @@ describe("the sidebar's surfaces", () => {
   // answered with five surfaces of its own: the map plate, sex tiles, size
   // tiles, the rows and the chips. Everything that can be pressed in a
   // section is a row now, on the one treatment filter-card.tsx describes: a
-  // transparent border, no ground, no shadow at rest, and the 44px line a
-  // finger needs. A section that arrives as a tile fails here.
+  // transparent border, no ground, no shadow at rest, and a 40px line. The
+  // row is 40px and not the 44px a finger needs because the sidebar is
+  // lg-only and mouse-driven; the sheet is what a phone gets. A section that
+  // arrives as a tile fails here.
   it("draws every facet option in a section as a row", () => {
     const { container } = renderStatic(EMPTY_FILTERS);
     // A folded section leaves its options out of the DOM, so every header
@@ -436,7 +442,7 @@ describe("the sidebar's surfaces", () => {
       expect(option.className).toContain("border-transparent");
       expect(option.className).toContain("bg-transparent");
       expect(option.className).toContain("shadow-none");
-      expect(option.className).toContain("h-11");
+      expect(option.className).toContain("h-10");
     }
   });
 });

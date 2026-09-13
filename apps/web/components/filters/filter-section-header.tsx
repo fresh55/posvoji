@@ -29,6 +29,12 @@ export type SectionCollapse = {
   contentId: string;
 };
 
+/** The panel's section-heading voice. The sheet's sort caption borrows it on
+ *  purpose, so the one row that is not a filter section still reads as one
+ *  (filter-sheet.tsx). */
+export const SECTION_LABEL_CLASS =
+  "text-xs font-medium uppercase tracking-wide text-muted-foreground";
+
 const BODY_EASE = [0.16, 1, 0.3, 1] as const;
 // The fold runs 0.3s; the section is measured once it has settled.
 const FOLD_SETTLE_MS = 350;
@@ -194,9 +200,7 @@ export function FilterSectionHeader({
           className,
         )}
       >
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </h3>
+        <h3 className={SECTION_LABEL_CLASS}>{label}</h3>
         {resetButton}
       </div>
     );
@@ -270,7 +274,7 @@ export function FilterSectionHeader({
         className,
       )}
     >
-      <h3 className="min-w-0 flex-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className={cn("min-w-0 flex-1", SECTION_LABEL_CLASS)}>
         {hint ? (
           <TooltipProvider>
             <Tooltip>

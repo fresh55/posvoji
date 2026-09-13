@@ -8,7 +8,10 @@ import { agePathTransition } from "./age-stage-icon";
 const options = groupOptions("age", [], "sl");
 const counts = new Map(options.map(({ value }) => [value, 3]));
 
-function renderAgeControl(selected: string[] = []): string {
+function renderAgeControl(
+  selected: string[] = [],
+  layout: "sidebar" | "sheet" = "sidebar",
+): string {
   return renderToStaticMarkup(
     <I18nProvider locale="sl">
       <AgeGrowthControl
@@ -17,9 +20,19 @@ function renderAgeControl(selected: string[] = []): string {
         selected={selected}
         onToggle={() => undefined}
         onToggleMany={() => undefined}
+        layout={layout}
       />
     </I18nProvider>,
   );
+}
+
+/**
+ * The rendered stage buttons, each as its own opening tag. Matched on
+ * aria-pressed rather than the toggle group's data-slot, because every stage
+ * is wrapped in a tooltip trigger that takes the slot and the data-state over.
+ */
+function stageTags(html: string): string[] {
+  return html.match(/<button[^>]*aria-pressed="[^"]*"[^>]*>/g) ?? [];
 }
 
 describe("AgeGrowthControl", () => {
@@ -57,6 +70,56 @@ describe("AgeGrowthControl", () => {
     expect(activeHtml).not.toMatch(
       /tabindex="-1" aria-label="Ponastavi filter starosti"/,
     );
+  });
+});
+
+describe("AgeGrowthControl keyboard model", () => {
+  // Half the panel's sections are plain buttons, where Tab stops on every
+  // option. Radix's roving focus would make this group one stop that arrow
+  // keys move inside, so the same panel would answer Tab in two ways.
+  it("makes every stage its own tab stop", () => {
+    const tags = stageTags(renderAgeControl());
+
+    expect(tags).toHaveLength(3);
+    for (const tag of tags) {
+      expect(tag).not.toContain('tabindex="-1"');
+    }
+  });
+});
+
+describe("AgeGrowthControl sidebar row", () => {
+  // The tooltip trigger takes data-state over, so aria-pressed is the only
+  // thing left saying the row is chosen, and toggleVariants spells the tile's
+  // border and shadow against it. A chosen row that answers only data-state
+  // came out brand-bordered over a shadow, which is the tile.
+  it("keeps the tile's surface off a chosen row", () => {
+    const [tag] = stageTags(renderAgeControl(["odrasel"])).filter((candidate) =>
+      candidate.includes('aria-pressed="true"'),
+    );
+
+    expect(tag).toBeDefined();
+    const classes = (tag.match(/class="([^"]*)"/)?.[1] ?? "").split(" ");
+    expect(classes).not.toContain("shadow-xs");
+    expect(classes).not.toContain("aria-pressed:shadow-xs");
+    expect(classes).not.toContain("aria-pressed:border-brand-border");
+    expect(classes).toContain("aria-pressed:bg-brand");
+    expect(classes).toContain("h-10");
+  });
+});
+
+describe("AgeGrowthControl sheet tiles", () => {
+  // The drawer prints every other section's label at 12px over an 11px count.
+  // Starost printed 11 over 10, which read as one section set smaller than
+  // the ones above and below it.
+  it("sets its sheet tile in the drawer's shared sizes", () => {
+    const html = renderAgeControl([], "sheet");
+
+    const label = html.match(/<span class="([^"]*)">Mladiček<\/span>/);
+    expect(label?.[1]).toContain("text-xs");
+    expect(label?.[1]).not.toContain("text-2xs");
+    // The count is the only thing that was 10px, so this says it moved.
+    expect(html).not.toContain("text-3xs");
+    expect(html).toContain("text-2xs");
   });
 });
 

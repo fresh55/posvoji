@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Cat, Dog, Rabbit } from "lucide-react";
 import { I18nProvider } from "@/components/i18n-provider";
+import { fakeStripLayout } from "@/test/strip-layout";
 import { SpeciesTabs } from "./species-tabs";
 
 afterEach(() => cleanup());
@@ -15,19 +16,23 @@ const TALLY = { all: 4, dog: 1, cat: 1, other: 2 };
 
 type TabsProps = Partial<ComponentProps<typeof SpeciesTabs>>;
 
-function renderTabs(overrides: TabsProps = {}) {
-  const onChange = overrides.onChange ?? vi.fn();
-  const result = render(
+function tree(overrides: TabsProps = {}) {
+  return (
     <I18nProvider locale="en">
       <SpeciesTabs
         value="all"
+        onChange={vi.fn()}
         counts={TALLY}
         roster={TALLY}
         {...overrides}
-        onChange={onChange}
       />
-    </I18nProvider>,
+    </I18nProvider>
   );
+}
+
+function renderTabs(overrides: TabsProps = {}) {
+  const onChange = overrides.onChange ?? vi.fn();
+  const result = render(tree({ ...overrides, onChange }));
   return { ...result, onChange };
 }
 
@@ -40,6 +45,19 @@ function pathData(root: Element) {
   return Array.from(root.querySelectorAll("path")).map((path) =>
     path.getAttribute("d"),
   );
+}
+
+// The row's fake layout, shared with the active filters row (test/strip-layout.ts).
+// Tabs are TAB_W wide in row order and the row shows BOX_W of them.
+const TAB_W = 100;
+const BOX_W = 220;
+
+const fakeLayout = () =>
+  fakeStripLayout({ itemSelector: "button", itemWidth: TAB_W, boxWidth: BOX_W });
+
+/** The scroll box the tabs live in. */
+function row() {
+  return tab("All").parentElement as HTMLElement;
 }
 
 // The label the tab carries in English, and the lucide icon its drawing is
@@ -211,5 +229,102 @@ describe("SpeciesTabs", () => {
     fireEvent.click(cats);
 
     expect(cats.querySelector("svg")).toBe(before);
+  });
+
+  it("never hands a tab to scrollIntoView, on mount or on a later selection", () => {
+    // The row used to come into view through scrollIntoView, and Chrome moves
+    // its sequential focus navigation starting point to whatever element is
+    // passed to it. That put the first Tab press of every page load on a
+    // species tab, past the skip link, the header, the language switch and
+    // every control above the row. jsdom implements no scrollIntoView at all,
+    // so this is an assignment rather than a spy over an existing one.
+    const scrollIntoView = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      writable: true,
+      value: scrollIntoView,
+    });
+    const layout = fakeLayout();
+
+    try {
+      const { rerender } = renderTabs({ value: "other" });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+
+      rerender(tree({ value: "dog" }));
+      expect(scrollIntoView).not.toHaveBeenCalled();
+
+      // And it is not that nothing happened: the row did come into view, by
+      // the other road.
+      expect(layout.writes.length).toBeGreaterThan(0);
+    } finally {
+      layout.restore();
+      if (original) {
+        Object.defineProperty(Element.prototype, "scrollIntoView", original);
+      } else {
+        delete (Element.prototype as unknown as Record<string, unknown>)
+          .scrollIntoView;
+      }
+    }
+  });
+
+  it("scrolls the row to a deep-linked tab that mounts out of view, by the nearest edge", () => {
+    // Tabs at 0, 100, 200 and 300, and the row shows 220 of them from 0, so
+    // Ostale is off the right end on arrival.
+    const layout = fakeLayout();
+
+    try {
+      renderTabs({ value: "other" });
+
+      // 180 and not 300: the nearest edge, which is what inline "nearest"
+      // used to buy. Scrolling to the tab's left edge would push the three
+      // tabs before it further out of the row than they have to be.
+      expect(layout.writes).toEqual([180]);
+      expect(layout.at(row())).toBe(180);
+    } finally {
+      layout.restore();
+    }
+  });
+
+  it("leaves the row where it is when the pressed tab is already in view", () => {
+    const layout = fakeLayout();
+
+    try {
+      // Psi covers 100 to 200, inside the visible 0 to 220.
+      const { rerender } = renderTabs({ value: "dog" });
+      expect(layout.writes).toEqual([]);
+
+      // Vse is in view too, so a selection that changes nothing about what can
+      // be seen scrolls nothing either.
+      rerender(tree({ value: "all" }));
+      expect(layout.writes).toEqual([]);
+    } finally {
+      layout.restore();
+    }
+  });
+
+  it("brings a later selection back into view from either side", () => {
+    const layout = fakeLayout();
+
+    try {
+      const { rerender } = renderTabs({ value: "all" });
+      expect(layout.writes).toEqual([]);
+
+      // A selection that lands off the right end.
+      rerender(tree({ value: "other" }));
+      expect(layout.writes).toEqual([180]);
+
+      // And one off the left end, from a row scrolled past it: Psi covers 100
+      // to 200 and the row is showing 300 to 520, so it is its left edge that
+      // is nearest.
+      layout.seed(row(), 300);
+      rerender(tree({ value: "dog" }));
+      expect(layout.writes).toEqual([180, 100]);
+    } finally {
+      layout.restore();
+    }
   });
 });

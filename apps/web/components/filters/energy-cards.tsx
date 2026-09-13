@@ -584,6 +584,7 @@ export function EnergyCards({
                   shouldReduceMotion ? { duration: 0 } : card.transition
                 }
                 className={filterCardVariants({
+                  layout,
                   selected: checked,
                   className: cn(
                     // isolate keeps the watermark's negative z-index above the

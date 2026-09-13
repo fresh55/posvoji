@@ -15,7 +15,9 @@ import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -65,12 +67,20 @@ export function SortPicker({
   onChange,
   disabled = false,
   quiet = true,
+  labelledBy,
   className,
 }: {
   value: AnimalSort;
   onChange: (sort: AnimalSort) => void;
   disabled?: boolean;
   quiet?: boolean;
+  /** The id of a caption already saying what this control does, which the
+   *  sheet draws above the row (filter-sheet.tsx). With one the trigger takes
+   *  its name from that caption plus the order it shows, so the visible label
+   *  and the announced one are the same words. Without one the trigger names
+   *  itself, which is the toolbar's case: there the control stands alone in a
+   *  row of other controls with no caption to borrow. */
+  labelledBy?: string;
   className?: string;
 }) {
   const { messages } = useI18n();
@@ -103,6 +113,11 @@ export function SortPicker({
   // the trigger names the order the grid actually used rather than one the
   // visitor cannot pick.
   const shown = effectiveSort(value, origin?.at);
+  // The order's own text, carried by an id so a caption outside this component
+  // can be named together with it. aria-labelledby takes ids and nothing else,
+  // so the value the trigger already draws is what the second half of the name
+  // points at rather than a repeat of it in an attribute.
+  const valueId = labelledBy ? `${labelledBy}-value` : undefined;
 
   return (
     <Select
@@ -113,8 +128,13 @@ export function SortPicker({
       <SelectTrigger
         size="sm"
         // The name carries the active sort as well as the visible label does,
-        // because this control is worth finding by either.
-        aria-label={`${messages.sortBy}: ${labels[shown]}`}
+        // because this control is worth finding by either. Where a caption
+        // says the first half out loud the name is built from it instead, so
+        // the sheet does not announce "Razvrsti" twice.
+        aria-label={
+          labelledBy ? undefined : `${messages.sortBy}: ${labels[shown]}`
+        }
+        aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
         className={cn(
           // text-sm, the size the species tabs across the row from it are
           // set at. At text-xs this was the smallest type on the page and the
@@ -158,23 +178,43 @@ export function SortPicker({
             width its placement gives it and the name gives way inside, on the
             width the trigger's own classes above give this value. */}
         <SelectValue>
-          <span className="truncate">{labels[shown]}</span>
+          <span id={valueId} className="truncate">
+            {labels[shown]}
+          </span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent position="popper" align="end">
-        {sorts.map((sort) => {
-          const Icon = SORT_ICONS[sort];
-          return (
-            <SelectItem key={sort} value={sort}>
-              <Icon
-                className="size-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              {labels[sort]}
-            </SelectItem>
-          );
-        })}
+        {/* The open menu says what it is a menu of. A list of orders dropped
+            from a quiet trigger in a toolbar, or floating over a filter sheet,
+            otherwise leaves the visitor to infer that from the options alone.
+            Radix ties the label to the group it heads, so screen readers
+            announce the heading with the list rather than as a stray line;
+            the label is a div and not an item, so neither focus nor the
+            keyboard's type-ahead can land on it. */}
+        <SelectGroup>
+          <SelectLabel>{messages.sortBy}</SelectLabel>
+          {sorts.map((sort) => {
+            const Icon = SORT_ICONS[sort];
+            return (
+              <SelectItem
+                key={sort}
+                value={sort}
+                // 32px is what the stock item measures, which is fine for a
+                // mouse and under the 44px every other control in the filter
+                // sheet keeps for a thumb. The floor lifts below md, where
+                // this menu opens over a phone; from md the item is unchanged.
+                className="max-md:min-h-11"
+              >
+                <Icon
+                  className="size-4 shrink-0 text-muted-foreground"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+                {labels[sort]}
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
       </SelectContent>
     </Select>
   );

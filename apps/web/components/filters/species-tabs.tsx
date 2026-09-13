@@ -19,6 +19,7 @@ import {
 } from "react";
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
+import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
 import { useI18n } from "@/components/i18n-provider";
 import {
   CAT_GLYPH,
@@ -278,20 +279,19 @@ export function SpeciesTabs({
   );
 
   const activeRef = useRef<HTMLButtonElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // A deep link (?vrsta=ostale) can mount straight into the active tab, and
     // if that tab sits past the fold of a scrolled 320px row the visitor never
-    // sees what is selected. Nudge it into view whenever the selected tab
-    // changes -- on mount for the deep-link case, and again for a later or
-    // programmatic selection -- without stealing the page's own scroll
-    // position: "nearest" on both axes only moves the horizontal strip, it
-    // never scrolls the page to bring the row itself into view.
-    // jsdom (unit tests) has no scrollIntoView; guarded rather than polyfilled
-    // everywhere just for this one effect.
-    activeRef.current?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-    });
+    // sees what is selected. So the row brings the pressed tab into view
+    // whenever the selection changes, on mount for the deep-link case and
+    // again for a later or programmatic one. Why it is this helper and not
+    // scrollIntoView, which would otherwise do the job in one line, is on the
+    // helper: the API decides where the page's first Tab press goes, and this
+    // effect runs on every load. No smooth behaviour, as before: the row lands
+    // where it belongs in one frame rather than animating a scroll nobody
+    // asked for.
+    scrollChildIntoViewX(activeRef.current);
   }, [value]);
 
   // Where the fill is, as four motion values rather than as state. A slide is
@@ -378,7 +378,6 @@ export function SpeciesTabs({
     measure(value);
   }, [measure, value, drawn.length]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
   useEffect(() => {
     const el = scrollRef.current;
@@ -446,6 +445,7 @@ export function SpeciesTabs({
           scroll-and-fade escape hatch. */}
       <div
         ref={scrollRef}
+        {...{ [SCROLL_STRIP_MARK]: "" }}
         style={{
           maskImage: `linear-gradient(to right, ${
             edgeFade.left ? "transparent, black 1.5rem" : "black"

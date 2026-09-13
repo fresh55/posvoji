@@ -17,8 +17,10 @@ import {
 import {
   CountRoll,
   FilterCardMark,
+  FilterCardTail,
+  SIDEBAR_COUNT_CLASS,
+  SIDEBAR_LABEL_CLASS,
   filterCardVariants,
-  SIDEBAR_ROW,
 } from "@/components/filters/filter-card";
 import {
   CollapsibleBody,
@@ -424,6 +426,11 @@ export function AgeGrowthControl({
               aria-label={groupLabel("age", locale)}
               aria-describedby={hintId}
               orientation={layout === "sheet" ? "horizontal" : "vertical"}
+              // Every other section is plain buttons, where each option is its
+              // own tab stop. Radix's roving focus would make this group one
+              // stop that arrow keys move inside, so the same panel would
+              // answer Tab in two ways depending on which section you were in.
+              rovingFocus={false}
               spacing={layout === "sheet" ? 1.5 : 1}
               className="w-full items-stretch"
             >
@@ -444,13 +451,15 @@ export function AgeGrowthControl({
                         {...hoverHandlers(value)}
                         aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
                         className={filterCardVariants({
+                          layout,
                           selected: checked,
                           className:
                             layout === "sheet"
                               ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                              : // SIDEBAR_ROW for the reason filter-card.tsx
-                                // records: a sidebar row is a line in a list,
-                                // not a tile.
+                              : // The row's surface comes from the layout
+                                // variant; only its grid is stated here,
+                                // because this is the one section whose row
+                                // is columns rather than a flex line.
                                 // The columns are the icon, the label and
                                 // the count. The mark is not among them: it
                                 // is pinned to the right edge the way every
@@ -459,7 +468,7 @@ export function AgeGrowthControl({
                                 // column instead, which left this the one
                                 // section in the sidebar whose check was on
                                 // the other side of the row from the rest.
-                                `${SIDEBAR_ROW} grid h-11 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left`,
+                                "grid h-10 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left",
                         })}
                       >
                         {/* The shared mark, so the check's position and
@@ -500,25 +509,45 @@ export function AgeGrowthControl({
                             )}
                           />
                         </m.span>
-                        <span
-                          className={cn(
-                            "min-w-0 truncate text-xs",
-                            layout === "sheet" &&
-                              "max-w-full text-2xs leading-tight",
-                            checked && "font-medium",
-                          )}
-                        >
-                          {label}
-                        </span>
-                        <CountRoll
-                          value={count}
-                          className={cn(
-                            "tabular-nums text-muted-foreground",
-                            layout === "sheet"
-                              ? "text-3xs leading-tight"
-                              : "w-8 text-right text-2xs",
-                          )}
-                        />
+                        {/* The tile is the shared tail, so Starost cannot
+                            drift from the drawer around it again: it printed
+                            its label at 11px over a 10px count while every
+                            other tile printed 12 over 11, because the sizes
+                            were copied here by hand. The row cannot use the
+                            tail, which is a flex line, so it draws its own two
+                            grid cells in the tail's voice.
+
+                            leading-tight is the tile's own: the count sits
+                            under a label that is allowed two lines. */}
+                        {layout === "sheet" ? (
+                          <FilterCardTail
+                            layout={layout}
+                            label={label}
+                            checked={checked}
+                            renderCount={(className) => (
+                              <CountRoll
+                                value={count}
+                                className={cn(className, "leading-tight")}
+                              />
+                            )}
+                          />
+                        ) : (
+                          <>
+                            <span
+                              className={cn(
+                                "min-w-0",
+                                SIDEBAR_LABEL_CLASS,
+                                checked && "font-medium",
+                              )}
+                            >
+                              {label}
+                            </span>
+                            <CountRoll
+                              value={count}
+                              className={SIDEBAR_COUNT_CLASS}
+                            />
+                          </>
+                        )}
                       </ToggleGroupItem>
                     </TooltipTrigger>
                     <TooltipContent

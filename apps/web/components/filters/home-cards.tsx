@@ -13,6 +13,7 @@ import {
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
@@ -276,10 +277,9 @@ export function HomeCards({
       resetAriaLabel={messages.resetHomeFilters}
       layout={layout}
       collapse={collapse}
-      // The sheet columns exist to fit several short labels side by side. One
-      // long label is a full-width tile instead of a third of a row it cannot
-      // be read in.
-      sheetColumns={options.length > 1 ? "grid-cols-2" : "grid-cols-1"}
+      // Two at most: the household questions are whole phrases, and a third of
+      // a 320px row cannot hold one.
+      sheetColumns={sheetColumnsFor(options.length, 2)}
       // What the section did to the list, and the one line the screen reader
       // hears. Nothing selected says nothing.
       footer={
@@ -333,6 +333,7 @@ export function HomeCards({
                 aria-pressed={checked}
                 aria-label={`${label}, ${animalCount(count, locale)}`}
                 className={filterCardVariants({
+                  layout,
                   selected: checked,
                   className: cn(
                     // isolate keeps the watermark's negative z-index above the

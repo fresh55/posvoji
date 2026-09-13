@@ -208,6 +208,10 @@ const sl = {
   undoClear: "Razveljavi",
   undoClearFilters: "Razveljavi čiščenje filtrov",
   sortBy: "Razvrsti živali",
+  // The caption over the sheet's sort row. Short because the control right
+  // under it names the order in full, and because it sits in the header block
+  // with the sheet's own title.
+  sortCaption: "Razvrsti",
   sortLongestInShelter: "Najdlje v zavetišču",
   sortNewestArrivals: "Najnovejši sprejemi",
   sortYoungest: "Najmlajši najprej",
@@ -638,6 +642,7 @@ const en: Messages = {
   undoClear: "Undo",
   undoClearFilters: "Undo clearing the filters",
   sortBy: "Sort animals",
+  sortCaption: "Sort",
   sortLongestInShelter: "Longest in shelter",
   sortNewestArrivals: "Newest arrivals",
   sortYoungest: "Youngest first",

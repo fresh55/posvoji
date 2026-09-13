@@ -14,12 +14,17 @@ export type FilterSectionKey =
 
 const STORAGE_KEY = "posvoji:filter-sections";
 
-// What a visitor reaches for first starts open; the rest folds away until
-// asked for. A closed section still shows its selection in the header.
+// Spol and Starost start open; every other section folds away until asked for.
+// The sidebar scrolls on its own from lg up, so page scrolling never reveals
+// what sits under its fold: at 1440x900 the panel held 972px of content in an
+// 876px box and the last two headers were off the bottom of it. Velikost is
+// 185px of that and the one of the three a visitor is least often after, so it
+// folds with the rest. A closed section still shows its selection in the
+// header, and a visitor who opens it keeps it open (the overrides below).
 const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   sex: true,
   age: true,
-  size: true,
+  size: false,
   energy: false,
   health: false,
   goodWith: false,

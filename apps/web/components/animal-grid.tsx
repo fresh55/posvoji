@@ -124,6 +124,15 @@ function shelterAbsenceKey(count: number): TranslationKey {
   return "noResultsShelterPlural";
 }
 
+/** The touch line the empty state's buttons keep below lg.
+ *
+ *  They are `size="sm"`, which is a mouse's height, and on a phone this state
+ *  holds the only controls on screen. Grown rather than overlaid, and padded
+ *  to match, for the reason globals.css states at the tap-target utility; the
+ *  breakpoint is the one the rest of this file and the chips row already use.
+ */
+const EMPTY_STATE_ACTION = "max-lg:min-h-11 max-lg:px-4";
+
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
 // are one message. Four pulsing skeletons used to stand under the first of
@@ -557,12 +566,19 @@ export function AnimalGrid({
                   of telling which of them is the one to drop. The row's stuck
                   mode names it (filter-chips.tsx). Here it costs nothing that
                   matters, because there is no grid underneath for it to push
-                  down and nothing to scroll it past. */}
+                  down and nothing to scroll it past.
+
+                  Without its own clear, though: this state draws that itself,
+                  below. At the end of the strip it is the row's last item, and
+                  at 390px with four filters the pills already ran to x 497, so
+                  the way out sat at x 514, off the screen, behind a sideways
+                  scroll the state gave no sign of. */}
               {chips.length > 0 && (
                 <FilterChips
                   chips={chips}
                   onClearAll={handleClearAll}
                   stuck
+                  clear={false}
                   className="max-w-full justify-center lg:hidden"
                 />
               )}
@@ -570,29 +586,41 @@ export function AnimalGrid({
                 <Button
                   variant="outline"
                   size="sm"
+                  className={EMPTY_STATE_ACTION}
                   onClick={() => toggleMany("shelter", filters.shelter)}
                 >
                   {messages.showFromAllShelters}
                 </Button>
               )}
-              {/* Only when no chips row can carry the clear. Every chips row
-                  already ends in "Počisti vse", the row above renders below lg
-                  whenever there are chips, and at lg the sticky toolbar's own
-                  row does (animal-filters.tsx), with the sidebar header carrying
-                  a third copy. That put two clear-all controls under each other
-                  on a phone and three on one desktop screen, all calling this.
-                  Chips are only absent when the state is a species tab with
-                  nothing in it, and then this button is the only way out.
+              {/* The one way out of this screen, drawn once whether or not
+                  there are pills above it to name what it clears. With them it
+                  stands under the row and takes the clear that row would
+                  otherwise have ended in; without them the state is a species
+                  tab with nothing in it, and this is the only control there is.
 
-                  Which also settles how it is drawn. It used to go quiet beside
-                  the shelter button above, and the two can no longer share a
-                  screen: a picked shelter is a chip, and a chip takes this
-                  button off the page. */}
-              {chips.length === 0 && (
-                <Button variant="outline" size="sm" onClick={handleClearAll}>
-                  {messages.clearFilters}
-                </Button>
-              )}
+                  Only the word changes: "Počisti vse" answers a row of removes
+                  and would not say what "vse" was on its own, which is the
+                  state where there is no row.
+
+                  lg only matters in the first case. The pills above are
+                  lg:hidden because the sticky toolbar draws its own row there,
+                  with its own clear at the end of it; this button goes with
+                  them, or a desktop would show two. With no pills anywhere,
+                  nothing else on any width offers the press, so it stays. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  EMPTY_STATE_ACTION,
+                  chips.length > 0 && "lg:hidden",
+                )}
+                onClick={handleClearAll}
+                aria-label={
+                  chips.length > 0 ? messages.clearAllFilters : undefined
+                }
+              >
+                {chips.length > 0 ? messages.clearAll : messages.clearFilters}
+              </Button>
             </EmptyState>
           ) : (
             <div

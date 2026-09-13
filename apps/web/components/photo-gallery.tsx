@@ -138,10 +138,10 @@ const PLAIN_CHEVRON = {
 // The card only. The animal page and the dialog draw one photo the visitor came
 // for, and there the row is the only marker of the set.
 //
-// It rides on the row's own element, which on a card is also the scrim
-// (CARD_DOTS below), so the gradient and the dots appear and disappear
-// together. Two elements would be two things to keep in step, and a scrim that
-// outlived its dots is a smudge on the bottom of the photograph.
+// It rides on the row's own element, which on a card is also the pill under
+// the dots (CARD_DOTS below), so the ground and the dots appear and disappear
+// together. Two elements would be two things to keep in step, and a ground
+// that outlived its dots is a smudge on the bottom of the photograph.
 const CARD_DOTS_CLASS =
   "transition-opacity can-hover:opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100";
 
@@ -162,11 +162,6 @@ const DEFAULT_WRAPPER_CLASS =
 // the row disappears. The ring is drawn in black at low alpha, so it reads as
 // the dot's own edge on a light photo and disappears into a dark one, where the
 // white dots never needed help.
-// The edge on its own, because both surfaces draw it and only one of them
-// draws the drop shadow behind it. Splitting the two is what lets the card's
-// dot say "the ring, without the lift" instead of repeating the value.
-const DOT_EDGE = "shadow-[0_0_0_1px_rgba(0,0,0,0.28)]";
-
 const DOT_CLASS =
   "size-1.5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)] transition-colors";
 
@@ -176,48 +171,48 @@ const DOT_CLASS =
 // drop shadow, so one dot survives whatever colour is under it. That is the
 // right answer for the animal page and the dialog, where the row stands on one
 // large photograph and there is nothing else to put it on. On a card the drop
-// shadow is five lifts doing one job; the ring is not, and it stays (see the
-// note on CARD_DOTS below, which has the numbers).
+// shadow is five lifts doing one job.
 //
-// So the card puts the ground under the row once, as a gradient on the row's
-// own element, and the dots on top of it keep their edge and lose their lift.
-// h-12 is the strip the gradient occupies: shorter and the top of it is a
-// visible edge across the photograph, taller and it starts dimming the animal
-// rather than the last few pixels under it. It reaches black/30 at the bottom
-// and black/10 by the midpoint, which is below what the eye picks out as a band
-// on a bright photo.
+// So the card puts the ground under the row once, as a pill on the row's own
+// element, and the dots on top of it are plain discs. The pill is sized to the
+// dots: 6px of air at the ends, 4px above and below, so a five-dot row is a
+// 58 by 14 shape at the bottom of the picture and nothing else on the picture
+// changes.
 //
-// z-0 and not the row's usual z-10. The dots never overlapped the chevrons, but
-// a full-width strip does, and at z-10 it would be painted after them (it comes
-// later in the DOM) and lay a wash over the bottom of both discs. z-0 still
-// paints above the photo, which is the only thing the scrim has to cover, and
-// leaves the chevrons at z-10 and the frame's focus ring at z-20 above it.
+// It used to be a 48px gradient across the whole width of the frame, black/30
+// at the bottom edge fading to nothing. On a mid-tone photo that read as the
+// picture's own vignette; on a white studio shot it read as dirt, a grey band
+// under every animal, and more than half of the register's first photos are
+// studio shots on white. A phone shows the row at rest on every multi-photo
+// card, which is 86% of them, so a phone saw the band sixty times down the
+// page. The pill covers only what the dots need covered.
 //
-// White dots in both themes, where the plain row uses bg-background. The scrim
+// black/35 and not lighter. The pill has two jobs: say there are more photos,
+// and say which one this is. The second needs the current dot and the rest to
+// come apart, and over a white photo a lighter pill leaves white/50 sitting
+// on near white. At 35% the ground under the dots is about rgb(166) on a
+// white photo, which puts the current dot at 2.4:1 against it and the rest a
+// clear step under the current one; on a dark photo the pill is near black and
+// the dots need no help. No 1px edge on the dots any more: the ground is now
+// always dark enough to draw them, which was the only thing the edge was for.
+//
+// Centred with a transform rather than stretched across the frame. The row's
+// shape is the pill, so the element has to be the width of its dots; inset-x-0
+// would make it the width of the photo and the pill a bar.
+//
+// White dots in both themes, where the plain row uses bg-background. The pill
 // is dark whatever the theme is, so a dot that follows the theme would be
-// stone-950 on near-black in the dark one. The scrim decided the colour under
+// stone-950 on near-black in the dark one. The pill decided the colour under
 // the dots, which is the whole point of it.
-// The scrim carries the row, and each dot still carries its own edge.
-//
-// The edge looked like five shadows doing one job and the scrim was supposed
-// to replace it. Measured, it cannot. A white dot on a white studio photo is
-// 1.09:1 against what is under it; the scrim at black/30 takes that to 1.52:1
-// and even black/60 only reaches 2.53:1, which is a strip dark enough to read
-// as a bar across the picture and still not enough to see a dot through. The
-// scrim earns its place on the mid tones, where it moves 3.67:1 to 4.87:1, and
-// the 1px edge is what makes the dot a shape on the worst photo in the set.
-//
-// Both, then. The measurement is in the session notes; the short version is
-// that neither alone works and together they cost one inset ring.
 const CARD_DOTS = {
-  container: `${CARD_DOTS_CLASS} bottom-0 z-0 h-12 items-end pb-1.5 bg-linear-to-t from-black/30 via-black/10 to-transparent`,
-  dot: `size-1.5 rounded-full ${DOT_EDGE} transition-colors`,
+  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 items-center rounded-full bg-black/35 px-1.5 py-1`,
+  dot: "size-1.5 rounded-full transition-colors",
   current: "bg-white",
-  rest: "bg-white/55",
+  rest: "bg-white/50",
 } as const;
 
 const PLAIN_DOTS = {
-  container: "bottom-1.5",
+  container: "inset-x-0 bottom-1.5 justify-center",
   dot: DOT_CLASS,
   current: "bg-background",
   rest: "bg-background/50",
@@ -785,16 +780,16 @@ export function PhotoGallery({
               place a resting row is worth hiding, and why the condition is the
               card's rather than this photo's.
 
-              On a card this element is also the scrim the dots stand on, which
-              is why the gradient and the reveal are one class list. Drawn only
+              On a card this element is also the pill the dots stand on, which
+              is why the ground and the reveal are one class list. Drawn only
               where the dots are drawn, inside hasGallery: a single-photo card
-              has no row to carry and a gradient with nothing on it is a
-              shadow across the bottom of the photograph for no reason. */}
+              has no row to carry and a pill with nothing in it is a mark on
+              the photograph for no reason. */}
           <div
             data-slot="photo-dots"
             aria-hidden
             className={cn(
-              "pointer-events-none absolute inset-x-0 z-10 flex justify-center gap-1",
+              "pointer-events-none absolute z-10 flex gap-1",
               dotPaint.container,
             )}
           >

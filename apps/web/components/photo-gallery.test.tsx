@@ -554,55 +554,50 @@ describe("photo gallery controls", () => {
     expect(dots?.className).toContain("group-focus-within/card:opacity-100");
   });
 
-  it("carries the card's dots on a scrim instead of five shadows", () => {
+  it("carries the card's dots on a pill instead of five shadows", () => {
     setup();
 
     // jsdom paints nothing, so this reads the class list: what is asserted is
-    // that the card renders the gradient and the flat dots, not that a browser
+    // that the card renders the pill and the flat dots, not that a browser
     // resolved either.
     const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("bg-linear-to-t");
-    expect(dots?.className).toContain("from-black/30");
-    // The strip the gradient occupies, anchored to the bottom of the frame.
-    expect(dots?.className).toContain("h-12");
-    expect(dots?.className).toContain("bottom-0");
-    // Under the chevrons, which are z-10, and under the frame's focus ring,
-    // which is z-20. A full-width strip overlaps the discs where a row of dots
-    // never did, and later in the DOM at the same z-index it would wash over
-    // them.
-    expect(dots?.className).toContain("z-0");
-    expect(dots?.className).not.toContain("z-10");
+    expect(dots?.className).toContain("rounded-full");
+    expect(dots?.className).toContain("bg-black/35");
+    // The width of its dots and centred, not stretched across the frame: the
+    // pill is the row's shape, and a full-width element would draw it as a
+    // bar. It used to be exactly that, a 48px gradient the width of the
+    // photo, which read as a grey band under every animal on a white studio
+    // shot.
+    expect(dots?.className).toContain("left-1/2");
+    expect(dots?.className).toContain("-translate-x-1/2");
+    expect(dots?.className).not.toContain("inset-x-0");
+    expect(dots?.className).not.toContain("bg-linear-to-t");
+    expect(dots?.className).not.toContain("h-12");
 
-    // Each dot keeps its own 1px edge on top of the scrim, which is not
-    // belt and braces but the measurement: a white dot on a white studio
-    // photo is 1.09:1 against what is under it, the scrim at black/30 takes
-    // that to 1.52:1, and a scrim heavy enough to carry it alone would read
-    // as a bar across the picture. The scrim earns its place on the mid
-    // tones, 3.67:1 to 4.87:1, and the edge is what draws the shape on the
-    // worst photos in the set. An earlier version of this test asserted the
-    // opposite; the numbers, not taste, are what changed it.
+    // Plain discs: the pill is dark on every photo, so the 1px edge that used
+    // to draw a white dot on a white photo has nothing left to do.
     for (const dot of Array.from(dots?.children ?? [])) {
-      expect(dot.className).toContain("shadow-[0_0_0_1px_rgba(0,0,0,0.28)]");
+      expect(dot.className).not.toContain("shadow-");
       expect(dot.className).not.toContain("ring-");
     }
-    // White in both themes: the scrim is dark whatever the theme is, so a dot
+    // White in both themes: the pill is dark whatever the theme is, so a dot
     // following bg-background would be stone-950 on near-black in the dark one.
     expect(dots?.children[0]?.className).toContain("bg-white");
-    expect(dots?.children[1]?.className).toContain("bg-white/55");
+    expect(dots?.children[1]?.className).toContain("bg-white/50");
   });
 
-  it("keeps the scrim on the dots' own element so the two move together", () => {
+  it("keeps the pill on the dots' own element so the two move together", () => {
     setup();
 
-    // One element carries the gradient and the reveal, so a card at rest has
-    // neither and a hovered card has both. A scrim that outlived its dots
+    // One element carries the ground and the reveal, so a card at rest has
+    // neither and a hovered card has both. A ground that outlived its dots
     // would be a smudge across the bottom of the photograph.
     const dots = document.querySelector('[data-slot="photo-dots"]');
     expect(dots?.className).toContain("can-hover:opacity-0");
     expect(dots?.className).toContain("group-hover/card:opacity-100");
   });
 
-  it("draws no scrim on a card with a single photo", () => {
+  it("draws no pill on a card with a single photo", () => {
     setup({
       images: [
         {
@@ -612,8 +607,8 @@ describe("photo gallery controls", () => {
       ],
     });
 
-    // The scrim is the dots' element, and one photo has no dots. A gradient
-    // with nothing standing on it is a shadow on the photo for no reason.
+    // The pill is the dots' element, and one photo has no dots. A pill with
+    // nothing in it is a mark on the photo for no reason.
     expect(document.querySelector('[data-slot="photo-dots"]')).toBeNull();
   });
 
@@ -666,9 +661,11 @@ describe("photo gallery controls", () => {
     const dots = document.querySelector('[data-slot="photo-dots"]');
     expect(dots?.className).toContain("pointer-events-none");
     expect(dots?.className).not.toContain("opacity-0");
-    // And no scrim: here the row stands on one large photograph the visitor
-    // asked for, so every dot keeps carrying its own ground.
-    expect(dots?.className).not.toContain("bg-linear-to-t");
+    // And no pill: here the row stands on one large photograph the visitor
+    // asked for, so every dot keeps carrying its own ground, and the row is
+    // laid across the frame the way it always was.
+    expect(dots?.className).not.toContain("bg-black/35");
+    expect(dots?.className).toContain("inset-x-0");
     expect(dots?.children[0]?.className).toContain(
       "shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]",
     );

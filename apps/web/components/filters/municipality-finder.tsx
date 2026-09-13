@@ -54,6 +54,44 @@ const LAW_URL =
 // this replaced listed all 212 občine; the finder answers one question.
 const MAX_MATCHES = 8;
 
+/**
+ * How wide the search field has to be before the location button can draw its
+ * name beside the arrow.
+ *
+ * Measured off the built page. The field spends 2.25rem on the leading glyph,
+ * 0.25rem on the trailing inset and 8.46rem on the labelled button, and the
+ * Slovenian placeholder "Občina ali pošta" wants 7.59rem, so the field needs
+ * 18.55rem before the two stop fighting. Under it the placeholder was cut
+ * mid-word: at 320px it read "Občina ali poš".
+ *
+ * A container query and not a width breakpoint, because the field runs out of
+ * room two ways. At 320px the window is narrow; at 375px with the browser's
+ * text at 125% the window is fine and the button has grown, and a media query
+ * cannot see the second one at all: its rem resolves against the initial font
+ * size, where a container query's follows the root. Measured both, which is
+ * what the 19rem is: 320px gives the field 18rem, 360px gives it 20.5rem, and
+ * 375px at 125% text gives it 16.75rem.
+ *
+ * Written out whole, the way map-marker.tsx writes PLATE_TOO_SMALL: Tailwind
+ * scans source text for complete class names, so a variant assembled from
+ * pieces at runtime compiles to nothing at all.
+ */
+const FIELD_LABEL_HIDDEN = "@max-[19rem]/finder-field:hidden";
+const FIELD_LABELLED_PADDING = "@min-[19rem]/finder-field:max-lg:pr-36";
+
+/**
+ * How wide the answer card has to be before a shortlist row can hold a name
+ * and a number button side by side.
+ *
+ * Same measurement, same reason. At 375px the card gives a row 19.31rem and
+ * the name sits on one line with the town and the distance under it; at 360px
+ * (18.38rem) the town wraps, at 320px (15.88rem) the name wraps too, and at
+ * 375px with 125% text (15.05rem) the distance was left alone on a third line
+ * behind its separator. Under the threshold the row stacks instead.
+ */
+const ROW_STACKED =
+  "@max-[19rem]/shortlist:flex-col @max-[19rem]/shortlist:items-start";
+
 /** The question as asked: what is in the box, and which občina is settled.
  *  picked is null while several still match, or while nothing does. */
 type Ask = { query: string; picked: string | null };
@@ -66,7 +104,13 @@ const NOT_ASKED: Ask = { query: "", picked: null };
  *  the other half have to say that there is none, and say it under the town
  *  as a third line, where a note reads as a fact about the shelter. Drawn on
  *  the right in the button's place it read as a control that failed, and at
- *  375px it squeezed the name into two lines beside it. */
+ *  375px it squeezed the name into two lines beside it.
+ *
+ *  Side by side only while the card is wide enough to hold both. Under
+ *  ROW_STACKED's threshold the row stacks: the shelter, then the button under
+ *  it. The column left beside the button at 320px was 116px, which broke
+ *  "Zavetišče Mala hiša" over two lines and then pushed "· 29 km" onto a line
+ *  of its own behind its separator. */
 function NearestRow({
   shelter,
   note,
@@ -78,7 +122,12 @@ function NearestRow({
 }) {
   const { t } = useI18n();
   return (
-    <li className="flex items-center justify-between gap-3 py-2.5 last:pb-0">
+    <li
+      className={cn(
+        "flex items-center justify-between gap-3 py-2.5 last:pb-0",
+        ROW_STACKED,
+      )}
+    >
       <span className="min-w-0 text-sm">
         <a
           href={shelter.detailHref}
@@ -419,7 +468,9 @@ export function MunicipalityFinder({
         {/* No label over the box: the page's h1 has asked the question, and
             the placeholder says what the box takes. The field keeps its name
             for screen readers from aria-label below. */}
-        <div className="relative">
+        {/* A size container, so the button inside can ask how much of the
+            field is left rather than how wide the window is. */}
+        <div className="relative @container/finder-field">
           <Search
             className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -508,9 +559,14 @@ export function MunicipalityFinder({
             // second X under ours. While the location button carries its
             // name below lg it is wider than the two icons together, and the
             // hint has to stop before it rather than run under it.
+            //
+            // Only while the name is actually drawn. Under the threshold the
+            // button is back to a square and the base pr-24 is the room it
+            // needs; the wider padding there was what cut the placeholder
+            // short of its own field.
             className={cn(
               "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none",
-              labelledLocation && "max-lg:pr-36",
+              labelledLocation && FIELD_LABELLED_PADDING,
             )}
           />
           <p id={keyboardHintId} className="sr-only">
@@ -573,9 +629,14 @@ export function MunicipalityFinder({
                           ? messages.muniHereActive
                           : messages.muniHere
                     }
+                    // min-w-11 is what makes the collapse under the
+                    // threshold land on a square: with the name hidden
+                    // the button is down to its padding and its arrow, which
+                    // is 40px, and the one control a thumb reaches for on
+                    // this page cannot be under 44.
                     className={cn(
                       labelledLocation
-                        ? "max-lg:h-11 max-lg:w-auto max-lg:gap-1.5 max-lg:px-3"
+                        ? "max-lg:h-11 max-lg:w-auto max-lg:min-w-11 max-lg:gap-1.5 max-lg:px-3"
                         : "max-lg:size-11",
                       state.status === "on"
                         ? "bg-muted text-foreground"
@@ -590,9 +651,17 @@ export function MunicipalityFinder({
                     {/* The name, drawn where a tooltip cannot be reached.
                         It stays the same two words while the fix is being
                         found, so the control does not change width under
-                        the thumb that has just pressed it. */}
+                        the thumb that has just pressed it.
+
+                        And only where the field can spare the width for it:
+                        under the threshold the placeholder and the name were
+                        sharing 288px and the placeholder lost. The
+                        accessible name is the short one either way, which is
+                        the rule kept rather than broken: what the button says
+                        out loud never contradicts what it shows, and with
+                        nothing shown there is nothing to contradict. */}
                     {labelledLocation && (
-                      <span className="lg:hidden">
+                      <span className={cn("lg:hidden", FIELD_LABEL_HIDDEN)}>
                         {messages.muniHereActive}
                       </span>
                     )}
@@ -847,7 +916,7 @@ export function MunicipalityFinder({
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {messages.muniNearestOthers}
                       </p>
-                      <ul className="divide-y">
+                      <ul className="@container/shortlist divide-y">
                         {callable.map(({ shelter, number, onCall }) => (
                           <NearestRow
                             key={shelter.shelterId}
@@ -883,7 +952,7 @@ export function MunicipalityFinder({
                       else the register holds, and a line under the town says
                       why there is no button. */}
                   {unlisted.length > 0 && (
-                    <ul className="divide-y">
+                    <ul className="@container/shortlist divide-y">
                       {unlisted.map((shelter) => (
                         <NearestRow
                           key={shelter.shelterId}

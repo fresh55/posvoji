@@ -246,6 +246,34 @@ describe("MunicipalityFinder empty state", () => {
     ).toBeTruthy();
   });
 
+  // At 320px, and at 375px with the browser's text at 125%, the field could
+  // not hold the placeholder and the button's name at once, and the
+  // placeholder was the one cut: it read "Občina ali poš". The field is a
+  // size container now and the name stands down inside it, which is the half
+  // a media query could not do, its rem being resolved against the initial
+  // font size rather than the root's.
+  it("stands the location name down when the field cannot hold it", () => {
+    renderFinder();
+
+    const field = screen.getByRole("combobox");
+    const container = field.parentElement!;
+    expect(container.className).toContain("@container/finder-field");
+
+    // The wider padding is asked for by the same threshold that draws the
+    // name, so the two can never disagree: under it the base pr-24 applies.
+    expect(field.className).toContain("@min-[19rem]/finder-field:max-lg:pr-36");
+    expect(field.className).not.toMatch(/(^|\s)max-lg:pr-36(\s|$)/);
+
+    const label = screen.getByText("Moja lokacija", { selector: "span" });
+    expect(label.className).toContain("@max-[19rem]/finder-field:hidden");
+
+    // With the name hidden the button is down to its padding and its arrow,
+    // which is 40px. The floor keeps the one control a thumb reaches for on
+    // this page at 44.
+    const button = screen.getByRole("button", { name: LOCATE });
+    expect(button.className).toContain("max-lg:min-w-11");
+  });
+
   it("keeps the hint short inside the box and the name on the field", () => {
     renderFinder();
     const search = screen.getByRole("combobox");
@@ -833,6 +861,27 @@ describe("MunicipalityFinder without a verified shelter", () => {
 
   const follows = (a: Element, b: Element) =>
     Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  // Beside a number button the name column was 116px at 320px: "Zavetišče
+  // Mala hiša" broke over two lines and "· 29 km" was left on a line of its
+  // own behind its separator. The row stacks under the threshold instead, and
+  // the list is the container that measures it, because at 375px with the
+  // text at 125% the window is wide and the row is not.
+  it("stacks a shortlist row where the card cannot hold name and button", () => {
+    renderCirkulane();
+
+    const button = screen.getByRole("link", { name: "03 749 06 00" });
+    const row = button.closest("li")!;
+    expect(row.className).toContain("@max-[19rem]/shortlist:flex-col");
+    expect(row.className).toContain("@max-[19rem]/shortlist:items-start");
+    expect(row.parentElement?.className).toContain("@container/shortlist");
+
+    // The row with no number to press is measured by the same list.
+    const unlisted = screen
+      .getByRole("link", { name: "Zavetišče Mala hiša" })
+      .closest("li")!;
+    expect(unlisted.parentElement?.className).toContain("@container/shortlist");
+  });
 
   it("leads with one call to the nearest shelter, then the fallbacks, then the občina", () => {
     const onAnswer = renderCirkulane();

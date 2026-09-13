@@ -139,6 +139,23 @@ describe("the found-animal atlas", () => {
     expect(document.querySelector("[data-map-spotlight]")).toBeNull();
   });
 
+  // Below lg the map waits for the answer it illustrates. Before one it is a
+  // flat country with nothing ringed on it, and on a phone it stood between
+  // the search box and the guidance under it.
+  it("keeps the map off a phone until there is something to ring", () => {
+    const { container } = renderAtlas();
+
+    const plate = container.querySelector('[data-slot="map-plate"]')!;
+    expect(plate.className).toContain("max-lg:hidden");
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Ljubljana" },
+    });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
+
+    expect(plate.className).not.toContain("max-lg:hidden");
+  });
+
   it("rings the responsible shelter on the map once an občina is named", () => {
     const { container } = renderAtlas();
 

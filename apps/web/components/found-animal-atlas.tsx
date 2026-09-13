@@ -11,6 +11,7 @@ import { ShelterMap } from "@/components/filters/shelter-map";
 import { useI18n } from "@/components/i18n-provider";
 import type { ShelterPin } from "@/lib/map-layout";
 import type { LookupEntry } from "@/lib/municipality-coverage";
+import { cn } from "@/lib/utils";
 
 /**
  * The found-animal lookup with the map beside it, on its own page.
@@ -71,8 +72,24 @@ export function FoundAnimalAtlas({
           letterboxes inside the plate, and the plate is sticky, so the ring
           around the answer is on screen for as long as the card it explains
           is. Without the cap a wide window drew a map taller than the screen
-          and the answer's ring could sit below the fold of its own page. */}
-      <div className="relative min-w-0 overflow-hidden rounded-ui border bg-muted/40 p-2 sm:p-3 lg:sticky lg:top-6">
+          and the answer's ring could sit below the fold of its own page.
+
+          Below lg it waits for the answer it illustrates. A flat map of the
+          country with nothing ringed on it says nothing the h1 has not
+          already said, and on a phone it was the largest thing on the screen:
+          the guidance under the box was pushed a screenful down by a picture
+          that was still asking the same question. Once the finder settles on
+          an občina the plate comes back, under the guidance, with the ring
+          the card explains. A class and not a mount: answer starts null on
+          the server and on the client's first render, so the two agree, and
+          the map is in the document for the widths that draw it. */}
+      <div
+        data-slot="map-plate"
+        className={cn(
+          "relative min-w-0 overflow-hidden rounded-ui border bg-muted/40 p-2 sm:p-3 lg:sticky lg:top-6",
+          !answer && "max-lg:hidden",
+        )}
+      >
         <ShelterMap
           interactive={false}
           className="lg:max-h-[calc(100dvh-6rem)]"

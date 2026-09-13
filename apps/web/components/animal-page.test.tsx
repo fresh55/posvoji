@@ -6,6 +6,9 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
+import { I18nProvider } from "@/components/i18n-provider";
+import type { AnimalFields } from "@/lib/animal";
 import { animalPathParts, posterPath } from "@/lib/animal-path";
 import { AnimalPage } from "./animal-page";
 
@@ -263,5 +266,85 @@ describe("what the animal page hands its client components", () => {
     expect(
       container.querySelector('[data-slot="photo-frame"] img'),
     ).toBeTruthy();
+  });
+});
+
+// The box itself, rendered on its own. The page above is one of its two
+// callers and the dialog is the other, so what it draws from the register and
+// from the animal's own dates is tested here rather than through either.
+describe("the shelter box", () => {
+  const REFERENCE = new Date("2026-08-18T00:00:00.000Z");
+
+  function block(
+    rest: Partial<AnimalFields> = {},
+    phones: Record<string, string> = {},
+  ) {
+    const animal: AnimalFields = {
+      id: "horjul:1",
+      source: {
+        sourceUrl: "https://example.test/animals/1",
+        fetchedAt: "2026-08-17T06:00:00.000Z",
+      },
+      shelter: { id: "horjul", name: "Zavetišče Horjul", city: "Horjul" },
+      name: "Cufi",
+      species: "cat",
+      status: "available",
+      medical: {},
+      attribution: "Foto: Zavetišče Horjul",
+      ...rest,
+    };
+    return render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={animal}
+          logos={{}}
+          phones={phones}
+          reference={REFERENCE}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  // Arrived at about two months old: the age pill and the plea both say
+  // "4 leta", and without the tail the repeated number reads as a bug.
+  it("says the long wait was almost the whole life when it was", () => {
+    block({ intakeDate: "2022-06-15", approximateAgeMonths: 52 });
+
+    expect(
+      screen.getByText(
+        "Cufi v zavetišču čaka že 4 leta, skoraj vse svoje življenje.",
+      ),
+    ).toBeTruthy();
+  });
+
+  // Same wait, but the animal was already six when it came in, so the age and
+  // the wait are different numbers and there is nothing to explain.
+  it("keeps the plain plea for an animal that arrived grown", () => {
+    block({ intakeDate: "2022-06-15", approximateAgeMonths: 122 });
+
+    expect(screen.getByText("Cufi v zavetišču čaka že 4 leta.")).toBeTruthy();
+  });
+
+  // No age at all: no repeated number, and the plainer sentence is the one
+  // that does not claim more than we know.
+  it("keeps the plain plea where the age is unknown", () => {
+    block({ intakeDate: "2022-06-15" });
+
+    expect(screen.getByText("Cufi v zavetišču čaka že 4 leta.")).toBeTruthy();
+  });
+
+  // Adoption goes through the shelter, and the box's own button leaves for a
+  // listing that may be out of date. The number is the way to ask.
+  it("dials the register's number in international form", () => {
+    block({}, { horjul: "051 304 435" });
+
+    const dial = screen.getByRole("link", { name: /051 304 435/ });
+    expect(dial.getAttribute("href")).toBe("tel:+38651304435");
+  });
+
+  it("draws no dial link where the register has no number", () => {
+    block();
+
+    expect(screen.queryByRole("link", { name: /Telefon/ })).toBeNull();
   });
 });

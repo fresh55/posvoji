@@ -12,7 +12,16 @@
 // every card's shelter line as close to the photo of the card below it as to
 // the photo it belongs to, and the grid read as one mesh rather than as sixty
 // cards: the eye had nothing telling it where a card ended. The column gap is
-// what the widths below are derived from and it does not move.
+// what the widths below are derived from, and below xl it does not move.
+//
+// From xl the column gap is 20px. 16px between two 307px squares read as a
+// contact sheet, the pictures all but touching, and 20px is what the 2xl band
+// below can spare. 24px would be better still and is not available: at 1536
+// four 18rem columns and three 24px gaps need 1224 of the 1216 the breakpoint
+// leaves, so the row drops to three columns of 389px, which is smaller
+// pictures with more room around them, the opposite of the point. At 20px the
+// same sum is 1212 and four columns hold, measured rather than derived: four
+// of 289px at 1536 and four of 305px once the frame caps.
 //
 // From xl the cards are larger and there are three of them. A 228px photo is a
 // thumbnail, and the photograph is the thing this page is for, so where there
@@ -29,7 +38,7 @@
 // four, and four is what keeps the card at 308px, the size it already is at
 // xl. So a 1920 screen draws the same card as a 1440 one, and draws one more.
 export const CARD_GRID =
-  "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8" +
+  "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-5" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
   " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" +
   " 2xl:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]";
@@ -79,7 +88,8 @@ export const CARD_GRID =
 // The page is `max-w-(--page-max) px-gutter` and --page-max is 80rem except on
 // the results page from 2xl, where CARD_GRID_PAGE_MAX above takes it to 100rem.
 // --gutter is 1rem below sm, 1.5rem from sm
-// and 2rem from lg (globals.css), and the grid's own gap is 1rem throughout.
+// and 2rem from lg (globals.css), and the grid's own column gap is 1rem up to
+// xl and 1.25rem from there.
 // From lg the results section is a 14rem sidebar plus a 2rem column gap ahead
 // of the grid. Columns are two fixed ones below sm and auto-fill minmax(13rem)
 // above it, which is what the breakpoints between the bands are: each one is
@@ -93,15 +103,16 @@ export const CARD_GRID =
 //                                  (100vw - 64 - 256 - 32)/3
 //   1200-1279 4 cols beside the sidebar                    →  208-228px
 //   1280-1535 the xl floor takes over: 3 cols of a grid that
-//           an 80rem frame has capped at 960px             →  309px
+//           an 80rem frame has capped at 960px, at the
+//           20px gap the grid takes from xl                →  307px
 //   1536+    the 2xl floor and a 100rem frame: 4 cols of a
 //           grid that is 1216px at the breakpoint and
-//           1280px once the frame caps                     →  292-308px
+//           1280px once the frame caps                     →  289-305px
 //
-// That last band clears its floor by 16px and no more: four 18rem columns and
-// three 1rem gaps need 1200 of the 1216 the breakpoint leaves. Anything that
+// That last band clears its floor by 4px and no more: four 18rem columns and
+// three 20px gaps need 1212 of the 1216 the breakpoint leaves. Anything that
 // moves the sidebar's 14rem, the 2rem gutter or the grid's own gap at 2xl
-// spends that slack and drops the row to three columns of 395px, which the
+// spends that slack and drops the row to three columns of 392px, which the
 // 412px band below would then under-declare by a quarter.
 //
 // Every band from 704 up is then multiplied by 4/3 for the square box, which is
@@ -157,8 +168,9 @@ export const CARD_PHOTO_SIZES =
   " (max-width: 1199px) calc((100vw - 352px) * 4 / 9)," +
   " (max-width: 1279px) 304px," +
   " 412px";
-// The last band covers xl and 2xl together. At xl the card is 309px and 412 is
-// exactly its 4/3; from 2xl it is 292px at the breakpoint and 308px once the
-// frame has capped, so 412 over-declares by at most 6% at the narrow end of
-// that range. Over-declaring costs a fraction of a rung and never softness,
+// The last band covers xl and 2xl together. At xl the card is 307px and 412 is
+// within 1% of its 4/3 (it was exactly 4/3 of the 309px card a 16px gap drew);
+// from 2xl it is 289px at the breakpoint and 305px once the frame has capped,
+// so 412 over-declares by at most 7% at the narrow end of that range.
+// Over-declaring costs a fraction of a rung and never softness,
 // and a seventh band to save it would be a band nobody can check by eye.

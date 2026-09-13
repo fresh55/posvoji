@@ -514,7 +514,7 @@ describe("pruneHiddenFilters", () => {
 });
 
 describe("togglesAskedOf", () => {
-  // What the dialog folds to "Vse zdravstveno urejeno" once all of it is
+  // What the dialog folds to "Veterinarsko urejeno" once all of it is
   // answered. A dog was never asked the two cat questions, so it is not two
   // answers short.
   it("asks a cat every question and a dog only the shared three", () => {

@@ -151,7 +151,11 @@ const sl = {
   longStayMark: "Čaka {duration}",
   // No "(5/5)": the count was the same token twice, so it could never say
   // anything, and it read as a smaller record for a dog (3/3) than for a cat.
-  healthAllClear: "Vse zdravstveno urejeno",
+  // And no "vse": the badge stands for five procedures for a cat and three for
+  // a dog, not for everything a vet could ever say about the animal.
+  // "Veterinarsko urejeno" is the word the shelters use for exactly that set,
+  // impersonal like the toggles beside it.
+  healthAllClear: "Veterinarsko urejeno",
   // A cat whose FIV or FeLV result is missing shows three green pills and
   // nothing about the two a visitor with a resident cat is looking for. The
   // gap is named, in the same dashed dress as an unanswered household
@@ -567,8 +571,10 @@ const sl = {
     "Prikaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
   careOutcome:
     "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
-  specialNeedsNote:
-    "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
+  // A pill, so a label and not the sentence it used to be: the words the care
+  // filter already uses, so the control a visitor ticked and the badge they
+  // then read say the same thing.
+  specialNeedsLabel: "Potrebuje potrpežljivega človeka",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -642,7 +648,7 @@ const en: Messages = {
   longStayWholeLifeUnnamed:
     "At the shelter for {duration} now, almost its whole life.",
   longStayMark: "Waiting {duration}",
-  healthAllClear: "Full health record",
+  healthAllClear: "Vet care complete",
   healthUnknownFivFelv: "No data on FIV and FeLV",
   healthUnknownFiv: "No data on FIV",
   healthUnknownFelv: "No data on FeLV",
@@ -856,8 +862,7 @@ const en: Messages = {
     "Show animals with explicitly reported adoption or care requirements.",
   careOutcome:
     "Showing animals with an explicitly reported care requirement. {count} of {total}.",
-  specialNeedsNote:
-    "This animal needs a patient person and a little more time.",
+  specialNeedsLabel: "Needs a patient person",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

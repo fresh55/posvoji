@@ -120,7 +120,7 @@ function pinned(toggle: ToggleDef): ToggleDef {
 export const TOGGLES: readonly ToggleDef[] = TOGGLE_DEFS.map(pinned);
 
 /** The questions this species can be asked, answered or not. The dialog folds
- *  its health row to "Vse zdravstveno urejeno" once every one of them is
+ *  its health row to "Veterinarsko urejeno" once every one of them is
  *  answered, and a dog is not two answers short for never having been asked
  *  about FIV. Built from the rule the matchers are gated on, so the fold and
  *  the badge row cannot disagree. */

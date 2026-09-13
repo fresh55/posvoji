@@ -154,6 +154,35 @@ const GOOD_WITH_NO_CLASS =
 const GOOD_WITH_UNKNOWN_CLASS =
   "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground";
 
+// What the home has to be. A condition that rules a home out outranks the
+// size badge and the shelter's paragraph, so it is a pill in the group rather
+// than a 12px aside under the text: "oddaja se izključno za notranje bivanje"
+// was last, in the last line of a paragraph that opens clamped. Its own tier
+// of dress: no fill, unlike the identity pills, and a darker edge and full
+// ink, unlike the muted "no" answers, because this is the one row a visitor
+// either matches or does not.
+const REQUIREMENT_PILL_CLASS =
+  "inline-flex items-center gap-1.5 rounded-ui border border-foreground/25 px-2.5 py-1 text-xs";
+
+function RequirementFact({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <li className={REQUIREMENT_PILL_CLASS}>
+      <Icon
+        className="size-3.5 shrink-0 opacity-70"
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <span>{children}</span>
+    </li>
+  );
+}
+
 // The missing-result pill wears the FIV badge's own mark, so the answer the
 // shelter recorded and the one it did not are visibly the same question.
 const UnknownTestIcon = HEALTH_ICONS["brez-fiv"];
@@ -427,6 +456,10 @@ export function AnimalFacts({
   const requirements = REQUIREMENT_KEYS.filter(
     (key) => animal.adoptionRequirements?.[key] === true,
   );
+  // The patience flag rides in the same row as the reviewed requirements:
+  // both answer what the home has to be, and a row each would have asked the
+  // visitor to read the same question twice.
+  const hasRequirements = requirements.length > 0 || animal.specialNeeds === true;
   // Two ways in, one paragraph. The animal's own page is server-rendered from
   // a whole dataset animal, so it carries its description and asks the store
   // for nothing. The grid's dialog gets an animal without one, because the
@@ -443,12 +476,17 @@ export function AnimalFacts({
 
   return (
     <div className="space-y-4">
-      {/* Who the animal is, then what its health record says. The rows sit
-          further apart than the lines inside one of them, so a row that wraps
-          still reads as one row: at space-y-1.5 against the rows' own gap-2,
-          two separate statements sat closer than two lines of one. The breed
-          lives in the dialog's subtitle, not here. */}
-      {(hasIdentity || medical.length > 0 || hasGoodWith || apartment) && (
+      {/* Who the animal is, then what home it needs, then what its health
+          record says, then what company it keeps. The rows sit further apart
+          than the lines inside one of them, so a row that wraps still reads as
+          one row: at space-y-1.5 against the rows' own gap-2, two separate
+          statements sat closer than two lines of one. The breed lives in the
+          dialog's subtitle, not here. */}
+      {(hasIdentity ||
+        hasRequirements ||
+        medical.length > 0 ||
+        hasGoodWith ||
+        apartment) && (
         <div className="space-y-2.5">
           {hasIdentity && (
             <ul
@@ -489,6 +527,36 @@ export function AnimalFacts({
                 >
                   {sizeLabel(animal.size, locale)}
                 </Fact>
+              )}
+            </ul>
+          )}
+          {/* Second, straight after who the animal is: a condition that rules
+              a home out matters more to the visitor reading this than the
+              size pill above it. Its own name, not the housing row's: two
+              lists called "Dom" gave a screen reader the same landmark twice,
+              and the two rows answer different questions. The shelter's own
+              words may say this again at the end of the paragraph below; that
+              is the point of saying it here, so nothing is deduped away. */}
+          {hasRequirements && (
+            <ul
+              aria-label={messages.adoptionRequirements}
+              className="flex flex-wrap gap-x-2 gap-y-1.5"
+            >
+              {requirements.map((key) => (
+                <RequirementFact
+                  key={key}
+                  icon={key === "indoorOnly" ? Building2 : HeartHandshake}
+                >
+                  {ADOPTION_REQUIREMENT_LABELS[key][locale]}
+                </RequirementFact>
+              ))}
+              {/* The short label the care filter uses, not the sentence: a
+                  pill is not the place for one, and a visitor who ticked that
+                  filter should recognise the words. */}
+              {animal.specialNeeds && (
+                <RequirementFact icon={HeartHandshake}>
+                  {messages.specialNeedsLabel}
+                </RequirementFact>
               )}
             </ul>
           )}
@@ -650,30 +718,9 @@ export function AnimalFacts({
         </p>
       )}
 
-      {/* Said plainly and once, in the same quiet line as the other context
-          facts. A shelter marking this is asking for the right person, not
-          warning the visitor off, so it gets no alert box and no colour. */}
-      {animal.specialNeeds && (
-        <p className="text-xs text-muted-foreground">
-          <Aside icon={HeartHandshake}>{messages.specialNeedsNote}</Aside>
-        </p>
-      )}
-      {/* Its own name, not the housing row's: two lists called "Dom" gave a
-          screen reader the same landmark twice. */}
-      {requirements.length > 0 && (
-        <ul
-          className="flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-muted-foreground"
-          aria-label={messages.adoptionRequirements}
-        >
-          {requirements.map((key) => (
-            <li key={key}>
-              <Aside icon={key === "indoorOnly" ? Building2 : HeartHandshake}>
-                {ADOPTION_REQUIREMENT_LABELS[key][locale]}
-              </Aside>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* The requirements and the patience flag used to stand here, as 12px
+          muted asides under the description. They say what the home has to be,
+          which is not context, so they moved into the badge group above. */}
 
       {/* The long wait itself renders inside the shelter block now, where the
           sentence sits beside the one button that can answer it. Standing

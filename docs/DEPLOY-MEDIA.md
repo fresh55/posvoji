@@ -33,6 +33,17 @@ only derives (thumb, rungs, blur placeholder, hero avif) from photos already
 on disk, without any network request, which is what a schema-only change or a
 version bump needs.
 
+Both passes also read each master for where the animal is in it
+(`apps/ingest/src/subject-detector.ts`): a box per cached copy, kept in
+`image-cache.json` under `subject` with a `SUBJECT_VERSION`, and shipped with
+the image in `animals.json` so a card can crop to the animal rather than the
+middle of the file. The detector is SSD MobileNet v1 from the ONNX model zoo,
+29 MB, fetched once per checkout into `data/models/` by `pnpm models:fetch`
+and never committed. Without the file the pass is skipped with one warning,
+the entries stay unversioned, and the next run that has the model reads them;
+nothing else about the export changes. A `SUBJECT_VERSION` bump re-reads every
+master on disk, like a `DERIVATIVE_VERSION` bump re-cuts every derivative.
+
 **`shelter-logos/`** (`apps/ingest/src/cache-logos.ts`). Same scheme:
 `<sha256-16>.webp`, content-hashed, so a redesigned logo gets a new name. Tiny
 relative to the other two directories, since it holds at most one file per

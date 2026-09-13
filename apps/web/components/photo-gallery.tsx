@@ -303,6 +303,10 @@ type PhotoGalleryProps = {
   /** Serve the AVIF sibling of the photo where ingest derived one. See
    *  AnimalPhoto: only worth it where the layout asks for the top rung. */
   avif?: boolean;
+  /** Width over height of the box `className` draws, so the crop can keep
+   *  the animal in it. See AnimalPhoto. Left out, a portrait is biased upward
+   *  and nothing else moves. */
+  frame?: number;
 };
 
 export function PhotoGallery({
@@ -313,6 +317,7 @@ export function PhotoGallery({
   className,
   tone,
   href,
+  frame,
   variant = "plain",
   emptyMark: EmptyMark,
   onNavigate,
@@ -623,6 +628,7 @@ export function PhotoGallery({
       sizes={sizes}
       eager={eager}
       avif={avif}
+      frame={frame}
       // The zoom is the card's hover lift reaching the photograph: the frame
       // clips it, so nothing moves but the picture inside its box. Named to
       // the card's group rather than an unqualified one, so it answers a

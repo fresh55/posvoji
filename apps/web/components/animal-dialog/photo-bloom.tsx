@@ -5,7 +5,7 @@ import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import type { DialogPhotoRect } from "@/components/animal-dialog/animal-dialog";
 import { AnimalPhoto } from "@/components/animal-photo";
 import type { PermittedPhoto } from "@/lib/animal-images";
-import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
+import { CARD_PHOTO_RATIO, CARD_PHOTO_SIZES } from "@/lib/card-grid";
 
 // The travel is a tween rather than a spring: it has to hand over to the fan's
 // own entrance, and a fixed length is what lets the two be lined up.
@@ -124,6 +124,9 @@ export function PhotoBloom({
           photo={photo}
           alt=""
           sizes={CARD_PHOTO_SIZES}
+          // The card's crop too, for the same reason: this is the card's
+          // photograph leaving, and a different window on it would jump.
+          frame={CARD_PHOTO_RATIO}
           // Already on screen and already decoded, since the card it left is
           // still behind the dialog.
           eager

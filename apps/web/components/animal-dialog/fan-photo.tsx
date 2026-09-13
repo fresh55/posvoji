@@ -355,6 +355,10 @@ export const FanPhoto = memo(function FanPhoto({
               // as well, because it is the one being looked at.
               eager={active}
               loading="eager"
+              // The print's own shape: a photo wider than 4:3 is cut to it,
+              // and a portrait taller than 3:4 likewise, so the print says
+              // what it is cutting to and keeps the animal inside.
+              frame={aspect}
               className="object-cover"
             />
             {/* Depth in light, over the picture and inside the well, so the

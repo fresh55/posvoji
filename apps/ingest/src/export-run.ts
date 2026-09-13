@@ -5,6 +5,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { holdArtifactLock } from "./artifact-lock";
 import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
+import { loadSubjectDetector } from "./subject-detector";
 import { cacheLogos, logoTargets } from "./cache-logos";
 import { buildChangeSet } from "./changes";
 import {
@@ -82,6 +83,7 @@ const defaultServices = {
   portalIntegrationEnabled,
   loadShelters,
   cacheImages,
+  loadSubjectDetector,
   cacheLogos,
   writeShareCards,
   writeFileAtomic,
@@ -132,6 +134,7 @@ export async function runExport(
     portalIntegrationEnabled,
     loadShelters,
     cacheImages,
+    loadSubjectDetector,
     cacheLogos,
     writeShareCards,
     writeFileAtomic,
@@ -506,18 +509,23 @@ export async function runExport(
     // a full export. Preserved providers stay in scope for the deletion sweep but
     // out of scope for requests, so their cached files and URLs are neither
     // deleted nor needlessly rechecked.
-    const { animals, fetched, reused, deleted, derived } = await cacheImages(
-      overridden,
-      client,
-      imagePolicies,
-      { refreshProviderIds: crawledProviderIds },
-    );
+    const { animals, fetched, reused, deleted, derived, subjects } =
+      await cacheImages(overridden, client, imagePolicies, {
+        refreshProviderIds: crawledProviderIds,
+        subjectDetector: await loadSubjectDetector({
+          warn: (message) => logger.warn(message),
+        }),
+      });
     logger.log(
       `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
     );
     logger.log(
       `image variants: ${derived.thumbs} thumbs, ${derived.rungs} rungs, ` +
         `${derived.blurs} placeholders, ${derived.avifs} avif derived`,
+    );
+    logger.log(
+      `subjects: ${subjects.detected} found, ${subjects.empty} without an animal, ` +
+        `${subjects.failed} failed`,
     );
 
     // cachedUrl is set by cacheImages above, so this catches whatever it could

@@ -50,6 +50,18 @@ const DATA_IMAGE_URL = /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/;
 const CACHED_ANIMAL_PATH =
   /^\/media\/animals\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
+const Fraction = z.number().min(0).max(1);
+
+/** Where the animal is in a cached photo, as fractions of the copy's width
+ *  and height: left edge, top edge, width, height. */
+export const SubjectBox = z.strictObject({
+  x: Fraction,
+  y: Fraction,
+  w: Fraction.refine((v) => v > 0, { error: "subject width must be positive" }),
+  h: Fraction.refine((v) => v > 0, { error: "subject height must be positive" }),
+});
+export type SubjectBox = z.infer<typeof SubjectBox>;
+
 export const AnimalImage = z.strictObject({
   sourceUrl: HttpUrl,
   // Filled by the ingest image cache. Root-relative ("/media/animals/…")
@@ -77,6 +89,10 @@ export const AnimalImage = z.strictObject({
   avif: z.boolean().optional(),
   // Inline placeholder shown while the photo loads.
   blurDataURL: z.string().regex(DATA_IMAGE_URL).optional(),
+  // Where the animal is in the cached copy, from the ingest subject detector,
+  // so a surface that crops the photo can keep the animal in its frame.
+  // Absent when the detector found no animal or has not read this copy.
+  subject: SubjectBox.optional(),
   rights: ImageRights,
 });
 export type AnimalImage = z.infer<typeof AnimalImage>;

@@ -150,6 +150,10 @@ export const CARD_GRID =
 // roughly a fifth fewer fit a screen. CARD_PHOTO_SIZES below pays the other
 // half of the bill.
 export const CARD_PHOTO_ASPECT = "aspect-square";
+// The same shape as a number, for the crop: the photo has to know how much
+// wider or taller than its box it is to keep the animal inside (see
+// subjectPosition in lib/animal-images.ts). Change both or neither.
+export const CARD_PHOTO_RATIO = 1;
 
 // The corner, here for the same reason the aspect is: the frame draws it and
 // the skeleton has to match, and when it was a literal in each of them the two

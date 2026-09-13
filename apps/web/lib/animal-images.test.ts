@@ -9,6 +9,7 @@ import {
   photoSrcSet,
   posterPhoto,
   printAspect,
+  subjectPosition,
   thumbnailUrl,
 } from "./animal-images";
 
@@ -169,6 +170,29 @@ describe("permittedPhotos", () => {
         widths: [320, 480, 640, 800],
         avif: true,
         blurDataURL: "data:image/webp;base64,UklGRg==",
+      },
+    ]);
+  });
+
+  it("carries the subject box with the shape the crop needs", () => {
+    // A 3:2 photo: `aspect` calls it 4:3 for the print, and the crop has to
+    // know it is 1.5 to keep the box in a square.
+    expect(
+      permittedPhotos([
+        {
+          sourceUrl: "https://shelter.example/luna.jpg",
+          cachedUrl: "/media/animals/luna.webp",
+          width: 900,
+          height: 600,
+          subject: { x: 0.18, y: 0.08, w: 0.36, h: 0.82 },
+          rights: "cache-permitted",
+        },
+      ] satisfies Animal["images"]),
+    ).toStrictEqual([
+      {
+        src: "/media/animals/luna.webp",
+        subject: [20, 10, 35, 80],
+        ratio: 1.5,
       },
     ]);
   });
@@ -372,5 +396,94 @@ describe("posterPhoto", () => {
         },
       ] satisfies Animal["images"]),
     ).toBeUndefined();
+  });
+});
+
+describe("subjectPosition", () => {
+  // A 1.6 photo in a square: the box shows 62% of the width.
+  const wide = { subject: [15, 5, 40, 90], ratio: 1.6 } as const;
+
+  it("centres the window on the animal", () => {
+    // Subject middle at 0.35 of the width. r = 1.6, so p = (0.35 * 1.6 - 0.5)
+    // / 0.6 = 0.1: the window starts 10% of the way along the overflow.
+    expect(subjectPosition(wide, 1)).toBe("10% 50%");
+  });
+
+  it("stops at the edge when the animal is right beside it", () => {
+    expect(subjectPosition({ subject: [0, 0, 20, 100], ratio: 1.6 }, 1)).toBe(
+      "0% 50%",
+    );
+    expect(subjectPosition({ subject: [80, 0, 20, 100], ratio: 1.6 }, 1)).toBe(
+      "100% 50%",
+    );
+  });
+
+  it("is the centre for an animal in the middle", () => {
+    expect(subjectPosition({ subject: [30, 10, 40, 80], ratio: 1.6 }, 1)).toBe(
+      "50% 50%",
+    );
+  });
+
+  it("moves along the other axis for a portrait", () => {
+    // 3:4 in a square: the box shows 75% of the height. Animal in the top
+    // half, its middle at 0.3: p = (0.3 * 4/3 - 0.5) / (1/3) = -0.3, so the
+    // window starts at the top.
+    expect(subjectPosition({ subject: [10, 5, 80, 50], ratio: 0.75 }, 1)).toBe(
+      "50% 0%",
+    );
+    // Its middle at 0.55: p = (0.55 * 4/3 - 0.5) / (1/3) = 0.7.
+    expect(subjectPosition({ subject: [10, 35, 80, 40], ratio: 0.75 }, 1)).toBe(
+      "50% 70%",
+    );
+  });
+
+  it("keeps the head of an animal taller than the window", () => {
+    // The box is 90% of the height and the window 75%: centred, the window
+    // would start at 12.5% and cut the ears. It starts 5% above the box, at
+    // the top of the picture.
+    expect(subjectPosition({ subject: [10, 5, 80, 90], ratio: 0.75 }, 1)).toBe(
+      "50% 0%",
+    );
+    // The same for a box starting lower: 5% above it is 15% down, p = 0.6.
+    expect(subjectPosition({ subject: [10, 20, 80, 80], ratio: 0.75 }, 1)).toBe(
+      "50% 60%",
+    );
+  });
+
+  it("gives the ears air over a box the window only just holds", () => {
+    // 70% tall in a 75% window, starting 20% down. Centred, the window would
+    // start at 17.5% and leave the ear tips 2.5% of room, which the rounding
+    // to fives can take away; it starts at 15% instead, p = 0.6, and the
+    // feet lose the 5%.
+    expect(subjectPosition({ subject: [10, 20, 80, 70], ratio: 0.75 }, 1)).toBe(
+      "50% 60%",
+    );
+    // A box that starts low is centred as far as the picture allows.
+    expect(subjectPosition({ subject: [10, 30, 80, 70], ratio: 0.75 }, 1)).toBe(
+      "50% 100%",
+    );
+  });
+
+  it("answers for the frame it is asked about", () => {
+    // The same 1.6 photo in the fan's 4:3 print is only 1.2 times wider than
+    // its box, so the same animal needs less of a shift.
+    expect(subjectPosition(wide, 4 / 3)).toBe("0% 50%");
+    expect(
+      subjectPosition({ subject: [50, 10, 40, 80], ratio: 1.6 }, 4 / 3),
+    ).toBe("100% 50%");
+  });
+
+  it("says nothing for a photo the frame does not cut", () => {
+    expect(
+      subjectPosition({ subject: [10, 10, 50, 50], ratio: 1 }, 1),
+    ).toBeUndefined();
+    expect(
+      subjectPosition({ subject: [10, 10, 50, 50], ratio: 1.33 }, 4 / 3),
+    ).toBeUndefined();
+  });
+
+  it("says nothing without a box", () => {
+    expect(subjectPosition({ ratio: 1.6 }, 1)).toBeUndefined();
+    expect(subjectPosition({}, 1)).toBeUndefined();
   });
 });

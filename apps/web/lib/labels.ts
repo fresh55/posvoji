@@ -460,7 +460,15 @@ export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
 // whatever separator carries it. Not a word boundary in the middle: "Obalno
 // zavetišče (Marjetica Koper)" opens with the adjective that distinguishes it,
 // and dropping the noun out of the middle of that leaves nonsense.
-const SHELTER_NOUN = /^zavetišče\s+|\s*[—–-]\s*zavetišče$/iu;
+//
+// In front, only when a capitalised word follows: "Zavetišče Ljubljana" is
+// the noun and a name, and the name stands alone. "Zavetišče za zapuščene
+// živali Gorenjske" is a phrase the noun heads, and without it the line would
+// read "za zapuščene živali Gorenjske", a fragment. None of the eleven live
+// names is shaped that way; the municipal shelters that are tend to be.
+// Spelled with both cases rather than the i flag, which would fold the
+// lookahead's uppercase class too.
+const SHELTER_NOUN = /^[Zz]avetišče\s+(?=\p{Lu})|\s*[—–-]\s*[Zz]avetišče$/u;
 
 // Any trailing parenthetical. In this registry every one of them names the
 // operator rather than the shelter: "(Marjetica Koper)" is the municipal

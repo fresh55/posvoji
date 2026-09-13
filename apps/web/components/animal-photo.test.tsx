@@ -161,6 +161,39 @@ describe("AnimalPhoto crop", () => {
     expect(img.style.objectPosition).toBe("");
   });
 
+  it("keeps the animal ingest found inside a box it is told the shape of", () => {
+    // A 3:2 photo in the card's square, cat at the left end of the bench:
+    // the window opens on the cat instead of the middle of the bench.
+    const { img } = draw({
+      photo: { ...CACHED, subject: [5, 10, 30, 80], ratio: 1.5 },
+      frame: 1,
+    });
+    expect(img.style.objectPosition).toBe("0% 50%");
+  });
+
+  it("falls back to the portrait bias for a photo with no box", () => {
+    const { img } = draw({ photo: { ...CACHED, aspect: 0.75 }, frame: 1 });
+    expect(img.style.objectPosition).toBe("50% 20%");
+  });
+
+  it("can only bias a portrait when it is not told the frame", () => {
+    // The box is there, but without the frame's shape there is no window to
+    // put it in, so the crop does what it always did.
+    const { img } = draw({
+      photo: { ...CACHED, aspect: 0.75, subject: [10, 5, 80, 50], ratio: 0.75 },
+    });
+    expect(img.style.objectPosition).toBe("50% 20%");
+  });
+
+  it("does not move a contained photo for a box either", () => {
+    const { img } = draw({
+      photo: { ...CACHED, subject: [5, 10, 30, 80], ratio: 1.5 },
+      frame: 1,
+      crop: "center",
+    });
+    expect(img.style.objectPosition).toBe("");
+  });
+
   it("stays centred where the caller does not crop", () => {
     // The lightbox contains the photo, where an object-position would only
     // shove a fully visible picture upward.

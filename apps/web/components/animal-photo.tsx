@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import {
   photoAvifUrl,
   photoSrcSet,
+  subjectPosition,
   type PermittedPhoto,
 } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,11 @@ type AnimalPhotoProps = {
    *  shot upward; "center" is for a surface that contains the photo rather
    *  than covering, where the bias would only shove it off the middle. */
   crop?: "subject" | "center";
+  /** Width over height of the box this photo covers, so a "subject" crop can
+   *  put the animal in it rather than the middle of the file (see
+   *  subjectPosition). Left out, the crop knows only the photo's own shape
+   *  and can do no better than bias a portrait upward. */
+  frame?: number;
   /** Drawn over the box while this photo is one that failed to arrive, for a
    *  surface that has something to say about it. The hiding below happens
    *  either way: this is the caller's chance to fill the ground, not the
@@ -63,14 +69,18 @@ type AnimalPhotoProps = {
   fallback?: ReactNode;
 };
 
-// A portrait shot centred in a 4:3 box loses the head. Heads sit in the top
-// third of one, and a 4:3 box shows 56% of a 3:4 photo's height: centred that
-// cuts 22% off the top, from 20% down it cuts 9%. Landscape and square photos
-// need none of it, and `aspect` is absent exactly when the photo rounds to the
-// 4:3 the box already is.
+// What a portrait gets when nothing better is known about it. A portrait shot
+// centred in a 4:3 box loses the head. Heads sit in the top third of one, and
+// a 4:3 box shows 56% of a 3:4 photo's height: centred that cuts 22% off the
+// top, from 20% down it cuts 9%. Landscape and square photos need none of it,
+// and `aspect` is absent exactly when the photo rounds to the 4:3 the box
+// already is.
 //
-// It reads off the aspect ingest measured, so it is a plain render decision:
-// no onLoad, no state, and the first paint is already anchored.
+// Where ingest found the animal, the box it found wins over this guess: a
+// caller that says what shape its frame is gets the position that keeps the
+// whole animal in it, on whichever axis the frame cuts. Both read off what
+// ingest measured, so either way it is a plain render decision: no onLoad, no
+// state, and the first paint is already anchored.
 const SUBJECT_OBJECT_POSITION = "50% 20%";
 
 export function AnimalPhoto({
@@ -83,6 +93,7 @@ export function AnimalPhoto({
   avif = false,
   blur = true,
   crop = "subject",
+  frame,
   fallback,
 }: AnimalPhotoProps) {
   // The photo that failed to arrive, held by its source rather than by the
@@ -95,6 +106,11 @@ export function AnimalPhoto({
   const avifSrc = avif ? photoAvifUrl(photo) : undefined;
   const placeholder = blur ? photo.blurDataURL : undefined;
   const portrait = crop === "subject" && photo.aspect !== undefined && photo.aspect < 1;
+  const objectPosition =
+    crop === "subject"
+      ? ((frame !== undefined ? subjectPosition(photo, frame) : undefined) ??
+        (portrait ? SUBJECT_OBJECT_POSITION : undefined))
+      : undefined;
 
   const image = (
     // The rule asks for next/image so the image gets a srcset. Under
@@ -141,7 +157,7 @@ export function AnimalPhoto({
         setFailedSrc((current) => (current === photo.src ? null : current));
       }}
       className={cn("absolute inset-0 size-full", className)}
-      style={portrait ? { objectPosition: SUBJECT_OBJECT_POSITION } : undefined}
+      style={objectPosition ? { objectPosition } : undefined}
     />
   );
 

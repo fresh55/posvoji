@@ -29,7 +29,77 @@ export type PermittedPhoto = {
    *  printAspect) and absent when it rounds to the 4:3 every surface assumes.
    *  Absent, too, for a photo ingest never measured. */
   aspect?: number;
+  /** Where the animal is: left, top, width, height, as whole percentages of
+   *  the photo in steps of five, from the detector ingest runs over each
+   *  cached copy. A tuple rather than the dataset's object, and coarser than
+   *  the dataset's hundredths, because this is serialized into the page once
+   *  per photo: 1,760 boxes at two decimals cost the home page 15 KB gzipped,
+   *  in fives about 10 KB, and a crop cannot show the difference (2.5% of an
+   *  800px photo is 20px of it, under 8px of a card). */
+  subject?: readonly [number, number, number, number];
+  /** Width over height as measured, to two places, unclamped. Only alongside
+   *  `subject`, because the crop maths is the one reader that needs the
+   *  true shape: `aspect` calls a 3:2 photo 4:3, and a square box cutting a
+   *  3:2 photo has to know how much wider than the box the photo really is. */
+  ratio?: number;
 };
+
+/** The object-position that keeps the subject inside a box `frame` wide for
+ *  every unit of height, when the photo covers it. Undefined for a photo
+ *  without a box, or one the frame does not crop on either axis, so a caller
+ *  can fall back to whatever it did before.
+ *
+ *  A percentage object-position aligns the p% point of the picture with the
+ *  p% point of the box. With the picture r times wider than the box (r =
+ *  photo ratio over frame ratio) the box shows a window one box wide out of r,
+ *  starting p(r - 1) box-widths in, so the window's middle sits at
+ *  p(r - 1) + 1/2. Setting that equal to the subject's middle, c·r, gives p.
+ *  Past 0 or 1 the picture runs out, so the window stops at the edge nearest
+ *  the subject, which is the most of it the box can hold. The other axis is
+ *  never cut and stays at 50%.
+ *
+ *  Taller than the box is the same sum on the other axis with r inverted,
+ *  with one difference: the window never starts lower than a little above
+ *  the box. A window centred on an animal that nearly fills a portrait cuts
+ *  ears at the top and feet at the bottom, and with the box rounded to fives
+ *  even a window that just holds it can clip the ear tips; the head is the
+ *  half that matters, so it gets 5% of air and the feet take the cut. A
+ *  small animal low in the picture is still centred, since centring already
+ *  leaves room above it. Sideways there is no such side, and the middle it
+ *  is. */
+export function subjectPosition(
+  photo: Pick<PermittedPhoto, "subject" | "ratio">,
+  frame: number,
+): string | undefined {
+  if (!photo.subject || photo.ratio === undefined || !(frame > 0)) {
+    return undefined;
+  }
+  const [x, y, w, h] = photo.subject.map((v) => v / 100) as [
+    number,
+    number,
+    number,
+    number,
+  ];
+  const r = photo.ratio / frame;
+  // Within half a percent the box already fits the photo and there is
+  // nothing to position; the division below would also be by almost zero.
+  if (Math.abs(r - 1) < 0.005) return undefined;
+  const percent = (p: number) => Math.round(Math.min(1, Math.max(0, p)) * 100);
+  const along = (centre: number, ratio: number) =>
+    percent((centre * ratio - 0.5) / (ratio - 1));
+  if (r > 1) return `${along(x + w / 2, r)}% 50%`;
+  // The window is r of the picture's height and starts p(1 - r) down it:
+  // centred on the box where the box fits, and in any case no lower than
+  // HEADROOM above it.
+  const centred = y + h / 2 - r / 2;
+  const start = Math.min(h > r ? Infinity : centred, y - HEADROOM);
+  return `50% ${percent(start / (1 - r))}%`;
+}
+
+// How much of the picture's height a portrait crop keeps clear above the
+// animal, so the ears stay in even when the box's top is rounded down onto
+// them.
+const HEADROOM = 0.05;
 
 /** The sizes every print in the dialog's fan carries. It lives here rather than
  *  with the fan because the card warms photos at it before the dialog opens. */
@@ -107,6 +177,12 @@ function resolvePhoto(image: Animal["images"][number]): PermittedPhoto {
   if (image.width !== undefined && image.height !== undefined) {
     const aspect = printAspect(image.width, image.height);
     if (aspect !== undefined) photo.aspect = aspect;
+    if (image.subject !== undefined) {
+      const { x, y, w, h } = image.subject;
+      const fives = (v: number) => Math.round(v * 20) * 5;
+      photo.subject = [fives(x), fives(y), fives(w), fives(h)];
+      photo.ratio = Math.round((image.width / image.height) * 100) / 100;
+    }
   }
   return photo;
 }

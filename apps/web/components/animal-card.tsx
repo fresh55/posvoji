@@ -21,6 +21,7 @@ import { animalPath } from "@/lib/animal-path";
 import {
   CARD_PHOTO_ASPECT,
   CARD_PHOTO_RADIUS,
+  CARD_PHOTO_RATIO,
   CARD_PHOTO_SIZES,
 } from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
@@ -275,6 +276,12 @@ export function AnimalCard({
           name={animal.name}
           className={PHOTO_FRAME}
           sizes={CARD_PHOTO_SIZES}
+          // The frame is square, and 265 of the 484 lead photos are wider
+          // than 4:3: a square cut from the middle of one throws away a third
+          // of its width, and with it a tail or the whole cat at one end of
+          // the bench. Told the shape, the photo keeps the animal ingest
+          // found in the box.
+          frame={CARD_PHOTO_RATIO}
           // A plain click here opens the dialog, whose fan mounts its five
           // prints at once at 24rem. The rung ladder is 320/480/640 plus the
           // original, so at every common density that is a different file

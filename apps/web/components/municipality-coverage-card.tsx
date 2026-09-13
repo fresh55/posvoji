@@ -1,12 +1,27 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Cat, Clock, Dog, Globe, Mail, MapPin, Phone } from "lucide-react";
+import {
+  Cat,
+  Clock,
+  Dog,
+  ExternalLink,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { Card } from "@/components/ui/card";
-import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
+import {
+  contactName,
+  mailtoHref,
+  telHref,
+  websiteHost,
+  websiteName,
+} from "@/lib/contact-links";
 
 function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   const { messages } = useI18n();
@@ -20,34 +35,31 @@ function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   );
 }
 
-/** One line of contact detail: a glyph, an optional label, and the fact.
+/** One line of contact detail: a glyph, an optional spoken label, and the
+ *  fact.
  *
- *  The rows differ only in whether the label is drawn or only spoken, so the
- *  decision is this one prop rather than a different flex alignment and a
- *  different label treatment per row. items-start throughout: opening hours
- *  are free text from a shelter's own site and wrap to two lines on a phone,
- *  and a glyph centred against two lines sits in the gap between them. */
+ *  A label is never drawn. Every row here names itself to a reader who can
+ *  see the glyph, so the label exists for the one who cannot. The rows that
+ *  hold a link name it on the anchor instead, where it reaches the link's own
+ *  accessible name; this label is a sibling of the fact and would not.
+ *
+ *  items-start throughout: opening hours are free text from a shelter's own
+ *  site and wrap to two lines on a phone, and a glyph centred against two
+ *  lines sits in the gap between them. */
 function ContactRow({
   icon: Icon,
   label,
-  labelHidden = false,
   children,
 }: {
   icon: typeof MapPin;
   label?: string;
-  labelHidden?: boolean;
   children: ReactNode;
 }) {
   return (
     <li className="flex items-start gap-2">
       <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0">
-        {label &&
-          (labelHidden ? (
-            <span className="sr-only">{label}: </span>
-          ) : (
-            <>{label}: </>
-          ))}
+        {label && <span className="sr-only">{label}: </span>}
         {children}
       </span>
     </li>
@@ -68,6 +80,7 @@ function ContactRow({
 // files.
 export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
   const { messages, t } = useI18n();
+  const host = coverage.website ? websiteHost(coverage.website) : undefined;
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -127,14 +140,25 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             not drawn. The number to dial outside them is a button above, not
             a row here: the card states each number once. */}
         {coverage.hours && (
-          <ContactRow icon={Clock} label={messages.muniHours} labelHidden>
+          <ContactRow icon={Clock} label={messages.muniHours}>
             {coverage.hours}
           </ContactRow>
         )}
+        {/* The two calls above need no channel in their names: muniCall and
+            muniCallOnCall begin with the act, so their visible text is
+            already the announcement. These two rows print a bare value, so
+            contactName and websiteName put the channel in front of it.
+
+            title carries what a mouse cannot otherwise read: both rows
+            truncate, and a long address that ends in an ellipsis is left
+            only in the accessible name. */}
         {coverage.email && (
           <ContactRow icon={Mail}>
             <a
               href={mailtoHref(coverage.email)}
+              data-contact="email"
+              aria-label={contactName(messages.contactEmail, coverage.email)}
+              title={coverage.email}
               className="block truncate underline-offset-4 hover:text-foreground hover:underline"
             >
               {coverage.email}
@@ -142,14 +166,26 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
           </ContactRow>
         )}
         {coverage.website && (
+          // The only contact here that leaves the site. target="_blank" says
+          // so to nobody, so the name says it and the mark says it to
+          // everyone else: this card is read standing over a found animal,
+          // on a phone, where a title is a hover that never happens.
           <ContactRow icon={Globe}>
             <a
               href={coverage.website}
               target="_blank"
               rel="noreferrer"
-              className="block truncate underline-offset-4 hover:text-foreground hover:underline"
+              data-contact="website"
+              aria-label={websiteName(
+                messages.contactWebsite,
+                coverage.website,
+                messages.newWindow,
+              )}
+              title={host}
+              className="flex items-center gap-1 underline-offset-4 hover:text-foreground"
             >
-              {websiteHost(coverage.website)}
+              <span className="truncate hover:underline">{host}</span>
+              <ExternalLink className="size-3 shrink-0" aria-hidden data-external />
             </a>
           </ContactRow>
         )}
@@ -165,6 +201,11 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             className="underline underline-offset-2 hover:text-foreground"
           >
             {coverage.sourceLabel}
+            {/* The card's second outbound link, and the citation rather than
+                a contact, so it says so the footer's way: a spoken sentence
+                after the label, with no mark drawn into a line of small
+                print. */}
+            <span className="sr-only"> {messages.newWindow}</span>
           </a>
         ) : (
           coverage.sourceLabel

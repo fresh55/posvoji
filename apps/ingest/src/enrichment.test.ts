@@ -34,6 +34,42 @@ function manifest(): EnrichmentManifest {
 }
 
 describe("reviewed description enrichment", () => {
+  it("clears inherited feline tests when a reviewed species correction identifies a dog", () => {
+    const reviewed = manifest();
+    reviewed.records[0]!.claims[0] = {
+      ...reviewed.records[0]!.claims[0]!, field: "species", value: "dog", replaces: "cat",
+    };
+    const source = animal({ medical: { vaccinated: true, fiv: "negative", felv: "negative" } });
+    const result = applyEnrichment([source], reviewed, policies);
+    expect(result.animals[0]?.species).toBe("dog");
+    expect(result.animals[0]?.medical).toEqual({ vaccinated: true });
+    expect(result.applied.filter((entry) => entry.operation === "clear").map((entry) => entry.field)).toEqual(["medical.fiv", "medical.felv"]);
+    expect(source.medical?.fiv).toBe("negative");
+  });
+
+  it("applies an explicit correction only while the reviewed prior answer matches", () => {
+    const reviewed = manifest();
+    reviewed.records[0]!.claims[0] = {
+      ...reviewed.records[0]!.claims[0]!, field: "goodWith.cats", value: "yes", replaces: "unknown",
+    };
+    expect(applyEnrichment([animal({ goodWith: { cats: "unknown" } })], reviewed, policies).animals[0]?.goodWith?.cats).toBe("yes");
+    for (const goodWith of [undefined, { cats: "no" as const }, { cats: "yes" as const }]) {
+      expect(applyEnrichment([animal({ goodWith })], reviewed, policies).applied).toEqual([]);
+    }
+  });
+
+  it("validates full profile claims using the public field types", () => {
+    for (const [field, value] of [["foundDate", "2025-02-03"], ["breed", "Domestic shorthair"], ["approximateAgeMonths", 18]] as const) {
+      const reviewed = manifest();
+      reviewed.records[0]!.claims[0] = { ...reviewed.records[0]!.claims[0]!, field, value };
+      const result = applyEnrichment([animal()], reviewed, policies);
+      expect(result.animals[0]?.[field]).toBe(value);
+    }
+    const invalid = manifest();
+    invalid.records[0]!.claims[0] = { ...invalid.records[0]!.claims[0]!, field: "approximateAgeMonths", value: -1 };
+    expect(EnrichmentManifest.safeParse(invalid).success).toBe(false);
+  });
+
   it("fills a missing field without mutating its source, and validates the result", () => {
     const source = animal();
     const result = applyEnrichment([source], manifest(), policies);

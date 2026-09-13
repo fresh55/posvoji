@@ -100,3 +100,34 @@ export function mailtoHref(email: string): string {
 export function websiteHost(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 }
+
+/**
+ * The accessible name of a contact link, as all three surfaces say it: the
+ * channel, then the value the link already prints.
+ *
+ * The visible label is the number or the address, so the name adds the
+ * channel in front of it rather than replacing it, which is what WCAG 2.5.3
+ * asks of a control with a visible label.
+ */
+export function contactName(channel: string, value: string): string {
+  return `${channel}: ${value}`;
+}
+
+/**
+ * The same for the one contact that leaves the site, and the half of this
+ * pair that carries an invariant.
+ *
+ * It takes the URL rather than the host so the two facts a site link keeps
+ * losing cannot be remembered separately: the name is read from the trimmed
+ * host, and it ends with the new-window sentence because target="_blank"
+ * announces nothing on its own. Three components wrote this name out by hand
+ * and the third of them trimmed the host and dropped the sentence. A caller
+ * that cannot half-call it is the point.
+ */
+export function websiteName(
+  channel: string,
+  url: string,
+  newWindow: string,
+): string {
+  return `${contactName(channel, websiteHost(url))} ${newWindow}`;
+}

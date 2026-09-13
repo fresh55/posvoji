@@ -1,7 +1,7 @@
 # Reviewed animal enrichment
 
-The production export fills missing filter fields from individually reviewed
-shelter descriptions. It does not classify text at runtime or invent values to
+The production export fills missing profile fields from individually reviewed
+shelter descriptions and applies explicitly reviewed corrections. It does not classify text at runtime or invent values to
 populate filters. `data/animal-enrichment.json` is the versioned input.
 
 ## Evidence and review
@@ -23,7 +23,8 @@ and past events. Keep unclear or conditional answers absent. In particular:
   adoption together.
 - A resolved injury does not establish current ongoing care. Report treatment
   requirements only when the description states them for the current animal.
-- Existing `unknown`, `no` and `false` values are answers and are never filled over.
+- Existing `unknown`, `no` and `false` values are answers. Changing one requires
+  an explicit `replaces` baseline and a second review of the new evidence.
 
 The added optional `Animal.adoptionRequirements` object distinguishes
 `indoorOnly`, `bondedPair`, `experiencedCarer` and `ongoingCare` from energy,
@@ -36,11 +37,16 @@ this expanded strict schema before consuming an enriched dataset.
 
 1. Apply current publication permission, excluded paths and allowed-field policy.
 2. Capture `animals.crawled.json` before enrichment or portal corrections.
-3. Match reviewed claims to that raw snapshot. Fill only missing fields, only
-   when source URL, description hash and evidence span still match.
+3. Match reviewed claims to that raw snapshot. Fill missing fields only when
+   source URL, description hash and evidence span still match. A claim with
+   `replaces` changes a field only if its current value exactly matches that
+   reviewed baseline. Names, species, breed, dates, age and finding location use
+   the same public schema validators as the original structured data.
 4. Apply shelter portal corrections. A correction to a field suppresses its
    enrichment; a changed description suppresses all claims reviewed against the
-   old description. Medical FIV/FeLV additions apply only to cats.
+   old description. Medical FIV/FeLV additions apply only to cats. Correcting a
+   misclassified cat to another species clears inherited feline test results;
+   the applied-field report marks these removals with `operation: "clear"`.
 5. Cache media, validate and publish using the existing export transaction.
 
 The manifest is loaded and validated once per export. A malformed or missing
@@ -48,6 +54,12 @@ manifest stops the export. A removed animal never gets recreated. Revoked
 permission or a changed description prevents the addition from shipping.
 Every run starts with the raw snapshot, so stale values cannot survive through
 incremental carry-over. No source observation timestamp is advanced by review.
+
+`data/animal-profile-reviews.json` records the complete profile review for every
+animal in the reviewed snapshot, including fields that remain unknown. It is an
+audit record, not an instruction to populate unknown values or impersonate
+shelter staff. Its known/unknown field lists reflect the resulting permitted
+dataset. The enrichment manifest remains the only publication input.
 
 `overrides.json.enrichment` records applied fields and skipped claims; reasons
 include changed evidence, source changes, permission, an existing answer and a

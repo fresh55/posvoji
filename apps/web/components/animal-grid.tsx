@@ -5,6 +5,7 @@ import { AnimalFilters } from "@/components/filters/animal-filters";
 import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-provider";
+import { GridLoadMore } from "@/components/grid-load-more";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
@@ -698,48 +699,17 @@ export function AnimalGrid({
                   showShelter
                 />
               ))}
-              {/* Nothing to read and nothing to press: it exists so the observer
-                  has something to watch, and it says so rather than adding a
-                  nameless row to the grid a screen reader has to walk past. */}
-              {hasMore && !settled && (
-                <div
-                  ref={watchSentinel}
-                  aria-hidden
-                  // The e2e suite's own hook, alongside every other data-*
-                  // selector in this app: nothing here to find by role or
-                  // text, so a class name would otherwise be the only handle,
-                  // and this element's classes are layout and not contract.
-                  data-grid-sentinel
-                  className="col-span-full h-px"
-                />
-              )}
-              {/* What replaces the sentinel once the budget is spent. The count
-                  under the button is the transparency the sentinel never owed
-                  anyone: how much of the list is on the page, and how much a
-                  press still stands between the reader and the footer. */}
-              {hasMore && settled && (
-                <div className="col-span-full flex flex-col items-center gap-2 py-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={showMore}
-                    // Real height below lg, not a tap-target overlay: this is
-                    // the one control at the bottom of the list, and h-8 is
-                    // short of what a thumb needs.
-                    className="max-lg:min-h-11 max-lg:px-4"
-                  >
-                    {t("showMoreAnimals", {
-                      n: Math.min(CARDS_PER_CLICK, sorted.length - drawn),
-                    })}
-                  </Button>
-                  <p className="text-xs text-muted-foreground" aria-live="polite">
-                    {t("shownOfTotal", {
-                      shown: page.length,
-                      total: sorted.length,
-                    })}
-                  </p>
-                </div>
-              )}
+              {/* The sentinel the step watches, then the button that replaces
+                  it once the budget is spent: grid-load-more.tsx, which the
+                  shelter grid draws too. */}
+              <GridLoadMore
+                hasMore={hasMore}
+                settled={settled}
+                watchSentinel={watchSentinel}
+                showMore={showMore}
+                drawn={drawn}
+                total={sorted.length}
+              />
             </div>
           )}
           {/* Where the skip link lands: the end of the grid, whatever the grid

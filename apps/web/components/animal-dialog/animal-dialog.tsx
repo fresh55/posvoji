@@ -658,9 +658,29 @@ export function AnimalDialog({
                       sm: only. The phone scrolls the whole dialog rather than
                       this box, has no scrollport for a sticky child to hold
                       itself against, and is already answered by the fixed
-                      button on the photo. */}
+                      button on the photo.
+
+                      The inset shadow draws this box's own last row in the
+                      ground it is already painted in, so there is nothing to
+                      see and nothing to lay out. It is there because the
+                      dialog centres on a half pixel: Chrome then draws the
+                      ground's last row part-covered, and what it blends into
+                      the uncovered part is the page behind the dialog rather
+                      than the card's own ground. That reads as a hairline
+                      under the name, in patches wherever the grid behind
+                      happens to be dark. Measured on the built export: 225
+                      pixels at 186 on white, in 8 of 9 openings, gone with
+                      this line.
+
+                      Asking for the row rather than for a compositing layer.
+                      will-change and an outset shadow both clear it too, and
+                      both drop the title to greyscale antialiasing (its
+                      colour-fringed pixels go 270 to 0); this keeps it at
+                      270. Growing the box by a pixel of padding does not
+                      clear it, so what matters is that the row is asked for
+                      as a decoration, not that the ground is a pixel taller. */}
                   <m.div
-                    className="sm:sticky sm:-top-12 sm:z-20 sm:-mx-6 sm:-mt-6 sm:bg-popover sm:px-6 sm:pt-6 sm:pb-3"
+                    className="sm:sticky sm:-top-12 sm:z-20 sm:-mx-6 sm:-mt-6 sm:bg-popover sm:px-6 sm:pt-6 sm:pb-3 sm:shadow-[inset_0_-1px_0_0_var(--popover)]"
                     variants={CONTENT_ITEM}
                     transition={transition}
                   >

@@ -6,7 +6,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { Card } from "@/components/ui/card";
-import { mailtoHref, telHref } from "@/lib/contact-links";
+import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
 
 function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   const { messages } = useI18n();
@@ -149,9 +149,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
               rel="noreferrer"
               className="block truncate underline-offset-4 hover:text-foreground hover:underline"
             >
-              {coverage.website
-                .replace(/^https?:\/\/(www\.)?/, "")
-                .replace(/\/$/, "")}
+              {websiteHost(coverage.website)}
             </a>
           </ContactRow>
         )}

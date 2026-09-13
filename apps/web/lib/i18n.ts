@@ -13,6 +13,15 @@ const sl = {
   // What a link that leaves the site says. Word for word the shelters page's
   // own note, so the site says this one way rather than three.
   newWindow: "(odpre se v novem oknu)",
+  // The three ways to reach a shelter, named. Two surfaces print these: the
+  // register card and the shelter page, both of them into the accessible name
+  // of a link whose visible label is the number or the address. A screen
+  // reader meets the same word on both or the two pages describe one shelter
+  // in two vocabularies, which is the drift messages.shelters already exists
+  // to end for the breadcrumb.
+  contactPhone: "Telefon",
+  contactEmail: "E-pošta",
+  contactWebsite: "Spletna stran",
   heroTitle: "Živali iz slovenskih zavetišč, ki iščejo dom.",
   updated: "osveženo",
   footer:
@@ -540,6 +549,9 @@ const en: Messages = {
   githubTitle: "Vaccinated, neutered, no known bugs.",
   openSourceInvite: "Open source, and you can help.",
   newWindow: "(opens in a new window)",
+  contactPhone: "Phone",
+  contactEmail: "Email",
+  contactWebsite: "Website",
   heroTitle: "Animals from Slovenian shelters looking for a home.",
   updated: "updated",
   footer:

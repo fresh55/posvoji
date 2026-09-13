@@ -7,7 +7,13 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterDetailPage } from "./shelter-detail-page";
+import { getMessages } from "@/lib/i18n";
 import { CONTENT_ID } from "@/lib/skip-link";
+
+// The catalogue itself, not a copy of its strings: these are the words two
+// surfaces share, so a copy edit in i18n.ts should move this test with it
+// rather than fail it.
+const messages = getMessages("sl");
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -20,11 +26,25 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // A shelter whose town is the widest the register holds, because the town is
-// half of what the line under the name has to fit.
+// half of what the line under the name has to fit. It carries all three
+// contacts, which is what the register holds for most entries.
 const SHELTER = {
   id: "test-shelter",
   name: "Zavetišče Mala hiša",
   city: "Moravske Toplice",
+  website: "https://www.zavetisce-malahisa.si/",
+  email: "info@zavetisce-malahisa.si",
+  phone: "031 732 700",
+};
+
+// The other end of the register: an entry with no animals on the site and no
+// contact of any kind. Six shelters publish no list today; none is without a
+// phone, so the contact-less half is the guard being documented rather than a
+// state the register can currently reach.
+const BARE = {
+  id: "bare-shelter",
+  name: "Zavetišče brez objav",
+  city: "Celje",
 };
 
 const { ANIMALS } = vi.hoisted(() => ({
@@ -62,7 +82,7 @@ const { ANIMALS } = vi.hoisted(() => ({
 vi.mock("@/lib/shelters", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/shelters")>()),
   getShelterBySlug: (slug: string) =>
-    slug === SHELTER.id ? SHELTER : undefined,
+    [SHELTER, BARE].find((shelter) => shelter.id === slug),
   shelterRegisterDate: () => "2026-01-01",
 }));
 // shelterAnimals is mocked beside loadDataset rather than left to derive
@@ -91,6 +111,96 @@ function hero(container: HTMLElement) {
   if (!column || !line) throw new Error("hero town line not found");
   return { heading, column, line };
 }
+
+// The register card announces its contacts this way already
+// (shelter-card.tsx), and a reader who scanned the card and then opened the
+// page meets the same three in the same order, named the same way.
+describe("the shelter page's contacts", () => {
+  it("puts the channel in front of each value and the site last", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    const contacts = [...container.querySelectorAll("a[data-contact]")];
+    expect(contacts.map((a) => a.getAttribute("data-contact"))).toEqual([
+      "phone",
+      "email",
+      "website",
+    ]);
+    // The visible label is the value, so the accessible name adds the channel
+    // in front of it rather than replacing it (WCAG 2.5.3).
+    expect(contacts[0].getAttribute("aria-label")).toBe(
+      `${messages.contactPhone}: ${SHELTER.phone}`,
+    );
+    expect(contacts[0].getAttribute("href")).toBe("tel:+38631732700");
+    expect(contacts[1].getAttribute("aria-label")).toBe(
+      `${messages.contactEmail}: ${SHELTER.email}`,
+    );
+  });
+
+  it("says the site opens in a new window, to everyone", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    const site = container.querySelector('a[data-contact="website"]');
+    if (!site) throw new Error("website contact not found");
+    // target="_blank" announces nothing on its own, and the host is the part
+    // of the URL worth hearing.
+    expect(site.getAttribute("aria-label")).toBe(
+      `${messages.contactWebsite}: zavetisce-malahisa.si ${messages.newWindow}`,
+    );
+    // And a mark a thumb can see, because a title is a hover a touch never
+    // performs.
+    expect(site.querySelector("[data-external]")).not.toBeNull();
+  });
+
+  it("draws no contact row for a shelter that has none", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={BARE.id} />,
+    );
+
+    // Not merely empty: an empty flex row still takes a gap out of the stack
+    // above it, which prints as a hole under the name.
+    expect(container.querySelectorAll("a[data-contact]")).toHaveLength(0);
+    expect(container.querySelector("h1")?.textContent).toBe(BARE.name);
+  });
+});
+
+// Only once there is a point to explain, and only in one place. A boxed
+// notice in the hero used to say what the footer of this same page says.
+describe("what the shelter page explains", () => {
+  it("cites the register, and leaves the listings sentence to the footer", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    const provenance = container.querySelector("main > p:last-of-type");
+    expect(provenance?.textContent).toContain("Vir: UVHVVR");
+    // messages.footer, one border below, already states that every animal
+    // carries its source and a link to the original listing. The page does
+    // not say it a second time above the cards.
+    expect(provenance?.textContent).not.toContain("izvorno objavo");
+    expect(container.querySelector("footer")?.textContent).toContain(
+      "povezava na izvorno objavo",
+    );
+    // And nothing explaining an absence, on a page whose list is there.
+    expect(container.textContent).not.toContain("trenutno ni objav");
+  });
+
+  it("explains an empty page, where a reader cannot tell why", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={BARE.id} />,
+    );
+
+    expect(container.textContent).toContain(
+      "Za to zavetišče na Posvoji.si trenutno ni objav živali.",
+    );
+    // The town and nothing else: a count here would read as a shelter
+    // holding no animals rather than as one we publish nothing for.
+    expect(hero(container).line.textContent).toBe(BARE.city);
+  });
+});
 
 // jsdom lays nothing out, so none of this can measure the overflow it is
 // about. What it can hold is the mechanism: the classes that decide whether

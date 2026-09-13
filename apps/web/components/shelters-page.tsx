@@ -42,9 +42,6 @@ const pageText = {
     onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
     jumpLabel: "Skok na zavetišče",
-    website: "Spletna stran",
-    email: "E-pošta",
-    phone: "Telefon",
     noAnimals: "Brez objav",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
@@ -68,9 +65,6 @@ const pageText = {
     onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
     jumpLabel: "Jump to a shelter",
-    website: "Website",
-    email: "Email",
-    phone: "Phone",
     noAnimals: "No listings",
     heading: "Shelters",
     skip: "Skip the list of shelters",
@@ -330,9 +324,9 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       <SheltersAtlas
         shelters={cards}
         card={{
-          website: text.website,
-          email: text.email,
-          phone: text.phone,
+          website: messages.contactWebsite,
+          email: messages.contactEmail,
+          phone: messages.contactPhone,
           newWindow: messages.newWindow,
           animals: (count) => animalCount(count, locale),
           noAnimals: text.noAnimals,

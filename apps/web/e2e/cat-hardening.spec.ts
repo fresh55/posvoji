@@ -47,8 +47,10 @@ test("the stage says he is loading until he can be touched, and he answers a tou
   // keeps in its shadow root once it is up.
   const status = stage.locator(':scope > [role="status"]');
   const opacity = () => status.evaluate(e => getComputedStyle(e).opacity);
-  await expect(status).toHaveText(/Nalaganje/);
+  await expect(status).toHaveText(/še nalaga/);
   await expect(stage).toHaveCSS("cursor", "progress");
+  // Nothing is drawn for a visitor who has not reached for him.
+  expect(await opacity()).toBe("0");
   const box = (await stage.boundingBox())!;
   const x = box.x + box.width / 2, y = box.y + box.height / 2;
   if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);

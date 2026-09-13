@@ -163,35 +163,43 @@ describe("the cat model", () => {
     expect(viewer.paused).toBe(true);
   });
 
-  it("says he is loading once the wait is long enough to notice", () => {
-    vi.useFakeTimers();
-    try {
-      render(<CatModel sizes="100vw" locale="en" />);
-      const status = screen.getByRole("status");
-      // Present for screen readers from the start, drawn only after the delay.
-      expect(status.textContent).toContain("Loading the cat");
-      expect(status.className).toContain("opacity-0");
-      act(() => { vi.advanceTimersByTime(499); });
-      expect(status.className).toContain("opacity-0");
-      act(() => { vi.advanceTimersByTime(1); });
-      expect(status.className).toContain("opacity-100");
-    } finally {
-      vi.useRealTimers();
-    }
+  it("keeps the loading label off screen until someone reaches for him", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    const status = screen.getByRole("status");
+    // Present for screen readers from the start, drawn only on a reach.
+    expect(status.textContent).toContain("still loading");
+    expect(status.className).toContain("opacity-0");
+    await act(() => intersect(true));
+    expect(status.className).toContain("opacity-0");
+    fireEvent.pointerEnter(screen.getByRole("img"));
+    expect(status.className).toContain("opacity-100");
+    // It stays once shown: he is still not there.
+    fireEvent.pointerLeave(screen.getByRole("img"));
+    expect(status.className).toContain("opacity-100");
   });
 
-  it("says so at once when the visitor reaches for the poster", () => {
-    vi.useFakeTimers();
-    try {
-      render(<CatModel sizes="100vw" locale="sl" />);
-      const status = screen.getByRole("status");
-      expect(status.className).toContain("opacity-0");
-      fireEvent.pointerDown(screen.getByRole("img"));
-      expect(status.className).toContain("opacity-100");
-      expect(status.textContent).toContain("Nalaganje");
-    } finally {
-      vi.useRealTimers();
-    }
+  it("says so at once when the poster is touched, and says why when 3D fails", async () => {
+    render(<CatModel sizes="100vw" locale="sl" />);
+    const status = screen.getByRole("status");
+    fireEvent.pointerDown(screen.getByRole("img"));
+    expect(status.className).toContain("opacity-100");
+    expect(status.textContent).toContain("nalaga");
+    const viewer = await loadViewer();
+    expect(status.className).toContain("opacity-0");
+    fireEvent(viewer, new Event("error"));
+    expect(status.className).toContain("opacity-100");
+    expect(status.textContent).toContain("ni na voljo");
+  });
+
+  it("does not apologise for a failure to someone who never reached for him", async () => {
+    render(<CatModel sizes="100vw" locale="sl" />);
+    const viewer = await loadViewer();
+    fireEvent(viewer, new Event("error"));
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("ni na voljo");
+    expect(status.className).toContain("opacity-0");
+    fireEvent.pointerEnter(screen.getByRole("img"));
+    expect(status.className).toContain("opacity-100");
   });
 
   it("answers a touch the poster took while he was loading, and only that", async () => {

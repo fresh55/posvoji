@@ -13,24 +13,18 @@ import { cn } from "@/lib/utils";
 const MODEL = "/models/our-cat/cat.glb?v=26";
 // The poster uses the same resting pose and camera as the interactive model.
 const POSTER = "/models/our-cat/poster.webp?v=19.1";
-// How long the poster stands in unexplained. The label exists for the wait a
-// visitor notices: measured on the gate, a fast desktop swaps the poster out
-// in 1.3s, a phone on 4G with a slow CPU takes 4.7s, and slow 4G over 10s.
-// Half a second keeps it off the about page on desktop (0.4s) and lets it
-// flash only briefly where the wait is short anyway.
-const LABEL_DELAY_MS = 500;
 
 const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
-    loading: "Nalaganje mačka v 3D …",
+    loading: "Maček se še nalaga …",
     unavailable: "3D-ogled ni na voljo. Prikazana je slika.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
-    loading: "Loading the cat in 3D …",
+    loading: "The cat is still loading …",
     unavailable: "The 3D view is unavailable. A still image is shown.",
   },
 } satisfies Record<Locale, Record<string, string>>;
@@ -53,10 +47,15 @@ export type CatModelHandle = {
  *
  * The poster is the same pose the model starts in, so nothing tells a visitor
  * that the cat they are touching is a picture and the real one is still on
- * its way. Three things do now: the pointer shows progress over the stage, a
- * status label at its foot says he is loading once the wait is long enough
- * to notice (or at once when he is touched), and a touch the poster took is
- * answered with a glance when he arrives.
+ * its way: measured on the gate, that is 1.3s on a fast desktop, 4.7s on a
+ * phone over 4G and over 10s on slow 4G. Three things say so now, all of
+ * them only to the visitor who reaches for him. The pointer shows progress
+ * over the stage; a status label at its foot says he is still loading from
+ * the first hover or touch until he is there; and a touch the poster took is
+ * answered with a glance when he arrives. Nobody else sees a spinner: most
+ * visitors never touch him, on the gate they came to type a password, and a
+ * still picture that quietly comes alive is a better moment than one a
+ * spinner announces.
  *
  * memo, because the gate re-renders on every keystroke and this subtree
  * holds a live WebGL canvas.
@@ -84,9 +83,10 @@ export const CatModel = memo(function CatModel({
   const text = copy[locale];
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
-  // Whether the loading label is on screen. It waits a moment, so a quick
-  // load never shows it, and comes up at once when the visitor reaches for him.
-  const [labelled, setLabelled] = useState(false);
+  // Whether the visitor has reached for him before he was there. The label
+  // is drawn from then on, and stays until he is, rather than following the
+  // pointer in and out.
+  const [reached, setReached] = useState(false);
   // A touch the poster took while he was still loading, for him to answer.
   const touched = useRef(false);
   // Read from inside the one long-lived effect below, so it is kept current
@@ -96,19 +96,13 @@ export const CatModel = memo(function CatModel({
     handOver.current = onHandle;
   });
 
-  useEffect(() => {
-    if (status !== "loading") return;
-    const timer = setTimeout(() => setLabelled(true), LABEL_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [status]);
-
   const onPointerEnter = () => {
-    if (status === "loading") setLabelled(true);
+    if (status !== "ready") setReached(true);
   };
   const onPointerDown = () => {
-    if (status !== "loading") return;
-    setLabelled(true);
-    touched.current = true;
+    if (status === "ready") return;
+    setReached(true);
+    if (status === "loading") touched.current = true;
   };
 
   useEffect(() => {
@@ -310,15 +304,15 @@ export const CatModel = memo(function CatModel({
           className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
         />
         {/* The one thing ever drawn over the stage, and only while there is
-            no cat to touch. It sits at the foot, on the floor shadow, where
-            no pose reaches. Screen readers hear it from the start; the eyes
-            get it after the delay above. Empty once he is here, so the live
-            region says nothing more. */}
+            no cat to touch and someone has tried. It sits at the foot, on
+            the floor shadow, where no pose reaches. Screen readers have it
+            from the start; the eyes get it on the first reach. Empty once he
+            is here, so the live region says nothing more. */}
         <div
           role="status"
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
-            (status === "loading" && labelled) || status === "failed" ? "opacity-100" : "opacity-0",
+            reached && status !== "ready" ? "opacity-100" : "opacity-0",
           )}
         >
           {status !== "ready" && (

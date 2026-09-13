@@ -210,15 +210,19 @@ function stored(): unknown {
 
 describe("collapsible filter sections", () => {
   it("opens what a visitor reaches for first and folds the rest away", () => {
+    // Two sections and no more. The panel scrolls on its own, so anything
+    // past its fold is reached by scrolling the panel and not the page, and
+    // open by default Velikost cost 185px of a first screen that was already
+    // 96px over at 1440x900.
     renderSidebar();
 
     expect(expanded("Spol")).toBe("true");
     expect(expanded("Starost")).toBe("true");
-    expect(expanded("Velikost")).toBe("true");
     expect(card(/^Samec/)).toBeTruthy();
     expect(card(/^Mladiček/)).toBeTruthy();
-    expect(card(/^Majhna/)).toBeTruthy();
 
+    expect(expanded("Velikost")).toBe("false");
+    expect(card(/^Majhna/)).toBeNull();
     expect(expanded("Energija")).toBe("false");
     expect(expanded("Zdravje")).toBe("false");
     expect(expanded("Doma imam")).toBe("false");

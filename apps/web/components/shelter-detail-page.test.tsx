@@ -269,9 +269,9 @@ describe("the shelter page's hero", () => {
   });
 });
 
-// The list here is uncapped and the largest shelter in the register holds 186
-// animals, so this is the one page that can put 186 tab stops and some
-// 28,000px between the reader and the footer, which is the only way to any
+// The largest shelter in the register holds 186 animals. The grid draws them
+// in steps now (shelter-animal-grid.test.tsx), but even the sixty it starts
+// with stand between the reader and the footer, which is the only way to any
 // other page at phone width.
 describe("the shelter page's ways past its animals", () => {
   it("bypasses the grid to a landing pad that takes focus", () => {

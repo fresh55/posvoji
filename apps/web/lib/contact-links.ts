@@ -84,3 +84,19 @@ export function telNumber(phone: string): string {
 export function mailtoHref(email: string): string {
   return `mailto:${encodeURIComponent(email).replace(/%40/g, "@")}`;
 }
+
+/**
+ * A shelter's website as the part of it worth reading: the scheme and the www
+ * are on every one of them, and a trailing slash says nothing.
+ *
+ * Here beside telNumber for the reason telNumber was split out of telHref:
+ * three surfaces print this string and they cannot be allowed to come to
+ * different answers about the same shelter. The register card shows it,
+ * the shelter page speaks it as the site link's accessible name, and the
+ * found-animal coverage card shows it again. Read as a label by all three,
+ * never as a URL: the href is always the registry's own value, which
+ * lib/shelters.ts has already held to http or https.
+ */
+export function websiteHost(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+}

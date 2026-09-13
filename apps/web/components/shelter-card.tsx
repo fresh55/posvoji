@@ -8,7 +8,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { mailtoHref, telHref } from "@/lib/contact-links";
+import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
 import { publishedCount } from "@/lib/shelter-census";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import { shelterAnchorId } from "@/lib/shelter-path";
@@ -154,12 +154,6 @@ const CARD_PHONE_FOLD =
  *  column layout gives the name the whole width. */
 const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-0";
 
-/** A website as the part of it worth reading. The scheme and the www are on
- *  every one of them, and the card has room for the host, not the URL. */
-function websiteLabel(url: string): string {
-  return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
-}
-
 /**
  * One shelter, as a card.
  *
@@ -205,7 +199,7 @@ export function ShelterCard({
   shelter: ShelterCardData;
   text: ShelterCardText;
 }) {
-  const host = shelter.website ? websiteLabel(shelter.website) : undefined;
+  const host = shelter.website ? websiteHost(shelter.website) : undefined;
   // never-print-a-zero, from lib/shelter-census.ts, which owns the rule for
   // every surface that draws this count. One optional number rather than a
   // boolean beside the original field, because the mark and the count pill

@@ -1,6 +1,14 @@
-import { Globe, Info, Mail, MapPin, MapPinned, Phone } from "lucide-react";
+import {
+  ExternalLink,
+  Globe,
+  Info,
+  type LucideIcon,
+  Mail,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import { notFound } from "next/navigation";
-import { Fragment } from "react";
+import type { ReactNode } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { JsonLd } from "@/components/json-ld";
@@ -10,110 +18,99 @@ import { ShelterLocationMap } from "@/components/shelter-location-map";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
-import { mailtoHref, telHref } from "@/lib/contact-links";
+import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
 import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
 import { MUTED_LINK } from "@/lib/link-styles";
-import {
-  type CoveredMunicipality,
-  shelterCoverage,
-} from "@/lib/municipality-coverage";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { getShelterBySlug, shelterRegisterDate } from "@/lib/shelters";
-import { cn } from "@/lib/utils";
 
+// This page's own copy, and only its own. The three channel names are in the
+// catalogue (lib/i18n.ts) because the register card speaks them too, and one
+// shelter described in two vocabularies is the drift messages.shelters is
+// already here to end.
 const pageText = {
   sl: {
-    website: "Spletna stran",
     animalsTitle: "Živali iz tega zavetišča",
-    providerNotice:
-      "Vsaka žival je povezana na izvirno objavo pri zavetišču.",
     registryNotice:
       "Za to zavetišče na Posvoji.si trenutno ni objav živali. To ne pomeni, da v zavetišču ni živali za posvojitev. Za več informacij se obrni neposredno na zavetišče.",
     mapLabel: "Lega zavetišča na zemljevidu Slovenije",
     openInSearch: "Odpri v iskalniku živali",
     source: "Vir: UVHVVR — register zavetišč (gov.si)",
     asOf: "stanje",
-    coverageTitle: "Pokriva občine",
-    coverageNote:
-      "Po javno dostopnih podatkih je to zavetišče pristojno za zapuščene živali iz teh občin.",
-    coverageShowAll: "Prikaži vse občine ({count})",
-    coverageDogsOnly: "samo psi",
-    coverageCatsOnly: "samo mačke",
-    coverageSource: "Vir:",
-    coverageDatedSource:
-      "Del podatkov je iz starejših virov; pred obiskom preveri pri zavetišču ali občini.",
   },
   en: {
-    website: "Website",
     animalsTitle: "Animals from this shelter",
-    providerNotice:
-      "Every animal links back to its original listing at the shelter.",
     registryNotice:
       "There are currently no animal listings from this shelter on Posvoji.si. This does not mean the shelter has no animals for adoption. Contact the shelter directly for more information.",
     mapLabel: "The shelter's location on a map of Slovenia",
     openInSearch: "Open in the animal search",
     source: "Source: UVHVVR — shelter registry (gov.si)",
     asOf: "as of",
-    coverageTitle: "Municipalities covered",
-    coverageNote:
-      "By publicly available data, this shelter is responsible for stray animals from these municipalities.",
-    coverageShowAll: "Show all municipalities ({count})",
-    coverageDogsOnly: "dogs only",
-    coverageCatsOnly: "cats only",
-    coverageSource: "Source:",
-    coverageDatedSource:
-      "Some of this comes from older sources; confirm with the shelter or municipality before visiting.",
   },
 } satisfies Record<Locale, Record<string, string>>;
-
-type PageText = (typeof pageText)[Locale];
-
-/** How many municipality names stand in the open before the rest move behind
- *  a disclosure. The widest shelter in the registry covers 26 občin: a dozen
- *  chips still read as one fact about the shelter, the full list reads as a
- *  page of its own. */
-const MUNICIPALITY_PREVIEW = 12;
 
 // Contact text must remain readable at narrow widths and enlarged font sizes.
 // Grow the button when it wraps, and keep each contact large enough to tap.
 const CONTACT_BUTTON =
   "h-auto min-h-11 min-w-0 max-w-full whitespace-normal py-2";
 
-// Names, not sentences. A municipality carries a species tag only where the
-// registry limits the shelter to one species there, which is a difference
-// someone standing over a found animal needs before they call.
-function MunicipalityChips({
-  municipalities,
-  text,
+/**
+ * One way to reach this shelter.
+ *
+ * Written once because the shape is a contract, not a style: the visible
+ * label, the accessible name that puts the channel in front of it (WCAG
+ * 2.5.3), and the data-contact the tests select on have to agree across all
+ * three, and a fourth channel added later must not arrive wearing its own
+ * version of them. data-contact is a test contract, the same as on the
+ * register card's rows; nothing in the app reads it.
+ *
+ * The register card renders the same three as quiet rows rather than buttons,
+ * and that difference is deliberate: there it is a card being scanned, here it
+ * is the page's own set of actions.
+ */
+function ContactButton({
+  channel,
+  href,
+  icon: Icon,
+  label,
+  external = false,
+  children,
 }: {
-  municipalities: CoveredMunicipality[];
-  text: PageText;
+  channel: "phone" | "email" | "website";
+  href: string;
+  icon: LucideIcon;
+  /** The finished accessible name, channel included. */
+  label: string;
+  /** Leaves the site. target="_blank" announces nothing on its own, so the
+   *  name says so and the mark says it to everyone else: a title would leave
+   *  the fact to a hover, which a thumb never performs. */
+  external?: boolean;
+  children: ReactNode;
 }) {
   return (
-    <ul className="flex flex-wrap gap-1.5">
-      {municipalities.map((municipality) => (
-        <li
-          key={municipality.name}
-          className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground"
-        >
-          {municipality.name}
-          {municipality.species && (
-            <span className="ml-1 text-2xs">
-              (
-              {municipality.species === "dogs"
-                ? text.coverageDogsOnly
-                : text.coverageCatsOnly}
-              )
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
+    <Button asChild variant="outline" size="sm" className={CONTACT_BUTTON}>
+      <a
+        href={href}
+        data-contact={channel}
+        aria-label={label}
+        {...(external && { target: "_blank", rel: "noreferrer" })}
+      >
+        <Icon aria-hidden />
+        <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
+        {external && (
+          <ExternalLink
+            data-external
+            className="size-3.5 text-muted-foreground"
+            aria-hidden
+          />
+        )}
+      </a>
+    </Button>
   );
 }
 
@@ -138,14 +135,14 @@ export function ShelterDetailPage({
   const asOf = registerDate
     ? registerDateLabel(registerDate, locale)
     : undefined;
-  // One groupBy over the municipality registry the found-animal lookup
-  // already reads at build time, taken from the other end. Undefined when no
-  // row names this shelter, and then nothing below renders.
-  const coverage = shelterCoverage(shelter.id);
-  const shownMunicipalities =
-    coverage?.municipalities.slice(0, MUNICIPALITY_PREVIEW) ?? [];
-  const restMunicipalities =
-    coverage?.municipalities.slice(MUNICIPALITY_PREVIEW) ?? [];
+  // Every one of the seventeen shelters holds a phone, an email or a site
+  // today, so the empty case is unreachable from data/shelters.yaml as it
+  // stands. The gate is here so a row added without one cannot print a 20px
+  // hole under the name: an empty flex box still takes its gap out of the
+  // stack above it.
+  const hasContacts = Boolean(
+    shelter.phone || shelter.email || shelter.website,
+  );
 
   return (
     <SiteShell
@@ -179,10 +176,10 @@ export function ShelterDetailPage({
       //
       // Both are unconditional, and not gated on hasData with the grid: a
       // registry shelter draws no cards but still carries the contacts, the
-      // map and up to 26 municipality chips, which passes two screens on a
-      // phone, and that is the whole of what decides whether the button
-      // appears. The pair has to agree page-wide or the strip is missing on
-      // exactly the page that needed it.
+      // map and its notice, which passes a screen on a phone, and that is the
+      // whole of what decides whether the button appears. The pair has to
+      // agree page-wide or the strip is missing on exactly the page that
+      // needed it.
       footer={<SiteFooter locale={locale} updatedAt={dataset?.generatedAt} docked />}
     >
       {/* This page is where the shelter's own facts live, so the machine
@@ -206,16 +203,12 @@ export function ShelterDetailPage({
           current={shelter.name}
         />
 
-        {/* The map beside the whole header stack, not beside the notice
-            alone. Paired with just the notice it set the row's height:
-            the drawing is 320 by 210, so any width that keeps it legible
-            makes it taller than one or two lines of text, and the
-            difference came out as a dead band under the notice. The
-            hero, the contacts and the notice together are taller than
-            the map at every width the register produces, so beside the
-            stack it fills the empty right of the header and sets no
-            height of its own. Below sm it follows the notice, where the
-            single column puts it. */}
+        {/* The map beside the whole header stack, not beside one part of
+            it. The drawing is 320 by 210, so any width that keeps it
+            legible makes it taller than a line or two of text, and beside
+            anything shorter than the stack the difference came out as a
+            dead band. Below sm it follows the contacts, where the single
+            column puts it. */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8">
           <div className="min-w-0 flex-1 space-y-5">
             <div className="flex flex-wrap items-center gap-4">
@@ -270,138 +263,76 @@ export function ShelterDetailPage({
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {shelter.website && (
-                <Button
-                  asChild variant="outline" size="sm"
-                  className={CONTACT_BUTTON}
-                >
-                  <a href={shelter.website} target="_blank" rel="noreferrer">
-                    <Globe aria-hidden />
-                    {text.website}
-                  </a>
-                </Button>
-              )}
-              {shelter.email && (
-                <Button
-                  asChild variant="outline" size="sm"
-                  className={CONTACT_BUTTON}
-                >
-                  <a href={mailtoHref(shelter.email)}>
-                    <Mail aria-hidden />
-                    <span className="min-w-0 [overflow-wrap:anywhere]">
-                      {shelter.email}
-                    </span>
-                  </a>
-                </Button>
-              )}
-              {shelter.phone && (
-                <Button
-                  asChild variant="outline" size="sm"
-                  className={CONTACT_BUTTON}
-                >
-                  <a href={telHref(shelter.phone)}>
-                    <Phone aria-hidden />
-                    <span className="min-w-0 [overflow-wrap:anywhere]">
-                      {shelter.phone}
-                    </span>
-                  </a>
-                </Button>
-              )}
-            </div>
+            {/* Phone, email, site, in that order on both surfaces that draw
+                them: the register card prints them this way because the
+                first call someone standing over a found animal makes is a
+                call, and a reader who scanned the card and then opened the
+                page should not have to find the number in a new place. */}
+            {hasContacts && (
+              <div className="flex flex-wrap gap-2">
+                {shelter.phone && (
+                  <ContactButton
+                    channel="phone"
+                    href={telHref(shelter.phone)}
+                    icon={Phone}
+                    label={`${messages.contactPhone}: ${shelter.phone}`}
+                  >
+                    {shelter.phone}
+                  </ContactButton>
+                )}
+                {shelter.email && (
+                  <ContactButton
+                    channel="email"
+                    href={mailtoHref(shelter.email)}
+                    icon={Mail}
+                    label={`${messages.contactEmail}: ${shelter.email}`}
+                  >
+                    {shelter.email}
+                  </ContactButton>
+                )}
+                {shelter.website && (
+                  // The channel is the label here and the host is only
+                  // spoken: the button is an action rather than a value to
+                  // read back, and the register card already prints the host
+                  // for anyone comparing shelters.
+                  <ContactButton
+                    channel="website"
+                    href={shelter.website}
+                    icon={Globe}
+                    external
+                    label={`${messages.contactWebsite}: ${websiteHost(shelter.website)} ${messages.newWindow}`}
+                  >
+                    {messages.contactWebsite}
+                  </ContactButton>
+                )}
+              </div>
+            )}
 
-            {/* The notice says what this page can offer: whether the animal
-                list below is the shelter's own, or why there is none. */}
-            <div
-              className={cn(
-                "flex items-start gap-2.5 rounded-ui border px-4 py-3 text-sm leading-relaxed",
-                hasData
-                  ? "border-brand-border bg-brand text-brand-foreground"
-                  : "bg-muted/40 text-muted-foreground",
-              )}
-            >
-              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <p>{hasData ? text.providerNotice : text.registryNotice}</p>
-            </div>
+            {/* Only once there is a point to explain. A shelter that shares
+                its list needs no notice: the count beside the town and the
+                cards below say what the page holds, and the footer on this
+                same page already states that every animal carries its source
+                and a link to the original listing. What does need saying is
+                an empty page, because a reader cannot tell a shelter with no
+                animals from a shelter we publish nothing for. */}
+            {!hasData && (
+              <div className="flex items-start gap-2.5 rounded-ui border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <p>{text.registryNotice}</p>
+              </div>
+            )}
           </div>
+          {/* Smaller than a hero below sm. At the 13rem it draws from sm up
+              the country filled a third of a phone screen between the
+              contacts and the first card, which is a locator drawn at the
+              size of an illustration. */}
           <ShelterLocationMap
             city={shelter.city}
             label={`${text.mapLabel}: ${shelter.city}`}
-            className="h-auto w-full max-w-[13rem] shrink-0"
+            className="h-auto w-full max-w-[11rem] shrink-0 sm:max-w-[13rem]"
           />
         </div>
       </div>
-
-      {/* The one fact this page can carry that the register cannot: which
-          občine this shelter answers for. It sits with the shelter's own
-          facts, under the contacts someone came here to use and above the
-          animal list, because it is about the shelter and not about the
-          animals. */}
-      {coverage && (
-        <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-base font-medium tracking-tight">
-            <MapPinned
-              className="size-4 shrink-0 text-muted-foreground"
-              aria-hidden
-            />
-            {text.coverageTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {text.coverageNote}
-          </p>
-
-          <MunicipalityChips
-            municipalities={shownMunicipalities}
-            text={text}
-          />
-
-          {/* A native disclosure: the full list is in the HTML either
-              way, it opens with JavaScript off, and the summary names the
-              total, so the cap is never silent. */}
-          {restMunicipalities.length > 0 && (
-            <details>
-              <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-                {text.coverageShowAll.replace(
-                  "{count}",
-                  String(coverage.municipalities.length),
-                )}
-              </summary>
-              <div className="pt-3">
-                <MunicipalityChips
-                  municipalities={restMunicipalities}
-                  text={text}
-                />
-              </div>
-            </details>
-          )}
-
-          {/* Cited here rather than in the line at the foot of the page:
-              this table has its own sources, separate from the register
-              the rest of the entry comes from. */}
-          <p className="text-xs text-muted-foreground">
-            {text.coverageSource}{" "}
-            {coverage.sources.map((source, index) => (
-              <Fragment key={source.id}>
-                {index > 0 && ", "}
-                {source.url ? (
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-2 hover:text-foreground"
-                  >
-                    {source.label}
-                  </a>
-                ) : (
-                  source.label
-                )}{" "}
-                ({source.date})
-              </Fragment>
-            ))}
-            .{!coverage.confirmed && <> {text.coverageDatedSource}</>}
-          </p>
-        </section>
-      )}
 
       {/* Only where there are animals to show. A registry shelter has no
           list at all, which the notice above already says; a heading over
@@ -410,7 +341,9 @@ export function ShelterDetailPage({
       {hasData && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b pb-3">
-            <h2 className="text-xl font-medium tracking-tight sm:text-2xl">
+            {/* One step under the h1 rather than level with it: the page is
+                about the shelter, and this is the heading of its list. */}
+            <h2 className="text-lg font-medium tracking-tight sm:text-xl">
               {text.animalsTitle}
             </h2>
             {/* The grid here carries this shelter's animals and no filters.

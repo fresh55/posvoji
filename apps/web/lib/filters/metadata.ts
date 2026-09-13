@@ -119,10 +119,11 @@ function pinned(toggle: ToggleDef): ToggleDef {
 
 export const TOGGLES: readonly ToggleDef[] = TOGGLE_DEFS.map(pinned);
 
-/** The questions this species can be asked, answered or not. The dialog needs
- *  it as the denominator of "Vse zdravstveno urejeno (n/n)": a dog is not two
- *  answers short for never having been asked about FIV. Built from the rule
- *  the matchers are gated on, so a count and a badge row cannot disagree. */
+/** The questions this species can be asked, answered or not. The dialog folds
+ *  its health row to "Vse zdravstveno urejeno" once every one of them is
+ *  answered, and a dog is not two answers short for never having been asked
+ *  about FIV. Built from the rule the matchers are gated on, so the fold and
+ *  the badge row cannot disagree. */
 export function togglesAskedOf(species: Species): ToggleDef[] {
   return TOGGLES.filter((toggle) => appliesToSpecies(toggle.species, species));
 }

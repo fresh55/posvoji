@@ -627,7 +627,7 @@ describe("animal dialog", () => {
 
     const dialog = await screen.findByRole("dialog");
     const summary = within(dialog).getByRole("button", {
-      name: /Vse zdravstveno urejeno \(5\/5\)/,
+      name: /Vse zdravstveno urejeno/,
     });
     expect(within(dialog).queryByText("Sterilizacija")).toBeNull();
 

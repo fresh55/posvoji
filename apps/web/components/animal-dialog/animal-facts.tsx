@@ -13,7 +13,7 @@ import {
   Venus,
   type LucideIcon,
 } from "lucide-react";
-import type { AnimalSize, Sex } from "@posvoji/schema";
+import type { AnimalSize, Sex, TestResult } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -145,13 +145,42 @@ function HealthFact({
 }
 
 // A "no" is not a fault, so it never gets a warning colour: a plain bordered
-// pill, and words that say what the animal would rather have. An unanswered
-// question is drawn dashed and stays inert, because there is nothing to
-// explain yet.
+// pill, and words that say what the animal would rather have. The border is
+// lighter than the identity pills' plain one, because a no should not outweigh
+// who the animal is. An unanswered question is drawn dashed and stays inert,
+// because there is nothing to explain yet.
 const GOOD_WITH_NO_CLASS =
-  "inline-flex items-center gap-1.5 rounded-ui border border-foreground/25 px-2.5 py-1 text-xs text-muted-foreground";
+  "inline-flex items-center gap-1.5 rounded-ui border border-foreground/15 px-2.5 py-1 text-xs text-muted-foreground";
 const GOOD_WITH_UNKNOWN_CLASS =
   "inline-flex items-center gap-1.5 rounded-ui border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground";
+
+// The missing-result pill wears the FIV badge's own mark, so the answer the
+// shelter recorded and the one it did not are visibly the same question.
+const UnknownTestIcon = HEALTH_ICONS["brez-fiv"];
+
+// Absent and a recorded "unknown" both mean no result. A positive is a result,
+// and the shelter's own words carry it, so it is never a gap.
+function untested(result: TestResult | undefined): boolean {
+  return result !== "negative" && result !== "positive";
+}
+
+// An itemised health row lists only what the record answers, so a cat missing
+// its FIV or FeLV result shows three green pills and nothing about the two
+// tests a visitor with a resident cat came for. The gap gets a name. Cats
+// only, because nobody asks a dog; and only these two, because sterilisation,
+// vaccination and the chip are done before an adoption anyway.
+function healthGapKey(
+  species: string,
+  medical: { fiv?: TestResult; felv?: TestResult } | undefined,
+): TranslationKey | undefined {
+  if (species !== "cat") return undefined;
+  const fiv = untested(medical?.fiv);
+  const felv = untested(medical?.felv);
+  if (fiv && felv) return "healthUnknownFivFelv";
+  if (fiv) return "healthUnknownFiv";
+  if (felv) return "healthUnknownFelv";
+  return undefined;
+}
 
 // Once one household question has an answer, all three are shown: a row that
 // listed only the yeses would read as an all-clear on the rest.
@@ -379,6 +408,12 @@ export function AnimalFacts({
   const hasIdentity =
     sex !== undefined || months !== undefined || animal.size !== undefined;
   const fullRecord = medical.length === applicable.length;
+  // Named only beside an itemised row: a full record has no gap to name, and a
+  // shelter that recorded nothing at all says nothing here either.
+  const healthGap =
+    medical.length > 0 && !fullRecord
+      ? healthGapKey(animal.species, animal.medical)
+      : undefined;
   // One answered question is enough to show the row, and the row then answers
   // all three. A shelter that has recorded nothing says nothing here.
   const hasGoodWith = GOOD_WITH_KEYS.some(
@@ -407,16 +442,18 @@ export function AnimalFacts({
   const clampDescription = clampsDescription(description ?? "");
 
   return (
-    <div className="space-y-3">
-      {/* Who the animal is, then what its health record says. Two close-set
-          rows, so the identity is not buried in a wall of same-shaped badges.
-          The breed lives in the dialog's subtitle, not here. */}
+    <div className="space-y-4">
+      {/* Who the animal is, then what its health record says. The rows sit
+          further apart than the lines inside one of them, so a row that wraps
+          still reads as one row: at space-y-1.5 against the rows' own gap-2,
+          two separate statements sat closer than two lines of one. The breed
+          lives in the dialog's subtitle, not here. */}
       {(hasIdentity || medical.length > 0 || hasGoodWith || apartment) && (
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {hasIdentity && (
             <ul
               aria-label={messages.animalDetails}
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-x-2 gap-y-1.5"
             >
               {sex && (
                 <Fact icon={SEX_ICONS[sex]}>{sexLabel(sex, locale)}</Fact>
@@ -459,7 +496,7 @@ export function AnimalFacts({
             <ul
               ref={healthRow}
               aria-label={messages.health}
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-x-2 gap-y-1.5"
             >
               {fullRecord && !showHealthDetails ? (
                 <li>
@@ -480,7 +517,10 @@ export function AnimalFacts({
                       strokeWidth={1.75}
                       aria-hidden
                     />
-                    {t("healthAllClear", { count: medical.length })}
+                    {/* No count beside it. It was the same token twice, so it
+                        could never say anything, and it read as a smaller
+                        record for a dog (3/3) than for a cat (5/5). */}
+                    {messages.healthAllClear}
                     <span className="sr-only">
                       {messages.showHealthDetails}
                     </span>
@@ -491,21 +531,35 @@ export function AnimalFacts({
                   </button>
                 </li>
               ) : (
-                medical.map(({ key }) => (
-                  <HealthFact
-                    key={key}
-                    toggle={key}
-                    label={toggleLabel(key, locale)}
-                    hint={messages[HEALTH_HINTS[key]]}
-                  />
-                ))
+                <>
+                  {medical.map(({ key }) => (
+                    <HealthFact
+                      key={key}
+                      toggle={key}
+                      label={toggleLabel(key, locale)}
+                      hint={messages[HEALTH_HINTS[key]]}
+                    />
+                  ))}
+                  {/* Last, after what the record does answer, and inert: there
+                      is no sentence to open on a test nobody ran. */}
+                  {healthGap && (
+                    <li className={GOOD_WITH_UNKNOWN_CLASS}>
+                      <UnknownTestIcon
+                        className="size-3.5 shrink-0 opacity-70"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                      <span>{messages[healthGap]}</span>
+                    </li>
+                  )}
+                </>
               )}
             </ul>
           )}
           {hasGoodWith && (
             <ul
               aria-label={messages.goodWithFacts}
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-x-2 gap-y-1.5"
             >
               {GOOD_WITH_KEYS.map((key) => {
                 const answer = animal.goodWith?.[key] ?? "unknown";
@@ -522,7 +576,10 @@ export function AnimalFacts({
             </ul>
           )}
           {apartment && (
-            <ul aria-label={messages.home} className="flex flex-wrap gap-2">
+            <ul
+              aria-label={messages.home}
+              className="flex flex-wrap gap-x-2 gap-y-1.5"
+            >
               <ApartmentFact
                 answer={apartment}
                 label={
@@ -537,47 +594,13 @@ export function AnimalFacts({
         </div>
       )}
 
-      {((inShelter && stay && !longStay) || animal.originMunicipality) && (
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {inShelter && stay && !longStay && (
-            <Aside icon={CalendarClock}>
-              {messages.factTimeInShelter}: {stay}
-            </Aside>
-          )}
-          {/* The pin says "found in" without forcing a gender or a case on
-              the sentence; the words only exist for screen readers. */}
-          {animal.originMunicipality && (
-            <Aside icon={MapPin} prefix={messages.factOrigin}>
-              {animal.originMunicipality}
-            </Aside>
-          )}
-        </p>
-      )}
-
-      {/* Said plainly and once, in the same quiet line as the other context
-          facts. A shelter marking this is asking for the right person, not
-          warning the visitor off, so it gets no alert box and no colour. */}
-      {animal.specialNeeds && (
-        <p className="text-xs text-muted-foreground">
-          <Aside icon={HeartHandshake}>{messages.specialNeedsNote}</Aside>
-        </p>
-      )}
-      {requirements.length > 0 && (
-        <ul className="flex flex-wrap gap-2 text-xs text-muted-foreground" aria-label={messages.home}>
-          {requirements.map((key) => (
-            <li key={key}>
-              <Aside icon={key === "indoorOnly" ? Building2 : HeartHandshake}>
-                {ADOPTION_REQUIREMENT_LABELS[key][locale]}
-              </Aside>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Nothing here until the fetch lands, which is what an animal with no
-          description draws too. No spinner and no skeleton: it is one
-          paragraph inside a dialog that is already open and already full, and
-          a placeholder for it would be more noticeable than the wait. */}
+      {/* The shelter's own words come right after the pills and ahead of the
+          quiet context lines: the facts, then the sentence somebody wrote
+          about this animal, then the asides. Nothing here until the fetch
+          lands, which is what an animal with no description draws too. No
+          spinner and no skeleton: it is one paragraph inside a dialog that is
+          already open and already full, and a placeholder for it would be
+          more noticeable than the wait. */}
       {description && (
         <div className="space-y-1">
           <p
@@ -608,6 +631,48 @@ export function AnimalFacts({
             </button>
           )}
         </div>
+      )}
+
+      {((inShelter && stay && !longStay) || animal.originMunicipality) && (
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {inShelter && stay && !longStay && (
+            <Aside icon={CalendarClock}>
+              {messages.factTimeInShelter}: {stay}
+            </Aside>
+          )}
+          {/* The pin says "found in" without forcing a gender or a case on
+              the sentence; the words only exist for screen readers. */}
+          {animal.originMunicipality && (
+            <Aside icon={MapPin} prefix={messages.factOrigin}>
+              {animal.originMunicipality}
+            </Aside>
+          )}
+        </p>
+      )}
+
+      {/* Said plainly and once, in the same quiet line as the other context
+          facts. A shelter marking this is asking for the right person, not
+          warning the visitor off, so it gets no alert box and no colour. */}
+      {animal.specialNeeds && (
+        <p className="text-xs text-muted-foreground">
+          <Aside icon={HeartHandshake}>{messages.specialNeedsNote}</Aside>
+        </p>
+      )}
+      {/* Its own name, not the housing row's: two lists called "Dom" gave a
+          screen reader the same landmark twice. */}
+      {requirements.length > 0 && (
+        <ul
+          className="flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-muted-foreground"
+          aria-label={messages.adoptionRequirements}
+        >
+          {requirements.map((key) => (
+            <li key={key}>
+              <Aside icon={key === "indoorOnly" ? Building2 : HeartHandshake}>
+                {ADOPTION_REQUIREMENT_LABELS[key][locale]}
+              </Aside>
+            </li>
+          ))}
+        </ul>
       )}
 
       {/* The long wait itself renders inside the shelter block now, where the

@@ -83,8 +83,9 @@ describe("the zdravje row", () => {
     expect(within(row).getByText("Brez FeLV")).toBeTruthy();
   });
 
-  // The summary counts what the species could be asked, so a dog is complete
-  // at three and folds the same way a cat does at five.
+  // The fold is measured against what the species could be asked, so a dog is
+  // complete at three and folds the same way a cat does at five. No count
+  // beside it: a dog's (3/3) read as a smaller record than a cat's (5/5).
   it("folds a dog's complete record at three", () => {
     renderFacts({
       species: "dog",
@@ -92,8 +93,9 @@ describe("the zdravje row", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: /Vse zdravstveno urejeno \(3\/3\)/ }),
+      screen.getByRole("button", { name: /^Vse zdravstveno urejeno/ }),
     ).toBeTruthy();
+    expect(screen.queryByText(/\(3\/3\)/)).toBeNull();
   });
 
   // The summary is replaced by the itemized row when pressed and never comes
@@ -110,6 +112,82 @@ describe("the zdravje row", () => {
         .getByRole("button", { name: /Vse zdravstveno urejeno/ })
         .hasAttribute("aria-expanded"),
     ).toBe(false);
+  });
+
+  // An itemized row lists what the record answers, so a cat with three green
+  // pills and no test results said nothing about the two questions a visitor
+  // with a resident cat came for.
+  it("names both missing tests on a partial cat record", () => {
+    renderFacts({
+      medical: { neutered: true, vaccinated: true, microchipped: true },
+    });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    expect(within(row).getByText("Ni podatka o FIV in FeLV")).toBeTruthy();
+  });
+
+  it("names only the test that is missing", () => {
+    renderFacts({ medical: { fiv: "unknown", felv: "negative" } });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    expect(within(row).getByText("Brez FeLV")).toBeTruthy();
+    expect(within(row).getByText("Ni podatka o FIV")).toBeTruthy();
+  });
+
+  // Nothing to open on a test nobody ran: the pill states the gap and stays
+  // inert, unlike the recorded results beside it.
+  it("offers nothing to press on the missing test", () => {
+    renderFacts({ medical: { fiv: "unknown", felv: "negative" } });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    const buttons = within(row).getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent).toContain("Brez FeLV");
+  });
+
+  // A result is a result. The shelter's own words carry a positive one, and a
+  // pill saying the opposite of what they say would be worse than silence.
+  it("says nothing about a recorded positive", () => {
+    renderFacts({ medical: { fiv: "positive", felv: "negative" } });
+
+    expect(screen.queryByText(/Ni podatka/)).toBeNull();
+  });
+
+  // A complete record has no gap, so the pill cannot be hiding behind the
+  // summary either.
+  it("keeps the gap off a complete cat record, folded or open", () => {
+    renderFacts({
+      medical: {
+        neutered: true,
+        vaccinated: true,
+        microchipped: true,
+        fiv: "negative",
+        felv: "negative",
+      },
+    });
+
+    expect(screen.queryByText(/Ni podatka/)).toBeNull();
+
+    act(() => {
+      screen.getByRole("button", { name: /Vse zdravstveno urejeno/ }).click();
+    });
+
+    expect(screen.queryByText(/Ni podatka/)).toBeNull();
+  });
+
+  it("leaves a dog's partial record alone, having never asked", () => {
+    renderFacts({ species: "dog", medical: { neutered: true } });
+
+    expect(screen.queryByText(/Ni podatka/)).toBeNull();
+  });
+
+  // A shelter that recorded nothing says nothing: there is no row to hang the
+  // gap on.
+  it("stays silent when the record is empty", () => {
+    renderFacts({ medical: {} });
+
+    expect(screen.queryByRole("list", { name: "Zdravje" })).toBeNull();
+    expect(screen.queryByText(/Ni podatka/)).toBeNull();
   });
 });
 
@@ -131,8 +209,8 @@ describe("the družba row", () => {
     const items = within(row).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(within(row).getByText("Se razume z otroki")).toBeTruthy();
-    expect(within(row).getByText("Psi: ni znano")).toBeTruthy();
-    expect(within(row).getByText("Mačke: ni znano")).toBeTruthy();
+    expect(within(row).getByText("Ni podatka o psih")).toBeTruthy();
+    expect(within(row).getByText("Ni podatka o mačkah")).toBeTruthy();
   });
 
   it("softens a no instead of marking the animal down", () => {
@@ -140,7 +218,7 @@ describe("the družba row", () => {
 
     const row = screen.getByRole("list", { name: "Družba" });
     expect(within(row).getByText("Raje brez otrok")).toBeTruthy();
-    expect(within(row).getByText("Psi: ni znano")).toBeTruthy();
+    expect(within(row).getByText("Ni podatka o psih")).toBeTruthy();
     expect(within(row).getByText("Se razume z mačkami")).toBeTruthy();
   });
 
@@ -345,9 +423,26 @@ describe("the special care line", () => {
 });
 
 describe("reviewed adoption requirements", () => {
+  // Its own name. The housing row is already called "Home", and two lists
+  // under one name are two landmarks a screen reader cannot tell apart.
   it("omits the requirement list when none are confirmed", () => {
     renderFacts({ adoptionRequirements: { indoorOnly: false } }, "en");
-    expect(screen.queryByRole("list", { name: "Home" })).toBeNull();
+    expect(
+      screen.queryByRole("list", { name: "Adoption conditions" }),
+    ).toBeNull();
+  });
+
+  it("names the requirement list apart from the housing row", () => {
+    renderFacts(
+      { apartmentOk: "yes", adoptionRequirements: { indoorOnly: true } },
+      "en",
+    );
+
+    expect(screen.getByRole("list", { name: "Home" })).toBeTruthy();
+    const conditions = screen.getByRole("list", {
+      name: "Adoption conditions",
+    });
+    expect(within(conditions).getByText("Indoor-only home")).toBeTruthy();
   });
 
   it("shows confirmed requirements in the animal facts", () => {

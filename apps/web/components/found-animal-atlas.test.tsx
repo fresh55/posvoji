@@ -132,9 +132,11 @@ describe("the found-animal atlas", () => {
     );
     expect(densities.length).toBeGreaterThan(1);
     expect(new Set(densities)).toEqual(new Set(["0"]));
-    // Guidance remains available before a municipality is named.
+    // Guidance remains available before a municipality is named, under the
+    // heading that says when it applies.
     expect(screen.getByText(/Zakon o zaščiti živali/)).toBeTruthy();
     expect(screen.getByText(/Poškodovane živali ne premikaj/)).toBeTruthy();
+    expect(screen.getByText("Do prihoda pomoči")).toBeTruthy();
     // And nothing is ringed yet.
     expect(document.querySelector("[data-map-spotlight]")).toBeNull();
   });

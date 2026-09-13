@@ -910,30 +910,40 @@ export function MunicipalityFinder({
             </Card>
           ))}
 
-        {/* The guidance, under whatever the search has answered, in the
-            muted weight: the card above it is the answer, this is what goes
-            with it. Three sentences: what not to do, what to say, who pays.
+        {/* The guidance, under whatever the search has answered, its
+            sentences in the muted weight: the card above it is the answer,
+            this is what goes with it. Three sentences under a heading that
+            says when they apply: what not to do, what to say, who pays.
             Call and safety guidance follows Zavetišče Ljubljana's procedure
             (zavetisce-ljubljana.si/najdene-zivali/kaj-storiti-ce-najdemo-
             zapusceno-zival). The list used to end with the emergency numbers
             112 and 113; a found animal is a call to the shelter, not to
             either, so they are gone. */}
-        <ul className="space-y-2 border-t pt-4 text-sm leading-relaxed text-muted-foreground">
-          <li>{messages.muniInjured}</li>
-          <li>{messages.muniCallAdvice}</li>
-          <li>
-            {messages.muniCost}{" "}
-            <a
-              href={LAW_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
-            >
-              {messages.muniCostSource}
-              <ExternalLink className="size-3" aria-hidden />
-            </a>
-          </li>
-        </ul>
+        <div className="space-y-2 border-t pt-4 text-sm leading-relaxed">
+          {/* The set's name. Under the answer card these three sat as three
+              more muted lines with nothing over them, so on a phone they read
+              as small print the card had trailed off into. A p and not an h2:
+              the answer above is headed by a p as well, and a page whose one
+              h2 is the advice under the answer describes an outline the page
+              does not have. */}
+          <p className="font-medium">{messages.muniGuidanceTitle}</p>
+          <ul className="space-y-2 text-muted-foreground">
+            <li>{messages.muniInjured}</li>
+            <li>{messages.muniCallAdvice}</li>
+            <li>
+              {messages.muniCost}{" "}
+              <a
+                href={LAW_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
+              >
+                {messages.muniCostSource}
+                <ExternalLink className="size-3" aria-hidden />
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );

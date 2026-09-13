@@ -343,6 +343,11 @@ const sl = {
   // smallest target on the card. Same shape as muniCall, so the two calls
   // read as one choice with two times of day.
   muniCallOnCall: "Dežurna {phone}",
+  // Over the three sentences under the answer. They are what to do while the
+  // call is being made and until somebody comes, and unheaded they read as
+  // three more muted lines after the card rather than as a set with a moment
+  // of their own.
+  muniGuidanceTitle: "Do prihoda pomoči",
   muniCallAdvice:
     "Po telefonu povej točno lokacijo, opis živali in morebitne poškodbe.",
   muniCost: "Odlov in oskrbo plača občina, ne ti.",
@@ -686,6 +691,7 @@ const en: Messages = {
   muniCall: "Call {phone}",
   muniHours: "Office hours",
   muniCallOnCall: "On-call {phone}",
+  muniGuidanceTitle: "Until help arrives",
   muniCallAdvice:
     "On the phone, give the exact location, a description of the animal and any injuries.",
   muniCost: "The municipality pays for capture and care, not you.",

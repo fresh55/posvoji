@@ -228,6 +228,24 @@ describe("MunicipalityFinder empty state", () => {
     expect(screen.queryByText("Kje si našel žival?")).toBeNull();
   });
 
+  // The three sentences used to open with nothing over them, so after the
+  // answer card they read as small print it had trailed off into.
+  it("heads the guidance, before the first sentence and without an answer", () => {
+    renderFinder();
+
+    const heading = screen.getByText("Do prihoda pomoči");
+    // A p and not a heading: the answer card above is headed by a p as well,
+    // and one h2 on a page whose answer has none misstates the outline.
+    expect(heading.tagName).toBe("P");
+    expect(screen.queryByRole("heading", { name: "Do prihoda pomoči" })).toBeNull();
+    expect(heading.className).toContain("font-medium");
+
+    const first = screen.getByText(/Poškodovane živali ne premikaj/);
+    expect(
+      heading.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("keeps the hint short inside the box and the name on the field", () => {
     renderFinder();
     const search = screen.getByRole("combobox");

@@ -19,12 +19,20 @@
 // is room the picture takes it. The floor cannot simply be raised for every
 // width: auto-fill drops a column the moment the floor stops fitting, and a
 // 15rem floor at lg would leave two enormous cards beside the sidebar. xl is
-// where the page's max-w-7xl has already stopped it growing, so the count
-// settles at three and stays there however wide the screen is.
+// where the page frame stops growing at 80rem, so the count settles at three.
+//
+// From 2xl the frame itself grows to 100rem (--page-max, set by the results
+// page in site-shell.tsx) and the floor goes up with it, to 18rem. Both halves
+// are needed and neither works alone: a wider frame at the 15rem floor packs
+// five 243px columns into the new room, which is smaller cards and more of
+// them, the opposite of the point. 18rem is the floor that makes the answer
+// four, and four is what keeps the card at 308px, the size it already is at
+// xl. So a 1920 screen draws the same card as a 1440 one, and draws one more.
 export const CARD_GRID =
   "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
-  " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]";
+  " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" +
+  " 2xl:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]";
 
 // How wide a card's photo actually renders, which is what decides the rung a
 // browser downloads. Derived from CARD_GRID above and from the page's own
@@ -121,3 +129,8 @@ export const CARD_PHOTO_SIZES =
   " (max-width: 1199px) calc((100vw - 352px) * 4 / 9)," +
   " (max-width: 1279px) 304px," +
   " 412px";
+// The last band covers xl and 2xl together. At xl the card is 309px and 412 is
+// exactly its 4/3; from 2xl it is 292px at the breakpoint and 308px once the
+// frame has capped, so 412 over-declares by at most 6% at the narrow end of
+// that range. Over-declaring costs a fraction of a rung and never softness,
+// and a seventh band to save it would be a band nobody can check by eye.

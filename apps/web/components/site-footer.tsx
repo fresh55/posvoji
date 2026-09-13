@@ -208,7 +208,7 @@ export function SiteFooter({
           ran to 12px short of "Zavetišča" and the first line read on into the
           link row as one sentence. 40px makes the prose wrap a word earlier
           and leaves the two columns legibly apart. */}
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-gutter sm:flex-row-reverse sm:items-start sm:justify-between sm:gap-x-10">
+      <div className="mx-auto flex w-full max-w-(--page-max) flex-col gap-4 px-gutter sm:flex-row-reverse sm:items-start sm:justify-between sm:gap-x-10">
         {links.length > 0 && (
           <nav
             // Not moreInformation, which is the header nav's. On the shelters

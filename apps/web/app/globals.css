@@ -417,6 +417,19 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  /* How wide the page frame is allowed to get. The header band, the footer
+     band and the frame around main all centre their contents on it, which is
+     what keeps their rules and their first column on the same line
+     (site-shell.tsx, site-header.tsx, site-footer.tsx).
+
+     80rem is what every page had and what every page still gets. A page that
+     is a grid of photographs can ask for more by overriding this on the
+     shell's own column; the results page is the only one that does, and only
+     from 2xl. It is deliberately a variable and not a prop threaded through
+     three components, because the three have to agree and a variable is the
+     only way to say that once. */
+  --page-max: 80rem;
+
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0.001 106.423);
   --sidebar-foreground: oklch(0.147 0.004 49.25);

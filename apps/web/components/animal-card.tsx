@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-import { ChevronRight, House } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -419,13 +419,16 @@ export function AnimalCard({
             this heading. At the default offset the rule cuts through the
             descenders of a name like "Srečko"; 4px clears them, and it is
             what the shelter line below already underlines at. */}
-        {/* One step up where the cards are large. At xl the photo is 309px and
-            the name was still 16px under it, so the picture dwarfed the one
-            thing on the card that names the animal. Below xl the cards are
-            208px to 273px and 16px is right. */}
-        <h3
-          id={headingId}
-          className="line-clamp-2 font-semibold underline-offset-4 xl:text-lg">
+        {/* Stays 16px at every width. It was briefly 18px on the large
+            cards, where the 309px photo does dwarf it, and that is a real
+            observation with no safe way to act on it here: at 18px the
+            longest name in the /dev/cards fixture lands exactly on its
+            wrapping point, so the card is one line taller on the Linux
+            runner CI uses than on the machine the snapshot was taken on, and
+            the grid baseline fails by 28px. Reserving the second line would
+            fix the flake and is the thing PR #132 measured and rejected,
+            because it costs every card a row of pixels for three animals. */}
+        <h3 id={headingId} className="line-clamp-2 font-semibold underline-offset-4">
           {animal.name ?? messages.unnamed}
         </h3>
         {/* Allowed to wrap: an ellipsis here eats the animal's age, and
@@ -511,14 +514,20 @@ export function AnimalCard({
           // distance under the meta line at every pointer, and the target's
           // extra height falls to the card's bottom edge, where on a card
           // with no border it is only the gap before the next row.
-          className="mt-auto flex w-full items-start gap-1 pt-1.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
+          className="mt-auto flex w-full items-start pt-1.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
         >
-          {/* House and not MapPin. The pin means "place" everywhere else on
+          {/* No mark at all. This used to carry a House, and the argument for
+              it was that the pin means "place" everywhere else on the site
+              while this line means "who has this animal". That argument is
+              about which icon, and the better answer turned out to be
+              neither: sixty of them run down a page whose whole point is the
+              photographs, they repeat a thing the name already says, and the
+              line is the quietest on the card by design. The reasoning that
+              chose the house over the pin, kept in case this comes back:
+
+              House and not MapPin. The pin means "place" everywhere else on
               the site (shelter-card.tsx draws it beside a city), and this
-              line is not where the animal is, it is who is keeping it.
-              mt-0.5 puts the 12px glyph on the 16px line's centre, which
-              items-start alone no longer does. */}
-          <House className="mt-0.5 size-3 shrink-0" strokeWidth={1.75} aria-hidden />
+              line is not where the animal is, it is who is keeping it. */}
           {/* The link's own text is its accessible name, the way the shelter
               card's is. An aria-label here could only repeat the name with
               words around it, and WCAG 2.5.3 asks that what is spoken start

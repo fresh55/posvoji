@@ -1,13 +1,21 @@
 "use client";
 
 import Image from "next/image";
+import { LoaderCircle } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
+import { Badge } from "@/components/ui/badge";
 import type { Locale } from "@/lib/i18n";
 import { type CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
+// No head preload, although React would hoist one from the tree below.
+// Measured on the gate over throttled 4G it started the 1.1MB download at
+// 60ms instead of 1.5s and still finished only 0.3s sooner (0.8s on slow 4G):
+// the link is bandwidth-bound either way, so it only took bandwidth from the
+// hydration chunks. A smaller asset would shorten the wait, an earlier start
+// does not.
 const MODEL = "/models/our-cat/cat.glb?v=26";
 // The poster uses the same resting pose and camera as the interactive model.
 const POSTER = "/models/our-cat/poster.webp?v=19.1";
@@ -16,14 +24,14 @@ const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
-    loading: "Nalaganje mačka v 3D …",
-    unavailable: "3D-ogled trenutno ni na voljo. Prikazana je slika mačka.",
+    loading: "Maček se še nalaga …",
+    unavailable: "3D-ogled ni na voljo. Prikazana je slika.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
-    loading: "Loading the cat in 3D …",
-    unavailable: "The 3D view is unavailable. A still image of the cat is shown.",
+    loading: "The cat is still loading …",
+    unavailable: "The 3D view is unavailable. A still image is shown.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -31,7 +39,14 @@ type Status = "loading" | "ready" | "failed";
 
 /** What a page can ask of the cat once he is on screen. */
 export type CatModelHandle = {
-  /** Plays one authored reaction if the cat is awake and free. */
+  /**
+   * Plays one authored reaction if the cat is awake and free.
+   *
+   * Ask during handover to take precedence over the stage's own greeting for
+   * a visitor who touched the poster while it loaded. That only holds while
+   * the call is synchronous: deferring it to an effect or a microtask loses
+   * the race, because by then the greeting is playing and this returns false.
+   */
   react: (name: CatReaction) => boolean;
 };
 
@@ -42,6 +57,12 @@ export type CatModelHandle = {
  * field. Both want the same model, camera and touch controller, so it lives
  * here once and each page wraps it in its own figure. The box takes its
  * height from className.
+ *
+ * Nothing tells a visitor that the cat they are touching is a picture: the
+ * wait measured 1.3s on a fast desktop, 4.7s on a phone over 4G, over 10s on
+ * slow 4G. Only the visitor who reaches for him is told. Most never touch
+ * him, on the gate they came to type a password, and a picture that quietly
+ * comes alive is a better moment than one a spinner announces.
  *
  * memo, because the gate re-renders on every keystroke and this subtree
  * holds a live WebGL canvas.
@@ -69,12 +90,31 @@ export const CatModel = memo(function CatModel({
   const text = copy[locale];
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
+  // What the stage still owes the visitor, and empty once it owes nothing.
+  // One expression, so the label's text, its box and whether it is drawn
+  // cannot fall out of step.
+  const waiting = status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading;
+  // Whether the visitor has reached for him before he was there. The label
+  // is drawn from then on, and stays until he is, rather than following the
+  // pointer in and out.
+  const [reached, setReached] = useState(false);
+  // A touch the poster took while he was still loading, for him to answer.
+  const touched = useRef(false);
   // Read from inside the one long-lived effect below, so it is kept current
   // here without restarting it.
   const handOver = useRef(onHandle);
   useEffect(() => {
     handOver.current = onHandle;
   });
+
+  // What the label answers, and what the cat answers after it. A hover only
+  // asks the question; a touch is the one he owes a glance, and only while
+  // there is still something to wait for.
+  const reach = (touch: boolean) => {
+    if (status === "ready") return;
+    setReached(true);
+    if (touch && status === "loading") touched.current = true;
+  };
 
   useEffect(() => {
     const container = host.current;
@@ -106,6 +146,12 @@ export const CatModel = memo(function CatModel({
       syncPlayback();
       const controller = interaction;
       if (controller) handOver.current?.({ react: (name) => controller.react(name) });
+      // The page's own request, if it made one on handover, comes first; his
+      // glance at whoever reached for the poster gives way to it.
+      if (touched.current) {
+        touched.current = false;
+        controller?.react("Notice");
+      }
     };
     const onError = () => {
       ready = false;
@@ -237,29 +283,49 @@ export const CatModel = memo(function CatModel({
   }, [locale, text]);
 
   return (
-    <>
-      <div className={cn("relative", className)}>
-        <Image
-          src={POSTER}
-          alt={status === "ready" ? "" : text.alt}
-          fill
-          // Load the fallback immediately. Where WebGL can replace it before
-          // it paints, don't speculatively preload it either (React skips
-          // low); where it is the largest paint, put it at the front instead.
-          loading="eager"
-          {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
-          sizes={sizes}
-          className={`object-contain ${status === "ready" ? "invisible" : ""}`}
-        />
-        <div
-          ref={host}
-          aria-hidden={status !== "ready"}
-          className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
-        />
+    <div
+      className={cn("relative", status === "loading" && "cursor-progress", className)}
+      onPointerEnter={() => reach(false)}
+      onPointerDown={() => reach(true)}
+    >
+      <Image
+        src={POSTER}
+        alt={status === "ready" ? "" : text.alt}
+        fill
+        // Load the fallback immediately. Where WebGL can replace it before
+        // it paints, don't speculatively preload it either (React skips
+        // low); where it is the largest paint, put it at the front instead.
+        loading="eager"
+        {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
+        sizes={sizes}
+        className={`object-contain ${status === "ready" ? "invisible" : ""}`}
+      />
+      <div
+        ref={host}
+        aria-hidden={status !== "ready"}
+        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
+      />
+      {/* The one thing ever drawn over the stage, and only while there is
+          no cat to touch and someone has tried. It sits at the foot, on the
+          floor shadow, where no pose reaches. Screen readers have the text
+          from the start; the eyes get it on the first reach. The spinner
+          waits for that reach too, or it would turn unseen for the whole
+          life of an about page nobody scrolled down. */}
+      <div
+        data-slot="cat-status"
+        role="status"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
+          reached && waiting ? "opacity-100" : "opacity-0",
+        )}
+      >
+        {waiting && (
+          <Badge variant="overlay-quiet">
+            {reached && status === "loading" && <LoaderCircle className="animate-spin" aria-hidden />}
+            {waiting}
+          </Badge>
+        )}
       </div>
-      <span className="sr-only" role="status">
-        {status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading}
-      </span>
-    </>
+    </div>
   );
 });

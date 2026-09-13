@@ -1,10 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { ModelViewerElement } from "@google/model-viewer";
 
+/** The box the poster and the viewer share, the cat's only handle in the DOM. */
+function stage(page: Page) {
+  return page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..");
+}
 async function load(page: Page) {
   await page.goto("/o-nas");
   // The viewer does not exist until its stage enters the viewport on phones.
-  await page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..").scrollIntoViewIfNeeded();
+  await stage(page).scrollIntoViewIfNeeded();
   const model = page.locator("model-viewer");
   await model.scrollIntoViewIfNeeded();
   await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).loaded)).toBe(true);
@@ -33,6 +37,32 @@ test("a freshly loaded cat starts moving without a tap or a manual seek", async 
   const initial = await model.evaluate(e => (e as ModelViewerElement).currentTime);
   await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).currentTime)).toBeGreaterThan(initial + .5);
   await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).paused)).toBe(false);
+});
+
+test("the stage says he is loading until he can be touched, and he answers a touch made meanwhile", async ({ page, isMobile }) => {
+  // Hold the model back, so the wait is observable on a fast machine.
+  await page.route("**/models/our-cat/cat.glb*", async route => {
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    await route.continue();
+  });
+  await page.goto("/vstop");
+  const poster = stage(page);
+  const status = page.locator('[data-slot="cat-status"]');
+  const opacity = () => status.evaluate(e => getComputedStyle(e).opacity);
+  await expect(status).toHaveText(/še nalaga/);
+  await expect(poster).toHaveCSS("cursor", "progress");
+  // Nothing is drawn for a visitor who has not reached for him.
+  expect(await opacity()).toBe("0");
+  const box = (await poster.boundingBox())!;
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+  await expect.poll(opacity).toBe("1");
+  const model = page.locator("model-viewer");
+  await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).loaded), { timeout: 30_000 }).toBe(true);
+  await clip(model, "Notice");
+  await expect(status).toHaveText("");
+  await expect.poll(opacity).toBe("0");
+  await expect(poster).not.toHaveCSS("cursor", "progress");
 });
 
 test("anatomical taps use the proxy instead of the full mesh and rapid repeats finish before returning to idle", async ({ page, isMobile }) => {

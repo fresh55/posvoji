@@ -9,11 +9,19 @@ vi.mock("@/lib/cat-viewer-runtime", () => ({ createViewerCatPicker: vi.fn() }));
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
-    availableAnimations: string[] = [];
+    // Enough of the animation API for the controller to start one reaction.
+    availableAnimations: string[] = ["Companion", "Notice"];
+    animationName: string | undefined;
+    animationCrossfadeDuration = 0;
+    duration = 0;
     paused = true;
     currentTime = 0;
+    cameraControls = true;
+    updateComplete = Promise.resolve(true);
     play = vi.fn(() => { this.paused = false; });
     pause = vi.fn(() => { this.paused = true; });
+    appendAnimation = vi.fn();
+    detachAnimation = vi.fn();
   }
   if (!customElements.get("model-viewer")) {
     customElements.define("model-viewer", MockViewer);
@@ -21,7 +29,12 @@ vi.mock("@google/model-viewer", () => {
   return { ModelViewerElement: MockViewer };
 });
 
-type Viewer = HTMLElement & { paused: boolean; currentTime: number };
+type Viewer = HTMLElement & {
+  paused: boolean;
+  currentTime: number;
+  animationName?: string;
+  availableAnimations: string[];
+};
 let intersect: (visible: boolean) => void;
 let disconnect: ReturnType<typeof vi.fn>;
 let media: EventTarget & { matches: boolean };
@@ -48,13 +61,21 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function loadViewer() {
+/** Mounts the viewer and loads it, with a chance to prepare it in between. */
+async function loadViewer(before?: (viewer: Viewer) => void) {
   act(() => intersect(true));
   await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
   const viewer = document.querySelector("model-viewer") as unknown as Viewer;
+  before?.(viewer);
   fireEvent(viewer, new Event("load"));
   return viewer;
 }
+
+// The stage's label, and the two ways a visitor reaches for the poster. The
+// assertions stay in each test; only the reaching is shared.
+const shown = () => screen.getByRole("status").className.includes("opacity-100");
+const reachFor = () => fireEvent.pointerEnter(screen.getByRole("img"));
+const touchPoster = () => fireEvent.pointerDown(screen.getByRole("img"));
 
 describe("the cat model", () => {
   it("defers 3D setup in a hidden tab until the visible page needs it", async () => {
@@ -81,7 +102,7 @@ describe("the cat model", () => {
     const poster = document.querySelector("img")!;
     expect(poster.getAttribute("loading")).toBe("eager");
     expect(poster.getAttribute("fetchpriority")).toBe("low");
-    expect(document.querySelector('link[rel="preload"][as="image"]')).toBeNull();
+    expect(document.querySelector('link[rel="preload"]')).toBeNull();
   });
 
   it("loads when visible and plays the continuous animation without extra controls", async () => {
@@ -153,5 +174,73 @@ describe("the cat model", () => {
     expect(disconnect).toHaveBeenCalledOnce();
     expect(viewer.isConnected).toBe(false);
     expect(viewer.paused).toBe(true);
+  });
+
+  it("keeps the loading label off screen until someone reaches for him", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    // Present for screen readers from the start, drawn only on a reach.
+    expect(screen.getByRole("status").textContent).toContain("still loading");
+    expect(shown()).toBe(false);
+    await act(async () => intersect(true));
+    expect(shown()).toBe(false);
+    reachFor();
+    expect(shown()).toBe(true);
+    // It stays once shown: he is still not there.
+    fireEvent.pointerLeave(screen.getByRole("img"));
+    expect(shown()).toBe(true);
+  });
+
+  it("spins only for the visitor who reached, never on a page nobody scrolled", () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    const spinner = () => document.querySelector(".animate-spin");
+    expect(spinner()).toBeNull();
+    reachFor();
+    expect(spinner()).not.toBeNull();
+  });
+
+  it("says so at once when the poster is touched, and says why when 3D fails", async () => {
+    render(<CatModel sizes="100vw" locale="sl" />);
+    touchPoster();
+    expect(shown()).toBe(true);
+    expect(screen.getByRole("status").textContent).toContain("nalaga");
+    const viewer = await loadViewer();
+    expect(shown()).toBe(false);
+    fireEvent(viewer, new Event("error"));
+    expect(shown()).toBe(true);
+    expect(screen.getByRole("status").textContent).toContain("ni na voljo");
+  });
+
+  it("does not apologise for a failure to someone who never reached for him", async () => {
+    render(<CatModel sizes="100vw" locale="sl" />);
+    const viewer = await loadViewer();
+    fireEvent(viewer, new Event("error"));
+    expect(screen.getByRole("status").textContent).toContain("ni na voljo");
+    expect(shown()).toBe(false);
+    reachFor();
+    expect(shown()).toBe(true);
+  });
+
+  it("answers a touch the poster took while he was loading", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    touchPoster();
+    const viewer = await loadViewer();
+    expect(viewer.animationName).toBe("Notice");
+    expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("greets nobody when the poster was left alone", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    const viewer = await loadViewer();
+    expect(viewer.animationName).toBeUndefined();
+  });
+
+  it("lets the page's own request on handover come before his glance", async () => {
+    const onHandle = vi.fn((handle: { react: (name: "Back warning") => boolean } | null) => {
+      handle?.react("Back warning");
+    });
+    render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    touchPoster();
+    const viewer = await loadViewer(v => { v.availableAnimations = [...v.availableAnimations, "Back warning"]; });
+    expect(viewer.animationName).toBe("Back warning");
   });
 });

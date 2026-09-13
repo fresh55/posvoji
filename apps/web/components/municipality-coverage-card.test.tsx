@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { telHref } from "@/lib/contact-links";
+import { getMessages } from "@/lib/i18n";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { CoverageCard } from "./municipality-coverage-card";
 
@@ -27,8 +28,10 @@ const OBALNO: LookupCoverage = {
   confirmed: true,
 };
 
+const messages = getMessages("sl");
+
 function renderCard(coverage: LookupCoverage = OBALNO) {
-  render(
+  return render(
     <I18nProvider locale="sl">
       <CoverageCard coverage={coverage} />
     </I18nProvider>,
@@ -75,5 +78,63 @@ describe("the municipality coverage card", () => {
     const onCall = screen.getByRole("link", { name: "Dežurna 031 726 029" });
     expect(onCall.getAttribute("href")).toBe(telHref("031 726 029"));
     expect(screen.queryByText(/^Pokliči /)).toBeNull();
+  });
+  // The three contact links on this card are read by somebody standing over a
+  // found animal, which is the highest-stakes surface the site has, so they
+  // are named the way the register card and the shelter page name theirs.
+  it("names the email and the site by channel, as the other two surfaces do", () => {
+    renderCard();
+
+    const email = screen.getByRole("link", {
+      name: `${messages.contactEmail}: zavetisce@example.si`,
+    });
+    expect(email.getAttribute("href")).toBe("mailto:zavetisce@example.si");
+    // Both rows truncate, so the value a long address loses to an ellipsis is
+    // reachable by a mouse as well as by a screen reader.
+    expect(email.getAttribute("title")).toBe("zavetisce@example.si");
+  });
+
+  it("says the site opens in a new window, to everyone", () => {
+    renderCard();
+
+    // The host is the part of the URL worth hearing, and target="_blank"
+    // announces nothing on its own.
+    const site = screen.getByRole("link", {
+      name: `${messages.contactWebsite}: example.si ${messages.newWindow}`,
+    });
+    expect(site.getAttribute("href")).toBe("https://example.si/");
+    expect(site.getAttribute("target")).toBe("_blank");
+    expect(site.getAttribute("rel")).toBe("noreferrer");
+    expect(site.getAttribute("title")).toBe("example.si");
+    // And a mark a thumb can see: this card is read on a phone, where the
+    // title above is a hover that never happens.
+    expect(site.querySelector("[data-external]")).not.toBeNull();
+    // The visible text stays the host alone, so the name contains the label
+    // rather than replacing it (WCAG 2.5.3).
+    expect(site.textContent).toBe("example.si");
+  });
+
+  it("leaves the two calls to name themselves", () => {
+    renderCard();
+
+    // muniCall and muniCallOnCall begin with the act, so the visible text is
+    // already the channel-prefixed name that WCAG 2.5.3 asks for. An
+    // aria-label here would only be a second way to say "Pokliči", and a
+    // chance for the two to drift apart.
+    for (const name of ["Pokliči 05 663 37 66", "Dežurna 031 726 029"]) {
+      expect(screen.getByRole("link", { name }).hasAttribute("aria-label")).toBe(
+        false,
+      );
+    }
+  });
+
+  it("says the source link opens in a new window", () => {
+    renderCard({ ...OBALNO, sourceUrl: "https://example.si/odlok" });
+
+    const source = screen.getByRole("link", {
+      name: `Test ${messages.newWindow}`,
+    });
+    expect(source.getAttribute("href")).toBe("https://example.si/odlok");
+    expect(source.getAttribute("target")).toBe("_blank");
   });
 });

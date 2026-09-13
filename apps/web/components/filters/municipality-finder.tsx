@@ -1008,6 +1008,11 @@ export function MunicipalityFinder({
                 className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
               >
                 {messages.muniCostSource}
+                {/* The mark is drawn for everyone who can see it; the
+                    sentence is for everyone who cannot. The card above says
+                    it the same way, so this flow announces its outbound links
+                    one way rather than three. */}
+                <span className="sr-only"> {messages.newWindow}</span>
                 <ExternalLink className="size-3" aria-hidden />
               </a>
             </li>

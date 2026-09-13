@@ -1,12 +1,27 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Cat, Clock, Dog, Globe, Mail, MapPin, Phone } from "lucide-react";
+import {
+  Cat,
+  Clock,
+  Dog,
+  ExternalLink,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { Card } from "@/components/ui/card";
-import { mailtoHref, telHref, websiteHost } from "@/lib/contact-links";
+import {
+  contactName,
+  mailtoHref,
+  telHref,
+  websiteHost,
+  websiteName,
+} from "@/lib/contact-links";
 
 function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   const { messages } = useI18n();
@@ -131,10 +146,22 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             {coverage.hours}
           </ContactRow>
         )}
+        {/* The visible label is the address, so the accessible name puts the
+            channel in front of it (WCAG 2.5.3). The two calls above need no
+            such prefix: muniCall and muniCallOnCall already begin with the
+            act, so their visible text is the announcement.
+
+            title carries the value a mouse cannot otherwise read: both rows
+            truncate, and a long address that ends in an ellipsis is left
+            only in the accessible name. Same treatment as the register
+            card's rows, which truncate for the same reason. */}
         {coverage.email && (
           <ContactRow icon={Mail}>
             <a
               href={mailtoHref(coverage.email)}
+              data-contact="email"
+              aria-label={contactName(messages.contactEmail, coverage.email)}
+              title={coverage.email}
               className="block truncate underline-offset-4 hover:text-foreground hover:underline"
             >
               {coverage.email}
@@ -142,14 +169,28 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
           </ContactRow>
         )}
         {coverage.website && (
+          // The only contact here that leaves the site. target="_blank" says
+          // so to nobody, so the name says it and the mark says it to
+          // everyone else: this card is read standing over a found animal,
+          // on a phone, where a title is a hover that never happens.
           <ContactRow icon={Globe}>
             <a
               href={coverage.website}
               target="_blank"
               rel="noreferrer"
-              className="block truncate underline-offset-4 hover:text-foreground hover:underline"
+              data-contact="website"
+              aria-label={websiteName(
+                messages.contactWebsite,
+                coverage.website,
+                messages.newWindow,
+              )}
+              title={websiteHost(coverage.website)}
+              className="flex items-center gap-1 underline-offset-4 hover:text-foreground"
             >
-              {websiteHost(coverage.website)}
+              <span className="truncate hover:underline">
+                {websiteHost(coverage.website)}
+              </span>
+              <ExternalLink className="size-3 shrink-0" aria-hidden data-external />
             </a>
           </ContactRow>
         )}
@@ -165,6 +206,11 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             className="underline underline-offset-2 hover:text-foreground"
           >
             {coverage.sourceLabel}
+            {/* The card's second outbound link, and the citation rather than
+                a contact, so it says so the footer's way: a spoken sentence
+                after the label, with no mark drawn into a line of small
+                print. */}
+            <span className="sr-only"> {messages.newWindow}</span>
           </a>
         ) : (
           coverage.sourceLabel

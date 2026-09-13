@@ -205,7 +205,9 @@ describe("SizePawCards watermark", () => {
   });
 
   // The row treatment filter-card.tsx describes: a transparent border, no
-  // ground and no shadow at rest, and the 44px line the column keeps.
+  // ground and no shadow at rest, on the 40px line the column keeps. The
+  // tile's own surface has to be absent, not merely overridden: while it was
+  // both, the stylesheet order decided and the row kept the box.
   it("draws a sidebar row on the shared row surface", () => {
     renderCards();
 
@@ -216,9 +218,25 @@ describe("SizePawCards watermark", () => {
       expect(button.className).toContain("border-transparent");
       expect(button.className).toContain("bg-transparent");
       expect(button.className).toContain("shadow-none");
-      expect(button.className).toContain("h-11");
+      expect(button.className).toContain("h-10");
+      expect(button.className).not.toContain("h-11");
+      expect(button.className).not.toContain("shadow-xs");
+      expect(button.className).not.toContain("border-border/80");
+      expect(button.className).not.toContain("bg-background");
       expect(button.className).not.toContain("min-h-[4.75rem]");
     }
+  });
+
+  // The fill is the row's whole answer to "chosen", so losing it left the
+  // check and the green lettering saying it alone.
+  it("fills a chosen sidebar row", () => {
+    renderCards({ selected: [options[0].value] });
+
+    const button = screen.getByRole("button", {
+      name: new RegExp(`^${options[0].label}, `),
+    });
+    expect(button.className).toContain("bg-brand");
+    expect(button.className).not.toContain("bg-transparent");
   });
 });
 

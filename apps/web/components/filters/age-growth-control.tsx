@@ -18,7 +18,6 @@ import {
   CountRoll,
   FilterCardMark,
   filterCardVariants,
-  SIDEBAR_ROW,
 } from "@/components/filters/filter-card";
 import {
   CollapsibleBody,
@@ -424,6 +423,11 @@ export function AgeGrowthControl({
               aria-label={groupLabel("age", locale)}
               aria-describedby={hintId}
               orientation={layout === "sheet" ? "horizontal" : "vertical"}
+              // Every other section is plain buttons, where each option is its
+              // own tab stop. Radix's roving focus would make this group one
+              // stop that arrow keys move inside, so the same panel would
+              // answer Tab in two ways depending on which section you were in.
+              rovingFocus={false}
               spacing={layout === "sheet" ? 1.5 : 1}
               className="w-full items-stretch"
             >
@@ -444,13 +448,15 @@ export function AgeGrowthControl({
                         {...hoverHandlers(value)}
                         aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
                         className={filterCardVariants({
+                          layout,
                           selected: checked,
                           className:
                             layout === "sheet"
                               ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
-                              : // SIDEBAR_ROW for the reason filter-card.tsx
-                                // records: a sidebar row is a line in a list,
-                                // not a tile.
+                              : // The row's surface comes from the layout
+                                // variant; only its grid is stated here,
+                                // because this is the one section whose row
+                                // is columns rather than a flex line.
                                 // The columns are the icon, the label and
                                 // the count. The mark is not among them: it
                                 // is pinned to the right edge the way every
@@ -459,7 +465,7 @@ export function AgeGrowthControl({
                                 // column instead, which left this the one
                                 // section in the sidebar whose check was on
                                 // the other side of the row from the rest.
-                                `${SIDEBAR_ROW} grid h-11 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left`,
+                                "grid h-10 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left",
                         })}
                       >
                         {/* The shared mark, so the check's position and
@@ -500,11 +506,16 @@ export function AgeGrowthControl({
                             )}
                           />
                         </m.span>
+                        {/* The sheet's sizes are FilterCardTail's, not this
+                            section's own. Starost printed its label at 11px
+                            and its count at 10px while every other tile in
+                            the same drawer printed 12 and 11, which read as
+                            one section set in a smaller type. The longest
+                            label, "Mladiček", fits an 89px tile at 320px. */}
                         <span
                           className={cn(
                             "min-w-0 truncate text-xs",
-                            layout === "sheet" &&
-                              "max-w-full text-2xs leading-tight",
+                            layout === "sheet" && "max-w-full leading-tight",
                             checked && "font-medium",
                           )}
                         >
@@ -513,10 +524,10 @@ export function AgeGrowthControl({
                         <CountRoll
                           value={count}
                           className={cn(
-                            "tabular-nums text-muted-foreground",
+                            "tabular-nums text-2xs text-muted-foreground",
                             layout === "sheet"
-                              ? "text-3xs leading-tight"
-                              : "w-8 text-right text-2xs",
+                              ? "leading-tight"
+                              : "w-8 text-right",
                           )}
                         />
                       </ToggleGroupItem>

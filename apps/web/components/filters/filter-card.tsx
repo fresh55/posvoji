@@ -15,23 +15,97 @@ import { cn } from "@/lib/utils";
 /** A card is a row in the sidebar's one column, a tile in the sheet's three. */
 export type FilterCardLayout = "sidebar" | "sheet";
 
-// One shadcn-style surface contract for every compact filter choice. Layout
-// stays with the caller; interaction, state, and accessibility chrome do not.
-export const filterCardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-ui border border-border/80 bg-background shadow-xs outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:scale-[0.98] active:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+/**
+ * One shadcn-style surface contract for every compact filter choice. Geometry
+ * stays with the caller; interaction, state and accessibility chrome do not.
+ *
+ * The surface is a variant rather than a class the caller appends, because cva
+ * concatenates and does not merge. While the sidebar's treatment was a string
+ * bolted on after the fact, the base's shadow-xs and the row's shadow-none
+ * both stayed in the class list and the stylesheet decided between them:
+ * Tailwind emits shadow-none before shadow-xs, so every sidebar row kept the
+ * tile's resting box, and by the same alphabetical accident bg-transparent
+ * outranked bg-brand, so a picked row lost its green fill. Sex and age kept
+ * their fill only because ToggleGroupItem runs its className through cn(),
+ * where toggleVariants' own accent outlived the merge.
+ *
+ * The rule now is that no two classes in an output may set the same property.
+ * Every property the two surfaces disagree on is stated once, in the layout
+ * variant that wants it, and the fill is a compound of layout and selected.
+ * The output then goes through cn() as well, so a collision a later edit
+ * introduces merges instead of racing.
+ *
+ * The data-[state=...] and aria-pressed: repeats are not duplicates of the
+ * plain classes beside them. ToggleGroupItem hands cn its own
+ * data-[state=on]:bg-muted and toggleVariants its accent spelled against both
+ * selectors, all ahead of this string; an attribute selector outranks a bare
+ * utility, so the ones a row must not wear are overridden here by name. Both
+ * spellings are needed: sex is a toggle group item and carries data-state,
+ * while age wraps its items in a tooltip trigger whose own data-state="closed"
+ * takes the attribute over, leaving aria-pressed as the only thing that says
+ * the row is chosen. Plain buttons carry aria-pressed and nothing else.
+ */
+const cardVariants = cva(
+  "group relative min-w-0 overflow-hidden rounded-ui border font-normal outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
+      layout: {
+        sheet:
+          "border-border/80 bg-background shadow-xs hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground active:bg-muted/40",
+        // Border transparent rather than none, so the row keeps its 1px and
+        // the text does not shift when a picked row draws its fill or a
+        // focused one its ring. No ground at rest: the compounds below own it.
+        sidebar:
+          "border-transparent shadow-none hover:border-transparent hover:bg-muted/40 hover:text-foreground active:bg-muted/40",
+      },
+      // Colour only. What the card is standing on is the layout's business.
       selected: {
-        true: "border-brand-border bg-brand text-brand-foreground shadow-xs hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
-        false:
-          "text-muted-foreground data-[state=off]:bg-background data-[state=off]:hover:bg-muted/40",
+        true: "text-brand-foreground",
+        false: "text-muted-foreground",
       },
     },
+    compoundVariants: [
+      {
+        layout: "sheet",
+        selected: true,
+        class:
+          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
+      },
+      {
+        layout: "sheet",
+        selected: false,
+        class:
+          "data-[state=off]:bg-background data-[state=off]:hover:bg-muted/40",
+      },
+      {
+        layout: "sidebar",
+        selected: true,
+        class:
+          "bg-brand hover:bg-brand aria-pressed:border-transparent aria-pressed:bg-brand aria-pressed:shadow-none data-[state=on]:border-transparent data-[state=on]:bg-brand data-[state=on]:shadow-none",
+      },
+      {
+        layout: "sidebar",
+        selected: false,
+        class:
+          "bg-transparent data-[state=off]:bg-transparent data-[state=off]:hover:bg-muted/40",
+      },
+    ],
     defaultVariants: {
+      layout: "sheet",
       selected: false,
     },
   },
 );
+
+/**
+ * The tile is the default, so a caller outside the filters that wants the
+ * plain card surface (the portal's choice cards) keeps its existing call.
+ */
+export function filterCardVariants(
+  props?: Parameters<typeof cardVariants>[0],
+): string {
+  return cn(cardVariants(props));
+}
 
 // A zero-count option is a dead end, but an active selection is never locked
 // out of being unchecked.
@@ -40,7 +114,7 @@ export function isDeadOption(count: number, checked: boolean): boolean {
 }
 
 /**
- * What takes a sidebar row off the tile surface.
+ * Why the sidebar draws rows.
  *
  * The sheet draws tiles and the sidebar draws rows, and both wore the same
  * border, shadow and ground. In a column that already holds the map plate,
@@ -49,7 +123,7 @@ export function isDeadOption(count: number, checked: boolean): boolean {
  * rectangles. A row is a line in a list. It keeps the icon, the drawn check
  * and the count, and it keeps the hover ground and the green fill when
  * picked, because those are states rather than furniture; only the box at
- * rest goes.
+ * rest goes. The surface half of that lives in the layout variant above.
  *
  * Sex and size were the last two sections holding out as tiles, which left
  * the column saying "press me" in three different surfaces beside a grid of
@@ -57,20 +131,15 @@ export function isDeadOption(count: number, checked: boolean): boolean {
  * everything else. What is left in the sidebar is rows and the map plate, and
  * the plate stays because it frames a picture.
  *
- * Border transparent rather than none, so the row keeps its 1px and the text
- * does not shift when a picked row draws its fill or a focused one its ring.
- * Every state that set a border colour is overridden here by name, and this
- * string has to come after filterCardVariants' own classes in cn() to do so,
- * which filterCardLayoutClass and the age rows both arrange.
+ * The row is 40px, not the 44px a finger needs. The sidebar is lg-only and
+ * mouse-driven, the sheet is what a phone gets, and the panel had more to
+ * show than it could: at 1440x900 its content ran 972px in an 876px box, so
+ * two whole sections sat below its own fold.
  */
-export const SIDEBAR_ROW =
-  "border-transparent bg-transparent shadow-none hover:border-transparent data-[state=on]:border-transparent";
-
-/** The class the caller hands filterCardVariants for its layout. */
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
   return layout === "sheet"
     ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-    : `${SIDEBAR_ROW} h-11 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`;
+    : "h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left";
 }
 
 function markClass(layout: FilterCardLayout): string {

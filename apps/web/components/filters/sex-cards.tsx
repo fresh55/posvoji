@@ -174,6 +174,11 @@ export function SexCards({
         // for the reason filter-card.tsx records: one column of rows reads as
         // a list, and two outlined boxes in it read as a form.
         orientation={layout === "sheet" ? "horizontal" : "vertical"}
+        // Every other section is plain buttons, where each option is its own
+        // tab stop. Radix's roving focus would make this group one stop that
+        // arrow keys move inside, so the same panel would answer Tab in two
+        // ways depending on which section you were in.
+        rovingFocus={false}
         spacing={1.5}
         className={cn(
           "w-full items-stretch",
@@ -220,6 +225,7 @@ export function SexCards({
               {...hoverHandlers(value)}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
+                layout,
                 selected: checked,
                 className:
                   layout === "sheet"

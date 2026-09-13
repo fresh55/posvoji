@@ -440,7 +440,7 @@ describe("the sidebar's surfaces", () => {
       expect(option.className).toContain("border-transparent");
       expect(option.className).toContain("bg-transparent");
       expect(option.className).toContain("shadow-none");
-      expect(option.className).toContain("h-11");
+      expect(option.className).toContain("h-10");
     }
   });
 });

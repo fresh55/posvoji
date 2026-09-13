@@ -126,6 +126,16 @@ export function GoodWithCards({
       resetAriaLabel={messages.resetGoodWithFilters}
       layout={layout}
       collapse={collapse}
+      // As many columns as there are answers. The three columns are for the
+      // three facets this section can hold, and a dataset that answers only
+      // two of them (today: psi and mačke) left a third of the row empty.
+      sheetColumns={
+        options.length > 2
+          ? "grid-cols-3"
+          : options.length > 1
+            ? "grid-cols-2"
+            : "grid-cols-1"
+      }
       // The one place the section says its choices hold at once, and the one
       // the screen reader hears. Nothing selected says nothing.
       footer={
@@ -163,6 +173,7 @@ export function GoodWithCards({
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
             className={filterCardVariants({
+              layout,
               selected: checked,
               className: cn("flex", filterCardLayoutClass(layout)),
             })}

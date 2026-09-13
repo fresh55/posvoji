@@ -407,6 +407,7 @@ export function SizePawCards({
               aria-pressed={checked}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
+                layout,
                 selected: checked,
                 className: sheet
                   ? // isolate keeps the watermark's negative z-index above the

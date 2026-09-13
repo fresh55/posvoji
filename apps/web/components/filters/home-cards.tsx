@@ -333,6 +333,7 @@ export function HomeCards({
                 aria-pressed={checked}
                 aria-label={`${label}, ${animalCount(count, locale)}`}
                 className={filterCardVariants({
+                  layout,
                   selected: checked,
                   className: cn(
                     // isolate keeps the watermark's negative z-index above the

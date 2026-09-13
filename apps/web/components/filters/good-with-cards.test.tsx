@@ -20,6 +20,8 @@ function renderCards(
     resultCount?: number;
     total?: number;
     locale?: Locale;
+    options?: ReturnType<typeof goodWithOptions>;
+    layout?: "sidebar" | "sheet";
     onToggle?: (key: GoodWithKey) => void;
     onToggleMany?: (keys: GoodWithKey[]) => void;
   } = {},
@@ -27,21 +29,41 @@ function renderCards(
   const onToggle = overrides.onToggle ?? vi.fn();
   const onToggleMany = overrides.onToggleMany ?? vi.fn();
   const locale = overrides.locale ?? "sl";
-  render(
+  const view = render(
     <I18nProvider locale={locale}>
       <GoodWithCards
-        options={goodWithOptions(locale)}
+        options={overrides.options ?? goodWithOptions(locale)}
         counts={overrides.counts ?? counts}
         selected={overrides.selected ?? []}
         resultCount={overrides.resultCount ?? 70}
         total={overrides.total ?? 489}
         onToggle={onToggle}
         onToggleMany={onToggleMany}
+        layout={overrides.layout}
       />
     </I18nProvider>,
   );
-  return { onToggle, onToggleMany };
+  return { onToggle, onToggleMany, container: view.container };
 }
+
+// The three columns are for the three facets the section can hold. A dataset
+// that answers only two of them left the third of the row empty, which the
+// drawer's other sections never do because they count their own options.
+describe("GoodWithCards sheet columns", () => {
+  function columns(options: ReturnType<typeof goodWithOptions>): string {
+    const { container } = renderCards({ options, layout: "sheet" });
+    const grid = container.querySelector<HTMLElement>("div.grid");
+    return grid?.className ?? "";
+  }
+
+  it("gives the grid as many columns as there are answers", () => {
+    const all = goodWithOptions("sl");
+
+    expect(columns(all)).toContain("grid-cols-3");
+    expect(columns(all.slice(0, 2))).toContain("grid-cols-2");
+    expect(columns(all.slice(0, 1))).toContain("grid-cols-1");
+  });
+});
 
 describe("GoodWithCards", () => {
   it("asks about the household rather than naming species", () => {

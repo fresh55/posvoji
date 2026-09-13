@@ -200,6 +200,7 @@ function HealthToggleCards({
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
             className={filterCardVariants({
+              layout,
               selected: checked,
               className: cn("flex", filterCardLayoutClass(layout)),
             })}

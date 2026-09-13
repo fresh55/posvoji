@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import {
   photoAvifUrl,
   photoSrcSet,
@@ -83,18 +83,6 @@ type AnimalPhotoProps = {
 // state, and the first paint is already anchored.
 const SUBJECT_OBJECT_POSITION = "50% 20%";
 
-// Marks a photo that had not arrived when the element was handed over, which
-// the load handler below takes off again. See the class list on the <img>: the
-// mark is opacity 0 and its removal is a short fade, so a file landing after
-// hydration arrives as one picture rather than cutting in over the placeholder.
-//
-// Hoisted rather than written inline, so it is one function and not a new one
-// per render: React re-runs a ref whose identity changed, and inline this ran
-// again on every state change here, re-marking a photo the load had just
-// cleared.
-function markArriving(node: HTMLImageElement | null) {
-  if (node && !node.complete) node.dataset.arriving = "true";
-}
 
 export function AnimalPhoto({
   photo,
@@ -135,6 +123,40 @@ export function AnimalPhoto({
         (portrait ? SUBJECT_OBJECT_POSITION : undefined))
       : undefined;
 
+  // What the element itself says the moment it is handed over, which is the
+  // only account there is of a photo whose fate was settled before React was
+  // listening. This is a static export: the markup is served complete, so a
+  // photo that 404s usually does it while the page is still loading, and the
+  // error event is over before hydration attaches the handler below. On the
+  // grid that was 15 broken images per screen with nothing said about any of
+  // them.
+  //
+  // Two states are legible here and they are the two this component has.
+  // Incomplete is a photo still on its way, which is the fade (see the class
+  // list on the <img>): the mark is opacity 0 and the load takes it off.
+  // Complete with no pixels behind it is a photo that already failed, and it
+  // is handled exactly as the error handler would have.
+  //
+  // useCallback keyed to the source, so this is a new function per photo and
+  // not per render: React re-runs a ref whose identity changed, and an inline
+  // one ran again on every state change here, re-marking a photo the load had
+  // just cleared.
+  const trackArrival = useCallback(
+    (node: HTMLImageElement | null) => {
+      if (!node) return;
+      if (!node.complete) {
+        node.dataset.arriving = "true";
+        return;
+      }
+      if (node.naturalWidth === 0) {
+        node.hidden = true;
+        node.dataset.broken = "true";
+        setFailedSrc(photo.src);
+      }
+    },
+    [photo.src],
+  );
+
   const image = (
     // The rule asks for next/image so the image gets a srcset. Under
     // images.unoptimized next/image is the one that emits none, and this is
@@ -157,11 +179,11 @@ export function AnimalPhoto({
       fetchPriority={eager ? "high" : undefined}
       decoding="async"
       // Written to the node and never to the server's markup, which is what
-      // keeps the fade out of hydration. A photo that is already complete when
-      // this runs, which is every photo a warm cache serves, is never marked
-      // and never fades: the mark is only ever about the wait. See
-      // markArriving above.
-      ref={markArriving}
+      // keeps the fade out of hydration. A photo that is already drawn when
+      // this runs, which is every photo a warm cache serves, is neither marked
+      // nor faded: the mark is only ever about the wait. See trackArrival
+      // above.
+      ref={trackArrival}
       // A photo that fails to arrive (a cached copy renamed under a stale
       // page, a shelter file gone) would otherwise sit as a broken image over
       // the box's own ground. Hidden, the ground shows instead, which is the

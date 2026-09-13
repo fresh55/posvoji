@@ -10,12 +10,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Whether the file is already in hand when the element is handed over. jsdom
-// fetches nothing, so every image it makes is incomplete forever; this is the
-// one fact the fade is decided on, so each test says which case it is about.
-function arrivesLater(later: boolean) {
+// What the element says about itself when it is handed over, which is what
+// this component reads to tell a photo still on its way from one that already
+// failed. jsdom fetches nothing, so it makes every image incomplete and every
+// naturalWidth 0 forever, and a test has to say which of the three cases it is
+// about.
+function stillOnItsWay() {
+  state(false, 0);
+}
+
+function alreadyDrawn() {
+  state(true, 800);
+}
+
+function alreadyFailed() {
+  state(true, 0);
+}
+
+function state(complete: boolean, naturalWidth: number) {
   vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(
-    !later,
+    complete,
+  );
+  vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(
+    naturalWidth,
   );
 }
 
@@ -273,7 +290,7 @@ describe("AnimalPhoto loading", () => {
 
 describe("AnimalPhoto arrival", () => {
   it("marks a photo that is still on its way", () => {
-    arrivesLater(true);
+    stillOnItsWay();
     const { img } = draw();
 
     // The mark is the opacity, and taking it off is the fade. Nothing here is
@@ -288,22 +305,37 @@ describe("AnimalPhoto arrival", () => {
   it("leaves a photo that is already in hand alone", () => {
     // The warm cache, which is most of them: a photo that is complete when the
     // element is handed over never waited, so there is nothing to fade in.
-    arrivesLater(false);
+    alreadyDrawn();
     expect(draw().img.dataset.arriving).toBeUndefined();
   });
 
   it("takes the mark off when the photo lands", () => {
-    arrivesLater(true);
+    stillOnItsWay();
     const { img } = draw();
     fireEvent.load(img);
 
     expect(img.dataset.arriving).toBeUndefined();
   });
 
+  it("catches a photo that failed before React was listening", () => {
+    // The site is a static export, so the markup is served complete and a
+    // photo that 404s does it while the page is still loading: the error event
+    // is over before hydration attaches the handler. Complete with no pixels
+    // behind it is what the element says about that afterwards, and it has to
+    // be handled the way the error would have been.
+    alreadyFailed();
+    const { container, img } = draw({ fallback: UNAVAILABLE });
+
+    expect(img.hidden).toBe(true);
+    expect(img.dataset.broken).toBe("true");
+    expect(img.dataset.arriving).toBeUndefined();
+    expect(fallback(container)?.textContent).toBe("Fotografije ni.");
+  });
+
   it("leaves the failure handling as it was", () => {
     // The fade rides on the same two handlers the failure does, so a photo
     // that errors still goes out of the box and still comes back.
-    arrivesLater(true);
+    stillOnItsWay();
     const { img } = draw();
     fireEvent.error(img);
     expect(img.hidden).toBe(true);

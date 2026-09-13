@@ -32,10 +32,10 @@ describe("translations", () => {
   // fails silently: interpolate leaves an unmatched {name} in the sentence.
   it("fills the footer's freshness line in both locales", () => {
     expect(translate("sl", "footerUpdated", { date: "8. 9. 2026" })).toBe(
-      "Podatki zavetišč, osveženi 8. 9. 2026.",
+      "Seznam objavljen 8. 9. 2026. Čas preverjanja je naveden pri posamezni živali.",
     );
     expect(translate("en", "footerUpdated", { date: "8 September 2026" })).toBe(
-      "Shelter data updated 8 September 2026.",
+      "List published 8 September 2026. Each animal shows when its source was checked.",
     );
   });
 

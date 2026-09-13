@@ -17,8 +17,11 @@ assert.throws(() => assertNotSuperseded(sample, { ...sample, inputRevision: unde
 assert.throws(() => assertNotSuperseded(sample, { ...sample, inputRevision: { authority: "d".repeat(64), sequence: 50 } }), /authority/);
 assert.throws(() => assertNotSuperseded(sample, { ...sample, datasetGeneratedAt: "2026-09-04T00:00:00Z" }), /predates/);
 assertFresh(sample, Date.parse("2026-09-05T18:00:00Z"));
-assert.deepEqual(assertFresh({ ...sample, datasetGeneratedAt: "2026-09-07T06:00:00Z" }, Date.parse("2026-09-07T06:01:00Z")), ["shelter"]);
-assert.deepEqual(assertFresh({ ...sample, providers: [{ providerId: "empty-shelter", checkedAt: null }] }, Date.parse("2026-09-05T07:00:00Z")), ["empty-shelter"]);
+assert.throws(() => assertFresh({ ...sample, datasetGeneratedAt: "2026-09-07T06:00:00Z" }, Date.parse("2026-09-07T06:01:00Z")), /source verification.*shelter/);
+assert.throws(() => assertFresh({ ...sample, providers: [{ providerId: "empty-shelter", checkedAt: null }] }, Date.parse("2026-09-05T07:00:00Z")), /source verification.*empty-shelter/);
+assert.throws(() => assertFresh({ ...sample, providers: [] }), /pipeline|missing provider/);
+assertFresh({ ...sample, datasetGeneratedAt: "2026-09-07T06:00:00Z", providers: [{ ...sample.providers[0], intervalHours: 48 }] }, Date.parse("2026-09-07T06:01:00Z"));
+assert.throws(() => assertFresh({ ...sample, providers: [{ ...sample.providers[0], intervalHours: 12, detailsCheckedAt: "2026-09-03T06:00:00Z" }] }, Date.parse("2026-09-05T07:00:00Z")), /source verification/);
 assert.throws(() => assertFresh(sample, Date.parse("2026-09-07T06:01:00Z")), /pipeline/);
 const now = Date.parse("2026-09-05T18:00:00Z");
 const success = { state: "success", lastSuccessAt: sample.datasetGeneratedAt };

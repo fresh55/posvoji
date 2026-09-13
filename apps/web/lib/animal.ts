@@ -8,22 +8,14 @@ import type { PermittedPhoto } from "@/lib/animal-images";
  * URL, its rights and our cached copy beside them, and a `source` block
  * recording where the listing came from and when the crawl last saw it.
  * `ClientAnimal` is the same animal after lib/dataset.ts has resolved those
- * photos into what a surface actually draws and cut that block down to the one
- * field a surface links to, and it is what crosses into a client component.
+ * photos into what a surface actually draws and cut that block down to the link
+ * and verification time, and it is what crosses into a client component.
  */
 
-/** What `source` still says once an animal has crossed the client boundary:
- *  the shelter's own listing page, which the dialog and the shelter block link
- *  to.
- *
- *  The rest of `AnimalSource` is ingest bookkeeping, and no surface in
- *  apps/web reads it off an animal. Nothing names `providerId`,
- *  `sourceAnimalId` or `fetchedAt` at all; `firstSeenAt` appears only in a
- *  comment in lib/sort.ts, saying why it is not a substitute for `intakeDate`;
- *  `lastSeenAt` is read only by app/sitemap.ts, on the server, off the dataset
- *  animal and never off this projection. (The portal's `providerId` is a field
- *  of its own listing type, not of this one.) */
-export type ClientAnimalSource = Pick<AnimalSource, "sourceUrl">;
+/** Only the listing link and its real verification time cross this boundary.
+ * Missing time remains supported for older client fixtures and is shown as unknown. */
+export type ClientAnimalSource = Pick<AnimalSource, "sourceUrl"> &
+  Partial<Pick<AnimalSource, "fetchedAt">>;
 
 /** Every field an `Animal` carries except its photos, and with `source` cut to
  *  the part both shapes carry.
@@ -66,15 +58,11 @@ export type ClientAnimal = AnimalFields & { images: PermittedPhoto[] };
  * Photos that are drawn go to the component that draws them (the gallery),
  * already resolved by permittedPhotos.
  *
- * The `source` bookkeeping goes the same way, and for the same reason it goes
- * in animalsForClient: nothing reads it past this boundary, and the type says
- * so. Leaving it on the object while the type denied it would have shipped
- * two ids and three timestamps into every animal page's payload that no
- * surface could even name, which is the shape of waste this function exists
- * to remove.
+ * Source identity and first/last-seen bookkeeping stay on the server;
+ * fetchedAt now has a visible purpose in the source-verification line.
  */
 export function animalFields(animal: Animal): AnimalFields {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
   const { images, source, ...fields } = animal;
-  return { ...fields, source: { sourceUrl: source.sourceUrl } };
+  return { ...fields, source: { sourceUrl: source.sourceUrl, fetchedAt: source.fetchedAt } };
 }

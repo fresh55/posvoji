@@ -14,6 +14,7 @@ import {
 import { exitCodeForRun } from "./exit-codes";
 import { preparePublication } from "./export-animals";
 import { crawlProviders } from "./export-crawl";
+import { CrawlSchedule, hostCooldowns } from "./crawl-schedule";
 import { writeGenerationReceipt } from "./generation-receipt";
 import { checkPreviousGenerationSealed } from "./generation-seal";
 import {
@@ -90,9 +91,10 @@ const defaultServices = {
   crawledDatasetPath,
   overrideReportPath,
   crawlStatePath,
-  createClient: () =>
+  createClient: (directory: string) =>
     new PoliteClient({
       userAgent: "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)",
+      cooldowns: hostCooldowns(directory),
     }),
   createSnapshots: (
     directory: string,
@@ -295,7 +297,7 @@ export async function runExport(
             ({ policy }) => policy.providerId === requestedProviderId,
           )
         : policies;
-    const client = createClient();
+    const client = createClient(datasetDir);
 
     // Fetched before the crawl, not after it. A bad token or a payload that no
     // longer matches the contract throws, and a run that is going to fail on that
@@ -331,7 +333,8 @@ export async function runExport(
       codeSha,
       snapshotReferences,
       acceptRemovals,
-      services: { providers, crawlProviderIncrementally },
+      schedule: new CrawlSchedule(datasetDir, now),
+      services: { providers, crawlProviderIncrementally, now },
       logger,
     });
     logger.log(
@@ -502,9 +505,7 @@ export async function runExport(
       overridden,
       client,
       imagePolicies,
-      requestedProviderId || republish
-        ? { refreshProviderIds: crawledProviderIds }
-        : {},
+      { refreshProviderIds: crawledProviderIds },
     );
     logger.log(
       `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
@@ -701,6 +702,7 @@ export async function runExport(
           codeSha,
           policies: policies.map(({ policy }) => policy),
           references: snapshotReferences,
+          animals: crawledSnapshot,
           overrides: portalPayload?.overrides ?? null,
           listings: listings.kind === "ok" ? listings.payload : null,
         }),

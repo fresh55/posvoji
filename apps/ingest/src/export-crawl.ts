@@ -3,6 +3,7 @@ import type { Animal, ProviderPolicy } from "@posvoji/schema";
 import { applyAllowedFields } from "./allowed-fields";
 import { guardProviderRequests, type CrawlClient } from "./crawl-guard";
 import type { ExportServices } from "./export-run";
+import type { CrawlSchedule } from "./crawl-schedule";
 import {
   forceFullRefresh,
   type CrawlState,
@@ -31,6 +32,7 @@ export async function crawlProviders({
   codeSha,
   snapshotReferences,
   acceptRemovals,
+  schedule,
   services,
   logger,
 }: {
@@ -45,7 +47,8 @@ export async function crawlProviders({
   codeSha: string;
   snapshotReferences: Record<string, SnapshotReference>;
   acceptRemovals: Set<string>;
-  services: Pick<ExportServices, "providers" | "crawlProviderIncrementally">;
+  schedule: CrawlSchedule;
+  services: Pick<ExportServices, "providers" | "crawlProviderIncrementally" | "now">;
   logger: ExportServices["logger"];
 }) {
   const { providers, crawlProviderIncrementally } = services;
@@ -59,7 +62,7 @@ export async function crawlProviders({
     policy: LoadedPolicy["policy"],
     previousAnimals: readonly Animal[],
     state: CrawlState,
-  ): Promise<ProviderCrawlResult> {
+  ): Promise<ProviderCrawlResult | null> {
     const provider = providers.find((p) => p.id === policy.providerId);
     if (!provider) {
       throw new Error(
@@ -75,7 +78,7 @@ export async function crawlProviders({
     const ctx = { client: guarded, policy };
     const resumed =
       !refreshAll && !bootstrappingSnapshot
-        ? providerSnapshots.resume(policy, codeSha, previousPublishedAt)
+        ? providerSnapshots.resume(policy, codeSha, previousPublishedAt, services.now().getTime())
         : null;
     if (resumed) {
       logger.log(
@@ -88,12 +91,18 @@ export async function crawlProviders({
       };
       return resumed;
     }
-    // The list page still decides who is listed, and every listed animal ends up
-    // in the result. What this skips is the detail page of an animal we already
-    // hold and read recently enough.
+    const checkedAt = snapshotReferences[policy.providerId]?.checkedAt;
+    if (!schedule.admit(policy, checkedAt)) {
+      logger.log(`${policy.providerId}: not due until ${new Date(schedule.nextAllowedAt(policy, checkedAt)).toISOString()}`);
+      return null;
+    }
+    // Discovery alone cannot see a reservation edited into a still-listed
+    // detail page. Every admitted crawl verifies all details; the provider
+    // interval, rather than a per-animal three-day rotation, limits traffic.
     const result = await crawlProviderIncrementally(provider, ctx, {
       previous: previousAnimals,
-      forcedBecause: forceFullRefresh(state, policy, refreshAll),
+      forcedBecause: forceFullRefresh(state, policy, refreshAll) ?? "availability verification",
+      now: services.now,
     });
     const policyMap = new Map([[policy.providerId, policy]]);
     result.animals = applyAllowedFields(
@@ -171,6 +180,7 @@ export async function crawlProviders({
       const policy = enabled[index]!.policy;
       const providerId = policy.providerId;
       if (result.status === "fulfilled") {
+        if (result.value === null) continue;
         crawled.add(providerId);
         animals.push(...result.value.animals);
         fetched += result.value.fetched;

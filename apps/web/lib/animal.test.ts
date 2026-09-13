@@ -51,7 +51,7 @@ describe("animalFields", () => {
       // Only the shelter's own listing page survives. The two ids and the
       // three timestamps beside it say how the crawl found this animal, which
       // no surface on the site asks.
-      source: { sourceUrl: source.source.sourceUrl },
+      source: { sourceUrl: source.source.sourceUrl, fetchedAt: source.source.fetchedAt },
       attribution: source.attribution,
     });
   });

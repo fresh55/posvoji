@@ -88,7 +88,12 @@ def prepare(
             )
             # Preserve ordering authority and independently completed providers,
             # including progress not yet present in the final generation.
-            for name in ("input-revision.json", "crawl-state.json"):
+            for name in (
+                "input-revision.json",
+                "crawl-state.json",
+                "crawl-schedule.json",
+                "host-cooldowns.json",
+            ):
                 source = repo / "data/dist" / name
                 if source.exists():
                     if source.is_symlink() or not source.is_file():

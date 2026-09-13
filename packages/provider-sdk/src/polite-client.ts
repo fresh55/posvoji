@@ -3,7 +3,8 @@ import robotsParser from "robots-parser";
 
 const BACKOFF_BASE_MS = 2_000;
 const BACKOFF_CAP_MS = 60_000;
-const RETRY_AFTER_CAP_MS = 600_000;
+// Longer waits defer the host; they never shorten the server's instruction.
+const MAX_INLINE_WAIT_MS = 60_000;
 // Large enough for the source photos the ingest pipeline accepts, but finite
 // so a bad or hostile endpoint cannot exhaust the crawler's memory.
 const DEFAULT_MAX_RESPONSE_BYTES = 25 * 1024 * 1024;
@@ -13,8 +14,6 @@ const MAX_ROBOTS_BYTES = 512 * 1024;
 // RFC 9309 asks crawlers to follow at least five robots.txt redirects. The
 // same budget is used for content so a moved page is still reachable.
 const MAX_REDIRECTS = 5;
-// A hostile or mistyped Crawl-delay must not stall the whole export.
-const CRAWL_DELAY_CAP_MS = 60_000;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export interface PoliteClientOptions {
@@ -24,6 +23,10 @@ export interface PoliteClientOptions {
   minDelayMs?: number;
   maxRetries?: number;
   timeoutMs?: number;
+  cooldowns?: {
+    get(host: string): number | undefined;
+    set(host: string, notBefore: number): void;
+  };
 }
 
 export interface PoliteResponse {
@@ -92,7 +95,7 @@ export function computeBackoffMs(
   retryAfterMs?: number,
 ): number {
   if (retryAfterMs !== undefined) {
-    return Math.min(retryAfterMs, RETRY_AFTER_CAP_MS);
+    return retryAfterMs;
   }
   return Math.min(BACKOFF_BASE_MS * 2 ** attempt, BACKOFF_CAP_MS);
 }
@@ -210,10 +213,12 @@ export class PoliteClient {
   private readonly minDelayMs: number;
   private readonly maxRetries: number;
   private readonly timeoutMs: number;
+  private readonly cooldowns: NonNullable<PoliteClientOptions["cooldowns"]>;
 
   private readonly hostQueue = new Map<string, Promise<void>>();
   private readonly lastRequestAt = new Map<string, number>();
   private readonly robots = new Map<string, ReturnType<typeof robotsParser>>();
+  private readonly pendingRobots = new Map<string, Promise<void>>();
   private readonly crawlDelayMs = new Map<string, number>();
 
   constructor(options: PoliteClientOptions) {
@@ -227,6 +232,7 @@ export class PoliteClient {
     this.minDelayMs = options.minDelayMs ?? 3_000;
     this.maxRetries = options.maxRetries ?? 3;
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.cooldowns = options.cooldowns ?? new Map<string, number>();
   }
 
   async get(url: string, options?: GetBytesOptions): Promise<PoliteResponse> {
@@ -247,13 +253,11 @@ export class PoliteClient {
     const maxBytes = options.maxBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
     validateMaxBytes(maxBytes);
     const target = new URL(url);
-    return this.withHostLock(target.host, async () => {
-      await this.ensureRobots(target.origin);
-      if (!this.isAllowed(target.origin, url)) {
-        throw new Error(`robots.txt disallows fetching ${url}`);
-      }
-      return this.requestWithRetries(target.host, url, options, maxBytes);
-    });
+    await this.ensureRobots(target.origin);
+    if (!this.isAllowed(target.origin, url)) {
+      throw new Error(`robots.txt disallows fetching ${url}`);
+    }
+    return this.requestWithRetries(target.host, url, options, maxBytes);
   }
 
   private async requestWithRetries(
@@ -264,11 +268,8 @@ export class PoliteClient {
   ): Promise<PoliteBytesResponse> {
     let current = url;
     for (let hop = 0; ; hop++) {
-      const res = await this.attemptWithRetries(
-        host,
-        current,
-        options,
-        maxBytes,
+      const res = await this.withHostLock(host, () =>
+        this.attemptWithRetries(host, current, options, maxBytes),
       );
       const redirect =
         hop < MAX_REDIRECTS ? redirectTarget(current, res) : undefined;
@@ -295,6 +296,7 @@ export class PoliteClient {
     url: string,
     options: GetBytesOptions,
     maxBytes: number,
+    robots = false,
   ): Promise<PoliteBytesResponse> {
     for (let attempt = 0; ; attempt++) {
       await this.respectDelay(host);
@@ -309,6 +311,11 @@ export class PoliteClient {
         });
         status = res.statusCode;
         headers = res.headers;
+        // Honor headers even when the throttled response's body is oversized
+        // or resets halfway through downloading.
+        if (status === 429 || status === 503 || (robots && status >= 500)) {
+          this.deferHost(host, computeBackoffMs(attempt, parseRetryAfter(headerValue(headers["retry-after"]))));
+        }
         // The body read is part of the attempt: a reset or a timeout halfway
         // through the download has to be retried like a failed connect.
         if (status === 304) {
@@ -321,7 +328,9 @@ export class PoliteClient {
           });
           body = null;
         } else {
-          body = await readBodyWithLimit(res.body, headers, url, maxBytes);
+          body = await readBodyWithLimit(res.body, headers, url, maxBytes, {
+            truncate: robots,
+          });
         }
       } catch (error) {
         this.lastRequestAt.set(host, Date.now());
@@ -332,16 +341,20 @@ export class PoliteClient {
       }
       this.lastRequestAt.set(host, Date.now());
 
-      if (status === 429 || status === 503) {
+      if (status === 429 || status === 503 || (robots && status >= 500)) {
+        const retryAfter = parseRetryAfter(headerValue(headers["retry-after"]));
+        const wait = computeBackoffMs(attempt, retryAfter);
+        this.deferHost(host, wait);
         if (attempt >= this.maxRetries) {
+          if (robots && status >= 500) {
+            return { status, body, notModified: false, headers };
+          }
           // Returning the 429 would let callers treat a throttled host as an
           // empty one and ship animals without photos.
           throw new Error(
             `rate limited after ${this.maxRetries} retries: ${url} (status ${status})`,
           );
         }
-        const retryAfter = parseRetryAfter(headerValue(headers["retry-after"]));
-        await sleep(computeBackoffMs(attempt, retryAfter));
         continue;
       }
 
@@ -364,10 +377,22 @@ export class PoliteClient {
 
   private async respectDelay(host: string): Promise<void> {
     const last = this.lastRequestAt.get(host);
-    if (last === undefined) return;
     const delay = Math.max(this.minDelayMs, this.crawlDelayMs.get(host) ?? 0);
-    const wait = delay - (Date.now() - last);
+    const wait = Math.max(
+      last === undefined ? 0 : last + delay - Date.now(),
+      (this.cooldowns.get(host) ?? 0) - Date.now(),
+    );
+    if (wait > MAX_INLINE_WAIT_MS) {
+      throw new Error(`host ${host} deferred: requested wait exceeds the inline budget`);
+    }
     if (wait > 0) await sleep(wait);
+  }
+
+  private deferHost(host: string, wait: number): void {
+    this.cooldowns.set(host, Math.max(
+      this.cooldowns.get(host) ?? 0,
+      Math.min(Number.MAX_SAFE_INTEGER, Date.now() + wait),
+    ));
   }
 
   private async withHostLock<T>(host: string, fn: () => Promise<T>): Promise<T> {
@@ -385,49 +410,36 @@ export class PoliteClient {
 
   private async ensureRobots(origin: string): Promise<void> {
     if (this.robots.has(origin)) return;
+    const pending = this.pendingRobots.get(origin);
+    if (pending) return pending;
+    const loading = this.loadRobots(origin);
+    this.pendingRobots.set(origin, loading);
+    try {
+      await loading;
+    } finally {
+      this.pendingRobots.delete(origin);
+    }
+  }
+
+  private async loadRobots(origin: string): Promise<void> {
     const robotsUrl = `${origin}/robots.txt`;
     // If a site can't tell us its rules, we don't crawl it.
     const DISALLOW_ALL = "User-agent: *\nDisallow: /";
     const host = new URL(origin).host;
     let content: string;
-    for (let attempt = 0; ; attempt++) {
-      await this.respectDelay(host);
-      try {
-        const res = await this.fetchRobots(robotsUrl);
-        this.lastRequestAt.set(host, Date.now());
-        if (res.status >= 200 && res.status < 300) {
-          content = res.body;
-        } else if (res.status === 401 || res.status === 403) {
-          // The site is refusing this bot, not failing to answer.
-          content = DISALLOW_ALL;
-        } else if (res.status >= 400 && res.status < 500) {
-          content = "";
-        } else if (res.status >= 500) {
-          // A 5xx is the site failing to answer, not answering "no", so it is
-          // retried like a network error. RFC 9309 still asks us to read a
-          // robots.txt we cannot get as "unavailable", but only once the site
-          // has kept failing: a single bad gateway is not that.
-          if (attempt < this.maxRetries) {
-            await sleep(computeBackoffMs(attempt));
-            continue;
-          }
-          content = DISALLOW_ALL;
-        } else {
-          content = DISALLOW_ALL;
-        }
-        break;
-      } catch (error) {
-        this.lastRequestAt.set(host, Date.now());
-        if (error instanceof ResponseBodyTooLargeError) throw error;
-        if (attempt >= this.maxRetries) {
-          // Nothing is cached, so a later call gets a fresh chance instead of
-          // the origin staying denied for the rest of the process.
-          throw new Error(`robots.txt for ${origin} unreachable`, {
-            cause: error,
-          });
-        }
-        await sleep(computeBackoffMs(attempt));
+    try {
+      const res = await this.fetchRobots(robotsUrl);
+      if (res.status >= 200 && res.status < 300) {
+        content = res.body;
+      } else if (res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 403) {
+        // 429 never reaches here: the shared retry path fails closed.
+        content = "";
+      } else {
+        content = DISALLOW_ALL;
       }
+    } catch (error) {
+      if (error instanceof ResponseBodyTooLargeError) throw error;
+      throw new Error(`robots.txt for ${origin} unreachable`, { cause: error });
     }
     const robots = robotsParser(robotsUrl, content);
     this.robots.set(origin, robots);
@@ -439,26 +451,17 @@ export class PoliteClient {
   ): Promise<{ status: number; body: string }> {
     let current = robotsUrl;
     for (let hop = 0; ; hop++) {
-      const res = await request(current, {
-        method: "GET",
-        headers: { "user-agent": this.userAgent },
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-      const status = res.statusCode;
-      const body = (
-        await readBodyWithLimit(
-          res.body,
-          res.headers,
-          current,
-          MAX_ROBOTS_BYTES,
-          { truncate: true },
-        )
-      ).toString("utf8");
+      const host = new URL(current).host;
+      const res = await this.withHostLock(host, () =>
+        this.attemptWithRetries(host, current, {}, MAX_ROBOTS_BYTES, true),
+      );
+      const status = res.status;
+      const body = res.body?.toString("utf8") ?? "";
       if (REDIRECT_STATUSES.has(status) && hop < MAX_REDIRECTS) {
         const location = headerValue(res.headers["location"]);
         const next =
           location === undefined ? undefined : resolve(location, current);
-        if (next) {
+        if (next && ["http:", "https:"].includes(next.protocol) && !next.username && !next.password) {
           current = next.href;
           continue;
         }
@@ -471,9 +474,10 @@ export class PoliteClient {
     if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) {
       return;
     }
-    const delay = Math.min(seconds * 1_000, CRAWL_DELAY_CAP_MS);
+    const delay = seconds * 1_000;
     const previous = this.crawlDelayMs.get(host) ?? 0;
     this.crawlDelayMs.set(host, Math.max(previous, delay));
+    this.deferHost(host, delay);
   }
 
   private isAllowed(origin: string, url: string): boolean {

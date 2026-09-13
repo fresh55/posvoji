@@ -5,7 +5,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { registerDateLabel, shelterCount } from "@/lib/labels";
+import { shelterCount } from "@/lib/labels";
+import { verificationTime } from "@/lib/source-freshness";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
@@ -96,15 +97,9 @@ export function SitePage({ locale }: { locale: Locale }) {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
           {dataset && shelters > 0 && (
             <p>
-              {shelterCount(shelters, locale)} · {messages.updated}{" "}
-              {/* registerDateLabel and not a toLocaleDateString of its
-                  own. The footer prints the same timestamp on this page
-                  now, and it uses that helper: two formatters over one
-                  date agreed in Slovenian and disagreed in English, where
-                  the default en-GB date is 07/09/2026 and the helper's is
-                  7 September 2026. The helper also pins the time zone to
-                  UTC, so neither line steps a day near a boundary. */}
-              {registerDateLabel(dataset.generatedAt, locale)}
+              {shelterCount(shelters, locale)} · {messages.listPublished}{" "}
+
+              {verificationTime(dataset.generatedAt, locale)}
             </p>
           )}
           {hasLookup && <FoundAnimalButton />}

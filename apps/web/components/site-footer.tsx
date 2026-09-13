@@ -2,11 +2,7 @@ import type { ReactNode } from "react";
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
-// The leaf module and not lib/labels.ts, which re-exports this: labels.ts
-// reaches the lib/filters barrel, and this file renders on every document in
-// the export and is imported by PortalShell, which is a client component. See
-// lib/date-label.ts for the measurement.
-import { registerDateLabel } from "@/lib/date-label";
+import { verificationTime } from "@/lib/source-freshness";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
@@ -281,23 +277,11 @@ export function SiteFooter({
             things a reader can do about it. */}
         <div className="max-w-3xl space-y-2">
           {aboutListings && <p>{messages.footer}</p>}
-          {/* When, beside where. The sentence above says the data is the
-              shelters' and that adoption goes through them, and says nothing
-              about how old the copy on the screen is.
-
-              Its own line rather than the tail of the paragraph above, which
-              wraps to three or four lines at phone width; a date appended to
-              the end of that is a date nobody finds.
-
-              registerDateLabel and not toLocaleDateString: it pins the time
-              zone to UTC, so the footer and the poster print the same day for
-              the same dataset near a boundary, it builds its two formatters
-              once where this renders on every animal page in both locales,
-              and lib/labels.test.ts fixes its output in both. */}
+          {/* Publication time is distinct from the source check on each animal. */}
           {aboutListings && updatedAt && (
             <p>
               {interpolate(messages.footerUpdated, {
-                date: registerDateLabel(updatedAt, locale),
+                date: verificationTime(updatedAt, locale),
               })}
             </p>
           )}

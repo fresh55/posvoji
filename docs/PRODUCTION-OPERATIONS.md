@@ -6,8 +6,14 @@ measurements are in [the handover log](operations/2026-09-06-crawl-handover.md).
 
 ## Operating contract
 
-The installed systemd timer starts at 06:00 and 18:00 Europe/Ljubljana, with up
-to 15 minutes of jitter. It catches up after downtime. The service uses one CPU
+After promotion and unit installation, the timer checks providers hourly at
+minute 07 Europe/Ljubljana, with up to 15 minutes of jitter. `crawl.intervalHours`
+is a minimum between attempts/checks; current 12-hour policies normally produce
+two source crawls per day. An hourly pass can publish portal corrections and
+carried observations without claiming another source check. It still performs
+a site build: measure this host cost. Start times drift with prior attempts,
+service duration and the hourly eligibility pass. The timer catches up after
+downtime. The service uses one CPU
 worth of quota, bounded memory, low I/O priority and a ten-hour timeout. These
 are initial limits to measure on the actual server, not a build-time promise.
 
@@ -20,7 +26,7 @@ export exits stop the run. A failed provider retains its prior observations.
 Each completed provider writes a content-addressed snapshot before the next
 publication stages. A retry can resume clean checkpoints younger than two hours
 that are newer than the last materialized dataset, and only with identical code
-and provider policy. Normal scheduled runs still discover listings. Empty
+and provider policy. Due providers discover listings and verify every detail page. Empty
 results are checkpointed only after the removal guard accepts them. Resuming or
 carrying data never advances its real source-check time.
 
@@ -54,7 +60,8 @@ retain the host lock for inspection. This verifies delivery, not every route.
    the hermetic build's dependencies with `--offline`. Test sharp on this host.
 4. Pause the Windows crawl task once it is idle. Under the artifact lock, seed
    the host with a verified generation, `image-cache.json`, all referenced media,
-   `crawl-state.json`, `provider-snapshots/`, and `input-revision.json` if present.
+   `crawl-state.json`, `crawl-schedule.json`, `host-cooldowns.json`,
+   `provider-snapshots/`, and `input-revision.json` if present.
    Do not copy a partial generation or the source machine's lock directory.
    Keep the previous PC state available until the handover is verified.
 5. Prepare private `/etc/posvoji/crawl.env` and `backup.env` using the examples in
@@ -70,9 +77,9 @@ retain the host lock for inspection. This verifies delivery, not every route.
    journal, duration, resource usage, generation and public HTTPS verification.
    Record the measured build time. If it fails, fix that before switching timers.
 8. Run `systemctl start posvoji-backup.service`; retrieve and restore-check an
-   archive on the PC as below. Then enable the two host timers with
-   `systemctl enable --now posvoji-crawl.timer posvoji-backup.timer`. Confirm the
-   next two crawl times with `systemctl list-timers`. Disable the old Windows
+   archive on the PC as below. Run and verify `posvoji-health.service` too, then enable the three host timers with
+   `systemctl enable --now posvoji-crawl.timer posvoji-backup.timer posvoji-health.timer`. Confirm the
+   next eligibility and health checks with `systemctl list-timers`. Disable the old Windows
    crawl and dead-man tasks only after the host and external monitor are proven.
 
 Before activation fails, the fallback is the existing PC publisher. After the
@@ -103,10 +110,24 @@ a full Next build and may need missing media; it is not a five-minute guarantee.
 
 ## External monitoring without a new account
 
-`.github/workflows/production-health.yml` checks production every ten minutes,
-away from the hour boundary. It verifies the status/homepage identity and fails when the dataset is more
-than 30 hours old. Individual shelter check times that are unknown or old produce
-separate warnings; they do not label the whole pipeline broken.
+`.github/workflows/production-health.yml` requests external checks every ten
+minutes, but actual September 2026 runs had gaps exceeding five hours. Do not
+promise ten-minute external detection. The additional `posvoji-health.timer`
+runs the same check on the host every ten minutes; it checks delivery and
+freshness without depending on GitHub's schedule. Inspect `systemctl status
+posvoji-health.service` and its journal for failures. This is a local check,
+not host-loss detection or proof that a human received an alert. The health
+unit uses `/etc/posvoji/health.netrc`; remove that unit environment setting
+when the site no longer needs authentication.
+
+The monitor fails if the dataset is older than 30 hours, if no provider
+observations exist, or if any provider's discovery or oldest detail check is
+missing, future-dated or older than its policy interval plus six hours. Legacy
+receipts without interval metadata use 30 hours. A fresh publication timestamp
+cannot mask stale source content. Degraded publication remains useful, but
+source staleness has a separate failing outcome. For a dependable external
+alert deadline, use an independently hosted monitor and verify alert delivery;
+GitHub's scheduler cannot supply that guarantee. No new paid service is installed.
 
 Crawl and backup units use `ExecStartPre` and `ExecStopPost` to record bounded
 status fields in `/srv/posvoji/operations/status.json`. Systemd passes the job
@@ -229,3 +250,28 @@ its publication acknowledgement must include the overlay revision and be proven
 against the served dataset. No correction latency or working portal access is
 promised by this deployment work. The requested freshness UI redesign is out
 of scope; source check metadata here is for operational correctness.
+
+## Crawl frequency and rate-limit recovery
+
+`crawl-schedule.json` records attempts before requests begin, including failed
+attempts. Normal runs, targeted runs and `--refresh-all` respect the provider's
+interval. A clean checkpoint can resume without requests. Lower-frequency
+providers retain their previous source timestamps between due crawls. Permission
+withdrawal and other publication restrictions still apply immediately.
+
+`host-cooldowns.json` persists server Retry-After instructions across exports.
+Waits longer than one minute defer the host rather than shortening its requested
+wait. Long Crawl-delay instructions also defer work. Robots redirect hops use
+the same per-host queue and delay as content. Preserve both state files in
+handover, restore and backup; deleting them is not a supported way to force a
+crawl. Invalid state fails closed and needs repair from known good state.
+
+After upgrading, verify a permitted crawl and its sealed provider timestamps,
+then a second run inside the interval: it must preserve source check times.
+Check that the health service fails against a deliberately stale offline fixture.
+Do not use an old PC snapshot to replace newer production observations.
+
+The September 8–9 crawl incident is not explained by the source audit alone.
+Its host journal is required to distinguish export, publication, resource,
+permission, and pin/checkout failures. During the September 13 audit, SSH to the
+configured host timed out; no new units or crawler code were installed there.

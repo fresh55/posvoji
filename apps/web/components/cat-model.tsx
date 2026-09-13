@@ -17,8 +17,17 @@ import { cn } from "@/lib/utils";
 // hydration chunks. A smaller asset would shorten the wait, an earlier start
 // does not.
 const MODEL = "/models/our-cat/cat.glb?v=26";
-// The poster uses the same resting pose and camera as the interactive model.
-const POSTER = "/models/our-cat/poster.webp?v=19.1";
+
+/** A camera and the still rendered from it: the poster is the model's own
+ *  first frame at that framing, so he does not jump when WebGL takes over. */
+export type CatFraming = { orbit: string; target: string; poster: string };
+
+/** The about page's and the gate's framing; see the note on camera-orbit. */
+export const CAT_FRAMING: CatFraming = {
+  orbit: "-19deg 81deg 1.45m",
+  target: "0m 0.25m 0m",
+  poster: "/models/our-cat/poster.webp?v=19.1",
+};
 
 const copy = {
   sl: {
@@ -72,6 +81,7 @@ export const CatModel = memo(function CatModel({
   className,
   sizes,
   posterPriority = false,
+  framing = CAT_FRAMING,
   onHandle,
 }: {
   locale: Locale;
@@ -85,6 +95,12 @@ export const CatModel = memo(function CatModel({
    * below the fold and is often never fetched at all.
    */
   posterPriority?: boolean;
+  /**
+   * A closer framing than the default, for a stage too short to show him
+   * at 1.45m. The default never cuts him at any heading; a closer camera
+   * trades that for size, and the caller owns the trade and the poster.
+   */
+  framing?: CatFraming;
   onHandle?: (handle: CatModelHandle | null) => void;
 }) {
   const text = copy[locale];
@@ -201,8 +217,8 @@ export const CatModel = memo(function CatModel({
           // 55-95deg tilt, anywhere in the clip, at 1280, 1024 or 375. The cat
           // draws about a fifth smaller for it, which is the price of never
           // cutting him.
-          "camera-orbit": "-19deg 81deg 1.45m",
-          "camera-target": "0m 0.25m 0m",
+          "camera-orbit": framing.orbit,
+          "camera-target": framing.target,
           "min-camera-orbit": "auto 55deg 0.65m",
           "max-camera-orbit": "auto 95deg 2m",
           "field-of-view": "30deg",
@@ -280,7 +296,7 @@ export const CatModel = memo(function CatModel({
       viewer?.pause();
       viewer?.remove();
     };
-  }, [locale, text]);
+  }, [locale, text, framing]);
 
   return (
     <div
@@ -289,7 +305,7 @@ export const CatModel = memo(function CatModel({
       onPointerDown={() => reach(true)}
     >
       <Image
-        src={POSTER}
+        src={framing.poster}
         alt={status === "ready" ? "" : text.alt}
         fill
         // Load the fallback immediately. Where WebGL can replace it before

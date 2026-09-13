@@ -1,6 +1,7 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
+import { HomeCat } from "@/components/home-cat";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
@@ -63,47 +64,56 @@ export function SitePage({ locale }: { locale: Locale }) {
         />
       }
     >
-      <div className="space-y-1.5">
-        {/* 600, which is the weight of the card names in the grid under it
-            and the weight every page title on the site now carries. At 500
-            the title was the lighter of the two, so the page was headed by
-            something quieter than the rows it introduces. */}
-        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
-          {messages.heroTitle}
-        </h1>
-        {/* One wrapping line at every width, where this used to be a text
-            line with a full-width button stacked under it. It carries both
-            things the page has to say about itself: what is in it, and the
-            way out for someone who found an animal rather than wants one.
-            The second of those spent a whole horizontal rule of page on
-            the smaller of the two questions for as long as it was a block;
-            now that it is a line too (found-animal-button.tsx), the two
-            fit together and the hero is a heading and one line.
+      {/* The hero and, from md, the cat at its right end (home-cat.tsx).
+          items-end: his floor and the meta line share a baseline, and the
+          heading keeps its place above that line rather than centring
+          against the stage. He is taller than the row and rises through
+          the top padding, which is why his figure and not this row wears
+          the negative margin. */}
+      <div className="flex items-end justify-between gap-column-gap">
+        <div className="min-w-0 space-y-1.5">
+          {/* 600, which is the weight of the card names in the grid under it
+              and the weight every page title on the site now carries. At 500
+              the title was the lighter of the two, so the page was headed by
+              something quieter than the rows it introduces. */}
+          <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+            {messages.heroTitle}
+          </h1>
+          {/* One wrapping line at every width, where this used to be a text
+              line with a full-width button stacked under it. It carries both
+              things the page has to say about itself: what is in it, and the
+              way out for someone who found an animal rather than wants one.
+              The second of those spent a whole horizontal rule of page on
+              the smaller of the two questions for as long as it was a block;
+              now that it is a line too (found-animal-button.tsx), the two
+              fit together and the hero is a heading and one line.
 
-            Siblings with their own gates, and not one sentence. The meta
-            line needs a dataset, the way out needs a coverage table, and
-            folded into a single paragraph the found-animal link would have
-            disappeared every time the freshness line did. Only the
-            separator needs both, so it is the only part that asks for
-            both.
+              Siblings with their own gates, and not one sentence. The meta
+              line needs a dataset, the way out needs a coverage table, and
+              folded into a single paragraph the found-animal link would have
+              disappeared every time the freshness line did. Only the
+              separator needs both, so it is the only part that asks for
+              both.
 
-            flex-wrap, and the link renders in foreground ink with a
-            standing underline while the meta line stays muted. Sharing one
-            grey row, the link read as a second line of metadata on the
-            375px wrap -- and the person it exists for is scanning the top
-            of the page for something to act on, not reading captions. The
-            voice difference separates them better than the middot that
-            used to sit here and dangled at the wrap. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-          {dataset && shelters > 0 && (
-            <p>
-              {shelterCount(shelters, locale)} · {messages.listPublished}{" "}
+              flex-wrap, and the link renders in foreground ink with a
+              standing underline while the meta line stays muted. Sharing one
+              grey row, the link read as a second line of metadata on the
+              375px wrap -- and the person it exists for is scanning the top
+              of the page for something to act on, not reading captions. The
+              voice difference separates them better than the middot that
+              used to sit here and dangled at the wrap. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            {dataset && shelters > 0 && (
+              <p>
+                {shelterCount(shelters, locale)} · {messages.listPublished}{" "}
 
-              {verificationTime(dataset.generatedAt, locale)}
-            </p>
-          )}
-          {hasLookup && <FoundAnimalButton />}
+                {verificationTime(dataset.generatedAt, locale)}
+              </p>
+            )}
+            {hasLookup && <FoundAnimalButton />}
+          </div>
         </div>
+        <HomeCat locale={locale} />
       </div>
 
       <AnimalGrid

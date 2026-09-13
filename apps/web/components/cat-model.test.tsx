@@ -117,6 +117,15 @@ describe("the cat model", () => {
     expect(viewer.getAttribute("touch-action")).toBe("pan-y");
   });
 
+  it("frames the camera and the poster as one choice", async () => {
+    const framing = { orbit: "0deg 80deg 1m", target: "0m 0.2m 0m", poster: "/models/our-cat/poster-home.webp" };
+    render(<CatModel sizes="100vw" locale="en" framing={framing} />);
+    expect(screen.getByRole("img").getAttribute("src")).toContain("poster-home.webp");
+    const viewer = await loadViewer();
+    expect(viewer.getAttribute("camera-orbit")).toBe(framing.orbit);
+    expect(viewer.getAttribute("camera-target")).toBe(framing.target);
+  });
+
   it("puts the poster first only where it is the largest paint", () => {
     const lazy = new DOMParser().parseFromString(
       renderToStaticMarkup(<CatModel sizes="100vw" locale="sl" />), "text/html");

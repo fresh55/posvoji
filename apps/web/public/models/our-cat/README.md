@@ -1,6 +1,6 @@
 # About-page cat
 
-`cat.glb` is revision 26: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2.
+`cat.glb` is revision 26: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2. `poster-home.webp` is the same frame at the home page's closer framing (`HOME_CAT_FRAMING` in `components/home-cat.tsx`), captured from the loaded model on that page at device pixel ratio 2; re-render it whenever the model, the lighting or that framing changes.
 
 ## Single nose tap, revision 26
 

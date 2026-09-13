@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { I18nProvider } from "@/components/i18n-provider";
 import { SiteHeader } from "@/components/site-header";
 import type { Locale } from "@/lib/i18n";
+import { CARD_GRID_PAGE_MAX } from "@/lib/card-grid";
 import { CONTENT_ID } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
@@ -89,20 +90,18 @@ export function SiteShell({
           frame's edge: at 1440 they ended 80px short of the viewport on each
           side, and a rule that stops short reads as unfinished. So the two
           bands are the column's full width and centre their own contents on
-          the same max-w-7xl the frame here uses (site-header.tsx,
+          the same --page-max the frame here uses (site-header.tsx,
           site-footer.tsx). Below 1344px nothing changes, because the frame
           already reached the viewport there. */}
       {/* --page-max is set here rather than on the frame, because the header
           and footer bands are siblings of the frame and all three have to
-          read the same number. 100rem at 2xl is the width four card columns
-          need to stay the size three of them are at xl: the grid is the
-          frame less the 2rem gutters, the 14rem filter column and its 2rem
-          gap, and 1600 - 64 - 256 leaves 1280, which is four 308px cards and
-          three 1rem gaps. Below 2xl nothing moves. */}
+          read the same number. The value is CARD_GRID_PAGE_MAX, which
+          lib/card-grid.ts owns beside the column floor and the sizes bands it
+          has to agree with. Below 2xl nothing moves. */}
       <div
         className={cn(
           "flex min-h-dvh flex-col",
-          wide && "2xl:[--page-max:100rem]",
+          wide && CARD_GRID_PAGE_MAX,
         )}
       >
         {before}

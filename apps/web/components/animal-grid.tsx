@@ -12,7 +12,11 @@ import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { ClientAnimal } from "@/lib/animal";
 import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
-import { CARD_GRID, CARD_PHOTO_ASPECT } from "@/lib/card-grid";
+import {
+  CARD_GRID,
+  CARD_PHOTO_ASPECT,
+  CARD_PHOTO_RADIUS,
+} from "@/lib/card-grid";
 import {
   applyFilters,
   type FilterOption,
@@ -177,9 +181,14 @@ function ResultsPending() {
         {PENDING_CARDS.map((n) => (
           // The card's photo box, which at this size is most of the card,
           // with the same corners and the same shape, so the stand-in and the
-          // cards that replace it claim the same height. The shape comes from
-          // the constant the card itself uses rather than a copy of it.
-          <Skeleton key={n} className={cn(CARD_PHOTO_ASPECT, "rounded-xl")} />
+          // cards that replace it claim the same height. Both come from the
+          // constants the card itself uses rather than copies of them: the
+          // corner was a copy until it was not, and the two literals sat one
+          // step apart for a release with nothing to catch it.
+          <Skeleton
+            key={n}
+            className={cn(CARD_PHOTO_ASPECT, CARD_PHOTO_RADIUS)}
+          />
         ))}
       </div>
     </div>

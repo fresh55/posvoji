@@ -18,7 +18,11 @@ import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { CARD_PHOTO_ASPECT, CARD_PHOTO_SIZES } from "@/lib/card-grid";
+import {
+  CARD_PHOTO_ASPECT,
+  CARD_PHOTO_RADIUS,
+  CARD_PHOTO_SIZES,
+} from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
   ageLabel,
@@ -44,16 +48,10 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // The photo's own frame. Rounded on all four corners and not only the top
 // two, because nothing is drawn around it any more: the card stands on the
 // page ground, and the photo is the one shape on it (see the article below).
-// rounded-2xl is 18px on this site's scale, where the bordered surfaces sit at
-// rounded-ui's 10px. It was 14px, chosen when the picture was 228px wide; at
-// 309px that corner read timid, and a photograph is the one thing on the page
-// that can carry a generous one. A photograph is the largest rounded thing in the grid and
-// wants the larger corner; a 10px corner read as tight even on the 228px card
-// the narrower desktop bands still draw, and the xl card is 309px.
-//
-// The box itself is CARD_PHOTO_ASPECT, which lib/card-grid.ts owns because the
-// grid's loading skeleton and card-paint's height estimate have to agree with
-// it. Square at every width, and the reasoning is over there with it.
+// The corner and the box are CARD_PHOTO_RADIUS and CARD_PHOTO_ASPECT, which
+// lib/card-grid.ts owns because the grid's loading skeleton has to draw both
+// of them and card-paint's height estimate depends on the second. Their
+// reasoning is over there with them.
 //
 // The card's focus ring is drawn here, as an inset ring on a ::after that
 // covers the frame, whenever either of the card's links has keyboard focus.
@@ -85,8 +83,9 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
 const PHOTO_FRAME =
-  `relative ${CARD_PHOTO_ASPECT} overflow-hidden rounded-2xl bg-muted` +
-  " after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-2xl" +
+  `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
+  " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
+  ` after:${CARD_PHOTO_RADIUS}` +
   " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
@@ -536,8 +535,9 @@ export function AnimalCard({
             {shelterChipLabel(animal.shelter.name)}
           </span>
           {/* The chevron appears when a pointer or the keyboard is already
-              on the card. At rest the icon and the muted line are enough,
-              and on touch, where hover never fires, the whole row is the
+              on the card. At rest the muted line is enough on its own, now
+              that the house that used to sit beside it is gone, and on
+              touch, where hover never fires, the whole row is the
               affordance. */}
           <ChevronRight
             aria-hidden

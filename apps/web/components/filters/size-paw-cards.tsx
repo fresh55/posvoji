@@ -9,7 +9,6 @@ import {
   FilterCardIconWell,
   FilterCardMark,
   FilterCardTail,
-  FilterSelectionMark,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -457,21 +456,19 @@ export function SizePawCards({
                   />
                 </m.span>
               )}
-              {sheet ? (
-                <FilterSelectionMark
-                  checked={checked}
-                  // The check confirms once the paw is down, not while it
-                  // falls.
-                  appearDelay={landing.checkDelay}
-                  className="absolute right-1.5 top-1.5"
-                />
-              ) : (
-                <FilterCardMark
-                  layout={layout}
-                  checked={checked}
-                  appearDelay={landing.checkDelay}
-                />
-              )}
+              {/* One call for both surfaces. The sheet arm used to spell
+                  FilterSelectionMark with "absolute right-1.5 top-1.5", which
+                  is markClass("sheet") character for character, so the two
+                  branches rendered the same element and the tile's check had
+                  quietly acquired a second owner.
+
+                  The delay is the paw's: the check confirms once it is down,
+                  not while it falls. */}
+              <FilterCardMark
+                layout={layout}
+                checked={checked}
+                appearDelay={landing.checkDelay}
+              />
               <PawWell
                 layout={layout}
                 checked={checked}

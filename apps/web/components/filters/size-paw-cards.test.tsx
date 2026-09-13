@@ -230,9 +230,9 @@ describe("SizePawCards sleeping paw", () => {
     const deadButton = screen.getByRole("button", {
       name: new RegExp(`^${options[0].label}, `),
     });
-    const deadIcon = deadButton.querySelector(
-      "svg.lucide-paw-print:not(.size-12)",
-    );
+    // These render at the sidebar default, where there is no watermark paw to
+    // tell the real one apart from, so the selector says only what it means.
+    const deadIcon = deadButton.querySelector("svg.lucide-paw-print");
     expect(deadIcon?.getAttribute("class")).toContain("rotate-[20deg]");
     expect(deadIcon?.getAttribute("class")).toContain("opacity-80");
   });
@@ -243,9 +243,7 @@ describe("SizePawCards sleeping paw", () => {
     const liveButton = screen.getByRole("button", {
       name: new RegExp(`^${options[0].label}, `),
     });
-    const liveIcon = liveButton.querySelector(
-      "svg.lucide-paw-print:not(.size-12)",
-    );
+    const liveIcon = liveButton.querySelector("svg.lucide-paw-print");
     expect(liveIcon?.getAttribute("class")).not.toContain("rotate-[20deg]");
   });
 });

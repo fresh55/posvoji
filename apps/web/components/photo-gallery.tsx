@@ -650,7 +650,11 @@ export function PhotoGallery({
       // saturation and this brightness are two nested filters rather than two
       // utilities competing on one element.
       className={cn(
-        "object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
+        // Both properties named in one utility, because that is what a
+        // transition is: one property on the element. AnimalPhoto fades a
+        // photo in when it lands after hydration, and transition-transform on
+        // its own merged that fade away (see the class list there).
+        "object-cover motion-safe:transition-[transform,opacity] motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
         cardSurface && "dark:brightness-90",
       )}
     />

@@ -172,6 +172,20 @@ describe("photo gallery candidates", () => {
     ).toBeNull();
   });
 
+  it("keeps the hover zoom and the arrival fade on one transition", () => {
+    setup({ images: CACHED });
+
+    // Two transition utilities on one element are one property, and cn merges
+    // them: transition-transform alone swallowed the fade AnimalPhoto writes,
+    // and the photo went back to cutting in the moment the file landed.
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    expect(photo?.className).toContain(
+      "motion-safe:transition-[transform,opacity]",
+    );
+    expect(photo?.className).toContain("motion-safe:data-[arriving]:opacity-0");
+    expect(photo?.className).not.toContain("motion-safe:transition-transform");
+  });
+
   it("preloads the rung the layout would pick, not the largest file", () => {
     const preloads = capturePreloads();
     setup({ images: CACHED });

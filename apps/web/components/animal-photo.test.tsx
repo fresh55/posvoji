@@ -1,11 +1,23 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalPhoto } from "@/components/animal-photo";
 import type { PermittedPhoto } from "@/lib/animal-images";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+// Whether the file is already in hand when the element is handed over. jsdom
+// fetches nothing, so every image it makes is incomplete forever; this is the
+// one fact the fade is decided on, so each test says which case it is about.
+function arrivesLater(later: boolean) {
+  vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(
+    !later,
+  );
+}
 
 const SIZES = "(max-width: 639px) 50vw, 15rem";
 
@@ -232,6 +244,50 @@ describe("AnimalPhoto loading", () => {
     const { img } = draw({ eager: true, loading: "lazy" });
     expect(img.getAttribute("loading")).toBe("eager");
     expect(img.getAttribute("fetchpriority")).toBe("high");
+  });
+});
+
+describe("AnimalPhoto arrival", () => {
+  it("marks a photo that is still on its way", () => {
+    arrivesLater(true);
+    const { img } = draw();
+
+    // The mark is the opacity, and taking it off is the fade. Nothing here is
+    // in the server's markup: the ref that writes it runs on the client.
+    expect(img.dataset.arriving).toBe("true");
+    expect(img.className).toContain("motion-safe:data-[arriving]:opacity-0");
+    // Under a reduced-motion setting neither the mark nor the transition
+    // applies, so the photo is simply there.
+    expect(img.className).toContain("motion-safe:transition-opacity");
+  });
+
+  it("leaves a photo that is already in hand alone", () => {
+    // The warm cache, which is most of them: a photo that is complete when the
+    // element is handed over never waited, so there is nothing to fade in.
+    arrivesLater(false);
+    expect(draw().img.dataset.arriving).toBeUndefined();
+  });
+
+  it("takes the mark off when the photo lands", () => {
+    arrivesLater(true);
+    const { img } = draw();
+    fireEvent.load(img);
+
+    expect(img.dataset.arriving).toBeUndefined();
+  });
+
+  it("leaves the failure handling as it was", () => {
+    // The fade rides on the same two handlers the failure does, so a photo
+    // that errors still goes out of the box and still comes back.
+    arrivesLater(true);
+    const { img } = draw();
+    fireEvent.error(img);
+    expect(img.hidden).toBe(true);
+    expect(img.dataset.broken).toBe("true");
+
+    fireEvent.load(img);
+    expect(img.hidden).toBe(false);
+    expect(img.dataset.arriving).toBeUndefined();
   });
 });
 

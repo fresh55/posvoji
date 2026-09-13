@@ -83,6 +83,19 @@ type AnimalPhotoProps = {
 // state, and the first paint is already anchored.
 const SUBJECT_OBJECT_POSITION = "50% 20%";
 
+// Marks a photo that had not arrived when the element was handed over, which
+// the load handler below takes off again. See the class list on the <img>: the
+// mark is opacity 0 and its removal is a short fade, so a file landing after
+// hydration arrives as one picture rather than cutting in over the placeholder.
+//
+// Hoisted rather than written inline, so it is one function and not a new one
+// per render: React re-runs a ref whose identity changed, and inline this ran
+// again on every state change here, re-marking a photo the load had just
+// cleared.
+function markArriving(node: HTMLImageElement | null) {
+  if (node && !node.complete) node.dataset.arriving = "true";
+}
+
 export function AnimalPhoto({
   photo,
   alt,
@@ -133,6 +146,12 @@ export function AnimalPhoto({
       loading={eager ? "eager" : loading}
       fetchPriority={eager ? "high" : undefined}
       decoding="async"
+      // Written to the node and never to the server's markup, which is what
+      // keeps the fade out of hydration. A photo that is already complete when
+      // this runs, which is every photo a warm cache serves, is never marked
+      // and never fades: the mark is only ever about the wait. See
+      // markArriving above.
+      ref={markArriving}
       // A photo that fails to arrive (a cached copy renamed under a stale
       // page, a shelter file gone) would otherwise sit as a broken image over
       // the box's own ground. Hidden, the ground shows instead, which is the
@@ -151,12 +170,30 @@ export function AnimalPhoto({
       // load that lands afterwards is that failure being over. Only the source
       // being complained about clears it, so a photo arriving somewhere else in
       // the set cannot take the line off a different one.
+      // It is also where the photo the ref above marked stops waiting, which
+      // is the fade.
       onLoad={(event) => {
         event.currentTarget.hidden = false;
         delete event.currentTarget.dataset.broken;
+        delete event.currentTarget.dataset.arriving;
         setFailedSrc((current) => (current === photo.src ? null : current));
       }}
-      className={cn("absolute inset-0 size-full", className)}
+      // The fade is written as utilities here rather than as a rule of its own,
+      // and it is the caller's class list that decides whether it survives: cn
+      // merges the two, and two transition utilities on one element are one
+      // property, not two. The grid card animates the hover zoom on this same
+      // image, so it names both properties at once
+      // (motion-safe:transition-[transform,opacity] in photo-gallery.tsx); a
+      // caller that names transform alone would take the fade off without
+      // saying so.
+      //
+      // motion-safe on the mark as well as on the transition, so a visitor who
+      // asked for less motion gets the photo at once rather than an untransitioned
+      // jump from an invisible one.
+      className={cn(
+        "absolute inset-0 size-full motion-safe:transition-opacity motion-safe:duration-200 motion-safe:data-[arriving]:opacity-0",
+        className,
+      )}
       style={objectPosition ? { objectPosition } : undefined}
     />
   );

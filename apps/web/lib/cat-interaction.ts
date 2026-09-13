@@ -415,8 +415,9 @@ export function createCatInteraction(viewer: ModelViewerElement, canAnimate: () 
 
   return {
     syncPlayback,
-    /** A reaction the page asks for, as a tap would. Ignored while the cat is
-     *  busy or asleep, so it can never interrupt a routine mid-clip. */
+    /** A reaction the page or its stage asks for, as a tap would. Ignored
+     *  while the cat is busy or asleep, so it can never interrupt a routine
+     *  mid-clip, and the first caller after a load therefore wins. */
     react(name: CatReaction) {
       if (sleepState !== "awake" || reaction || switching || pendingTap || routineBusy()) return false;
       startReaction(name);

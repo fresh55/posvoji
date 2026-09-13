@@ -1,10 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { ModelViewerElement } from "@google/model-viewer";
 
+/** The box the poster and the viewer share, the cat's only handle in the DOM. */
+function stage(page: Page) {
+  return page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..");
+}
 async function load(page: Page) {
   await page.goto("/o-nas");
   // The viewer does not exist until its stage enters the viewport on phones.
-  await page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..").scrollIntoViewIfNeeded();
+  await stage(page).scrollIntoViewIfNeeded();
   const model = page.locator("model-viewer");
   await model.scrollIntoViewIfNeeded();
   await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).loaded)).toBe(true);
@@ -42,16 +46,14 @@ test("the stage says he is loading until he can be touched, and he answers a tou
     await route.continue();
   });
   await page.goto("/vstop");
-  const stage = page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..");
-  // The stage's own label, not the camera-position status model-viewer
-  // keeps in its shadow root once it is up.
-  const status = stage.locator(':scope > [role="status"]');
+  const poster = stage(page);
+  const status = page.locator('[data-slot="cat-status"]');
   const opacity = () => status.evaluate(e => getComputedStyle(e).opacity);
   await expect(status).toHaveText(/še nalaga/);
-  await expect(stage).toHaveCSS("cursor", "progress");
+  await expect(poster).toHaveCSS("cursor", "progress");
   // Nothing is drawn for a visitor who has not reached for him.
   expect(await opacity()).toBe("0");
-  const box = (await stage.boundingBox())!;
+  const box = (await poster.boundingBox())!;
   const x = box.x + box.width / 2, y = box.y + box.height / 2;
   if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
   await expect.poll(opacity).toBe("1");
@@ -60,7 +62,7 @@ test("the stage says he is loading until he can be touched, and he answers a tou
   await clip(model, "Notice");
   await expect(status).toHaveText("");
   await expect.poll(opacity).toBe("0");
-  await expect(stage).not.toHaveCSS("cursor", "progress");
+  await expect(poster).not.toHaveCSS("cursor", "progress");
 });
 
 test("anatomical taps use the proxy instead of the full mesh and rapid repeats finish before returning to idle", async ({ page, isMobile }) => {

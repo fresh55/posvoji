@@ -326,11 +326,27 @@ const sl = {
   muniInjured:
     "Poškodovane živali ne premikaj na silo. Če se ji ni varno približati, ostani na razdalji.",
   // The card's heading is the action, and the shelter under it is the one
-  // to take it with: the nearest that has a number. muniNearestTitle is the
-  // heading only when none on the shortlist has one, which the register does
-  // not produce today (two of its seventeen shelters have no phone).
-  muniNearestCall: "Pokliči najbližje zavetišče",
+  // to take it with: the nearest that has a number. It does not say "the
+  // nearest", because that shelter is not always the nearest one. Two of the
+  // register's seventeen shelters publish no number, and in Bovec the nearest
+  // is one of them: the heading sat over a shelter 49 km away while the one
+  // at 21 km was on the list below it. muniNearestTitle is the heading only
+  // when nothing on the shortlist has a number at all, and then there is no
+  // call to put first.
+  muniNearestCall: "Najprej pokliči",
   muniNearestTitle: "Najbližja zavetišča",
+  // How far the shelter is, and what kind of distance that is. Measured
+  // between the občina's centroid and the shelter's town, in a straight line,
+  // so a road distance is longer and this number is never a driving time.
+  // "zračno" is the short form of "zračna razdalja" and is what fits beside a
+  // town name on a phone. The space before the unit is non-breaking, so a
+  // narrow column can wrap the qualifier away but never the number from its
+  // kilometres.
+  muniStraightLine: "{km}\u00a0km zračno",
+  // In place of the button, on a shortlist row for a shelter the register has
+  // no number for. Says which of the two it is: a number nobody published,
+  // not a page that failed to draw it.
+  muniNoNumber: "brez objavljene številke",
   // Only the script for the call. The line over the card has already said
   // that nothing is verified, and the note used to say it again in other
   // words three lines later: the one sentence on the card that said nothing
@@ -643,8 +659,10 @@ const en: Messages = {
   muniCostSource: "Animal Protection Act, Article 31",
   muniInjured:
     "Do not force an injured animal to move. Keep your distance if it is unsafe to approach.",
-  muniNearestCall: "Call the nearest shelter",
+  muniNearestCall: "Call first",
   muniNearestTitle: "Nearest shelters",
+  muniStraightLine: "{km}\u00a0km straight line",
+  muniNoNumber: "no published number",
   muniNearestNote: "Ask who will collect the animal.",
   muniNearestOthers: "If there is no answer",
   muniNearest: "nearest shelter",

@@ -687,26 +687,27 @@ describe("MunicipalityFinder without a verified shelter", () => {
     // The heading is the action, the note is the script for it and says
     // nothing the line above the card already said, and the nearest
     // shelter's number is the card's one primary call, in the coverage
-    // card's own words.
-    const heading = screen.getByText("Pokliči najbližje zavetišče");
+    // card's own words. The distance says what kind of distance it is.
+    const heading = screen.getByText("Najprej pokliči");
     const note = screen.getByText("Vprašaj, kdo prevzame žival.");
     expect(heading.closest('[data-slot="card"]')?.textContent).not.toMatch(
       /ni potrjeno|ni preverjen/,
     );
     const call = screen.getByRole("link", { name: "Pokliči 02 480 16 60" });
     expect(call.getAttribute("href")).toMatch(/^tel:/);
-    expect(screen.getByText("Maribor · 36 km")).toBeTruthy();
+    expect(screen.getByText("Maribor · 36 km zračno")).toBeTruthy();
 
     // The rest of the shortlist under a label that says when it is for,
-    // each number a control of its own; a shelter without a number keeps
-    // its name and its page and gets no button.
+    // each number a control of its own. The label is an instruction, so
+    // only the shelters that answer a phone stand under it; the one without
+    // a number comes after them, keeping its name and its page and saying
+    // in the button's place why there is none.
     const label = screen.getByText("Če se ne oglasijo");
     const fallback = screen.getByRole("link", { name: "03 749 06 00" });
-    expect(
-      screen
-        .getByRole("link", { name: "Zavetišče Mala hiša" })
-        .getAttribute("href"),
-    ).toBe("/zavetisca/mala-hisa");
+    const unlisted = screen.getByRole("link", { name: "Zavetišče Mala hiša" });
+    expect(unlisted.getAttribute("href")).toBe("/zavetisca/mala-hisa");
+    expect(screen.getByText("brez objavljene številke")).toBeTruthy();
+    expect(follows(fallback, unlisted)).toBe(true);
     expect(screen.getAllByRole("link", { name: /^\d/ })).toHaveLength(1);
 
     // The občina is the last resort, under the list, and the general
@@ -741,8 +742,13 @@ describe("MunicipalityFinder without a verified shelter", () => {
     expect(
       screen.getByRole("link", { name: "Pokliči 02 480 16 60" }),
     ).toBeTruthy();
-    // The nearer shelter is still on the list, as a row without a button.
-    expect(screen.getByRole("link", { name: "Zavetišče Mala hiša" })).toBeTruthy();
+    // The nearer shelter is still on the list, as a row without a button,
+    // and it sits after the one number the fallback group does hold.
+    const unlisted = screen.getByRole("link", { name: "Zavetišče Mala hiša" });
+    expect(unlisted).toBeTruthy();
+    expect(
+      follows(screen.getByRole("link", { name: "03 749 06 00" }), unlisted),
+    ).toBe(true);
     expect(onAnswer).toHaveBeenLastCalledWith({
       municipality: "Cirkulane",
       shelters: ["mala-hisa", "maribor", "zonzani"],
@@ -751,10 +757,81 @@ describe("MunicipalityFinder without a verified shelter", () => {
     });
   });
 
+  // Bovec, from the real register: Johanca is the nearest shelter and has no
+  // published number, and the nearest one that has is 28 km further on. The
+  // heading used to say "call the nearest shelter" over the far one while the
+  // near one sat under "if there is no answer" with nothing to press.
+  it("puts the first call on the nearest shelter that has a number", () => {
+    const onAnswer = vi.fn();
+    render(
+      <I18nProvider locale="sl">
+        <MunicipalityFinder
+          entries={[
+            ...ENTRIES,
+            {
+              name: "Bovec",
+              coverage: [],
+              nearest: [
+                {
+                  shelterId: "johanca",
+                  shelterName: "Zavetišče Johanca",
+                  city: "Tolmin",
+                  detailHref: "/zavetisca/johanca",
+                  km: 21,
+                },
+                {
+                  shelterId: "oskar",
+                  shelterName: "Zavetišče Oskar Vitovlje",
+                  city: "Vitovlje",
+                  phone: "05 307 85 70",
+                  detailHref: "/zavetisca/oskar",
+                  km: 49,
+                },
+              ],
+            },
+          ]}
+          onAnswer={onAnswer}
+        />
+      </I18nProvider>,
+    );
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Bovec" },
+    });
+
+    // The call is the far shelter's, and the heading over it does not call
+    // that shelter the nearest one.
+    const heading = screen.getByText("Najprej pokliči");
+    const call = screen.getByRole("link", { name: "Pokliči 05 307 85 70" });
+    expect(call.getAttribute("href")).toMatch(/^tel:/);
+    expect(screen.getByText("Vitovlje · 49 km zračno")).toBeTruthy();
+
+    // Nothing else on the shortlist answers a phone, so the label that says
+    // when to try the next number is not drawn at all.
+    expect(screen.queryByText("Če se ne oglasijo")).toBeNull();
+
+    // The nearer shelter is named after the call, with its page and the
+    // reason it carries no button, and it is not a second tel: link.
+    const johanca = screen.getByRole("link", { name: "Zavetišče Johanca" });
+    expect(johanca.getAttribute("href")).toBe("/zavetisca/johanca");
+    expect(screen.getByText("Tolmin · 21 km zračno")).toBeTruthy();
+    expect(screen.getByText("brez objavljene številke")).toBeTruthy();
+    expect(follows(heading, johanca)).toBe(true);
+    expect(follows(call, johanca)).toBe(true);
+    expect(document.querySelectorAll('a[href^="tel:"]')).toHaveLength(1);
+
+    // And the map rings the shelter the card says to call, not the nearest.
+    expect(onAnswer).toHaveBeenLastCalledWith({
+      municipality: "Bovec",
+      shelters: ["johanca", "oskar"],
+      spotlight: ["oskar"],
+      verified: false,
+    });
+  });
+
   it("falls back to the občina alone when there is nothing near to call", () => {
     const onAnswer = renderCirkulane([]);
 
-    expect(screen.queryByText("Pokliči najbližje zavetišče")).toBeNull();
+    expect(screen.queryByText("Najprej pokliči")).toBeNull();
     expect(screen.queryByText("Najbližja zavetišča")).toBeNull();
     expect(
       screen.getByText(/^Pokliči občino, kjer je bila žival najdena/),

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import {
   ExternalLink,
@@ -58,6 +59,36 @@ const MAX_MATCHES = 8;
 type Ask = { query: string; picked: string | null };
 
 const NOT_ASKED: Ask = { query: "", picked: null };
+
+/** One shelter on the shortlist under the first call: who it is, where it is
+ *  and how far, and then whatever can be done with it. The trailing control
+ *  comes from the caller, because half of these rows have a number to press
+ *  and the other half have to say that there is none. */
+function NearestRow({
+  shelter,
+  children,
+}: {
+  shelter: NearbyShelter;
+  children: ReactNode;
+}) {
+  const { t } = useI18n();
+  return (
+    <li className="flex items-center justify-between gap-3 py-2.5 last:pb-0">
+      <span className="min-w-0 text-sm">
+        <a
+          href={shelter.detailHref}
+          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+        >
+          {shelter.shelterName}
+        </a>
+        <span className="block text-muted-foreground">
+          {shelter.city} ·&nbsp;{t("muniStraightLine", { km: shelter.km })}
+        </span>
+      </span>
+      {children}
+    </li>
+  );
+}
 
 // The found-animal lookup: say where the animal was found and get the shelter
 // responsible for it and what to do next. The občina
@@ -303,6 +334,16 @@ export function MunicipalityFinder({
   const others = active
     ? active.nearest.filter((shelter) => shelter.shelterId !== hero?.shelterId)
     : [];
+  // The rest of the shortlist, in two groups. "Če se ne oglasijo" is an
+  // instruction, and an instruction has to be followable: only the shelters
+  // with a number belong under it. The others are still worth naming, because
+  // a shelter 21 km away is the one an občina is likeliest to be under
+  // contract with, but what they offer is a page and not a call.
+  const callable = others.filter(
+    (shelter): shelter is NearbyShelter & { phone: string } =>
+      Boolean(shelter.phone),
+  );
+  const unlisted = others.filter((shelter) => !shelter.phone);
 
   useEffect(() => {
     if (!active) {
@@ -642,9 +683,10 @@ export function MunicipalityFinder({
             // somebody standing over an animal can act on, and a shelter
             // knows whose contract an občina is under. The registry's rule,
             // that none of them is offered as responsible, is kept by the
-            // line over the card and by the heading's own word, "nearest";
-            // the note under the heading is only the script for the call.
-            // The občina is the last resort, under the list.
+            // line over the card, which says the responsibility is not
+            // verified, and by the note under the heading, which asks the
+            // shelter who collects the animal rather than telling the reader
+            // it is them. The občina is the last resort, under the list.
             //
             // The block used to open with a link to UVHVVR, the office that
             // keeps the register of shelters. gov.si publishes no list at any
@@ -682,7 +724,7 @@ export function MunicipalityFinder({
                           {hero.shelterName}
                         </a>
                         <span className="block text-muted-foreground">
-                          {hero.city} ·&nbsp;{hero.km}&nbsp;km
+                          {hero.city} ·&nbsp;{t("muniStraightLine", { km: hero.km })}
                         </span>
                       </p>
                       {/* 44px tall below lg, like the pills under it: the
@@ -697,50 +739,52 @@ export function MunicipalityFinder({
                     </div>
                   )}
 
-                  {others.length > 0 && (
+                  {callable.length > 0 && (
                     <div className="space-y-1">
-                      {hero && (
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {messages.muniNearestOthers}
-                        </p>
-                      )}
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {messages.muniNearestOthers}
+                      </p>
                       <ul className="divide-y">
-                        {others.map((shelter) => (
-                          <li
+                        {callable.map((shelter) => (
+                          <NearestRow
                             key={shelter.shelterId}
-                            className="flex items-center justify-between gap-3 py-2.5 last:pb-0"
+                            shelter={shelter}
                           >
-                            <span className="min-w-0 text-sm">
-                              <a
-                                href={shelter.detailHref}
-                                className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
-                              >
-                                {shelter.shelterName}
-                              </a>
-                              <span className="block text-muted-foreground">
-                                {shelter.city} ·&nbsp;{shelter.km}&nbsp;km
-                              </span>
-                            </span>
                             {/* The number is the control here too, and its
                                 label is the number itself: a phone borrowed
                                 to make the call needs it read out. 44px
                                 tall below lg. */}
-                            {shelter.phone && (
-                              <Button
-                                asChild
-                                variant="outline"
-                                className="max-lg:h-11"
-                              >
-                                <a href={telHref(shelter.phone)}>
-                                  <Phone aria-hidden />
-                                  {shelter.phone}
-                                </a>
-                              </Button>
-                            )}
-                          </li>
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="max-lg:h-11"
+                            >
+                              <a href={telHref(shelter.phone)}>
+                                <Phone aria-hidden />
+                                {shelter.phone}
+                              </a>
+                            </Button>
+                          </NearestRow>
                         ))}
                       </ul>
                     </div>
+                  )}
+
+                  {/* After the group that can be rung, because nothing here
+                      answers "če se ne oglasijo". The row stays a row: the
+                      name links to the shelter's page, which carries whatever
+                      else the register holds, and the place the button would
+                      be says why there is none. */}
+                  {unlisted.length > 0 && (
+                    <ul className="divide-y">
+                      {unlisted.map((shelter) => (
+                        <NearestRow key={shelter.shelterId} shelter={shelter}>
+                          <span className="shrink-0 text-sm text-muted-foreground">
+                            {messages.muniNoNumber}
+                          </span>
+                        </NearestRow>
+                      ))}
+                    </ul>
                   )}
                 </>
               )}

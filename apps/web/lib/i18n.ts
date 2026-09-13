@@ -33,10 +33,18 @@ const sl = {
   // page. {date} comes from registerDateLabel, numeric in Slovenian, so there
   // is no month name here to decline.
   footerUpdated: "Seznam objavljen {date}. Čas preverjanja je naveden pri posamezni živali.",
-  sourceVerified: "Objava pri viru preverjena:",
+  // One footnote line under the shelter box: the provider's own credit
+  // ("Vir: Zavetišče X"), a dot, then this word and a date. The minute and
+  // the "(Ljubljana)" suffix went with the time: nobody deciding whether to
+  // drive to a shelter needs either, and the timezone only existed because
+  // the minute was printed.
+  sourceVerified: "Preverjeno",
   listPublished: "Seznam objavljen",
-  sourceVerificationUnknown: "čas ni znan",
-  sourceVerificationOld: "Preverjanje je starejše ali ni potrjeno. Pred obiskom preverite razpoložljivost pri zavetišču.",
+  sourceVerificationUnknown: "Čas preverjanja ni znan",
+  // The action first, the reason second. The old order led with the caveat
+  // and the visitor read a warning under the one button that mattered.
+  sourceVerificationOld:
+    "Pred obiskom preverite pri zavetišču, ali je žival še na voljo. Zadnje preverjanje je starejše od enega dne ali ni znano.",
   // The line the contact address follows, on every page rather than only on
   // /o-nas. A wrong listing is the likeliest reason anyone writes, and the
   // page it is wrong on is not the about page. The address itself stays the
@@ -120,6 +128,14 @@ const sl = {
   // "Brez imena v zavetišču čaka" reads as a phrase, not as a subject, so an
   // animal the shelter left unnamed keeps the sentence it had.
   longStayUnnamed: "V zavetišču čaka že {duration}.",
+  // For an animal that came in before its first birthday, the age pill and
+  // the plea print the same number, and a reader who notices reads it as a
+  // bug rather than as a life. The tail says which it is. "Skoraj", because
+  // the gate is an arrival age under a year, not a birth in the shelter.
+  longStayWholeLife:
+    "{name} v zavetišču čaka že {duration}, skoraj vse svoje življenje.",
+  longStayWholeLifeUnnamed:
+    "V zavetišču čaka že {duration}, skoraj vse svoje življenje.",
   // A label, not a plea. The dialog's longStay above is the plea, and it has a
   // sentence, the animal's name and the listing button beside it: that is
   // where it can do something. On a card the same words repeat twenty times a
@@ -133,7 +149,21 @@ const sl = {
   // what pays for it: it is the one thing on a card about a shelter's animal
   // that every card already says.
   longStayMark: "Čaka {duration}",
-  healthAllClear: "Vse zdravstveno urejeno ({count}/{count})",
+  // No "(5/5)": the count was the same token twice, so it could never say
+  // anything, and it read as a smaller record for a dog (3/3) than for a cat.
+  // And no "vse": the badge stands for five procedures for a cat and three for
+  // a dog, not for everything a vet could ever say about the animal.
+  // "Veterinarsko urejeno" is the word the shelters use for exactly that set,
+  // impersonal like the toggles beside it.
+  healthAllClear: "Veterinarsko urejeno",
+  // A cat whose FIV or FeLV result is missing shows three green pills and
+  // nothing about the two a visitor with a resident cat is looking for. The
+  // gap is named, in the same dashed dress as an unanswered household
+  // question, and never for sterilisation, vaccination or the chip, which a
+  // shelter does before adoption anyway.
+  healthUnknownFivFelv: "Ni podatka o FIV in FeLV",
+  healthUnknownFiv: "Ni podatka o FIV",
+  healthUnknownFelv: "Ni podatka o FeLV",
   showHealthDetails: "Pokaži podrobnosti",
   readMore: "Preberi več",
   showLess: "Pokaži manj",
@@ -514,13 +544,17 @@ const sl = {
   goodWithNoKids: "Raje brez otrok",
   goodWithNoDogs: "Raje brez psov",
   goodWithNoCats: "Raje brez mačk",
-  goodWithUnknownKids: "Otroci: ni znano",
-  goodWithUnknownDogs: "Psi: ni znano",
-  goodWithUnknownCats: "Mačke: ni znano",
+  // The same register as the yes and the no beside them: a sentence, not a
+  // colon label, so the third pill does not read as the one that failed.
+  goodWithUnknownKids: "Ni podatka o otrocih",
+  goodWithUnknownDogs: "Ni podatka o psih",
+  goodWithUnknownCats: "Ni podatka o mačkah",
   hintGoodWithKids: "Zavetišče presoja, da se {name} razume z otroki.",
   hintGoodWithDogs: "Zavetišče presoja, da se {name} razume s psi.",
   hintGoodWithCats: "Zavetišče presoja, da se {name} razume z mačkami.",
   home: "Dom",
+  // The requirements list's own name; it shared "Dom" with the apartment row.
+  adoptionRequirements: "Pogoji posvojitve",
   resetHomeFilters: "Ponastavi filter doma",
   homeFilterHint:
     "Prikaži živali z izrecno navedenimi zahtevami glede doma.",
@@ -537,8 +571,10 @@ const sl = {
     "Prikaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
   careOutcome:
     "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
-  specialNeedsNote:
-    "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
+  // A pill, so a label and not the sentence it used to be: the words the care
+  // filter already uses, so the control a visitor ticked and the badge they
+  // then read say the same thing.
+  specialNeedsLabel: "Potrebuje potrpežljivega človeka",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -557,10 +593,11 @@ const en: Messages = {
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
   footerUpdated: "List published {date}. Each animal shows when its source was checked.",
-  sourceVerified: "Source listing checked:",
+  sourceVerified: "Checked",
   listPublished: "List published",
-  sourceVerificationUnknown: "time unknown",
-  sourceVerificationOld: "Verification is older or unconfirmed. Check availability with the shelter before visiting.",
+  sourceVerificationUnknown: "Check time unknown",
+  sourceVerificationOld:
+    "Before visiting, check with the shelter that the animal is still available. The last check is over a day old or unknown.",
   footerContact: "A correction or a question?",
   moreInformation: "More information",
   footerLinks: "Footer links",
@@ -606,8 +643,15 @@ const en: Messages = {
   factOrigin: "Found in",
   longStay: "{name} has been waiting in the shelter for {duration}.",
   longStayUnnamed: "At the shelter for {duration} now.",
+  longStayWholeLife:
+    "{name} has been waiting in the shelter for {duration}, almost its whole life.",
+  longStayWholeLifeUnnamed:
+    "At the shelter for {duration} now, almost its whole life.",
   longStayMark: "Waiting {duration}",
-  healthAllClear: "Full health record ({count}/{count})",
+  healthAllClear: "Vet care complete",
+  healthUnknownFivFelv: "No data on FIV and FeLV",
+  healthUnknownFiv: "No data on FIV",
+  healthUnknownFelv: "No data on FeLV",
   showHealthDetails: "Show details",
   readMore: "Read more",
   showLess: "Show less",
@@ -797,13 +841,14 @@ const en: Messages = {
   goodWithNoKids: "Better without kids",
   goodWithNoDogs: "Better without dogs",
   goodWithNoCats: "Better without cats",
-  goodWithUnknownKids: "Kids: not known",
-  goodWithUnknownDogs: "Dogs: not known",
-  goodWithUnknownCats: "Cats: not known",
+  goodWithUnknownKids: "No data on kids",
+  goodWithUnknownDogs: "No data on dogs",
+  goodWithUnknownCats: "No data on cats",
   hintGoodWithKids: "The shelter judges that {name} gets on with children.",
   hintGoodWithDogs: "The shelter judges that {name} gets on with dogs.",
   hintGoodWithCats: "The shelter judges that {name} gets on with cats.",
   home: "Home",
+  adoptionRequirements: "Adoption conditions",
   resetHomeFilters: "Reset the home filter",
   homeFilterHint:
     "Show animals with explicitly reported home requirements.",
@@ -817,8 +862,7 @@ const en: Messages = {
     "Show animals with explicitly reported adoption or care requirements.",
   careOutcome:
     "Showing animals with an explicitly reported care requirement. {count} of {total}.",
-  specialNeedsNote:
-    "This animal needs a patient person and a little more time.",
+  specialNeedsLabel: "Needs a patient person",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

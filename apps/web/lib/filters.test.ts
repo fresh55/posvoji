@@ -514,8 +514,9 @@ describe("pruneHiddenFilters", () => {
 });
 
 describe("togglesAskedOf", () => {
-  // The denominator of the dialog's "Vse zdravstveno urejeno (n/n)". A dog was
-  // never asked the two cat questions, so it is not two answers short.
+  // What the dialog folds to "Veterinarsko urejeno" once all of it is
+  // answered. A dog was never asked the two cat questions, so it is not two
+  // answers short.
   it("asks a cat every question and a dog only the shared three", () => {
     expect(togglesAskedOf("cat").map((t) => t.key)).toEqual([
       "sterilizacija",

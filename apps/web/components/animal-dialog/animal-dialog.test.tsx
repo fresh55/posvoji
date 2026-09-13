@@ -55,6 +55,16 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+// The edge arrows carry a tooltip, and Radix measures its arrow with an
+// observer jsdom does not ship.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  NoopResizeObserver as unknown as typeof ResizeObserver;
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -627,7 +637,7 @@ describe("animal dialog", () => {
 
     const dialog = await screen.findByRole("dialog");
     const summary = within(dialog).getByRole("button", {
-      name: /Vse zdravstveno urejeno \(5\/5\)/,
+      name: /Veterinarsko urejeno/,
     });
     expect(within(dialog).queryByText("Sterilizacija")).toBeNull();
 
@@ -2115,6 +2125,58 @@ describe("animal dialog", () => {
     expect(buttons.at(-2)).toBe(previous);
     expect(buttons.at(-1)).toBe(next);
     expect(buttons[0]).not.toBe(previous);
+  });
+
+  // A round chevron drawn half outside the dialog, beside a fan that counts
+  // its photos, is the lightbox idiom: clicked for the next picture, it hands
+  // over a different animal. The label is what says so first, and it prints
+  // the button's own name, so the description Radix hangs on a trigger is
+  // dropped rather than announcing "Prejšnja žival" a second time.
+  it("says what the edge arrows step to before they are clicked", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+
+    for (const label of ["Prejšnja žival", "Naslednja žival"]) {
+      const arrow = edgeNav(dialog, label);
+      // Focus, not hover: a keyboard is owed the same answer, and Radix opens
+      // on focus without the delay a pointer pays. The bubble lands in a
+      // portal outside the dialog, like the health badge's popover above.
+      fireEvent.focus(arrow);
+      const bubble = await screen.findByRole("tooltip");
+      expect(bubble.textContent).toBe(label);
+      expect(arrow.getAttribute("aria-describedby")).toBeNull();
+
+      fireEvent.blur(arrow);
+      await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    }
+  });
+
+  // The arrows are level with the name, and from sm up the name rides a sticky
+  // bar: at rest its centre is 64px under the card's top, pinned it is 40px.
+  // The arrows are absolute against the frame, which does not scroll, so they
+  // stayed at 64px and straddled the pinned bar's edge. The card hands the
+  // frame its own scroll, capped at the 24px the bar travels, and the two top
+  // offsets subtract it. Written as a custom property and not as state, so a
+  // scroll renders nothing.
+  it("lifts the edge arrows with the name as the title bar pins", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+    const frame = slot(dialog, "animal-dialog-frame");
+    const card = slot(dialog, "animal-dialog-card");
+
+    // Well past the cap: the bar has stopped moving and so have they.
+    card.scrollTop = 120;
+    fireEvent.scroll(card);
+    expect(frame.style.getPropertyValue("--nav-shift")).toBe("24px");
+
+    // Mid-travel, where the shift is the scroll itself.
+    card.scrollTop = 10;
+    fireEvent.scroll(card);
+    expect(frame.style.getPropertyValue("--nav-shift")).toBe("10px");
+
+    card.scrollTop = 0;
+    fireEvent.scroll(card);
+    expect(frame.style.getPropertyValue("--nav-shift")).toBe("0px");
   });
 
   // With the arrows last, the first focusable child is the leftmost print,

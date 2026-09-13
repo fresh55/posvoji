@@ -36,6 +36,12 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ClientAnimal } from "@/lib/animal";
 import { animalPath, photoFromSearch } from "@/lib/animal-path";
 import { animalSubtitle } from "@/lib/labels";
@@ -45,6 +51,7 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+import type { ShelterPhones } from "@/lib/shelters";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
 export type DialogPhotoRect = {
@@ -84,16 +91,42 @@ export type DialogOrigin = {
 const CONTENT_CLASS =
   "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 max-sm:h-dvh max-sm:overflow-x-hidden max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[92dvh] sm:w-[calc(100vw-3rem)] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pt-2 sm:data-open:zoom-in-95 sm:data-closed:zoom-out-95";
 
-// The card carries what used to be the dialog's own frame, and pulls itself up
-// under the photos so the fan overlaps its top edge. The wide top padding is
+// The card carries what used to be the dialog's own frame. The pull up under
+// the photos is on the wrapper around it (CARD_FRAME_CLASS), so that the edge
+// arrows can be measured from the card's own top edge. The wide top padding is
 // the band the fan is allowed to hang into; the title row starts below it.
+//
+// sm:scroll-pt-20 is for the sticky title bar: this box is the scrollport from
+// sm up, and focusing a pill near the top of a scrolled card scrolled it to
+// the port's edge, which is under the bar. 80px is the 64px bar and a little
+// air.
+//
+// sm:[scrollbar-width:thin] because on Windows the classic 17px scrollbar sits
+// inside the card's rounded corner, under the next arrow.
 const CARD_CLASS =
-  "relative flex flex-1 flex-col gap-4 p-4 sm:-mt-4 sm:min-h-0 sm:overflow-y-auto sm:rounded-ui sm:border sm:bg-popover sm:bg-clip-padding sm:p-6 sm:pt-12 sm:text-popover-foreground sm:shadow-lg";
+  "relative flex flex-1 flex-col gap-4 p-4 sm:min-h-0 sm:scroll-pt-20 sm:overflow-y-auto sm:rounded-ui sm:border sm:bg-popover sm:bg-clip-padding sm:p-6 sm:pt-12 sm:text-popover-foreground sm:shadow-lg sm:[scrollbar-width:thin]";
+
+// The card and the two edge arrows, which are drawn half outside it. The
+// arrows are absolute against this box, so it is the one that carries the pull
+// up under the photos: its top edge is the card's top edge, which is what the
+// arrows' offset is measured from.
+//
+// min-h-0 from sm up only, like the card's own. Below sm the body is
+// min-h-full and this grows with its content, because there the dialog itself
+// is the scrollport.
+const CARD_FRAME_CLASS = "relative flex flex-1 flex-col sm:-mt-4 sm:min-h-0";
 
 // Same round language as the photo chevrons, one level up: these walk the list
-// of animals rather than the list of photos. Centred by margin rather than by
-// transform, because the button's own press animation writes the same
-// translate variable.
+// of animals rather than the list of photos.
+//
+// Level with the name, not with the middle of the dialog. Centred on the box
+// they were absolute against, they landed wherever that animal's text ended:
+// in the gap under the subtitle on a short listing, in the middle of a
+// paragraph on a wordy one, and at 768px the left arrow cleared the first
+// identity pill by 3px. Measured from the card's own top instead: 48px of card
+// padding (sm:pt-12) and half of the 32px title row is 64px, less half the
+// circle. Written as a top offset and not as a transform, because the button's
+// own press animation writes the translate variable.
 //
 // Opaque, unlike those chevrons: half of this button hangs outside the dialog
 // and half of it sits on the card, so a translucent ground was two colours at
@@ -104,9 +137,23 @@ const CARD_CLASS =
 // pointer-coarse:size-11 for the tablet. iPad portrait is 768px, which is the
 // sm layout, where these arrows are the only way to the next animal: the title
 // row's pair is hidden from sm up and the page keys need a keyboard. A finger
-// gets the 44px floor; a mouse keeps the smaller circle.
+// gets the 44px floor; a mouse keeps the smaller circle, and each size takes
+// half of itself off the 64px so both stay centred on the same row.
+//
+// --nav-shift is the rest of "level with the name": the name is in a sticky
+// bar and the arrows are absolute against the frame, which does not scroll, so
+// once the bar pinned the arrows stayed at 64px and straddled its bottom edge.
+// The bar's top is the card's top plus its border, then sm:pt-6 and half of the
+// 32px row, which puts the pinned name's centre at 40px. The frame carries the
+// number (see syncNavShift) and the default keeps the class honest on its own,
+// for the first paint and for the phone, where these are hidden anyway.
 const ANIMAL_NAV_CLASS =
-  "absolute inset-y-0 z-40 my-auto hidden size-9 rounded-full bg-popover shadow-xs sm:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:size-11";
+  "absolute top-[calc(4rem-1.125rem-var(--nav-shift,0px))] z-40 hidden size-9 rounded-full bg-popover shadow-xs sm:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4rem-1.375rem-var(--nav-shift,0px))] pointer-coarse:size-11";
+
+// How far the title bar travels before it is pinned: 64px at rest less the
+// 40px the pinned name sits at. The card's scroll past that moves the bar no
+// further, so the arrows stop with it.
+const NAV_SHIFT_MAX = 24;
 
 // The same two steps for a phone, which has neither the edge arrows above nor
 // the PageUp and PageDown keys they double for: without these the only way to
@@ -173,6 +220,7 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
 export function AnimalDialog({
   animal,
   logos,
+  phones = {},
   origin,
   siblingIds,
   reference,
@@ -182,6 +230,9 @@ export function AnimalDialog({
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
   logos: ShelterLogos;
+  /** The register's phone per shelter, for the shelter box to offer a call.
+   *  Empty where the page has not read the register. */
+  phones?: ShelterPhones;
   origin?: DialogOrigin;
   /** What the dialog steps through: the list as filtered and sorted, whole
    *  rather than the page of it the grid has drawn so far. */
@@ -195,6 +246,23 @@ export function AnimalDialog({
   const shouldReduceMotion = useReducedMotion();
   const open = animal !== undefined;
   const contentRef = useRef<HTMLDivElement>(null);
+  // The card, which is the scrollport from sm up, and the frame around it,
+  // which is what the edge arrows are absolute against.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  // The arrows follow the name down as the sticky title bar pins. The shift is
+  // the card's own scroll, capped at the distance the bar travels, so no
+  // element has to be measured to know it.
+  //
+  // Written straight onto the frame's style rather than held in state: a
+  // scroll must not re-render the dialog, and a custom property is read by the
+  // two arrows' top offsets without React hearing about it. The floor at 0 is
+  // for the elastic overscroll a trackpad can put on the card, which reports a
+  // negative scrollTop and would otherwise push the arrows down.
+  const syncNavShift = useCallback((scrollTop: number) => {
+    const shift = Math.min(Math.max(scrollTop, 0), NAV_SHIFT_MAX);
+    frameRef.current?.style.setProperty("--nav-shift", `${shift}px`);
+  }, []);
   // A phone can throw the dialog away downwards. The offset lives in a motion
   // value so a finger drag does not re-render the dialog on every frame.
   const dragY = useMotionValue(0);
@@ -228,6 +296,16 @@ export function AnimalDialog({
     drag.current = null;
     dragY.set(0);
   }, [animal, dragY]);
+
+  // A step to another animal keeps the card element, and with it whatever it
+  // was scrolled to. Nothing here sends it back to the top, so the shift is
+  // re-read from the card rather than assumed to be zero; a listing short
+  // enough for the browser to clamp the scroll is the case a scroll event
+  // alone cannot be relied on to report. Reading scrollTop settles the layout
+  // first, so the number is the clamped one.
+  useEffect(() => {
+    syncNavShift(cardRef.current?.scrollTop ?? 0);
+  }, [animal, syncNavShift]);
 
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
   // none. What the visitor left behind is the card they clicked, kept for the
@@ -527,142 +605,284 @@ export function AnimalDialog({
                 />
               </m.div>
 
-              <div className={CARD_CLASS}>
-                {/* The title line stays put while the card scrolls under it.
-
-                    The card is its own scrollport on sm and up, and the close
-                    button lives on this line, so on a short viewport the only
-                    visible way out scrolled away with the name: at 1440x700
-                    with the description expanded, both sat 54px above the
-                    card's top edge with the dialog scrolled to the bottom.
-                    That is the same failure the fixed close on the photo was
-                    written for on phones, one breakpoint up, and the note on
-                    that button says so in as many words.
-
-                    Sticky rather than a second fixed button, because the card
-                    already has the right control in the right place and only
-                    needed it to stay: one close button, where it has always
-                    been. z-20 clears the photo spread's z-10, so the bar
-                    passes over the fan's overhang instead of under it, and
-                    the negative inset plus matching padding lets the popover
-                    ground span the card's full width rather than leaving the
-                    text to scroll through a 24px gutter beside it.
-
-                    sm: only. The phone scrolls the whole dialog rather than
-                    this box, has no scrollport for a sticky child to hold
-                    itself against, and is already answered by the fixed
-                    button on the photo.
-
-                    The inset shadow draws this box's own last row in the
-                    ground it is already painted in, so there is nothing to
-                    see and nothing to lay out. It is there because the
-                    dialog centres on a half pixel: Chrome then draws the
-                    ground's last row part-covered, and what it blends into
-                    the uncovered part is the page behind the dialog rather
-                    than the card's own ground. That reads as a hairline
-                    under the subtitle, in patches wherever the grid behind
-                    happens to be dark. Measured on the built export: 225
-                    pixels at 186 on white, in 8 of 9 openings, gone with
-                    this line.
-
-                    Asking for the row rather than for a compositing layer.
-                    will-change and an outset shadow both clear it too, and
-                    both drop the title and the subtitle to greyscale
-                    antialiasing (the title's colour-fringed pixels go 270 to
-                    0); this keeps them at 270. Growing the box by a pixel of
-                    padding does not clear it, so what matters is that the
-                    row is asked for as a decoration, not that the ground is
-                    a pixel taller. */}
-                <m.div
-                  className="space-y-1 sm:sticky sm:-top-12 sm:z-20 sm:-mx-6 sm:-mt-6 sm:bg-popover sm:px-6 sm:pt-6 sm:pb-2 sm:shadow-[inset_0_-1px_0_0_var(--popover)]"
-                  variants={CONTENT_ITEM}
-                  transition={transition}
+              <div
+                ref={frameRef}
+                data-slot="animal-dialog-frame"
+                className={CARD_FRAME_CLASS}
+              >
+                <div
+                  ref={cardRef}
+                  data-slot="animal-dialog-card"
+                  className={CARD_CLASS}
+                  // The whole handler is one clamp and one custom property
+                  // written on the frame above, so a scroll neither renders
+                  // anything nor reads any layout back. Below sm this box is
+                  // not a scrollport and the arrows are hidden, so it never
+                  // fires there.
+                  onScroll={(event) =>
+                    syncNavShift(event.currentTarget.scrollTop)
+                  }
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <DialogTitle className="text-lg">{name}</DialogTitle>
-                    <StatusBadge
-                      status={lastAnimal.status}
-                      locale={locale}
+                  {/* The title line stays put while the card scrolls under it.
+
+                      The card is its own scrollport on sm and up, and the
+                      close button lives on this line, so on a short viewport
+                      the only visible way out scrolled away with the name: at
+                      1440x700 with the description expanded, both sat 54px
+                      above the card's top edge with the dialog scrolled to the
+                      bottom. That is the same failure the fixed close on the
+                      photo was written for on phones, one breakpoint up, and
+                      the note on that button says so in as many words.
+
+                      Sticky rather than a second fixed button, because the
+                      card already has the right control in the right place and
+                      only needed it to stay: one close button, where it has
+                      always been. z-20 clears the photo spread's z-10, so the
+                      bar passes over the fan's overhang instead of under it,
+                      and the negative inset plus matching padding lets the
+                      popover ground span the card's full width rather than
+                      leaving the text to scroll through a 24px gutter beside
+                      it.
+
+                      The name alone. The species line used to pin with it,
+                      which made the bar 88px tall, a fifth of the card's
+                      scroll window, for a word that does not need to follow
+                      the reader down the page.
+
+                      sm:pb-3 is air for what passes under the bar: at pb-2 a
+                      strip of letter tops, or the bottom arc of a pill, stood
+                      cut off 8px under the edge. Not a fade: a gradient hung
+                      under the bar washed the species line at rest, which
+                      sits 8px below it.
+
+                      sm: only. The phone scrolls the whole dialog rather than
+                      this box, has no scrollport for a sticky child to hold
+                      itself against, and is already answered by the fixed
+                      button on the photo.
+
+                      The inset shadow draws this box's own last row in the
+                      ground it is already painted in, so there is nothing to
+                      see and nothing to lay out. It is there because the
+                      dialog centres on a half pixel: Chrome then draws the
+                      ground's last row part-covered, and what it blends into
+                      the uncovered part is the page behind the dialog rather
+                      than the card's own ground. That reads as a hairline
+                      under the name, in patches wherever the grid behind
+                      happens to be dark. Measured on the built export: 225
+                      pixels at 186 on white, in 8 of 9 openings, gone with
+                      this line.
+
+                      Asking for the row rather than for a compositing layer.
+                      will-change and an outset shadow both clear it too, and
+                      both drop the title to greyscale antialiasing (its
+                      colour-fringed pixels go 270 to 0); this keeps it at
+                      270. Growing the box by a pixel of padding does not
+                      clear it, so what matters is that the row is asked for
+                      as a decoration, not that the ground is a pixel taller. */}
+                  <m.div
+                    className="sm:sticky sm:-top-12 sm:z-20 sm:-mx-6 sm:-mt-6 sm:bg-popover sm:px-6 sm:pt-6 sm:pb-3 sm:shadow-[inset_0_-1px_0_0_var(--popover)]"
+                    variants={CONTENT_ITEM}
+                    transition={transition}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* The name is what gives way, not the controls. On a
+                          360px phone "brezrepa tritačka Luna" pushed all three
+                          round buttons to a second line. flex-1 from a zero
+                          basis hands the name whatever the row has left over,
+                          and below sm it wraps inside that width and stops at
+                          two lines. */}
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {/* text-2xl is the size the animal's own page gives
+                            the same name, and the dialog is that page in a
+                            box. It costs the row nothing: the line box is
+                            32px, which is what the icon-sm controls beside it
+                            already stood at, so the bar and the arrows' offset
+                            are measured from the same row as before. */}
+                        <DialogTitle className="min-w-0 break-words font-semibold text-2xl tracking-tight max-sm:line-clamp-2">
+                          {name}
+                        </DialogTitle>
+                        <StatusBadge
+                          status={lastAnimal.status}
+                          locale={locale}
+                          className="shrink-0"
+                        />
+                      </div>
+                      {/* One unit, so a row that wraps takes the whole group
+                          of controls to the next line rather than splitting
+                          it. shrink-0 so the name is measured against what
+                          they leave rather than squeezing them. */}
+                      <span className="ms-auto flex shrink-0 items-center gap-1">
+                        {previousId && (
+                          <Button
+                            type="button"
+                            data-slot="animal-nav-phone"
+                            data-direction="previous"
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => onNavigate(previousId)}
+                            aria-label={messages.previousAnimal}
+                            className={PHONE_NAV_CLASS}
+                          >
+                            <ChevronLeft className="size-4" aria-hidden />
+                          </Button>
+                        )}
+                        {nextId && (
+                          <Button
+                            type="button"
+                            data-slot="animal-nav-phone"
+                            data-direction="next"
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => onNavigate(nextId)}
+                            aria-label={messages.nextAnimal}
+                            className={PHONE_NAV_CLASS}
+                          >
+                            <ChevronRight className="size-4" aria-hidden />
+                          </Button>
+                        )}
+                        <DialogShareButton
+                          path={animalPath(lastAnimal, locale)}
+                          name={name}
+                          photo={shownPhoto}
+                          className={PHONE_SHARE_CLASS}
+                        />
+                        <DialogPrimitive.Close asChild>
+                          <Button
+                            data-slot="dialog-close-card"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="hidden sm:inline-flex"
+                          >
+                            <XIcon aria-hidden />
+                            <span className="sr-only">{messages.close}</span>
+                          </Button>
+                        </DialogPrimitive.Close>
+                      </span>
+                    </div>
+                  </m.div>
+
+                  {/* The species line, in the flow with the facts it belongs
+                      to rather than pinned above them. Pulled back up to 8px
+                      under the name, because it is the name's second line and
+                      not a section: the card's gap-4 and the bar's padding
+                      would otherwise put it 28px down (16px on the phone, where
+                      the bar has no padding of its own). */}
+                  <m.div
+                    className="-mt-2 sm:-mt-5"
+                    variants={CONTENT_ITEM}
+                    transition={transition}
+                  >
+                    <DialogDescription>{subtitle}</DialogDescription>
+                  </m.div>
+
+                  <m.div variants={CONTENT_ITEM} transition={transition}>
+                    {/* Keyed, so the health row's expanded state starts over
+                        with each animal. */}
+                    <AnimalFacts
+                      key={lastAnimal.id}
+                      animal={lastAnimal}
+                      reference={reference}
                     />
-                    {/* One unit, so a row that wraps takes the whole group of
-                        controls to the next line rather than splitting it. */}
-                    <span className="ms-auto flex items-center gap-1">
-                      {previousId && (
+                  </m.div>
+
+                  {/* Identity above, action below: the shelter box anchors the
+                      bottom of the card with a little extra air over it. */}
+                  <m.div
+                    className="mt-2"
+                    variants={CONTENT_ITEM}
+                    transition={transition}
+                  >
+                    <ShelterBlock
+                      animal={lastAnimal}
+                      logos={logos}
+                      phones={phones}
+                      reference={reference}
+                      // The sticky bar below repeats this box's button on the
+                      // phone, so the box keeps its own for sm and up only.
+                      ctaMirrored
+                    />
+                  </m.div>
+                </div>
+
+                {/* Last in the card, though they are drawn at its edges.
+                    Placed first, they were what the dialog opened on: Radix
+                    focuses the first focusable child, so the dialog announced
+                    itself as "Prejšnja žival" and the first Tab step led away
+                    from the animal rather than into it. Standing here, the
+                    open lands on the front print, or on the phone's close
+                    button above it, and the tab order reads photos, title row,
+                    facts, shelter, and only then the two steps out of this
+                    animal. The phone's sticky CTA is the one thing after them,
+                    and it is a link, on a layout where these are hidden.
+
+                    Absolute against the frame around the card rather than
+                    against the whole dialog, which is what puts them level
+                    with the name whatever the animal's listing runs to. */}
+                {/* Each arrow says which list it walks before it is clicked.
+                    Drawn half outside the dialog beside a stack of photos
+                    that counts itself "1 / 13", a round chevron is the
+                    lightbox idiom: a pointer reads it as the next picture and
+                    gets a different animal. The label prints the button's own
+                    aria-label, so a pointer and a screen reader are told the
+                    same thing in the same words.
+
+                    The site's tooltip rather than a label of this dialog's
+                    own. Its provider carries the shared 350ms, and an instant
+                    label on a control standing this close to the overlay
+                    would flash on every pass of the pointer on its way out.
+                    Focus opens it with no delay, a touch never opens it at
+                    all (Radix ignores a touch pointer, which matters because
+                    these arrows are on the tablet too), and the content is
+                    portalled, so the card it hangs over cannot clip it.
+
+                    The provider draws no element of its own, so the two
+                    buttons are still the last two in the dialog.
+
+                    aria-describedby={undefined} because the label and the
+                    name are the one string: described by it, the button is
+                    announced as "Prejšnja žival" twice over. Radix spreads
+                    the trigger's own props over the attribute it sets, so
+                    this drops it and leaves the name to say it once. */}
+                <TooltipProvider>
+                  {previousId && (
+                    <Tooltip>
+                      <TooltipTrigger asChild aria-describedby={undefined}>
                         <Button
                           type="button"
-                          data-slot="animal-nav-phone"
-                          data-direction="previous"
                           variant="outline"
                           size="icon-sm"
                           onClick={() => onNavigate(previousId)}
                           aria-label={messages.previousAnimal}
-                          className={PHONE_NAV_CLASS}
+                          className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
                         >
                           <ChevronLeft className="size-4" aria-hidden />
                         </Button>
-                      )}
-                      {nextId && (
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={8}>
+                        {messages.previousAnimal}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {nextId && (
+                    <Tooltip>
+                      <TooltipTrigger asChild aria-describedby={undefined}>
                         <Button
                           type="button"
-                          data-slot="animal-nav-phone"
-                          data-direction="next"
                           variant="outline"
                           size="icon-sm"
                           onClick={() => onNavigate(nextId)}
                           aria-label={messages.nextAnimal}
-                          className={PHONE_NAV_CLASS}
+                          className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
                         >
                           <ChevronRight className="size-4" aria-hidden />
                         </Button>
-                      )}
-                      <DialogShareButton
-                        path={animalPath(lastAnimal, locale)}
-                        name={name}
-                        photo={shownPhoto}
-                        className={PHONE_SHARE_CLASS}
-                      />
-                      <DialogPrimitive.Close asChild>
-                        <Button
-                          data-slot="dialog-close-card"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="hidden sm:inline-flex"
-                        >
-                          <XIcon aria-hidden />
-                          <span className="sr-only">{messages.close}</span>
-                        </Button>
-                      </DialogPrimitive.Close>
-                    </span>
-                  </div>
-                  <DialogDescription>{subtitle}</DialogDescription>
-                </m.div>
-
-                <m.div variants={CONTENT_ITEM} transition={transition}>
-                  {/* Keyed, so the health row's expanded state starts over
-                      with each animal. */}
-                  <AnimalFacts
-                    key={lastAnimal.id}
-                    animal={lastAnimal}
-                    reference={reference}
-                  />
-                </m.div>
-
-                {/* Identity above, action below: the shelter box anchors the
-                    bottom of the card with a little extra air over it. */}
-                <m.div
-                  className="mt-2"
-                  variants={CONTENT_ITEM}
-                  transition={transition}
-                >
-                  <ShelterBlock
-                    animal={lastAnimal}
-                    logos={logos}
-                    reference={reference}
-                    // The sticky bar below repeats this box's button on the
-                    // phone, so the box keeps its own for sm and up only.
-                    ctaMirrored
-                  />
-                </m.div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={8}>
+                        {messages.nextAnimal}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </TooltipProvider>
               </div>
 
               {/* The card's own CTA is the last thing in a long scroll on a
@@ -692,39 +912,6 @@ export function AnimalDialog({
             </m.div>
           </LazyMotion>
 
-          {/* Last in the dialog, though they are drawn at its edges. Placed
-              first, they were what the dialog opened on: Radix focuses the
-              first focusable child, so the dialog announced itself as
-              "Prejšnja žival" and the first Tab step led away from the animal
-              rather than into it. Standing here, the open lands on the front
-              print, or on the phone's close button above it, and the tab order
-              reads photos, title row, facts, shelter, and only then the two
-              steps out of this animal. Absolute against the content box, so
-              where they are drawn is unchanged. */}
-          {previousId && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() => onNavigate(previousId)}
-              aria-label={messages.previousAnimal}
-              className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
-            >
-              <ChevronLeft className="size-4" aria-hidden />
-            </Button>
-          )}
-          {nextId && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() => onNavigate(nextId)}
-              aria-label={messages.nextAnimal}
-              className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
-            >
-              <ChevronRight className="size-4" aria-hidden />
-            </Button>
-          )}
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sourceIsOld, verificationTime } from "./source-freshness";
+import {
+  sourceIsOld,
+  verificationDate,
+  verificationTime,
+} from "./source-freshness";
 
 describe("source verification", () => {
   it("does not confuse republication with a source check", () => {
@@ -14,5 +18,13 @@ describe("source verification", () => {
     expect(verificationTime("2026-09-13T23:30:00Z", "en")).toContain("14 Sept 2026");
     expect(verificationTime("2026-09-13T23:30:00Z", "en")).toContain("01:30");
     expect(verificationTime("2026-09-13T23:30:00Z", "sl")).toContain("Ljubljana");
+  });
+  // The animal's footnote. Same Ljubljana day as the line above, without the
+  // hour or the timezone, and numeric in Slovenian so no month has to be
+  // declined into a sentence Intl cannot write.
+  it("gives the animal footnote the Ljubljana date and nothing else", () => {
+    expect(verificationDate("2026-09-13T23:30:00Z", "sl")).toBe("14. 9. 2026");
+    expect(verificationDate("2026-09-13T23:30:00Z", "en")).toBe("14 Sept 2026");
+    expect(verificationDate("bad", "sl")).toBe("—");
   });
 });

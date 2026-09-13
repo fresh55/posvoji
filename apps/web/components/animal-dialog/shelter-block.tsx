@@ -1,11 +1,13 @@
 "use client";
 
-import { ExternalLink, Heart, Hourglass } from "lucide-react";
+import { ExternalLink, Heart, Hourglass, Phone } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
-import { quotedLang } from "@/lib/i18n";
+import { telHref } from "@/lib/contact-links";
+import { ageInMonths } from "@/lib/filters";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+import type { ShelterPhones } from "@/lib/shelters";
 import { shelterPath } from "@/lib/shelter-path";
 import { ageLabel, longStayMonths } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -16,11 +18,19 @@ import { SourceFreshness } from "@/components/source-freshness";
 export function ShelterBlock({
   animal,
   logos,
+  phones = {},
   reference,
   ctaMirrored = false,
 }: {
   animal: AnimalFields;
   logos: ShelterLogos;
+  /**
+   * The register's phone numbers, id to number. Optional and empty by default,
+   * because the surfaces that render this box are server-rendered and read the
+   * register themselves; a caller that has not threaded it through yet gets
+   * the box it had.
+   */
+  phones?: ShelterPhones;
   /** The dataset's own build time, so the wait agrees with the cards. */
   reference: Date;
   /**
@@ -43,6 +53,34 @@ export function ShelterBlock({
   const stay =
     stayMonths === undefined ? undefined : ageLabel(stayMonths, locale);
 
+  // An animal that came in before its first birthday prints the same number
+  // twice: the age pill says "4 leta" and the plea says it waited 4 leta. That
+  // is 56 of the 96 long-stay animals whose age we know, and a reader who
+  // notices takes the repeated number for a bug rather than for a life. The
+  // tail says which it is. The gate is the arrival age, not a birth in the
+  // shelter, which is why the sentence says "skoraj".
+  //
+  // Only where the age is known: without it there is no repeated number to
+  // explain, and the plainer sentence is the honest one. The poster keeps the
+  // plain keys, because it prints no age pill beside them.
+  //
+  // ageInMonths only where there is a plea to gate: for an animal carrying a
+  // birth date rather than an approximate age it parses a Date, and four in
+  // five animals never reach this sentence at all.
+  const ageMonths =
+    stayMonths === undefined ? undefined : ageInMonths(animal, reference);
+  const wholeLife =
+    stayMonths !== undefined &&
+    ageMonths !== undefined &&
+    ageMonths - stayMonths < 12;
+  const stayKey = animal.name
+    ? wholeLife
+      ? "longStayWholeLife"
+      : "longStay"
+    : wholeLife
+      ? "longStayWholeLifeUnnamed"
+      : "longStayUnnamed";
+
   return (
     <div data-slot="shelter-block" className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
@@ -54,9 +92,7 @@ export function ShelterBlock({
               aria-hidden
             />
             <p className="font-medium">
-              {animal.name
-                ? t("longStay", { name: animal.name, duration: stay })
-                : t("longStayUnnamed", { duration: stay })}
+              {t(stayKey, { name: animal.name ?? "", duration: stay })}
             </p>
           </div>
         )}
@@ -110,6 +146,34 @@ export function ShelterBlock({
           <p className="truncate text-xs text-muted-foreground">
             {shelter.city}
           </p>
+          {/* The number the register holds, where the box already says who to
+              ask. Adoption goes through the shelter and this box's one button
+              leaves the site for a listing that may be out of date; a phone is
+              the answer to "is this animal still there", and until now only the
+              printed poster carried it.
+
+              Drawn as quietly as the city above it. The primary action is the
+              listing button and this must not compete with it, so it is 12px
+              muted text that only underlines on hover.
+
+              Printed the way the register writes it ("051 304 435"), which is
+              the form a Slovenian reader reads back down the line; telHref
+              makes the href E.164 for a handset roaming on a foreign SIM. The
+              label alone is digits, so a screen reader gets the word first. */}
+          {phones[shelter.id] && (
+            <a
+              href={telHref(phones[shelter.id])}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              <Phone
+                className="size-3.5 shrink-0 opacity-70"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span className="sr-only">{messages.contactPhone}: </span>
+              {phones[shelter.id]}
+            </a>
+          )}
         </div>
 
         {/* An adopted animal has no listing worth sending anyone to, so the
@@ -118,7 +182,17 @@ export function ShelterBlock({
           // The listing still has to be reachable: every animal here names
           // its source and links back to it, adopted or not.
           <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto">
-            <p className="flex w-full items-center gap-2 rounded-ui border border-brand-border bg-brand px-3 py-2 text-xs text-brand-foreground">
+            {/* The same tokens the status badge on the title row wears for
+                this animal (the quiet badge variant), because the two print
+                the same fact and the reader sees them at once. The brand
+                green it used to carry is the mark for a shelter that shares
+                its data, for a chosen answer and for the health record, not
+                for an outcome, so a green box here read as a fourth meaning
+                and outshouted the grey badge saying the same thing.
+
+                The heart stays: it is what keeps this from reading as one
+                more muted aside. */}
+            <p className="flex w-full items-center gap-2 rounded-ui border border-transparent bg-muted px-3 py-2 text-xs text-muted-foreground">
               <Heart className="size-4 shrink-0" aria-hidden />
               {messages.foundHome}
             </p>
@@ -138,11 +212,15 @@ export function ShelterBlock({
           // draws none for it either.
           <Button
             asChild
-            size="sm"
+            // The box's one action, and at size="sm" it was 32px: the shortest
+            // control in a box whose plea and shelter name are both 14px
+            // medium, so the thing to do about the wait was the smallest thing
+            // in it. Default is 36px and sits with them.
+            size="default"
             className={cn(
-              // max-sm:h-11, because size="sm" is 32px and on the animal's
-              // own page, which has no sticky bar to mirror this, it is the
-              // button a thumb actually goes for.
+              // max-sm:h-11, because 36px is still short for a thumb and on
+              // the animal's own page, which has no sticky bar to mirror this,
+              // it is the button a thumb actually goes for.
               "w-full max-sm:h-11 sm:w-auto",
               ctaMirrored && "max-sm:hidden",
             )}
@@ -159,20 +237,17 @@ export function ShelterBlock({
         )}
       </div>
 
-      {/* The attribution stays a footnote under the box. In practice it
-          repeats the shelter's name, and inside the box that read as the
-          same line printed twice.
-
-          lang, for the same reason the description carries one: the sentence
-          is the provider's own Slovenian ("Foto in opis: Zavetišče Test"),
-          printed verbatim. See quotedLang in lib/i18n.ts. */}
-      <p
-        lang={quotedLang("sl", locale)}
-        className="text-xs text-muted-foreground"
-      >
-        {animal.attribution}
-      </p>
-      <SourceFreshness checkedAt={animal.source.fetchedAt} reference={reference} />
+      {/* One footnote, not two. The attribution stays under the box, where it
+          does not read as the shelter's name printed twice 40px apart, and it
+          is now the first half of the freshness line rather than a paragraph
+          of its own above it: both say who the listing came from and when it
+          was last seen. It goes through SourceFreshness so nothing else has to
+          know how the two halves are joined. */}
+      <SourceFreshness
+        attribution={animal.attribution}
+        checkedAt={animal.source.fetchedAt}
+        reference={reference}
+      />
     </div>
   );
 }

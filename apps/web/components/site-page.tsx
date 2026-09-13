@@ -9,7 +9,7 @@ import { shelterCount } from "@/lib/labels";
 import { verificationTime } from "@/lib/source-freshness";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { loadShelters } from "@/lib/shelters";
+import { getShelterPhones, loadShelters } from "@/lib/shelters";
 
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -112,6 +112,7 @@ export function SitePage({ locale }: { locale: Locale }) {
         // what ends up in the page's flight payload.
         animals={animalsForClient(animals)}
         logos={getShelterLogos()}
+        phones={getShelterPhones()}
         referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
         municipalities={municipalities}
         offSiteShelters={offSiteShelters}

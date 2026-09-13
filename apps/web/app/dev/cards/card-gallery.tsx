@@ -121,9 +121,19 @@ const ANIMALS: ClientAnimal[] = [
   }),
   // A name that fills the h3's two clamped lines. Three of the register's 503
   // names run this long, and they are the reason line-clamp-2 is there.
+  //
+  // The third word is long on purpose. The name used to end in "Sončica",
+  // and at the 18px the card draws from xl the first three words came to
+  // 291px on a 289px card: one line on Windows and two on the Linux runner
+  // CI uses, so the desktop baseline was 28px taller in CI than in the
+  // checked-in image. "Pikapolonica" takes the line to 333px, a break with
+  // 15% to spare, and on the phone's 171px card the second word already
+  // overruns by 13%, so both lines break the same way on both machines.
+  // Measured with the card's own font in headless Chrome; re-measure before
+  // renaming it.
   animal({
     id: "marmeladka",
-    name: "Gospodična Marmeladka Sončica",
+    name: "Gospodična Marmeladka Pikapolonica",
     birthDate: "2023-06-01",
     images: plates("Marmeladka", 1, ["#edd6bd"], DARK_INK),
   }),

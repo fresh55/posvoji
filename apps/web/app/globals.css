@@ -701,10 +701,10 @@
    every width now (CARD_PHOTO_ASPECT in lib/card-grid.ts, which CSS cannot
    import, so this is the copy that has to be kept honest by hand). Square means
    the card's height follows its width, and its width is not one number any
-   more: about 163px on a 375px phone, about 309px in an xl column.
+   more: about 163px on a 375px phone, about 307px in an xl column.
 
    So this takes two values rather than one. 17rem is 272px, a little above the
-   263px phone card; 25rem is 400px, just under the 409px an xl card measures
+   263px phone card; 25rem is 400px, just under the 401px an xl card measures
    and above the 324px a card beside the sidebar does. Above the real height
    rather than under it wherever there is a choice: the fallback is what the
    scrollbar believes until a card has been drawn once, and an estimate under it

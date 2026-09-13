@@ -71,8 +71,13 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // That same overlay carries a permanent hairline. Many shelter photos are
 // studio shots on a white ground, and on the white page such a photo has no
 // edge at all: the corners disappear and the wait mark at the top right sits
-// in what reads as empty page. 6% black in light mode and 8% white in dark
-// closes the shape without reading as a border around the picture. It covers
+// in what reads as empty page. 9% black in light mode and 8% white in dark
+// close the shape without reading as a border around the picture. It was 6%,
+// and at 6% the edge is rgb(240) on the white page: the top of the frame read,
+// but where a studio photo runs to pure white at the bottom the corners
+// vanished and the picture ended nowhere. 9% is rgb(232), an edge the eye
+// finds at the corners and still the photo's own rim rather than a line drawn
+// round it. It covers
 // the empty frame as well, because an animal with no photo draws its caption
 // inside this same box (photo-gallery.tsx).
 //
@@ -86,7 +91,7 @@ const PHOTO_FRAME =
   `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
   ` after:${CARD_PHOTO_RADIUS}` +
-  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({
@@ -418,16 +423,26 @@ export function AnimalCard({
             this heading. At the default offset the rule cuts through the
             descenders of a name like "Srečko"; 4px clears them, and it is
             what the shelter line below already underlines at. */}
-        {/* Stays 16px at every width. It was briefly 18px on the large
-            cards, where the 309px photo does dwarf it, and that is a real
-            observation with no safe way to act on it here: at 18px the
-            longest name in the /dev/cards fixture lands exactly on its
-            wrapping point, so the card is one line taller on the Linux
-            runner CI uses than on the machine the snapshot was taken on, and
-            the grid baseline fails by 28px. Reserving the second line would
-            fix the flake and is the thing PR #132 measured and rejected,
-            because it costs every card a row of pixels for three animals. */}
-        <h3 id={headingId} className="line-clamp-2 font-semibold underline-offset-4">
+        {/* 18px from xl, 16px below it. The card is about 307px wide from
+            xl and a 16px name beside a photograph that size read as a
+            caption; on the smaller cards below xl it is the right size for
+            the box. The step is at the breakpoint where the card grows
+            (CARD_GRID in lib/card-grid.ts), so the name and the photo move
+            together.
+
+            18px was tried once before and reverted, not for how it looked
+            but because the longest name in the /dev/cards fixture landed
+            exactly on its wrapping point at that size, one line on Windows
+            and two on the Linux runner CI uses, and the grid baseline failed
+            by 28px. That was the fixture's problem: its long name now breaks
+            with room to spare at both sizes (card-gallery.tsx), so the
+            snapshot is the same height on both machines. Reserving a second
+            line for every card is still not the answer, for the reason the
+            block above gives. */}
+        <h3
+          id={headingId}
+          className="line-clamp-2 font-semibold underline-offset-4 xl:text-lg"
+        >
           {animal.name ?? messages.unnamed}
         </h3>
         {/* Allowed to wrap: an ellipsis here eats the animal's age, and

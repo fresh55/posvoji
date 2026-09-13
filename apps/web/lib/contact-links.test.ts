@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mailtoHref, telHref } from "./contact-links";
+import { mailtoHref, telHref, websiteName } from "./contact-links";
 import { loadShelters } from "./shelters";
 
 describe("telHref", () => {
@@ -74,5 +74,27 @@ describe("the register the site is built from", () => {
     for (const phone of numbers) {
       expect(telHref(phone)).toMatch(/^tel:\+386\d{8}$/);
     }
+  });
+});
+
+// The name three surfaces print. The register card and the shelter page pin
+// their own rendered copies of it; this is the rule they now share, and the
+// case neither of them covers: a host the register wrote with a path.
+describe("websiteName", () => {
+  it("trims the host and says the link leaves the site, together", () => {
+    expect(
+      websiteName(
+        "Spletna stran",
+        "https://www.zonzani.si/",
+        "(odpre se v novem oknu)",
+      ),
+    ).toBe("Spletna stran: zonzani.si (odpre se v novem oknu)");
+    expect(
+      websiteName(
+        "Spletna stran",
+        "https://example.si/zavetisce/",
+        "(odpre se v novem oknu)",
+      ),
+    ).toBe("Spletna stran: example.si/zavetisce (odpre se v novem oknu)");
   });
 });

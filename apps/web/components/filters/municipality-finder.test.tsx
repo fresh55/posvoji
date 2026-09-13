@@ -246,6 +246,21 @@ describe("MunicipalityFinder empty state", () => {
     ).toBeTruthy();
   });
 
+  // The guidance's one outbound link. It drew the mark and said nothing, so a
+  // reader who could not see the mark was not told. Same sentence the answer
+  // card uses, so this flow announces leaving the site one way.
+  it("says the law link opens in a new window", () => {
+    renderFinder();
+
+    const law = screen.getByRole("link", {
+      name: "Zakon o zaščiti živali, 31. člen (odpre se v novem oknu)",
+    });
+    expect(law.getAttribute("target")).toBe("_blank");
+    expect(law.getAttribute("rel")).toBe("noreferrer");
+    // The mark stays for everyone who can see it.
+    expect(law.querySelector("svg")).not.toBeNull();
+  });
+
   // At 320px, and at 375px with the browser's text at 125%, the field could
   // not hold the placeholder and the button's name at once, and the
   // placeholder was the one cut: it read "Občina ali poš". The field is a

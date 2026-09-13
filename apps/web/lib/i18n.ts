@@ -514,9 +514,9 @@ const sl = {
   home: "Dom",
   resetHomeFilters: "Ponastavi filter doma",
   homeFilterHint:
-    "Živali, za katere zavetišče presoja, da lahko srečno živijo v stanovanju.",
+    "Prikaži živali z izrecno navedenimi zahtevami glede doma.",
   homeOutcome:
-    "Prikazane so živali, primerne za stanovanje. {count} od {total}.",
+    "Prikazane so živali z izrecno navedeno zahtevo glede doma. {count} od {total}.",
   apartmentYes: "Primeren za stanovanje",
   apartmentNo: "Potrebuje več prostora kot stanovanje",
   hintApartmentOk: "Zavetišče presoja, da lahko {name} živi v stanovanju.",
@@ -525,9 +525,9 @@ const sl = {
   care: "Posebna skrb",
   resetCareFilters: "Ponastavi filter posebne skrbi",
   careFilterHint:
-    "Za tiste, ki želijo pomagati živali, ki potrebuje več časa in razumevanja.",
+    "Prikaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
   careOutcome:
-    "Prikazane so živali, ki iščejo potrpežljivega človeka. {count} od {total}.",
+    "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
   specialNeedsNote:
     "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
 } as const;
@@ -794,17 +794,17 @@ const en: Messages = {
   home: "Home",
   resetHomeFilters: "Reset the home filter",
   homeFilterHint:
-    "Animals the shelter judges can live happily in an apartment.",
-  homeOutcome: "Showing apartment-friendly animals. {count} of {total}.",
+    "Show animals with explicitly reported home requirements.",
+  homeOutcome: "Showing animals with an explicitly reported home requirement. {count} of {total}.",
   apartmentYes: "Apartment-friendly",
   apartmentNo: "Needs more room than an apartment",
   hintApartmentOk: "The shelter judges that {name} can live in an apartment.",
   care: "Special care",
   resetCareFilters: "Reset the special care filter",
   careFilterHint:
-    "For those who want to help an animal that needs more time and understanding.",
+    "Show animals with explicitly reported adoption or care requirements.",
   careOutcome:
-    "Showing animals looking for a patient person. {count} of {total}.",
+    "Showing animals with an explicitly reported care requirement. {count} of {total}.",
   specialNeedsNote:
     "This animal needs a patient person and a little more time.",
 };

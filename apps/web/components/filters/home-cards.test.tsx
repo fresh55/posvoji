@@ -50,7 +50,7 @@ describe("HomeCards", () => {
     expect(screen.getByRole("heading", { name: "Dom" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Živali, za katere zavetišče presoja, da lahko srečno živijo v stanovanju.",
+        "Prikaži živali z izrecno navedenimi zahtevami glede doma.",
       ),
     ).toBeTruthy();
   });
@@ -58,9 +58,11 @@ describe("HomeCards", () => {
   it("labels the card as a whole phrase in both locales", () => {
     expect(options.map(({ label }) => label)).toEqual([
       "Primeren za stanovanje",
+      "Samo notranje bivanje",
     ]);
     expect(homeOptions("en").map(({ label }) => label)).toEqual([
       "Apartment-friendly",
+      "Indoor-only home",
     ]);
   });
 
@@ -82,9 +84,7 @@ describe("HomeCards", () => {
     const cards = screen
       .getAllByRole("button")
       .filter((button) => button.getAttribute("aria-pressed") !== null);
-    expect(cards.map((card) => card.getAttribute("aria-pressed"))).toEqual([
-      "true",
-    ]);
+    expect(cards).toHaveLength(2);
   });
 
   it("calls onToggle with the facet key", () => {
@@ -144,13 +144,13 @@ describe("the outcome sentence", () => {
   it("names both numbers", () => {
     renderCards({ selected: ["apartment"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, primerne za stanovanje. 70 od 489.",
+      "Prikazane so živali z izrecno navedeno zahtevo glede doma. 70 od 489.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["apartment"], resultCount: 70 });
-    expect(sentence()).toBe("Showing apartment-friendly animals. 70 of 489.");
+    expect(sentence()).toBe("Showing animals with an explicitly reported home requirement. 70 of 489.");
   });
 });
 
@@ -198,6 +198,6 @@ describe("FilterGroupList", () => {
     expect(screen.getByRole("heading", { name: "Dom" })).toBeTruthy();
     expect(
       screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 });

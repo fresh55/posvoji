@@ -1,4 +1,5 @@
 import type {
+  AnimalAdoptionRequirements,
   AnimalSize,
   EnergyLevel,
   Sex,
@@ -15,6 +16,14 @@ import {
   type MultiGroup,
   type ToggleKey,
 } from "./contracts";
+
+// Filter cards and animal facts use the same wording for confirmed requirements.
+export const ADOPTION_REQUIREMENT_LABELS = {
+  indoorOnly: { sl: "Samo notranje bivanje", en: "Indoor-only home" },
+  bondedPair: { sl: "Posvojitev v paru", en: "Adopt together" },
+  experiencedCarer: { sl: "Izkušen skrbnik", en: "Experienced carer" },
+  ongoingCare: { sl: "Potrebuje redno oskrbo", en: "Ongoing care" },
+} satisfies Record<keyof AnimalAdoptionRequirements, Record<Locale, string>>;
 
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
   sl: {
@@ -216,6 +225,11 @@ export const FILTER_METADATA = {
       slug: "stanovanje",
       labels: { sl: "Primeren za stanovanje", en: "Apartment-friendly" },
     },
+    {
+      value: "indoor-only",
+      slug: "samo-notranje-bivanje",
+      labels: ADOPTION_REQUIREMENT_LABELS.indoorOnly,
+    },
   ],
   care: [
     {
@@ -225,6 +239,21 @@ export const FILTER_METADATA = {
         sl: "Potrebuje potrpežljivega človeka",
         en: "Needs a patient person",
       },
+    },
+    {
+      value: "bonded-pair",
+      slug: "posvojitev-v-paru",
+      labels: ADOPTION_REQUIREMENT_LABELS.bondedPair,
+    },
+    {
+      value: "experienced-carer",
+      slug: "izkusen-skrbnik",
+      labels: ADOPTION_REQUIREMENT_LABELS.experiencedCarer,
+    },
+    {
+      value: "ongoing-care",
+      slug: "potrebuje-redno-oskrbo",
+      labels: ADOPTION_REQUIREMENT_LABELS.ongoingCare,
     },
   ],
 } as const satisfies {

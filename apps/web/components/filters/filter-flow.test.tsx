@@ -380,7 +380,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?dom=stanovanje");
     expect(
       screen.getByText(
-        "Prikazane so živali, primerne za stanovanje. 2 od 3.",
+        "Prikazane so živali z izrecno navedeno zahtevo glede doma. 2 od 3.",
       ),
     ).toBeTruthy();
   });
@@ -395,7 +395,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?skrb=potrpezljiv");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki iščejo potrpežljivega človeka. 1 od 3.",
+        "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. 1 od 3.",
       ),
     ).toBeTruthy();
   });

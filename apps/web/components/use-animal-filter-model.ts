@@ -20,10 +20,7 @@ import {
   speciesFacetCounts,
   toggleCounts,
   toggleLabel,
-  visibleCare,
-  visibleGoodWith,
   visibleGroups,
-  visibleHome,
   visibleToggles,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
@@ -111,8 +108,8 @@ export function useAnimalFilterModel({
     () => facetCounts(animals, filters, reference),
     [animals, filters, reference],
   );
-  // The panel follows the species tab: measured against the whole dataset it
-  // would offer groups the animals on screen don't vary on.
+  // The panel follows the species tab and keeps every applicable group available
+  // so a zero-count option remains visible and explains its unknown state.
   const pool = useMemo(
     () => bySpecies(animals, filters.species),
     [animals, filters.species],
@@ -127,7 +124,7 @@ export function useAnimalFilterModel({
   // (visibleGroups in lib/filters.ts). Every visible* call below is passed its
   // own selection for the same reason.
   const shown = useMemo(
-    () => visibleGroups(pool, filters, reference),
+    () => visibleGroups(pool, filters, reference, true),
     [pool, filters, reference],
   );
   const groups = useMemo(
@@ -137,26 +134,9 @@ export function useAnimalFilterModel({
       ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
     [locale, pool, shown],
   );
-  // Not gated on shown.shelter, unlike every group above. visibleGroups drops a
-  // group with fewer than two distinct values, which is right for a facet: one
-  // value narrows nothing. The shelter picker is not that facet. It is a map of
-  // where every shelter in the country is, the way back out of a narrow result,
-  // and on a phone the mobile dock is built around it. Gating it on two
-  // distinct shelters took the whole dock off the page at /?vrsta=zajcek, where
-  // one rabbit sits at one shelter: the single state where a visitor most needs
-  // to widen the search was the one state with nothing left to press. Absent
-  // only when the dataset has no shelter to show at all.
-  //
-  // Measured against `animals` and not `pool`, which is the same reason. This
-  // is the picker's roster, not a facet of the current query: together with the
-  // off-site registry shelters the page hands down beside it, it is every
-  // shelter that exists, and the species tab may not take one off it. Measured
-  // against the species-filtered pool it did: the trigger read "Vseh 11
-  // zavetišč" over a list of seventeen rows, and at
-  // /?zavetisce=macja-hisa,macji-dol&vrsta=zajcek it read "2 od 1 zavetišč",
-  // because the selection came from the URL and the total came from the facet.
-  // What the species tab moves is each shelter's own number, which is
-  // `counts.shelter` below and is measured with every active filter applied.
+  // The shelter picker uses the complete roster so visitors can widen their
+  // search. Species and other filters change each shelter's count, not which
+  // shelters are available to choose.
   const shelters = useMemo(() => {
     const options = groupOptions("shelter", animals, locale);
     return options.length > 0 ? options : undefined;
@@ -171,7 +151,7 @@ export function useAnimalFilterModel({
   );
   const toggles = useMemo(
     () =>
-      visibleToggles(pool, filters.species, filters.toggles).map((toggle) => ({
+      visibleToggles(pool, filters.species, filters.toggles, true).map((toggle) => ({
         ...toggle,
         label: toggleLabel(toggle.key, locale),
       })),
@@ -181,13 +161,10 @@ export function useAnimalFilterModel({
     () => toggleCounts(animals, filters, reference),
     [animals, filters, reference],
   );
-  // The section carries its own options, tally and actions, and is left out
-  // entirely while no facet has enough answers to narrow anything.
+  // Every option stays visible; counts indicate which answers are confirmed.
   const goodWith = useMemo(() => {
-    const keys = visibleGoodWith(pool, filters.goodWith);
-    if (keys.length === 0) return undefined;
     return {
-      options: goodWithOptions(locale).filter(({ key }) => keys.includes(key)),
+      options: goodWithOptions(locale),
       counts: goodWithCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,
@@ -205,13 +182,9 @@ export function useAnimalFilterModel({
     toggleManyGoodWith,
   ]);
 
-  // Same rule as the household section: absent until the shelters have
-  // answered for some animals and not for all of them.
   const home = useMemo(() => {
-    const keys = visibleHome(pool, filters.home);
-    if (keys.length === 0) return undefined;
     return {
-      options: homeOptions(locale).filter(({ key }) => keys.includes(key)),
+      options: homeOptions(locale),
       counts: homeCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,
@@ -230,10 +203,8 @@ export function useAnimalFilterModel({
   ]);
 
   const care = useMemo(() => {
-    const keys = visibleCare(pool, filters.care);
-    if (keys.length === 0) return undefined;
     return {
-      options: careOptions(locale).filter(({ key }) => keys.includes(key)),
+      options: careOptions(locale),
       counts: careCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,

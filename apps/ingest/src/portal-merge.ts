@@ -29,7 +29,7 @@ export interface ApplyOverridesResult {
 
 // Pair the provider with the animal id in case ids are ever reused across
 // providers. Keep the separator escaped so this source remains a text file.
-function overrideKey(providerId: string, animalId: string): string {
+export function overrideKey(providerId: string, animalId: string): string {
   return `${providerId}\u0000${animalId}`;
 }
 

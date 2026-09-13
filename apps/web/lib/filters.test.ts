@@ -5,6 +5,7 @@ import {
   applyFilters,
   bySpecies,
   careCounts,
+  chipGains,
   EMPTY_FILTERS,
   facetCounts,
   goodWithCounts,
@@ -417,6 +418,20 @@ describe("visibleCare", () => {
       animal("cat", { specialNeeds: true }),
     ];
     expect(visibleCare(animals, [])).toEqual([]);
+  });
+
+  it("shows applicable enrichment options when requested, including zero matches", () => {
+    const animals = [animal("dog", { adoptionRequirements: { bondedPair: true } })];
+    expect(visibleCare(animals, [], true)).toEqual([
+      "patient",
+      "bonded-pair",
+      "experienced-carer",
+      "ongoing-care",
+    ]);
+    expect(visibleHome(animals, [], true)).toEqual([
+      "apartment",
+      "indoor-only",
+    ]);
   });
 });
 
@@ -890,6 +905,23 @@ describe("multi-select behavior", () => {
     ).toEqual([marked]);
   });
 
+  it("matches explicit adoption requirements and leaves unknown values out", () => {
+    const pair = animal("cat", {
+      adoptionRequirements: { bondedPair: true, indoorOnly: true },
+    });
+    const unknown = animal("cat", {
+      adoptionRequirements: { bondedPair: false },
+    });
+
+    expect(
+      applyFilters(
+        [pair, unknown],
+        { ...EMPTY_FILTERS, home: ["indoor-only"], care: ["bonded-pair"] },
+        NOW,
+      ),
+    ).toEqual([pair]);
+  });
+
   it("ANDs dom and skrb with each other and with the other sections", () => {
     const both = animal("cat", { apartmentOk: "yes", specialNeeds: true });
     const homeOnly = animal("cat", { apartmentOk: "yes" });
@@ -1028,5 +1060,24 @@ describe("selecting a whole region", () => {
 
   it("never doubles a shelter that was already on", () => {
     expect(toggleValues(["mh"], ["mh", "muri"])).toEqual(["mh", "muri"]);
+  });
+});
+
+describe("shared links for reviewed requirements", () => {
+  it("round-trips all new choices and preserves multi-choice counts and recovery", () => {
+    const together = animal("cat", { adoptionRequirements: { indoorOnly: true, bondedPair: true } });
+    const indoorCare = animal("cat", { adoptionRequirements: { indoorOnly: true, ongoingCare: true } });
+    const outdoorCare = animal("cat", { adoptionRequirements: { indoorOnly: false, ongoingCare: true } });
+    const unanswered = animal("cat");
+    const animals = [together, indoorCare, outdoorCare, unanswered];
+    const filters: Filters = { ...EMPTY_FILTERS, species: "cat", home: ["indoor-only"], care: ["bonded-pair", "ongoing-care"] };
+    expect(parseFilters(serializeFilters(filters))).toEqual(filters);
+    expect(parseFilters(serializeFilters({ ...filters, care: ["experienced-carer"] })).care).toEqual(["experienced-carer"]);
+    expect(applyFilters(animals, filters, NOW)).toEqual([together, indoorCare]);
+    expect(careCounts(animals, filters, NOW).get("bonded-pair")).toBe(1);
+    expect(careCounts(animals, filters, NOW).get("ongoing-care")).toBe(1);
+    expect(careCounts(animals, filters, NOW).get("experienced-carer")).toBe(0);
+    expect(chipGains(animals, filters, NOW).get("care:bonded-pair")).toBe(-1);
+    expect(chipGains(animals, filters, NOW).get("home:indoor-only")).toBe(1);
   });
 });

@@ -65,6 +65,7 @@ function complete(): Animal {
     goodWith: { kids: "yes", dogs: "unknown", cats: "yes" },
     apartmentOk: "yes",
     specialNeeds: false,
+    adoptionRequirements: { indoorOnly: true, bondedPair: true, ongoingCare: false },
     images: [
       {
         sourceUrl: "https://shelter.example/luna-1.jpg",
@@ -87,6 +88,7 @@ describe("animalsForClient", () => {
     // schema crosses the boundary for five hundred animals the day it is
     // added, and this list is the only thing that has to be changed for it to.
     expect(Object.keys(projected!).sort()).toEqual([
+      "adoptionRequirements",
       "apartmentOk",
       "approximateAgeMonths",
       "attribution",
@@ -124,6 +126,7 @@ describe("animalsForClient", () => {
     expect(projected!.intakeDate).toBe("2022-01-15");
     expect(projected!.birthDate).toBe("2021-04-01");
     expect(projected!.approximateAgeMonths).toBe(52);
+    expect(projected!.adoptionRequirements).toEqual(source.adoptionRequirements);
 
     // The dataset animal is left as ingest wrote it. app/sitemap.ts still
     // reads lastSeenAt off one of these on the server.

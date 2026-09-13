@@ -66,6 +66,8 @@ export function homeMatches(animal: AnimalFields, key: HomeKey): boolean {
   switch (key) {
     case "apartment":
       return animal.apartmentOk === "yes";
+    case "indoor-only":
+      return animal.adoptionRequirements?.indoorOnly === true;
   }
 }
 
@@ -74,6 +76,12 @@ export function careMatches(animal: AnimalFields, key: CareKey): boolean {
   switch (key) {
     case "patient":
       return animal.specialNeeds === true;
+    case "bonded-pair":
+      return animal.adoptionRequirements?.bondedPair === true;
+    case "experienced-carer":
+      return animal.adoptionRequirements?.experiencedCarer === true;
+    case "ongoing-care":
+      return animal.adoptionRequirements?.ongoingCare === true;
   }
 }
 
@@ -553,22 +561,14 @@ export function goodWithCounts(
   return counts;
 }
 
-// Same rule again, one section over, and this one ORs: the facet being
-// measured comes off its own selection, whatever is left of that selection
-// still applies, every other section stays on, and the facet is required on
-// top of them.
-//
-// Dom and Skrb ask the same question of different columns, so they ask it
-// through one walk rather than two copies of it. The line that does the real
-// work is the second answersAny: it is the "whatever is left of that
-// selection" clause, and it was the part worth not having twice.
+// Home and care use OR within a section. Count each option with that entire
+// section lifted, while retaining every other section's constraints.
 function orSectionCounts(
   pass: Pass,
   section: LiftedSection,
   keys: readonly string[],
 ): Map<string, number> {
   const counts = new Map<string, number>(keys.map((key) => [key, 0]));
-  const picked = pass.query[section];
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
     if (!sectionsPass(pass, slot, section)) continue;
     if (groupsFailedAt(pass, slot) !== 0) continue;
@@ -576,7 +576,6 @@ function orSectionCounts(
     for (let bit = 0; bit < keys.length; bit += 1) {
       const own = 1 << bit;
       if ((answered & own) === 0) continue;
-      if (!answersAny(answered, picked & ~own)) continue;
       bump(counts, keys[bit]);
     }
   }
@@ -779,30 +778,23 @@ function narrows(matching: number, total: number): boolean {
   return matching > 0 && matching < total;
 }
 
-// Every visible* function below takes the current selection, and takes it
-// required, and a value that is selected keeps its control on screen whatever
-// the pool says. The rule these functions otherwise follow is "an option that
-// cannot narrow anything is not worth a row", and that rule is right for an
-// option nobody has picked and wrong for one somebody has: a selection is
-// already narrowing the result, so hiding its control leaves a filter running
-// with no way to switch it off. On a phone it is worse than that, because the
-// Filtri trigger only exists while the sheet has sections (animal-filters.tsx),
-// so the last section going takes the whole way in with it. Required and not
-// defaulted, because a caller that forgets the argument gets exactly the
-// stranding this guards against, and silently.
-
-// A toggle that every animal passes (or none do) can't narrow anything.
+// Selected controls always stay visible so they can be removed. By default,
+// unselected controls must narrow the pool; includeUnavailable shows every
+// species-appropriate control without inspecting the pool's answers.
 export function visibleToggles(
   animals: AnimalFields[],
   species: SpeciesFilter,
   selected: readonly ToggleKey[],
+  includeUnavailable = false,
 ): ToggleDef[] {
-  const counts = answeredCounts(indexOf(animals).toggles, TOGGLES.length);
+  const counts = includeUnavailable
+    ? null
+    : answeredCounts(indexOf(animals).toggles, TOGGLES.length);
   return TOGGLES.filter(
     (toggle, bit) =>
       selected.includes(toggle.key) ||
       (toggleFitsSpecies(toggle.species, species) &&
-        narrows(counts[bit], animals.length)),
+        (counts === null || narrows(counts[bit], animals.length))),
   );
 }
 
@@ -817,32 +809,39 @@ function visibleFacet<Key extends string>(
   column: "goodWith" | "home" | "care",
   animals: AnimalFields[],
   selected: readonly Key[],
+  includeUnavailable = false,
 ): Key[] {
+  if (includeUnavailable) return [...keys];
   const counts = answeredCounts(indexOf(animals)[column], keys.length);
   return keys.filter(
-    (key, bit) => selected.includes(key) || narrows(counts[bit], animals.length),
+    (key, bit) =>
+      selected.includes(key) ||
+      narrows(counts[bit], animals.length),
   );
 }
 
 export function visibleGoodWith(
   animals: AnimalFields[],
   selected: readonly GoodWithKey[],
+  includeUnavailable = false,
 ): GoodWithKey[] {
-  return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected);
+  return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected, includeUnavailable);
 }
 
 export function visibleHome(
   animals: AnimalFields[],
   selected: readonly HomeKey[],
+  includeUnavailable = false,
 ): HomeKey[] {
-  return visibleFacet(HOME_KEYS, "home", animals, selected);
+  return visibleFacet(HOME_KEYS, "home", animals, selected, includeUnavailable);
 }
 
 export function visibleCare(
   animals: AnimalFields[],
   selected: readonly CareKey[],
+  includeUnavailable = false,
 ): CareKey[] {
-  return visibleFacet(CARE_KEYS, "care", animals, selected);
+  return visibleFacet(CARE_KEYS, "care", animals, selected, includeUnavailable);
 }
 
 /** The number each species tab shows: everything the visitor asked for
@@ -914,7 +913,16 @@ export function visibleGroups(
   animals: AnimalFields[],
   filters: Filters,
   now: Date,
+  includeUnavailable = false,
 ): Record<MultiGroup, boolean> {
+  if (includeUnavailable) {
+    const shown = (group: MultiGroup) =>
+      filters[group].length > 0 || groupFitsSpecies(group, filters.species);
+    return {
+      sex: shown("sex"), age: shown("age"), size: shown("size"),
+      energy: shown("energy"), shelter: shown("shelter"),
+    };
+  }
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
   const distinct = {

@@ -36,6 +36,12 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ClientAnimal } from "@/lib/animal";
 import { animalPath, photoFromSearch } from "@/lib/animal-path";
 import { animalSubtitle } from "@/lib/labels";
@@ -610,7 +616,13 @@ export function AnimalDialog({
                           and below sm it wraps inside that width and stops at
                           two lines. */}
                       <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <DialogTitle className="min-w-0 break-words font-semibold text-xl tracking-tight max-sm:line-clamp-2">
+                        {/* text-2xl is the size the animal's own page gives
+                            the same name, and the dialog is that page in a
+                            box. It costs the row nothing: the line box is
+                            32px, which is what the icon-sm controls beside it
+                            already stood at, so the bar and the arrows' offset
+                            are measured from the same row as before. */}
+                        <DialogTitle className="min-w-0 break-words font-semibold text-2xl tracking-tight max-sm:line-clamp-2">
                           {name}
                         </DialogTitle>
                         <StatusBadge
@@ -730,30 +742,71 @@ export function AnimalDialog({
                     Absolute against the frame around the card rather than
                     against the whole dialog, which is what puts them level
                     with the name whatever the animal's listing runs to. */}
-                {previousId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => onNavigate(previousId)}
-                    aria-label={messages.previousAnimal}
-                    className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
-                  >
-                    <ChevronLeft className="size-4" aria-hidden />
-                  </Button>
-                )}
-                {nextId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => onNavigate(nextId)}
-                    aria-label={messages.nextAnimal}
-                    className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
-                  >
-                    <ChevronRight className="size-4" aria-hidden />
-                  </Button>
-                )}
+                {/* Each arrow says which list it walks before it is clicked.
+                    Drawn half outside the dialog beside a stack of photos
+                    that counts itself "1 / 13", a round chevron is the
+                    lightbox idiom: a pointer reads it as the next picture and
+                    gets a different animal. The label prints the button's own
+                    aria-label, so a pointer and a screen reader are told the
+                    same thing in the same words.
+
+                    The site's tooltip rather than a label of this dialog's
+                    own. Its provider carries the shared 350ms, and an instant
+                    label on a control standing this close to the overlay
+                    would flash on every pass of the pointer on its way out.
+                    Focus opens it with no delay, a touch never opens it at
+                    all (Radix ignores a touch pointer, which matters because
+                    these arrows are on the tablet too), and the content is
+                    portalled, so the card it hangs over cannot clip it.
+
+                    The provider draws no element of its own, so the two
+                    buttons are still the last two in the dialog.
+
+                    aria-describedby={undefined} because the label and the
+                    name are the one string: described by it, the button is
+                    announced as "Prejšnja žival" twice over. Radix spreads
+                    the trigger's own props over the attribute it sets, so
+                    this drops it and leaves the name to say it once. */}
+                <TooltipProvider>
+                  {previousId && (
+                    <Tooltip>
+                      <TooltipTrigger asChild aria-describedby={undefined}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() => onNavigate(previousId)}
+                          aria-label={messages.previousAnimal}
+                          className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
+                        >
+                          <ChevronLeft className="size-4" aria-hidden />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={8}>
+                        {messages.previousAnimal}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {nextId && (
+                    <Tooltip>
+                      <TooltipTrigger asChild aria-describedby={undefined}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() => onNavigate(nextId)}
+                          aria-label={messages.nextAnimal}
+                          className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
+                        >
+                          <ChevronRight className="size-4" aria-hidden />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={8}>
+                        {messages.nextAnimal}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </TooltipProvider>
               </div>
 
               {/* The card's own CTA is the last thing in a long scroll on a

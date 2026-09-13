@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { LoaderCircle } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
+import { Badge } from "@/components/ui/badge";
 import type { Locale } from "@/lib/i18n";
 import { type CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
@@ -11,19 +13,25 @@ import { cn } from "@/lib/utils";
 const MODEL = "/models/our-cat/cat.glb?v=26";
 // The poster uses the same resting pose and camera as the interactive model.
 const POSTER = "/models/our-cat/poster.webp?v=19.1";
+// How long the poster stands in unexplained. The label exists for the wait a
+// visitor notices: measured on the gate, a fast desktop swaps the poster out
+// in 1.3s, a phone on 4G with a slow CPU takes 4.7s, and slow 4G over 10s.
+// Half a second keeps it off the about page on desktop (0.4s) and lets it
+// flash only briefly where the wait is short anyway.
+const LABEL_DELAY_MS = 500;
 
 const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Nalaganje mačka v 3D …",
-    unavailable: "3D-ogled trenutno ni na voljo. Prikazana je slika mačka.",
+    unavailable: "3D-ogled ni na voljo. Prikazana je slika.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "Loading the cat in 3D …",
-    unavailable: "The 3D view is unavailable. A still image of the cat is shown.",
+    unavailable: "The 3D view is unavailable. A still image is shown.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -42,6 +50,13 @@ export type CatModelHandle = {
  * field. Both want the same model, camera and touch controller, so it lives
  * here once and each page wraps it in its own figure. The box takes its
  * height from className.
+ *
+ * The poster is the same pose the model starts in, so nothing tells a visitor
+ * that the cat they are touching is a picture and the real one is still on
+ * its way. Three things do now: the pointer shows progress over the stage, a
+ * status label at its foot says he is loading once the wait is long enough
+ * to notice (or at once when he is touched), and a touch the poster took is
+ * answered with a glance when he arrives.
  *
  * memo, because the gate re-renders on every keystroke and this subtree
  * holds a live WebGL canvas.
@@ -69,12 +84,32 @@ export const CatModel = memo(function CatModel({
   const text = copy[locale];
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
+  // Whether the loading label is on screen. It waits a moment, so a quick
+  // load never shows it, and comes up at once when the visitor reaches for him.
+  const [labelled, setLabelled] = useState(false);
+  // A touch the poster took while he was still loading, for him to answer.
+  const touched = useRef(false);
   // Read from inside the one long-lived effect below, so it is kept current
   // here without restarting it.
   const handOver = useRef(onHandle);
   useEffect(() => {
     handOver.current = onHandle;
   });
+
+  useEffect(() => {
+    if (status !== "loading") return;
+    const timer = setTimeout(() => setLabelled(true), LABEL_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  const onPointerEnter = () => {
+    if (status === "loading") setLabelled(true);
+  };
+  const onPointerDown = () => {
+    if (status !== "loading") return;
+    setLabelled(true);
+    touched.current = true;
+  };
 
   useEffect(() => {
     const container = host.current;
@@ -106,6 +141,12 @@ export const CatModel = memo(function CatModel({
       syncPlayback();
       const controller = interaction;
       if (controller) handOver.current?.({ react: (name) => controller.react(name) });
+      // The page's own request, if it made one on handover, comes first; his
+      // glance at whoever reached for the poster gives way to it.
+      if (touched.current) {
+        touched.current = false;
+        controller?.react("Notice");
+      }
     };
     const onError = () => {
       ready = false;
@@ -238,7 +279,19 @@ export const CatModel = memo(function CatModel({
 
   return (
     <>
-      <div className={cn("relative", className)}>
+      {/* No preload of the model from the head, although React would hoist
+          one. Measured on the gate over throttled 4G, it started the 1.1MB
+          download at 60ms instead of 1.5s and still finished the load only
+          0.3s sooner (0.8s on slow 4G): the link is busy the whole time
+          either way, so the model only took bandwidth from the chunks that
+          hydrate the page, and Chrome warned on slow links that the preload
+          went unused for seconds. What would shorten the wait is a smaller
+          asset, not an earlier start. */}
+      <div
+        className={cn("relative", status === "loading" && "cursor-progress", className)}
+        onPointerEnter={onPointerEnter}
+        onPointerDown={onPointerDown}
+      >
         <Image
           src={POSTER}
           alt={status === "ready" ? "" : text.alt}
@@ -256,10 +309,26 @@ export const CatModel = memo(function CatModel({
           aria-hidden={status !== "ready"}
           className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
         />
+        {/* The one thing ever drawn over the stage, and only while there is
+            no cat to touch. It sits at the foot, on the floor shadow, where
+            no pose reaches. Screen readers hear it from the start; the eyes
+            get it after the delay above. Empty once he is here, so the live
+            region says nothing more. */}
+        <div
+          role="status"
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
+            (status === "loading" && labelled) || status === "failed" ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {status !== "ready" && (
+            <Badge variant="overlay-quiet">
+              {status === "loading" && <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />}
+              {status === "failed" ? text.unavailable : text.loading}
+            </Badge>
+          )}
+        </div>
       </div>
-      <span className="sr-only" role="status">
-        {status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading}
-      </span>
     </>
   );
 });

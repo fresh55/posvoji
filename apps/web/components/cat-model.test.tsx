@@ -9,11 +9,19 @@ vi.mock("@/lib/cat-viewer-runtime", () => ({ createViewerCatPicker: vi.fn() }));
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
-    availableAnimations: string[] = [];
+    // Enough of the animation API for the controller to start one reaction.
+    availableAnimations: string[] = ["Companion", "Notice"];
+    animationName: string | undefined;
+    animationCrossfadeDuration = 0;
+    duration = 0;
     paused = true;
     currentTime = 0;
+    cameraControls = true;
+    updateComplete = Promise.resolve(true);
     play = vi.fn(() => { this.paused = false; });
     pause = vi.fn(() => { this.paused = true; });
+    appendAnimation = vi.fn();
+    detachAnimation = vi.fn();
   }
   if (!customElements.get("model-viewer")) {
     customElements.define("model-viewer", MockViewer);
@@ -21,7 +29,7 @@ vi.mock("@google/model-viewer", () => {
   return { ModelViewerElement: MockViewer };
 });
 
-type Viewer = HTMLElement & { paused: boolean; currentTime: number };
+type Viewer = HTMLElement & { paused: boolean; currentTime: number; animationName?: string };
 let intersect: (visible: boolean) => void;
 let disconnect: ReturnType<typeof vi.fn>;
 let media: EventTarget & { matches: boolean };
@@ -81,7 +89,7 @@ describe("the cat model", () => {
     const poster = document.querySelector("img")!;
     expect(poster.getAttribute("loading")).toBe("eager");
     expect(poster.getAttribute("fetchpriority")).toBe("low");
-    expect(document.querySelector('link[rel="preload"][as="image"]')).toBeNull();
+    expect(document.querySelector('link[rel="preload"]')).toBeNull();
   });
 
   it("loads when visible and plays the continuous animation without extra controls", async () => {
@@ -153,5 +161,63 @@ describe("the cat model", () => {
     expect(disconnect).toHaveBeenCalledOnce();
     expect(viewer.isConnected).toBe(false);
     expect(viewer.paused).toBe(true);
+  });
+
+  it("says he is loading once the wait is long enough to notice", () => {
+    vi.useFakeTimers();
+    try {
+      render(<CatModel sizes="100vw" locale="en" />);
+      const status = screen.getByRole("status");
+      // Present for screen readers from the start, drawn only after the delay.
+      expect(status.textContent).toContain("Loading the cat");
+      expect(status.className).toContain("opacity-0");
+      act(() => { vi.advanceTimersByTime(499); });
+      expect(status.className).toContain("opacity-0");
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(status.className).toContain("opacity-100");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says so at once when the visitor reaches for the poster", () => {
+    vi.useFakeTimers();
+    try {
+      render(<CatModel sizes="100vw" locale="sl" />);
+      const status = screen.getByRole("status");
+      expect(status.className).toContain("opacity-0");
+      fireEvent.pointerDown(screen.getByRole("img"));
+      expect(status.className).toContain("opacity-100");
+      expect(status.textContent).toContain("Nalaganje");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("answers a touch the poster took while he was loading, and only that", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    fireEvent.pointerDown(screen.getByRole("img"));
+    const viewer = await loadViewer();
+    expect(viewer.animationName).toBe("Notice");
+    expect(screen.getByRole("status").textContent).toBe("");
+    cleanup();
+
+    render(<CatModel sizes="100vw" locale="en" />);
+    const untouched = await loadViewer();
+    expect(untouched.animationName).toBeUndefined();
+  });
+
+  it("lets the page's own request on handover come before his glance", async () => {
+    const onHandle = vi.fn((handle: { react: (name: "Back warning") => boolean } | null) => {
+      handle?.react("Back warning");
+    });
+    render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    fireEvent.pointerDown(screen.getByRole("img"));
+    act(() => intersect(true));
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    const viewer = document.querySelector("model-viewer") as unknown as Viewer & { availableAnimations: string[] };
+    viewer.availableAnimations = ["Companion", "Notice", "Back warning"];
+    fireEvent(viewer, new Event("load"));
+    expect(viewer.animationName).toBe("Back warning");
   });
 });

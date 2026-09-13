@@ -35,6 +35,32 @@ test("a freshly loaded cat starts moving without a tap or a manual seek", async 
   await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).paused)).toBe(false);
 });
 
+test("the stage says he is loading until he can be touched, and he answers a touch made meanwhile", async ({ page, isMobile }) => {
+  // Hold the model back, so the wait is observable on a fast machine.
+  await page.route("**/models/our-cat/cat.glb*", async route => {
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    await route.continue();
+  });
+  await page.goto("/vstop");
+  const stage = page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..");
+  // The stage's own label, not the camera-position status model-viewer
+  // keeps in its shadow root once it is up.
+  const status = stage.locator(':scope > [role="status"]');
+  const opacity = () => status.evaluate(e => getComputedStyle(e).opacity);
+  await expect(status).toHaveText(/Nalaganje/);
+  await expect(stage).toHaveCSS("cursor", "progress");
+  const box = (await stage.boundingBox())!;
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+  await expect.poll(opacity).toBe("1");
+  const model = page.locator("model-viewer");
+  await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).loaded), { timeout: 30_000 }).toBe(true);
+  await clip(model, "Notice");
+  await expect(status).toHaveText("");
+  await expect.poll(opacity).toBe("0");
+  await expect(stage).not.toHaveCSS("cursor", "progress");
+});
+
 test("anatomical taps use the proxy instead of the full mesh and rapid repeats finish before returning to idle", async ({ page, isMobile }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
   const model = await load(page);

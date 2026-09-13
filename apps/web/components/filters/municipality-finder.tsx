@@ -62,14 +62,19 @@ const NOT_ASKED: Ask = { query: "", picked: null };
 
 /** One shelter on the shortlist under the first call: who it is, where it is
  *  and how far, and then whatever can be done with it. The trailing control
- *  comes from the caller, because half of these rows have a number to press
- *  and the other half have to say that there is none. */
+ *  comes from the caller, because half of these rows have a number to press;
+ *  the other half have to say that there is none, and say it under the town
+ *  as a third line, where a note reads as a fact about the shelter. Drawn on
+ *  the right in the button's place it read as a control that failed, and at
+ *  375px it squeezed the name into two lines beside it. */
 function NearestRow({
   shelter,
+  note,
   children,
 }: {
   shelter: NearbyShelter;
-  children: ReactNode;
+  note?: string;
+  children?: ReactNode;
 }) {
   const { t } = useI18n();
   return (
@@ -82,8 +87,9 @@ function NearestRow({
           {shelter.shelterName}
         </a>
         <span className="block text-muted-foreground">
-          {shelter.city} ·&nbsp;{t("muniStraightLine", { km: shelter.km })}
+          {shelter.city} ·&nbsp;{t("muniDistance", { km: shelter.km })}
         </span>
+        {note && <span className="block text-muted-foreground">{note}</span>}
       </span>
       {children}
     </li>
@@ -556,8 +562,16 @@ export function MunicipalityFinder({
                       locate();
                     }}
                     aria-pressed={state.status === "on"}
+                    // The name follows the label while the label is drawn:
+                    // a control whose visible text is not in its accessible
+                    // name fails the reader who says what they see. Icon
+                    // alone, it keeps the fuller name.
                     aria-label={
-                      state.status === "locating" ? messages.locating : messages.muniHere
+                      state.status === "locating"
+                        ? messages.locating
+                        : labelledLocation
+                          ? messages.muniHereActive
+                          : messages.muniHere
                     }
                     className={cn(
                       labelledLocation
@@ -585,7 +599,11 @@ export function MunicipalityFinder({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {state.status === "locating" ? messages.locating : messages.muniHere}
+                  {state.status === "locating"
+                    ? messages.locating
+                    : labelledLocation
+                      ? messages.muniHereActive
+                      : messages.muniHere}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -793,7 +811,7 @@ export function MunicipalityFinder({
                           {hero.shelterName}
                         </a>
                         <span className="block text-muted-foreground">
-                          {hero.city} ·&nbsp;{t("muniStraightLine", { km: hero.km })}
+                          {hero.city} ·&nbsp;{t("muniDistance", { km: hero.km })}
                         </span>
                       </p>
                       {/* 44px tall below lg, like the pills under it: the
@@ -862,16 +880,16 @@ export function MunicipalityFinder({
                   {/* After the group that can be rung, because nothing here
                       answers "če se ne oglasijo". The row stays a row: the
                       name links to the shelter's page, which carries whatever
-                      else the register holds, and the place the button would
-                      be says why there is none. */}
+                      else the register holds, and a line under the town says
+                      why there is no button. */}
                   {unlisted.length > 0 && (
                     <ul className="divide-y">
                       {unlisted.map((shelter) => (
-                        <NearestRow key={shelter.shelterId} shelter={shelter}>
-                          <span className="shrink-0 text-sm text-muted-foreground">
-                            {messages.muniNoNumber}
-                          </span>
-                        </NearestRow>
+                        <NearestRow
+                          key={shelter.shelterId}
+                          shelter={shelter}
+                          note={messages.muniNoNumber}
+                        />
                       ))}
                     </ul>
                   )}
@@ -882,6 +900,13 @@ export function MunicipalityFinder({
                   ? messages.muniUnverifiedAlso
                   : messages.muniUnverifiedAdvice}
               </p>
+              {/* What kind of kilometres the rows above show, once, in the
+                  coverage card's source-line weight. */}
+              {active.nearest.length > 0 && (
+                <p className="text-xs leading-snug text-muted-foreground">
+                  {messages.muniDistanceNote}
+                </p>
+              )}
             </Card>
           ))}
 

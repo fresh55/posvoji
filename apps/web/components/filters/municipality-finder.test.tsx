@@ -27,6 +27,10 @@ globalThis.ResizeObserver ??=
 
 // Three občine from different corners of the country, each with real coverage,
 // so a lookup that resolves has a card to show.
+// The location button's accessible name is its visible label while the box
+// is empty, and the fuller name once the label has gone.
+const LOCATE = /^(Uporabi mojo lokacijo|Moja lokacija)$/;
+
 const ENTRIES: LookupEntry[] = [
   {
     name: "Ljubljana",
@@ -240,15 +244,18 @@ describe("MunicipalityFinder empty state", () => {
     renderFinder();
 
     // A tooltip opens on hover and on focus, and a thumb does neither.
-    const locate = screen.getByRole("button", { name: "Uporabi mojo lokacijo" });
+    const locate = screen.getByRole("button", { name: "Moja lokacija" });
     expect(locate.textContent).toContain("Moja lokacija");
 
     // Once something is typed the clear X is beside it and the two together
-    // would leave the field no room for what was typed.
+    // would leave the field no room for what was typed. The name goes back
+    // to the fuller form with the label.
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "Kop" } });
 
     expect(
-      screen.getByRole("button", { name: "Uporabi mojo lokacijo" }).textContent,
+      screen.getByRole("button", {
+        name: "Uporabi mojo lokacijo",
+      }).textContent,
     ).not.toContain("Moja lokacija");
     expect(screen.getByRole("button", { name: "Počisti iskanje" })).toBeTruthy();
   });
@@ -634,7 +641,7 @@ describe("MunicipalityFinder typed text against the device position", () => {
     const search = renderReal();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Uporabi mojo lokacijo" }),
+      screen.getByRole("button", { name: LOCATE }),
     );
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
 
@@ -652,7 +659,7 @@ describe("MunicipalityFinder typed text against the device position", () => {
     renderReal();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Uporabi mojo lokacijo" }),
+      screen.getByRole("button", { name: LOCATE }),
     );
 
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
@@ -662,7 +669,7 @@ describe("MunicipalityFinder typed text against the device position", () => {
   it("does not resurrect a device result after typing and clearing", () => {
     stubGeolocationAt(46.0569, 14.5058);
     const search = renderReal();
-    fireEvent.click(screen.getByRole("button", { name: "Uporabi mojo lokacijo" }));
+    fireEvent.click(screen.getByRole("button", { name: LOCATE }));
     fireEvent.change(search, { target: { value: "Maribor" } });
     fireEvent.click(screen.getByRole("button", { name: "Počisti iskanje" }));
     expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
@@ -675,20 +682,18 @@ describe("MunicipalityFinder typed text against the device position", () => {
     // The arrow is the only thing drawn in the button, and the name used to
     // appear in a title, which is a pointer and nothing else. It says the same
     // words as the accessible name, so the two cannot drift apart.
-    const locate = screen.getByRole("button", { name: "Uporabi mojo lokacijo" });
+    const locate = screen.getByRole("button", { name: LOCATE });
     expect(locate.getAttribute("title")).toBeNull();
 
     fireEvent.focus(locate);
 
-    expect(screen.getByRole("tooltip").textContent).toBe(
-      "Uporabi mojo lokacijo",
-    );
+    expect(screen.getByRole("tooltip").textContent).toBe("Moja lokacija");
   });
 
   it("turns off an active fix with a second press of the location button", () => {
     stubGeolocationAt(46.0569, 14.5058);
     renderReal();
-    const locate = screen.getByRole("button", { name: "Uporabi mojo lokacijo" });
+    const locate = screen.getByRole("button", { name: LOCATE });
     fireEvent.click(locate);
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
     fireEvent.click(locate);
@@ -829,7 +834,7 @@ describe("MunicipalityFinder without a verified shelter", () => {
     );
     const call = screen.getByRole("link", { name: "Pokliči 02 480 16 60" });
     expect(call.getAttribute("href")).toMatch(/^tel:/);
-    expect(screen.getByText("Maribor · 36 km zračno")).toBeTruthy();
+    expect(screen.getByText("Maribor · 36 km")).toBeTruthy();
 
     // The rest of the shortlist under a label that says when it is for,
     // each number a control of its own. The label is an instruction, so
@@ -841,6 +846,9 @@ describe("MunicipalityFinder without a verified shelter", () => {
     const unlisted = screen.getByRole("link", { name: "Zavetišče Mala hiša" });
     expect(unlisted.getAttribute("href")).toBe("/zavetisca/mala-hisa");
     expect(screen.getByText("brez objavljene številke")).toBeTruthy();
+    expect(
+      screen.getByText("Razdalje so zračne, od središča občine."),
+    ).toBeTruthy();
     expect(follows(fallback, unlisted)).toBe(true);
     expect(screen.getAllByRole("link", { name: /^\d/ })).toHaveLength(1);
 
@@ -971,7 +979,7 @@ describe("MunicipalityFinder without a verified shelter", () => {
     const heading = screen.getByText("Najprej pokliči");
     const call = screen.getByRole("link", { name: "Pokliči 05 307 85 70" });
     expect(call.getAttribute("href")).toMatch(/^tel:/);
-    expect(screen.getByText("Vitovlje · 49 km zračno")).toBeTruthy();
+    expect(screen.getByText("Vitovlje · 49 km")).toBeTruthy();
 
     // Nothing else on the shortlist answers a phone, so the label that says
     // when to try the next number is not drawn at all.
@@ -981,8 +989,11 @@ describe("MunicipalityFinder without a verified shelter", () => {
     // reason it carries no button, and it is not a second tel: link.
     const johanca = screen.getByRole("link", { name: "Zavetišče Johanca" });
     expect(johanca.getAttribute("href")).toBe("/zavetisca/johanca");
-    expect(screen.getByText("Tolmin · 21 km zračno")).toBeTruthy();
+    expect(screen.getByText("Tolmin · 21 km")).toBeTruthy();
     expect(screen.getByText("brez objavljene številke")).toBeTruthy();
+    expect(
+      screen.getByText("Razdalje so zračne, od središča občine."),
+    ).toBeTruthy();
     expect(follows(heading, johanca)).toBe(true);
     expect(follows(call, johanca)).toBe(true);
     expect(document.querySelectorAll('a[href^="tel:"]')).toHaveLength(1);

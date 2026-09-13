@@ -359,14 +359,13 @@ const sl = {
   // call to put first.
   muniNearestCall: "Najprej pokliči",
   muniNearestTitle: "Najbližja zavetišča",
-  // How far the shelter is, and what kind of distance that is. Measured
-  // between the občina's centroid and the shelter's town, in a straight line,
-  // so a road distance is longer and this number is never a driving time.
-  // "zračno" is the short form of "zračna razdalja" and is what fits beside a
-  // town name on a phone. The space before the unit is non-breaking, so a
-  // narrow column can wrap the qualifier away but never the number from its
-  // kilometres.
-  muniStraightLine: "{km}\u00a0km zračno",
+  // How far the shelter is. Measured between the občina's centroid and the
+  // shelter's town, in a straight line, so a road is longer and this is never
+  // a driving time. muniDistanceNote says so once, under the list: a
+  // qualifier on every row put every distance on two lines at 375px. The
+  // space before the unit is non-breaking.
+  muniDistance: "{km}\u00a0km",
+  muniDistanceNote: "Razdalje so zračne, od središča občine.",
   // In place of the button, on a shortlist row for a shelter the register has
   // no number for. Says which of the two it is: a number nobody published,
   // not a page that failed to draw it.
@@ -695,7 +694,8 @@ const en: Messages = {
     "Do not force an injured animal to move. Keep your distance if it is unsafe to approach.",
   muniNearestCall: "Call first",
   muniNearestTitle: "Nearest shelters",
-  muniStraightLine: "{km}\u00a0km straight line",
+  muniDistance: "{km}\u00a0km",
+  muniDistanceNote: "Distances are straight-line, from the municipality's centre.",
   muniNoNumber: "no published number",
   muniNearestNote: "Ask who will collect the animal.",
   muniNearestOthers: "If there is no answer",

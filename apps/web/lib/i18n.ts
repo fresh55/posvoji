@@ -522,10 +522,6 @@ const sl = {
     "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
   specialNeedsNote:
     "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
-  adoptionIndoorOnly: "Samo notranje bivanje",
-  adoptionBondedPair: "Posvojitev v paru",
-  adoptionExperiencedCarer: "Izkušen skrbnik",
-  adoptionOngoingCare: "Potrebuje redno oskrbo",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -798,10 +794,6 @@ const en: Messages = {
     "Showing animals with an explicitly reported care requirement. {count} of {total}.",
   specialNeedsNote:
     "This animal needs a patient person and a little more time.",
-  adoptionIndoorOnly: "Indoor-only home",
-  adoptionBondedPair: "Adopt together",
-  adoptionExperiencedCarer: "Experienced carer",
-  adoptionOngoingCare: "Ongoing care",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

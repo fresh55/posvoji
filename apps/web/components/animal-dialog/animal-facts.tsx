@@ -34,6 +34,7 @@ import {
   type ToggleKey,
 } from "@/lib/filters";
 import { quotedLang, type TranslationKey } from "@/lib/i18n";
+import { ADOPTION_REQUIREMENT_LABELS } from "@/lib/filters/metadata";
 import {
   ageLabel,
   longStayMonths,
@@ -47,6 +48,9 @@ const SEX_ICONS: Record<Exclude<Sex, "unknown">, LucideIcon> = {
   male: Mars,
   female: Venus,
 };
+
+const REQUIREMENT_KEYS = Object.keys(ADOPTION_REQUIREMENT_LABELS) as
+  (keyof typeof ADOPTION_REQUIREMENT_LABELS)[];
 
 // The size filter speaks in growing paw prints, so the size badge does too:
 // the paw itself is the measurement.
@@ -385,6 +389,9 @@ export function AnimalFacts({
       ? animal.apartmentOk
       : undefined;
   const animalName = animal.name ?? messages.unnamed;
+  const requirements = REQUIREMENT_KEYS.filter(
+    (key) => animal.adoptionRequirements?.[key] === true,
+  );
   // Two ways in, one paragraph. The animal's own page is server-rendered from
   // a whole dataset animal, so it carries its description and asks the store
   // for nothing. The grid's dialog gets an animal without one, because the
@@ -555,20 +562,15 @@ export function AnimalFacts({
           <Aside icon={HeartHandshake}>{messages.specialNeedsNote}</Aside>
         </p>
       )}
-      {animal.adoptionRequirements && (
+      {requirements.length > 0 && (
         <ul className="flex flex-wrap gap-2 text-xs text-muted-foreground" aria-label={messages.home}>
-          {animal.adoptionRequirements.indoorOnly && (
-            <li><Aside icon={Building2}>{messages.adoptionIndoorOnly}</Aside></li>
-          )}
-          {animal.adoptionRequirements.bondedPair && (
-            <li><Aside icon={HeartHandshake}>{messages.adoptionBondedPair}</Aside></li>
-          )}
-          {animal.adoptionRequirements.experiencedCarer && (
-            <li><Aside icon={HeartHandshake}>{messages.adoptionExperiencedCarer}</Aside></li>
-          )}
-          {animal.adoptionRequirements.ongoingCare && (
-            <li><Aside icon={HeartHandshake}>{messages.adoptionOngoingCare}</Aside></li>
-          )}
+          {requirements.map((key) => (
+            <li key={key}>
+              <Aside icon={key === "indoorOnly" ? Building2 : HeartHandshake}>
+                {ADOPTION_REQUIREMENT_LABELS[key][locale]}
+              </Aside>
+            </li>
+          ))}
         </ul>
       )}
 

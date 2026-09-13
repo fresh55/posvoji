@@ -345,6 +345,11 @@ describe("the special care line", () => {
 });
 
 describe("reviewed adoption requirements", () => {
+  it("omits the requirement list when none are confirmed", () => {
+    renderFacts({ adoptionRequirements: { indoorOnly: false } }, "en");
+    expect(screen.queryByRole("list", { name: "Home" })).toBeNull();
+  });
+
   it("shows confirmed requirements in the animal facts", () => {
     renderFacts({ adoptionRequirements: {
       indoorOnly: true, bondedPair: true, experiencedCarer: true, ongoingCare: true,

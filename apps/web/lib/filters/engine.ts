@@ -561,15 +561,8 @@ export function goodWithCounts(
   return counts;
 }
 
-// Same rule again, one section over, and this one ORs: the facet being
-// measured comes off its own selection, whatever is left of that selection
-// still applies, every other section stays on, and the facet is required on
-// top of them.
-//
-// Dom and Skrb ask the same question of different columns, so they ask it
-// through one walk rather than two copies of it. The line that does the real
-// work is the second answersAny: it is the "whatever is left of that
-// selection" clause, and it was the part worth not having twice.
+// Home and care use OR within a section. Count each option with that entire
+// section lifted, while retaining every other section's constraints.
 function orSectionCounts(
   pass: Pass,
   section: LiftedSection,
@@ -785,31 +778,23 @@ function narrows(matching: number, total: number): boolean {
   return matching > 0 && matching < total;
 }
 
-// Every visible* function below takes the current selection, and takes it
-// required, and a value that is selected keeps its control on screen whatever
-// the pool says. The rule these functions otherwise follow is "an option that
-// cannot narrow anything is not worth a row", and that rule is right for an
-// option nobody has picked and wrong for one somebody has: a selection is
-// already narrowing the result, so hiding its control leaves a filter running
-// with no way to switch it off. On a phone it is worse than that, because the
-// Filtri trigger only exists while the sheet has sections (animal-filters.tsx),
-// so the last section going takes the whole way in with it. Required and not
-// defaulted, because a caller that forgets the argument gets exactly the
-// stranding this guards against, and silently.
-
-// A toggle that every animal passes (or none do) can't narrow anything.
+// Selected controls always stay visible so they can be removed. By default,
+// unselected controls must narrow the pool; includeUnavailable shows every
+// species-appropriate control without inspecting the pool's answers.
 export function visibleToggles(
   animals: AnimalFields[],
   species: SpeciesFilter,
   selected: readonly ToggleKey[],
   includeUnavailable = false,
 ): ToggleDef[] {
-  const counts = answeredCounts(indexOf(animals).toggles, TOGGLES.length);
+  const counts = includeUnavailable
+    ? null
+    : answeredCounts(indexOf(animals).toggles, TOGGLES.length);
   return TOGGLES.filter(
     (toggle, bit) =>
       selected.includes(toggle.key) ||
       (toggleFitsSpecies(toggle.species, species) &&
-        (includeUnavailable || narrows(counts[bit], animals.length))),
+        (counts === null || narrows(counts[bit], animals.length))),
   );
 }
 
@@ -826,11 +811,11 @@ function visibleFacet<Key extends string>(
   selected: readonly Key[],
   includeUnavailable = false,
 ): Key[] {
+  if (includeUnavailable) return [...keys];
   const counts = answeredCounts(indexOf(animals)[column], keys.length);
   return keys.filter(
     (key, bit) =>
       selected.includes(key) ||
-      includeUnavailable ||
       narrows(counts[bit], animals.length),
   );
 }
@@ -930,6 +915,14 @@ export function visibleGroups(
   now: Date,
   includeUnavailable = false,
 ): Record<MultiGroup, boolean> {
+  if (includeUnavailable) {
+    const shown = (group: MultiGroup) =>
+      filters[group].length > 0 || groupFitsSpecies(group, filters.species);
+    return {
+      sex: shown("sex"), age: shown("age"), size: shown("size"),
+      energy: shown("energy"), shelter: shown("shelter"),
+    };
+  }
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
   const distinct = {
@@ -951,7 +944,6 @@ export function visibleGroups(
   }
   const shown = (group: MultiGroup) =>
     filters[group].length > 0 ||
-    (includeUnavailable && groupFitsSpecies(group, filters.species)) ||
     (groupFitsSpecies(group, filters.species) && distinct[group].size >= 2);
   return {
     sex: shown("sex"),

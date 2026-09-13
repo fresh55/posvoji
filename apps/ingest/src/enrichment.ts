@@ -1,10 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Animal, type ProviderPolicy } from "@posvoji/schema";
+import {
+  Animal, AnimalSize, Compatibility, EnergyLevel, Sex, TestResult,
+  type ProviderPolicy,
+} from "@posvoji/schema";
 import { z } from "zod";
 import { repoRoot } from "./paths";
 import type { PortalExportPayload } from "./portal-contract";
+import { overrideKey } from "./portal-merge";
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const Evidence = z.strictObject({
@@ -13,20 +17,22 @@ const Evidence = z.strictObject({
   sha256: digest,
 }).refine((span) => span.end > span.start, "evidence must not be empty");
 
+const knownCompatibility = Compatibility.exclude(["unknown"]);
+const knownTestResult = TestResult.exclude(["unknown"]);
 const fields = {
-  energy: z.enum(["calm", "balanced", "lively"]),
-  size: z.enum(["small", "medium", "large"]),
-  sex: z.enum(["male", "female"]),
-  "goodWith.kids": z.enum(["yes", "no"]),
-  "goodWith.dogs": z.enum(["yes", "no"]),
-  "goodWith.cats": z.enum(["yes", "no"]),
-  apartmentOk: z.enum(["yes", "no"]),
+  energy: EnergyLevel,
+  size: AnimalSize,
+  sex: Sex.exclude(["unknown"]),
+  "goodWith.kids": knownCompatibility,
+  "goodWith.dogs": knownCompatibility,
+  "goodWith.cats": knownCompatibility,
+  apartmentOk: knownCompatibility,
   specialNeeds: z.literal(true),
   "medical.neutered": z.boolean(),
   "medical.vaccinated": z.boolean(),
   "medical.microchipped": z.boolean(),
-  "medical.fiv": z.enum(["positive", "negative"]),
-  "medical.felv": z.enum(["positive", "negative"]),
+  "medical.fiv": knownTestResult,
+  "medical.felv": knownTestResult,
   "adoptionRequirements.indoorOnly": z.literal(true),
   "adoptionRequirements.bondedPair": z.literal(true),
   "adoptionRequirements.experiencedCarer": z.literal(true),
@@ -60,7 +66,7 @@ export const EnrichmentManifest = z.strictObject({
 }).superRefine((manifest, ctx) => {
   const seen = new Set<string>();
   for (const [index, record] of manifest.records.entries()) {
-    const key = `${record.providerId}\u0000${record.animalId}`;
+    const key = overrideKey(record.providerId, record.animalId);
     if (seen.has(key) || new Set(record.claims.map((c) => c.field)).size !== record.claims.length) {
       ctx.addIssue({ code: "custom", message: "duplicate animal or field", path: ["records", index] });
     }
@@ -99,6 +105,10 @@ export function applyEnrichment(
   const checked = EnrichmentManifest.parse(manifest);
   const byId = new Map(animals.map((animal) => [animal.id, animal]));
   const result = new Map(byId);
+  // Match the portal merge's provider/animal identity and last-correction rule.
+  const corrections = new Map((portal?.overrides ?? []).map((override) => [
+    overrideKey(override.providerId, override.animalId), override,
+  ]));
   const issues: EnrichmentIssue[] = [];
   const applied: { animalId: string; field: string }[] = [];
   for (const record of checked.records) {
@@ -120,13 +130,13 @@ export function applyEnrichment(
       continue;
     }
     // A portal correction to the description supersedes the text reviewed here.
-    const correction = portal?.overrides.find((override) =>
-      override.animalId === record.animalId && override.providerId === record.providerId);
+    const correction = corrections.get(overrideKey(record.providerId, record.animalId));
     if (correction?.fields.shortDescription !== undefined && correction.fields.shortDescription !== description) {
       reject("shelter-description");
       continue;
     }
-    let enriched = animal;
+    const enriched: Record<string, unknown> = { ...animal };
+    let changed = false;
     for (const claim of record.claims) {
       const [top, nested] = claim.field.split(".") as [string, string?];
       const portalField = top === "goodWith" && nested
@@ -139,32 +149,28 @@ export function applyEnrichment(
         reject("permission", claim.field);
         continue;
       }
-      if (claim.field === "medical.fiv" || claim.field === "medical.felv") {
-        if (animal.species !== "cat") {
-          reject("species", claim.field);
-          continue;
-        }
+      if (animal.species !== "cat" && (claim.field === "medical.fiv" || claim.field === "medical.felv")) {
+        reject("species", claim.field);
+        continue;
       }
       const { start, end, sha256 } = claim.evidence;
       if (end > description.length || evidenceHash(description.slice(start, end)) !== sha256) {
         reject("evidence-changed", claim.field);
         continue;
       }
-      const object = enriched as unknown as Record<string, unknown>;
-      const parent = object[top] as Record<string, unknown> | undefined;
-      const existing = nested ? parent?.[nested] : object[top];
+      const parent = enriched[top] as Record<string, unknown> | undefined;
+      const existing = nested ? parent?.[nested] : enriched[top];
       // Explicit "unknown", false and "no" are answers too. Never overrule them.
       if (existing !== undefined) {
         reject("existing-value", claim.field);
         continue;
       }
-      enriched = Animal.parse({
-        ...enriched,
-        [top]: nested ? { ...parent, [nested]: claim.value } : claim.value,
-      });
+      enriched[top] = nested ? { ...parent, [nested]: claim.value } : claim.value;
+      changed = true;
       applied.push({ animalId: animal.id, field: claim.field });
     }
-    result.set(animal.id, enriched);
+    // Validate once at the record boundary, after all typed claims are merged.
+    if (changed) result.set(animal.id, Animal.parse(enriched));
   }
   return { animals: animals.map((animal) => result.get(animal.id)!), applied, issues };
 }

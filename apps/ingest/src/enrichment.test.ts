@@ -113,6 +113,16 @@ describe("reviewed description enrichment", () => {
     expect(EnrichmentManifest.safeParse(reviewed).success).toBe(false);
   });
 
+  it("uses the same last correction as the portal merge for duplicate entries", () => {
+    const portal = { generatedAt: NOW, overrides: [
+      { providerId: "fixture", animalId: "fixture:1", fields: { shortDescription: "Older correction." } },
+      { providerId: "fixture", animalId: "fixture:1", fields: {} },
+    ] };
+    const result = applyEnrichment([animal()], manifest(), policies, portal);
+    expect(result.animals[0]?.energy).toBe("calm");
+    expect(result.issues).toEqual([]);
+  });
+
   it("keeps raw snapshots clean, gives portal corrections priority and suppresses changed descriptions", () => {
     function publish(fields: { energy?: "lively"; shortDescription?: string }) {
       return preparePublication({

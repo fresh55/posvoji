@@ -425,8 +425,8 @@ export function AnimalCard({
             what the shelter line below already underlines at. */}
         {/* 18px from xl, 16px below it. The card is about 307px wide from
             xl and a 16px name beside a photograph that size read as a
-            caption; on the 164 to 230px cards below xl it is the right size
-            for the box. The step is at the breakpoint where the card grows
+            caption; on the smaller cards below xl it is the right size for
+            the box. The step is at the breakpoint where the card grows
             (CARD_GRID in lib/card-grid.ts), so the name and the photo move
             together.
 
@@ -437,10 +437,8 @@ export function AnimalCard({
             by 28px. That was the fixture's problem: its long name now breaks
             with room to spare at both sizes (card-gallery.tsx), so the
             snapshot is the same height on both machines. Reserving a second
-            line for every card is still not the answer; PR #132 measured and
-            rejected it, because it costs every card a row of pixels for
-            three animals, and mt-auto on the shelter row already absorbs the
-            card that runs taller than its neighbours. */}
+            line for every card is still not the answer, for the reason the
+            block above gives. */}
         <h3
           id={headingId}
           className="line-clamp-2 font-semibold underline-offset-4 xl:text-lg"

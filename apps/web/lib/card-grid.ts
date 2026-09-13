@@ -30,13 +30,21 @@
 // 15rem floor at lg would leave two enormous cards beside the sidebar. xl is
 // where the page frame stops growing at 80rem, so the count settles at three.
 //
+// The card's name steps up at this same breakpoint (xl:text-lg on the h3 in
+// animal-card.tsx), because a 16px name beside a 307px photograph reads as a
+// caption. It is spelled there rather than here, since it has one consumer
+// and nothing derives from it, and a breakpoint cannot be hoisted into a
+// constant anyway: Tailwind generates a rule only for a literal class string.
+// So moving the floor below moves the picture and leaves the type behind.
+//
 // From 2xl the frame itself grows to 100rem (--page-max, set by the results
 // page in site-shell.tsx) and the floor goes up with it, to 18rem. Both halves
 // are needed and neither works alone: a wider frame at the 15rem floor packs
 // five 243px columns into the new room, which is smaller cards and more of
 // them, the opposite of the point. 18rem is the floor that makes the answer
-// four, and four is what keeps the card at 308px, the size it already is at
-// xl. So a 1920 screen draws the same card as a 1440 one, and draws one more.
+// four, and four is what keeps the card at 305px, within two pixels of the
+// 307px it is at xl. So a 1920 screen draws nearly the same card as a 1440
+// one, and draws one more.
 export const CARD_GRID =
   "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-5" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
@@ -70,7 +78,7 @@ export const CARD_GRID =
 // average 12.6KB at 320, 24.0KB at 480 and 36.8KB at 640, and a master 51.7KB.
 // A desktop at 1x moves from the 320 rung to the 480 one, and draws three of
 // them to a row instead of four, so a row costs 72KB where it cost 50KB and the
-// photograph it is spent on is 309px rather than 228px. Above the fold that is
+// photograph it is spent on is 307px rather than 228px. Above the fold that is
 // close to a wash, because the row is 431px tall now and fewer of them fit.
 //
 // A desktop at 2x asks for 618px of height and the ladder's top rung is 640
@@ -155,7 +163,7 @@ export const CARD_PHOTO_RADIUS = "rounded-2xl";
 //
 // It lives here and not at the shell, because the number is only right in
 // company: 100rem is the frame that leaves 1280px of grid after the gutters and
-// the sidebar, which is four 308px columns at the 18rem floor above, which is
+// the sidebar, which is four 305px columns at the 18rem floor above, which is
 // what the last band of CARD_PHOTO_SIZES is declared for. Those three move
 // together or not at all, so they are read from one file.
 export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";

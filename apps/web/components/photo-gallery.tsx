@@ -162,8 +162,14 @@ const DEFAULT_WRAPPER_CLASS =
 // the row disappears. The ring is drawn in black at low alpha, so it reads as
 // the dot's own edge on a light photo and disappears into a dark one, where the
 // white dots never needed help.
-const DOT_CLASS =
-  "size-1.5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)] transition-colors";
+// The dot itself, which is the same disc on every surface. Hoisted because the
+// two paint objects below would otherwise spell the size and the corner out
+// twice: DOT_EDGE used to be what they shared, and the pill made the edge
+// redundant. The pill's own padding is measured against this size (CARD_DOTS),
+// so a change here has to reach both.
+const DOT_SHAPE = "size-1.5 rounded-full transition-colors";
+
+const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]`;
 
 // What a grid card draws instead, and why it can draw less.
 //
@@ -204,9 +210,23 @@ const DOT_CLASS =
 // is dark whatever the theme is, so a dot that follows the theme would be
 // stone-950 on near-black in the dark one. The pill decided the colour under
 // the dots, which is the whole point of it.
+//
+// Translucent and edgeless, which the site's other two marks on a photograph
+// are not: the status badge brings an opaque ground (overlay-quiet in
+// ui/badge.tsx, because "a wash has nothing to sit on") and the card's
+// chevrons bring a near-solid ground and a hairline ring (CARD_CHEVRON above).
+// Both of those carry text or an icon a visitor has to read against an
+// arbitrary backdrop, and neither may lose to a white studio shot. These dots
+// carry no glyph and say one thing, which of five, so what they need is that
+// the current dot and the rest come apart. A 35% wash does that on every
+// photo in the register while staying a shape on the picture rather than a
+// label over it, and the badge sits on the same frame at the same time.
+//
+// The dots stay white for the same reason the ground is dark, so the pair is
+// read as one decision.
 const CARD_DOTS = {
-  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 items-center rounded-full bg-black/35 px-1.5 py-1`,
-  dot: "size-1.5 rounded-full transition-colors",
+  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/35 px-1.5 py-1`,
+  dot: DOT_SHAPE,
   current: "bg-white",
   rest: "bg-white/50",
 } as const;

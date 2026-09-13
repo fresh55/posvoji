@@ -572,7 +572,6 @@ describe("photo gallery controls", () => {
     expect(dots?.className).toContain("-translate-x-1/2");
     expect(dots?.className).not.toContain("inset-x-0");
     expect(dots?.className).not.toContain("bg-linear-to-t");
-    expect(dots?.className).not.toContain("h-12");
 
     // Plain discs: the pill is dark on every photo, so the 1px edge that used
     // to draw a white dot on a white photo has nothing left to do.
@@ -592,7 +591,12 @@ describe("photo gallery controls", () => {
     // One element carries the ground and the reveal, so a card at rest has
     // neither and a hovered card has both. A ground that outlived its dots
     // would be a smudge across the bottom of the photograph.
+    //
+    // Both on one node is the whole assertion. Reading the reveal on its own
+    // repeats the gating test above and still passes with the pill moved onto
+    // a wrapper of its own, which is the arrangement this is here to refuse.
     const dots = document.querySelector('[data-slot="photo-dots"]');
+    expect(dots?.className).toContain("bg-black/35");
     expect(dots?.className).toContain("can-hover:opacity-0");
     expect(dots?.className).toContain("group-hover/card:opacity-100");
   });

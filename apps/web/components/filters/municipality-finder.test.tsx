@@ -476,6 +476,57 @@ describe("MunicipalityFinder enter key", () => {
   });
 });
 
+// Picking used to refocus the field whatever had done the picking, which on a
+// phone brought the software keyboard back over the answer the pick had just
+// produced.
+describe("MunicipalityFinder focus after a pick", () => {
+  function stubPointer(coarse: boolean) {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: (query: string) => ({
+        matches: coarse && query === "(pointer: coarse)",
+        media: query,
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent: () => false,
+      }),
+    });
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, "matchMedia");
+  });
+
+  function pickMaribor() {
+    renderFinder();
+    const search = screen.getByRole("combobox");
+    search.focus();
+    fireEvent.change(search, { target: { value: "Maribor" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+    return search;
+  }
+
+  it("gives the field up on a touch screen", () => {
+    stubPointer(true);
+    const search = pickMaribor();
+
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(document.activeElement).not.toBe(search);
+  });
+
+  it("keeps the field focused for a pointer", () => {
+    stubPointer(false);
+    const search = pickMaribor();
+
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+  });
+});
+
 describe("MunicipalityFinder search feedback", () => {
   it.each(["9999", "999", "10000", "SI-9999"])("announces an invalid postcode: %s", (query) => {
     renderFinder();

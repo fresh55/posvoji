@@ -220,7 +220,19 @@ export function MunicipalityFinder({
     setHighlighted(null);
     setDismissed(false);
     turnOff();
-    searchRef.current?.focus();
+    // A pick is the end of the typing, and where the typing was done with a
+    // software keyboard that keyboard is standing over the answer the pick
+    // just produced. So the field gives the focus up there instead of taking
+    // it back. With a pointer there is nothing in the way and the field is
+    // where the visitor was: the list they were arrowing through has gone,
+    // and focus goes with it if nothing catches it. matchMedia is optional
+    // because this runs in the click handler of a component that is rendered
+    // under jsdom as well as in a browser.
+    if (window.matchMedia?.("(pointer: coarse)").matches) {
+      searchRef.current?.blur();
+    } else {
+      searchRef.current?.focus();
+    }
   };
 
   // A postcode or town in the box, and the device's position, both answer

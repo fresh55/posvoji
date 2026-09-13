@@ -156,20 +156,28 @@ shelters:
   - id: johanca
     name: Zavetišče Johanca (Veterina Tolmin)
     city: Tolmin
+    website: https://www.veterina-tolmin.si/
     email: zavetisce.johanca@gmail.com
+    phone: "05 388 48 00"
+    hours: "Pon–pet 7.00–18.00 · sob 7.00–12.00 · telefon 24 ur/7 dni"
     notes: >-
-      Dovoljenje potrjeno 2026-08-20. Spletne strani ni; objave pretežno na
-      družbenih omrežjih, ki jih ne zajemamo, zato je potreben partnerski feed
-      ali ročni vnos prek portala.
+      Dovoljenje potrjeno 2026-08-20. Zavetišče vodi Veterinarska ambulanta
+      Tolmin in nima svoje spletne strani; telefon, uradne ure in spletni
+      naslov so ambulantini, prepisani z veterina-tolmin.si 2026-09-13.
+      Objave pretežno na družbenih omrežjih, ki jih ne zajemamo, zato je
+      potreben partnerski feed ali ročni vnos prek portala.
 
   - id: muri
     name: Zavod Muri
     city: Vransko
     website: https://zavodmuri.si/
     email: zavod.muri@gmail.com
+    phone: "070 85 11 66"
     notes: >-
       Ločena kataloga psov in muc. Pisno dovoljenje 2026-08-16, provider muri
-      je vklopljen.
+      je vklopljen. Telefon prepisan z zavodmuri.si/kontakt 2026-09-13; ob
+      nedosegljivosti zavod prosi za SMS in pokliče nazaj. Uradnih ur ne
+      objavljajo.
 
   - id: potepuhi
     name: Zavetišče Potepuhi

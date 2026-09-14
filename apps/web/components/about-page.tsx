@@ -150,7 +150,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.about} />
         <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
             {messages.about}
           </h1>
           {/* The page's one sentence, and a step above the facts rather

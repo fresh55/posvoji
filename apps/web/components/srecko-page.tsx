@@ -24,7 +24,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} trail={[{ label: getMessages(locale).about, href: ABOUT_PATHS[locale] }]} current={SRECKO.name} />
         <header className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{SRECKO.name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">{SRECKO.name}</h1>
           <p className="text-lg font-medium">{text.memorial}</p>
           <p className="max-w-prose text-base leading-relaxed text-muted-foreground sm:text-lg">{text.intro}</p>
         </header>

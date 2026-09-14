@@ -83,4 +83,14 @@ describe("the phone jump strip", () => {
     expect(targets.every(card => card !== null)).toBe(true);
     expect(new Set(targets).size).toBe(links.length);
   });
+
+  // The phone step the five content pages were missing; resources-page's own
+  // test says what the ladder is.
+  it("steps the heading down on a phone", () => {
+    render(<SheltersPage locale="sl" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).className.split(" "),
+    ).toEqual(expect.arrayContaining(["text-2xl", "sm:text-3xl", "md:text-4xl"]));
+  });
 });

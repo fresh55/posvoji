@@ -291,7 +291,11 @@ export function SheltersAtlas({
                   href={invite.joinHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="relative z-10 underline underline-offset-4 hover:text-foreground"
+                  // 17px of line on one row and 40px over two, so a coarse
+                  // pointer gets the overlay: it centres on the link's own
+                  // box and the only thing inside its overhang is the
+                  // sentence around it. See tap-target in globals.css.
+                  className="relative z-10 inline-flex pointer-coarse:tap-target underline underline-offset-4 hover:text-foreground"
                 >
                   {invite.joinLabel}
                   <span className="sr-only"> {invite.newWindow}</span>

@@ -16,7 +16,7 @@ import { pointer, slot } from "@/test/pointer";
 // it, and everything here is the fan on its own, rendered the way that suite
 // renders it for the two tests that count renders.
 
-const FAN_LAYOUT = "(min-width: 640px)";
+const FAN_LAYOUT = "(min-width: 640px) and (min-height: 32rem)";
 
 let desktopFan = true;
 // Every listener the fan's media query is holding. The fan reads the

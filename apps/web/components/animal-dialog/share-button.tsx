@@ -17,8 +17,11 @@ import { cn } from "@/lib/utils";
 
 const CONFIRM_MS = 2000;
 
-// The layout whose share is the platform's own sheet. The same cutoff the
-// dialog's phone layout is drawn at.
+// The layout whose share is the platform's own sheet. The width alone, and no
+// longer the same question the dialog's shell asks: that one counts a short
+// viewport as a phone as well (PHONE_SHELL in animal-dialog.tsx), and a
+// desktop window dragged short is still a mouse, with navigator.share behind
+// it on Windows. It keeps the popover with the copy field and the targets.
 const PHONE_LAYOUT = "(max-width: 639px)";
 
 // The snapshot below is a capability, not a state: nothing ever notifies.

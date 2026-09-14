@@ -26,13 +26,13 @@ import { SITE_URL } from "@/lib/site";
 // because every assertion here reads the desktop stage. The fan mounts one
 // layout only, chosen by this query, so a stub that answered "phone" to both
 // would leave nothing at "photo-spread" to read.
-const PHONE_LAYOUT = "(max-width: 639px)";
-const FAN_LAYOUT = "(min-width: 640px)";
+const PHONE_SHELL = "(max-width: 639px), (max-height: 32rem)";
+const FAN_LAYOUT = "(min-width: 640px) and (min-height: 32rem)";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
   value: vi.fn().mockImplementation((media: string) => ({
-    matches: media === PHONE_LAYOUT || media === FAN_LAYOUT,
+    matches: media === PHONE_SHELL || media === FAN_LAYOUT,
     media,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),

@@ -10,11 +10,13 @@
 // every one of them by a real GPU. At 90% the count reads over any photo,
 // which is all the blur was ever there for.
 //
-// Higher from sm up, because that is where the card overlaps the bottom of the
-// front print: the count sat 15px inside the card, and once the card scrolled,
-// its sticky title bar covered 9 of the pill's 20px. 20px clears both.
+// Higher on the desktop box, because that is where the card overlaps the
+// bottom of the front print: the count sat 15px inside the card, and once the
+// card scrolled, its sticky title bar covered 9 of the pill's 20px. 20px
+// clears both. not-short, because a phone held sideways stands on the phone
+// shell, where the card begins under the fan and there is nothing to clear.
 export const PHOTO_BADGE_CLASS =
-  "absolute right-1.5 bottom-1.5 h-5 bg-background/90 px-1.5 text-3xs tabular-nums shadow-xs sm:bottom-5";
+  "absolute right-1.5 bottom-1.5 h-5 bg-background/90 px-1.5 text-3xs tabular-nums shadow-xs sm:not-short:bottom-5";
 
 // A photo edge has to read against the photo, not against the surface behind
 // it, so the border is drawn from the foreground: dark on light, light on

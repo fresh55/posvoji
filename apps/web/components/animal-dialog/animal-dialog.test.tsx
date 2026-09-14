@@ -30,14 +30,18 @@ import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
 
 // The filter dock and the drawer read the viewport before they render, and
-// the dismiss gesture asks whether it is on the phone layout. jsdom reports
-// 1024px, so the phone query is answered yes here whatever the fan is doing.
-const PHONE_LAYOUT = "(max-width: 639px)";
+// the dismiss gesture asks whether it is on the phone shell. jsdom reports
+// 1024x768, so the phone queries are answered yes here whatever the fan is
+// doing. Two of them: the shell asks about width or height, and the share
+// button asks about the width alone, because the platform's own share sheet
+// is a question about the device rather than about this dialog's layout.
+const PHONE_SHELL = "(max-width: 639px), (max-height: 32rem)";
+const PHONE_WIDTH = "(max-width: 639px)";
 
 // The fan mounts one geometry and reads Tailwind's sm to pick it, so which
 // layout a test gets is the test's own to say: fanLayout("phone") before the
 // render, and the afterEach puts the desktop back.
-const FAN_LAYOUT = "(min-width: 640px)";
+const FAN_LAYOUT = "(min-width: 640px) and (min-height: 32rem)";
 
 let desktopFan = true;
 
@@ -48,7 +52,10 @@ function fanLayout(layout: "phone" | "desktop") {
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
   value: vi.fn().mockImplementation((media: string) => ({
-    matches: media === FAN_LAYOUT ? desktopFan : media === PHONE_LAYOUT,
+    matches:
+      media === FAN_LAYOUT
+        ? desktopFan
+        : media === PHONE_SHELL || media === PHONE_WIDTH,
     media,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -2573,6 +2580,32 @@ describe("animal dialog", () => {
         name: /Odpri objavo pri zavetišču/,
       }),
     ).toBeTruthy();
+  });
+
+  // A phone held sideways is 844x390: wide enough for the desktop box and far
+  // too short for it. It used to get that box, which left the facts card a
+  // 98px window to scroll 488px of listing in, with the sticky name row over
+  // most of it. Every phone rule is written for the short viewport as well,
+  // and every desktop rule now asks for the height it needs.
+  it("keeps the phone shell on a short viewport", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(dialog.className).toContain("short:h-dvh");
+    expect(dialog.className).toContain("short:overflow-y-auto");
+    expect(dialog.className).toContain("sm:not-short:max-h-[92dvh]");
+    // The card is the scrollport on the desktop box alone; on the phone shell
+    // the dialog itself scrolls.
+    const card = dialog.querySelector('[data-slot="animal-dialog-card"]');
+    expect(card?.className).toContain("sm:not-short:overflow-y-auto");
+    // The sticky bar stands on a short viewport too, so the box's own button
+    // gives way to it there rather than printing the same link twice.
+    expect(
+      region(dialog, "shelter-block")
+        .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
+        .className,
+    ).toContain("short:hidden");
   });
 
   // The animal's own page renders the same box with no bar under it, so there

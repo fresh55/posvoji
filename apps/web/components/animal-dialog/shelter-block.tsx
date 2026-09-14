@@ -222,7 +222,12 @@ export function ShelterBlock({
               // the animal's own page, which has no sticky bar to mirror this,
               // it is the button a thumb actually goes for.
               "w-full max-sm:h-11 sm:w-auto",
-              ctaMirrored && "max-sm:hidden",
+              // short: goes wherever max-sm: goes, because the bar this
+              // mirrors does: the dialog draws it on the phone shell, and a
+              // phone held sideways is that shell too (PHONE_SHELL in
+              // animal-dialog.tsx). Without it a landscape phone printed the
+              // same button twice, once in the box and once in the bar.
+              ctaMirrored && "max-sm:hidden short:hidden",
             )}
           >
             <a

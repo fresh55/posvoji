@@ -51,7 +51,7 @@ vi.mock("@/components/animal-dialog/shelter-block", async (importOriginal) => {
 // reads it again to resolve reducedMotion="user", and jsdom ships no
 // matchMedia at all. jsdom reports 1024px wide, so the wide answer is the
 // honest one and the fan mounts its desktop geometry.
-const DESKTOP_FAN = "(min-width: 640px)";
+const DESKTOP_FAN = "(min-width: 640px) and (min-height: 32rem)";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,

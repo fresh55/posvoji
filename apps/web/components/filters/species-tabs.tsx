@@ -75,6 +75,11 @@ const SPECIES_GLYPHS: Record<SpeciesTab, readonly string[]> = {
   other: RABBIT_GLYPH,
 };
 
+// One step smaller at the narrowest phones, with the rest of the tab. See the
+// max-[360px] comment on the tab itself: at 320 the strip ran 360px inside 288
+// and the fourth species was 18px of an icon under the mask.
+const GLYPH_CLASS = "size-4 shrink-0 max-[360px]:size-3.5";
+
 type Beat = {
   /** What the glyph does, as keyframes on the svg itself. */
   keyframes: TargetAndTransition;
@@ -181,7 +186,7 @@ function SpeciesGlyph({
         viewBox="0 0 24 24"
         width="24"
         height="24"
-        className="size-4 shrink-0"
+        className={GLYPH_CLASS}
         fill="none"
         stroke="currentColor"
         strokeWidth={1.75}
@@ -204,7 +209,7 @@ function SpeciesGlyph({
       viewBox="0 0 24 24"
       width="24"
       height="24"
-      className="size-4 shrink-0"
+      className={GLYPH_CLASS}
       fill="none"
       stroke="currentColor"
       strokeWidth={1.75}
@@ -485,7 +490,7 @@ export function SpeciesTabs({
           // gets the same from the fade-scroll-x utility; this one masks by
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
-          "relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain no-scrollbar max-lg:-my-2 max-lg:py-2 pointer-coarse:-my-2 pointer-coarse:py-2",
+          "relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain no-scrollbar max-[360px]:gap-0.5 max-lg:-my-2 max-lg:py-2 pointer-coarse:-my-2 pointer-coarse:py-2",
           fullWidth && "w-full",
         )}
       >
@@ -552,7 +557,19 @@ export function SpeciesTabs({
               // the double-tap window open: two quick presses zoomed the page
               // instead of changing species, and a rapid press on the label
               // could start a selection or raise the iOS callout.
-              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 pointer-coarse:tap-target",
+              //
+              // max-[360px] is the narrowest common phone, where the strip
+              // measured 360px inside 288 and "Ostale" showed 18px of the
+              // rabbit under the mask fade: no name, no count, and no sign it
+              // could be scrolled to. Every part of the tab goes down one step
+              // there rather than one part going away -- the padding, both
+              // gaps, the label, the count and the glyph -- which buys back
+              // 84px and leaves the four tabs 276px inside 288. Dropping the
+              // count from the inactive tabs was the other candidate, measured
+              // and rejected: the fill travels on boxes measured from these
+              // buttons, and a count arriving on press changes every width
+              // while the fill is sliding between them.
+              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-[360px]:gap-0.5 max-[360px]:px-1 max-[360px]:text-xs pointer-coarse:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a
@@ -619,7 +636,7 @@ export function SpeciesTabs({
                 token is used whole and stays quieter by contrast with the
                 label alone, not by fading further past it. */}
             {!disabled && (
-              <span className="shrink-0 text-xs tabular-nums">
+              <span className="shrink-0 text-xs tabular-nums max-[360px]:text-2xs">
                 {counts[tab]}
               </span>
             )}

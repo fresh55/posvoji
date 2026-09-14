@@ -36,6 +36,7 @@ import {
   type PortalShelter,
 } from "@/lib/portal-api";
 import { draftKey } from "@/lib/portal-drafts";
+import { clickThrough } from "@/test/location";
 
 // The address is the page's only argument, so the tests set it the way a
 // visitor would and the mock reads it back at every render.
@@ -764,8 +765,7 @@ describe("the breadcrumb", () => {
       { shiftKey: true },
       { button: 1 },
     ]) {
-      const proceeded = fireEvent.click(breadcrumb(), init);
-      expect(proceeded).toBe(true);
+      expect(clickThrough(breadcrumb(), init)).toBe(true);
       expect(confirmShown()).toBe(false);
     }
     expect(push).not.toHaveBeenCalled();

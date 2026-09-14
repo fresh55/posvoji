@@ -1,0 +1,153 @@
+{
+  "slugify": [
+    {
+      "text": "Žužemberk",
+      "slug": "zuzemberk"
+    },
+    {
+      "text": "  ",
+      "slug": ""
+    },
+    {
+      "text": "Sv. Jurij ob Ščavnici",
+      "slug": "sv-jurij-ob-scavnici"
+    },
+    {
+      "text": "ČŠŽ-123",
+      "slug": "csz-123"
+    },
+    {
+      "text": "Ø Łukas ßeta đ",
+      "slug": "o-lukas-sseta-d"
+    },
+    {
+      "text": "D´Artagnan",
+      "slug": "dartagnan"
+    },
+    {
+      "text": "a^b`c¨d·e",
+      "slug": "abcde"
+    },
+    {
+      "text": "Rock'n'roll",
+      "slug": "rock-n-roll"
+    },
+    {
+      "text": "Mačja hiša",
+      "slug": "macja-hisa"
+    },
+    {
+      "text": "Škofja Loka",
+      "slug": "skofja-loka"
+    },
+    {
+      "text": "---",
+      "slug": ""
+    },
+    {
+      "text": "ǅuro",
+      "slug": "uro"
+    },
+    {
+      "text": "ʰigh",
+      "slug": "igh"
+    },
+    {
+      "text": "Ana‐Marija",
+      "slug": "ana-marija"
+    }
+  ],
+  "animalPath": [
+    {
+      "animal": {
+        "id": "muri:16836",
+        "name": "Luna",
+        "species": "cat",
+        "shelter": {
+          "id": "muri",
+          "name": "Zavod Muri",
+          "city": "Ljubljana"
+        }
+      },
+      "path": "/zival/luna-2f1856/ljubljana/muri"
+    },
+    {
+      "animal": {
+        "id": "macja-hisa:7",
+        "name": "Črtomir Žan",
+        "species": "cat",
+        "shelter": {
+          "id": "macja-hisa",
+          "name": "Mačja hiša",
+          "city": "Škofja Loka"
+        }
+      },
+      "path": "/zival/crtomir-zan-d3005e/skofja-loka/macja-hisa"
+    },
+    {
+      "animal": {
+        "id": "x:1",
+        "name": "",
+        "species": "cat",
+        "shelter": {
+          "id": "",
+          "name": "",
+          "city": ""
+        }
+      },
+      "path": "/zival/cat-870179/slovenija/zavetisce"
+    },
+    {
+      "animal": {
+        "id": "x:2",
+        "name": "   ",
+        "species": "dog",
+        "shelter": {
+          "id": "---",
+          "name": "",
+          "city": "..."
+        }
+      },
+      "path": "/zival/dog-860177/slovenija/zavetisce"
+    },
+    {
+      "animal": {
+        "id": "ljubljana:99",
+        "name": "D´Artagnan",
+        "species": "dog",
+        "shelter": {
+          "id": "ljubljana",
+          "name": "Ljubljana",
+          "city": "Sv. Jurij ob Ščavnici"
+        }
+      },
+      "path": "/zival/dartagnan-35e4f5/sv-jurij-ob-scavnici/ljubljana"
+    },
+    {
+      "animal": {
+        "id": "emoji:🐱",
+        "name": "Maček",
+        "species": "cat",
+        "shelter": {
+          "id": "turk",
+          "name": "Turk",
+          "city": "Ptuj"
+        }
+      },
+      "path": "/zival/macek-d90ee3/ptuj/turk"
+    },
+    {
+      "animal": {
+        "id": "muri:16837",
+        "name": "Ø Łukas ßeta đ",
+        "species": "cat",
+        "shelter": {
+          "id": "muri",
+          "name": "Zavod Muri",
+          "city": "Ljubljana"
+        }
+      },
+      "path": "/zival/o-lukas-sseta-d-301857/ljubljana/muri"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{% extends "admin/change_list.html" %}
+
+{# The whole dataset is not a model, so it has no changelist of its own and
+   no line in the app list. The shelters are what a maintainer opens looking
+   for it, so the link sits here. #}
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:all-animals' %}">Vse živali</a></li>
+  {{ block.super }}
+{% endblock %}

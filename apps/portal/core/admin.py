@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.db.models import Count
+from django.urls import path
 from django.utils import timezone
 
+from .admin_animals import all_animals
 from .conflicts import CAUGHT_UP, MOVED, Conflict, conflicts_for
 from .dataset import animal_index, crawled_values
 from .db import serialized_write
@@ -67,6 +69,17 @@ class ShelterAdmin(admin.ModelAdmin):
     list_filter = ("ingestion",)
     search_fields = ("name", "slug", "city")
     ordering = ("name",)
+
+    def get_urls(self):
+        """The whole dataset, hung off the shelters.
+
+        Ahead of super(), whose last pattern is a catch-all that would read
+        "zivali" as an app label. admin_view is what makes it an admin page
+        rather than a second entrance: it turns away anyone who is not staff
+        and sends them to the admin login.
+        """
+        page = self.admin_site.admin_view(all_animals)
+        return [path("zivali/", page, name="all-animals"), *super().get_urls()]
 
     def get_queryset(self, request):
         return (

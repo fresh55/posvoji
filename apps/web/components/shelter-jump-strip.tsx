@@ -23,6 +23,13 @@ export type ShelterJumpChip = {
    *  label is the formatted count alone ("2 živali"); the strip puts the town
    *  in front of it, so the town is spelled in one place. */
   count?: { value: number; label: string };
+  /** The shelter's own name, on the chips whose town is not enough to tell
+   *  them apart. Two shelters are registered in Celje, so the strip printed
+   *  "Celje 186" next to "Celje": the same word twice, one with a count and
+   *  one without, which reads as a rendering fault rather than as two
+   *  shelters. Set by the caller, which is the side that can see the whole
+   *  register, and absent for a town only one shelter is in. */
+  qualifier?: string;
 };
 
 /**
@@ -100,14 +107,23 @@ export function ShelterJumpStrip({
               globals.css. */}
           <a
             href={`#${shelterAnchorId(chip.id)}`}
-            aria-label={chip.count && `${chip.city}, ${chip.count.label}`}
+            // The qualifier is in the visible text, so it needs no repeating
+            // here; what the name has to add is the noun the paw stands for.
+            // Spelled with a comma rather than the middot the chip draws,
+            // because this one is read out.
+            aria-label={
+              chip.count &&
+              [chip.city, chip.qualifier, chip.count.label]
+                .filter(Boolean)
+                .join(", ")
+            }
             className={cn(
               "inline-flex min-h-11 items-center gap-1.5 rounded-ui border px-3 text-sm whitespace-nowrap text-muted-foreground outline-hidden hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring",
               chip.count &&
                 "border-brand-border text-brand-foreground",
             )}
           >
-            {chip.city}
+            {chip.qualifier ? `${chip.city} · ${chip.qualifier}` : chip.city}
             {chip.count && (
               <>
                 <PawPrint className="size-3.5 shrink-0" aria-hidden />

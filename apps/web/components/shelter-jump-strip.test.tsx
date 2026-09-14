@@ -26,6 +26,36 @@ function renderStrip(chips: ShelterJumpChip[] = shelters) {
 }
 
 describe("the phone jump strip", () => {
+  // Two shelters are registered in Celje, so the strip drew "Celje 186" beside
+  // "Celje": the same word twice, side by side, one with a count and one
+  // without. The name is what tells them apart, and the reader is looking for
+  // a shelter, not a town.
+  it("says which shelter a repeated town is", () => {
+    const strip = renderStrip([
+      { id: "macja-hisa", city: "Celje", qualifier: "Mačja hiša" },
+      {
+        id: "sia-in-lu",
+        city: "Celje",
+        qualifier: "Sia in Lu",
+        count: { value: 2, label: animalCount(2, "sl") },
+      },
+      { id: "koper", city: "Koper" },
+    ]);
+
+    const links = within(strip).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Celje · Mačja hiša",
+      "Celje · Sia in Lu2",
+      "Koper",
+    ]);
+    // The qualifier is in the visible text already; the accessible name adds
+    // the noun the paw stands for, and spells the separator as a comma.
+    expect(links[1]?.getAttribute("aria-label")).toBe(
+      `Celje, Sia in Lu, ${animalCount(2, "sl")}`,
+    );
+    expect(links[2]?.getAttribute("aria-label")).toBeNull();
+  });
+
   it("indexes the register in grid order, one chip per shelter", () => {
     const strip = renderStrip();
     const links = within(strip).getAllByRole("link");

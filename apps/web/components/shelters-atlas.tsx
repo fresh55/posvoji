@@ -103,6 +103,30 @@ export type SheltersInvite = {
  * filter's state; with no filter, the register is what it always was, a
  * document, and it renders on the server.
  */
+/** What a chip says after the town, for the towns that hold more than one
+ *  shelter.
+ *
+ *  The register's own name minus the word every second entry opens with:
+ *  "Zavetišče Mačja hiša" is the shelter and "Mačja hiša" is what tells it
+ *  from "Sia in Lu" one chip away. Only that one leading word, and only where
+ *  something is left after it, so a name that carries it in the middle
+ *  ("Veterina Sevnica — zavetišče") is printed whole. */
+function shelterShortName(name: string): string {
+  const short = name.replace(/^Zavetišče\s+/, "").trim();
+  return short === "" ? name : short;
+}
+
+/** The towns the register lists more than one shelter in. */
+function townsWithTwo(shelters: ShelterCardData[]): Set<string> {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const shelter of shelters) {
+    if (seen.has(shelter.city)) twice.add(shelter.city);
+    seen.add(shelter.city);
+  }
+  return twice;
+}
+
 export function SheltersAtlas({
   shelters,
   card,
@@ -115,6 +139,10 @@ export function SheltersAtlas({
   text: SheltersAtlasText;
   invite?: SheltersInvite;
 }) {
+  // Computed over the whole register rather than per chip: which chips need a
+  // name is a property of the list, not of any one shelter in it.
+  const twiceInTown = townsWithTwo(shelters);
+
   return (
     <section aria-label={text.heading} className="w-full">
       {/* Seventeen name links and about fifty contact links, one tab stop
@@ -194,6 +222,9 @@ export function SheltersAtlas({
           return {
             id: shelter.id,
             city: shelter.city,
+            ...(twiceInTown.has(shelter.city) && {
+              qualifier: shelterShortName(shelter.name),
+            }),
             ...(count !== undefined && {
               count: { value: count, label: card.animals(count) },
             }),

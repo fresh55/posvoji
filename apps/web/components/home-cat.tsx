@@ -51,6 +51,14 @@ export const HOME_CAT_FRAMING: CatFraming = {
  * starts. No posterPriority: the first card photo is this page's largest
  * paint and keeps the bandwidth, measured on both viewports.
  *
+ * short: is the landscape phone, which is wider than md and has no corner
+ * for him: at 844x390 the header rule and the species tabs are 164px apart
+ * and this stage is 152px of that, so he stood on the tabs. He was also the
+ * reason the hero kept a 224px right padding there, which wrapped the title
+ * and the meta line and pushed the tabs under the fixed dock
+ * (site-page.tsx). Measured at 844x390 before the gate, that phone fetched
+ * the 1.14MB model and the viewer chunk for him.
+ *
  * startAfterLoad, because this is the site's entry page and the model is
  * 2.1MB plus 1.3MB of renderer: on the about page he is below the fold and
  * often never fetched, here he is on screen at once, and without the wait
@@ -58,7 +66,7 @@ export const HOME_CAT_FRAMING: CatFraming = {
  */
 export function HomeCat({ locale }: { locale: Locale }) {
   return (
-    <figure className="absolute right-0 -bottom-section-gap hidden h-38 w-48 md:block">
+    <figure className="absolute right-0 -bottom-section-gap hidden h-38 w-48 md:block short:hidden">
       <CatModel locale={locale} className="h-full" sizes="192px" framing={HOME_CAT_FRAMING} startAfterLoad />
     </figure>
   );

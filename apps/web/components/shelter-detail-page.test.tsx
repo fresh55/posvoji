@@ -247,8 +247,12 @@ describe("the shelter page's hero", () => {
     // 100px at 320px. min-w-0 let it be crushed to that; a floor makes the
     // row's flex-wrap move the column under the mark instead, where it has
     // the full width.
+    //
+    // 14rem, because at 10rem the break was not monotonic: 390 was the one
+    // phone width at which "Zavetišče Horjul" broke in two, and at 375 a
+    // longer name took four lines in a column narrower than 320 gives it.
     const { column, heading } = hero(container);
-    expect(column.className).toContain("min-w-[min(10rem,100%)]");
+    expect(column.className).toContain("min-w-[min(14rem,100%)]");
     expect(column.className).not.toContain("min-w-0");
     expect(column.parentElement?.className).toContain("flex-wrap");
     // And under the floor, a word wider than the column breaks rather than

@@ -235,8 +235,18 @@ export function ShelterDetailPage({
                   floor, the row's flex-wrap moves the whole column under
                   the mark instead of crushing it, and the column gets the
                   full width there. Cap the floor at that available width
-                  so enlarged text cannot make the floor wider than the page. */}
-              <div className="min-w-[min(10rem,100%)] flex-1 space-y-1">
+                  so enlarged text cannot make the floor wider than the page.
+
+                  14rem and not 10rem, because 10rem let the row stay a row
+                  on the widths where it should not. Measured across
+                  320/375/390/430: at 390 the column came out 170px and
+                  "Zavetišče Horjul" broke in two beside the mark, while the
+                  same name fits on one line at 320 and at 430; at 375
+                  "Obalno zavetišče (Marjetica Koper)" took four ragged lines
+                  in a 181px column. With the floor at 224px every phone
+                  stacks, which is the layout 320 already had, and sm has
+                  400px of column, so the row above it is untouched. */}
+              <div className="min-w-[min(14rem,100%)] flex-1 space-y-1">
                 {/* break-words is the last resort under it: a name whose
                     longest word is wider than the column breaks the word
                     rather than the page. */}

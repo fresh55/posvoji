@@ -323,6 +323,36 @@ describe("mobile filter hardening", () => {
     expect(live?.closest(".sr-only")).toBeTruthy();
   });
 
+  it("keeps a flick off the end of the tab strip out of the browser's back gesture", () => {
+    renderFilters({
+      speciesTally: { all: 2, dog: 1, cat: 1, other: 0 },
+      speciesRoster: { all: 2, dog: 1, cat: 1, other: 0 },
+      ...SEX_GROUP,
+      shelterTally: new Map([["test", 2]]),
+      resultCount: 2,
+    });
+
+    const mobileToolbar = document.querySelector(
+      '[data-slot="mobile-toolbar"]',
+    ) as HTMLElement;
+    const strip = mobileToolbar.querySelector(
+      "[data-scroll-strip]",
+    ) as HTMLElement;
+
+    // At 320 the strip is 360px inside 288, so reaching the fourth species
+    // means flicking into the end of it, and an uncontained sideways
+    // overscroll is handed to the browser as back/forward.
+    expect(strip.className).toContain("overscroll-x-contain");
+
+    // Bare buttons, so neither of these comes from ui/button. Walking
+    // Vse -> Psi -> Mačke is the fastest double tap in the product.
+    const mobileTab = within(mobileToolbar).getByRole("button", {
+      name: /^Dogs/,
+    });
+    expect(mobileTab.className).toContain("touch-manipulation");
+    expect(mobileTab.className).toContain("select-none");
+  });
+
   it("announces the active filter count and keeps a mobile-sized close target", async () => {
     renderSheet({ activeCount: 2 });
 

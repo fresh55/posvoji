@@ -675,6 +675,13 @@
   &::-webkit-scrollbar {
     display: none;
   }
+  /* Every vertical scroller on the site already contains its overscroll (the
+     sheet, the dialog, the lightbox, the picker) and none of the horizontal
+     ones did. A flick that runs off the end of a strip is handed to the
+     browser, and sideways that is the back/forward navigation gesture on both
+     iOS Safari and Android Chrome, so flicking the chips past the last one
+     left the page. */
+  overscroll-behavior-x: contain;
   transition:
     --scroll-fade-start 0.25s ease,
     --scroll-fade-end 0.25s ease;
@@ -809,14 +816,20 @@
    drifting. Most call sites here say max-lg, which is a guess: it hands 44px
    to a 1024px laptop window, which is a mouse, and withholds it from a 1180px
    tablet that is all thumb. pointer-coarse asks the device what it has, which
-   is what the number is about, and is what the register card and the animal
-   dialog's nav arrows now use. Prefer it for anything new. The remaining
-   max-lg call sites (about-page, animal-grid, language-switcher, filter-chips,
-   sort-picker, municipality-finder, picker-shelter-list) are not wrong, they
-   are unmeasured; moving them changes touch sizing across the filter bar and
-   the picker, so it wants its own pass rather than a drive-by. */
+   is what the number is about. That pass has now been made for the filter bar
+   and the grid: the species tabs, the chips, the sort trigger, the section
+   resets and the grid's own buttons all ask the pointer, and measured at
+   1180x820 with a coarse pointer each of them was 20-32px before it and 44
+   after. Use pointer-coarse for anything new; a width gate is right only where
+   the layout itself changes at that width.
+
+   touch-action here because this utility marks the controls a finger is meant
+   to hit, and a bare button computes touch-action: auto, which leaves the
+   double-tap delay in place: two quick presses walking Vse -> Psi -> Mačke
+   land inside the double-tap window and zoom the page instead. */
 @utility tap-target {
   position: relative;
+  touch-action: manipulation;
   &::after {
     content: "";
     position: absolute;

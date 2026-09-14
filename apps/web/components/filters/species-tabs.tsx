@@ -469,7 +469,15 @@ export function SpeciesTabs({
           //
           // relative because the fill is measured against this box and
           // positioned inside it.
-          "relative flex min-w-0 gap-1 overflow-x-auto no-scrollbar max-lg:-my-2 max-lg:py-2",
+          //
+          // overscroll-x-contain because a flick that runs off the end of the
+          // strip is otherwise handed to the browser, and sideways that is the
+          // back/forward gesture: at 320 the strip is 360px inside 288, so
+          // reaching the fourth species means flicking into it. The chips row
+          // gets the same from the fade-scroll-x utility; this one masks by
+          // hand (the fill has to be measured against an unmasked box) and so
+          // says it here.
+          "relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain no-scrollbar max-lg:-my-2 max-lg:py-2",
           fullWidth && "w-full",
         )}
       >
@@ -529,7 +537,14 @@ export function SpeciesTabs({
               // did and "Ostale" is no worse off.
               // relative to put the tab above the fill: both are positioned,
               // and of two positioned siblings the later one paints on top.
-              "relative inline-flex min-w-0 items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-lg:tap-target",
+              // touch-manipulation and select-none because these are bare
+              // buttons rather than ui/button, so they inherit neither. Walking
+              // Vse -> Psi -> Mačke is the fastest double tap in the product,
+              // and a plain button computes touch-action: auto, which leaves
+              // the double-tap window open: two quick presses zoomed the page
+              // instead of changing species, and a rapid press on the label
+              // could start a selection or raise the iOS callout.
+              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-lg:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a

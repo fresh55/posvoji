@@ -48,8 +48,13 @@ export type FilterCardLayout = "sidebar" | "sheet";
  * takes the attribute over, leaving aria-pressed as the only thing that says
  * the row is chosen. Plain buttons carry aria-pressed and nothing else.
  */
+// touch-manipulation and select-none in the base: a tile is a bare button or a
+// toggle item and inherits neither from ui/button. A tile that computes
+// touch-action: auto keeps the double-tap window open, so two quick narrowings
+// zoom the page instead, and a rapid press on a label starts a selection or
+// raises the iOS callout over the sheet.
 const cardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-ui border font-normal outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "group relative min-w-0 touch-manipulation select-none overflow-hidden rounded-ui border font-normal outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       layout: {

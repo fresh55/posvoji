@@ -72,6 +72,20 @@ describe("the filter card's two surfaces", () => {
     }
   });
 
+  // A tile is a bare button or a toggle item, so it inherits neither of these
+  // from ui/button. Without them a tile computed touch-action: auto and
+  // user-select: auto: two quick narrowings landed inside the double-tap
+  // window and zoomed the page, and a rapid press on a label started a
+  // selection over the sheet.
+  it("answers a finger rather than a double tap", () => {
+    for (const layout of ["sidebar", "sheet"] as const) {
+      const card = filterCardVariants({ layout, selected: false });
+
+      expect(card).toContain("touch-manipulation");
+      expect(card).toContain("select-none");
+    }
+  });
+
   // The sidebar is lg-only and mouse-driven, and the panel had two sections
   // below its own fold at 1440x900.
   it("draws the sidebar row 40px tall", () => {

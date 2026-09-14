@@ -26,6 +26,7 @@ import {
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { useDesktopBreakpointClose } from "@/hooks/use-desktop-breakpoint-close";
+import { usePickerHistory } from "@/hooks/use-picker-history";
 import type {
   FilterOption,
   Filters,
@@ -226,6 +227,18 @@ export function FilterSheet({
   // lg layout while it is up, even though the trigger for it just vanished.
   // It closes through the same path as everything else.
   useDesktopBreakpointClose(open, close);
+
+  // The Android back button and the iOS edge swipe are how a phone dismisses
+  // whatever is on top, and without an entry of its own the sheet was not on
+  // top of anything: one back from the open sheet left the results page
+  // altogether, taking the filter with it, and on a tab that opened on the
+  // list it closed the tab. The hook pushes one temporary entry and pops it on
+  // every other close path, so the two cannot get out of step. Filter writes
+  // are `replace` (use-animal-filters.ts), so the entry under this one is the
+  // previous page rather than the unfiltered list; the hook restores the
+  // address it left on, which is why a choice made in the sheet survives the
+  // gesture that dismissed it.
+  usePickerHistory(open, close);
 
   return (
     <Drawer

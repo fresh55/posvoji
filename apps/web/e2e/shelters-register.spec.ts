@@ -450,21 +450,32 @@ test.describe("the shelters register", () => {
   // and 2px apart, stacking a tel:, a mailto: and an external site inside a
   // card that is itself a link, so a miss of a few pixels silently opened a
   // mail composer. They are the page's primary action on a phone.
-  test("gives every control a thumb-sized target at 375px", async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto(REGISTER);
-    await expect(page.locator(CARD).first()).toBeVisible();
+  //
+  // Asked with a touch context, because the rows answer the pointer and not
+  // the viewport (pointer-coarse:min-h-11 in shelter-card.tsx, and the
+  // tap-target utility in globals.css for why). A desktop browser narrowed to
+  // 375px is a mouse, gets the 36px row on purpose, and failed this sweep
+  // from the day the rows moved to that rule; hasTouch is what makes
+  // Chromium answer (pointer: coarse), and it is what a phone is.
+  test.describe("under a thumb", () => {
+    test.use({ hasTouch: true });
 
-    const small = await undersizedTargets(page);
+    test("gives every control a thumb-sized target at 375px", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto(REGISTER);
+      await expect(page.locator(CARD).first()).toBeVisible();
 
-    // measured is the honest half, the same as `compared` above, and it earns
-    // its place here twice over: undersizedTargets skips controls that are
-    // drawn but not yet offered, and a skip rule written slightly too wide
-    // would empty the sweep and pass on nothing at all.
-    expect(small.measured).toBeGreaterThan(0);
-    expect(small.failures).toEqual([]);
+      const small = await undersizedTargets(page);
+
+      // measured is the honest half, the same as `compared` above, and it
+      // earns its place here twice over: undersizedTargets skips controls
+      // that are drawn but not yet offered, and a skip rule written slightly
+      // too wide would empty the sweep and pass on nothing at all.
+      expect(small.measured).toBeGreaterThan(0);
+      expect(small.failures).toEqual([]);
+    });
   });
 
   // The outline a screen reader navigates by, which on a page seven screens

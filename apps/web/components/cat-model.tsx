@@ -17,25 +17,46 @@ import { cn } from "@/lib/utils";
 // hydration chunks. A smaller asset would shorten the wait, an earlier start
 // does not.
 const MODEL = "/models/our-cat/cat.glb?v=26";
-// The poster uses the same resting pose and camera as the interactive model.
-const POSTER = "/models/our-cat/poster.webp?v=19.1";
+
+/** A camera and the still rendered from it: the poster is the model's own
+ *  first frame at that framing, so he does not jump when WebGL takes over. */
+export type CatFraming = { orbit: string; target: string; poster: string };
+
+/** The about page's and the gate's framing; see the note on camera-orbit. */
+const CAT_FRAMING: CatFraming = {
+  orbit: "-19deg 81deg 1.45m",
+  target: "0m 0.25m 0m",
+  poster: "/models/our-cat/poster.webp?v=19.1",
+};
 
 const copy = {
   sl: {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Maček se še nalaga …",
-    unavailable: "3D-ogled ni na voljo. Prikazana je slika.",
+    unavailable: "3D-ogled ni na voljo.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "The cat is still loading …",
-    unavailable: "The 3D view is unavailable. A still image is shown.",
+    unavailable: "The 3D view is unavailable.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
 type Status = "loading" | "ready" | "failed";
+
+/** Resolves after the page's load event and the next idle moment. */
+function pageIdle() {
+  return new Promise<void>((resolve) => {
+    const idle = () => {
+      if ("requestIdleCallback" in window) requestIdleCallback(() => resolve(), { timeout: 2000 });
+      else setTimeout(resolve, 200);
+    };
+    if (document.readyState === "complete") idle();
+    else window.addEventListener("load", idle, { once: true });
+  });
+}
 
 /** What a page can ask of the cat once he is on screen. */
 export type CatModelHandle = {
@@ -72,6 +93,8 @@ export const CatModel = memo(function CatModel({
   className,
   sizes,
   posterPriority = false,
+  framing = CAT_FRAMING,
+  startAfterLoad = false,
   onHandle,
 }: {
   locale: Locale;
@@ -85,6 +108,19 @@ export const CatModel = memo(function CatModel({
    * below the fold and is often never fetched at all.
    */
   posterPriority?: boolean;
+  /**
+   * A closer framing than the default, for a stage too short to show him
+   * at 1.45m. The default never cuts him at any heading; a closer camera
+   * trades that for size, and the caller owns the trade and the poster.
+   * The camera is an input of the WebGL effect below, the poster is not.
+   */
+  framing?: CatFraming;
+  /**
+   * Fetch the model only once the page has fired load and the browser has
+   * an idle moment. For a stage that is on screen from the first paint of
+   * a page that has more important things to load first.
+   */
+  startAfterLoad?: boolean;
   onHandle?: (handle: CatModelHandle | null) => void;
 }) {
   const text = copy[locale];
@@ -167,13 +203,15 @@ export const CatModel = memo(function CatModel({
       if (started || disposed || !visible || document.hidden) return;
       started = true;
       try {
+        if (startAfterLoad) await pageIdle();
         const [{ ModelViewerElement: Viewer }, runtime] = await Promise.all([
           import("@google/model-viewer"), import("@/lib/cat-viewer-runtime"),
         ]);
         makePicker = runtime.createViewerCatPicker;
         if (disposed) return;
-        // The visitor may have scrolled away or hidden the tab during import.
-        // Keep the module cached, but postpone model download and WebGL setup.
+        // The visitor may have scrolled away or hidden the tab during the
+        // wait. Keep the module cached, but postpone model download and
+        // WebGL setup.
         if (!visible || document.hidden) { started = false; return; }
         Viewer.meshoptDecoderLocation = "/models/our-cat/meshopt-decoder.js";
         viewer = document.createElement("model-viewer") as ModelViewerElement;
@@ -201,8 +239,8 @@ export const CatModel = memo(function CatModel({
           // 55-95deg tilt, anywhere in the clip, at 1280, 1024 or 375. The cat
           // draws about a fifth smaller for it, which is the price of never
           // cutting him.
-          "camera-orbit": "-19deg 81deg 1.45m",
-          "camera-target": "0m 0.25m 0m",
+          "camera-orbit": framing.orbit,
+          "camera-target": framing.target,
           "min-camera-orbit": "auto 55deg 0.65m",
           "max-camera-orbit": "auto 95deg 2m",
           "field-of-view": "30deg",
@@ -280,7 +318,7 @@ export const CatModel = memo(function CatModel({
       viewer?.pause();
       viewer?.remove();
     };
-  }, [locale, text]);
+  }, [locale, text, framing.orbit, framing.target, startAfterLoad]);
 
   return (
     <div
@@ -289,7 +327,7 @@ export const CatModel = memo(function CatModel({
       onPointerDown={() => reach(true)}
     >
       <Image
-        src={POSTER}
+        src={framing.poster}
         alt={status === "ready" ? "" : text.alt}
         fill
         // Load the fallback immediately. Where WebGL can replace it before

@@ -1,8 +1,10 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
+import { HomeCat } from "@/components/home-cat";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
+import { SreckoLink } from "@/components/srecko-link";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
@@ -63,7 +65,11 @@ export function SitePage({ locale }: { locale: Locale }) {
         />
       }
     >
-      <div className="space-y-1.5">
+      {/* relative, for the cat (home-cat.tsx): he is drawn out of flow in
+          the corner above the toolbar, so this row keeps its 64px and the
+          heading keeps its place. The right padding from md keeps a wrapped
+          title out from under him. */}
+      <div className="relative space-y-1.5 md:pr-56">
         {/* 600, which is the weight of the card names in the grid under it
             and the weight every page title on the site now carries. At 500
             the title was the lighter of the two, so the page was headed by
@@ -103,7 +109,12 @@ export function SitePage({ locale }: { locale: Locale }) {
             </p>
           )}
           {hasLookup && <FoundAnimalButton />}
+          {/* The cat's link, at the row's right end so it stands beside him
+              (home-cat.tsx says why it is here and not under him). Hidden
+              with him below md. */}
+          <SreckoLink locale={locale} className="ml-auto hidden md:inline-flex" />
         </div>
+        <HomeCat locale={locale} />
       </div>
 
       <AnimalGrid

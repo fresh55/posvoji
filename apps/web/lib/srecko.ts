@@ -36,6 +36,7 @@ export const SRECKO_RENDER = {
 export const SRECKO_TEXT = {
   sl: {
     memorial: "V spomin na Srečka",
+    story: "Spoznajte Srečka",
     intro: `Srečko je prišel ${SRECKO.shelter.from.sl} in našel dom. Posvoji.si je posvečen njegovemu spominu.`,
     purpose: "V njegov spomin pomagamo drugim živalim iz zavetišč, da jih ljudje, ki iščejo družabnika, lažje najdejo.",
     dedication: "Ta stran je v spomin na Srečka.",
@@ -55,6 +56,7 @@ export const SRECKO_TEXT = {
   },
   en: {
     memorial: "In memory of Srečko",
+    story: "Meet Srečko",
     intro: `Srečko came ${SRECKO.shelter.from.en} and found a home. Posvoji.si is dedicated to his memory.`,
     purpose: "In his memory, we help people looking for a companion discover other animals in shelters.",
     dedication: "This site is in memory of Srečko.",

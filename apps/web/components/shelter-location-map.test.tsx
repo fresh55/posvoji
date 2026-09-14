@@ -8,6 +8,7 @@ import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";
 afterEach(cleanup);
 
 const label = "Lega zavetišča na zemljevidu Slovenije: Koper";
+const OUTLINE = "Obris države";
 
 describe("shelter location map", () => {
   it("draws nothing for a town the gazetteer does not know", () => {
@@ -15,6 +16,7 @@ describe("shelter location map", () => {
       <ShelterLocationMap
         city="Nekje pri Nikjer"
         label="Lega zavetišča na zemljevidu Slovenije: Nekje pri Nikjer"
+        outline={OUTLINE}
       />,
     );
 
@@ -25,7 +27,7 @@ describe("shelter location map", () => {
 
   it("puts a known town's marker inside the viewBox", () => {
     const { container } = render(
-      <ShelterLocationMap city="Koper" label={label} />,
+      <ShelterLocationMap city="Koper" label={label} outline={OUTLINE} />,
     );
 
     expect(screen.getByRole("img", { name: label })).toBeTruthy();
@@ -42,9 +44,24 @@ describe("shelter location map", () => {
     }
   });
 
+  // The outline is GURS data under CC BY 4.0, which asks to be credited
+  // wherever the boundaries are drawn. /najdena-zival credits the same country
+  // through MapAttribution; this plate used to draw it with nothing under it.
+  it("credits the source of the outline it draws", () => {
+    const { container } = render(
+      <ShelterLocationMap city="Koper" label={label} outline={OUTLINE} />,
+    );
+
+    const credit = container.querySelector("figcaption");
+    expect(credit?.textContent).toBe(`${OUTLINE}: GURS, CC BY 4.0.`);
+    expect(credit?.querySelector("a")?.getAttribute("href")).toContain(
+      "geodetska-uprava",
+    );
+  });
+
   it("matches the town's spelling without case or accents", () => {
     const { container } = render(
-      <ShelterLocationMap city="skofja loka" label={label} />,
+      <ShelterLocationMap city="skofja loka" label={label} outline={OUTLINE} />,
     );
 
     expect(container.querySelectorAll("circle").length).toBe(2);

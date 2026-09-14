@@ -340,14 +340,17 @@ export function ShelterDetailPage({
               </div>
             )}
           </div>
-          {/* Smaller than a hero below sm. At the 13rem it draws from sm up
-              the country filled a third of a phone screen between the
-              contacts and the first card, which is a locator drawn at the
-              size of an illustration. */}
+          {/* The column below sm, where the plate now carries its own frame
+              and credit (shelter-location-map.tsx) and the 176px drawing sat
+              hard left with 180px of blank beside it. From sm the 13rem
+              sidebar is what it was: at any more than that the country filled
+              a third of the screen between the contacts and the first card,
+              which is a locator drawn at the size of an illustration. */}
           <ShelterLocationMap
             city={shelter.city}
             label={`${text.mapLabel}: ${shelter.city}`}
-            className="h-auto w-full max-w-[11rem] shrink-0 sm:max-w-[13rem]"
+            outline={messages.countryOutline}
+            className="max-sm:w-full sm:max-w-[13rem]"
           />
         </div>
       </div>

@@ -502,6 +502,9 @@ const sl = {
   emptyShelterLegend: "Zavetišče brez živali",
   originLegend: "Izhodišče",
   regionBoundaries: "Meje statističnih regij in poštni okoliši",
+  // The shelter page draws the country's edge and nothing else, so its credit
+  // names that and not the regions the other two plates draw.
+  countryOutline: "Obris države",
   // The hillshade under the region fills is computed from a public elevation
   // model, and the model asks to be named. Same quiet register as the GURS
   // credit it stands next to.
@@ -810,6 +813,7 @@ const en: Messages = {
   emptyShelterLegend: "Shelter with no animals",
   originLegend: "Starting point",
   regionBoundaries: "Statistical region boundaries and postal districts",
+  countryOutline: "Country outline",
   reliefSource: "Relief shading",
   shelterMapLabel: "Map of shelters by statistical region",
   collapsePanel: "Hide the list",

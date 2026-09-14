@@ -41,7 +41,6 @@ const pageText = {
     withListings: "z objavami",
     onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
-    jumpLabel: "Skok na zavetišče",
     noAnimals: "Brez objav",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
@@ -64,7 +63,6 @@ const pageText = {
     withListings: "with listings",
     onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
-    jumpLabel: "Jump to a shelter",
     noAnimals: "No listings",
     heading: "Shelters",
     skip: "Skip the list of shelters",
@@ -335,7 +333,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           heading: text.heading,
           skip: text.skip,
           sortNote: text.sortNote,
-          jump: text.jumpLabel,
         }}
         invite={
           portal && {

@@ -3,10 +3,8 @@ import {
   type ShelterCardData,
   type ShelterCardText,
 } from "@/components/shelter-card";
-import { ShelterJumpStrip } from "@/components/shelter-jump-strip";
 import { Card } from "@/components/ui/card";
 import { MUTED_LINK } from "@/lib/link-styles";
-import { jumpChips } from "@/lib/shelter-jump";
 import { SKIP_LINK } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
@@ -55,14 +53,6 @@ export type SheltersAtlasText = {
    *  the key legible, which is a different thing from making the order
    *  predictable, so this line stays whatever size the town is drawn at. */
   sortNote: string;
-  /** "Skok na zavetišče" / "Jump to a shelter", the accessible name of the
-   *  chip strip below sm. Not printed: the chips are towns and the towns are
-   *  the sort key the line above has just named, so a visible label would be
-   *  a third line saying what the second one says. A list of seventeen links
-   *  with no name is announced as "list, 17 items" between the sort note and
-   *  the register itself, which is where a reader most needs to be told what
-   *  they have arrived at. */
-  jump: string;
 };
 
 /** The invitation, the grid's last cell rather than a banner under it. Every
@@ -91,17 +81,18 @@ export type SheltersInvite = {
  * search worth having on this site, the občina lookup, belongs to the
  * found-animal flow that owns that question.
  *
- * The chip strip below sm does not reopen that. It is an index and not a
- * filter: it hides nothing, removes nothing and answers no query. It prints
- * the same seventeen towns in the same order the grid draws them, and every
- * chip is an anchor into the grid that is already there. The argument above
- * is against a control that stands between the reader and a list they can see;
- * at one column the reader cannot see the list, and the strip is how it is
- * given back to them. See the comment on the strip for why it stops at sm.
+ * A row of town chips stood above the grid below sm for a while, as an index
+ * into the one-column list, and it is gone for the same reason. It showed
+ * three or four of sixteen towns at a time, so finding one was a sideways
+ * scroll and a tap to save a few flicks down a list that is already sorted
+ * and says so; it only helped a reader who knew the shelter's town, which
+ * the reader looking for Muri or Meli by name does not; and the question it
+ * half answered, which shelter is mine, is the lookup button's above. What
+ * it cost was 64px of the first phone screen, a second scroll axis and the
+ * page's only client boundary. Seventeen cards is eight flicks at worst.
  *
- * That also takes the whole client boundary off this page. It was here for the
- * filter's state; with no filter, the register is what it always was, a
- * document, and it renders on the server.
+ * So the register is what it always was, a document, and it renders on the
+ * server.
  */
 export function SheltersAtlas({
   shelters,
@@ -172,20 +163,6 @@ export function SheltersAtlas({
           </a>
         )}
       </div>
-
-      {/* The register's own index below sm: one row that scrolls sideways.
-          Why it exists, why it stops at sm and why it is a row rather than a
-          wrapping block are all on the component.
-
-          Its chips are built here rather than there because the strip is a
-          client component and card.animals is a function: the count's noun
-          agrees with the number in Slovenian, so the sentence is formatted on
-          this side of the boundary and handed over as text. One chip per
-          town, not per card, and the town's count is the sum of its shelters'
-          on the card's own never-print-a-zero rule; lib/shelter-jump.ts
-          carries why, and a chip cannot claim a list no card beside it
-          prints. */}
-      <ShelterJumpStrip label={text.jump} chips={jumpChips(shelters, card.animals)} />
 
       {/* Two columns from sm and three from lg. Seventeen shelters plus the
           invitation is eighteen cells: the last row comes out even at two

@@ -46,12 +46,14 @@ export const SHELTER_INDEX_PATHS = {
 } as const;
 
 /**
- * A shelter's anchor on the index page, which is the id its card carries and
- * the target the phone index's chips point at.
+ * A shelter's anchor on the index page, which is the id its card carries, so
+ * a link into the register can name one shelter.
  *
- * Named here rather than written at both ends, because the two ends are in
- * different components and a chip whose href does not match a card's id fails
- * silently: the browser scrolls nowhere and says nothing.
+ * Named here rather than written at the card, because a link elsewhere that
+ * spells it differently fails silently: the browser scrolls nowhere and says
+ * nothing. The phone index that used to point at it is gone; the ids stay,
+ * because a deep link costs nothing and the card's scroll margin is tuned
+ * for one.
  */
 export function shelterAnchorId(id: string): string {
   return `zavetisce-${id}`;

@@ -64,22 +64,23 @@ describe("shelter directory context", () => {
   });
 });
 
-// The strip itself is tested in shelter-jump-strip.test.tsx. What the page
-// owes it is the wiring: the label reaches it, and it indexes this page's
-// register rather than some other list.
+// The strip itself is tested in shelter-jump-strip.test.tsx and the grouping
+// by town in lib/shelter-jump.test.ts. What the page owes it is the wiring:
+// the label reaches it, and it indexes this page's register rather than some
+// other list.
 describe("the phone jump strip", () => {
-  it("gives the register one chip per card", () => {
+  it("gives the register one chip per town, each landing on a card", () => {
     render(<SheltersPage locale="sl" />);
     const strip = screen.getByRole("list", { name: "Skok na zavetišče" });
     const links = within(strip).getAllByRole("link");
     // Every chip resolves to a card that is really on the page, and to its
-    // own: two towns in the real register hold two shelters each, so the town
-    // alone does not identify a chip and the href is the only thing that can.
-    // Stronger than comparing the hrefs to a list, which the strip's own test
-    // already does.
+    // own. Three fixtures in three towns, so three chips; the real register
+    // holds two towns with two shelters each and those fold to one chip,
+    // which lib/shelter-jump.test.ts pins.
     const targets = links.map(link =>
       document.getElementById(link.getAttribute("href")!.slice(1)),
     );
+    expect(links).toHaveLength(3);
     expect(targets.every(card => card !== null)).toBe(true);
     expect(new Set(targets).size).toBe(links.length);
   });

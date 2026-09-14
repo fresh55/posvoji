@@ -26,7 +26,9 @@ function renderStrip(chips: ShelterJumpChip[] = shelters) {
 }
 
 describe("the phone jump strip", () => {
-  it("indexes the register in grid order, one chip per shelter", () => {
+  it("indexes the register in the order it is handed, one chip per town", () => {
+    // Which towns, and how a town with two shelters becomes one chip, is
+    // lib/shelter-jump.ts's and tested there; the strip draws what it gets.
     const strip = renderStrip();
     const links = within(strip).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([

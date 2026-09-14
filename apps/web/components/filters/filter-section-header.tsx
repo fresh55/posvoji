@@ -99,7 +99,13 @@ export function SectionHint({
   return (
     <p
       className={cn(
-        "mb-2 text-2xs leading-snug text-muted-foreground",
+        // 12px in the sheet, 11px in the sidebar. The two sizes are one
+        // decision about column width and not two tastes: the sidebar is a
+        // 224px column beside the grid, while the sheet is a phone held at
+        // arm's length, where 11px was the smallest type on the page. The
+        // sheet is below lg and the sidebar only from it, so the width gate
+        // says which one this is.
+        "mb-2 text-xs leading-snug text-muted-foreground lg:text-2xs",
         collapse && "hidden [@media(pointer:coarse)]:block",
       )}
     >
@@ -183,7 +189,9 @@ export function FilterSectionHeader({
       tabIndex={showReset ? undefined : -1}
       aria-label={resetAriaLabel}
       className={cn(
-        "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground",
+        // text-xs below lg and text-2xs from it, the same one decision the
+        // hint above states: 11px is a 224px column's size, not a phone's.
+        "h-auto p-0 text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
         // shapes, because the two placements differ. In the sheet this sits in

@@ -2625,7 +2625,9 @@ describe("animal dialog", () => {
       name: /Odpri objavo pri zavetišču/,
     });
     expect(cta.className).not.toContain("max-sm:hidden");
-    expect(cta.className).toContain("max-sm:h-11");
+    // On the pointer and not on the width: the 768px tablet, where this is
+    // the only copy of the button, measured 36px under max-sm.
+    expect(cta.className).toContain("pointer-coarse:h-11");
   });
 
   // The shelter is named on every animal and, until the name became a link,
@@ -2646,6 +2648,30 @@ describe("animal dialog", () => {
         .getByRole("link", { name: "Zavetišče Test" })
         .getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
+  });
+
+  // 17px of name and 16px of phone number, both of them controls: the way to
+  // the shelter's page and the way to call it. A finger gets 44px of each.
+  it("gives the shelter box's two contacts a finger's box", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={{ "test-shelter": "051 304 435" }}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /051 304 435/ }).className,
+    ).toContain("pointer-coarse:min-h-11");
+    // The name's own overlay is clipped by the clamp on its line, so the row
+    // carries the height and the link is stretched over it.
+    const name = screen.getByRole("link", { name: "Zavetišče Test" });
+    expect(name.className).toContain("pointer-coarse:after:inset-0");
+    expect(name.closest("p")?.className).toContain("pointer-coarse:py-3");
   });
 
   // The shelter block replaces the CTA with the good news and a quiet text

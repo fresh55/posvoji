@@ -354,19 +354,22 @@ describe("fan count control", () => {
       name: "Vse fotografije (7)",
     });
 
-    // 8px a side over a 20px mark is 36px, which is a mouse; 12px is the 44px
-    // a thumb is measured against.
+    // 8px a side over a 20px mark is 36px, which is a mouse; 14px is the 48px
+    // a thumb lands on, measured at 47 in the browser. 12px left it at 43,
+    // one under the bar.
     expect(count.className).toContain("after:absolute");
     expect(count.className).toContain("after:-inset-2");
-    expect(count.className).toContain("pointer-coarse:after:-inset-3");
+    expect(count.className).toContain("pointer-coarse:after:-inset-3.5");
     // The overlay is drawn outside the badge, which clips its own children.
     expect(count.className).toContain("overflow-visible");
-    // And the mark itself is unchanged: same height, same corner, same type.
+    // And the mark itself keeps its box: same height, same corner. The type
+    // is 11px rather than 10, because past six photos this is the only way
+    // into the contact sheet and it was the smallest type on the site.
     expect(count.className).toContain("h-5");
     expect(count.className).toContain("right-1.5");
     expect(count.className).toContain("bottom-1.5");
     expect(count.className).toContain("px-1.5");
-    expect(count.className).toContain("text-3xs");
+    expect(count.className).toContain("text-2xs");
     expect(count.textContent).toBe("1 / 7");
   });
 

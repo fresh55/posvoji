@@ -134,11 +134,18 @@ export function ShelterBlock({
               centred mark reads as one unit with; from sm up this same row also
               carries the call to action, and items-start would lift that button
               to the top of a row whose name is one line there anyway. */}
-          <p className="font-medium max-sm:line-clamp-2 sm:truncate">
+          {/* The row grows for a finger and the link fills it. tap-target on
+              the link itself draws its overlay inside this paragraph, which
+              clips at its own box on both sides of sm (line-clamp and truncate
+              are each overflow: hidden), so the overlay measured 21px and not
+              44; the padding is what the overlay then has to fill. The 14px a
+              side is a 17px line of text taken to 45. The town's line under
+              this one is inert text, and it stays where it is. */}
+          <p className="relative font-medium max-sm:line-clamp-2 sm:truncate pointer-coarse:py-3">
             <a
               href={shelterPath(shelter.id, locale)}
               title={shelter.name}
-              className="rounded-ui underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring"
+              className="rounded-ui underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-0 pointer-coarse:after:rounded-ui"
             >
               {shelter.name}
             </a>
@@ -163,7 +170,12 @@ export function ShelterBlock({
           {phones[shelter.id] && (
             <a
               href={telHref(phones[shelter.id])}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              // pointer-coarse:min-h-11 is the register card's contact row
+              // (CONTACT_ROW_CLASS in shelter-card.tsx): a number to dial is a
+              // control, and 16px of it was the smallest thing in this box.
+              // The row grows rather than an overlay reaching out, because the
+              // name above it already carries one.
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline pointer-coarse:min-h-11"
             >
               <Phone
                 className="size-3.5 shrink-0 opacity-70"
@@ -218,10 +230,12 @@ export function ShelterBlock({
             // in it. Default is 36px and sits with them.
             size="default"
             className={cn(
-              // max-sm:h-11, because 36px is still short for a thumb and on
-              // the animal's own page, which has no sticky bar to mirror this,
-              // it is the button a thumb actually goes for.
-              "w-full max-sm:h-11 sm:w-auto",
+              // pointer-coarse:h-11, because 36px is still short for a thumb
+              // and on the animal's own page, which has no sticky bar to
+              // mirror this, it is the button a thumb actually goes for. On
+              // the pointer and not on the width: at max-sm a 768px tablet,
+              // where this is the only copy of the button, measured 36px.
+              "w-full pointer-coarse:h-11 sm:w-auto",
               // short: goes wherever max-sm: goes, because the bar this
               // mirrors does: the dialog draws it on the phone shell, and a
               // phone held sideways is that shell too (PHONE_SHELL in

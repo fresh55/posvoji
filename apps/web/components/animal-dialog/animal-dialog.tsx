@@ -144,7 +144,13 @@ const CARD_FRAME_CLASS =
 // sm layout, where these arrows are the only way to the next animal: the title
 // row's pair is hidden from sm up and the page keys need a keyboard. A finger
 // gets the 44px floor; a mouse keeps the smaller circle, and each size takes
-// half of itself off the 64px so both stay centred on the same row.
+// half of itself off the row's own middle so both stay centred on it.
+//
+// That middle is not the same number for the two pointers. The row is as tall
+// as the tallest thing in it, which for a finger is the 44px share and close
+// buttons: 48px of card padding and half of 44 is 70px, against 48 and half
+// of 32 for a mouse. The travel is the same 24px either way, so NAV_SHIFT_MAX
+// below is one number.
 //
 // --nav-shift is the rest of "level with the name": the name is in a sticky
 // bar and the arrows are absolute against the frame, which does not scroll, so
@@ -154,7 +160,7 @@ const CARD_FRAME_CLASS =
 // number (see syncNavShift) and the default keeps the class honest on its own,
 // for the first paint and for the phone, where these are hidden anyway.
 const ANIMAL_NAV_CLASS =
-  "absolute top-[calc(4rem-1.125rem-var(--nav-shift,0px))] z-40 hidden size-9 rounded-full bg-popover shadow-xs sm:not-short:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4rem-1.375rem-var(--nav-shift,0px))] pointer-coarse:size-11";
+  "absolute top-[calc(4rem-1.125rem-var(--nav-shift,0px))] z-40 hidden size-9 rounded-full bg-popover shadow-xs sm:not-short:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4.375rem-1.375rem-var(--nav-shift,0px))] pointer-coarse:size-11";
 
 // How far the title bar travels before it is pinned: 64px at rest less the
 // 40px the pinned name sits at. The card's scroll past that moves the bar no
@@ -762,7 +768,11 @@ export function AnimalDialog({
                             data-slot="dialog-close-card"
                             variant="ghost"
                             size="icon-sm"
-                            className="hidden sm:not-short:inline-flex"
+                            // pointer-coarse:size-11 for the same reason the
+                            // share button beside it carries one: on a touch
+                            // tablet this is the way out of the dialog, and
+                            // icon-sm is 32px. A mouse keeps the 32px row.
+                            className="hidden sm:not-short:inline-flex pointer-coarse:size-11"
                           >
                             <XIcon aria-hidden />
                             <span className="sr-only">{messages.close}</span>

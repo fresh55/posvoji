@@ -220,13 +220,17 @@ export function ShareButton({
   // other control on the phone layout was already held to. The close button
   // beside this one carries the same override. The caller's classes come
   // last, so a row can dress this button without losing the floor.
+  //
+  // pointer-coarse:size-11 carries that floor past sm, where a 768px tablet
+  // is all thumb and was getting the 32px disc a mouse gets. The nav arrows
+  // beside it ask the same question (ANIMAL_NAV_CLASS).
   const trigger = (
     <Button
       type="button"
       variant="ghost"
       size="icon-sm"
       aria-label={messages.share}
-      className={cn("size-11 sm:size-8", className)}
+      className={cn("size-11 sm:size-8 pointer-coarse:size-11", className)}
       onClick={phone && canShare ? shareNatively : undefined}
     >
       <Share2 aria-hidden />

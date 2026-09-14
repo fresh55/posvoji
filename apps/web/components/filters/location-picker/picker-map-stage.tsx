@@ -34,7 +34,14 @@ const PickerMapPlate = dynamic(
   },
 );
 
-export function PickerMapStage({ controller }: { controller: LocationPickerController }) {
+export function PickerMapStage({ controller, hug = false }: {
+  controller: LocationPickerController;
+  /** Whether this stage is what the dialog takes its height from, which it
+   *  is below lg with the list put away (view.tsx). In flow it is as tall as
+   *  the map and the legend under it; pinned to the box's edges it was as
+   *  tall as the dialog, with the map floating in the middle of it. */
+  hug?: boolean;
+}) {
   const { panelOpen, sheetOpen } = controller;
   return (
           <div
@@ -42,6 +49,7 @@ export function PickerMapStage({ controller }: { controller: LocationPickerContr
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) flex flex-col gap-3 p-3 sm:p-4",
               "@container/map-stage",
+              hug && "max-lg:static",
               sheetOpen && "max-lg:hidden",
               "lg:right-auto",
               MAP_STAGE_TRANSITION_CLASS,

@@ -103,6 +103,23 @@ describe("the language switcher", () => {
     expect(english.className.split(" ")).not.toContain("max-lg:hidden");
   });
 
+  // Grown rather than overlaid, because the halves sit 2px apart; and gated on
+  // the pointer, because a 1180px tablet drew them 24px tall while a 1024px
+  // mouse window got the 44.
+  it("grows both halves to 44px on a coarse pointer", () => {
+    renderSwitcher();
+
+    for (const name of ["Slovenščina", "English"]) {
+      const half = screen.getByRole("link", { name }).closest("a");
+      expect(half?.className.split(" ")).toEqual(
+        expect.arrayContaining([
+          "pointer-coarse:min-h-11",
+          "pointer-coarse:min-w-11",
+        ]),
+      );
+    }
+  });
+
   it("keeps the well and the raised half off the phone", () => {
     // The one that survives below lg is a ghost button on the header's own
     // background, so nothing here may paint at a width where the well that

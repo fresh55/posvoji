@@ -117,10 +117,13 @@ function GithubMark() {
   );
 }
 
-// Small buttons grown to 44px below lg, the same spelling the shelters page
-// gives its lookup button and for the reason argued there: a thumb needs the
-// height, and the padding goes with it or the box reads as a stretched pill.
-const THUMB_BUTTON = "max-lg:min-h-11 max-lg:gap-1.5 max-lg:px-4";
+// Small buttons grown to 44px on a coarse pointer, the same spelling the
+// shelters page gives its lookup button and for the reason argued there: a
+// thumb needs the height, and the padding goes with it or the box reads as a
+// stretched pill. On the pointer and not on the width, because a 1180px
+// tablet is a thumb and a 1024px laptop window is not.
+const THUMB_BUTTON =
+  "pointer-coarse:min-h-11 pointer-coarse:gap-1.5 pointer-coarse:px-4";
 
 /**
  * The site's introduction remains readable while the cat loads independently.

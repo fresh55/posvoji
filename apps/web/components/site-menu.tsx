@@ -89,6 +89,13 @@ export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
             aria-current={current ? "page" : undefined}
             className={cn(
               "text-sm transition-colors hover:text-foreground",
+              // 20px of line is what a link this size draws, and this row only
+              // exists from lg, so on a touch tablet it was never sized for a
+              // finger at any width: measured 65x20 at 1180 with touch. The
+              // overlay grows the box and not the drawing, and nothing sits
+              // inside its overhang here (24px between the links, 40px to the
+              // brand, and the header row is taller than 44).
+              "pointer-coarse:tap-target",
               current ? "font-medium text-foreground" : "text-muted-foreground",
             )}
           >
@@ -121,7 +128,9 @@ export function ShelterLogin() {
       asChild
       size="sm"
       variant="outline"
-      className="hidden font-normal text-muted-foreground hover:text-foreground lg:inline-flex"
+      // 32px drawn at size sm, which is a mouse's button. On a coarse pointer
+      // it is the only door to the portal on the page, so it takes the 44.
+      className="hidden font-normal text-muted-foreground pointer-coarse:h-11 hover:text-foreground lg:inline-flex"
     >
       {/* The whole phrase at every width it renders at, never "Prijava" on
           its own. On a site with no visitor accounts, a bare login in the

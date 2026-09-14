@@ -52,7 +52,7 @@ export function NotFoundPage({
       <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
         <a
           href={homeHref}
-          className="max-lg:tap-target font-medium text-foreground underline-offset-4 hover:underline"
+          className="pointer-coarse:tap-target font-medium text-foreground underline-offset-4 hover:underline"
         >
           {messages.allAnimals}
         </a>

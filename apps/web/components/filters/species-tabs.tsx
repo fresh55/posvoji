@@ -458,6 +458,14 @@ export function SpeciesTabs({
           // overlays are cut back to the height of the pills. The matching
           // negative margin keeps the row occupying its old height.
           //
+          // The two gates below say the same thing in CSS and answer two
+          // different questions. max-lg is the row's height: the padding and
+          // the margin cancel, so below lg this box draws 44px and measures
+          // 28, which is the height the toolbar around it is built on.
+          // pointer-coarse is the overlay's room: the tabs ask the pointer for
+          // their 44px now, and at lg on a touch tablet the box would clip the
+          // overlay back to the pill without padding of its own there.
+          //
           // What that costs a caller below lg: the padding and the margin
           // cancel, so this box draws 44px and measures 28px from outside.
           // A block parent the margins collapse through stands at 44; a flex
@@ -477,7 +485,7 @@ export function SpeciesTabs({
           // gets the same from the fade-scroll-x utility; this one masks by
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
-          "relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain no-scrollbar max-lg:-my-2 max-lg:py-2",
+          "relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain no-scrollbar max-lg:-my-2 max-lg:py-2 pointer-coarse:-my-2 pointer-coarse:py-2",
           fullWidth && "w-full",
         )}
       >
@@ -544,7 +552,7 @@ export function SpeciesTabs({
               // the double-tap window open: two quick presses zoomed the page
               // instead of changing species, and a rapid press on the label
               // could start a selection or raise the iOS callout.
-              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-lg:tap-target",
+              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 pointer-coarse:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a

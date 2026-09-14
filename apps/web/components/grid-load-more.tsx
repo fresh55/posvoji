@@ -69,10 +69,11 @@ export function GridLoadMore({
         variant="outline"
         size="sm"
         onClick={showMore}
-        // Real height below lg, not a tap-target overlay: this is the one
-        // control at the bottom of the list, and h-8 is short of what a thumb
-        // needs.
-        className="max-lg:min-h-11 max-lg:px-4"
+        // Real height on a coarse pointer, not a tap-target overlay: this
+        // is the one control at the bottom of the list, and h-8 is short of
+        // what a thumb needs. The pointer and not the width, so a touch tablet
+        // past lg gets it and a narrow mouse window does not.
+        className="pointer-coarse:min-h-11 pointer-coarse:px-4"
       >
         {t("showMoreAnimals", { n: Math.min(CARDS_PER_CLICK, total - drawn) })}
       </Button>

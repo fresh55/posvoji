@@ -188,16 +188,17 @@ describe("SortPicker menu heading", () => {
 });
 
 describe("SortPicker option rows", () => {
-  it("keeps every option thumb-sized below md", () => {
+  it("keeps every option thumb-sized on a coarse pointer", () => {
     mount(LJUBLJANA);
 
     // The stock item measures 32px, which is what a phone was getting while
-    // every other control in the filter sheet kept 44px. jsdom lays nothing
-    // out, so the floor is asserted on the class that sets it.
+    // every other control in the filter sheet kept 44px. The floor asks the
+    // pointer rather than the width, so a touch tablet past md gets it too.
+    // jsdom lays nothing out, so it is asserted on the class that sets it.
     const options = openOptions();
     expect(options.length).toBeGreaterThan(0);
     for (const option of options) {
-      expect(option.className.split(" ")).toContain("max-md:min-h-11");
+      expect(option.className.split(" ")).toContain("pointer-coarse:min-h-11");
     }
   });
 });

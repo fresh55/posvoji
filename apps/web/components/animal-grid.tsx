@@ -126,14 +126,16 @@ function shelterAbsenceKey(count: number): TranslationKey {
   return "noResultsShelterPlural";
 }
 
-/** The touch line the empty state's buttons keep below lg.
+/** The touch line the empty state's buttons keep on a coarse pointer.
  *
  *  They are `size="sm"`, which is a mouse's height, and on a phone this state
  *  holds the only controls on screen. Grown rather than overlaid, and padded
- *  to match, for the reason globals.css states at the tap-target utility; the
- *  breakpoint is the one the rest of this file and the chips row already use.
+ *  to match, for the reason globals.css states at the tap-target utility. The
+ *  gate asks the pointer rather than the width, which is what the rest of the
+ *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
+ *  mouse.
  */
-const EMPTY_STATE_ACTION = "max-lg:min-h-11 max-lg:px-4";
+const EMPTY_STATE_ACTION = "pointer-coarse:min-h-11 pointer-coarse:px-4";
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they

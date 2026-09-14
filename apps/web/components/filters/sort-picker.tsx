@@ -142,7 +142,12 @@ export function SortPicker({
           // read as a caption rather than as the other half of the bar. The
           // trigger keeps its size="sm" height, so the row's geometry is
           // unchanged; only the label grows the 2px.
-          "text-sm max-lg:min-h-11",
+          //
+          // The 44px floor asks the pointer rather than the width. A 1024px
+          // laptop window is a mouse and a 1180px tablet is a thumb, and the
+          // width gate had it the other way round: measured at 1180x820 with a
+          // coarse pointer this trigger was 32px.
+          "text-sm pointer-coarse:min-h-11",
           // The label takes the room between the two icons instead of
           // floating in the middle of it. The trigger is justify-between and
           // the value is the middle of its three children, so a trigger given
@@ -165,7 +170,7 @@ export function SortPicker({
         )}
       >
         <ArrowDownNarrowWide
-          className="size-3.5 shrink-0 text-muted-foreground max-lg:size-4"
+          className="size-3.5 shrink-0 text-muted-foreground pointer-coarse:size-4"
           aria-hidden
         />
         {/* The label used to go at max-sm, so a phone got an arrow and a
@@ -201,9 +206,10 @@ export function SortPicker({
                 value={sort}
                 // 32px is what the stock item measures, which is fine for a
                 // mouse and under the 44px every other control in the filter
-                // sheet keeps for a thumb. The floor lifts below md, where
-                // this menu opens over a phone; from md the item is unchanged.
-                className="max-md:min-h-11"
+                // sheet keeps for a thumb. The floor lifts on a coarse
+                // pointer, which is the question being asked; a width gate
+                // gave a touch tablet the mouse's height.
+                className="pointer-coarse:min-h-11"
               >
                 <Icon
                   className="size-4 shrink-0 text-muted-foreground"

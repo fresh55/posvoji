@@ -1,0 +1,140 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  /* The changelist's own table, with a photo column the changelist has no
+     equivalent for. Everything else leans on the admin's stylesheet so the
+     page keeps the theme, the dark mode included. */
+  .animals-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+  .animals-filters label { display: block; font-size: 11px; text-transform: uppercase; color: var(--body-quiet-color); }
+  .animals-counts { color: var(--body-quiet-color); margin-bottom: 12px; }
+  .animals-table td { vertical-align: middle; }
+  .animals-photo { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; background: var(--darkened-bg); }
+  .animals-photo-empty { display: inline-block; width: 64px; height: 64px; border-radius: 4px; background: var(--darkened-bg); }
+  .animals-id { color: var(--body-quiet-color); font-size: 11px; }
+  .animals-edited { color: var(--object-tools-bg); font-size: 11px; }
+  .animals-pending { color: var(--error-fg); font-size: 11px; }
+  .animals-links a { margin-right: 8px; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+{# The page's own heading comes from `title` through admin/base.html. #}
+<form class="animals-filters" method="get">
+  <div>
+    <label for="q">Iskanje</label>
+    <input type="search" id="q" name="q" value="{{ selected.q }}" placeholder="ime ali id">
+  </div>
+  <div>
+    <label for="zavetisce">Zavetišče</label>
+    <select id="zavetisce" name="zavetisce">
+      <option value="">vsa ({{ total }})</option>
+      {% for value, label, count in shelters %}
+        <option value="{{ value }}" {% if value == selected.zavetisce %}selected{% endif %}>{{ label }} ({{ count }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="vrsta">Vrsta</label>
+    <select id="vrsta" name="vrsta">
+      <option value="">vse</option>
+      {% for value, label, count in species_facet %}
+        <option value="{{ value }}" {% if value == selected.vrsta %}selected{% endif %}>{{ label }} ({{ count }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">vsi</option>
+      {% for value, label, count in statuses %}
+        <option value="{{ value }}" {% if value == selected.status %}selected{% endif %}>{{ label }} ({{ count }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="urejeno">Popravki</label>
+    <select id="urejeno" name="urejeno">
+      <option value="">vse</option>
+      <option value="da" {% if selected.urejeno == "da" %}selected{% endif %}>s popravkom ({{ edited_total }})</option>
+      <option value="ne" {% if selected.urejeno == "ne" %}selected{% endif %}>brez popravka</option>
+    </select>
+  </div>
+  <div>
+    <label for="razvrsti">Razvrsti po</label>
+    <select id="razvrsti" name="razvrsti">
+      {% for value, label in sorts %}
+        <option value="{{ value }}" {% if value == selected.razvrsti %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <input type="submit" value="Pokaži">
+    <a class="button" href="{{ request.path }}">Počisti</a>
+  </div>
+</form>
+
+<p class="animals-counts">
+  {{ found }} od {{ total }} živali.
+  {% if pending %}{{ pending }} ročnih objav še ni v izvozu.{% endif %}
+  Popravke ureja <a href="{{ overrides_url }}">seznam popravkov</a>.
+</p>
+
+<div class="results">
+  <table class="animals-table">
+    <thead>
+      <tr>
+        <th scope="col">Fotografija</th>
+        <th scope="col">Ime</th>
+        <th scope="col">Zavetišče</th>
+        <th scope="col">Vrsta</th>
+        <th scope="col">Status</th>
+        <th scope="col">Spol</th>
+        <th scope="col">Velikost</th>
+        <th scope="col">Starost</th>
+        <th scope="col">Povezave</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in page %}
+        <tr class="{% cycle 'row1' 'row2' %}">
+          <td>
+            {% if row.thumbnail %}
+              <img class="animals-photo" src="{{ row.thumbnail }}" alt="" loading="lazy">
+            {% else %}
+              <span class="animals-photo-empty"></span>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ row.name|default:"brez imena" }}</strong><br>
+            <span class="animals-id">{{ row.animal_id }}</span>
+            {% if row.edited %}<br><span class="animals-edited">popravljeno: {{ row.edited|join:", " }}</span>{% endif %}
+            {% if row.pending %}<br><span class="animals-pending">ročna objava, še ni v izvozu</span>{% endif %}
+          </td>
+          <td>{{ row.shelter_name }}<br><span class="animals-id">{{ row.shelter_slug }}</span></td>
+          <td>{{ row.species }}</td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.sex }}</td>
+          <td>{{ row.size }}</td>
+          <td>{{ row.age }}</td>
+          <td class="animals-links">
+            {% if row.site_url %}<a href="{{ row.site_url }}" target="_blank" rel="noreferrer">stran</a>{% endif %}
+            {% if row.source_url %}<a href="{{ row.source_url }}" target="_blank" rel="noreferrer">vir</a>{% endif %}
+            {% if row.override_url %}<a href="{{ row.override_url }}">popravek</a>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">Nobena žival ne ustreza izbiri.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="paginator">
+  {% if page.has_previous %}<a href="?stran={{ page.previous_page_number }}{{ carry }}">prejšnja</a>{% endif %}
+  Stran {{ page.number }} od {{ page.paginator.num_pages }}
+  {% if page.has_next %}<a href="?stran={{ page.next_page_number }}{{ carry }}">naslednja</a>{% endif %}
+</p>
+
+<p class="animals-counts">Vir: {{ dataset_path }}</p>
+{% endblock %}

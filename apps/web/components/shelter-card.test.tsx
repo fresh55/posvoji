@@ -304,15 +304,58 @@ describe("the shelter card", () => {
     const card = container.querySelector("li");
     expect(card?.className).toContain("max-sm:flex");
     expect(card?.className).toContain("max-sm:flex-col");
-    // One order utility does it: the content goes to the front and the other
-    // two keep their source order behind it. So the assertion is that the
-    // content is pulled and that nothing else carries an order at all, which
-    // is what would quietly reintroduce a second ordering to keep in step.
-    const order = (slot: string) =>
-      container.querySelector(`[data-slot="${slot}"]`)?.className ?? "";
-    expect(order("item-content")).toContain("max-sm:order-first");
-    expect(order("item-media")).not.toContain("order-");
-    expect(order("item-footer")).not.toContain("order-");
+    // The document order is the phone order, and nothing carries an order
+    // utility: the sections are written as they are read, and the subgrid
+    // band from sm up places them by slot name (ui/item.tsx). An order
+    // utility on any slot would be a second ordering to keep in step, which
+    // is what this guards against.
+    const slot = (name: string) =>
+      container.querySelector(`[data-slot="${name}"]`)!;
+    const follows = (first: Element, second: Element) =>
+      Boolean(
+        first.compareDocumentPosition(second) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    expect(follows(slot("item-content"), slot("item-media"))).toBe(true);
+    expect(follows(slot("item-media"), slot("item-footer"))).toBe(true);
+    for (const name of ["item-content", "item-media", "item-footer"]) {
+      expect(slot(name).className).not.toContain("order-");
+    }
+  });
+
+  it("names the shelter before it counts its animals", () => {
+    render(
+      <ShelterCard shelter={shelter({ animals: 2, logo: LOGO })} text={text} />,
+    );
+
+    // What a screen reader hears, and the order a heading rotor lands in: the
+    // count belongs to the name above it, not to the previous card's
+    // contacts. The media row used to come first in the document because the
+    // subgrid placed it by position; it is placed by name now.
+    const name = screen.getByRole("heading", { level: 2 });
+    const count = screen.getByText("2 živali");
+    expect(
+      Boolean(
+        name.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+  });
+
+  it("stands the name's underline down while a contact row is hovered", () => {
+    render(
+      <ShelterCard shelter={shelter({ phone: "03 749 06 00" })} text={text} />,
+    );
+
+    // The hover underline on the name says a press opens the shelter's page,
+    // which is true anywhere on the card except over a contact row, where the
+    // row takes the press. Over a row the name's underline goes and the row's
+    // own is the only one drawn. A class assertion, because :hover is a
+    // browser's to set; the pair is measured in the browser suite.
+    const name = screen.getByRole("link", { name: "Zavetišče Zonzani" });
+    expect(name.className).toContain("group-hover:underline");
+    expect(name.className).toContain(
+      "group-has-[[data-contact]:hover]:no-underline",
+    );
   });
 
   it("folds the count onto the town's line on a phone with no mark", () => {
@@ -333,10 +376,15 @@ describe("the shelter card", () => {
     const media = container.querySelector('[data-slot="item-media"]');
     expect(media?.className).toContain("max-sm:ml-auto");
     expect(media?.className).toContain("max-sm:self-end");
-    // The name block grows from a zero basis, or a long name's own width
-    // takes the whole first line and the count drops under it again.
+    // The name block grows from a fixed basis, or a long name's own width
+    // takes the whole first line and the count drops under it again. Fixed
+    // and not zero: from zero the row could shrink the block to nothing, and
+    // at 200% text the town under the name came out as "Br…" beside a "Brez
+    // objav" that kept its width. 9rem holds the fold at 100% on the
+    // narrowest card and lets the media wrap under at 200%.
     const content = container.querySelector('[data-slot="item-content"]');
-    expect(content?.className).toContain("max-sm:basis-0");
+    expect(content?.className).toContain("max-sm:basis-36");
+    expect(content?.className).not.toContain("max-sm:basis-0");
     expect(content?.className).toContain("max-sm:flex-1");
     expect(
       container.querySelector('[data-slot="item-footer"]')?.className,

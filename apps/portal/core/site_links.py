@@ -5,10 +5,12 @@ animal", and it builds its own addresses in apps/web/lib/animal-path.ts, so
 the portal cannot ask for one and has to know the rule. This is that rule,
 spelled a second time in Python.
 
-Two copies of a rule drift. tests/test_site_links.py pins this one against
-addresses taken from the TypeScript module, so a change there that is not
-made here fails a test rather than quietly pointing the admin's links at
-pages that do not exist.
+Two copies of a rule drift, so neither copy is trusted on its own.
+apps/web/lib/animal-path.fixture.json is cut from the TypeScript module and
+committed; the web suite holds the module to the file and
+tests/test_site_links.py holds this module to the same file. A change made
+on one side only reddens one of the two, in the pull request that makes it,
+rather than quietly pointing the admin's links at pages that do not exist.
 """
 
 import unicodedata

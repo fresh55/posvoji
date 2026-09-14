@@ -4,6 +4,6 @@
    no line in the app list. The shelters are what a maintainer opens looking
    for it, so the link sits here. #}
 {% block object-tools-items %}
-  <li><a href="{% url 'all-animals' %}">Vse živali</a></li>
+  <li><a href="{% url 'admin:all-animals' %}">Vse živali</a></li>
   {{ block.super }}
 {% endblock %}

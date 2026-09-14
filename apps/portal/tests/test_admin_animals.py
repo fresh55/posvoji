@@ -8,7 +8,7 @@ from core.models import AnimalOverride, IngestionMode, Listing, Shelter
 
 from .conftest import make_animal
 
-PAGE = "/admin/zivali/"
+PAGE = "/admin/core/shelter/zivali/"
 
 
 @pytest.fixture

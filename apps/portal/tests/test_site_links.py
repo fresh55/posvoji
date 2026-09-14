@@ -1,67 +1,61 @@
 """The Python copy of the site's address rule, against the site's answers.
 
-Every expected value here was produced by apps/web/lib/animal-path.ts, not
-by reading it. A change on that side that is not made in core/site_links.py
-lands as a failure here.
+Every expected value here is read from apps/web/lib/animal-path.fixture.json,
+which is cut from apps/web/lib/animal-path.ts itself and committed. The web
+suite asserts the file still matches that module, so the file cannot drift
+from the site without reddening a test over there; this suite asserts
+core/site_links.py reproduces the file, so the site cannot move without
+reddening a test over here. A rule change that is made on one side only
+fails in one of the two places, in the pull request that makes it.
 """
 
+import json
+
 import pytest
+from django.conf import settings
 
-from core.site_links import animal_path, id_suffix, slugify
+from core.site_links import animal_path, slugify
 
-
-@pytest.mark.parametrize(
-    "text,expected",
-    [
-        ("Žužemberk", "zuzemberk"),
-        ("  ", ""),
-        ("Sv. Jurij ob Ščavnici", "sv-jurij-ob-scavnici"),
-        ("ČŠŽ-123", "csz-123"),
-        ("Ø Łukas ßeta đ", "o-lukas-sseta-d"),
-        # Spacing marks. \p{Diacritic} covers the acute, circumflex, grave,
-        # diaeresis and middle dot that sit between letters as their own
-        # characters, so the site drops them; a combining-class test would
-        # have dashed each one.
-        ("D´Artagnan", "dartagnan"),
-        ("a^b`c¨d·e", "abcde"),
-        ("Rock'n'roll", "rock-n-roll"),
-    ],
-)
-def test_slugify_matches_the_site(text, expected):
-    assert slugify(text) == expected
+FIXTURE = settings.REPO_ROOT / "apps" / "web" / "lib" / "animal-path.fixture.json"
 
 
-def test_id_suffix_is_six_hex_digits():
-    assert id_suffix("muri:16836") == "2f1856"
-    assert id_suffix("x:1") == "870179"
+def cases(section: str) -> list:
+    return json.loads(FIXTURE.read_text(encoding="utf-8"))[section]
 
 
-def test_animal_path_matches_the_site():
-    animal = {
-        "id": "muri:16836",
-        "name": "Luna",
-        "species": "cat",
-        "shelter": {"id": "muri", "name": "Zavod Muri", "city": "Ljubljana"},
-    }
-    assert animal_path(animal) == "/zival/luna-2f1856/ljubljana/muri"
+def case_id(case: dict) -> str:
+    return case.get("text") or case.get("animal", {}).get("id") or "case"
 
 
-def test_animal_path_folds_the_diacritics():
-    animal = {
-        "id": "macja-hisa:7",
-        "name": "Črtomir Žan",
-        "species": "cat",
-        "shelter": {"id": "macja-hisa", "name": "Mačja hiša", "city": "Škofja Loka"},
-    }
-    assert animal_path(animal) == "/zival/crtomir-zan-d3005e/skofja-loka/macja-hisa"
+@pytest.mark.parametrize("case", cases("slugify"), ids=case_id)
+def test_slugify_matches_the_site(case):
+    assert slugify(case["text"]) == case["slug"]
 
 
-def test_animal_path_names_what_the_record_leaves_empty():
-    """A missing name, town or shelter id never leaves an empty segment.
+@pytest.mark.parametrize("case", cases("animalPath"), ids=case_id)
+def test_animal_path_matches_the_site(case):
+    """A record's address, including what the site substitutes for a gap.
 
-    An empty segment is a different route, so the site substitutes the
-    species, the country and the word for a shelter. This is the same record
-    the TypeScript side was asked about.
+    A missing name, town or shelter id never leaves an empty segment: the
+    species, the country and the word for a shelter stand in, because an
+    empty segment would be a different route. The identifier with a
+    character outside the basic plane in it is there for the hash, which
+    runs over UTF-16 code units on both sides.
     """
-    animal = {"id": "x:1", "name": "", "species": "cat", "shelter": {}}
-    assert animal_path(animal) == "/zival/cat-870179/slovenija/zavetisce"
+    assert animal_path(case["animal"]) == case["path"]
+
+
+def test_the_fixture_covers_the_hard_parts():
+    """The pin is only worth as much as what it exercises.
+
+    Each of these is a case where a plausible Python implementation gives a
+    different answer from the site: a combining mark, a letter that carries
+    no mark to strip, a spacing mark that is a diacritic but not a combining
+    one, and an identifier outside the basic multilingual plane.
+    """
+    words = {case["text"] for case in cases("slugify")}
+    assert any("š" in word or "ž" in word for word in words), "no caron"
+    assert any("ß" in word or "ł" in word for word in words), "no whole letter"
+    assert any("´" in word or "·" in word for word in words), "no spacing mark"
+    ids = {case["animal"]["id"] for case in cases("animalPath")}
+    assert any(max(identifier, default="") > "￿" for identifier in ids), "no astral"

@@ -1,5 +1,7 @@
 import type { Animal } from "@posvoji/schema";
 import { describe, expect, it } from "vitest";
+
+import fixture from "@/lib/animal-path.fixture.json";
 import {
   animalPath,
   animalPathParts,
@@ -189,5 +191,27 @@ describe("findAnimalBySlug", () => {
 
   it("finds nothing for a slug no animal answers to", () => {
     expect(findAnimalBySlug([luna, max], "luna-000000")).toBeUndefined();
+  });
+});
+
+// The portal builds these same addresses in Python, because the admin links
+// to the site and a static export has no route that would answer "where is
+// this animal" (apps/portal/core/site_links.py). Two copies of a rule drift,
+// so one committed file holds the answers and both sides are held to it:
+// this suite proves the file still matches the module it was cut from, and
+// apps/portal/tests/test_site_links.py proves Python reproduces it. Changing
+// the rule here reddens this test; regenerating the file to match then
+// reddens the Python one, in the same pull request.
+describe("the addresses the portal is held to", () => {
+  it("still match what this module produces", () => {
+    for (const { text, slug } of fixture.slugify) {
+      expect({ text, slug: slugify(text) }).toEqual({ text, slug });
+    }
+    for (const { animal: record, path } of fixture.animalPath) {
+      expect({ id: record.id, path: animalPath(record as Animal, "sl") }).toEqual({
+        id: record.id,
+        path,
+      });
+    }
   });
 });

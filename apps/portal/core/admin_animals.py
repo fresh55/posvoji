@@ -59,19 +59,17 @@ class AnimalRow:
     size: str
     age: str
     first_seen: str
-    thumbnail: str | None
-    site_url: str
-    source_url: str
-    # The fields the shelter has corrected, for the marker on the row.
-    edited: tuple[str, ...]
-    override_url: str | None
+    thumbnail: str | None = None
+    site_url: str = ""
+    source_url: str = ""
+    # The fields the shelter has corrected, for the marker on the row. A
+    # manual listing the export has not carried has none of these, which is
+    # what the defaults say.
+    edited: tuple[str, ...] = ()
+    override_url: str | None = None
     # A manual listing that no run has exported yet. It is on the portal and
     # not on the site, which is the one thing the row has to say.
-    pending: bool
-
-    @property
-    def sort_name(self) -> str:
-        return self.name.lower()
+    pending: bool = False
 
 
 def age_label(months) -> str:
@@ -100,7 +98,7 @@ def absolute(url: str | None) -> str | None:
     if not url:
         return None
     if url.startswith("/"):
-        return f"{settings.FRONTEND_URL.rstrip('/')}{url}"
+        return f"{settings.FRONTEND_URL}{url}"
     return url
 
 
@@ -138,7 +136,7 @@ def dataset_rows(overrides: dict[tuple[str, str], AnimalOverride]) -> list[Anima
                 age=age_label(animal.get("approximateAgeMonths")),
                 first_seen=text(source.get("firstSeenAt")),
                 thumbnail=absolute(thumbnail_url(animal)),
-                site_url=f"{settings.FRONTEND_URL.rstrip('/')}{animal_path(animal)}",
+                site_url=absolute(animal_path(animal)) or "",
                 source_url=text(source.get("sourceUrl")),
                 edited=tuple(sorted(override.overridden_fields())) if override else (),
                 override_url=(
@@ -146,7 +144,6 @@ def dataset_rows(overrides: dict[tuple[str, str], AnimalOverride]) -> list[Anima
                     if override
                     else None
                 ),
-                pending=False,
             )
         )
     return rows
@@ -189,10 +186,6 @@ def listing_rows(known_ids: set[str]) -> list[AnimalRow]:
                 age=age_label(listing.approximate_age_months),
                 first_seen=listing.created_at.isoformat(),
                 thumbnail=photo.image.url if photo else None,
-                site_url="",
-                source_url="",
-                edited=(),
-                override_url=None,
                 pending=True,
             )
         )
@@ -253,7 +246,9 @@ def sorted_rows(rows: list[AnimalRow], sort: str) -> list[AnimalRow]:
     "no date" is not a date at either end of the list.
     """
     if sort == BY_NAME:
-        return sorted(rows, key=lambda row: (row.sort_name, row.shelter_name.lower()))
+        return sorted(
+            rows, key=lambda row: (row.name.lower(), row.shelter_name.lower())
+        )
     if sort == BY_NEWEST:
         dated = sorted(
             (row for row in rows if row.first_seen),
@@ -261,7 +256,7 @@ def sorted_rows(rows: list[AnimalRow], sort: str) -> list[AnimalRow]:
             reverse=True,
         )
         return dated + [row for row in rows if not row.first_seen]
-    return sorted(rows, key=lambda row: (row.shelter_name.lower(), row.sort_name))
+    return sorted(rows, key=lambda row: (row.shelter_name.lower(), row.name.lower()))
 
 
 def query_without_page(request) -> str:

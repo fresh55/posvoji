@@ -230,8 +230,16 @@ RANGES: tuple[tuple[int, int], ...] = (
 )
 
 
+# The ranges are what stays readable in a diff; the lookup wants the points
+# themselves. slugify asks about every character of every name, town and
+# shelter id it is given, which over one page of the admin is thousands of
+# questions, and walking the ranges for each of them measured eight times
+# slower than the rest of the page put together.
+POINTS: frozenset[int] = frozenset(
+    point for low, high in RANGES for point in range(low, high + 1)
+)
+
+
 def is_diacritic(letter: str) -> bool:
     """Whether the site's slugify drops this character before dashing."""
-    point = ord(letter)
-    # The table is small and the strings are short; a scan is enough.
-    return any(low <= point <= high for low, high in RANGES)
+    return ord(letter) in POINTS

@@ -36,6 +36,7 @@ import {
   type PortalShelter,
 } from "@/lib/portal-api";
 import { draftKey } from "@/lib/portal-drafts";
+import { clickThrough } from "@/test/location";
 
 // The address is the page's only argument, so the tests set it the way a
 // visitor would and the mock reads it back at every render.
@@ -177,29 +178,6 @@ function cancelButton(): HTMLElement {
 
 function breadcrumb(): HTMLElement {
   return screen.getByRole("link", { name: portalText.animalsTitle });
-}
-
-/**
- * Clicks a link and says whether the page let the click through.
- *
- * Read at the document, after React's handlers have had their say, and then
- * prevented there: jsdom follows an unprevented link with a navigation it
- * does not implement and reports on stderr. The answer the page gave is the
- * thing under test; what the browser does with it is not.
- */
-function clickThrough(link: HTMLElement, init?: object): boolean {
-  let proceeded = false;
-  const seal = (event: Event) => {
-    proceeded = !event.defaultPrevented;
-    event.preventDefault();
-  };
-  document.addEventListener("click", seal);
-  try {
-    fireEvent.click(link, init);
-  } finally {
-    document.removeEventListener("click", seal);
-  }
-  return proceeded;
 }
 
 /** Types something, so the form has work in it that leaving would lose. */

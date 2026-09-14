@@ -112,12 +112,12 @@ const CONTACT_ROW =
 // phone layouts are the constants under it, and which one a card gets depends
 // on whether it has a mark to draw.
 //
-// scroll-mt-4, which is where a chip in the phone strip lands the card: 16px
-// of air above its edge, the same as the gutter beside it. It was 96px, left
+// scroll-mt-4, which is where a link to the card's anchor lands it: 16px of
+// air above its edge, the same as the gutter beside it. It was 96px, left
 // over from a layout that had something sticky to clear, and nothing on this
-// page is sticky now: the header scrolls away, so a jump from the strip put
-// the card a quarter of the screen down under a band of nothing. The invite
-// cell carries the same value for the same reason (shelters-atlas.tsx).
+// page is sticky now: the header scrolls away, so a jump put the card a
+// quarter of the screen down under a band of nothing. The invite cell carries
+// the same value for the same reason (shelters-atlas.tsx).
 const CARD =
   "group relative scroll-mt-4 max-sm:p-4 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring";
 

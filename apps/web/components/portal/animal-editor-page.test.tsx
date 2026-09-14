@@ -179,6 +179,29 @@ function breadcrumb(): HTMLElement {
   return screen.getByRole("link", { name: portalText.animalsTitle });
 }
 
+/**
+ * Clicks a link and says whether the page let the click through.
+ *
+ * Read at the document, after React's handlers have had their say, and then
+ * prevented there: jsdom follows an unprevented link with a navigation it
+ * does not implement and reports on stderr. The answer the page gave is the
+ * thing under test; what the browser does with it is not.
+ */
+function clickThrough(link: HTMLElement, init?: object): boolean {
+  let proceeded = false;
+  const seal = (event: Event) => {
+    proceeded = !event.defaultPrevented;
+    event.preventDefault();
+  };
+  document.addEventListener("click", seal);
+  try {
+    fireEvent.click(link, init);
+  } finally {
+    document.removeEventListener("click", seal);
+  }
+  return proceeded;
+}
+
 /** Types something, so the form has work in it that leaving would lose. */
 function makeDirty() {
   fireEvent.change(field("portal-name"), { target: { value: "Murka" } });
@@ -764,8 +787,7 @@ describe("the breadcrumb", () => {
       { shiftKey: true },
       { button: 1 },
     ]) {
-      const proceeded = fireEvent.click(breadcrumb(), init);
-      expect(proceeded).toBe(true);
+      expect(clickThrough(breadcrumb(), init)).toBe(true);
       expect(confirmShown()).toBe(false);
     }
     expect(push).not.toHaveBeenCalled();

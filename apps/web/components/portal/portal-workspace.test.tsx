@@ -553,11 +553,17 @@ describe("work left unsaved on an animal's own page", () => {
       expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
     });
 
+    // Signing out hands the tab to the login page. jsdom cannot navigate and
+    // says so on stderr unless the replace is caught here.
+    const replace = captureNavigation();
     fireEvent.click(screen.getByRole("button", { name: portalText.logout }));
 
     // The next account to sign in to this tab must not inherit a stranger's
     // half-written edits.
     expect(window.sessionStorage.length).toBe(0);
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(PORTAL_LOGIN_PATH);
+    });
   });
 });
 

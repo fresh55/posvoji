@@ -96,6 +96,36 @@ describe("the cat model", () => {
     expect(document.querySelector("model-viewer")).not.toBeNull();
   });
 
+  it("waits for a reach before fetching him where the page asks it to", async () => {
+    render(<CatModel sizes="100vw" locale="en" startOnReach />);
+    await act(async () => intersect(true));
+    // On screen from the first paint and still not downloaded. Decoding him
+    // holds the main thread for the better part of a second, and on an entry
+    // page that second belongs to whatever the visitor came for.
+    expect(document.querySelector("model-viewer")).toBeNull();
+    reachFor();
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+  });
+
+  it("holds a gated stage back until it is both reached for and on screen", async () => {
+    render(<CatModel sizes="100vw" locale="en" startOnReach />);
+    reachFor();
+    await act(async () => {});
+    expect(document.querySelector("model-viewer")).toBeNull();
+    await act(async () => intersect(true));
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+  });
+
+  it("answers the touch that woke him", async () => {
+    render(<CatModel sizes="100vw" locale="en" startOnReach />);
+    act(() => intersect(true));
+    touchPoster();
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    const viewer = document.querySelector("model-viewer") as unknown as Viewer;
+    fireEvent(viewer, new Event("load"));
+    expect(viewer.animationName).toBe("Notice");
+  });
+
   it("renders an immediately loadable fallback without a speculative poster preload", () => {
     const html = renderToStaticMarkup(<CatModel sizes="100vw" locale="sl" />);
     const document = new DOMParser().parseFromString(html, "text/html");

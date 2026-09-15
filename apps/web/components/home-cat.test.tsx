@@ -15,19 +15,19 @@ import { SRECKO_PATHS } from "@/lib/srecko";
 vi.mock("./cat-model", () => ({
   CatModel: ({
     framing,
-    startAfterLoad,
+    startOnReach,
     className,
     posterMedia,
   }: {
     framing: { poster: string };
-    startAfterLoad?: boolean;
+    startOnReach?: boolean;
     className?: string;
     posterMedia?: string;
   }) => (
     <div
       data-testid="cat"
       data-poster={framing.poster}
-      data-after-load={String(startAfterLoad)}
+      data-on-reach={String(startOnReach)}
       className={className}
       data-poster-media={posterMedia}
     />
@@ -37,11 +37,14 @@ vi.mock("./cat-model", () => ({
 afterEach(cleanup);
 
 describe("the home cat", () => {
-  it("asks for his own poster and waits for the page before fetching him", () => {
+  it("asks for his own poster and waits for a reach before fetching him", () => {
+    // The entry page: 2.1MB of cat decoded during the first click window cost
+    // that click the better part of a second, and an idle callback lands
+    // inside that window rather than after it.
     const { container } = render(<HomeCat locale="sl" />);
     const cat = container.querySelector('[data-testid="cat"]')!;
     expect(cat.getAttribute("data-poster")).toBe(HOME_CAT_FRAMING.poster);
-    expect(cat.getAttribute("data-after-load")).toBe("true");
+    expect(cat.getAttribute("data-on-reach")).toBe("true");
   });
 
   it("carries his name as the drawing's caption", () => {

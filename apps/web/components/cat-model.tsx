@@ -53,18 +53,6 @@ const copy = {
 
 type Status = "loading" | "ready" | "failed";
 
-/** Resolves after the page's load event and the next idle moment. */
-function pageIdle() {
-  return new Promise<void>((resolve) => {
-    const idle = () => {
-      if ("requestIdleCallback" in window) requestIdleCallback(() => resolve(), { timeout: 2000 });
-      else setTimeout(resolve, 200);
-    };
-    if (document.readyState === "complete") idle();
-    else window.addEventListener("load", idle, { once: true });
-  });
-}
-
 /** What a page can ask of the cat once he is on screen. */
 export type CatModelHandle = {
   /**
@@ -102,7 +90,7 @@ export const CatModel = memo(function CatModel({
   posterPriority = false,
   posterMedia,
   framing = CAT_FRAMING,
-  startAfterLoad = false,
+  startOnReach = false,
   onHandle,
 }: {
   locale: Locale;
@@ -136,11 +124,24 @@ export const CatModel = memo(function CatModel({
    */
   framing?: CatFraming;
   /**
-   * Fetch the model only once the page has fired load and the browser has
-   * an idle moment. For a stage that is on screen from the first paint of
-   * a page that has more important things to load first.
+   * Fetch the model and the renderer on the visitor's first reach for the
+   * stage rather than as soon as it is on screen. For a stage that is on
+   * screen from the first paint of a page whose first seconds belong to
+   * something else.
+   *
+   * This was the page's load event plus an idle callback, and an idle moment
+   * is not a free one: on a fast connection load fires around 150ms, so the
+   * idle callback ran at about half a second, which is where the visitor is
+   * reaching for whatever the page came to show them. Decoding him holds the
+   * main thread for the better part of a second and there is no dividing that
+   * into frames from here. A reach is the one moment at which that second is
+   * his to take, and it is already the moment the stage starts speaking: the
+   * progress cursor and the loading label wait for the same reach.
+   *
+   * Left unset he starts as soon as he is on screen, which is what a stage
+   * the visitor scrolled to wants.
    */
-  startAfterLoad?: boolean;
+  startOnReach?: boolean;
   onHandle?: (handle: CatModelHandle | null) => void;
 }) {
   const text = copy[locale];
@@ -162,6 +163,12 @@ export const CatModel = memo(function CatModel({
   useEffect(() => {
     handOver.current = onHandle;
   });
+  // The other way round: the reach reaching into the effect. He is fetched
+  // from inside it, so the reach has to be told to it rather than made a
+  // dependency of it, which would restart it and take the observer, and on a
+  // stage already running the viewer, down with it. It is a no-op both where
+  // nothing waits for a reach and once he is under way.
+  const wake = useRef(() => {});
 
   // What the label answers, and what the cat answers after it. A hover only
   // asks the question; a touch is the one he owes a glance, and only while
@@ -170,6 +177,7 @@ export const CatModel = memo(function CatModel({
     if (status === "ready") return;
     setReached(true);
     if (touch && status === "loading") touched.current = true;
+    wake.current();
   };
 
   useEffect(() => {
@@ -184,6 +192,9 @@ export const CatModel = memo(function CatModel({
     let started = false;
     let visible = false;
     let ready = false;
+    // Whether anyone wants him yet. On screen is the answer everywhere but a
+    // stage that waits for a reach, where the reach below is.
+    let wanted = !startOnReach;
     const canAnimate = () => ready && visible && !disposed && !document.hidden && !motion.matches;
 
     // The awake routine is continuous; the controller adds reactions and sleep.
@@ -220,10 +231,9 @@ export const CatModel = memo(function CatModel({
     // Importing the custom element on the server would access browser globals.
     // The model and renderer also stay out of other routes and offscreen loads.
     const start = async () => {
-      if (started || disposed || !visible || document.hidden) return;
+      if (!wanted || started || disposed || !visible || document.hidden) return;
       started = true;
       try {
-        if (startAfterLoad) await pageIdle();
         const [{ ModelViewerElement: Viewer }, runtime] = await Promise.all([
           import("@google/model-viewer"), import("@/lib/cat-viewer-runtime"),
         ]);
@@ -308,6 +318,11 @@ export const CatModel = memo(function CatModel({
         if (!disposed) onError();
       }
     };
+    // The reach a gated stage was waiting for, from the handler above.
+    wake.current = () => {
+      wanted = true;
+      void start();
+    };
     const observer = typeof IntersectionObserver === "undefined" ? null :
       new IntersectionObserver(([entry]) => {
         visible = entry.isIntersecting;
@@ -327,6 +342,7 @@ export const CatModel = memo(function CatModel({
     motion.addEventListener("change", syncPlayback);
     return () => {
       disposed = true;
+      wake.current = () => {};
       observer?.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       motion.removeEventListener("change", syncPlayback);
@@ -338,7 +354,7 @@ export const CatModel = memo(function CatModel({
       viewer?.pause();
       viewer?.remove();
     };
-  }, [locale, text, framing.orbit, framing.target, startAfterLoad]);
+  }, [locale, text, framing.orbit, framing.target, startOnReach]);
 
   return (
     <div

@@ -96,11 +96,11 @@ export const HOME_CAT_POSTER_MEDIA =
  *
  * Below md there is no such corner beside a two-line title, and above the
  * title he would push the tabs and the first cards under the fold, so the
- * figure is not drawn there. The model is gated on intersection in
- * cat-model.tsx and never starts, and the poster is gated in markup
- * (posterMedia), because a still inside a display:none figure is fetched all
- * the same: lazy was measured and made no difference, and the file is 6.2KB
- * out of the burst the first card photos need. No posterPriority for the
+ * figure is not drawn there. The model is gated on a reach and on
+ * intersection in cat-model.tsx and never starts, and the poster is gated in
+ * markup (posterMedia), because a still inside a display:none figure is
+ * fetched all the same: lazy was measured and made no difference, and it is
+ * 6.2KB out of the burst the first card photos need. No posterPriority for the
  * same reason: those photos are this page's largest paint and keep the
  * bandwidth, measured on both viewports.
  *
@@ -112,10 +112,22 @@ export const HOME_CAT_POSTER_MEDIA =
  * (site-page.tsx). Measured at 844x390 before the gate, that phone fetched
  * the 1.14MB model and the viewer chunk for him.
  *
- * startAfterLoad, because this is the site's entry page and the model is
- * 2.1MB plus 1.3MB of renderer: on the about page he is below the fold and
- * often never fetched, here he is on screen at once, and without the wait
- * every desktop visit would fetch him alongside the first card photos.
+ * startOnReach, because this is the site's entry page and the model is 2.1MB
+ * plus 1.3MB of renderer: on the about page he is below the fold and often
+ * never fetched, here he is on screen at once, and without a wait every
+ * desktop visit would fetch him alongside the first card photos.
+ *
+ * The wait was the load event plus an idle callback, which is not the same as
+ * waiting for a free moment. Measured on the built page at 1440x900 with no
+ * throttling: load fires at about 150ms, so he started at about 400ms and
+ * decoding him held the main thread for 760 to 850ms from around 600ms, which
+ * is exactly when a visitor is reaching for the first card. A card clicked at
+ * 400ms opened its dialog after 1.0 to 1.1s; on the reach it opens in 0.37s,
+ * and the long tasks of the first three seconds fall from about 1.0s to 0.05s.
+ * The reach answers both halves of it: the visit that goes for a card does not
+ * pay for him at all, and the visit that goes for him spends that second on
+ * the thing it asked for, with the progress cursor and the loading label
+ * already saying so.
  *
  * On a phone held sideways he is not drawn at all. That viewport is 390px
  * tall and wide enough to be past md, so he was claiming 152px of its height
@@ -159,7 +171,7 @@ export function HomeCat({ locale }: { locale: Locale }) {
         sizes="(min-width: 64rem) 168px, 152px"
         framing={HOME_CAT_FRAMING}
         posterMedia={HOME_CAT_POSTER_MEDIA}
-        startAfterLoad
+        startOnReach
       />
       <figcaption className="mt-1 leading-4">
         {/* 12px, where this was 14 in the hero's meta row, and leading-4

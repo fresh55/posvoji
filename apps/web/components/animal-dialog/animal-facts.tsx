@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ClipboardCheck,
   HeartHandshake,
-  MapPin,
   Mars,
   PawPrint,
   Venus,
@@ -735,20 +734,11 @@ export function AnimalFacts({
         </div>
       )}
 
-      {((inShelter && stay && !longStay) || animal.originMunicipality) && (
+      {inShelter && stay && !longStay && (
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {inShelter && stay && !longStay && (
-            <Aside icon={CalendarClock}>
-              {messages.factTimeInShelter}: {stay}
-            </Aside>
-          )}
-          {/* The pin says "found in" without forcing a gender or a case on
-              the sentence; the words only exist for screen readers. */}
-          {animal.originMunicipality && (
-            <Aside icon={MapPin} prefix={messages.factOrigin}>
-              {animal.originMunicipality}
-            </Aside>
-          )}
+          <Aside icon={CalendarClock}>
+            {messages.factTimeInShelter}: {stay}
+          </Aside>
         </p>
       )}
 

@@ -8,7 +8,7 @@ import {
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/ui/button";
-import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import { PORTAL_LOGIN_PATH, PORTAL_PATH } from "@/hooks/use-portal-session";
 import { cn } from "@/lib/utils";
 
 /**
@@ -114,6 +114,52 @@ export function PortalNotice({
       </div>
       {action}
     </div>
+  );
+}
+
+/**
+ * The session check itself did not answer, so the portal knows neither who is
+ * here nor that nobody is.
+ *
+ * Two ways out, because there are two causes and one button only covers one of
+ * them. A server that was briefly away answers the retry. A session that has
+ * run out never will, and the body already names the login as the other
+ * answer; this is the way to it. Both editor pages and the workspace draw the
+ * same state, which is why it is one component and not three copies.
+ */
+export function SessionError({
+  offline,
+  onRetry,
+}: {
+  /** The request never reached the API, which is the one cause a shelter can
+   *  do something about themselves. */
+  offline: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <PortalNotice
+      icon={TriangleAlert}
+      title={portalText.sessionErrorTitle}
+      action={
+        // Wrapped, because PortalNotice stacks its action as one item: two
+        // bare buttons would sit under each other on every width.
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            {portalText.retry}
+          </Button>
+          {/* Quieter than the retry: it is the second thing to try, and it
+              throws away the page the shelter was on. */}
+          <Button asChild variant="ghost" size="sm">
+            <Link href={PORTAL_LOGIN_PATH}>{portalText.toLogin}</Link>
+          </Button>
+        </div>
+      }
+    >
+      {/* The title says what failed, so the body is left to say what to do
+          about it. Offline is the one cause the shelter can act on
+          themselves, and it names its own next step. */}
+      {offline ? portalText.networkError : portalText.sessionErrorLead}
+    </PortalNotice>
   );
 }
 

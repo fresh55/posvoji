@@ -187,6 +187,26 @@ describe("what a failure tells the shelter", () => {
     expect(screen.queryAllByText(portalText.sessionErrorTitle)).toHaveLength(1);
   });
 
+  // The body names the login as the other thing to try, and a retry that has
+  // already failed twice is not the action that fixes an expired session.
+  it("offers the login beside the retry, whatever the cause", async () => {
+    vi.mocked(fetchSession).mockRejectedValue(new PortalError(0));
+
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(screen.getByText(portalText.sessionErrorTitle)).toBeTruthy();
+    });
+    expect(
+      screen.getByRole("button", { name: portalText.retry }),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: portalText.toLogin })
+        .getAttribute("href"),
+    ).toBe(PORTAL_LOGIN_PATH);
+  });
+
   it("names the connection when that is what went wrong", async () => {
     vi.mocked(fetchSession).mockRejectedValue(new PortalError(0));
 

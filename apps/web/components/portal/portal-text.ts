@@ -74,6 +74,11 @@ export const portalText = {
   sessionErrorTitle: "Prijave ni bilo mogoče preveriti",
   sessionErrorLead:
     "Poskusite znova. Če se ponovi, osvežite stran ali se prijavite še enkrat.",
+  // The second half of what that sentence offers. Retrying covers a server
+  // that was briefly away; a session that has actually run out is not going to
+  // answer on the fourth press, and without this the notice named the login
+  // and gave no way to it.
+  toLogin: "Na prijavo",
   listErrorTitle: "Seznama živali ni bilo mogoče naložiti",
   animalsTitle: "Vaše živali",
   animalsLead:

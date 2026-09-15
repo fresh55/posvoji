@@ -1,10 +1,9 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
-import { HomeCat } from "@/components/home-cat";
+import { CAT_CORNER, HomeCat } from "@/components/home-cat";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
-import { SreckoLink } from "@/components/srecko-link";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
@@ -68,19 +67,28 @@ export function SitePage({ locale }: { locale: Locale }) {
       {/* relative, for the cat (home-cat.tsx): he is drawn out of flow in
           the corner above the toolbar, so this row keeps its 64px and the
           heading keeps its place. The right padding from md keeps a wrapped
-          title out from under him.
-
-          short: is the landscape phone, where he is not drawn at all
-          (home-cat.tsx), so the padding he needs goes with him. Held at
-          844x390 it kept the title in a 572px column, which wrapped both the
-          heading and the meta line and pushed the species tabs down into the
-          fixed dock. */}
-      <div className="relative space-y-1.5 md:pr-56 short:pr-0">
+          title out from under him, and it is his own measurement rather than
+          a number of its own (CAT_CORNER). That is also how the padding
+          leaves when he does: on the landscape phone he is not drawn, the
+          corner there is zero, and the one statement covers both. Held at
+          844x390 with the full corner it kept the title in a 572px column,
+          which wrapped the heading and the meta line and pushed the species
+          tabs down into the fixed dock. */}
+      <div className={`relative space-y-1.5 md:pr-(--cat-corner) ${CAT_CORNER}`}>
         {/* 600, which is the weight of the card names in the grid under it
             and the weight every page title on the site now carries. At 500
             the title was the lighter of the two, so the page was headed by
-            something quieter than the rows it introduces. */}
-        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+            something quieter than the rows it introduces.
+
+            short:text-xl puts the phone's own title size back on a screen 360
+            to 430 pixels tall. The step the widths buy is width, not height,
+            and a phone held sideways has the first and none of the second: at
+            30px this sentence took two lines of a screen with room for about
+            six, and beside the cat it still did on the narrower ones. The
+            same string without this last utility is on found-animal-page.tsx;
+            the two are no longer meant to match, because that page has no
+            dock under it and no drawing beside the title. */}
+        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl short:text-xl">
           {messages.heroTitle}
         </h1>
         {/* One wrapping line at every width, where this used to be a text
@@ -114,13 +122,13 @@ export function SitePage({ locale }: { locale: Locale }) {
               {verificationTime(dataset.generatedAt, locale)}
             </p>
           )}
+          {/* One link in this row, and it is the one addressed to somebody
+              with a problem. The cat's link was the other and is his caption
+              now (home-cat.tsx): as a row item it competed with this one for
+              the same press, and wherever the row wrapped it came to rest
+              diagonally below it. Under him it also leaves when he does,
+              which is what it needed a width gate of its own for before. */}
           {hasLookup && <FoundAnimalButton />}
-          {/* The cat's link, at the row's right end so it stands beside him
-              (home-cat.tsx says why it is here and not under him). Hidden
-              wherever he is: below md, and on the landscape phone. Left
-              standing on its own it was a link to a cat nobody could see,
-              and it wrapped the meta row to a second line. */}
-          <SreckoLink locale={locale} className="ml-auto hidden md:inline-flex short:hidden" />
         </div>
         <HomeCat locale={locale} />
       </div>

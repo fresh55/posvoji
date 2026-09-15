@@ -1,4 +1,5 @@
 import { type CatFraming, CatModel } from "@/components/cat-model";
+import { SreckoLink } from "@/components/srecko-link";
 import type { Locale } from "@/lib/i18n";
 
 /**
@@ -20,6 +21,23 @@ export const HOME_CAT_FRAMING: CatFraming = {
   poster: "/models/our-cat/poster-home.webp?v=3",
 };
 
+/** How much of the hero's line the corner reserves, and, minus the 32px that
+ *  keeps a wrapped title off him, the width of everything drawn in it.
+ *
+ *  One measurement rather than four lists kept in lockstep by hand.
+ *  site-page.tsx pads the hero by this property, the figure below takes its
+ *  width from it, and the stage takes its height from its own aspect, so each
+ *  size this corner has is stated once and the rest is arithmetic. A property
+ *  and not a prop because the padding belongs to the hero and the drawing is
+ *  its child, which is the bargain --rail-pad strikes in globals.css for the
+ *  same reason.
+ *
+ *  184px, and 200px at lg. Zero on a phone held sideways, where he is not
+ *  drawn: the padding has to leave when the drawing does, and this is the one
+ *  place that can be said once for both. */
+export const CAT_CORNER =
+  "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:0rem]";
+
 /**
  * The viewports the poster is worth downloading at, which is exactly the
  * ones the figure below is drawn at: md and up, minus the landscape phone.
@@ -35,25 +53,46 @@ export const HOME_CAT_POSTER_MEDIA =
 /**
  * Srečko in the home page's top right corner, beside the hero.
  *
- * The hero is a heading and one line, 62px tall, and the right half of it
+ * The hero is a heading and one line, 70px tall, and the right half of it
  * stood empty from tablet width up. He does not sit in that row: any stage
  * tall enough to show him would grow the row and leave the heading with
  * dead space above it (measured: 48px of it). He is positioned out of flow
- * instead, in the corner the page already has: from the header rule down
- * to the top of the toolbar, which at lg is the top padding, the hero and
- * the section gap, 150px, with nothing else in it. The heading, the meta
- * line, the tabs and the cards all keep their places. The stage is a fixed
- * 192x152 rather than derived from those three, because the poster is
- * rendered for exactly that box; a box that changed shape with the hero
- * would letterbox the still while the canvas fills it, and he would jump
- * on handover. The 2px this leaves above the rule at lg are empty air.
+ * instead, in the corner the page already has: from the header rule down to
+ * the top of the toolbar, which is the page's top padding, the hero and the
+ * section gap. Measured on the built page that is 158px at lg and 142
+ * between md and lg, where the padding and the gap are both smaller; a
+ * heading that comes in on two lines makes it taller again. The heading,
+ * the meta line, the tabs and the cards all keep their places.
  *
- * His link, "Spoznajte Srečka", is not drawn here: it is the last item of
- * the hero's meta row (site-page.tsx), in the flow, so on the widths where
- * the row is about to wrap it wraps with it instead of landing on top of
- * "Si našel žival?", which a caption hung off this figure did between 800
- * and 890px, and took its taps. Being in the row also puts it before the
- * stage in tab order, where it reads.
+ * The figure is sized from the corner rather than from the hero, and the
+ * stage keeps the poster's shape at every size, because the still is
+ * object-contain while the canvas fills its box: a box of another shape
+ * letterboxes one and not the other, and he jumps on handover.
+ *
+ * His link, "Spoznajte Srečka", is his caption, under him, inside this box.
+ *
+ * It spent a pass as the last item of the hero's meta row, pushed to the far
+ * end with ml-auto so it would stand under him. That put two underlined links
+ * of different jobs in one wrapping row: one is the way out for somebody
+ * holding a stray, the other is a cat's story, and drawn alike at either end
+ * of a line they read as a pair competing for the same press. Where the row
+ * wrapped they were worse than a pair - ml-auto right-aligns whatever line it
+ * lands on, so the second link came to rest diagonally below the first,
+ * aligned to nothing on the page.
+ *
+ * A caption cannot do that. It belongs to the drawing, which is what it names,
+ * and it sits in the corner the hero already keeps clear for him, so no width
+ * can bring it near the row's text. That is also what the first attempt got
+ * wrong: it hung off this figure at right-full, outside the box the corner
+ * reserves, and so landed on "Si našel žival?" between 800 and 890px and took
+ * its taps. Inside the box it is bounded by the same --cat-corner the row is
+ * padded by.
+ *
+ * It costs him a fifth of his size. Nothing can make the corner taller, so a
+ * line under him has to come out of the stage. What it buys back is a stage
+ * that fits: the 192x152 one overflowed the 142px band by 10px wherever the
+ * heading came in on one line, between 850 and 1023, and drew his ears
+ * behind the language switcher and the menu button.
  *
  * Below md there is no such corner beside a two-line title, and above the
  * title he would push the tabs and the first cards under the fold, so the
@@ -77,18 +116,61 @@ export const HOME_CAT_POSTER_MEDIA =
  * 2.1MB plus 1.3MB of renderer: on the about page he is below the fold and
  * often never fetched, here he is on screen at once, and without the wait
  * every desktop visit would fetch him alongside the first card photos.
+ *
+ * On a phone held sideways he is not drawn at all. That viewport is 390px
+ * tall and wide enough to be past md, so he was claiming 152px of its height
+ * and 224px of the title's line: the heading came in on two lines, the meta
+ * row on two, and the species tabs came to rest 21px inside the filter dock's
+ * plate, which put the page's primary control under a floating one with the
+ * first card row 366px down a 390px screen. A smaller stage was tried and is
+ * not enough: the corner there is about 104px, and a phone in that orientation
+ * was still paying 1.14MB for a model it could barely see. Off the page, the
+ * corner he would have reserved goes with him and the heading takes the width
+ * back.
  */
+
 export function HomeCat({ locale }: { locale: Locale }) {
   return (
-    <figure className="absolute right-0 -bottom-section-gap hidden h-38 w-48 md:block short:hidden">
+    // A column: the stage, then his name, filling the corner and no more.
+    //
+    // The width is the corner less the 32px that keeps a wrapped title off
+    // him, so both of the corner's sizes reach the drawing without being
+    // written again: 152, and 168 at lg. The figure is laid out from the
+    // bottom up and what is above it is the header rule rather than more
+    // page, so a box taller than its corner crosses into the language
+    // switcher and the menu button rather than into the toolbar.
+    //
+    // short:hidden is the landscape phone, which is wider than md and has no
+    // corner to give him: at 844x390 the header rule and the species tabs are
+    // 164px apart and this stage alone wants 132 of it. Off the page there, he
+    // costs that phone neither the 1.14MB model nor the still, and the corner
+    // it would have reserved goes with him (--cat-corner in site-page.tsx).
+    <figure className="absolute right-0 -bottom-section-gap hidden w-[calc(var(--cat-corner)-2rem)] flex-col items-center md:flex short:hidden">
       <CatModel
         locale={locale}
-        className="h-full"
-        sizes="192px"
+        // The poster's own shape, so the height follows the width at both
+        // sizes: 120, and 133 at lg, which is what leaves the caption its line
+        // inside a corner of 142 and 158.
+        className="aspect-[192/152] w-full"
+        // Advisory and unread today: next.config sets images.unoptimized,
+        // which drops sizes and srcset, and there is one poster file. Kept
+        // truthful about the two boxes for the day that changes. What actually
+        // decides whether the file is fetched is posterMedia below.
+        sizes="(min-width: 64rem) 168px, 152px"
         framing={HOME_CAT_FRAMING}
         posterMedia={HOME_CAT_POSTER_MEDIA}
         startAfterLoad
       />
+      <figcaption className="mt-1 leading-4">
+        {/* 12px, where this was 14 in the hero's meta row, and leading-4
+            because the figure inherits the page's 24px line box and a caption
+            is not a line of prose: the 8px it saves are 8px of cat. A caption
+            is read with the thing it names rather than against the meta line,
+            so it can be the quietest type on the page; below lg MUTED_LINK's
+            own overlay gives the finger what the type does not. It needs no
+            gate of its own - it is inside the figure, so it leaves with him. */}
+        <SreckoLink locale={locale} className="text-xs" />
+      </figcaption>
     </figure>
   );
 }

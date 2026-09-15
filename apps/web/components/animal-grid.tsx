@@ -1,7 +1,11 @@
 "use client";
 
 import { AnimalCard } from "@/components/animal-card";
-import { AnimalFilters } from "@/components/filters/animal-filters";
+import {
+  AnimalFilters,
+  TOOLBAR_BAND,
+  TOOLBAR_ROW_HEIGHT,
+} from "@/components/filters/animal-filters";
 import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-provider";
@@ -17,6 +21,7 @@ import {
   CARD_GRID,
   CARD_PHOTO_ASPECT,
   CARD_PHOTO_RADIUS,
+  RESULTS_COLUMNS,
 } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -193,7 +198,7 @@ const PENDING_CARDS = [0, 1, 2, 3, 4, 5];
 // same hydration and has nothing to read either way, and copy for a state that
 // lasts a few hundred milliseconds would be a string in two locales that
 // almost nobody is shown.
-function ResultsPending() {
+function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
   return (
     // A viewport of height, because the stand-in stands in for the document as
     // much as for the cards. Six cards are 613px of a 1321px document on a
@@ -204,24 +209,42 @@ function ResultsPending() {
     <div
       data-slot={RESULTS_PENDING_SLOT}
       aria-hidden
-      className="flex min-h-[100dvh] flex-col gap-4"
+      // The same two columns the block it stands in for draws, so the cards
+      // arrive where the stand-in put them. It used to be a single full-width
+      // column: at 1440 the six tiles were laid out across the whole 1216px
+      // frame and hydration then moved the grid 256px to the right and
+      // narrowed it to 960 to make room for the filter rail, which is a jump
+      // of the entire page sideways on exactly the links people share.
+      className={cn("min-h-[100dvh]", hasSidebar && RESULTS_COLUMNS)}
     >
-      {/* The toolbar the hidden block also covers: the species tabs, the
-          result count and the sort control are as unanswered as the cards. */}
-      <Skeleton className="h-9 w-48" />
-      <div className={CARD_GRID}>
-        {PENDING_CARDS.map((n) => (
-          // The card's photo box, which at this size is most of the card,
-          // with the same corners and the same shape, so the stand-in and the
-          // cards that replace it claim the same height. Both come from the
-          // constants the card itself uses rather than copies of them: the
-          // corner was a copy until it was not, and the two literals sat one
-          // step apart for a release with nothing to catch it.
-          <Skeleton
-            key={n}
-            className={cn(CARD_PHOTO_ASPECT, CARD_PHOTO_RADIUS)}
-          />
-        ))}
+      {/* The cards go in the second track and the rail's is left empty: what is
+          promised here is where the animals will be, and an empty 224px is a
+          truer promise than a grey panel about to become a list of controls.
+          col-start rather than an empty element to hold the column open. */}
+      <div className={cn("flex flex-col gap-4", hasSidebar && "lg:col-start-2")}>
+        {/* The toolbar the hidden block also covers: the species tabs, the
+            result count and the sort control are as unanswered as the cards.
+            In the band the real bar draws, rule and all, and at the height its
+            row states, both from animal-filters.tsx: that height is what
+            decides where the first row of cards starts, and a bare 36px
+            skeleton put them 21px above where they land. */}
+        <div className={TOOLBAR_BAND}>
+          <Skeleton className={cn("w-48", TOOLBAR_ROW_HEIGHT)} />
+        </div>
+        <div className={CARD_GRID}>
+          {PENDING_CARDS.map((n) => (
+            // The card's photo box, which at this size is most of the card,
+            // with the same corners and the same shape, so the stand-in and
+            // the cards that replace it claim the same height. Both come from
+            // the constants the card itself uses rather than copies of them:
+            // the corner was a copy until it was not, and the two literals sat
+            // one step apart for a release with nothing to catch it.
+            <Skeleton
+              key={n}
+              className={cn(CARD_PHOTO_ASPECT, CARD_PHOTO_RADIUS)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -449,7 +472,7 @@ export function AnimalGrid({
           rule hides that whole block, so anything inside it goes down with it.
           Not drawn on an empty dataset, where the six cards would be a promise
           of animals that are not coming (EmptyState above). */}
-      {!isEmpty && <ResultsPending />}
+      {!isEmpty && <ResultsPending hasSidebar={hasSidebar} />}
       <section
         aria-labelledby="rezultati"
         // What the pre-hydration rule in globals.css hides while a filtered link
@@ -465,10 +488,11 @@ export function AnimalGrid({
         // footer block is taller than the dock's band, so the grid's clearance
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
-        className={cn(
-          hasSidebar &&
-            "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
-        )}
+        // The rail and the grid beside it, from lib/card-grid.ts, which owns
+        // the 14rem the photo bands are derived from and the minmax(0,...)
+        // floor that keeps the column shrinkable. The stand-in above wears the
+        // same string; what happens when the two disagree is written there.
+        className={cn(hasSidebar && RESULTS_COLUMNS)}
       >
         {/* The page went from its h1 straight to one h3 per card, so there was
             nothing between the top of the document and the results to navigate

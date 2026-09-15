@@ -21,6 +21,7 @@ import {
 } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
+import { RESULTS_COLUMNS } from "@/lib/card-grid";
 import {
   columnTracks,
   restoreGridColumns,
@@ -421,6 +422,24 @@ describe("the pre-hydration mark", () => {
     expect(pending!.getAttribute("aria-hidden")).toBe("true");
     // Six cards and the bar standing in for the toolbar above them.
     expect(pending!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(7);
+  });
+
+  it("stands the cards in the column they will arrive in", () => {
+    // The stand-in and the block it stands in for are siblings, so nothing
+    // makes them agree about the page's shape except the string they share.
+    // Drawn as one full-width column while the results draw two, the whole
+    // grid jumped 256px sideways the moment hydration landed, on precisely
+    // the filtered links people share. jsdom applies no stylesheet, so what
+    // is pinned is that both wear the track and that the cards are in the
+    // second of its two columns.
+    const { container } = renderGrid(ANIMALS);
+
+    const pending = container.querySelector('[data-slot="results-pending"]')!;
+    const results = container.querySelector('[data-slot="results"]')!;
+    expect(results.className).toContain(RESULTS_COLUMNS);
+    expect(pending.className).toContain(RESULTS_COLUMNS);
+    expect(pending.children).toHaveLength(1);
+    expect(pending.children[0].className).toContain("lg:col-start-2");
   });
 
   it("holds a screenful so the footer stays under the fold", () => {

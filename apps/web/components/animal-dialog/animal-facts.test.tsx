@@ -502,6 +502,42 @@ describe("the shelter's own description", () => {
   });
 });
 
+// Two dogs at Horjul have the photographer's credit as their whole
+// description. Sixteen more carry the same line after a real one, where it is
+// the sign-off the shelter meant it as.
+describe("a description that is only a photo credit", () => {
+  it("draws no paragraph for it", () => {
+    renderFacts({ name: "Mia", shortDescription: "Foto Anja Troha" });
+
+    expect(descriptionBlock()).toBeNull();
+    expect(screen.queryByText(/Anja Troha/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  it("drops it whichever way the shelter punctuated it", () => {
+    renderFacts({ shortDescription: "Fotografije: Anja Troha" });
+
+    expect(descriptionBlock()).toBeNull();
+  });
+
+  it("keeps the credit that follows a real description", () => {
+    const description = "Miško išče dom.\n\nFoto Anja Troha";
+    renderFacts({ shortDescription: description });
+
+    expect(screen.getByText("Miško išče dom.")).toBeTruthy();
+    expect(screen.getByText("Foto Anja Troha")).toBeTruthy();
+  });
+
+  // The word at the front is not enough on its own: the rest has to be a name
+  // and nothing else.
+  it("keeps a description that merely starts with the word", () => {
+    const description = "Fotogeničen Miško išče nov dom";
+    renderFacts({ shortDescription: description });
+
+    expect(screen.getByText(description)).toBeTruthy();
+  });
+});
+
 describe("the special care pill", () => {
   it("says nothing unless the shelter marked the animal", () => {
     renderFacts({ specialNeeds: false });

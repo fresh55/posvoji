@@ -381,6 +381,17 @@ function clampsDescription(paragraphs: string[]): boolean {
   return lines > CLAMP_DESCRIPTION_LINES;
 }
 
+// A description that is nothing but the photographer's credit. Two dogs at
+// Horjul carry "Foto Anja Troha" and no other word, which says nothing about
+// the dog and reads as if the shelter wrote its name wrong. Sixteen more
+// listings carry the same credit after a real description, where it is the
+// sign-off it was meant as and stays printed with the rest of the shelter's
+// words: we do not edit those, we only decline to print a description that is
+// only a credit. The credit the listing is given under is the provider's, and
+// the footnote under the shelter box already prints that one.
+const PHOTO_CREDIT_ONLY =
+  /^(?:Foto|Fotografij[ae]|Fotografiral[ai]?|Vse fotografije)\s*:?\s+\p{Lu}[^.]{2,40}$/u;
+
 // The icon carries the meaning on screen; a screen reader gets the same
 // meaning from the prefix instead. Facts that read as a full sentence on their
 // own (the sex) need no prefix. A fact whose symbol is not a plain Lucide icon
@@ -526,9 +537,12 @@ export function AnimalFacts({
     animal.shortDescription ? undefined : animal.id,
   );
   const description = animal.shortDescription || fetched;
-  // Whichever way it arrived, the same measure decides whether it opens
-  // clamped: the length of what is printed or the lines it is set out in.
-  const paragraphs = description ? descriptionParagraphs(description) : [];
+  // Whichever way it arrived, the same two questions: is any of it about the
+  // animal, and is there enough of it to open clamped.
+  const paragraphs =
+    description && !PHOTO_CREDIT_ONLY.test(description.trim())
+      ? descriptionParagraphs(description)
+      : [];
   const clampDescription = clampsDescription(paragraphs);
 
   return (

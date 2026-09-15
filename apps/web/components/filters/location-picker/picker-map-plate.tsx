@@ -98,7 +98,12 @@ export function PickerMapPlate({
         />
         <MapAttribution messages={messages} />
       </div>
-      <div className="z-10 w-full shrink-0">
+      {/* Beside the map on a landscape phone rather than under it, which is
+          the stage's flex-row there (picker-map-stage.tsx). A column of
+          twelve rem: every item in the legend is whitespace-nowrap and the
+          density strip is the widest of them at 187px, so that is what the
+          column is cut to and the rest stack under it. */}
+      <div className="z-10 w-full shrink-0 sm:short:w-48 sm:short:self-center">
         <p className="mb-2 text-xs leading-snug text-muted-foreground">
           {markersVisible
             ? messages.mapInstructionsDesktop

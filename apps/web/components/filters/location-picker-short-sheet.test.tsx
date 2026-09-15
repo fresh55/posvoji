@@ -130,6 +130,20 @@ describe("LocationPicker on a short viewport", () => {
     expect(plate.getAttribute("class")).toContain("shrink");
   });
 
+  it("puts the legend beside the map where the viewport is wide and short", async () => {
+    await openPicker();
+    fireEvent.click(dialog().querySelector("[data-picker-show-map]")!);
+    const legendColumn = stage().lastElementChild!;
+
+    // A landscape phone. Under the map the legend and the line above it cost
+    // the country a fifth of the stage, which is the one thing there is none
+    // of on a 390px-tall screen. sm:short: is the repo's pair for that
+    // viewport; the measured result is a browser check.
+    expect(stage().className).toContain("sm:short:flex-row");
+    expect(legendColumn.className).toContain("sm:short:w-48");
+    expect(legendColumn.className).toContain("w-full");
+  });
+
   it("keeps results outside either view with matching safe-area space", async () => {
     await openPicker();
     const action = screen.getByRole("button", { name: "Pokaži 11 živali" });

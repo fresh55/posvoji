@@ -6,6 +6,21 @@ import { PLATE_MIN_SCALE } from "./map-marker";
 // The others are named on touch/focus by the map's full callout.
 const ORIENTATION_REGIONS = new Set([1, 2, 4, 7, 8, 9, 11, 12]);
 
+/** The narrowest country these names can orient, in drawn pixels.
+ *
+ *  Under it the whole of Slovenia is about as wide as one of these labels is
+ *  long: on a landscape phone the plate draws a 268px country, and Obalno-
+ *  kraška printed over Jugovzhodna Slovenija while Osrednjeslovenska ran into
+ *  Savinjska. The collision test below is measured off an estimate of the type
+ *  and cannot be trusted that far down, and dropping the labels it does catch
+ *  would leave two or three names on a map of twelve shapes, which orients
+ *  nobody. A plate this small has the callout instead: every region names
+ *  itself on a tap, and the line above the legend says so.
+ *
+ *  In rendered pixels and not in plate scale, because what the names need is
+ *  room for the words, and that is the country's drawn width. */
+export const NAMES_MIN_PLATE_WIDTH = 300;
+
 export function MapRegionNames({ scale, calloutRects }: {
   scale: number;
   calloutRects: CalloutRect[];

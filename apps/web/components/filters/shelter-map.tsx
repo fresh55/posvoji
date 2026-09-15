@@ -60,7 +60,7 @@ import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { commitKey, Marker, PLATE_MIN_SCALE } from "./map-marker";
 import { mapFacts, type MapFacts } from "./shelter-map-facts";
 import { mapAvailabilityText, regionAvailability, shelterAvailability } from "./map-availability";
-import { MapRegionNames } from "./map-region-names";
+import { MapRegionNames, NAMES_MIN_PLATE_WIDTH } from "./map-region-names";
 
 export type { ShelterPin } from "@/lib/map-layout";
 export type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
@@ -1060,9 +1060,11 @@ export function ShelterMap({
           emptyMessage={regionAvailability(byRegion.get(region.id) ?? [], locale, messages.noSheltersInRegion)}
         />
       ))}
-      {interactive && !markersVisible && (
-        <MapRegionNames scale={plateScale} calloutRects={Object.values(calloutRects)} />
-      )}
+      {interactive &&
+        !markersVisible &&
+        plateScale * MAP_WIDTH >= NAMES_MIN_PLATE_WIDTH && (
+          <MapRegionNames scale={plateScale} calloutRects={Object.values(calloutRects)} />
+        )}
 
       {/* Over the choropleth, so a town name is never read through a region
           fill, and under everything a click or a hover produces. */}

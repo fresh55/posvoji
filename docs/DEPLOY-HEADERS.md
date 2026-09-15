@@ -47,6 +47,20 @@ already compresses, the directives below change nothing and this file finally
 records what the server is doing. Run the curl once the gate comes off, before
 assuming it either way.
 
+The whole check is one line:
+
+```bash
+curl -sI -H 'Accept-Encoding: gzip, zstd' https://posvoji.si/ | grep -i content-encoding
+```
+
+A line naming `gzip` or `zstd` is the answer. No line at all means the server
+is sending the homepage uncompressed, and the fix is the `encode zstd gzip`
+directive from the Caddy block below, added to the `posvoji.si` site block
+followed by `sudo systemctl reload caddy`. Repeat the curl against one
+`/_next/static/chunks/*.js` file from the current release: `encode` covers both
+in one directive, and a chunk answering without the header means the directive
+is not where it is assumed to be.
+
 ## The branded 404
 
 `next build` exports `out/404.html` from `app/global-not-found.tsx`, and

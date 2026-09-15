@@ -33,6 +33,16 @@ import {
 /** Marks the entries this hook pushed, so closing knows it can pop one. */
 const PUSHED_BY_DIALOG = { animal: true };
 
+/** Whether the entry the visitor is standing on is one of them.
+ *
+ *  Exported for the filter writes, which must not push an entry on top of an
+ *  open dialog: the first back would then undo a filter change behind a card
+ *  nobody can see past, and closing would take a second press
+ *  (use-animal-filters.ts). */
+export function standsOnDialogEntry(): boolean {
+  return Boolean(window.history.state?.animal);
+}
+
 function splitLocation(location: string): [string, string] {
   const mark = location.indexOf("?");
   if (mark === -1) return [location, ""];
@@ -93,7 +103,7 @@ export function useAnimalDialog({
   // right after it is the one that notifies, and by then the address is the
   // animal's again, now its own page rather than the alias.
   useEffect(() => {
-    if (!openId || window.history.state?.animal) return;
+    if (!openId || standsOnDialogEntry()) return;
     const animal = animals.find((candidate) => candidate.id === openId);
     // An id no animal answers to is the host's to clean up.
     if (!animal) return;
@@ -153,7 +163,7 @@ export function useAnimalDialog({
   // the list in place instead.
   const close = useCallback(() => {
     if (popping.current) return;
-    if (window.history.state?.animal) {
+    if (standsOnDialogEntry()) {
       popping.current = true;
       history.back();
       return;

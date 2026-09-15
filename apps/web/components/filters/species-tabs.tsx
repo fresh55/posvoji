@@ -463,22 +463,25 @@ export function SpeciesTabs({
           // overlays are cut back to the height of the pills. The matching
           // negative margin keeps the row occupying its old height.
           //
-          // The two gates below say the same thing in CSS and answer two
-          // different questions. max-lg is the row's height: the padding and
-          // the margin cancel, so below lg this box draws 44px and measures
-          // 28, which is the height the toolbar around it is built on.
-          // pointer-coarse is the overlay's room: the tabs ask the pointer for
-          // their 44px now, and at lg on a touch tablet the box would clip the
-          // overlay back to the pill without padding of its own there.
+          // Ungated, and it used to be gated twice: max-lg for the row's
+          // height on a phone, pointer-coarse for the overlay's room on a
+          // touch tablet. What neither gate covered is the case both were
+          // written around: a mouse at lg, where the box has no padding, so
+          // overflow-y resolves to auto and the 3px focus ring of a tabbed-to
+          // species was cut off flush with the pill, top and bottom. The room
+          // is what the ring needs too, and it costs the desktop row nothing
+          // because the padding and the margin cancel there as well.
           //
-          // What that costs a caller below lg: the padding and the margin
-          // cancel, so this box draws 44px and measures 28px from outside.
+          // What that costs a caller: the padding and the margin cancel, so
+          // this box draws 44px and measures 28px from outside.
           // A block parent the margins collapse through stands at 44; a flex
           // parent measures the 28 and the row loses 16px. The below-lg
           // toolbar turns flex only from md for exactly this reason
-          // (animal-filters.tsx). Giving the box its own below-lg height
-          // instead would free every caller of it, and is the fix if a second
-          // caller ever needs the strip in a flex row.
+          // (animal-filters.tsx), and the lg toolbar is a flex row whose
+          // min-h-8 already stands taller than the 28 it measures, so it does
+          // not move. Giving the box its own height instead would free every
+          // caller of it, and is the fix if a second caller ever needs the
+          // strip in a flex row.
           //
           // relative because the fill is measured against this box and
           // positioned inside it.
@@ -490,7 +493,7 @@ export function SpeciesTabs({
           // gets the same from the fade-scroll-x utility; this one masks by
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
-          "relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain no-scrollbar max-[360px]:gap-0.5 max-lg:-my-2 max-lg:py-2 pointer-coarse:-my-2 pointer-coarse:py-2",
+          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain py-2 no-scrollbar max-[360px]:gap-0.5",
           fullWidth && "w-full",
         )}
       >

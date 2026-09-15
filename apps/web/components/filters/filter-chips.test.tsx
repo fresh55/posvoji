@@ -274,6 +274,84 @@ describe("the active filters row", () => {
     );
   });
 
+  it("hands focus on when Enter or Space on the pill takes it off", () => {
+    // Enter and Space dispatch a real click, so the pill used to take the
+    // pointer path, which leaves focus alone on purpose: the row unmounted
+    // underneath the keyboard and focus fell to the body, putting the next
+    // Tab back at the top of the document. detail counts presses and is 0
+    // when a key sent the click, which is what tells the two apart.
+    const onRemove = vi.fn();
+    const { rerender } = renderChips([
+      chip({ key: "a", label: "Dogs", onRemove }),
+      chip({ key: "b", facet: "age", label: "Cats" }),
+    ]);
+
+    const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
+    dogs.focus();
+    fireEvent.click(dogs, { detail: 0 });
+    expect(onRemove).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[chip({ key: "b", facet: "age", label: "Cats" })]}
+          onClearAll={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Remove filter Cats" }),
+    );
+  });
+
+  it("hands focus past the row when a keypress takes the last pill off", () => {
+    const onRemove = vi.fn();
+    renderChips([chip({ key: "only", label: "Dogs", onRemove })]);
+
+    const after = document.createElement("button");
+    after.textContent = "after the row";
+    document.body.append(after);
+
+    try {
+      const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
+      dogs.focus();
+      fireEvent.click(dogs, { detail: 0 });
+
+      expect(onRemove).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(after);
+    } finally {
+      after.remove();
+    }
+  });
+
+  it("leaves focus where a pointer left it", () => {
+    // A mouse gets no focus move: the cursor is already where the visitor is
+    // looking, and stealing focus to the neighbouring pill would put a ring
+    // on a control nobody asked for.
+    const onRemove = vi.fn();
+    const { rerender } = renderChips([
+      chip({ key: "a", label: "Dogs", onRemove }),
+      chip({ key: "b", facet: "age", label: "Cats" }),
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove filter Dogs" }), {
+      detail: 1,
+    });
+    expect(onRemove).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[chip({ key: "b", facet: "age", label: "Cats" })]}
+          onClearAll={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("says what a pill is costing, and only when the answer is worth showing", () => {
     renderChips([
       chip({ key: "a", label: "Dogs", gain: 12 }),

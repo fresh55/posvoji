@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
@@ -88,14 +89,31 @@ export function scrollToResults(): void {
   window.scrollTo({ top, behavior: far || still ? "auto" : "smooth" });
 }
 
-function writeFilters(filters: Filters): void {
+/**
+ * Writes a filter state into the query.
+ *
+ * Replace by default, because a filter is an adjustment to the list already on
+ * screen and one entry per checkbox would turn the back button into a log of
+ * every box ticked. The species strip is the exception and asks for a push
+ * (setSpecies below).
+ *
+ * A push carries the state the current entry holds rather than the null a bare
+ * pushState writes. The dialog's back-to-close marker lives in history.state,
+ * and a replace amends the entry it is already on, so neither mode may drop
+ * it (filter-flow.test.tsx checks both).
+ */
+function writeFilters(
+  filters: Filters,
+  mode: "push" | "replace" = "replace",
+): void {
   commitSearch(
     mergeOwnedParams(
       getSearchSnapshot(),
       FILTER_PARAM_NAMES,
       serializeFilters(pruneHiddenFilters(filters)),
     ),
-    "replace",
+    mode,
+    mode === "push" ? window.history.state : undefined,
   );
   scrollToResults();
 }
@@ -117,9 +135,27 @@ export function useAnimalFilters() {
   const filters = useMemo(() => parseFilters(search), [search]);
   const sort = useMemo(() => parseSort(search), [search]);
 
+  // The one filter control that reads as navigation. It sits at the top of the
+  // page, it changes what the page is about, and on a phone it is very often
+  // the last thing pressed before the back gesture. On replace that gesture
+  // pointed at whatever page came before the results, so arriving from
+  // /zavetisca, pressing "Mačke" and going back left the list entirely instead
+  // of returning to Vse. A push gives the species its own entry, and back then
+  // undoes the press the way it undoes an opened animal.
+  //
+  // Only when the species actually changes. The strip still reports a press on
+  // the tab that is already pressed (species-tabs.tsx), and an entry for a
+  // write that changes no part of the query is a back press that does nothing.
+  //
+  // And never on top of an open animal. Back closes the dialog in one press,
+  // and an entry stacked under it would spend that press undoing a filter
+  // change behind a card nobody can see past. The strip is behind the dialog
+  // at every width, so the entry a species change wants there is the one it is
+  // already standing on.
   const setSpecies = useCallback(
     (species: SpeciesFilter) => {
-      writeFilters({ ...filters, species });
+      const stacks = species !== filters.species && !standsOnDialogEntry();
+      writeFilters({ ...filters, species }, stacks ? "push" : "replace");
     },
     [filters],
   );

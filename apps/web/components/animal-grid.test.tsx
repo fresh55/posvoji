@@ -496,6 +496,26 @@ describe("how much of the grid is drawn", () => {
     expect(screen.getAllByRole("article")).toHaveLength(many.length);
   });
 
+  // Both ways the grid grows are this component's, so a browser with our
+  // scripts off keeps whatever the export drew and is told nothing about the
+  // rest. The fallback under the grid is drawn exactly where there is a rest.
+  //
+  // Whether it is drawn, and not what is inside it: react-dom's client
+  // renderer treats a <noscript> as text content and drops element children,
+  // where the server renderer that writes the exported HTML keeps them. The
+  // sentence and its link are verified against the built page.
+  it("carries a scriptless fallback only while the export left something behind", () => {
+    stubGridColumns(columnTracks(2));
+    stubIntersectionObserver();
+    const { container } = renderGrid(many);
+    expect(container.querySelector("noscript")).not.toBeNull();
+
+    cleanup();
+    stubIntersectionObserver();
+    const whole = renderGrid(many.slice(0, INITIAL_CARDS));
+    expect(whole.container.querySelector("noscript")).toBeNull();
+  });
+
   it("swaps the sentinel for a button once the automatic budget is spent", () => {
     // Two columns, so a step is 30 cards, but the budget is only 80: the
     // first step already overshoots it and clamps down to what is left of

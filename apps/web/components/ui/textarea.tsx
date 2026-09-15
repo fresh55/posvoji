@@ -2,6 +2,9 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// No coarse floor beside ui/input.tsx's: min-h-20 is 80px, already past the 44
+// a finger needs, and a pointer-coarse:min-h-11 would outrank it and shrink the
+// empty box on the very devices it was meant to help.
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea

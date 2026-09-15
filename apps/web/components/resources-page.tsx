@@ -4,6 +4,7 @@ import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
 import { Card } from "@/components/ui/card";
+import { PAGE_TITLE } from "@/lib/link-styles";
 
 type LocalizedText = Record<Locale, string>;
 
@@ -301,7 +302,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.resources} />
         <div className="max-w-3xl space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className={PAGE_TITLE}>
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -356,7 +357,11 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
                       rel="noreferrer"
                       id={linkId}
                       aria-labelledby={`${linkId} ${titleId}`}
-                      className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+                      // 74x20 drawn, and the last line of the card, so the
+                      // overlay has the card's own padding under it and a
+                      // paragraph above: nothing inside the overhang is a
+                      // control. See tap-target in globals.css.
+                      className="mt-4 inline-flex w-fit pointer-coarse:tap-target items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
                     >
                       {text.open}
                       <span aria-hidden>↗</span>

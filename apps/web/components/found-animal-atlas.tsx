@@ -92,10 +92,17 @@ export function FoundAnimalAtlas({
             the card explains. A class and not a mount: answer starts null on
             the server and on the client's first render, so the two agree, and
             the map is in the document for the widths that draw it. */}
+        {/* @container/map-stage, which is the name everything the plate draws
+            small enough to smudge measures itself against (PLATE_TOO_SMALL in
+            map-marker.tsx). A container query against a name nobody declares
+            never matches, so without it the neighbour countries and the sea
+            printed here at about 5px: grey smudges, which is the exact thing
+            the threshold exists to remove. The picker declares the same name
+            on its own stage. */}
         <div
           data-slot="map-plate"
           className={cn(
-            "relative min-w-0 overflow-hidden rounded-ui border bg-muted/40 p-2 sm:p-3 lg:sticky lg:top-6",
+            "relative min-w-0 overflow-hidden rounded-ui border bg-muted/40 p-2 @container/map-stage sm:p-3 lg:sticky lg:top-6",
             !answer && "max-lg:hidden",
           )}
         >

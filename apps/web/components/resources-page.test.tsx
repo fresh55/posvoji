@@ -115,4 +115,15 @@ describe("the resources page", () => {
       screen.getByRole("link", { name: `Open resource ${SL_TITLE}` }),
     ).toBeTruthy();
   });
+
+  // 30px at 390 against the home page's 20px, on the pages that matter least.
+  // The ladder is the one the animal and shelter pages already use: 24 on a
+  // phone, 30 from sm, 36 from md.
+  it("steps the heading down on a phone", () => {
+    render(<ResourcesPage locale="sl" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).className.split(" "),
+    ).toEqual(expect.arrayContaining(["text-2xl", "sm:text-3xl", "md:text-4xl"]));
+  });
 });

@@ -1,7 +1,7 @@
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { MUTED_LINK } from "@/lib/link-styles";
+import { MUTED_LINK, PAGE_TITLE } from "@/lib/link-styles";
 import { HOME_PATHS, homePath, sheltersIndexPath } from "@/lib/shelter-path";
 
 /**
@@ -36,7 +36,7 @@ export function NotFoundPage({
       mainClassName="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center"
       footer={<SiteFooter locale={locale} />}
     >
-      <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+      <h1 className={PAGE_TITLE}>
         {messages.notFoundTitle}
       </h1>
       <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -52,7 +52,7 @@ export function NotFoundPage({
       <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
         <a
           href={homeHref}
-          className="max-lg:tap-target font-medium text-foreground underline-offset-4 hover:underline"
+          className="pointer-coarse:tap-target font-medium text-foreground underline-offset-4 hover:underline"
         >
           {messages.allAnimals}
         </a>

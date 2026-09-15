@@ -58,7 +58,7 @@ export function FoundAnimalButton() {
       // the underline are what say so at zero pixels of extra height. The
       // drawing is still 14px text, so tap-target grows the tappable box
       // without moving what is drawn (globals.css).
-      className="h-auto gap-1 p-0 text-sm font-normal text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground max-lg:tap-target"
+      className="h-auto gap-1 p-0 text-sm font-normal text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground pointer-coarse:tap-target"
     >
       <a href={FOUND_ANIMAL_PATHS[locale]}>
         {messages.muniPromptTitle}

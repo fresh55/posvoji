@@ -345,7 +345,7 @@ export function PortalLogin() {
                 {portalText.expiredLead}
               </p>
             </div>
-            <Button onClick={backToForm} className="w-full">
+            <Button onClick={backToForm} className="w-full pointer-coarse:h-11">
               {portalText.requestNewLink}
             </Button>
           </div>
@@ -368,7 +368,7 @@ export function PortalLogin() {
             <Button
               variant="outline"
               onClick={backToForm}
-              className="w-full"
+              className="w-full pointer-coarse:h-11"
             >
               {portalText.sendAgain}
             </Button>
@@ -430,7 +430,14 @@ export function PortalLogin() {
                 </p>
               )}
 
-              <Button type="submit" disabled={sending} className="w-full">
+              {/* 36px is the default button, which is a mouse's. Shelter
+                  staff open this card on a phone, and it is the one control
+                  on it. The field above takes its own 44 from ui/input.tsx. */}
+              <Button
+                type="submit"
+                disabled={sending}
+                className="w-full pointer-coarse:h-11"
+              >
                 {sending ? (
                   <LoaderCircle className="animate-spin" aria-hidden />
                 ) : (
@@ -448,7 +455,11 @@ export function PortalLogin() {
               {HELP_BEFORE}
               <a
                 href={mailtoHref(portalText.contactEmail)}
-                className="underline underline-offset-4 hover:text-foreground"
+                // inline-flex with the overlay, the spelling MUTED_LINK uses:
+                // a wrapped inline link has one box across two lines and the
+                // 44px layer would sit between them rather than on either.
+                // 17px drawn, and it is what a shelter locked out reaches for.
+                className="inline-flex pointer-coarse:tap-target underline underline-offset-4 hover:text-foreground"
               >
                 {portalText.contactEmail}
               </a>

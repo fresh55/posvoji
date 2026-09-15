@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** The same cutoff as globals.css's `short` variant. */
-export const SHORT_VIEWPORT_QUERY = "(max-height: 32rem)";
+import { SHORT_VIEWPORT_QUERY } from "@/lib/viewport-queries";
+
+export { SHORT_VIEWPORT_QUERY };
 
 /** A pointer that can aim and hover, which is what decides where an open puts
  *  focus. Named rather than written out at the call site, the same as NO_HOVER

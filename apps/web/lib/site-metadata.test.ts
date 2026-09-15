@@ -52,6 +52,14 @@ describe("rootViewport", () => {
       { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
     ]);
   });
+
+  // Under the default, resizes-visual, a phone keyboard leaves every dvh at
+  // the full screen height, so a dialog sized in dvh keeps its confirm button
+  // under the keyboard with nothing to scroll.
+  it("lets a phone keyboard shrink the layout viewport", () => {
+    expect(rootViewport.interactiveWidget).toBe("resizes-content");
+    expect(rootViewport.viewportFit).toBe("cover");
+  });
 });
 
 describe("localeAlternates", () => {

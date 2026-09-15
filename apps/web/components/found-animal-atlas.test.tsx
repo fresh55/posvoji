@@ -158,6 +158,16 @@ describe("the found-animal atlas", () => {
     expect(plate.className).not.toContain("max-lg:hidden");
   });
 
+  // PLATE_TOO_SMALL (map-marker.tsx) is a container query, and a container
+  // query against a name nobody declares never matches: without this the
+  // neighbour countries and the sea painted here at about 5px.
+  it("declares the container the plate's small print measures itself against", () => {
+    const { container } = renderAtlas();
+
+    const plate = container.querySelector('[data-slot="map-plate"]')!;
+    expect(plate.className).toContain("@container/map-stage");
+  });
+
   it("rings the responsible shelter on the map once an občina is named", () => {
     const { container } = renderAtlas();
 

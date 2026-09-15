@@ -3,6 +3,7 @@ import { AnimalPhoto } from "@/components/animal-photo";
 import { Badge } from "@/components/ui/badge";
 import {
   FAN_PHOTO_SIZES,
+  FAN_SIDE_PHOTO_SIZES,
   PRINT_ASPECT,
   type PermittedPhoto,
 } from "@/lib/animal-images";
@@ -341,11 +342,17 @@ export const FanPhoto = memo(function FanPhoto({
               // photo 58% of the stage, which is about 22rem. The wash behind
               // the fan runs off the thumb and carries its own.
               //
+              // The seat's own size and not the front's, for the four prints
+              // that are not in front. They are drawn at 0.42 to 0.58 of the
+              // front print, and asking in the front's name had every one of
+              // them select the master file for a picture 88 to 144px wide.
+              // The constant says how that number is arrived at.
+              //
               // No AVIF here, deliberately: the fan draws five photos, four of
               // them scaled to under 60%, and the AVIF sibling only exists at
               // the cached copy's full width. Serving it would hand the whole
               // fan the largest file there is.
-              sizes={FAN_PHOTO_SIZES}
+              sizes={active ? FAN_PHOTO_SIZES : FAN_SIDE_PHOTO_SIZES}
               // Every print the fan draws is on stage the moment the dialog
               // opens, so none of them is a candidate for deferring: a
               // neighbour that opened as an empty card was the most visible

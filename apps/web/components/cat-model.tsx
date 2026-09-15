@@ -22,6 +22,13 @@ const MODEL = "/models/our-cat/cat.glb?v=26";
  *  first frame at that framing, so he does not jump when WebGL takes over. */
 export type CatFraming = { orbit: string; target: string; poster: string };
 
+// One transparent pixel, and the only thing a caller that gates its poster
+// draws where the gate does not match. A <picture> has to end in an <img>,
+// and whatever that <img> points at is what the browser fetches when no
+// <source> matches, so it has to be something that costs nothing.
+const BLANK_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
 /** The about page's and the gate's framing; see the note on camera-orbit. */
 const CAT_FRAMING: CatFraming = {
   orbit: "-19deg 81deg 1.45m",
@@ -93,6 +100,7 @@ export const CatModel = memo(function CatModel({
   className,
   sizes,
   posterPriority = false,
+  posterMedia,
   framing = CAT_FRAMING,
   startAfterLoad = false,
   onHandle,
@@ -108,6 +116,18 @@ export const CatModel = memo(function CatModel({
    * below the fold and is often never fetched at all.
    */
   posterPriority?: boolean;
+  /**
+   * The media condition under which the poster is worth downloading, for a
+   * caller whose figure is not drawn at every viewport. The still is the
+   * first thing this stage paints, so it cannot be lazy or gated in script:
+   * a `display:none` figure fetches it all the same (measured). A <picture>
+   * is the one gate a static export can express in markup, and below it the
+   * browser picks a transparent pixel and asks for nothing.
+   *
+   * Left unset the poster loads everywhere, which is what a figure that is
+   * always drawn wants.
+   */
+  posterMedia?: string;
   /**
    * A closer framing than the default, for a stage too short to show him
    * at 1.45m. The default never cuts him at any heading; a closer camera
@@ -326,18 +346,25 @@ export const CatModel = memo(function CatModel({
       onPointerEnter={() => reach(false)}
       onPointerDown={() => reach(true)}
     >
-      <Image
-        src={framing.poster}
-        alt={status === "ready" ? "" : text.alt}
-        fill
-        // Load the fallback immediately. Where WebGL can replace it before
-        // it paints, don't speculatively preload it either (React skips
-        // low); where it is the largest paint, put it at the front instead.
-        loading="eager"
-        {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
-        sizes={sizes}
-        className={`object-contain ${status === "ready" ? "invisible" : ""}`}
-      />
+      {/* The source is what the browser downloads wherever posterMedia
+          matches; the img under it is the fallback and carries everything
+          else, so an ungated caller renders the same element it always did
+          inside a wrapper that draws nothing. */}
+      <picture>
+        {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
+        <Image
+          src={posterMedia ? BLANK_PIXEL : framing.poster}
+          alt={status === "ready" ? "" : text.alt}
+          fill
+          // Load the fallback immediately. Where WebGL can replace it before
+          // it paints, don't speculatively preload it either (React skips
+          // low); where it is the largest paint, put it at the front instead.
+          loading="eager"
+          {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
+          sizes={sizes}
+          className={`object-contain ${status === "ready" ? "invisible" : ""}`}
+        />
+      </picture>
       <div
         ref={host}
         aria-hidden={status !== "ready"}

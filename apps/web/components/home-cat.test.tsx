@@ -2,7 +2,12 @@
 
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CAT_CORNER, HOME_CAT_FRAMING, HomeCat } from "./home-cat";
+import {
+  CAT_CORNER,
+  HOME_CAT_FRAMING,
+  HOME_CAT_POSTER_MEDIA,
+  HomeCat,
+} from "./home-cat";
 import { SRECKO_PATHS } from "@/lib/srecko";
 
 // The model is covered by cat-model.test.tsx. What is this page's own is the
@@ -12,16 +17,19 @@ vi.mock("./cat-model", () => ({
     framing,
     startAfterLoad,
     className,
+    posterMedia,
   }: {
     framing: { poster: string };
     startAfterLoad?: boolean;
     className?: string;
+    posterMedia?: string;
   }) => (
     <div
       data-testid="cat"
       data-poster={framing.poster}
       data-after-load={String(startAfterLoad)}
       className={className}
+      data-poster-media={posterMedia}
     />
   ),
 }));
@@ -49,9 +57,10 @@ describe("the home cat", () => {
     const link = caption.querySelector("a")!;
     expect(link.getAttribute("href")).toBe(SRECKO_PATHS.sl);
     expect(link.className).toContain("text-xs");
-    // Never in the landscape corner, which is 104px tall and has room for the
-    // stage and nothing else.
-    expect(caption.className.split(" ")).toContain("short:hidden");
+    // No gate of its own: it is inside the figure, so it leaves with him,
+    // which is what the landscape phone needs (the figure is short:hidden).
+    expect(caption.className).not.toContain("short:");
+    expect(container.querySelector("figure")!.className).toContain("short:hidden");
   });
 
   it("stays out of the phone hero and out of the row's flow", () => {
@@ -60,6 +69,21 @@ describe("the home cat", () => {
     expect(classes).toContain("hidden");
     expect(classes).toContain("md:flex");
     expect(classes).toContain("absolute");
+    // The landscape phone is over md wide and has no corner for him.
+    expect(classes).toContain("short:hidden");
+  });
+
+  it("asks for the poster only where the figure is drawn", () => {
+    const { container } = render(<HomeCat locale="sl" />);
+    const media = container
+      .querySelector('[data-testid="cat"]')!
+      .getAttribute("data-poster-media");
+    expect(media).toBe(HOME_CAT_POSTER_MEDIA);
+    // The two halves of the same gate: the class hides him below md and on a
+    // viewport 32rem tall or less, so the media condition has to start above
+    // both or a phone downloads a still it never draws.
+    expect(media).toContain("min-width: 48rem");
+    expect(media).toContain("min-height: 32.01rem");
   });
 
   it("takes its width from the corner the hero reserves", () => {
@@ -67,7 +91,8 @@ describe("the home cat", () => {
     // where that stops being a claim: the figure subtracts the 32px that
     // keeps a wrapped title off him rather than restating a width per
     // breakpoint, and the stage keeps the poster's shape rather than
-    // restating a height. Retuning CAT_CORNER moves all of it.
+    // restating a height. Retuning CAT_CORNER moves all of it, and its zero
+    // on a phone held sideways is how the hero's padding leaves with him.
     const { container } = render(<HomeCat locale="sl" />);
 
     expect(container.querySelector("figure")!.className).toContain(
@@ -77,7 +102,7 @@ describe("the home cat", () => {
       container.querySelector('[data-testid="cat"]')!.className,
     ).toContain("aspect-[192/152]");
     expect(CAT_CORNER).toBe(
-      "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:10rem]",
+      "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:0rem]",
     );
   });
 

@@ -1,4 +1,8 @@
 import { STAGE_WIDTH } from "@/components/animal-dialog/photo-wash";
+import {
+  DESKTOP_SHELL_QUERY,
+  PHONE_SHELL_QUERY,
+} from "@/lib/viewport-queries";
 import { useSyncExternalStore } from "react";
 import { DESKTOP_DEPTHS, FanDepths, PHONE_DEPTHS } from "./fan-geometry";
 
@@ -68,7 +72,14 @@ export const PHONE_FAN: FanGeometry = {
   // edge or they would hand the dialog's scroller a horizontal scrollbar, but
   // the drop still hangs the side photos a few pixels past the stage's bottom
   // and clip on one axis is the one combination that leaves the other visible.
-  stageClass: "w-full overflow-x-clip",
+  //
+  // The width cap is the landscape phone. Every number in this layout is a
+  // share of the stage's width, and the stage is the screen: at 844x390 the
+  // 1.6 aspect made it 528px tall, a photograph a third taller than the
+  // viewport with the animal's name somewhere below it. Capped at 24rem the
+  // print is 253px wide, which is what it measures on a 390px phone held
+  // upright, and the name row is on screen with it.
+  stageClass: "w-full overflow-x-clip short:mx-auto short:max-w-sm",
   chevrons: false,
 };
 
@@ -87,7 +98,20 @@ export const DESKTOP_FAN: FanGeometry = {
 // rather than left to CSS because the fan used to mount both layouts and hide
 // one of them: 38 nodes, five eager images and fifty MotionValues idling for a
 // fan nobody could see.
-export const DESKTOP_FAN_QUERY = "(min-width: 640px)";
+//
+// Height as well as width, and the same pair of numbers Tailwind's short
+// variant asks about (max-height: 32rem). A phone held sideways is 844x390:
+// wide enough for the desktop fan, and then the fan took 267px of the 390 and
+// left the card a 98px slot to scroll 488px of text in. The dialog's own shell
+// switches on the same question, so the two cannot disagree about which layout
+// is standing.
+// The fan stands on the same question the shell does, from the one place both
+// halves of it are derived (lib/viewport-queries.ts). Re-exported under the
+// fan's own name because that is what this module's callers and its tests ask
+// for.
+export const DESKTOP_FAN_QUERY = DESKTOP_SHELL_QUERY;
+
+export { PHONE_SHELL_QUERY };
 
 export function subscribeToFanQuery(onChange: () => void) {
   const query = window.matchMedia(DESKTOP_FAN_QUERY);

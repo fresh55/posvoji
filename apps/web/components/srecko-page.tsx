@@ -11,6 +11,7 @@ import { getMessages, type Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SRECKO, SRECKO_PATHS, SRECKO_POSTER_PATHS, SRECKO_TEXT, sreckoMilestones, sreckoPortrait, sreckoHomeDateRange } from "@/lib/srecko";
+import { PAGE_TITLE } from "@/lib/link-styles";
 
 export function SreckoPage({ locale }: { locale: Locale }) {
   const text = SRECKO_TEXT[locale], portrait = sreckoPortrait();
@@ -24,7 +25,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} trail={[{ label: getMessages(locale).about, href: ABOUT_PATHS[locale] }]} current={SRECKO.name} />
         <header className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{SRECKO.name}</h1>
+          <h1 className={PAGE_TITLE}>{SRECKO.name}</h1>
           <p className="text-lg font-medium">{text.memorial}</p>
           <p className="max-w-prose text-base leading-relaxed text-muted-foreground sm:text-lg">{text.intro}</p>
         </header>

@@ -68,9 +68,12 @@ export function SitePage({ locale }: { locale: Locale }) {
           the corner above the toolbar, so this row keeps its 64px and the
           heading keeps its place. The right padding from md keeps a wrapped
           title out from under him, and it is his own measurement rather than
-          a number of its own (CAT_CORNER): the corner shrinks with the stage
-          on a phone held sideways, where the full one cost the heading a
-          second line on a 390px-tall screen. */}
+          a number of its own (CAT_CORNER). That is also how the padding
+          leaves when he does: on the landscape phone he is not drawn, the
+          corner there is zero, and the one statement covers both. Held at
+          844x390 with the full corner it kept the title in a 572px column,
+          which wrapped the heading and the meta line and pushed the species
+          tabs down into the fixed dock. */}
       <div className={`relative space-y-1.5 md:pr-(--cat-corner) ${CAT_CORNER}`}>
         {/* 600, which is the weight of the card names in the grid under it
             and the weight every page title on the site now carries. At 500
@@ -120,8 +123,11 @@ export function SitePage({ locale }: { locale: Locale }) {
             </p>
           )}
           {/* One link in this row, and it is the one addressed to somebody
-              with a problem. The cat's link is his caption now; home-cat.tsx
-              says what it was doing here and why it left. */}
+              with a problem. The cat's link was the other and is his caption
+              now (home-cat.tsx): as a row item it competed with this one for
+              the same press, and wherever the row wrapped it came to rest
+              diagonally below it. Under him it also leaves when he does,
+              which is what it needed a width gate of its own for before. */}
           {hasLookup && <FoundAnimalButton />}
         </div>
         <HomeCat locale={locale} />

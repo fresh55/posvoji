@@ -90,6 +90,16 @@ export function rootMetadata(locale: Locale): Metadata {
  * viewportFit: without it env(safe-area-inset-*) resolves to 0 on iOS: the
  * page draws under the notch and home indicator, but nothing is told it may.
  *
+ * interactiveWidget: the default is resizes-visual, under which a phone
+ * keyboard shrinks what the visitor sees and leaves the layout viewport, and
+ * every dvh with it, at its full height. Measured at 390x844: a focused
+ * search in the shelter picker left the dialog 793px tall with its confirm
+ * button at y 758, about 250px under a keyboard, in a box that does not
+ * scroll. resizes-content shrinks the layout viewport instead, so the dialog
+ * is sized to what is left and its footer stays on screen. Android Chrome
+ * honours it; iOS Safari ignores it, which is why the picker also caps
+ * itself on the visual viewport (location-picker/view.tsx).
+ *
  * themeColor as a media pair rather than one value, because the site follows
  * the OS preference and offers no toggle (app/globals.css). Without it Android
  * Chrome's toolbar keeps its own default above a page that is pure white or
@@ -102,6 +112,7 @@ export const THEME_COLOR = { light: "#ffffff", dark: "#0c0a09" } as const;
 
 export const rootViewport: Viewport = {
   viewportFit: "cover",
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
     { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },

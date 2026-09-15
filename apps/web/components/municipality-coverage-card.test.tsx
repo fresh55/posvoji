@@ -31,7 +31,7 @@ const OBALNO: LookupCoverage = {
 const messages = getMessages("sl");
 
 function renderCard(coverage: LookupCoverage = OBALNO) {
-  render(
+  return render(
     <I18nProvider locale="sl">
       <CoverageCard coverage={coverage} />
     </I18nProvider>,
@@ -130,5 +130,28 @@ describe("the municipality coverage card", () => {
     });
     expect(source.getAttribute("href")).toBe("https://example.si/odlok");
     expect(source.getAttribute("target")).toBe("_blank");
+  });
+
+  // At 390 the credit broke the date after its hyphen and the line read
+  // "(2026-" / "08)." The date is one piece or it is not a date.
+  it("keeps the source date on one line", () => {
+    const { container } = renderCard(OBALNO);
+
+    const date = [...container.querySelectorAll("span")].find((span) =>
+      span.textContent === "(2026-01-01).",
+    );
+    expect(date).toBeTruthy();
+    expect(date!.className).toContain("whitespace-nowrap");
+  });
+
+  // Width said 44px to a 1024 laptop window and 32 to a 1180 tablet that is
+  // all thumb; the pointer is what the number is about (globals.css).
+  it("sizes the card's calls on the pointer, not the window", () => {
+    renderCard(OBALNO);
+
+    for (const call of screen.getAllByRole("link", { name: /^Pokliči/ })) {
+      expect(call.className).toContain("pointer-coarse:h-11");
+      expect(call.className).not.toContain("max-lg:h-11");
+    }
   });
 });

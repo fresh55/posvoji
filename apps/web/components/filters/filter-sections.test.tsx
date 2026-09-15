@@ -445,4 +445,26 @@ describe("the sidebar's surfaces", () => {
       expect(option.className).toContain("h-10");
     }
   });
+
+  // The panel is lg-only, so the max-lg gate these two used to carry never
+  // applied anywhere: at 1180x820 with a coarse pointer every section heading
+  // measured 24px and every reset 20px, and 1024x768 measured the same,
+  // because the loss is the lg boundary and not the width.
+  it("gives a thumb a section heading and a reset to press", () => {
+    const { container } = renderStatic({ ...EMPTY_FILTERS, sex: ["male"] });
+
+    const heading = header("Spol");
+    // Grown and not overlaid: the header's own mb-2 puts the first row 8px
+    // below it and a 44px overlay over a 24px row overhangs 10.
+    expect(heading.className).toContain("pointer-coarse:min-h-11");
+    expect(heading.className).not.toContain("tap-target");
+
+    const reset = container.querySelector<HTMLElement>(
+      'button[aria-label^="Ponastavi"]',
+    );
+    // Out of flow in a folding header, so the box grows without moving the
+    // row; tap-target would set position: relative and fight the absolute.
+    expect(reset?.className).toContain("pointer-coarse:min-h-11");
+    expect(reset?.className).toContain("absolute");
+  });
 });

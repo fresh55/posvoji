@@ -210,5 +210,8 @@ describe("the classes the caller passes", () => {
 
     expect(button.className).toContain("max-sm:rounded-full");
     expect(button.className).toContain("size-11");
+    // And the floor survives sm: a 768px tablet is all thumb, and it was
+    // handed the 32px disc that belongs to a mouse.
+    expect(button.className).toContain("pointer-coarse:size-11");
   });
 });

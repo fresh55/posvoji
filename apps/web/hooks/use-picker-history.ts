@@ -4,7 +4,12 @@ import { useEffect, useId, useRef } from "react";
 import { commitLocation, subscribeToLocation } from "@/lib/location-search";
 
 /** One temporary history entry lets a phone's Back gesture dismiss the map.
- * Filter changes made in it are retained when returning to the results. */
+ * Filter changes made in it are retained when returning to the results.
+ *
+ * The name is the first caller, not the contract: this serves any layer a back
+ * gesture should dismiss instead of leaving the page. The filter sheet and the
+ * photo lightbox use it too, and layers stack, because each caller pushes and
+ * pops its own keyed entry, so two open layers peel one press at a time. */
 export function usePickerHistory(open: boolean, close: () => void) {
   const id = useId();
   const serial = useRef(0);

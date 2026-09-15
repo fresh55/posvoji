@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
+import { DESKTOP_FAN_QUERY } from "./fan-layout";
 
 // What a photo step costs the rest of the dialog.
 //
@@ -51,7 +52,7 @@ vi.mock("@/components/animal-dialog/shelter-block", async (importOriginal) => {
 // reads it again to resolve reducedMotion="user", and jsdom ships no
 // matchMedia at all. jsdom reports 1024px wide, so the wide answer is the
 // honest one and the fan mounts its desktop geometry.
-const DESKTOP_FAN = "(min-width: 640px)";
+const DESKTOP_FAN = DESKTOP_FAN_QUERY;
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,

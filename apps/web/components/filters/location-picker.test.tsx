@@ -800,6 +800,36 @@ describe("LocationPicker responsive body", () => {
     expect(screen.getByRole("button", { name: "Pokaži 11 živali" })).toBeTruthy();
   });
 
+  // The map is width-bound, so reserving the dialog's full height for it left
+  // 141px of nothing above it and 141 below on a 390x844 phone. With the list
+  // put away below lg the stage stands in flow and the dialog is as tall as
+  // what it draws; the list view, which is as long as the roster, is not.
+  it("hands the map view its own height below lg", async () => {
+    await openPicker();
+    const content = dialog();
+    const stage = content.querySelector("[data-picker-stage]")!;
+    const map = content.querySelector("[data-map-stage]")!;
+    const footer = content.querySelector("[data-picker-footer]")!;
+
+    expect(content.className).toContain("h-[min(94dvh,52rem)]");
+    expect(stage.className).not.toContain("max-lg:flex-col");
+    expect(map.className).not.toContain("max-lg:static");
+    expect(footer.className).not.toContain("max-lg:static");
+
+    fireEvent.click(content.querySelector("[data-picker-show-map]")!);
+
+    expect(content.className).toContain("h-auto");
+    expect(content.className).toContain("max-h-[94dvh]");
+    expect(content.className).toContain("lg:h-[min(94dvh,52rem)]");
+    expect(stage.className).toContain("max-lg:flex-col");
+    expect(map.className).toContain("max-lg:static");
+    expect(footer.className).toContain("max-lg:static");
+    // Pinned to the top below lg, or the shorter map view would re-centre and
+    // slide the view switch down the screen under the finger that pressed it.
+    expect(content.className).toContain("max-lg:top-4");
+    expect(content.className).toContain("max-lg:translate-y-0");
+  });
+
   it("keeps the shelter list scrollable without fading its text", async () => {
     await openPicker();
     const list = dialog().querySelector("[data-picker-list-scroll]")!;

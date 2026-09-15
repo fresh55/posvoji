@@ -1,6 +1,7 @@
 import { MAP_HEIGHT, MAP_WIDTH, cityAt, project } from "@/lib/geo";
 import { OUTLINE_PATH } from "@/lib/map-regions";
 import { cn } from "@/lib/utils";
+import { BoundariesCredit } from "@/components/filters/map-attribution";
 
 // Where one shelter is, at the only fidelity the registry supports: a town
 // name, so a dot on the country and nothing more. No regions, no relief, no
@@ -47,6 +48,7 @@ function round(value: number): number {
 export function ShelterLocationMap({
   city,
   label,
+  outline,
   className,
 }: {
   /** The shelter's town, as the registry spells it. Resolved here through
@@ -56,6 +58,13 @@ export function ShelterLocationMap({
    *  never builds a string, so it never has to know which language the page
    *  is in. */
   label: string;
+  /** What the drawn shape is, in the caller's locale, for the credit under
+   *  it. The licence and the source are fixed text and stay here: the outline
+   *  is GURS data under CC BY 4.0, which asks to be credited wherever the
+   *  boundaries are drawn, so this is not optional. The found-animal plate
+   *  says the same thing through MapAttribution, which also credits the
+   *  relief this plate does not draw. */
+  outline: string;
   className?: string;
 }) {
   const at = cityAt(city);
@@ -67,40 +76,61 @@ export function ShelterLocationMap({
   const { x, y } = project(at);
 
   return (
-    <svg
-      viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-      role="img"
-      aria-label={label}
-      // Never a fixed width: the viewBox carries the aspect ratio and the
-      // caller owns the size. The default is the width this drawing was
-      // tuned at, capped so a wide sidebar cannot blow it up.
-      className={cn("h-auto w-full max-w-[320px] shrink-0", className)}
+    <figure
+      // One plate, drawn the way /najdena-zival draws the same country: a
+      // frame, a ground and a credit. Below sm only, where this had 176x116 of
+      // drawing hard left in a 358px column with 180px of blank beside it and
+      // nothing to say it was a map. From sm it sits in a 13rem sidebar beside
+      // the contact rows, where a second border would be a card around a
+      // drawing that is already inside one.
+      className={cn(
+        "shrink-0 max-sm:w-full max-sm:rounded-ui max-sm:border max-sm:bg-muted/40 max-sm:p-3",
+        className,
+      )}
     >
-      <path
-        d={COARSE_OUTLINE_PATH}
-        strokeWidth={OUTLINE_STROKE_WIDTH}
-        // The shapes are polygonal, so a mitred corner spikes on the coast.
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        className="fill-foreground/5 stroke-foreground/45"
-      />
-      {/* The same accent trio the notice on this page wears: the pale surface,
-          its border, and the strong ink inside. Three tokens that already
-          answer for both themes, so nothing here needs a second colour for
-          dark mode. */}
-      <circle
-        cx={round(x)}
-        cy={round(y)}
-        r={HALO_RADIUS}
-        strokeWidth={HALO_STROKE_WIDTH}
-        className="fill-brand stroke-brand-border"
-      />
-      <circle
-        cx={round(x)}
-        cy={round(y)}
-        r={DOT_RADIUS}
-        className="fill-brand-strong"
-      />
-    </svg>
+      <svg
+        viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+        role="img"
+        aria-label={label}
+        // Never a fixed width: the viewBox carries the aspect ratio and the
+        // caller owns the size. The default is the width this drawing was
+        // tuned at, capped so a wide plate cannot blow it up, and centred
+        // because below sm the plate is wider than that cap.
+        className="mx-auto h-auto w-full max-w-[320px]"
+      >
+        <path
+          d={COARSE_OUTLINE_PATH}
+          strokeWidth={OUTLINE_STROKE_WIDTH}
+          // The shapes are polygonal, so a mitred corner spikes on the coast.
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className="fill-foreground/5 stroke-foreground/45"
+        />
+        {/* The same accent trio the notice on this page wears: the pale
+            surface, its border, and the strong ink inside. Three tokens that
+            already answer for both themes, so nothing here needs a second
+            colour for dark mode. */}
+        <circle
+          cx={round(x)}
+          cy={round(y)}
+          r={HALO_RADIUS}
+          strokeWidth={HALO_STROKE_WIDTH}
+          className="fill-brand stroke-brand-border"
+        />
+        <circle
+          cx={round(x)}
+          cy={round(y)}
+          r={DOT_RADIUS}
+          className="fill-brand-strong"
+        />
+      </svg>
+      {/* In flow under the drawing rather than floated into a corner of it,
+          the way the found-animal plate floats its own: that one has a
+          hillshade to sit on and this one has bare paper, where a box in the
+          corner would read as a label on the sea. */}
+      <figcaption className="mt-1.5 text-3xs leading-tight text-muted-foreground">
+        {outline}: <BoundariesCredit />
+      </figcaption>
+    </figure>
   );
 }

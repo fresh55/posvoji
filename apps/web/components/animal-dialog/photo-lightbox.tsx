@@ -10,6 +10,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { usePickerHistory } from "@/hooks/use-picker-history";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, LayoutGrid, XIcon } from "lucide-react";
 import { m } from "motion/react";
@@ -21,8 +22,15 @@ import {
   type PhotoLightboxProps,
 } from "./use-lightbox-controls";
 
+// Sized on the pointer and not on the width. At sm these were 36px and their
+// insets went with them: sm:top-4 and its neighbours replaced
+// max(1rem, env(safe-area-inset-*)) with a flat 16px, so on a landscape phone
+// one rotation put the previous arrow and the other the close button under
+// the sensor housing, where a notched iPhone reports 44 to 59px of inset. The
+// insets are now the same max() at every width, and 44px is the floor for a
+// finger; a mouse keeps the 36px disc.
 const LIGHTBOX_BUTTON_CLASS =
-  "absolute z-10 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background active:translate-y-0!";
+  "absolute z-10 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background active:translate-y-0! pointer-fine:size-9";
 
 // Slow enough to read as one photo travelling, quick enough that nobody waits
 // for it. Barely underdamped, so it lands rather than wobbles.
@@ -79,6 +87,14 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
     swallowDraggedClick,
     frameRef,
   } = useLightboxControls(props);
+  // One temporary history entry, the same one the picker and the filter sheet
+  // take. Without it the only entry a back gesture could pop was the animal
+  // dialog's underneath, so somebody who opened a photograph to look closer
+  // and swiped back lost the animal as well as the photo: the path went
+  // straight from the animal to the list. The hook closes the top layer and
+  // puts the address back; the dialog's own entry is still under it, so a
+  // second back closes that.
+  usePickerHistory(open, () => props.onOpenChange(false));
   // The photo that was clicked is where focus belongs on the way out.
   const returnFocus = useRef<HTMLElement | null>(null);
   // An animal with no permitted photo at all. The index is clamped above, so
@@ -201,8 +217,10 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
                 // The chrome sits over the top of this frame, so the first row
                 // starts below it rather than under it. The padding is the
                 // same max() the buttons are placed with, plus their height
-                // and the grid's own gap, less the frame's inset.
-                className="h-full w-full overflow-y-auto overscroll-contain pt-[calc(max(1rem,env(safe-area-inset-top))+2.25rem)] sm:pt-4"
+                // and the grid's own gap, less the frame's inset, which is
+                // 1rem here and 2.5rem from sm. Written for the 44px button:
+                // a mouse's 36px one leaves 8px more air and nothing to fix.
+                className="h-full w-full overflow-y-auto overscroll-contain pt-[calc(max(1rem,env(safe-area-inset-top))+2.25rem)] sm:pt-[calc(max(1rem,env(safe-area-inset-top))+0.75rem)]"
               >
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
                   {images.map((photo, position) => (
@@ -345,7 +363,7 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
             <Button
               variant="outline"
               size="icon-sm"
-              className={`${LIGHTBOX_BUTTON_CLASS} top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] size-11 sm:top-4 sm:right-4 sm:size-9`}
+              className={`${LIGHTBOX_BUTTON_CLASS} top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))]`}
             >
               <XIcon aria-hidden />
               <span className="sr-only">{messages.close}</span>
@@ -365,7 +383,7 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
               onClick={() => (sheet ? setChosenView("photo") : showSheet())}
               aria-pressed={sheet}
               aria-label={messages.allPhotos}
-              className={`${LIGHTBOX_BUTTON_CLASS} top-[max(1rem,env(safe-area-inset-top))] right-[calc(max(1rem,env(safe-area-inset-right))+3.5rem)] size-11 sm:top-4 sm:right-16 sm:size-9`}
+              className={`${LIGHTBOX_BUTTON_CLASS} top-[max(1rem,env(safe-area-inset-top))] right-[calc(max(1rem,env(safe-area-inset-right))+3.5rem)] pointer-fine:right-[calc(max(1rem,env(safe-area-inset-right))+3rem)]`}
             >
               <LayoutGrid className="size-4" aria-hidden />
             </Button>
@@ -379,7 +397,7 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
                 size="icon-sm"
                 onClick={() => step(-1)}
                 aria-label={messages.previousPhoto}
-                className={`${LIGHTBOX_BUTTON_CLASS} inset-y-0 left-[max(1rem,env(safe-area-inset-left))] my-auto size-11 sm:left-4 sm:size-9`}
+                className={`${LIGHTBOX_BUTTON_CLASS} inset-y-0 left-[max(1rem,env(safe-area-inset-left))] my-auto`}
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </Button>
@@ -389,14 +407,14 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
                 size="icon-sm"
                 onClick={() => step(1)}
                 aria-label={messages.nextPhoto}
-                className={`${LIGHTBOX_BUTTON_CLASS} inset-y-0 right-[max(1rem,env(safe-area-inset-right))] my-auto size-11 sm:right-4 sm:size-9`}
+                className={`${LIGHTBOX_BUTTON_CLASS} inset-y-0 right-[max(1rem,env(safe-area-inset-right))] my-auto`}
               >
                 <ChevronRight className="size-4" aria-hidden />
               </Button>
               <Badge
                 aria-hidden
                 variant="secondary"
-                className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 h-6 -translate-x-1/2 bg-background/80 px-2 text-xs tabular-nums shadow-xs backdrop-blur-sm sm:bottom-4"
+                className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 h-6 -translate-x-1/2 bg-background/80 px-2 text-xs tabular-nums shadow-xs backdrop-blur-sm"
               >
                 {shown + 1} / {images.length}
               </Badge>

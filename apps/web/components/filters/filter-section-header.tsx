@@ -99,7 +99,13 @@ export function SectionHint({
   return (
     <p
       className={cn(
-        "mb-2 text-2xs leading-snug text-muted-foreground",
+        // 12px in the sheet, 11px in the sidebar. The two sizes are one
+        // decision about column width and not two tastes: the sidebar is a
+        // 224px column beside the grid, while the sheet is a phone held at
+        // arm's length, where 11px was the smallest type on the page. The
+        // sheet is below lg and the sidebar only from it, so the width gate
+        // says which one this is.
+        "mb-2 text-xs leading-snug text-muted-foreground lg:text-2xs",
         collapse && "hidden [@media(pointer:coarse)]:block",
       )}
     >
@@ -183,9 +189,21 @@ export function FilterSectionHeader({
       tabIndex={showReset ? undefined : -1}
       aria-label={resetAriaLabel}
       className={cn(
-        "h-auto p-0 text-2xs font-normal text-muted-foreground transition-opacity hover:text-foreground max-lg:tap-target",
+        // text-xs below lg and text-2xs from it, the same one decision the
+        // hint above states: 11px is a 224px column's size, not a phone's.
+        "h-auto p-0 text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
         !showReset && "pointer-events-none opacity-0",
-        collapse && "absolute right-6 top-1/2 -translate-y-1/2",
+        // 53x19 drawn, and the one press that undoes a whole section. Two
+        // shapes, because the two placements differ. In the sheet this sits in
+        // the header's flex row and takes the overlay. A folding section's
+        // header is a positioned row and the button is absolute inside it, and
+        // `tap-target` sets position: relative, which would fight that; there
+        // the drawn box is grown instead, which costs the row nothing because
+        // the button is out of flow and the header beside it is 44px on the
+        // same pointer.
+        collapse
+          ? "absolute right-6 top-1/2 -translate-y-1/2 pointer-coarse:min-h-11"
+          : "pointer-coarse:tap-target",
       )}
     >
       {messages.resetFilters}
@@ -238,7 +256,16 @@ export function FilterSectionHeader({
       // animal-grid.tsx), so a ring drawn outside the box loses its whole left
       // side. ring-inset puts the same green the rest of the site answers the
       // keyboard with where the black outline used to be, and keeps it.
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring max-lg:tap-target"
+      //
+      // pointer-coarse:min-h-11 and not the tap-target overlay. This row is
+      // 24px drawn and the sidebar it lives in only exists from lg, so the
+      // max-lg gate that used to be here never applied anywhere: on a 1180px
+      // touch tablet every section heading measured 24px. The overlay is the
+      // wrong instrument for it, because the header's own mb-2 puts the first
+      // filter row 8px below and an overlay overhangs 10, so it would reach
+      // into the row under it. Growing the box moves the rows down instead,
+      // and only where there is a finger.
+      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
     >
       <span className="truncate">{label}</span>
       {hint ? (

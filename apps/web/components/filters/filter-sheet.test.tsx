@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -60,6 +62,27 @@ async function openSheet() {
   fireEvent.click(screen.getByRole("button", { name: sl.filters }));
   return screen.findByRole("dialog");
 }
+
+describe("FilterSheet and the back gesture", () => {
+  it("opens on a history entry of its own and closes when that entry pops", async () => {
+    // Without the entry, one back from the open sheet left the results page
+    // and took the filter with it, and on a tab that opened on the list it
+    // closed the tab.
+    const dialog = await openSheet();
+    expect(typeof window.history.state?.locationPicker).toBe("string");
+
+    // The Android back button and the iOS edge swipe, as the hook sees them:
+    // the entry it pushed is no longer the current one.
+    act(() => {
+      window.history.replaceState({}, "");
+      window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+    });
+
+    await waitFor(() =>
+      expect(dialog.getAttribute("data-state")).not.toBe("open"),
+    );
+  });
+});
 
 describe("FilterSheet sort caption", () => {
   it("says what the row under the title does", async () => {

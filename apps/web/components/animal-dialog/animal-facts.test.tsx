@@ -168,6 +168,36 @@ describe("the zdravje row", () => {
     );
   });
 
+  // 26px of pill is a mouse's size. A thumb gets 36px of drawing and, where
+  // the pill opens an explainer, 44px of hit area over it; the row's own gap
+  // grows with that overlay so two wrapped lines cannot overlap each other's.
+  it("stands the pills at a finger's size on a coarse pointer", () => {
+    renderFacts({
+      sex: "female",
+      medical: { fiv: "unknown", felv: "negative" },
+      adoptionRequirements: { indoorOnly: true },
+    });
+
+    const health = screen.getByRole("list", { name: "Zdravje" });
+    expect(health.className).toContain("pointer-coarse:gap-y-2.5");
+    const trigger = within(health).getByRole("button", { name: /Brez FeLV/ });
+    expect(trigger.className).toContain("pointer-coarse:min-h-9");
+    expect(trigger.className).toContain("pointer-coarse:tap-target");
+    // The inert pills grow with them, so no row stands taller than its
+    // neighbour, but nothing reaches out over a pill that opens nothing.
+    const gap = within(health).getByText("Ni podatka o FIV").closest("li");
+    expect(gap?.className).toContain("pointer-coarse:min-h-9");
+    expect(gap?.className).not.toContain("tap-target");
+    const identity = screen.getByRole("list", { name: "Podrobnosti o živali" });
+    expect(within(identity).getAllByRole("listitem")[0].className).toContain(
+      "pointer-coarse:min-h-9",
+    );
+    const conditions = screen.getByRole("list", { name: "Pogoji posvojitve" });
+    expect(within(conditions).getByRole("listitem").className).toContain(
+      "pointer-coarse:min-h-9",
+    );
+  });
+
   // A result is a result. The shelter's own words carry a positive one, and a
   // pill saying the opposite of what they say would be worse than silence.
   it("says nothing about a recorded positive", () => {

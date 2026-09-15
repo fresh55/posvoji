@@ -156,9 +156,13 @@ export function StageWash({
           axis, the same choice the fan makes in photo-spread.tsx. Clipping one
           axis leaves the overhang above and below intact. From sm the stage is
           a centered band with room to spare and the wash is drawn in full. */}
+      {/* short:max-w-sm is the landscape phone, where the fan itself is capped
+          at the same width (PHONE_FAN.stageClass): the wash is the light
+          behind the photographs and a band 675px wide behind a 384px fan put
+          that light beside them. */}
       <div
         className={cn(
-          "relative mx-auto h-full overflow-x-clip sm:overflow-x-visible",
+          "relative mx-auto h-full overflow-x-clip sm:overflow-x-visible short:max-w-sm",
           STAGE_WIDTH,
         )}
       >

@@ -348,14 +348,65 @@ const CLAMP_DESCRIPTION_CHARS = 320;
 // Length is not the only way a description gets tall. The text is printed
 // whitespace-pre-line, so every break the shelter wrote is a line on screen,
 // and a listing set out as a short line each for age, sex and character ran
-// past the clamp's five lines at half the character count. Breaks are
+// past the clamp's five lines at half the character count. Lines are
 // counted, not measured, for the same reason the length is: the server and
 // the client have to decide this the same way.
-const CLAMP_DESCRIPTION_BREAKS = 5;
+const CLAMP_DESCRIPTION_LINES = 5;
 
-function clampsDescription(description: string): boolean {
-  if (description.length > CLAMP_DESCRIPTION_CHARS) return true;
-  return description.split("\n").length - 1 >= CLAMP_DESCRIPTION_BREAKS;
+// The paragraphs a description is printed in. Shelters separate them with a
+// blank line, and this used to be one whitespace-pre-line paragraph, so that
+// blank line was a line on screen like any other: on 33 of the 189 clamped
+// descriptions it was the fifth one, and the clamp drew its ellipsis alone on
+// an empty line above "Preberi več". Split here and printed one element each,
+// the separation is a margin rather than a line, and the clamp spends all
+// five of its lines on text. The single breaks inside a paragraph stay, both
+// on screen and in the count below: the shelter meant those.
+function descriptionParagraphs(description: string): string[] {
+  return description
+    .split(/\n[^\S\n]*\n\s*/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function clampsDescription(paragraphs: string[]): boolean {
+  const printed = paragraphs.reduce(
+    (count, paragraph) => count + paragraph.length,
+    0,
+  );
+  if (printed > CLAMP_DESCRIPTION_CHARS) return true;
+  const lines = paragraphs.reduce(
+    (count, paragraph) => count + paragraph.split("\n").length,
+    0,
+  );
+  return lines > CLAMP_DESCRIPTION_LINES;
+}
+
+// A description that is nothing but the photographer's credit. Two dogs at
+// Horjul carry "Foto Anja Troha" and no other word, which says nothing about
+// the dog and reads as if the shelter wrote its name wrong. Sixteen more
+// listings carry the same credit after a real description, where it is the
+// sign-off it was meant as and stays printed with the rest of the shelter's
+// words: we do not edit those, we only decline to print a description that is
+// only a credit. The credit the listing is given under is the provider's, and
+// the footnote under the shelter box already prints that one.
+const PHOTO_CREDIT_ONLY =
+  /^(?:Foto|Fotografij[ae]|Fotografiral[ai]?|Vse fotografije)\s*:?\s+\p{Lu}[^.]{2,40}$/u;
+
+// A listing that names more than one animal: "Bria in Brin", "TOM in LADY",
+// "DISEL, LYANN, LUNA". Six of them, and an animal's identity pills have one
+// age, one sex and one size to give for two or three animals, so they state
+// something untrue: a line reading 7, 12 and 12 years stood under a single
+// "7 let" pill. The shelter's own text names each of them, so it answers what
+// one row of pills cannot. Conservative on purpose: every part has to be a
+// single capitalised name, which leaves "Peter Zajec" and "brezrepa tritačka
+// Luna" the one animal each of them is.
+const NAME_LIST = /\s*,\s*|\s+in\s+/;
+const ONE_NAME = /^\p{Lu}[\p{L}'’-]*\.?$/u;
+
+function namesSeveralAnimals(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const parts = name.trim().split(NAME_LIST);
+  return parts.length > 1 && parts.every((part) => ONE_NAME.test(part));
 }
 
 // The icon carries the meaning on screen; a screen reader gets the same
@@ -467,8 +518,14 @@ export function AnimalFacts({
   // that message until someone wants the itemized version.
   const applicable = togglesAskedOf(animal.species);
   const medical = applicable.filter((toggle) => toggle.matches(animal));
+  // One row of pills cannot describe three dogs, so a listing that names
+  // several of them leaves the age, the sex and the size to the text below.
+  // The health and status pills stay: those the shelter answered for the
+  // listing as a whole.
+  const severalAnimals = namesSeveralAnimals(animal.name);
   const hasIdentity =
-    sex !== undefined || months !== undefined || animal.size !== undefined;
+    !severalAnimals &&
+    (sex !== undefined || months !== undefined || animal.size !== undefined);
   const fullRecord = medical.length === applicable.length;
   // Named only beside an itemised row: a full record has no gap to name, and a
   // shelter that recorded nothing at all says nothing here either.
@@ -503,9 +560,13 @@ export function AnimalFacts({
     animal.shortDescription ? undefined : animal.id,
   );
   const description = animal.shortDescription || fetched;
-  // Whichever way it arrived, the same measure decides whether it opens
-  // clamped: length or the breaks the shelter wrote.
-  const clampDescription = clampsDescription(description ?? "");
+  // Whichever way it arrived, the same two questions: is any of it about the
+  // animal, and is there enough of it to open clamped.
+  const paragraphs =
+    description && !PHOTO_CREDIT_ONLY.test(description.trim())
+      ? descriptionParagraphs(description)
+      : [];
+  const clampDescription = clampsDescription(paragraphs);
 
   return (
     <div className="space-y-4">
@@ -702,10 +763,15 @@ export function AnimalFacts({
           spinner and no skeleton: it is one paragraph inside a dialog that is
           already open and already full, and a placeholder for it would be
           more noticeable than the wait. */}
-      {description && (
+      {paragraphs.length > 0 && (
         <div className="space-y-1">
-          <p
+          <div
             id={descriptionId}
+            // Named for the dialog, which parks its fixed close button in the
+            // last 44px of these lines on a phone and reserves the column
+            // back. The animal's own page has no such button and draws this
+            // at its full width; see animal-dialog.tsx.
+            data-slot="animal-description"
             // The shelter wrote this and we print it verbatim, so it is
             // Slovenian on an English page too. See quotedLang in lib/i18n.ts.
             lang={quotedLang("sl", locale)}
@@ -713,13 +779,29 @@ export function AnimalFacts({
             // ninety characters, which is more than an eye tracks comfortably.
             // The pills and boxes around it keep the full width; only the
             // running text narrows.
+            //
+            // The clamp counts the line boxes of the paragraphs inside it,
+            // which is what lets the gap between them cost a margin rather
+            // than one of the five lines. Measured the same in Chrome, Firefox
+            // and WebKit on the built export: five lines of text either way,
+            // with the gaps added on top.
             className={cn(
-              "max-w-prose text-sm leading-relaxed whitespace-pre-line",
+              "max-w-prose space-y-2 text-sm leading-relaxed",
               clampDescription && !showFullDescription && "line-clamp-5",
             )}
           >
-            {description}
-          </p>
+            {paragraphs.map((paragraph, index) => (
+              <p
+                // The shelter's own paragraphs, in the order it wrote them:
+                // nothing sorts or filters them, so the position is the
+                // identity.
+                key={index}
+                className="whitespace-pre-line"
+              >
+                {paragraph}
+              </p>
+            ))}
+          </div>
           {clampDescription && (
             <button
               type="button"

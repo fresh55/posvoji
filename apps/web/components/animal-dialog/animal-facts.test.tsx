@@ -63,6 +63,13 @@ function renderFacts(extra: Partial<Animal> = {}, locale: Locale = "sl") {
   );
 }
 
+// The block the shelter's paragraphs are printed in. It is the block and not
+// the paragraphs that carries the clamp, the language and the id the read-more
+// button points at, because the clamp counts lines across all of them.
+function descriptionBlock(): HTMLElement | null {
+  return document.querySelector("[data-slot='animal-description']");
+}
+
 describe("the zdravje row", () => {
   // FIV and FeLV are cat viruses. A dog's record can carry a negative all the
   // same, a field filled in rather than a test run.
@@ -344,7 +351,7 @@ describe("the shelter's own description", () => {
   it("is marked Slovenian on an English page", () => {
     renderFacts({ shortDescription: DESCRIPTION }, "en");
 
-    expect(screen.getByText(DESCRIPTION).getAttribute("lang")).toBe("sl");
+    expect(descriptionBlock()?.getAttribute("lang")).toBe("sl");
   });
 
   it("says nothing about the language on a Slovenian page", () => {
@@ -352,15 +359,13 @@ describe("the shelter's own description", () => {
 
     // The document already declares it, and repeating it here would be one
     // more attribute on 466 pages saying what the html element says.
-    expect(screen.getByText(DESCRIPTION).getAttribute("lang")).toBeNull();
+    expect(descriptionBlock()?.getAttribute("lang")).toBeNull();
   });
 
   it("prints a short description whole", () => {
     renderFacts({ shortDescription: DESCRIPTION });
 
-    expect(screen.getByText(DESCRIPTION).className).not.toContain(
-      "line-clamp-5",
-    );
+    expect(descriptionBlock()?.className).not.toContain("line-clamp-5");
     expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
   });
 
@@ -368,7 +373,7 @@ describe("the shelter's own description", () => {
     const long = DESCRIPTION.repeat(8);
     renderFacts({ shortDescription: long });
 
-    expect(screen.getByText(long).className).toContain("line-clamp-5");
+    expect(descriptionBlock()?.className).toContain("line-clamp-5");
     expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
   });
 
@@ -380,8 +385,8 @@ describe("the shelter's own description", () => {
     const lines = "Muri\nMuca\n3 leta\nSamica\nCepljena\nSterilizirana";
     renderFacts({ shortDescription: lines });
 
-    const paragraph = screen.getByText(/Sterilizirana/);
-    expect(paragraph.className).toContain("line-clamp-5");
+    expect(screen.getByText(/Sterilizirana/)).toBeTruthy();
+    expect(descriptionBlock()?.className).toContain("line-clamp-5");
     expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
   });
 
@@ -389,8 +394,52 @@ describe("the shelter's own description", () => {
     const lines = "Muri\nMuca\n3 leta\nSamica";
     renderFacts({ shortDescription: lines });
 
-    expect(screen.getByText(/Samica/).className).not.toContain("line-clamp-5");
+    expect(screen.getByText(/Samica/)).toBeTruthy();
+    expect(descriptionBlock()?.className).not.toContain("line-clamp-5");
     expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  // The shelters separate paragraphs with a blank line, and printing the whole
+  // text as one pre-line paragraph made that blank line a line of the clamp.
+  // On 33 of the 189 clamped descriptions it was the fifth one, and the clamp
+  // drew its ellipsis alone on an empty line above the button.
+  it("prints the shelter's paragraphs one element each", () => {
+    renderFacts({
+      shortDescription: "NOVI DOM IŠČE ČARLI!\n\nČarli je mešanec.",
+    });
+
+    const paragraphs = descriptionBlock()?.querySelectorAll("p") ?? [];
+    expect(paragraphs.length).toBe(2);
+    expect(paragraphs[0]?.textContent).toBe("NOVI DOM IŠČE ČARLI!");
+    expect(paragraphs[1]?.textContent).toBe("Čarli je mešanec.");
+  });
+
+  it("spends no clamp line on the blank line between paragraphs", () => {
+    // Four lines of text and three blank ones between them: six breaks, which
+    // used to clamp a description the reader can see all of.
+    renderFacts({
+      shortDescription: "Muri\n\nMuca\n\n3 leta\n\nSamica",
+    });
+
+    expect(descriptionBlock()?.className).not.toContain("line-clamp-5");
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  it("counts a run of blank lines as one break", () => {
+    renderFacts({ shortDescription: "Muri\n\n\n\nMuca" });
+
+    expect(descriptionBlock()?.querySelectorAll("p").length).toBe(2);
+  });
+
+  // The breaks inside a paragraph are the shelter's own, and a listing set out
+  // a line at a time is still over the clamp's five lines.
+  it("keeps the single breaks the shelter wrote inside a paragraph", () => {
+    renderFacts({ shortDescription: "Muri\nMuca" });
+
+    const paragraphs = descriptionBlock()?.querySelectorAll("p") ?? [];
+    expect(paragraphs.length).toBe(1);
+    expect(paragraphs[0]?.textContent).toBe("Muri\nMuca");
+    expect(paragraphs[0]?.className).toContain("whitespace-pre-line");
   });
 
   // The button says nothing about what it opens on its own, and the sentence
@@ -400,10 +449,8 @@ describe("the shelter's own description", () => {
     renderFacts({ shortDescription: long });
 
     const button = screen.getByRole("button", { name: "Preberi več" });
-    expect(button.getAttribute("aria-controls")).toBe(
-      screen.getByText(long).id,
-    );
-    expect(screen.getByText(long).id).not.toBe("");
+    expect(button.getAttribute("aria-controls")).toBe(descriptionBlock()?.id);
+    expect(descriptionBlock()?.id).not.toBe("");
   });
 
   // The animal's own page is server-rendered from a whole dataset animal, so
@@ -449,9 +496,98 @@ describe("the shelter's own description", () => {
 
     renderFacts();
 
-    const paragraph = await screen.findByText(/Zelo prijazna muca/);
-    expect(paragraph.className).toContain("line-clamp-5");
+    expect(await screen.findByText(/Zelo prijazna muca/)).toBeTruthy();
+    expect(descriptionBlock()?.className).toContain("line-clamp-5");
     expect(screen.getByRole("button", { name: "Preberi več" })).toBeTruthy();
+  });
+});
+
+// Two dogs at Horjul have the photographer's credit as their whole
+// description. Sixteen more carry the same line after a real one, where it is
+// the sign-off the shelter meant it as.
+describe("a description that is only a photo credit", () => {
+  it("draws no paragraph for it", () => {
+    renderFacts({ name: "Mia", shortDescription: "Foto Anja Troha" });
+
+    expect(descriptionBlock()).toBeNull();
+    expect(screen.queryByText(/Anja Troha/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Preberi več" })).toBeNull();
+  });
+
+  it("drops it whichever way the shelter punctuated it", () => {
+    renderFacts({ shortDescription: "Fotografije: Anja Troha" });
+
+    expect(descriptionBlock()).toBeNull();
+  });
+
+  it("keeps the credit that follows a real description", () => {
+    const description = "Miško išče dom.\n\nFoto Anja Troha";
+    renderFacts({ shortDescription: description });
+
+    expect(screen.getByText("Miško išče dom.")).toBeTruthy();
+    expect(screen.getByText("Foto Anja Troha")).toBeTruthy();
+  });
+
+  // The word at the front is not enough on its own: the rest has to be a name
+  // and nothing else.
+  it("keeps a description that merely starts with the word", () => {
+    const description = "Fotogeničen Miško išče nov dom";
+    renderFacts({ shortDescription: description });
+
+    expect(screen.getByText(description)).toBeTruthy();
+  });
+});
+
+// Six listings name more than one animal, and one row of pills has one age,
+// one sex and one size to give for all of them.
+describe("a listing that names several animals", () => {
+  const SEVERAL = {
+    approximateAgeMonths: 84,
+    sex: "female",
+    size: "medium",
+  } satisfies Partial<Animal>;
+
+  it("leaves the age, the sex and the size to the shelter's text", () => {
+    renderFacts({ name: "DISEL, LYANN, LUNA", ...SEVERAL });
+
+    expect(
+      screen.queryByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeNull();
+  });
+
+  it("reads a pair joined by in the same way", () => {
+    renderFacts({ name: "Bria in Brin", ...SEVERAL });
+
+    expect(
+      screen.queryByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeNull();
+  });
+
+  it("keeps the health pills, which answer for the listing as a whole", () => {
+    renderFacts({
+      name: "Iris in Melisa",
+      ...SEVERAL,
+      medical: { fiv: "negative", felv: "negative" },
+    });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    expect(within(row).getByText("Brez FIV")).toBeTruthy();
+  });
+
+  it("leaves a name of two words alone", () => {
+    renderFacts({ name: "Peter Zajec", ...SEVERAL });
+
+    expect(
+      screen.getByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeTruthy();
+  });
+
+  it("leaves a name the shelter wrote a description into alone", () => {
+    renderFacts({ name: "brezrepa tritačka Luna", ...SEVERAL });
+
+    expect(
+      screen.getByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeTruthy();
   });
 });
 

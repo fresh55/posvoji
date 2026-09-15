@@ -53,6 +53,7 @@ import {
 } from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import type { ShelterPhones } from "@/lib/shelters";
+import { cn } from "@/lib/utils";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
 export type DialogPhotoRect = {
@@ -115,6 +116,21 @@ const CONTENT_CLASS =
 // inside the card's rounded corner, under the next arrow.
 const CARD_CLASS =
   "relative flex flex-1 flex-col gap-4 p-4 desktop-box:min-h-0 desktop-box:scroll-pt-20 desktop-box:overflow-y-auto desktop-box:rounded-ui desktop-box:border desktop-box:bg-popover desktop-box:bg-clip-padding desktop-box:p-6 desktop-box:pt-12 desktop-box:text-popover-foreground desktop-box:shadow-lg desktop-box:[scrollbar-width:thin]";
+
+// Room for the close button on the photo, which is fixed to the top right of
+// the phone shell while the whole card scrolls under it. At 390px it stood
+// over the last two or three characters of two lines of a description, and
+// the shelter's running text is the only thing in the card whose lines reach
+// that far right: the pills wrap short of it and the boxes end in a border,
+// not in a word. So the text keeps clear of the button's column instead of
+// the card reserving 44px of its width everywhere, the same way max-w-prose
+// already keeps it clear of the dialog's full width. 44px is the button, and
+// the 8px it is inset by is the air between them.
+//
+// Here rather than in animal-facts.tsx because the button is the dialog's:
+// the animal's own page draws the same paragraph with nothing over it.
+const DESCRIPTION_GUTTER =
+  "phone-shell:[&_[data-slot=animal-description]]:pe-11";
 
 // The card and the two edge arrows, which are drawn half outside it. The
 // arrows are absolute against this box, so it is the one that carries the pull
@@ -633,7 +649,7 @@ export function AnimalDialog({
                 <div
                   ref={cardRef}
                   data-slot="animal-dialog-card"
-                  className={CARD_CLASS}
+                  className={cn(CARD_CLASS, DESCRIPTION_GUTTER)}
                   // The whole handler is one clamp and one custom property
                   // written on the frame above, so a scroll neither renders
                   // anything nor reads any layout back. Below sm this box is

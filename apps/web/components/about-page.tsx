@@ -195,8 +195,18 @@ export function AboutPage({ locale }: { locale: Locale }) {
                   {point.body}
                 </ItemDescription>
                 {point.link && (
-                  <a href={point.link.href} className={`${MUTED_LINK} w-fit rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4`}>
+                  // The policy lives in the repository, so this leaves the
+                  // site. target="_blank" announces nothing on its own, which
+                  // is why the accessible name carries the sentence, the way
+                  // the footer and the shelter cards do.
+                  <a
+                    href={point.link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${MUTED_LINK} w-fit rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4`}
+                  >
                     {point.link.label}
+                    <span className="sr-only"> {messages.newWindow}</span>
                   </a>
                 )}
               </ItemContent>
@@ -233,6 +243,8 @@ export function AboutPage({ locale }: { locale: Locale }) {
             <a href={REPO_URL} target="_blank" rel="noreferrer">
               <GithubMark />
               {text.code}
+              {/* The page's other way out of the site, said the same way. */}
+              <span className="sr-only"> {messages.newWindow}</span>
             </a>
           </Button>
         </div>

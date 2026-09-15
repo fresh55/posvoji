@@ -528,6 +528,14 @@ describe("how much of the grid is drawn", () => {
     // with the unmounted button.
     expect(screen.getAllByRole("article")).toHaveLength(beyond.length);
     expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    // The count the button stood over stays behind and finishes itself. It
+    // used to go with the button, which left the grid ending on blank space
+    // with the counter stopped partway and nothing saying that was the lot.
+    expect(
+      screen.getByText(
+        `Konec seznama. ${beyond.length} od ${beyond.length} živali.`,
+      ),
+    ).toBeTruthy();
     const firstAdded = screen.getAllByRole("article")[drawn];
     // The card's own name link, and not simply its first anchor. The photo
     // block comes first in every card and its anchor is decorative: it is

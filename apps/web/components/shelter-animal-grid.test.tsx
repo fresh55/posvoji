@@ -124,6 +124,22 @@ describe("how much of a shelter's grid is drawn", () => {
     expect(screen.getAllByRole("article")).toHaveLength(many.length);
   });
 
+  // Most shelters in the register are this size. Their whole list is on the
+  // page from the first render, so no button and no count was ever drawn, and
+  // a line announcing the end of a list nobody watched grow would be the grid
+  // talking about itself.
+  it("says nothing under a list that fit in the first render", () => {
+    stubGridColumns(columnTracks(2));
+    stubIntersectionObserver();
+    const { container } = renderGrid(shelterAnimals(12));
+
+    expect(screen.getAllByRole("article")).toHaveLength(12);
+    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    expect(screen.queryByText(/Konec seznama/)).toBeNull();
+    expect(screen.queryByText(/od 12 živali/)).toBeNull();
+  });
+
   it("swaps the sentinel for a button that says how much is left", () => {
     stubGridColumns(columnTracks(2));
     const { callbacks } = stubIntersectionObserver();
@@ -152,6 +168,11 @@ describe("how much of a shelter's grid is drawn", () => {
     // body with the unmounted button.
     expect(screen.getAllByRole("article")).toHaveLength(many.length);
     expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    // The line the button stood over stays and finishes the count, so the
+    // list ends in a sentence rather than in blank space above the footer.
+    expect(
+      screen.getByText(`Konec seznama. ${many.length} od ${many.length} živali.`),
+    ).toBeTruthy();
     const first = screen.getAllByRole("article")[drawn];
     expect(document.activeElement).toBe(
       within(first).getByRole("link", { name: /Muca/ }),

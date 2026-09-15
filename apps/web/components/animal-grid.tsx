@@ -444,9 +444,21 @@ export function AnimalGrid({
         // footer block is taller than the dock's band, so the grid's clearance
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
+        // minmax(0,1fr) and not 1fr. A grid track sized 1fr takes its
+        // automatic minimum from its content, so the results column could
+        // never be narrower than the widest thing in it, and what is in it is
+        // a toolbar whose species tabs and sort control state their sizes in
+        // rem. At the text size WCAG 1.4.4 asks a page to survive, 200%, that
+        // toolbar wants 1122px beside a 448px rail: the column refused to
+        // shrink, the grid overflowed the frame, and the whole document
+        // scrolled sideways - 1698px of it in a 1440px window, and the same
+        // 1698px in a 1024px one, where it is two thirds of the page again.
+        // A floor of 0 lets the column take the room that is left, and the tab
+        // strip inside it then does what it already does on a phone, which is
+        // scroll and fade its own edges.
         className={cn(
           hasSidebar &&
-            "lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-column-gap",
+            "lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-column-gap",
         )}
       >
         {/* The page went from its h1 straight to one h3 per card, so there was

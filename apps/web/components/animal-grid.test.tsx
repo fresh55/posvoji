@@ -380,6 +380,21 @@ describe("a filter with nothing left to narrow", () => {
   });
 });
 
+describe("the results column", () => {
+  it("is allowed to be narrower than the toolbar inside it", () => {
+    // A 1fr track cannot shrink below its content's minimum, and the toolbar
+    // in this column sizes itself in rem: at 200% browser text the column
+    // held its full width, the grid overflowed the frame and the document
+    // scrolled sideways at every desktop width. jsdom applies no stylesheet,
+    // so what is pinned here is the track, which is where the floor has to be
+    // stated - the column's own children cannot lift it.
+    const { container } = renderGrid(ANIMALS);
+
+    const results = container.querySelector('[data-slot="results"]')!;
+    expect(results.className).toContain("lg:grid-cols-[14rem_minmax(0,1fr)]");
+  });
+});
+
 describe("the pre-hydration mark", () => {
   it("comes off once the grid has rendered the address it was opened at", () => {
     // The layout's inline script puts it on before anything paints, because a

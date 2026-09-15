@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { type Animal, Dataset } from "@posvoji/schema";
 import type { ClientAnimal } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
+import { displayName } from "@/lib/animal-name";
 
 const datasetPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -38,6 +39,11 @@ let refusal: Error | undefined;
 // looks exactly the same on the page and is not the same thing at all. So:
 // missing stays null, and a file that is there but will not parse or will not
 // validate stops the build with what is wrong with it.
+//
+// What comes back is the file with one thing settled: a name a shelter typed
+// in block capitals is handed on in the case a page prints it (asDisplayed
+// below). Here because this is the one door every surface reads the dataset
+// through, and a dozen of them print a name.
 //
 // What that guards against is not a torn write. apps/ingest validates with
 // Dataset.parse before writing and writes through writeFileAtomic, which
@@ -85,8 +91,25 @@ export function loadDataset(): Dataset | null {
     throw refusal;
   }
 
-  cached = parsed.data;
+  cached = { ...parsed.data, animals: parsed.data.animals.map(asDisplayed) };
   return cached;
+}
+
+/**
+ * The one place the dataset's own spelling of a name is turned into the one
+ * every surface prints (displayName in lib/animal-name.ts).
+ *
+ * Here and not at a card, a heading or a share text, because the site has a
+ * dozen places that print a name and they would have to agree. The dataset on
+ * disk is untouched, and so is anything derived from a name rather than read
+ * off it: slugs lower-case before they build a path, so an address written
+ * against the shelter's spelling still resolves. The animal is only copied
+ * where its name actually changes, which is 29 of 486.
+ */
+function asDisplayed(animal: Animal): Animal {
+  if (animal.name === undefined) return animal;
+  const name = displayName(animal.name);
+  return name === animal.name ? animal : { ...animal, name };
 }
 
 /**

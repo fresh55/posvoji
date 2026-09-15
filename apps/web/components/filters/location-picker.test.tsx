@@ -292,6 +292,33 @@ describe("LocationPicker typed location", () => {
     expect(screen.getAllByText(/Ni zadetkov za/).length).toBeGreaterThan(0);
   });
 
+  it("lets the place row answer a postcode, with no empty list under it", async () => {
+    const input = await openPicker();
+
+    type(input, "1000");
+
+    // A postcode is the one input that cannot have been a shelter's name, so
+    // the list narrowing to none is not news about it. Drawn anyway, "Ni
+    // zadetkov za »1000«" over a Počisti iskanje button read as "no such
+    // place" about the place the row above had just found, and offered to
+    // clear the only input that had worked.
+    expect(screen.getByRole("button", { name: /^V bližini / })).toBeTruthy();
+    expect(screen.queryByText(/Ni zadetkov za/)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Počisti iskanje" }),
+    ).toBeNull();
+  });
+
+  it("keeps the empty list for a query that found no place either", async () => {
+    const input = await openPicker();
+
+    type(input, "qqqqq");
+
+    // Nothing else on screen is answering, so the block is the answer.
+    expect(screen.queryByRole("button", { name: /^V bližini / })).toBeNull();
+    expect(screen.getAllByText(/Ni zadetkov za/).length).toBeGreaterThan(0);
+  });
+
   it("still names a postcode that resolves to nothing", async () => {
     const input = await openPicker();
 
@@ -761,6 +788,18 @@ describe("LocationPicker search announcement", () => {
       .find((node) => !node.classList.contains("sr-only"))!;
     expect(drawn.textContent).toContain("zzzzz");
     expect(live()).toContain("Ni zadetkov za »zzzzz«");
+  });
+
+  it("announces the place it found rather than the list it emptied", async () => {
+    await openPicker();
+    const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
+
+    type(search, "1000");
+
+    // The drawn answer is the place row, so that is what is announced. The
+    // two must not disagree; see the empty state's own test above.
+    expect(live()).toContain("V bližini Ljubljana");
+    expect(live()).not.toContain("Ni zadetkov");
   });
 
   it("goes quiet again when the query is cleared", async () => {

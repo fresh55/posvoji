@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import type { LocationPickerController } from "./controller";
 
 export function PickerShelterList({ controller }: { controller: LocationPickerController }) {
-  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen } = controller;
+  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, placeOnly } = controller;
   const offGroupList = (
     <ShelterRows
       rows={visibleOffRows.map((row) => ({
@@ -30,8 +30,14 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                   data-picker-list-scroll
                   className="mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 [scrollbar-width:thin]"
                 >
+                  {/* placeOnly: the query resolved to a place, and the row
+                      above the list is the answer to it. A postcode cannot
+                      have been a shelter's name, so an empty list is not news
+                      about it, and saying so here reads as "no such place"
+                      about the place just found. See the controller. */}
                   {visibleRows.length === 0 &&
-                  visibleOffRows.length === 0 ? (
+                  visibleOffRows.length === 0 &&
+                  !placeOnly ? (
                     <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
                       <p className="text-sm text-muted-foreground">
                         {messages.noSheltersFound} »{query.trim()}«

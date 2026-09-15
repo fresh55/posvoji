@@ -284,8 +284,11 @@ describe("mobile filter hardening", () => {
     expect(mobileTab.closest('[data-slot="drawer-content"]')).toBe(null);
 
     // The pills are drawn smaller than a finger, so each carries the shared
-    // utility that grows the tap target around the drawing.
-    expect(mobileTab.className).toContain("max-lg:tap-target");
+    // utility that grows the tap target around the drawing. Gated on the
+    // pointer and not the width: measured at 1180x820 with a coarse pointer
+    // every tab was 28px, because the copy drawn there is the desktop one and
+    // the width gate had already let go.
+    expect(mobileTab.className).toContain("pointer-coarse:tap-target");
 
     // Sort is on this row too, from md up. At 768 the row is 720px and the
     // tabs end at 384, so the 336px after them were empty while the tablet
@@ -323,6 +326,36 @@ describe("mobile filter hardening", () => {
     expect(live?.closest(".sr-only")).toBeTruthy();
   });
 
+  it("keeps a flick off the end of the tab strip out of the browser's back gesture", () => {
+    renderFilters({
+      speciesTally: { all: 2, dog: 1, cat: 1, other: 0 },
+      speciesRoster: { all: 2, dog: 1, cat: 1, other: 0 },
+      ...SEX_GROUP,
+      shelterTally: new Map([["test", 2]]),
+      resultCount: 2,
+    });
+
+    const mobileToolbar = document.querySelector(
+      '[data-slot="mobile-toolbar"]',
+    ) as HTMLElement;
+    const strip = mobileToolbar.querySelector(
+      "[data-scroll-strip]",
+    ) as HTMLElement;
+
+    // At 320 the strip is 360px inside 288, so reaching the fourth species
+    // means flicking into the end of it, and an uncontained sideways
+    // overscroll is handed to the browser as back/forward.
+    expect(strip.className).toContain("overscroll-x-contain");
+
+    // Bare buttons, so neither of these comes from ui/button. Walking
+    // Vse -> Psi -> Mačke is the fastest double tap in the product.
+    const mobileTab = within(mobileToolbar).getByRole("button", {
+      name: /^Dogs/,
+    });
+    expect(mobileTab.className).toContain("touch-manipulation");
+    expect(mobileTab.className).toContain("select-none");
+  });
+
   it("announces the active filter count and keeps a mobile-sized close target", async () => {
     renderSheet({ activeCount: 2 });
 
@@ -334,6 +367,13 @@ describe("mobile filter hardening", () => {
     expect((await screen.findByRole("button", { name: "Close" })).className).toContain(
       "size-11",
     );
+
+    // ui/drawer halves that button to 32px from sm, which is a width and not a
+    // hand: on a 768 tablet and on a landscape phone the one way out of this
+    // sheet that is not a gesture measured 32x32. The primitive is shared and
+    // this is its only caller, so the override rides on the content.
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.className).toContain("[&>button]:pointer-coarse:size-11");
   });
 
   it("scrolls the body inside its own overflow element, separate from the drawer content", async () => {
@@ -527,10 +567,10 @@ describe("mobile filter hardening", () => {
     const removeDogs = screen.getByRole("button", {
       name: "Remove filter Dogs",
     });
-    // lg and not md: the chips share a bar with the species tabs and the sort,
-    // and those two grow their reach at lg. At md this one bar mixed 44px
-    // targets with 28px ones across the tablet band.
-    expect(removeDogs.className).toContain("max-lg:min-h-11");
+    // The pointer and not the width: the bar's other controls ask the same
+    // question now, and at 1180x820 with a coarse pointer every pill in this
+    // row measured 28px while a 1024px mouse window was getting 44.
+    expect(removeDogs.className).toContain("pointer-coarse:min-h-11");
     // One pill shape in the bar. rounded-full is reserved for counts now.
     expect(removeDogs.className).toContain("rounded-ui");
     expect(removeDogs.className).not.toContain("rounded-full");
@@ -539,7 +579,7 @@ describe("mobile filter hardening", () => {
 
     // And the row still keeps adjacent pills apart.
     expect(removeDogs.closest("span")?.parentElement?.className).toContain(
-      "max-lg:gap-2",
+      "pointer-coarse:gap-2",
     );
   });
 

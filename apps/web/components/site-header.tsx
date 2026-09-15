@@ -93,8 +93,10 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
           // added to this row cannot take the focus either.
           data-brand
           // The primary way home, and the logo drew it 40px tall. The utility
-          // grows the tappable box without moving the drawing.
-          className="flex min-w-0 max-lg:tap-target items-center gap-2 font-medium tracking-tight"
+          // grows the tappable box without moving the drawing. On the pointer,
+          // so a touch tablet past lg gets the box too: it hit-tested 40px
+          // there while a 1024px mouse window got 44.
+          className="flex min-w-0 pointer-coarse:tap-target items-center gap-2 font-medium tracking-tight"
           aria-label="posvoji.si"
         >
           <Logo className="h-10 w-auto shrink-0" />

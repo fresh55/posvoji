@@ -26,6 +26,7 @@ import {
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { useDesktopBreakpointClose } from "@/hooks/use-desktop-breakpoint-close";
+import { usePickerHistory } from "@/hooks/use-picker-history";
 import type {
   FilterOption,
   Filters,
@@ -227,6 +228,18 @@ export function FilterSheet({
   // It closes through the same path as everything else.
   useDesktopBreakpointClose(open, close);
 
+  // The Android back button and the iOS edge swipe are how a phone dismisses
+  // whatever is on top, and without an entry of its own the sheet was not on
+  // top of anything: one back from the open sheet left the results page
+  // altogether, taking the filter with it, and on a tab that opened on the
+  // list it closed the tab. The hook pushes one temporary entry and pops it on
+  // every other close path, so the two cannot get out of step. Filter writes
+  // are `replace` (use-animal-filters.ts), so the entry under this one is the
+  // previous page rather than the unfiltered list; the hook restores the
+  // address it left on, which is why a choice made in the sheet survives the
+  // gesture that dismissed it.
+  usePickerHistory(open, close);
+
   return (
     <Drawer
       open={open}
@@ -281,7 +294,14 @@ export function FilterSheet({
         // globals.css) the cap lifts to almost the full height instead,
         // leaving a small strip of the page as the only sign a sheet opened
         // over it. Portrait phones stay on the 72dvh cap.
-        className="flex max-h-[72dvh] flex-col gap-0 pt-1 short:max-h-[calc(100dvh-2rem)]"
+        //
+        // The close button is ui/drawer's own, and it halves to 32px from sm,
+        // which is a width and not a hand: on a 768 tablet and on a landscape
+        // phone the one way out of this sheet that is not a gesture measured
+        // 32x32. The override is spelled here because the primitive is shared
+        // and this is its only caller; `> button` is that close button, the
+        // only direct button child the content has.
+        className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
       >
         {/* The species tabs used to repeat here, but the visitor just used
             that same row in the sticky bar behind the trigger to get here, so

@@ -47,6 +47,7 @@ import {
   type MunicipalityGuess,
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
+import { SOURCE_LINK } from "@/lib/link-styles";
 
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
@@ -131,7 +132,7 @@ function NearestRow({
       <span className="min-w-0 text-sm">
         <a
           href={shelter.detailHref}
-          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+          className={SOURCE_LINK}
         >
           {shelter.shelterName}
         </a>
@@ -478,6 +479,12 @@ export function MunicipalityFinder({
           <Input
             ref={searchRef}
             type="search"
+            // What the phone keyboard opens as and what its return key says,
+            // the same two the picker's twin field sets (picker-search.tsx).
+            // The box takes an obcina name or a postcode, so the keyboard is
+            // the text one and not the number pad.
+            inputMode="text"
+            enterKeyHint="search"
             role="combobox"
             autoComplete="off"
             aria-autocomplete="list"
@@ -565,7 +572,13 @@ export function MunicipalityFinder({
             // needs; the wider padding there was what cut the placeholder
             // short of its own field.
             className={cn(
-              "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm [&::-webkit-search-cancel-button]:appearance-none",
+              // The narrower padding belongs to the fine pointer alone, rather
+              // than to lg with the coarse case restoring the base value: the
+              // two trailing buttons are 44px on a touch tablet where the
+              // desktop row gives them 32, and 80px of padding does not hold
+              // both, so the placeholder ran under them at 1180 with a coarse
+              // pointer. Stated once, the base cannot drift from its exception.
+              "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:text-sm lg:pointer-fine:pr-20 [&::-webkit-search-cancel-button]:appearance-none",
               labelledLocation && FIELD_LABELLED_PADDING,
             )}
           />
@@ -594,7 +607,7 @@ export function MunicipalityFinder({
                   searchRef.current?.focus();
                 }}
                 aria-label={messages.clearSearch}
-                className="text-muted-foreground max-lg:size-11"
+                className="text-muted-foreground pointer-coarse:size-11"
               >
                 <X className="size-4" aria-hidden />
               </Button>
@@ -635,9 +648,13 @@ export function MunicipalityFinder({
                     // is 40px, and the one control a thumb reaches for on
                     // this page cannot be under 44.
                     className={cn(
-                      labelledLocation
-                        ? "max-lg:h-11 max-lg:w-auto max-lg:min-w-11 max-lg:gap-1.5 max-lg:px-3"
-                        : "max-lg:size-11",
+                      // The shape is the label's business and stays on the
+                      // width that draws it; the 44 is the finger's and asks
+                      // the pointer. min-w-11 keeps the icon-only collapse on
+                      // a square rather than the 40px its padding and arrow
+                      // come to.
+                      "pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                      labelledLocation && "max-lg:w-auto max-lg:gap-1.5 max-lg:px-3",
                       state.status === "on"
                         ? "bg-muted text-foreground"
                         : "text-muted-foreground",
@@ -794,7 +811,7 @@ export function MunicipalityFinder({
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => pick(entry.name)}
                     className={cn(
-                      "flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 max-lg:min-h-11 max-lg:items-center",
+                      "flex w-full items-baseline justify-between gap-3 rounded-ui px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 pointer-coarse:min-h-11 pointer-coarse:items-center",
                       highlightedIndex === index && "bg-muted",
                     )}
                   >
@@ -875,7 +892,7 @@ export function MunicipalityFinder({
                       <p className="text-sm">
                         <a
                           href={hero.detailHref}
-                          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+                          className={SOURCE_LINK}
                         >
                           {hero.shelterName}
                         </a>
@@ -889,7 +906,7 @@ export function MunicipalityFinder({
                           and the same second button for the hours the first
                           number is not answered. */}
                       <div className="space-y-2">
-                        <Button asChild className="w-full max-lg:h-11">
+                        <Button asChild className="w-full pointer-coarse:h-11">
                           <a href={telHref(hero.phone)}>
                             <Phone className="size-4 shrink-0" aria-hidden />
                             {t("muniCall", { phone: hero.phone })}
@@ -899,7 +916,7 @@ export function MunicipalityFinder({
                           <Button
                             asChild
                             variant="outline"
-                            className="w-full max-lg:h-11"
+                            className="w-full pointer-coarse:h-11"
                           >
                             <a href={telHref(hero.onCallPhone)}>
                               <Phone className="size-4 shrink-0" aria-hidden />
@@ -931,7 +948,7 @@ export function MunicipalityFinder({
                             <Button
                               asChild
                               variant="outline"
-                              className="max-lg:h-11"
+                              className="pointer-coarse:h-11"
                             >
                               <a href={telHref(number)}>
                                 <Phone aria-hidden />
@@ -1005,7 +1022,7 @@ export function MunicipalityFinder({
                 href={LAW_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
+                className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground pointer-coarse:tap-target"
               >
                 {messages.muniCostSource}
                 {/* The mark is drawn for everyone who can see it; the

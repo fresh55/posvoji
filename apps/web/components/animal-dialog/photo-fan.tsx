@@ -234,7 +234,10 @@ export function Fan(props: FanProps) {
               // The badge clips its own children, and the hit area below is
               // drawn outside its edges. Nothing else in here overflows.
               "pointer-events-auto cursor-pointer overflow-visible",
-              "after:absolute after:-inset-2 pointer-coarse:after:-inset-3",
+              // 14px a side on a finger, not 12: the pill is 20px tall, and
+              // 12 left the hit area at 43px, one under the bar it is
+              // measured against.
+              "after:absolute after:-inset-2 pointer-coarse:after:-inset-3.5",
             )}
           >
             {/* The name is the only place what this opens is said. A title
@@ -264,7 +267,14 @@ export function Fan(props: FanProps) {
       )}
 
       {/* Over the active photo, in the same box it occupies. Hidden until
-          the fan is hovered or focused, exactly like the card gallery. */}
+          the fan is hovered or focused, exactly like the card gallery.
+
+          pointer-coarse:size-11 because this geometry stands on the 768px
+          tablet too, where icon-sm is a 32px disc for a thumb. They are hidden
+          from a finger that cannot hover, but a hybrid tablet with a mouse
+          reaches them, and keyboard focus draws them on any device. The size
+          is on the pointer and not on the width, so a mouse keeps the small
+          disc at every size. */}
       {geometry.chevrons && count > 1 && (
         <FrontPrintBox box={geometry.photoBox} photo={images[activeIndex]}>
           <Button
@@ -273,7 +283,7 @@ export function Fan(props: FanProps) {
             size="icon-sm"
             onClick={() => step(-1)}
             aria-label={messages.previousPhoto}
-            className={`${GALLERY_BUTTON_CLASS} left-1.5`}
+            className={`${GALLERY_BUTTON_CLASS} left-1.5 pointer-coarse:size-11`}
           >
             <ChevronLeft className="size-4" aria-hidden />
           </Button>
@@ -283,7 +293,7 @@ export function Fan(props: FanProps) {
             size="icon-sm"
             onClick={() => step(1)}
             aria-label={messages.nextPhoto}
-            className={`${GALLERY_BUTTON_CLASS} right-1.5`}
+            className={`${GALLERY_BUTTON_CLASS} right-1.5 pointer-coarse:size-11`}
           >
             <ChevronRight className="size-4" aria-hidden />
           </Button>

@@ -284,9 +284,11 @@ describe("MunicipalityFinder empty state", () => {
 
     // With the name hidden the button is down to its padding and its arrow,
     // which is 40px. The floor keeps the one control a thumb reaches for on
-    // this page at 44.
+    // this page at 44, and it asks the pointer rather than the width: a
+    // 1180px tablet is all thumb and had 32px here.
     const button = screen.getByRole("button", { name: LOCATE });
-    expect(button.className).toContain("max-lg:min-w-11");
+    expect(button.className).toContain("pointer-coarse:min-w-11");
+    expect(button.className).toContain("pointer-coarse:min-h-11");
   });
 
   it("keeps the hint short inside the box and the name on the field", () => {

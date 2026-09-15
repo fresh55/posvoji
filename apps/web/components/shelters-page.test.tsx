@@ -63,3 +63,14 @@ describe("shelter directory context", () => {
     expect(screen.getByRole("link", { name: "Prvo zavetišče" })).toBeTruthy();
   });
 });
+// The phone step the five content pages were missing; resources-page's own
+// test says what the ladder is.
+describe("the register's heading", () => {
+  it("steps down on a phone", () => {
+    render(<SheltersPage locale="sl" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).className.split(" "),
+    ).toEqual(expect.arrayContaining(["text-2xl", "sm:text-3xl", "md:text-4xl"]));
+  });
+});

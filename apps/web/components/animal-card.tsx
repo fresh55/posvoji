@@ -16,7 +16,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
-import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
+import { FAN_PHOTO_SIZES, FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import {
   CARD_PHOTO_ASPECT,
@@ -293,6 +293,7 @@ export function AnimalCard({
           // import of photo-spread here would pull the whole fan into the
           // grid's bundle.
           warmSizes={FAN_PHOTO_SIZES}
+          warmSideSizes={FAN_SIDE_PHOTO_SIZES}
           tone={settled ? QUIET_PHOTO : undefined}
           // What the empty frame draws above its caption, for an animal the
           // shelter published without a photo. A frame holding one grey

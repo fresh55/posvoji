@@ -111,6 +111,21 @@ describe("the header's inline nav", () => {
     ).toEqual(["/en/shelters", "/en/found-animal", "/en/about"]);
   });
 
+  // Sized on what the device has and not on how wide it is. The row only
+  // renders from lg, so a 1180px tablet was the one place it could be pressed
+  // and it drew 20px there; the overlay is the utility in globals.css.
+  it("gives each link a finger's box on a coarse pointer", () => {
+    render(
+      <I18nProvider locale="sl">
+        <SiteNav />
+      </I18nProvider>,
+    );
+
+    for (const link of screen.getAllByRole("link")) {
+      expect(link.className.split(" ")).toContain("pointer-coarse:tap-target");
+    }
+  });
+
   it("keeps the login out of the row of destinations", () => {
     render(
       <I18nProvider locale="sl">
@@ -140,6 +155,19 @@ describe("the shelter login", () => {
     const link = screen.getByRole("link", { name: "Prijava za zavetišča" });
     expect(link.getAttribute("href")).toBe("/portal/prijava");
     expect(link.textContent).toBe("Prijava za zavetišča");
+  });
+
+  // 32px at size sm, which is a mouse's button, and on a touch tablet this is
+  // the only door to the portal on the page.
+  it("stands 44px tall on a coarse pointer", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterLogin />
+      </I18nProvider>,
+    );
+
+    const link = screen.getByRole("link", { name: "Prijava za zavetišča" });
+    expect(link.className.split(" ")).toContain("pointer-coarse:h-11");
   });
 
   it("sends the English visitor to the same Slovenian portal", () => {

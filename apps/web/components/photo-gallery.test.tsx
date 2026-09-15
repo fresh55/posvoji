@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { Dog, type LucideIcon } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +14,7 @@ import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import type { ClientAnimal } from "@/lib/animal";
-import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
+import { FAN_PHOTO_SIZES, FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer } from "@/test/pointer";
@@ -220,6 +226,19 @@ describe("photo gallery candidates", () => {
 // exact length of it, so they wait longer than it rather than matching it.
 const PAST_DWELL_MS = 500;
 
+// The dwell is a mouse's, and a finger's pointerenter arrives with every
+// touchdown, so which pointer entered is the whole question these tests put.
+// jsdom drops pointerType off the event fireEvent builds, so it is written on
+// by hand the way test/pointer.ts does for the four gesture events. The event
+// sent is pointerover, because React derives onPointerEnter from it and never
+// listens for pointerenter itself; fireEvent.pointerEnter does the same swap,
+// and it is the swap that loses the init this needs.
+function hover(element: Element, pointerType: string) {
+  const event = createEvent.pointerOver(element);
+  Object.defineProperty(event, "pointerType", { value: pointerType });
+  fireEvent(element, event);
+}
+
 describe("photo gallery dwell", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -233,7 +252,7 @@ describe("photo gallery dwell", () => {
     const preloads = capturePreloads();
     const surface = setup({ images: CACHED_FOUR });
 
-    fireEvent.pointerEnter(surface);
+    hover(surface, "mouse");
     // A pointer crossing the grid is not asking for anything, so nothing is
     // fetched until it has stayed.
     expect(preloads).toHaveLength(0);
@@ -245,26 +264,32 @@ describe("photo gallery dwell", () => {
       preloads.filter((image) => image.sizes === CARD_PHOTO_SIZES).map((i) => i.src),
     ).toEqual(["/media/animals/photo-3.webp", "/media/animals/photo-1.webp"]);
 
-    // And the three prints the fan mounts nearest the front, at the sizes the
-    // fan draws them with. The dialog opens on the first photo whatever this
-    // card is showing, so the window is fixed at index 0.
-    const warm = preloads.filter((image) => image.sizes === FAN_PHOTO_SIZES);
-    expect(warm.map((image) => image.src)).toEqual([
+    // And the three prints the fan mounts nearest the front, each at the size
+    // the seat it lands in draws. The dialog opens on the first photo whatever
+    // this card is showing, so the window is fixed at index 0. Warming all
+    // three at the front print's size fetched two rungs the fan never asks
+    // for and left it to request the right ones itself, which is the whole
+    // point of warming.
+    const front = preloads.filter((image) => image.sizes === FAN_PHOTO_SIZES);
+    expect(front.map((image) => image.src)).toEqual([
       "/media/animals/photo-0.webp",
-      "/media/animals/photo-3.webp",
-      "/media/animals/photo-1.webp",
     ]);
+    expect(
+      preloads
+        .filter((image) => image.sizes === FAN_SIDE_PHOTO_SIZES)
+        .map((image) => image.src),
+    ).toEqual(["/media/animals/photo-3.webp", "/media/animals/photo-1.webp"]);
     // The whole ladder, so the browser picks the rung the fan's layout asks
     // for. That is a different file from the card's, which is the entire
     // reason this second warm exists.
-    expect(warm[0].srcset).toContain("/media/animals/photo-0-640.webp 640w");
+    expect(front[0].srcset).toContain("/media/animals/photo-0-640.webp 640w");
   });
 
   it("asks for nothing extra on a gallery that opens no such surface", () => {
     const preloads = capturePreloads();
     const surface = setupPlain({ images: CACHED_FOUR });
 
-    fireEvent.pointerEnter(surface);
+    hover(surface, "mouse");
     vi.advanceTimersByTime(PAST_DWELL_MS);
 
     // The animal's own page mounts this gallery with no warmSizes. Its two
@@ -275,11 +300,52 @@ describe("photo gallery dwell", () => {
     ]);
     expect(preloads.every((image) => image.sizes === "100vw")).toBe(true);
   });
+
+  // pointerenter fires on a touchdown, so the dwell was answering every finger
+  // that landed on a card: three fan-size masters and two card rungs, 304KB
+  // measured on a phone, for a finger that was about to scroll past.
+  it("says nothing about a finger that rests on the card", () => {
+    const preloads = capturePreloads();
+    const surface = setup({ images: CACHED_FOUR });
+
+    hover(surface, "touch");
+    vi.advanceTimersByTime(PAST_DWELL_MS);
+
+    expect(preloads).toHaveLength(0);
+  });
 });
 
 describe("photo gallery swipe", () => {
   beforeEach(() => {
     opened = [];
+  });
+
+  // The neighbours used to be fetched from the pointerdown, before anything
+  // knew which way the finger was going, so every scroll down the grid paid
+  // for two photos of a card it was leaving behind.
+  it("warms the neighbours when the axis locks horizontal, not before", () => {
+    const preloads = capturePreloads();
+    const surface = setup({ images: CACHED_FOUR });
+
+    pointer(surface, "pointerdown", { x: 200, y: 80 });
+    expect(preloads).toHaveLength(0);
+
+    pointer(surface, "pointermove", { x: 200 - FAR - 20, y: 80 });
+    expect(preloads.map((image) => image.src)).toEqual([
+      "/media/animals/photo-3.webp",
+      "/media/animals/photo-1.webp",
+    ]);
+  });
+
+  it("warms nothing for a finger that scrolls the page instead", () => {
+    const preloads = capturePreloads();
+    const surface = setup({ images: CACHED_FOUR });
+
+    pointer(surface, "pointerdown", { x: 200, y: 80 });
+    pointer(surface, "pointermove", { x: 202, y: 240 });
+    pointer(surface, "pointerup", { x: 202, y: 240 });
+
+    expect(preloads).toHaveLength(0);
   });
 
   it("turns the page on a drag past the distance threshold", () => {

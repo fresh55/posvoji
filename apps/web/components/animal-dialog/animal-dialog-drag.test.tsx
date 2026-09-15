@@ -7,6 +7,7 @@ import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
 import { pointer as buildPointer, type PointerKind } from "@/test/pointer";
+import { PHONE_SHELL_QUERY } from "./fan-layout";
 
 // Who owns the dialog's pull-to-close.
 //
@@ -21,15 +22,15 @@ import { pointer as buildPointer, type PointerKind } from "@/test/pointer";
 // Kept apart from animal-dialog.test.tsx on purpose: every gesture in this
 // file needs pointer ids of its own, and that file's helper stamps them all 1.
 
-// The dismiss gesture asks whether it is on the phone layout, and jsdom
-// reports 1024px. The fan reads Tailwind's sm the same way and gets the phone
-// geometry here, which is the layout the gesture belongs to.
-const PHONE_LAYOUT = "(max-width: 639px)";
+// The dismiss gesture asks whether it is on the phone shell, and jsdom
+// reports 1024x768. The fan asks the mirror image of the same question and
+// gets the phone geometry here, which is the layout the gesture belongs to.
+const PHONE_SHELL = PHONE_SHELL_QUERY;
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
   value: vi.fn().mockImplementation((media: string) => ({
-    matches: media === PHONE_LAYOUT,
+    matches: media === PHONE_SHELL,
     media,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),

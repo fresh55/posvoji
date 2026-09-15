@@ -1,5 +1,6 @@
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { CalloutRect } from "./map-callout";
+import { PLATE_MIN_SCALE } from "./map-marker";
 
 // Major regions orient the small country without labelling every narrow shape.
 // The others are named on touch/focus by the map's full callout.
@@ -9,7 +10,17 @@ export function MapRegionNames({ scale, calloutRects }: {
   scale: number;
   calloutRects: CalloutRect[];
 }) {
-  const fontSize = 10.5 / scale;
+  // Rendered pixels, divided back out of the plate's scale so the names are
+  // set at the same size whatever the plate measures.
+  //
+  // 11.5 on a plate under the threshold everything else here measures itself
+  // against. 10.5 is the size the desktop plate was tuned at; on the phone
+  // picker, a 341 x 224 plate, the same names came out the smallest type on
+  // the site, under the 11px floor its other small print keeps, and by then
+  // they are the only thing left on the plate: the paws and the furniture
+  // have already gone at this scale. The collision test below drops whatever
+  // the larger type no longer has room for.
+  const fontSize = (scale < PLATE_MIN_SCALE ? 11.5 : 10.5) / scale;
   const placed: CalloutRect[] = [];
   const overlaps = (a: CalloutRect, b: CalloutRect) =>
     a.x < b.x + b.width && a.x + a.width > b.x &&

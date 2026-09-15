@@ -4,7 +4,12 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
-import { filterCardLayoutClass, filterCardVariants } from "./filter-card";
+import {
+  SHEET_COUNT_CLASS,
+  SIDEBAR_COUNT_CLASS,
+  filterCardLayoutClass,
+  filterCardVariants,
+} from "./filter-card";
 import { SexCards } from "./sex-cards";
 
 afterEach(() => cleanup());
@@ -70,6 +75,29 @@ describe("the filter card's two surfaces", () => {
         );
       }
     }
+  });
+
+  // A tile is a bare button or a toggle item, so it inherits neither of these
+  // from ui/button. Without them a tile computed touch-action: auto and
+  // user-select: auto: two quick narrowings landed inside the double-tap
+  // window and zoomed the page, and a rapid press on a label started a
+  // selection over the sheet.
+  it("answers a finger rather than a double tap", () => {
+    for (const layout of ["sidebar", "sheet"] as const) {
+      const card = filterCardVariants({ layout, selected: false });
+
+      expect(card).toContain("touch-manipulation");
+      expect(card).toContain("select-none");
+    }
+  });
+
+  // 11px is a 224px column's size, not a phone's: in the sheet the count sat
+  // a step under the 12px label it belongs to and was the smallest type on the
+  // page. The sidebar keeps the smaller step because the column is narrow.
+  it("prints the sheet's count a step above the sidebar's", () => {
+    expect(SHEET_COUNT_CLASS).toContain("text-xs");
+    expect(SHEET_COUNT_CLASS).not.toContain("text-2xs");
+    expect(SIDEBAR_COUNT_CLASS).toContain("text-2xs");
   });
 
   // The sidebar is lg-only and mouse-driven, and the panel had two sections

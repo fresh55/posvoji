@@ -68,8 +68,14 @@ export function SitePage({ locale }: { locale: Locale }) {
       {/* relative, for the cat (home-cat.tsx): he is drawn out of flow in
           the corner above the toolbar, so this row keeps its 64px and the
           heading keeps its place. The right padding from md keeps a wrapped
-          title out from under him. */}
-      <div className="relative space-y-1.5 md:pr-56">
+          title out from under him.
+
+          short: is the landscape phone, where he is not drawn at all
+          (home-cat.tsx), so the padding he needs goes with him. Held at
+          844x390 it kept the title in a 572px column, which wrapped both the
+          heading and the meta line and pushed the species tabs down into the
+          fixed dock. */}
+      <div className="relative space-y-1.5 md:pr-56 short:pr-0">
         {/* 600, which is the weight of the card names in the grid under it
             and the weight every page title on the site now carries. At 500
             the title was the lighter of the two, so the page was headed by
@@ -111,8 +117,10 @@ export function SitePage({ locale }: { locale: Locale }) {
           {hasLookup && <FoundAnimalButton />}
           {/* The cat's link, at the row's right end so it stands beside him
               (home-cat.tsx says why it is here and not under him). Hidden
-              with him below md. */}
-          <SreckoLink locale={locale} className="ml-auto hidden md:inline-flex" />
+              wherever he is: below md, and on the landscape phone. Left
+              standing on its own it was a link to a cat nobody could see,
+              and it wrapped the meta row to a second line. */}
+          <SreckoLink locale={locale} className="ml-auto hidden md:inline-flex short:hidden" />
         </div>
         <HomeCat locale={locale} />
       </div>

@@ -33,7 +33,13 @@ import { cn } from "@/lib/utils";
 // menu button is 12px away and carries a 4px overhang of its own, so an
 // overlay here would meet it exactly, abutting rather than overlapping. That
 // is the one case the rule does not settle, so the box stays the grown one and
-// no hit test here changes.
+// no hit test here changes. From lg both halves draw again, still 2px apart,
+// so growing is the right shape at that width too.
+//
+// Gated on the pointer rather than the width, because the width was answering
+// the wrong question: a 1180px tablet drew both halves at 24px while a 1024px
+// laptop window with a mouse got the 44px pair. Measured, not read off the
+// class: 24px before at 1180 with touch.
 //
 // min-w-11 with the height, because 44px is a square and this only ever had
 // the one side of it. The label is two characters, so px-3 brought the box to
@@ -41,7 +47,7 @@ import { cn } from "@/lib/utils";
 // that is easy to miss when the fix is written as a height. Hit-tested at
 // 375px, not read off the class.
 const SWITCH =
-  "rounded-ui px-2 font-normal max-lg:min-h-11 max-lg:min-w-11 max-lg:px-3";
+  "rounded-ui px-2 font-normal pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:px-3";
 
 const LANGUAGES = [
   { locale: "sl", href: "/", shortName: "SL", name: "Slovenščina" },

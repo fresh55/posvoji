@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { LazyMotion, domAnimation } from "motion/react";
@@ -827,5 +828,54 @@ describe("PhotoLightbox focus on the way out", () => {
     // element it saved, which is no longer in the document, and the body keeps
     // focus. The point is that the way out does not throw.
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+// Two layers were live with one history entry between them, so the back
+// gesture that was meant for the photograph took the animal with it: the path
+// went from the animal straight to the list.
+describe("PhotoLightbox the back gesture", () => {
+  afterEach(() => {
+    history.replaceState(null, "", "/");
+  });
+
+  it("takes an entry of its own, so one back leaves the animal standing", async () => {
+    history.replaceState({ animal: "pika" }, "", "/zival/pika/ljubljana/test");
+    const { onOpenChange } = open();
+
+    expect(history.state?.locationPicker).toBeTruthy();
+    // The dialog's own marker is still under it, untouched.
+    expect(history.state?.animal).toBe("pika");
+
+    await act(async () => {
+      history.back();
+    });
+
+    // jsdom delivers popstate as a task of its own, so the close the hook
+    // makes on it is a beat later than the call.
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(location.pathname).toBe("/zival/pika/ljubljana/test");
+    expect(history.state?.locationPicker).toBeUndefined();
+    expect(history.state?.animal).toBe("pika");
+  });
+});
+
+// 36px at sm, with the safe-area insets swapped for a flat 16px: in landscape
+// a notched phone reports 44 to 59px of inset on one side, which put an arrow
+// or the close button under the sensor housing.
+describe("PhotoLightbox chrome", () => {
+  it("sizes on the pointer and keeps the safe area at every width", () => {
+    const { lightbox } = open();
+    const next = within(lightbox).getByRole("button", {
+      name: "Naslednja fotografija",
+    });
+
+    expect(next.className).toContain("size-11");
+    expect(next.className).toContain("pointer-fine:size-9");
+    expect(next.className).not.toContain("sm:size-9");
+    expect(next.className).toContain(
+      "right-[max(1rem,env(safe-area-inset-right))]",
+    );
+    expect(next.className).not.toContain("sm:right-4");
   });
 });

@@ -4,6 +4,7 @@ import type { Ref } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { CARDS_PER_CLICK } from "@/components/grid-rendering";
+import { COARSE_ACTION } from "@/lib/link-styles";
 
 /**
  * The tail of an incrementally drawn grid.
@@ -69,10 +70,11 @@ export function GridLoadMore({
         variant="outline"
         size="sm"
         onClick={showMore}
-        // Real height below lg, not a tap-target overlay: this is the one
-        // control at the bottom of the list, and h-8 is short of what a thumb
-        // needs.
-        className="max-lg:min-h-11 max-lg:px-4"
+        // Real height on a coarse pointer, not a tap-target overlay: this
+        // is the one control at the bottom of the list, and h-8 is short of
+        // what a thumb needs. The pointer and not the width, so a touch tablet
+        // past lg gets it and a narrow mouse window does not.
+        className={COARSE_ACTION}
       >
         {t("showMoreAnimals", { n: Math.min(CARDS_PER_CLICK, total - drawn) })}
       </Button>

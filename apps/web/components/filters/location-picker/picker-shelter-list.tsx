@@ -43,7 +43,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                           setQuery("");
                           searchRef.current?.focus();
                         }}
-                        className="max-lg:min-h-11"
+                        className="pointer-coarse:min-h-11"
                       >
                         {messages.clearSearch}
                       </Button>

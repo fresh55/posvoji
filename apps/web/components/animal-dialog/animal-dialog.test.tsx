@@ -24,20 +24,29 @@ import {
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
+import {
+  DESKTOP_FAN_QUERY,
+  PHONE_SHELL_QUERY,
+} from "./fan-layout";
 
 // The filter dock and the drawer read the viewport before they render, and
-// the dismiss gesture asks whether it is on the phone layout. jsdom reports
-// 1024px, so the phone query is answered yes here whatever the fan is doing.
-const PHONE_LAYOUT = "(max-width: 639px)";
+// the dismiss gesture asks whether it is on the phone shell. jsdom reports
+// 1024x768, so the phone queries are answered yes here whatever the fan is
+// doing. Two of them: the shell asks about width or height, and the share
+// button asks about the width alone, because the platform's own share sheet
+// is a question about the device rather than about this dialog's layout.
+const PHONE_SHELL = PHONE_SHELL_QUERY;
+const PHONE_WIDTH = "(max-width: 639px)";
 
 // The fan mounts one geometry and reads Tailwind's sm to pick it, so which
 // layout a test gets is the test's own to say: fanLayout("phone") before the
 // render, and the afterEach puts the desktop back.
-const FAN_LAYOUT = "(min-width: 640px)";
+const FAN_LAYOUT = DESKTOP_FAN_QUERY;
 
 let desktopFan = true;
 
@@ -48,7 +57,10 @@ function fanLayout(layout: "phone" | "desktop") {
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
   value: vi.fn().mockImplementation((media: string) => ({
-    matches: media === FAN_LAYOUT ? desktopFan : media === PHONE_LAYOUT,
+    matches:
+      media === FAN_LAYOUT
+        ? desktopFan
+        : media === PHONE_SHELL || media === PHONE_WIDTH,
     media,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -64,6 +76,18 @@ class NoopResizeObserver {
 }
 globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
+
+// The fan waits for an idle moment before it warms the tier a step would bring
+// in, and jsdom ships no requestIdleCallback. A task is the nearest thing this
+// environment has to one, and it puts the tests on the path a browser takes
+// rather than on the timeout the fan falls back to without it.
+window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
+  window.setTimeout(
+    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
+    0,
+  )) as typeof window.requestIdleCallback;
+window.cancelIdleCallback ??= ((handle: number) =>
+  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
 
 afterEach(() => {
   cleanup();
@@ -1717,9 +1741,11 @@ describe("animal dialog", () => {
     for (const mounted of ["pika-1", "pika-2", "pika-3", "pika-6", "pika-7"]) {
       expect(asked()).not.toContain(`/media/animals/${mounted}.webp`);
     }
-    // The same ladder and sizes the fan's own photos carry, so the fetch the
-    // step then triggers is a cache hit rather than a second, different file.
-    expect(preloads[0].sizes).toBe("(max-width: 639px) 80vw, 24rem");
+    // The side seat's sizes and not the front's, because a photo walking in
+    // walks into a side seat: the same ladder and the same string that seat's
+    // own print carries, so the fetch the step then triggers is a cache hit
+    // rather than a second, different file.
+    expect(preloads[0].sizes).toBe(FAN_SIDE_PHOTO_SIZES);
     expect(preloads[0].srcset).toContain("-320.webp 320w");
 
     fireEvent.click(
@@ -1946,7 +1972,7 @@ describe("animal dialog", () => {
   // The wash reaches 12% past the stage on each side, which on a phone is 124%
   // of the screen, and the dialog answered with a horizontal scrollbar. jsdom
   // has no layout to measure, so what is pinned is the clip that stops it,
-  // where the overhang stands. The dialog's own max-sm:overflow-x-hidden is
+  // where the overhang stands. The dialog's own phone-shell:overflow-x-hidden is
   // policy for the whole surface, not this fix, so it is not asserted here.
   it("clips the stage wash rather than letting it widen the dialog", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
@@ -2567,12 +2593,38 @@ describe("animal dialog", () => {
       region(dialog, "shelter-block")
         .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
         .className,
-    ).toContain("max-sm:hidden");
+    ).toContain("phone-shell:hidden");
     expect(
       region(dialog, "sticky-cta").getByRole("link", {
         name: /Odpri objavo pri zavetišču/,
       }),
     ).toBeTruthy();
+  });
+
+  // A phone held sideways is 844x390: wide enough for the desktop box and far
+  // too short for it. It used to get that box, which left the facts card a
+  // 98px window to scroll 488px of listing in, with the sticky name row over
+  // most of it. Every phone rule is written for the short viewport as well,
+  // and every desktop rule now asks for the height it needs.
+  it("keeps the phone shell on a short viewport", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+
+    expect(dialog.className).toContain("phone-shell:h-dvh");
+    expect(dialog.className).toContain("phone-shell:overflow-y-auto");
+    expect(dialog.className).toContain("desktop-box:max-h-[92dvh]");
+    // The card is the scrollport on the desktop box alone; on the phone shell
+    // the dialog itself scrolls.
+    const card = dialog.querySelector('[data-slot="animal-dialog-card"]');
+    expect(card?.className).toContain("desktop-box:overflow-y-auto");
+    // The sticky bar stands on a short viewport too, so the box's own button
+    // gives way to it there rather than printing the same link twice.
+    expect(
+      region(dialog, "shelter-block")
+        .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
+        .className,
+    ).toContain("");
   });
 
   // The animal's own page renders the same box with no bar under it, so there
@@ -2591,8 +2643,15 @@ describe("animal dialog", () => {
     const cta = screen.getByRole("link", {
       name: /Odpri objavo pri zavetišču/,
     });
-    expect(cta.className).not.toContain("max-sm:hidden");
-    expect(cta.className).toContain("max-sm:h-11");
+    expect(cta.className).not.toContain("phone-shell:hidden");
+    // On the pointer and not on the width: the 768px tablet, where this is
+    // the only copy of the button, measured 36px under max-sm. A minimum
+    // rather than a height, because the label wraps at a large root font and
+    // a fixed box would have it spill; 36 and 44 are what the two pointers
+    // still measure.
+    expect(cta.className).toContain("pointer-coarse:min-h-11");
+    expect(cta.className).toContain("min-h-9");
+    expect(cta.className).toContain("whitespace-normal");
   });
 
   // The shelter is named on every animal and, until the name became a link,
@@ -2615,6 +2674,30 @@ describe("animal dialog", () => {
     ).toBe("/en/shelters/test-shelter");
   });
 
+  // 17px of name and 16px of phone number, both of them controls: the way to
+  // the shelter's page and the way to call it. A finger gets 44px of each.
+  it("gives the shelter box's two contacts a finger's box", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterBlock
+          animal={REX}
+          logos={{}}
+          phones={{ "test-shelter": "051 304 435" }}
+          reference={new Date(REFERENCE)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /051 304 435/ }).className,
+    ).toContain("pointer-coarse:min-h-11");
+    // The name's own overlay is clipped by the clamp on its line, so the row
+    // carries the height and the link is stretched over it.
+    const name = screen.getByRole("link", { name: "Zavetišče Test" });
+    expect(name.className).toContain("pointer-coarse:after:inset-0");
+    expect(name.closest("p")?.className).toContain("pointer-coarse:py-3");
+  });
+
   // The shelter block replaces the CTA with the good news and a quiet text
   // link for an animal that has left, and the bar was still giving the phone
   // a full-width primary "open the listing" over the top of it.
@@ -2629,7 +2712,7 @@ describe("animal dialog", () => {
     const link = region(dialog, "shelter-block").getByRole("link", {
       name: /Odpri objavo pri zavetišču/,
     });
-    expect(link.className).not.toContain("max-sm:hidden");
+    expect(link.className).not.toContain("phone-shell:hidden");
     expect(within(dialog).getByText("Ta žival je že našla nov dom.")).toBeTruthy();
   });
 

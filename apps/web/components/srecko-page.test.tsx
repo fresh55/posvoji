@@ -72,4 +72,14 @@ describe("recorded dates", () => {
     expect(sreckoHomeDateRange("sl", [{ key: "adopted", date: "2020" }, { key: "died", date: "2019" }])).toBeUndefined();
     expect(sreckoHomeDateRange("sl")).toBeUndefined();
   });
+
+  // The phone step the five content pages were missing; resources-page's own
+  // test says what the ladder is.
+  it("steps the heading down on a phone", () => {
+    render(<SreckoPage locale="sl" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).className.split(" "),
+    ).toEqual(expect.arrayContaining(["text-2xl", "sm:text-3xl", "md:text-4xl"]));
+  });
 });

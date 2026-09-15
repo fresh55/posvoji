@@ -26,6 +26,10 @@ export function LocationPickerView({
     expandedShelter, setExpandedShelter, dropNote, searchRef, pins, label,
     searchNews, sheetOpen, setSheetOpen, panelOpen,
   } = controller;
+  // Below lg the two views are one at a time, and the map view is the one
+  // whose height its content decides. At lg the panel stands beside the map
+  // and both fill the frame, which is what every lg: class below restores.
+  const hugMap = !sheetOpen;
   return (
     <Dialog
       open={open}
@@ -75,7 +79,22 @@ export function LocationPickerView({
         </DialogTrigger>
       )}
       <DialogContent
-        className="flex h-[min(94dvh,52rem)] w-(--picker-w) flex-col [--picker-w:min(94vw,84rem)] max-h-none max-w-none gap-0 overflow-hidden p-0 shadow-xl"
+        className={cn(
+          "flex w-(--picker-w) flex-col [--picker-w:min(94vw,84rem)] max-w-none gap-0 overflow-hidden p-0 shadow-xl",
+          // Top-aligned below lg, where the height is no longer the same in
+          // both views. Centred, a dialog that shrinks re-centres, and the
+          // view switch the visitor just pressed would slide down the screen
+          // under their finger. Pinned, only the bottom edge moves.
+          "max-lg:top-4 max-lg:translate-y-0",
+          // The map is width-bound: a 320 x 210 plate in a 341px column can
+          // only be 224px tall, so reserving the full dialog height for it
+          // left 141px of empty above it and 141 below (measured, 390x844).
+          // Below lg the map view is sized by what it draws instead, and only
+          // the list, which is as long as the roster, keeps the full height.
+          hugMap
+            ? "h-auto max-h-[94dvh] lg:h-[min(94dvh,52rem)] lg:max-h-none"
+            : "h-[min(94dvh,52rem)] max-h-none",
+        )}
         showCloseButton={false}
         closeLabel={messages.close}
         onEscapeKeyDown={(event) => {
@@ -154,14 +173,17 @@ export function LocationPickerView({
           data-picker-stage
           className={cn(
             "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(var(--picker-footer-base)_+_env(safe-area-inset-bottom,0px))]",
+            // A column its two children stand in, rather than a box they are
+            // pinned to the edges of. Only where the height comes from them.
+            hugMap && "max-lg:flex max-lg:flex-col",
             resultCount === 0
               ? selected.length > 0 ? "[--picker-footer-base:10.5rem] sm:[--picker-footer-base:7rem]" : "[--picker-footer-base:8.5rem] sm:[--picker-footer-base:6rem]"
               : selected.length > 0 ? "[--picker-footer-base:7.25rem] sm:[--picker-footer-base:5rem]" : "[--picker-footer-base:4.75rem] sm:[--picker-footer-base:5rem]",
           )}
         >
-          <PickerMapStage controller={controller} />
+          <PickerMapStage controller={controller} hug={hugMap} />
           <PickerDock controller={controller} />
-          <PickerFooter controller={controller} />
+          <PickerFooter controller={controller} hug={hugMap} />
         </div>
       </DialogContent>
     </Dialog>

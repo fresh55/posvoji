@@ -4,10 +4,17 @@ import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { animalCount } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
 
-export function PickerFooter({ controller }: { controller: LocationPickerController }) {
+export function PickerFooter({ controller, hug = false }: {
+  controller: LocationPickerController;
+  /** Whether the stage above is in flow rather than pinned to the dialog's
+   *  edges (view.tsx). The footer follows it: pinned to a box the map no
+   *  longer fills, it would sit under a band of nothing. */
+  hug?: boolean;
+}) {
   const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, resultCount, counts, doneLabel, locale } = controller;
   const copy = pickerText[locale];
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -24,7 +31,13 @@ export function PickerFooter({ controller }: { controller: LocationPickerControl
   return (
     <div
       data-picker-footer
-      className="absolute inset-x-0 bottom-0 z-30 flex h-(--picker-footer-h) flex-col justify-center gap-1 border-t bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+      className={cn(
+        "absolute inset-x-0 bottom-0 z-30 flex h-(--picker-footer-h) flex-col justify-center gap-1 border-t bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+        // shrink-0 with it: in flow on a short screen the stage above yields
+        // its height to a scroller, and this row must not be the thing that
+        // gives way instead, because the primary action stands in it.
+        hug && "max-lg:static max-lg:shrink-0",
+      )}
     >
       {(selectedRows.length > 0 || resultCount === 0) && (
         <div className="flex min-w-0 flex-col gap-2 sm:flex-1">

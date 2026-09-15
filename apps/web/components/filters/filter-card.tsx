@@ -48,8 +48,13 @@ export type FilterCardLayout = "sidebar" | "sheet";
  * takes the attribute over, leaving aria-pressed as the only thing that says
  * the row is chosen. Plain buttons carry aria-pressed and nothing else.
  */
+// touch-manipulation and select-none in the base: a tile is a bare button or a
+// toggle item and inherits neither from ui/button. A tile that computes
+// touch-action: auto keeps the double-tap window open, so two quick narrowings
+// zoom the page instead, and a rapid press on a label starts a selection or
+// raises the iOS callout over the sheet.
 const cardVariants = cva(
-  "group relative min-w-0 overflow-hidden rounded-ui border font-normal outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "group relative min-w-0 touch-manipulation select-none overflow-hidden rounded-ui border font-normal outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       layout: {
@@ -447,6 +452,22 @@ export const SIDEBAR_LABEL_CLASS = "truncate text-xs";
 export const SIDEBAR_COUNT_CLASS =
   "w-8 text-right text-2xs tabular-nums text-muted-foreground";
 
+/**
+ * The same number in the sheet, one step larger.
+ *
+ * 11px is a narrow column's size. The sidebar is 224px wide beside a grid and
+ * can spend the step; the sheet is a phone held at arm's length, and 11px
+ * there was the smallest type on the page under a 12px label it belongs to.
+ * The label was already text-xs in both layouts, so this only stops the count
+ * from sitting a step below the word it counts.
+ *
+ * Exported because the sections that draw their own tile instead of going
+ * through FilterCardTail (sex-cards.tsx, size-paw-cards.tsx) need the same
+ * voice, and hand-copied it drifts: Starost printed 11 over 10 for a release
+ * for exactly that reason.
+ */
+export const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
+
 // Only a flex item can be squeezed by a long label, so shrink-0 rides with the
 // line below rather than with the voice the age grid shares.
 const SIDEBAR_COUNT_FLEX_CLASS = cn(SIDEBAR_COUNT_CLASS, "shrink-0");
@@ -478,7 +499,7 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {renderCount("text-2xs tabular-nums text-muted-foreground")}
+        {renderCount(SHEET_COUNT_CLASS)}
       </>
     );
   }

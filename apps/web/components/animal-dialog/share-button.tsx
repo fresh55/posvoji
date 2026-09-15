@@ -17,8 +17,11 @@ import { cn } from "@/lib/utils";
 
 const CONFIRM_MS = 2000;
 
-// The layout whose share is the platform's own sheet. The same cutoff the
-// dialog's phone layout is drawn at.
+// The layout whose share is the platform's own sheet. The width alone, and no
+// longer the same question the dialog's shell asks: that one counts a short
+// viewport as a phone as well (PHONE_SHELL in animal-dialog.tsx), and a
+// desktop window dragged short is still a mouse, with navigator.share behind
+// it on Windows. It keeps the popover with the copy field and the targets.
 const PHONE_LAYOUT = "(max-width: 639px)";
 
 // The snapshot below is a capability, not a state: nothing ever notifies.
@@ -217,13 +220,17 @@ export function ShareButton({
   // other control on the phone layout was already held to. The close button
   // beside this one carries the same override. The caller's classes come
   // last, so a row can dress this button without losing the floor.
+  //
+  // pointer-coarse:size-11 carries that floor past sm, where a 768px tablet
+  // is all thumb and was getting the 32px disc a mouse gets. The nav arrows
+  // beside it ask the same question (ANIMAL_NAV_CLASS).
   const trigger = (
     <Button
       type="button"
       variant="ghost"
       size="icon-sm"
       aria-label={messages.share}
-      className={cn("size-11 sm:size-8", className)}
+      className={cn("size-11 sm:size-8 pointer-coarse:size-11", className)}
       onClick={phone && canShare ? shareNatively : undefined}
     >
       <Share2 aria-hidden />

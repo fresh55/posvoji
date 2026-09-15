@@ -165,6 +165,21 @@ describe("animal grid empty state", () => {
     ).toBeTruthy();
   });
 
+  it("floors the block below lg so the dock cannot cover the footer", () => {
+    // The filter dock is fixed over the page end below lg, and this state is
+    // short enough that the footer's nav row used to be drawn inside the
+    // dock's band: a tap on "Zavetišča" opened the filter sheet. The floor is
+    // on the block, not on the footer, because the footer's own docked
+    // padding already covers the page end and a second clearance is not the
+    // answer to a short page.
+    window.history.replaceState(null, "", "/?vrsta=ostalo");
+    renderGrid(ANIMALS.filter((a) => a.species !== "rabbit"));
+
+    const block = screen.getByText("Ni zadetkov.").closest("div.py-16");
+    expect(block!.className).toContain("max-lg:min-h-[60dvh]");
+    expect(block!.className).toContain("justify-center");
+  });
+
   it("keeps the generic empty state when no shelter is selected", () => {
     // The rabbit is filtered out, so the Ostale tab matches nobody, and no
     // shelter filter is active, so dropping the shelter group could not
@@ -406,6 +421,17 @@ describe("the pre-hydration mark", () => {
     expect(pending!.getAttribute("aria-hidden")).toBe("true");
     // Six cards and the bar standing in for the toolbar above them.
     expect(pending!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(7);
+  });
+
+  it("holds a screenful so the footer stays under the fold", () => {
+    // Six cards are 613px of a 1321px document on a 390x844 phone, which puts
+    // the footer 70px below the fold and 14px below it on a 932 one; the grid
+    // that replaces them is 9667px, so any of that showing is a shift. The
+    // height is the stand-in's job, not the cards'.
+    const { container } = renderGrid(ANIMALS);
+
+    const pending = container.querySelector('[data-slot="results-pending"]');
+    expect(pending!.className).toContain("min-h-[100dvh]");
   });
 });
 

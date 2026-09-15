@@ -21,6 +21,18 @@ export const HOME_CAT_FRAMING: CatFraming = {
 };
 
 /**
+ * The viewports the poster is worth downloading at, which is exactly the
+ * ones the figure below is drawn at: md and up, minus the landscape phone.
+ *
+ * Written twice, here as a media condition and below as `md:block
+ * short:hidden`, because a class is not a thing markup can ask a media
+ * condition for. `short` is max-height 32rem, so the height this has to
+ * clear is the first one above it.
+ */
+export const HOME_CAT_POSTER_MEDIA =
+  "(min-width: 48rem) and (min-height: 32.01rem)";
+
+/**
  * Srečko in the home page's top right corner, beside the hero.
  *
  * The hero is a heading and one line, 62px tall, and the right half of it
@@ -45,11 +57,21 @@ export const HOME_CAT_FRAMING: CatFraming = {
  *
  * Below md there is no such corner beside a two-line title, and above the
  * title he would push the tabs and the first cards under the fold, so the
- * figure is not drawn there. The poster is still downloaded on phones
- * (2.8KB, low priority: lazy inside display:none was measured and still
- * fetched); the model is gated on intersection in cat-model.tsx and never
- * starts. No posterPriority: the first card photo is this page's largest
- * paint and keeps the bandwidth, measured on both viewports.
+ * figure is not drawn there. The model is gated on intersection in
+ * cat-model.tsx and never starts, and the poster is gated in markup
+ * (posterMedia), because a still inside a display:none figure is fetched all
+ * the same: lazy was measured and made no difference, and the file is 6.2KB
+ * out of the burst the first card photos need. No posterPriority for the
+ * same reason: those photos are this page's largest paint and keep the
+ * bandwidth, measured on both viewports.
+ *
+ * short: is the landscape phone, which is wider than md and has no corner
+ * for him: at 844x390 the header rule and the species tabs are 164px apart
+ * and this stage is 152px of that, so he stood on the tabs. He was also the
+ * reason the hero kept a 224px right padding there, which wrapped the title
+ * and the meta line and pushed the tabs under the fixed dock
+ * (site-page.tsx). Measured at 844x390 before the gate, that phone fetched
+ * the 1.14MB model and the viewer chunk for him.
  *
  * startAfterLoad, because this is the site's entry page and the model is
  * 2.1MB plus 1.3MB of renderer: on the about page he is below the fold and
@@ -58,8 +80,15 @@ export const HOME_CAT_FRAMING: CatFraming = {
  */
 export function HomeCat({ locale }: { locale: Locale }) {
   return (
-    <figure className="absolute right-0 -bottom-section-gap hidden h-38 w-48 md:block">
-      <CatModel locale={locale} className="h-full" sizes="192px" framing={HOME_CAT_FRAMING} startAfterLoad />
+    <figure className="absolute right-0 -bottom-section-gap hidden h-38 w-48 md:block short:hidden">
+      <CatModel
+        locale={locale}
+        className="h-full"
+        sizes="192px"
+        framing={HOME_CAT_FRAMING}
+        posterMedia={HOME_CAT_POSTER_MEDIA}
+        startAfterLoad
+      />
     </figure>
   );
 }

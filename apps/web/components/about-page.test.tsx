@@ -96,4 +96,14 @@ describe("the about page", () => {
       `https://github.com/fresh55/posvoji/blob/main/docs/DATA-POLICY.md${locale === "en" ? "#english-summary" : ""}`,
     );
   });
+
+  // The phone step the five content pages were missing; resources-page's own
+  // test says what the ladder is.
+  it("steps the heading down on a phone", () => {
+    render(<AboutPage locale="sl" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).className.split(" "),
+    ).toEqual(expect.arrayContaining(["text-2xl", "sm:text-3xl", "md:text-4xl"]));
+  });
 });

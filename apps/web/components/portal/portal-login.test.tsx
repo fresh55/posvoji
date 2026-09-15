@@ -94,6 +94,31 @@ function send() {
   fireEvent.click(screen.getByRole("button", { name: portalText.sendLink }));
 }
 
+// The card is filled in on a phone, where 36px is the field and the button a
+// mouse would get. Read off the class, because jsdom runs no media query.
+describe("the card's controls on a coarse pointer", () => {
+  it("stands the field and the button at 44px", () => {
+    render(<PortalLogin />);
+
+    expect(emailBox().className.split(" ")).toContain("pointer-coarse:h-11");
+    expect(
+      screen
+        .getByRole("button", { name: portalText.sendLink })
+        .className.split(" "),
+    ).toContain("pointer-coarse:h-11");
+  });
+
+  it("gives the help line's address a finger's box", () => {
+    render(<PortalLogin />);
+
+    expect(
+      screen
+        .getByRole("link", { name: portalText.contactEmail })
+        .className.split(" "),
+    ).toContain("pointer-coarse:tap-target");
+  });
+});
+
 describe("the address the link is sent to", () => {
   it("refuses an empty box", () => {
     render(<PortalLogin />);

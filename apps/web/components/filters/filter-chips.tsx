@@ -68,16 +68,19 @@ const SCOPE_VISIBLE = 3;
 // thing you press, rounded-full is a count (the Filtri badge, the shelter
 // row's tally, shelter-rows.test.tsx asserts it).
 //
-// Below lg the pill grows to hold a 44px target on its own rather than
-// laying an invisible overlay over a 28px one: an overlay would reach past
-// the pill's edge into the gap and steal the neighbour's first few pixels.
-// lg and not md, matching the species tabs and the sort beside it; at md the
-// same bar mixed 44px targets with 28px ones for reasons nobody could see.
+// On a coarse pointer the pill grows to hold a 44px target on its own rather
+// than laying an invisible overlay over a 28px one: an overlay would reach
+// past the pill's edge into the gap and steal the neighbour's first few
+// pixels.
+//
+// The pointer and not the width. The width gate handed 44px to a 1024px
+// laptop window, which is a mouse, and withheld it from a 1180px tablet,
+// which is a thumb: measured there, every pill in this row was 28px.
 //
 // border-ring with the ring, because this shape has a border to move. The
 // hand-rolled ring-2 was the odd one out against every primitive's ring-3.
 const CHIP_PILL =
-  "inline-flex shrink-0 items-center gap-1.5 rounded-ui border text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring lg:h-7 lg:px-2.5 max-lg:min-h-11 max-lg:px-3";
+  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
 
 // The look a pill wears when pressing it takes its filter off, which is every
 // pill but the "+N".
@@ -378,10 +381,10 @@ export function FilterChips({
         // -my/py pair below is this row's own vertical half of it.
         className={cn(
           SCROLL_STRIP,
-          "min-w-0 max-lg:-my-2.5 max-lg:py-2.5",
+          "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
         )}
       >
-        <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap max-lg:gap-2">
+        <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap pointer-coarse:gap-2">
           <AnimatePresence initial={false} mode="popLayout">
             {items.map((item) => (
               <m.span
@@ -494,7 +497,7 @@ export function FilterChips({
                 onFocus={() => setFocusId("clear")}
                 onClick={clearAll}
                 aria-label={messages.clearAllFilters}
-                className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+                className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
               >
                 {messages.clearAll}
               </button>
@@ -566,7 +569,7 @@ export function UndoOffer({
         type="button"
         onClick={onUndo}
         aria-label={messages.undoClearFilters}
-        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-brand-strong outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui px-2 text-xs text-brand-strong outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
       >
         <Undo2 className="size-3.5" aria-hidden />
         {messages.undoClear}

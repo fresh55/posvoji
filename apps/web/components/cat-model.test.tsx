@@ -126,6 +126,26 @@ describe("the cat model", () => {
     expect(viewer.getAttribute("camera-target")).toBe(framing.target);
   });
 
+  it("downloads the poster everywhere by default and only past a gate when given one", () => {
+    const open = new DOMParser().parseFromString(
+      renderToStaticMarkup(<CatModel sizes="100vw" locale="sl" />), "text/html");
+    expect(open.querySelector("source")).toBeNull();
+    expect(open.querySelector("img")!.getAttribute("src")).toContain("poster.webp");
+
+    const gated = new DOMParser().parseFromString(
+      renderToStaticMarkup(
+        <CatModel sizes="100vw" locale="sl" posterMedia="(min-width: 48rem)" />,
+      ), "text/html");
+    const source = gated.querySelector("source")!;
+    expect(source.getAttribute("media")).toBe("(min-width: 48rem)");
+    expect(source.getAttribute("srcset")).toContain("poster.webp");
+    // Below the gate the browser falls through to the img, so it has to cost
+    // nothing: a still in a display:none figure is downloaded all the same.
+    const fallback = gated.querySelector("img")!.getAttribute("src")!;
+    expect(fallback.startsWith("data:image/gif")).toBe(true);
+    expect(fallback).not.toContain("poster.webp");
+  });
+
   it("puts the poster first only where it is the largest paint", () => {
     const lazy = new DOMParser().parseFromString(
       renderToStaticMarkup(<CatModel sizes="100vw" locale="sl" />), "text/html");

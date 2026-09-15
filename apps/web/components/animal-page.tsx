@@ -121,7 +121,13 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         />
 
         {/* Two columns only when there is a photo to fill the first one.
-            Without one the facts column sat alone beside an empty half. */}
+            Without one the facts column sat alone beside an empty half.
+
+            min-w-0 on both children because a grid item's automatic minimum
+            is its min-content, so this column could not narrow past the
+            longest word in the description. At a 150% root font that put the
+            document at 401px inside a 390px viewport, at 200% at 533px, and
+            the whole page scrolled sideways. */}
         <div className={cn("grid gap-8", hasPhoto && "sm:grid-cols-2 sm:items-start")}>
         {hasPhoto && (
           <AnimalPageGallery
@@ -140,11 +146,11 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             // here from that photo, and the same picture should not change
             // shape or grow an edge of its own on the way. bg-muted stays,
             // as the ground the photo loads onto.
-            className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted"
+            className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl bg-muted"
           />
         )}
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <div className="space-y-1">
             <div className="flex items-start justify-between gap-3">
               {/* The status beside the name, the way the dialog sets it: a

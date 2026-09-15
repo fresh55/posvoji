@@ -58,7 +58,12 @@ export function PickerMapPlate({
 
   return (
     <>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center">
+      {/* overflow-hidden because the map keeps its aspect-derived height: on
+          a box whose height has run out (a landscape phone, or a portrait one
+          with the keyboard up) it used to paint over the legend and the
+          instruction line under it. Clipped, it loses a strip of sea at the
+          top and bottom instead, and everything under it stays readable. */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
         <ShelterMap
           pins={pins}
           selected={selected}
@@ -78,7 +83,13 @@ export function PickerMapPlate({
           highlightedDensity={highlightedDensity}
           summaries={summaries}
           regionShelterNames={regionShelterNames}
-          className="max-h-full lg:h-full"
+          // shrink, against the map's own shrink-0: this is the one caller
+          // that hands it a box whose height can run out (a landscape phone,
+          // or a portrait one with the keyboard up). Holding its
+          // aspect-derived height there, it painted straight over the legend
+          // and the instruction line under it. Allowed to shrink, the viewBox
+          // letterboxes inside whatever height is left.
+          className="min-h-0 shrink max-h-full lg:h-full"
         />
         <MapAttribution messages={messages} />
       </div>

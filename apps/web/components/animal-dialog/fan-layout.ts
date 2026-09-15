@@ -1,4 +1,8 @@
 import { STAGE_WIDTH } from "@/components/animal-dialog/photo-wash";
+import {
+  DESKTOP_SHELL_QUERY,
+  PHONE_SHELL_QUERY,
+} from "@/lib/viewport-queries";
 import { useSyncExternalStore } from "react";
 import { DESKTOP_DEPTHS, FanDepths, PHONE_DEPTHS } from "./fan-geometry";
 
@@ -101,8 +105,13 @@ export const DESKTOP_FAN: FanGeometry = {
 // left the card a 98px slot to scroll 488px of text in. The dialog's own shell
 // switches on the same question, so the two cannot disagree about which layout
 // is standing.
-export const DESKTOP_FAN_QUERY =
-  "(min-width: 640px) and (min-height: 32rem)";
+// The fan stands on the same question the shell does, from the one place both
+// halves of it are derived (lib/viewport-queries.ts). Re-exported under the
+// fan's own name because that is what this module's callers and its tests ask
+// for.
+export const DESKTOP_FAN_QUERY = DESKTOP_SHELL_QUERY;
+
+export { PHONE_SHELL_QUERY };
 
 export function subscribeToFanQuery(onChange: () => void) {
   const query = window.matchMedia(DESKTOP_FAN_QUERY);

@@ -1,6 +1,36 @@
 import type { Messages } from "@/lib/i18n";
 
 /**
+ * The boundaries credit, and the one place the source URL is written.
+ *
+ * CC BY 4.0 asks for the creator, the licence and a link wherever the
+ * boundaries are drawn, and they are drawn on three plates now: the picker's,
+ * the found-animal page's and the shelter page's locator. The sentence around
+ * these three words differs per plate, so each caller writes its own; the
+ * three themselves are here, because a licence that has to be changed in three
+ * places is a licence that will end up saying three things.
+ *
+ * pointer-events-auto because the plate that floats this credit turns them off
+ * on the paragraph, so a credit cannot eat a region's taps; on a plate that
+ * does not, it changes nothing.
+ */
+export function BoundariesCredit() {
+  return (
+    <>
+      <a
+        href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
+        className="pointer-events-auto underline underline-offset-2 hover:text-foreground"
+        target="_blank"
+        rel="noreferrer"
+      >
+        GURS
+      </a>
+      , CC BY 4.0.
+    </>
+  );
+}
+
+/**
  * The map's data credit, floated on the plate's bottom-left corner.
  *
  * CC BY 4.0 requires it visible wherever the boundaries are drawn, and the
@@ -36,15 +66,7 @@ export function MapAttribution({
       className="pointer-events-none absolute bottom-0 left-0 max-w-[26rem] rounded-ui bg-background px-1.5 py-0.5 text-3xs leading-tight text-muted-foreground"
     >
       <span className="max-lg:hidden">{messages.regionBoundaries}: </span>
-      <a
-        href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
-        className="pointer-events-auto underline underline-offset-2 hover:text-foreground"
-        target="_blank"
-        rel="noreferrer"
-      >
-        GURS
-      </a>
-      , CC BY 4.0.{" "}
+      <BoundariesCredit />{" "}
       <span className="max-lg:hidden">{messages.reliefSource}: </span>
       <a
         href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"

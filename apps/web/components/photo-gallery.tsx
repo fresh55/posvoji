@@ -259,11 +259,18 @@ type PhotoGalleryProps = {
   /** The animal's, for the alt text on a surface that is not a link. */
   name?: string | null;
   sizes: string;
-  /** A second sizes value the dwell also fetches the opening photo and its
-   *  neighbours at, for a surface that a click on this gallery opens and that
-   *  draws the same photos larger. Leave it out on a gallery that opens
-   *  nothing, or that opens something drawing them at `sizes`. */
+  /** A second sizes value the dwell also fetches the opening photo at, for a
+   *  surface that a click on this gallery opens and that draws the same photo
+   *  larger. Leave it out on a gallery that opens nothing, or that opens
+   *  something drawing it at `sizes`. */
   warmSizes?: string;
+  /** What that same surface draws the opening photo's NEIGHBOURS at, when it
+   *  seats them smaller than the one in front. The warm is only worth its
+   *  bytes if it asks for the file the surface will ask for: warming all three
+   *  at `warmSizes` fetched two rungs the fan never draws and left it to
+   *  request the right ones itself. Defaults to `warmSizes`, which is right
+   *  for a surface that draws all three the same size. */
+  warmSideSizes?: string;
   className?: string;
   /**
    * Laid over whatever the surface already is, for callers that want the
@@ -314,6 +321,7 @@ export function PhotoGallery({
   name,
   sizes,
   warmSizes,
+  warmSideSizes,
   className,
   tone,
   href,
@@ -414,9 +422,15 @@ export function PhotoGallery({
     if (!warmSizes) return;
     const opening = images[WARM_INDEX];
     if (!opening) return;
+    // Two calls, because the surface this warms for seats the three photos at
+    // two sizes, and a warm that asks for a rung that surface will not ask for
+    // is a download nothing draws. One set still: the opening photo and its
+    // neighbours are different photos, so neither can swallow the other's
+    // fetch.
+    preloadPhotos([opening], warmSizes, warmedImages.current);
     preloadPhotos(
-      [opening, ...adjacentImages(images, WARM_INDEX)],
-      warmSizes,
+      adjacentImages(images, WARM_INDEX),
+      warmSideSizes ?? warmSizes,
       warmedImages.current,
     );
   }

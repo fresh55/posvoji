@@ -7,6 +7,7 @@ import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
 import { pointer as buildPointer, type PointerKind } from "@/test/pointer";
+import { PHONE_SHELL_QUERY } from "./fan-layout";
 
 // Who owns the dialog's pull-to-close.
 //
@@ -24,7 +25,7 @@ import { pointer as buildPointer, type PointerKind } from "@/test/pointer";
 // The dismiss gesture asks whether it is on the phone shell, and jsdom
 // reports 1024x768. The fan asks the mirror image of the same question and
 // gets the phone geometry here, which is the layout the gesture belongs to.
-const PHONE_SHELL = "(max-width: 639px), (max-height: 32rem)";
+const PHONE_SHELL = PHONE_SHELL_QUERY;
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,

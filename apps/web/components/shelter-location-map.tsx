@@ -1,6 +1,7 @@
 import { MAP_HEIGHT, MAP_WIDTH, cityAt, project } from "@/lib/geo";
 import { OUTLINE_PATH } from "@/lib/map-regions";
 import { cn } from "@/lib/utils";
+import { BoundariesCredit } from "@/components/filters/map-attribution";
 
 // Where one shelter is, at the only fidelity the registry supports: a town
 // name, so a dot on the country and nothing more. No regions, no relief, no
@@ -128,16 +129,7 @@ export function ShelterLocationMap({
           hillshade to sit on and this one has bare paper, where a box in the
           corner would read as a label on the sea. */}
       <figcaption className="mt-1.5 text-3xs leading-tight text-muted-foreground">
-        {outline}:{" "}
-        <a
-          href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
-          className="underline underline-offset-2 hover:text-foreground"
-          target="_blank"
-          rel="noreferrer"
-        >
-          GURS
-        </a>
-        , CC BY 4.0.
+        {outline}: <BoundariesCredit />
       </figcaption>
     </figure>
   );

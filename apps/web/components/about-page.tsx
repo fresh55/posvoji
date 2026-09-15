@@ -21,7 +21,7 @@ import {
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { MUTED_LINK } from "@/lib/link-styles";
+import { COARSE_ACTION, MUTED_LINK, PAGE_TITLE } from "@/lib/link-styles";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 
@@ -122,8 +122,7 @@ function GithubMark() {
 // thumb needs the height, and the padding goes with it or the box reads as a
 // stretched pill. On the pointer and not on the width, because a 1180px
 // tablet is a thumb and a 1024px laptop window is not.
-const THUMB_BUTTON =
-  "pointer-coarse:min-h-11 pointer-coarse:gap-1.5 pointer-coarse:px-4";
+const THUMB_BUTTON = `${COARSE_ACTION} pointer-coarse:gap-1.5`;
 
 /**
  * The site's introduction remains readable while the cat loads independently.
@@ -150,7 +149,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.about} />
         <div className="space-y-3">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+          <h1 className={PAGE_TITLE}>
             {messages.about}
           </h1>
           {/* The page's one sentence, and a step above the facts rather

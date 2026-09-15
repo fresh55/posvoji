@@ -1,7 +1,7 @@
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { MUTED_LINK } from "@/lib/link-styles";
+import { MUTED_LINK, PAGE_TITLE } from "@/lib/link-styles";
 import { HOME_PATHS, homePath, sheltersIndexPath } from "@/lib/shelter-path";
 
 /**
@@ -36,7 +36,7 @@ export function NotFoundPage({
       mainClassName="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-3 py-page-y text-center"
       footer={<SiteFooter locale={locale} />}
     >
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+      <h1 className={PAGE_TITLE}>
         {messages.notFoundTitle}
       </h1>
       <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

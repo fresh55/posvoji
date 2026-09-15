@@ -22,6 +22,7 @@ import { getShelterLogos } from "@/lib/shelter-logos";
 import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
 import { siteLinks } from "@/lib/site-links";
+import { PAGE_TITLE } from "@/lib/link-styles";
 
 /** The issue form a shelter that is not in the registry yet can actually
  *  reach. The project has no contact address of its own, and the portal login
@@ -218,7 +219,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             phone's 390, and 8px still separates them. Nothing else about the
             intro changes with the height. */}
         <div className="max-w-3xl space-y-3 short:space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+          <h1 className={PAGE_TITLE}>
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

@@ -4,6 +4,7 @@ import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
 import { Card } from "@/components/ui/card";
+import { PAGE_TITLE } from "@/lib/link-styles";
 
 type LocalizedText = Record<Locale, string>;
 
@@ -301,7 +302,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.resources} />
         <div className="max-w-3xl space-y-3">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+          <h1 className={PAGE_TITLE}>
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">

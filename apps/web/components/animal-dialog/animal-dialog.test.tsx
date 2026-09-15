@@ -29,6 +29,10 @@ import { animalPath } from "@/lib/animal-path";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
+import {
+  DESKTOP_FAN_QUERY,
+  PHONE_SHELL_QUERY,
+} from "./fan-layout";
 
 // The filter dock and the drawer read the viewport before they render, and
 // the dismiss gesture asks whether it is on the phone shell. jsdom reports
@@ -36,13 +40,13 @@ import { capturePreloads, pointer, slot } from "@/test/pointer";
 // doing. Two of them: the shell asks about width or height, and the share
 // button asks about the width alone, because the platform's own share sheet
 // is a question about the device rather than about this dialog's layout.
-const PHONE_SHELL = "(max-width: 639px), (max-height: 32rem)";
+const PHONE_SHELL = PHONE_SHELL_QUERY;
 const PHONE_WIDTH = "(max-width: 639px)";
 
 // The fan mounts one geometry and reads Tailwind's sm to pick it, so which
 // layout a test gets is the test's own to say: fanLayout("phone") before the
 // render, and the afterEach puts the desktop back.
-const FAN_LAYOUT = "(min-width: 640px) and (min-height: 32rem)";
+const FAN_LAYOUT = DESKTOP_FAN_QUERY;
 
 let desktopFan = true;
 

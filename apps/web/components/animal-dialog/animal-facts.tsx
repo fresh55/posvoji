@@ -117,8 +117,14 @@ const FACT_POPOVER_CLASS =
 const COARSE_PILL =
   "pointer-coarse:min-h-9 pointer-coarse:py-2";
 
+// The row those pills wrap in. The gap-y is tied to COARSE_PILL's overhang by
+// the paragraph above, so the two live together rather than in five places
+// that have to be remembered at once.
+const FACT_ROW_CLASS =
+  "flex flex-wrap gap-x-2 gap-y-1.5 pointer-coarse:gap-y-2.5";
+
 const HEALTH_PILL_CLASS =
-  "inline-flex cursor-help items-center gap-1.5 rounded-ui border border-brand-border/70 bg-brand/60 px-2.5 py-1 text-xs text-brand-foreground transition-colors hover:bg-brand/80 focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-9 pointer-coarse:py-2 pointer-coarse:tap-target";
+  `inline-flex cursor-help items-center gap-1.5 rounded-ui border border-brand-border/70 bg-brand/60 px-2.5 py-1 text-xs text-brand-foreground transition-colors hover:bg-brand/80 focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none ${COARSE_PILL} pointer-coarse:tap-target`;
 
 // The mark that separates a pill you can press from the inert ones standing in
 // the same row. The pills that open an explainer looked exactly like the
@@ -519,7 +525,7 @@ export function AnimalFacts({
           {hasIdentity && (
             <ul
               aria-label={messages.animalDetails}
-              className="flex flex-wrap gap-x-2 gap-y-1.5 pointer-coarse:gap-y-2.5"
+              className={FACT_ROW_CLASS}
             >
               {sex && (
                 <Fact icon={SEX_ICONS[sex]}>{sexLabel(sex, locale)}</Fact>
@@ -568,7 +574,7 @@ export function AnimalFacts({
           {hasRequirements && (
             <ul
               aria-label={messages.adoptionRequirements}
-              className="flex flex-wrap gap-x-2 gap-y-1.5 pointer-coarse:gap-y-2.5"
+              className={FACT_ROW_CLASS}
             >
               {requirements.map((key) => (
                 <RequirementFact
@@ -592,7 +598,7 @@ export function AnimalFacts({
             <ul
               ref={healthRow}
               aria-label={messages.health}
-              className="flex flex-wrap gap-x-2 gap-y-1.5 pointer-coarse:gap-y-2.5"
+              className={FACT_ROW_CLASS}
             >
               {fullRecord && !showHealthDetails ? (
                 <li>
@@ -655,7 +661,7 @@ export function AnimalFacts({
           {hasGoodWith && (
             <ul
               aria-label={messages.goodWithFacts}
-              className="flex flex-wrap gap-x-2 gap-y-1.5 pointer-coarse:gap-y-2.5"
+              className={FACT_ROW_CLASS}
             >
               {GOOD_WITH_KEYS.map((key) => {
                 const answer = animal.goodWith?.[key] ?? "unknown";
@@ -674,7 +680,7 @@ export function AnimalFacts({
           {apartment && (
             <ul
               aria-label={messages.home}
-              className="flex flex-wrap gap-x-2 gap-y-1.5 pointer-coarse:gap-y-2.5"
+              className={FACT_ROW_CLASS}
             >
               <ApartmentFact
                 answer={apartment}

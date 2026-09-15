@@ -22,6 +22,7 @@ import {
   websiteHost,
   websiteName,
 } from "@/lib/contact-links";
+import { SOURCE_LINK } from "@/lib/link-styles";
 
 function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   const { messages } = useI18n();
@@ -89,7 +90,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             the same. */}
         <a
           href={coverage.detailHref}
-          className="inline-block font-medium underline-offset-4 hover:underline pointer-coarse:tap-target"
+          className={SOURCE_LINK}
         >
           {coverage.shelterName}
         </a>

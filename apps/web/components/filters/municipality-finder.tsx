@@ -47,6 +47,7 @@ import {
   type MunicipalityGuess,
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
+import { SOURCE_LINK } from "@/lib/link-styles";
 
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
@@ -131,7 +132,7 @@ function NearestRow({
       <span className="min-w-0 text-sm">
         <a
           href={shelter.detailHref}
-          className="inline-block font-medium underline-offset-4 hover:underline pointer-coarse:tap-target"
+          className={SOURCE_LINK}
         >
           {shelter.shelterName}
         </a>
@@ -571,11 +572,13 @@ export function MunicipalityFinder({
             // needs; the wider padding there was what cut the placeholder
             // short of its own field.
             className={cn(
-              // lg:pointer-coarse:pr-24 because the two trailing buttons are
-              // 44px on a touch tablet where the desktop row gives them 32,
-              // and 80px of padding does not hold both: the placeholder ran
-              // under them at 1180 with a coarse pointer.
-              "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:pr-20 lg:text-sm lg:pointer-coarse:pr-24 [&::-webkit-search-cancel-button]:appearance-none",
+              // The narrower padding belongs to the fine pointer alone, rather
+              // than to lg with the coarse case restoring the base value: the
+              // two trailing buttons are 44px on a touch tablet where the
+              // desktop row gives them 32, and 80px of padding does not hold
+              // both, so the placeholder ran under them at 1180 with a coarse
+              // pointer. Stated once, the base cannot drift from its exception.
+              "h-11 pl-9 pr-24 text-base md:text-base lg:h-10 lg:text-sm lg:pointer-fine:pr-20 [&::-webkit-search-cancel-button]:appearance-none",
               labelledLocation && FIELD_LABELLED_PADDING,
             )}
           />
@@ -889,7 +892,7 @@ export function MunicipalityFinder({
                       <p className="text-sm">
                         <a
                           href={hero.detailHref}
-                          className="inline-block font-medium underline-offset-4 hover:underline pointer-coarse:tap-target"
+                          className={SOURCE_LINK}
                         >
                           {hero.shelterName}
                         </a>

@@ -14,7 +14,7 @@ import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import type { ClientAnimal } from "@/lib/animal";
-import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
+import { FAN_PHOTO_SIZES, FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { CARD_PHOTO_SIZES } from "@/lib/card-grid";
 import { animalsForClient } from "@/lib/dataset";
 import { capturePreloads, pointer } from "@/test/pointer";
@@ -264,19 +264,25 @@ describe("photo gallery dwell", () => {
       preloads.filter((image) => image.sizes === CARD_PHOTO_SIZES).map((i) => i.src),
     ).toEqual(["/media/animals/photo-3.webp", "/media/animals/photo-1.webp"]);
 
-    // And the three prints the fan mounts nearest the front, at the sizes the
-    // fan draws them with. The dialog opens on the first photo whatever this
-    // card is showing, so the window is fixed at index 0.
-    const warm = preloads.filter((image) => image.sizes === FAN_PHOTO_SIZES);
-    expect(warm.map((image) => image.src)).toEqual([
+    // And the three prints the fan mounts nearest the front, each at the size
+    // the seat it lands in draws. The dialog opens on the first photo whatever
+    // this card is showing, so the window is fixed at index 0. Warming all
+    // three at the front print's size fetched two rungs the fan never asks
+    // for and left it to request the right ones itself, which is the whole
+    // point of warming.
+    const front = preloads.filter((image) => image.sizes === FAN_PHOTO_SIZES);
+    expect(front.map((image) => image.src)).toEqual([
       "/media/animals/photo-0.webp",
-      "/media/animals/photo-3.webp",
-      "/media/animals/photo-1.webp",
     ]);
+    expect(
+      preloads
+        .filter((image) => image.sizes === FAN_SIDE_PHOTO_SIZES)
+        .map((image) => image.src),
+    ).toEqual(["/media/animals/photo-3.webp", "/media/animals/photo-1.webp"]);
     // The whole ladder, so the browser picks the rung the fan's layout asks
     // for. That is a different file from the card's, which is the entire
     // reason this second warm exists.
-    expect(warm[0].srcset).toContain("/media/animals/photo-0-640.webp 640w");
+    expect(front[0].srcset).toContain("/media/animals/photo-0-640.webp 640w");
   });
 
   it("asks for nothing extra on a gallery that opens no such surface", () => {

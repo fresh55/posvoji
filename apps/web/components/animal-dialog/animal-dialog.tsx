@@ -27,6 +27,7 @@ import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { useI18n } from "@/components/i18n-provider";
+import { PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -201,12 +202,10 @@ const DRAG_SPRING = {
 const DRAG_CLOSE_PX = 140;
 
 // The layout the dismiss gesture was designed for, and the one question the
-// whole shell is gated on: a narrow viewport or a short one. A phone held
-// sideways is 844x390, wide enough for the desktop box and far too short for
-// it, so height counts as much as width. 32rem is Tailwind's own short
-// variant, which is what the classes in here say it in; DESKTOP_FAN_QUERY in
-// fan-layout.ts asks the same question the other way round.
-const PHONE_SHELL = "(max-width: 639px), (max-height: 32rem)";
+// whole shell is gated on. It and DESKTOP_FAN_QUERY in fan-layout.ts are the
+// two halves of one boundary, derived from it in lib/viewport-queries.ts so
+// they cannot answer differently on the line between them.
+const PHONE_SHELL = PHONE_SHELL_QUERY;
 
 const REVEAL_SPRING = {
   type: "spring",

@@ -135,7 +135,7 @@ function shelterAbsenceKey(count: number): TranslationKey {
  *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
  *  mouse.
  */
-const EMPTY_STATE_ACTION = "pointer-coarse:min-h-11 pointer-coarse:px-4";
+const EMPTY_STATE_ACTION = COARSE_ACTION;
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
@@ -762,3 +762,4 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
+import { COARSE_ACTION } from "@/lib/link-styles";

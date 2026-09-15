@@ -16,6 +16,10 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { animalPath } from "@/lib/animal-path";
 import { animalsForClient } from "@/lib/dataset";
 import { SITE_URL } from "@/lib/site";
+import {
+  DESKTOP_FAN_QUERY,
+  PHONE_SHELL_QUERY,
+} from "./fan-layout";
 
 // The dismiss gesture and the filter dock both read the viewport before they
 // render, and jsdom reports 1024px. Copied from animal-dialog.test.tsx rather
@@ -26,8 +30,8 @@ import { SITE_URL } from "@/lib/site";
 // because every assertion here reads the desktop stage. The fan mounts one
 // layout only, chosen by this query, so a stub that answered "phone" to both
 // would leave nothing at "photo-spread" to read.
-const PHONE_SHELL = "(max-width: 639px), (max-height: 32rem)";
-const FAN_LAYOUT = "(min-width: 640px) and (min-height: 32rem)";
+const PHONE_SHELL = PHONE_SHELL_QUERY;
+const FAN_LAYOUT = DESKTOP_FAN_QUERY;
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,

@@ -10,13 +10,14 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
 import { WHEEL_SETTLE_MS } from "@/lib/swipe";
 import { pointer, slot } from "@/test/pointer";
+import { DESKTOP_FAN_QUERY } from "./fan-layout";
 
 // What the fan's own tests are for: the gestures that hand the stack from one
 // input to another. animal-dialog.test.tsx holds the fan as the dialog draws
 // it, and everything here is the fan on its own, rendered the way that suite
 // renders it for the two tests that count renders.
 
-const FAN_LAYOUT = "(min-width: 640px) and (min-height: 32rem)";
+const FAN_LAYOUT = DESKTOP_FAN_QUERY;
 
 let desktopFan = true;
 // Every listener the fan's media query is holding. The fan reads the

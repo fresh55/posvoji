@@ -291,6 +291,27 @@ export function FilterChips({
     stopNode(toolbarRef.current, id)?.focus();
   };
 
+  /** Where focus goes once a chip the keyboard removed is gone.
+   *
+   *  Shared by the two keystrokes that can remove one: Delete or Backspace on
+   *  the row, and Enter or Space on the pill itself. The second is a click as
+   *  far as the DOM is concerned, so it used to take the pointer path and
+   *  leave focus on the body, which puts the next Tab back at the top of the
+   *  document. `at` is the removed chip's index in `stops`. */
+  const restoreFocusAfterRemove = (at: number) => {
+    if (count === 1 && !undo) {
+      // This one takes the row with it. Move first, while there is still a
+      // row to move out of.
+      focusAfterRow(toolbarRef.current);
+      return;
+    }
+    // The next pill along, or the one before it at the end of the row.
+    // Inline, clear outlives every chip and is the stop after the last of
+    // them; below, the row ends at the last pill, so the one before it is
+    // the last stop this row has to offer.
+    refocusTo.current = stops[at + 1] ?? stops[at - 1] ?? null;
+  };
+
   const onKeyDown = (event: KeyboardEvent) => {
     // Where focus actually is, not where the last render thought it was.
     // These two part company the moment two keys arrive inside one task,
@@ -318,17 +339,7 @@ export function FilterChips({
       const item = items.find((candidate) => candidate.id === stops[at]);
       if (item?.kind !== "chip") return;
       event.preventDefault();
-      if (count === 1 && !undo) {
-        // This one takes the row with it. Move first, while there is still a
-        // row to move out of.
-        focusAfterRow(toolbarRef.current);
-      } else {
-        // The next pill along, or the one before it at the end of the row.
-        // Inline, clear outlives every chip and is the stop after the last of
-        // them; below, the row ends at the last pill, so the one before it is
-        // the last stop this row has to offer.
-        refocusTo.current = stops[at + 1] ?? stops[at - 1] ?? null;
-      }
+      restoreFocusAfterRemove(at);
       item.chip.onRemove();
     }
   };
@@ -403,6 +414,11 @@ export function FilterChips({
                     blocked={blocker?.key === item.chip.key}
                     tabIndex={activeId === item.id ? 0 : -1}
                     onFocus={() => setFocusId(item.id)}
+                    onRemove={(fromKeyboard) => {
+                      if (fromKeyboard)
+                        restoreFocusAfterRemove(stops.indexOf(item.id));
+                      item.chip.onRemove();
+                    }}
                     className={pill}
                   />
                 ) : item.kind === "group" ? (
@@ -689,12 +705,25 @@ function facetLabel(
   return groupLabel(facet, locale);
 }
 
+/** A click with no click count behind it came from the keyboard.
+ *
+ *  Enter and Space on a focused button dispatch a real click event, and the
+ *  only thing separating it from a pointer's is `detail`, which counts presses
+ *  and is 0 when there were none. What it buys is the difference between
+ *  leaving focus where the pointer left it, which is what a mouse wants, and
+ *  handing it on to the next pill, which is the only thing the keyboard can
+ *  use once the pill it was standing on is gone. */
+function fromKeyboard(event: { detail: number }): boolean {
+  return event.detail === 0;
+}
+
 function ChipButton({
   stop,
   chip,
   blocked,
   tabIndex,
   onFocus,
+  onRemove,
   className,
 }: {
   stop: string;
@@ -702,6 +731,8 @@ function ChipButton({
   blocked: boolean;
   tabIndex: number;
   onFocus: () => void;
+  /** Takes the filter off, and says whether a keypress asked for it. */
+  onRemove: (fromKeyboard: boolean) => void;
   className?: string;
 }) {
   const { locale, t } = useI18n();
@@ -713,7 +744,7 @@ function ChipButton({
       type="button"
       tabIndex={tabIndex}
       onFocus={onFocus}
-      onClick={chip.onRemove}
+      onClick={(event) => onRemove(fromKeyboard(event))}
       aria-label={t("removeFilter", { label: chip.label })}
       // The row is walked with the arrows, so a screen reader announcing
       // "Delete" on arrival is what tells someone the key does anything here.

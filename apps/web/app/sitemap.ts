@@ -10,7 +10,11 @@ import {
 } from "@/lib/shelter-path";
 import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
-import { ABOUT_PATHS, RESOURCES_PATHS } from "@/lib/site-links";
+import {
+  ABOUT_PATHS,
+  HIDDEN_LINK_KEYS,
+  RESOURCES_PATHS,
+} from "@/lib/site-links";
 import { XDEFAULT_LOCALE } from "@/lib/site-metadata";
 import { SRECKO_PATHS } from "@/lib/srecko";
 
@@ -27,9 +31,11 @@ import { SRECKO_PATHS } from "@/lib/srecko";
  * robots: { index: false } because they are a shelter's own workspace behind
  * a magic link, and /dev/map, which is a drawing tool. The portal pages are
  * fetchable on purpose, so that noindex is read; see app/robots.ts. /viri is
- * here despite being hidden from the site's own navigation, because hidden
- * from a menu is not the same as hidden from search, and it was written for
- * the search that lands on it.
+ * out for as long as lib/site-links.ts hides it: a page the site links to from
+ * nowhere and submits to search anyway is the site saying two things about it,
+ * and the routes carry robots: noindex while they are hidden, which a sitemap
+ * entry would only contradict. Both halves follow the one flag, so relisting
+ * the page in the navigation brings it back here.
  *
  * No priority field. It is advisory, Google says it ignores it, and a number
  * invented per route reads as a claim the site cannot support. lastModified
@@ -104,12 +110,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       paths: { sl: FOUND_ANIMAL_PATHS.sl, en: FOUND_ANIMAL_PATHS.en },
       changeFrequency: "monthly",
     },
-    // Hidden from the navigation, still a page written for search. See
-    // lib/site-links.ts for why it is not in the menus.
-    {
-      paths: { sl: RESOURCES_PATHS.sl, en: RESOURCES_PATHS.en },
-      changeFrequency: "monthly",
-    },
+    // Listed only when the roster lists it. See lib/site-links.ts for why it
+    // is in neither right now.
+    ...(HIDDEN_LINK_KEYS.has("resources")
+      ? []
+      : [
+          {
+            paths: { sl: RESOURCES_PATHS.sl, en: RESOURCES_PATHS.en },
+            changeFrequency: "monthly" as const,
+          },
+        ]),
     // Five facts about the site, which change when the site does and not
     // before.
     {

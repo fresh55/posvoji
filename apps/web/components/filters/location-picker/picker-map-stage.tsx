@@ -49,7 +49,16 @@ export function PickerMapStage({ controller, hug = false }: {
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) flex flex-col gap-3 p-3 sm:p-4",
               "@container/map-stage",
-              hug && "max-lg:static",
+              // In flow it is also the part that gives way when the screen is
+              // short. The dialog caps at 94dvh, and under about 512px of
+              // viewport (a landscape phone, or a portrait one with the
+              // keyboard up) this stage's natural height is taller than the
+              // cap, so the overflow fell out of the bottom of the box and
+              // took the confirm button in the footer with it. min-h-0 is
+              // what lets it shrink instead: the map inside is already
+              // flex-1 over a shrink-0 legend, so the map gives up the
+              // pixels and everything under it stays on screen.
+              hug && "max-lg:static max-lg:min-h-0",
               sheetOpen && "max-lg:hidden",
               "lg:right-auto",
               MAP_STAGE_TRANSITION_CLASS,

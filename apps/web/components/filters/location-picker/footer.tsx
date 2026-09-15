@@ -33,7 +33,10 @@ export function PickerFooter({ controller, hug = false }: {
       data-picker-footer
       className={cn(
         "absolute inset-x-0 bottom-0 z-30 flex h-(--picker-footer-h) flex-col justify-center gap-1 border-t bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-        hug && "max-lg:static",
+        // shrink-0 with it: in flow on a short screen the stage above yields
+        // its height to a scroller, and this row must not be the thing that
+        // gives way instead, because the primary action stands in it.
+        hug && "max-lg:static max-lg:shrink-0",
       )}
     >
       {(selectedRows.length > 0 || resultCount === 0) && (

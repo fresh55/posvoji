@@ -32,7 +32,24 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
        with the main below (site-shell.tsx). It used to bleed out of the
        frame instead, and the rule stopped where the frame did. */
     <header className="border-b">
-    <div className="relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-4 px-gutter py-4">
+    {/* A size container, named so the nav can ask this row how much room it
+        has rather than ask the window how wide it is (site-menu.tsx reads it,
+        --container-nav-room in globals.css holds the figure).
+
+        The window was the wrong thing to ask. A media query resolves rem
+        against the initial font size, so at 200% browser text lg still
+        matched a 1024px window, the inline row stayed on in a header that
+        could no longer hold it, and "O nas" came to rest under the language
+        switcher from 1024 to 1088 with the wordmark truncated away
+        altogether. A container query's rem is the root element's real font
+        size, so one condition now answers for a narrow window and for large
+        text both, and it answers in CSS: nothing measures anything after
+        load, so neither shape can flash before the other.
+
+        No loop in it. inline-size containment means this row's width comes
+        from the frame above it and never from the nav the query switches, so
+        folding the links away cannot widen the row back into holding them. */}
+    <div className="@container/header relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-4 px-gutter py-4">
       {/* The first focusable thing in the document, before the brand. Every
           navigation on this site is a document load, so the chrome's tab
           stops are paid again on every page a keyboard visitor opens rather

@@ -51,6 +51,28 @@ describe("the site shell", () => {
     expect(main?.getAttribute("tabindex")).toBe("-1");
   });
 
+  // The other pair that lives in two files. The header's nav asks the header
+  // row how much of the reader's text it can hold (site-menu.tsx), and this
+  // row is what has to be the container it asks. A container query with no
+  // container to match is false rather than an error, so a row that lost this
+  // class would fold the links into the menu at every width and nothing here
+  // would say so.
+  it("declares the container the header's nav asks for room", () => {
+    const { container } = render(
+      <SiteShell locale="sl" footer={null}>
+        <p>Vsebina</p>
+      </SiteShell>,
+    );
+
+    const row = container.querySelector("header > div");
+    expect(row?.className.split(" ")).toContain("@container/header");
+
+    const nav = container
+      .querySelector('header nav a[href="/zavetisca"]')
+      ?.closest("nav");
+    expect(nav?.className).toContain("@nav-room/header:");
+  });
+
   // The slots in one order for every page. They are what the nine disagreed
   // about: the home page's redirect above the header, BackToTop between the
   // main and the footer on the two long pages.

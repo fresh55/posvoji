@@ -181,6 +181,19 @@
 }
 
 @theme inline {
+  /* How much of its own text the header row needs before it can hold the
+     inline nav, asked of the row and not of the window (site-header.tsx
+     carries the container, site-menu.tsx reads it).
+
+     A container query's rem is the root element's real font size, where a
+     media query's is the initial one, so this is the only kind of condition
+     that can tell a wide window from an enlarged text size. Measured on the
+     built page by narrowing the row until the brand, the three destinations,
+     the language switcher and the login stopped colliding: 42rem in Slovenian
+     and 41.5rem in English at 150% and at 200% text, the same figure at both
+     sizes because everything in the row except the 40px logo is set in rem.
+     43rem is that with a rem to spare. */
+  --container-nav-room: 43rem;
   --spacing-gutter: var(--gutter);
   --spacing-page-y: var(--page-y);
   --spacing-section-gap: var(--section-gap);

@@ -20,11 +20,31 @@ import { cn } from "@/lib/utils";
 // in lib/site-links.ts and each decides what it prints, so a link added or
 // renamed there reaches both and neither can drift.
 //
-// Two shapes, one per width. From lg the header has room to just say the
-// links, and a word in plain sight beats a word behind an icon: a menu that
-// has to be opened to be discovered halves its own use, and hiding nav a
-// desktop could show is what it saves nothing to do. Below lg every link
-// folds into the dropdown, the login among them.
+// Two shapes, one per amount of room. Where the header can say the links it
+// says them, and a word in plain sight beats a word behind an icon: a menu
+// that has to be opened to be discovered halves its own use, and hiding nav a
+// desktop could show is what it saves nothing to do. Where it cannot, every
+// link folds into the dropdown, the login among them.
+
+/* The two conditions, and the row has to pass both of them to say its links
+   out loud.
+
+   lg is the floor and it stays a media query. Below it the dropdown is the
+   nav at every text size, which is most of this site's traffic, and a phone
+   has no room for three links beside the switcher however small the type is.
+
+   The second condition is the header row's own width measured in the reader's
+   text rather than the window's (site-header.tsx carries the container,
+   --container-nav-room in globals.css holds the figure and says how it was
+   measured). At 200% text in a 1024px window lg is still true and the room is
+   not there, which is the case this pair exists to tell apart.
+
+   A matched pair, written here rather than at the two call sites, because the
+   menu button has to arrive at exactly the width the row leaves: a width where
+   both draw is two navs on one row, and one where neither does is a header
+   with no way out of the page. */
+const NAV_ROOM_SHOWS = "lg:@nav-room/header:flex";
+const NAV_ROOM_HIDES = "lg:@nav-room/header:hidden";
 
 /** Whether a link points at the page the header is already on.
  *
@@ -65,7 +85,7 @@ export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
       // the boundary between the two links was only four times the boundary
       // inside one of them, and the row scanned as a single phrase. 24px puts
       // that at six to one, which is where the eye stops reading across.
-      className="hidden items-center gap-6 lg:flex"
+      className={cn("hidden items-center gap-6", NAV_ROOM_SHOWS)}
     >
       {links.map((link) => {
         // The page the reader is already on. The footer has always dropped its
@@ -145,13 +165,28 @@ export function ShelterLogin() {
   );
 }
 
-// The same links as a dropdown, below lg only, where the header genuinely
-// has no room for them beside the language switcher.
+// The same links as a dropdown, wherever the header has no room to say them
+// beside the language switcher.
 export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
   const { locale, messages } = useI18n();
   const links = siteLinks(locale, messages);
   const quiet = links.filter((link) => link.quiet);
   const loud = links.filter((link) => !link.quiet);
+  // What the header already says out loud beside this button, so the menu does
+  // not say it again. Below lg this is the one door to the portal, which is
+  // why it has always carried the login; from lg the outline button in the
+  // corner draws it (ShelterLogin above), and this menu can now open at that
+  // width too, where the row folded for room. The same word twice, a hand's
+  // width apart, is the header asking the question twice.
+  //
+  // Keyed on the link and not on `quiet`, which means de-emphasised and could
+  // one day be true of something the corner does not draw. A plain media query
+  // and not the row's container query, because this content is portalled out
+  // of the header and cannot see the header's container, and lg is exactly the
+  // condition the button it would repeat turns on.
+  const alsoInTheHeader = quiet
+    .filter((link) => link.key === "portal")
+    .map((link) => link.key);
 
   return (
     <DropdownMenu>
@@ -160,7 +195,9 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
           variant="ghost"
           size="icon"
           aria-label={messages.menu}
-          className="tap-target lg:hidden"
+          // 36px drawn and 44 to press: tap-target grows the box and not the
+          // icon, and that has to hold at every width this now draws at.
+          className={cn("tap-target", NAV_ROOM_HIDES)}
         >
           <Menu className="size-4" aria-hidden />
         </Button>
@@ -184,12 +221,23 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
             </a>
           </DropdownMenuItem>
         ))}
-        {quiet.length > 0 && <DropdownMenuSeparator />}
+        {/* The rule stays for as long as it has something under it to
+            separate. */}
+        {quiet.length > 0 && (
+          <DropdownMenuSeparator
+            className={cn(
+              alsoInTheHeader.length === quiet.length && "lg:hidden",
+            )}
+          />
+        )}
         {quiet.map((link) => (
           <DropdownMenuItem
             key={link.key}
             asChild
-            className="min-h-11 text-muted-foreground"
+            className={cn(
+              "min-h-11 text-muted-foreground",
+              alsoInTheHeader.includes(link.key) && "lg:hidden",
+            )}
           >
             <a href={link.href}>{link.label}</a>
           </DropdownMenuItem>

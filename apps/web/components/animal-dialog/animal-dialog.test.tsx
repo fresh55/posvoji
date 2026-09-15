@@ -680,9 +680,7 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/V zavetišču: 1 leto/)).toBeTruthy();
     expect(within(dialog).queryByText(/čaka že/)).toBeNull();
-    // The place it was found is carried by the pin, words are for screen
-    // readers only.
-    expect(within(dialog).getByText("Kamnik")).toBeTruthy();
+    expect(within(dialog).queryByText("Kamnik")).toBeNull();
   });
 
   it("calls out a stay past three years instead of the quiet caption", async () => {

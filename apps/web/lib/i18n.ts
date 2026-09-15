@@ -120,7 +120,6 @@ const sl = {
   factBreed: "Pasma",
   factSize: "Velikost",
   factTimeInShelter: "V zavetišču",
-  factOrigin: "Kraj najdbe",
   // The name in front turns a statistic into one animal's wait. "Čaka" is
   // third person singular and carries no gender, so it fits any name without
   // the sentence having to know the animal's sex.
@@ -643,7 +642,6 @@ const en: Messages = {
   factBreed: "Breed",
   factSize: "Size",
   factTimeInShelter: "In the shelter",
-  factOrigin: "Found in",
   longStay: "{name} has been waiting in the shelter for {duration}.",
   longStayUnnamed: "At the shelter for {duration} now.",
   longStayWholeLife:

@@ -145,7 +145,18 @@ const EMPTY_STATE_ACTION = "pointer-coarse:min-h-11 pointer-coarse:px-4";
 // said as much.
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center">
+    // The floor is about the filter dock, not about the drawing. Below lg the
+    // dock is on screen (animal-filters.tsx, lg:hidden) and it floats over the
+    // page end; a filter that matches nothing leaves a block short enough that
+    // the footer's nav row lands inside the dock's band, and a tap where
+    // "Zavetišča" is drawn opens the filter sheet instead. Three fifths of the
+    // viewport put the whole footer under the fold at scroll 0 on every phone
+    // size measured, landscape included, so the band has nothing of it to
+    // cover; half was not enough, it left the footer starting at 808 against a
+    // band that ends at 828. Reaching the footer then means scrolling to the
+    // page end, which is the case the footer's own docked padding is for, and
+    // nothing here adds a second clearance.
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh]">
       <PawPrint
         className="size-8 text-muted-foreground/50"
         strokeWidth={1.5}
@@ -157,8 +168,10 @@ function EmptyState({ children }: { children: ReactNode }) {
 }
 
 // Three rows on a phone's two columns and one and a half at the widest layout
-// (CARD_GRID): enough of the grid's shape to read as the grid, and short of a
-// screenful at any width, which is all a stand-in owes.
+// (CARD_GRID): enough of the grid's shape to read as the grid. The block that
+// holds them keeps a screenful of height whether or not the cards fill it,
+// which is what the footer needs; the cards themselves only have to read as
+// the grid.
 const PENDING_CARDS = [0, 1, 2, 3, 4, 5];
 
 // What stands in the results block's place while a filtered link is still on
@@ -182,10 +195,16 @@ const PENDING_CARDS = [0, 1, 2, 3, 4, 5];
 // almost nobody is shown.
 function ResultsPending() {
   return (
+    // A viewport of height, because the stand-in stands in for the document as
+    // much as for the cards. Six cards are 613px of a 1321px document on a
+    // phone, so the footer is on screen while the bundle lands and is then
+    // pushed 714px down by a 9667px grid: one shift, 0.036, on every shared
+    // filtered link. Holding a screenful keeps the footer below the fold until
+    // the real results decide where it goes.
     <div
       data-slot={RESULTS_PENDING_SLOT}
       aria-hidden
-      className="flex flex-col gap-4"
+      className="flex min-h-[100dvh] flex-col gap-4"
     >
       {/* The toolbar the hidden block also covers: the species tabs, the
           result count and the sort control are as unanswered as the cards. */}

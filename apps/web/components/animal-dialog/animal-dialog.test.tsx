@@ -630,15 +630,20 @@ describe("animal dialog", () => {
     renderGrid([chatty]);
 
     const dialog = await screen.findByRole("dialog");
-    const description = await within(dialog).findByText(/Zelo prijazna muca/);
-    expect(description.className).toContain("line-clamp-5");
+    await within(dialog).findByText(/Zelo prijazna muca/);
+    // The block around the shelter's paragraphs carries the clamp, because it
+    // counts five lines across all of them. See animal-facts.tsx.
+    const description = dialog.querySelector<HTMLElement>(
+      "[data-slot='animal-description']",
+    );
+    expect(description?.className).toContain("line-clamp-5");
 
     const toggle = within(dialog).getByRole("button", {
       name: "Preberi več",
     });
     fireEvent.click(toggle);
 
-    expect(description.className).not.toContain("line-clamp-5");
+    expect(description?.className).not.toContain("line-clamp-5");
     expect(
       within(dialog).getByRole("button", { name: "Pokaži manj" }),
     ).toBeTruthy();

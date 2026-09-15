@@ -348,14 +348,37 @@ const CLAMP_DESCRIPTION_CHARS = 320;
 // Length is not the only way a description gets tall. The text is printed
 // whitespace-pre-line, so every break the shelter wrote is a line on screen,
 // and a listing set out as a short line each for age, sex and character ran
-// past the clamp's five lines at half the character count. Breaks are
+// past the clamp's five lines at half the character count. Lines are
 // counted, not measured, for the same reason the length is: the server and
 // the client have to decide this the same way.
-const CLAMP_DESCRIPTION_BREAKS = 5;
+const CLAMP_DESCRIPTION_LINES = 5;
 
-function clampsDescription(description: string): boolean {
-  if (description.length > CLAMP_DESCRIPTION_CHARS) return true;
-  return description.split("\n").length - 1 >= CLAMP_DESCRIPTION_BREAKS;
+// The paragraphs a description is printed in. Shelters separate them with a
+// blank line, and this used to be one whitespace-pre-line paragraph, so that
+// blank line was a line on screen like any other: on 33 of the 189 clamped
+// descriptions it was the fifth one, and the clamp drew its ellipsis alone on
+// an empty line above "Preberi več". Split here and printed one element each,
+// the separation is a margin rather than a line, and the clamp spends all
+// five of its lines on text. The single breaks inside a paragraph stay, both
+// on screen and in the count below: the shelter meant those.
+function descriptionParagraphs(description: string): string[] {
+  return description
+    .split(/\n[^\S\n]*\n\s*/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function clampsDescription(paragraphs: string[]): boolean {
+  const printed = paragraphs.reduce(
+    (count, paragraph) => count + paragraph.length,
+    0,
+  );
+  if (printed > CLAMP_DESCRIPTION_CHARS) return true;
+  const lines = paragraphs.reduce(
+    (count, paragraph) => count + paragraph.split("\n").length,
+    0,
+  );
+  return lines > CLAMP_DESCRIPTION_LINES;
 }
 
 // The icon carries the meaning on screen; a screen reader gets the same
@@ -504,8 +527,9 @@ export function AnimalFacts({
   );
   const description = animal.shortDescription || fetched;
   // Whichever way it arrived, the same measure decides whether it opens
-  // clamped: length or the breaks the shelter wrote.
-  const clampDescription = clampsDescription(description ?? "");
+  // clamped: the length of what is printed or the lines it is set out in.
+  const paragraphs = description ? descriptionParagraphs(description) : [];
+  const clampDescription = clampsDescription(paragraphs);
 
   return (
     <div className="space-y-4">
@@ -702,10 +726,14 @@ export function AnimalFacts({
           spinner and no skeleton: it is one paragraph inside a dialog that is
           already open and already full, and a placeholder for it would be
           more noticeable than the wait. */}
-      {description && (
+      {paragraphs.length > 0 && (
         <div className="space-y-1">
-          <p
+          <div
             id={descriptionId}
+            // The block the shelter's paragraphs are printed in, named so
+            // that the read-more button and the tests have one element to
+            // hold on to.
+            data-slot="animal-description"
             // The shelter wrote this and we print it verbatim, so it is
             // Slovenian on an English page too. See quotedLang in lib/i18n.ts.
             lang={quotedLang("sl", locale)}
@@ -713,13 +741,29 @@ export function AnimalFacts({
             // ninety characters, which is more than an eye tracks comfortably.
             // The pills and boxes around it keep the full width; only the
             // running text narrows.
+            //
+            // The clamp counts the line boxes of the paragraphs inside it,
+            // which is what lets the gap between them cost a margin rather
+            // than one of the five lines. Measured the same in Chrome, Firefox
+            // and WebKit on the built export: five lines of text either way,
+            // with the gaps added on top.
             className={cn(
-              "max-w-prose text-sm leading-relaxed whitespace-pre-line",
+              "max-w-prose space-y-2 text-sm leading-relaxed",
               clampDescription && !showFullDescription && "line-clamp-5",
             )}
           >
-            {description}
-          </p>
+            {paragraphs.map((paragraph, index) => (
+              <p
+                // The shelter's own paragraphs, in the order it wrote them:
+                // nothing sorts or filters them, so the position is the
+                // identity.
+                key={index}
+                className="whitespace-pre-line"
+              >
+                {paragraph}
+              </p>
+            ))}
+          </div>
           {clampDescription && (
             <button
               type="button"

@@ -249,12 +249,11 @@ export function ShelterBlock({
               // of the label overflowing a fixed box, and at any font size
               // the label fits on one line nothing about it moves.
               "h-auto min-h-9 py-1.5 whitespace-normal pointer-coarse:min-h-11",
-              // short: goes wherever max-sm: goes, because the bar this
-              // mirrors does: the dialog draws it on the phone shell, and a
-              // phone held sideways is that shell too (PHONE_SHELL in
-              // animal-dialog.tsx). Without it a landscape phone printed the
-              // same button twice, once in the box and once in the bar.
-              ctaMirrored && "max-sm:hidden short:hidden",
+              // The shell and not the width, because the bar this mirrors
+              // follows the shell: a phone held sideways is the phone shell
+              // too, and on width alone a landscape phone printed the same
+              // button twice, once in the box and once in the bar.
+              ctaMirrored && "phone-shell:hidden",
             )}
           >
             <a

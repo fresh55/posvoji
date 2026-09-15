@@ -21,6 +21,33 @@
 /* A phone held sideways. */
 @custom-variant short (@media (max-height: 32rem));
 
+/* Which shell a surface stands in, as one name each.
+   
+   The animal dialog is the whole reason: a phone held sideways is 844x390,
+   wide enough for the desktop box and far too short for it, so every phone
+   rule in it had to be written twice, once as max-sm: and once as short:, and
+   every desktop rule as sm:not-short:. Nothing enforced the pairing but a
+   comment, so a rule written only as max-sm: was a landscape bug nobody would
+   see. Named, each rule is written once and cannot half-exist.
+
+   The two are exact complements, and the same boundary as the JS pair in
+   lib/viewport-queries.ts, which the shell and the fan read when they have to
+   ask the question rather than style on it. `not (max-height)` rather than a
+   min-height, because 32rem matches both ways round and a viewport exactly
+   512px tall would otherwise answer yes to both. */
+@custom-variant phone-shell {
+  /* Two rules and not one comma condition: the shorthand form takes the first
+     condition and drops the rest silently, which compiled this variant to the
+     width alone and gave a landscape phone the desktop box again. */
+  @media (max-width: 639px) {
+    @slot;
+  }
+  @media (max-height: 32rem) {
+    @slot;
+  }
+}
+@custom-variant desktop-box (@media (min-width: 640px) and (not (max-height: 32rem)));
+
 /* A device whose pointer can hover, which is the question Tailwind's own
    hover variant asks before it applies anything. Needed on its own wherever
    something is hidden at rest and a hover brings it back: the hide has to be

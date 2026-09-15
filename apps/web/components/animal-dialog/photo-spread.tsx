@@ -211,7 +211,7 @@ export const PhotoSpread = memo(function PhotoSpread({
         images={images}
         name={animal.name}
         sizes="(max-width: 639px) 100vw, 24rem"
-        className="relative aspect-[4/3] w-full overflow-hidden bg-muted sm:not-short:mx-auto sm:not-short:w-[58%] sm:not-short:rounded-ui sm:not-short:border"
+        className="relative aspect-[4/3] w-full overflow-hidden bg-muted desktop-box:mx-auto desktop-box:w-[58%] desktop-box:rounded-ui desktop-box:border"
       />
     );
   }

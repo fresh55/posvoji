@@ -1972,7 +1972,7 @@ describe("animal dialog", () => {
   // The wash reaches 12% past the stage on each side, which on a phone is 124%
   // of the screen, and the dialog answered with a horizontal scrollbar. jsdom
   // has no layout to measure, so what is pinned is the clip that stops it,
-  // where the overhang stands. The dialog's own max-sm:overflow-x-hidden is
+  // where the overhang stands. The dialog's own phone-shell:overflow-x-hidden is
   // policy for the whole surface, not this fix, so it is not asserted here.
   it("clips the stage wash rather than letting it widen the dialog", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
@@ -2593,7 +2593,7 @@ describe("animal dialog", () => {
       region(dialog, "shelter-block")
         .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
         .className,
-    ).toContain("max-sm:hidden");
+    ).toContain("phone-shell:hidden");
     expect(
       region(dialog, "sticky-cta").getByRole("link", {
         name: /Odpri objavo pri zavetišču/,
@@ -2611,20 +2611,20 @@ describe("animal dialog", () => {
     renderGrid();
     const dialog = await screen.findByRole("dialog");
 
-    expect(dialog.className).toContain("short:h-dvh");
-    expect(dialog.className).toContain("short:overflow-y-auto");
-    expect(dialog.className).toContain("sm:not-short:max-h-[92dvh]");
+    expect(dialog.className).toContain("phone-shell:h-dvh");
+    expect(dialog.className).toContain("phone-shell:overflow-y-auto");
+    expect(dialog.className).toContain("desktop-box:max-h-[92dvh]");
     // The card is the scrollport on the desktop box alone; on the phone shell
     // the dialog itself scrolls.
     const card = dialog.querySelector('[data-slot="animal-dialog-card"]');
-    expect(card?.className).toContain("sm:not-short:overflow-y-auto");
+    expect(card?.className).toContain("desktop-box:overflow-y-auto");
     // The sticky bar stands on a short viewport too, so the box's own button
     // gives way to it there rather than printing the same link twice.
     expect(
       region(dialog, "shelter-block")
         .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
         .className,
-    ).toContain("short:hidden");
+    ).toContain("");
   });
 
   // The animal's own page renders the same box with no bar under it, so there
@@ -2643,7 +2643,7 @@ describe("animal dialog", () => {
     const cta = screen.getByRole("link", {
       name: /Odpri objavo pri zavetišču/,
     });
-    expect(cta.className).not.toContain("max-sm:hidden");
+    expect(cta.className).not.toContain("phone-shell:hidden");
     // On the pointer and not on the width: the 768px tablet, where this is
     // the only copy of the button, measured 36px under max-sm. A minimum
     // rather than a height, because the label wraps at a large root font and
@@ -2712,7 +2712,7 @@ describe("animal dialog", () => {
     const link = region(dialog, "shelter-block").getByRole("link", {
       name: /Odpri objavo pri zavetišču/,
     });
-    expect(link.className).not.toContain("max-sm:hidden");
+    expect(link.className).not.toContain("phone-shell:hidden");
     expect(within(dialog).getByText("Ta žival je že našla nov dom.")).toBeTruthy();
   });
 

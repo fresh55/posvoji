@@ -83,7 +83,7 @@ export type DialogOrigin = {
 // motion-reduce:duration-0, not motion-reduce:animate-none: see the comment
 // on DialogOverlay in ui/dialog.tsx for why the animate-none guard does not
 // actually take effect on a data-open:/data-closed: element.
-// max-sm:overflow-x-hidden is policy, not the fix for any one layer: naming
+// phone-shell:overflow-x-hidden is policy, not the fix for any one layer: naming
 // only the vertical axis leaves the other computing to auto, and on a phone
 // the dialog is the viewport, so it never scrolls sideways. Decoration that
 // overhangs still clips itself where it stands (photo-wash.tsx). Anything wide
@@ -91,11 +91,15 @@ export type DialogOrigin = {
 // its own box, because this boundary will not offer it a scrollbar.
 //
 // Which layout is standing is a question about width and height, not width
-// alone: see PHONE_SHELL below. Every phone rule in this file is written
-// twice, max-sm: and short:, and every desktop rule is sm:not-short:, so a
-// phone held sideways gets the full-screen takeover it gets upright.
+// alone, so a phone held sideways gets the full-screen takeover it gets
+// upright. phone-shell: and desktop-box: are that question as two names
+// (globals.css), and they are exact complements: every rule in here is
+// written once and cannot half-exist, where the pair of variants they replace
+// had to be remembered together and a rule written as max-sm: alone was a
+// landscape bug nothing would catch. PHONE_SHELL below is the same boundary
+// for the places that have to ask rather than style.
 const CONTENT_CLASS =
-  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 max-sm:h-dvh max-sm:overflow-x-hidden max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:bg-popover max-sm:data-open:slide-in-from-bottom-4 max-sm:data-closed:slide-out-to-bottom-4 short:h-dvh short:overflow-x-hidden short:overflow-y-auto short:overscroll-contain short:bg-popover short:data-open:slide-in-from-bottom-4 short:data-closed:slide-out-to-bottom-4 sm:not-short:inset-auto sm:not-short:top-1/2 sm:not-short:left-1/2 sm:not-short:max-h-[92dvh] sm:not-short:w-[calc(100vw-3rem)] sm:not-short:max-w-3xl sm:not-short:-translate-x-1/2 sm:not-short:-translate-y-1/2 sm:not-short:pt-2 sm:not-short:data-open:zoom-in-95 sm:not-short:data-closed:zoom-out-95";
+  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame. The pull up under
 // the photos is on the wrapper around it (CARD_FRAME_CLASS), so that the edge
@@ -110,7 +114,7 @@ const CONTENT_CLASS =
 // sm:[scrollbar-width:thin] because on Windows the classic 17px scrollbar sits
 // inside the card's rounded corner, under the next arrow.
 const CARD_CLASS =
-  "relative flex flex-1 flex-col gap-4 p-4 sm:not-short:min-h-0 sm:not-short:scroll-pt-20 sm:not-short:overflow-y-auto sm:not-short:rounded-ui sm:not-short:border sm:not-short:bg-popover sm:not-short:bg-clip-padding sm:not-short:p-6 sm:not-short:pt-12 sm:not-short:text-popover-foreground sm:not-short:shadow-lg sm:not-short:[scrollbar-width:thin]";
+  "relative flex flex-1 flex-col gap-4 p-4 desktop-box:min-h-0 desktop-box:scroll-pt-20 desktop-box:overflow-y-auto desktop-box:rounded-ui desktop-box:border desktop-box:bg-popover desktop-box:bg-clip-padding desktop-box:p-6 desktop-box:pt-12 desktop-box:text-popover-foreground desktop-box:shadow-lg desktop-box:[scrollbar-width:thin]";
 
 // The card and the two edge arrows, which are drawn half outside it. The
 // arrows are absolute against this box, so it is the one that carries the pull
@@ -121,7 +125,7 @@ const CARD_CLASS =
 // min-h-full and this grows with its content, because there the dialog itself
 // is the scrollport.
 const CARD_FRAME_CLASS =
-  "relative flex flex-1 flex-col sm:not-short:-mt-4 sm:not-short:min-h-0";
+  "relative flex flex-1 flex-col desktop-box:-mt-4 desktop-box:min-h-0";
 
 // Same round language as the photo chevrons, one level up: these walk the list
 // of animals rather than the list of photos.
@@ -161,7 +165,7 @@ const CARD_FRAME_CLASS =
 // number (see syncNavShift) and the default keeps the class honest on its own,
 // for the first paint and for the phone, where these are hidden anyway.
 const ANIMAL_NAV_CLASS =
-  "absolute top-[calc(4rem-1.125rem-var(--nav-shift,0px))] z-40 hidden size-9 rounded-full bg-popover shadow-xs sm:not-short:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4.375rem-1.375rem-var(--nav-shift,0px))] pointer-coarse:size-11";
+  "absolute top-[calc(4rem-1.125rem-var(--nav-shift,0px))] z-40 hidden size-9 rounded-full bg-popover shadow-xs desktop-box:inline-flex dark:bg-popover dark:hover:bg-muted pointer-coarse:top-[calc(4.375rem-1.375rem-var(--nav-shift,0px))] pointer-coarse:size-11";
 
 // How far the title bar travels before it is pinned: 64px at rest less the
 // 40px the pinned name sits at. The card's scroll past that moves the bar no
@@ -177,7 +181,7 @@ const NAV_SHIFT_MAX = 24;
 // 44px floor every other control on the phone layout is held to (the share
 // button beside them does the same); icon-sm alone would be 32px.
 const PHONE_NAV_CLASS =
-  "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background sm:not-short:hidden";
+  "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background desktop-box:hidden";
 
 // The share button stands third in that row, and on the phone it was the only
 // one of the three drawn as a bare glyph: two outlined circles and then an
@@ -189,7 +193,7 @@ const PHONE_NAV_CLASS =
 // with background, and half a shade in the wrong direction is what would give
 // the row away.
 const PHONE_SHARE_CLASS =
-  "max-sm:rounded-full max-sm:border-border max-sm:bg-background/80 max-sm:shadow-xs max-sm:hover:bg-background max-sm:dark:border-input max-sm:dark:bg-input/30 max-sm:dark:hover:bg-input/50 short:rounded-full short:border-border short:bg-background/80 short:shadow-xs short:hover:bg-background short:dark:border-input short:dark:bg-input/30 short:dark:hover:bg-input/50";
+  "phone-shell:rounded-full phone-shell:border-border phone-shell:bg-background/80 phone-shell:shadow-xs phone-shell:hover:bg-background phone-shell:dark:border-input phone-shell:dark:bg-input/30 phone-shell:dark:hover:bg-input/50 ";
 
 const DRAG_SPRING = {
   type: "spring",
@@ -584,7 +588,7 @@ export function AnimalDialog({
               // on the content, which makes this fixed to the content box
               // rather than to the viewport, and that box is inset-0 either
               // way. What changes is that it no longer rides the scroll.
-              className="fixed top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background sm:not-short:hidden"
+              className="fixed top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background desktop-box:hidden"
             >
               <XIcon aria-hidden />
               <span className="sr-only">{messages.close}</span>
@@ -594,7 +598,7 @@ export function AnimalDialog({
           <LazyMotion features={domAnimation}>
             <m.div
               data-slot="animal-dialog-body"
-              className="flex min-h-full flex-col sm:not-short:min-h-0"
+              className="flex min-h-full flex-col desktop-box:min-h-0"
               style={{ y: dragY }}
               onPointerDown={startDrag}
               onPointerMove={moveDrag}
@@ -696,7 +700,7 @@ export function AnimalDialog({
                       clear it, so what matters is that the row is asked for
                       as a decoration, not that the ground is a pixel taller. */}
                   <m.div
-                    className="sm:not-short:sticky sm:not-short:-top-12 sm:not-short:z-20 sm:not-short:-mx-6 sm:not-short:-mt-6 sm:not-short:bg-popover sm:not-short:px-6 sm:not-short:pt-6 sm:not-short:pb-3 sm:not-short:shadow-[inset_0_-1px_0_0_var(--popover)]"
+                    className="desktop-box:sticky desktop-box:-top-12 desktop-box:z-20 desktop-box:-mx-6 desktop-box:-mt-6 desktop-box:bg-popover desktop-box:px-6 desktop-box:pt-6 desktop-box:pb-3 desktop-box:shadow-[inset_0_-1px_0_0_var(--popover)]"
                     variants={CONTENT_ITEM}
                     transition={transition}
                   >
@@ -714,7 +718,7 @@ export function AnimalDialog({
                             32px, which is what the icon-sm controls beside it
                             already stood at, so the bar and the arrows' offset
                             are measured from the same row as before. */}
-                        <DialogTitle className="min-w-0 break-words font-semibold text-2xl tracking-tight max-sm:line-clamp-2 short:line-clamp-2">
+                        <DialogTitle className="min-w-0 break-words font-semibold text-2xl tracking-tight phone-shell:line-clamp-2 ">
                           {name}
                         </DialogTitle>
                         <StatusBadge
@@ -771,7 +775,7 @@ export function AnimalDialog({
                             // share button beside it carries one: on a touch
                             // tablet this is the way out of the dialog, and
                             // icon-sm is 32px. A mouse keeps the 32px row.
-                            className="hidden sm:not-short:inline-flex pointer-coarse:size-11"
+                            className="hidden desktop-box:inline-flex pointer-coarse:size-11"
                           >
                             <XIcon aria-hidden />
                             <span className="sr-only">{messages.close}</span>
@@ -788,7 +792,7 @@ export function AnimalDialog({
                       would otherwise put it 28px down (16px on the phone, where
                       the bar has no padding of its own). */}
                   <m.div
-                    className="-mt-2 sm:not-short:-mt-5"
+                    className="-mt-2 desktop-box:-mt-5"
                     variants={CONTENT_ITEM}
                     transition={transition}
                   >
@@ -915,7 +919,7 @@ export function AnimalDialog({
               {stickyCta && (
                 <div
                   data-slot="sticky-cta"
-                  className="sticky inset-x-0 bottom-0 z-30 mt-auto border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:not-short:hidden"
+                  className="sticky inset-x-0 bottom-0 z-30 mt-auto border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] desktop-box:hidden"
                 >
                   <Button asChild size="sm" className="h-11 w-full">
                     <a

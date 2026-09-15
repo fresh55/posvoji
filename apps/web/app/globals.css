@@ -129,6 +129,30 @@
   }
 }
 
+/* A phone held sideways, and the one dimension the blocks above do not ask
+   about. At 844x390 the frame is past sm, so --page-y is 2.5rem and the page
+   spends 80px of a 390px screen on air above and below a document thousands
+   of pixels long: the first screen came out as chrome, with no card on it at
+   all. 16px is the value the portrait frame already uses, applied on height
+   rather than on width.
+
+   Height only. --section-gap stays where it is, because the home page's cat
+   is positioned against it (-bottom-section-gap in home-cat.tsx) and the
+   corner arithmetic in that file is derived from it; retuning it here would
+   move the drawing without moving the numbers that describe it.
+
+   After the width blocks rather than before, because they carry the same
+   specificity and a short viewport that is also wide has to end up short.
+   This was two per-page overrides before, one on the register and one on the
+   home page, and the first of them said in so many words that the token is
+   where it belongs the moment a second page needs it. Eleven pages read
+   py-page-y and every one of them has this problem in landscape. */
+@media (height <= 32rem) {
+  :root {
+    --page-y: 1rem;
+  }
+}
+
 @theme inline {
   --spacing-gutter: var(--gutter);
   --spacing-page-y: var(--page-y);

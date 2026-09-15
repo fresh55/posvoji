@@ -1,7 +1,11 @@
 "use client";
 
 import { AnimalCard } from "@/components/animal-card";
-import { AnimalFilters } from "@/components/filters/animal-filters";
+import {
+  AnimalFilters,
+  TOOLBAR_BAND,
+  TOOLBAR_ROW_HEIGHT,
+} from "@/components/filters/animal-filters";
 import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-provider";
@@ -17,6 +21,7 @@ import {
   CARD_GRID,
   CARD_PHOTO_ASPECT,
   CARD_PHOTO_RADIUS,
+  RESULTS_COLUMNS,
 } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -188,33 +193,22 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
       // column: at 1440 the six tiles were laid out across the whole 1216px
       // frame and hydration then moved the grid 256px to the right and
       // narrowed it to 960 to make room for the filter rail, which is a jump
-      // of the entire page sideways on exactly the links people share. The
-      // rail's own column is left empty rather than filled with a second
-      // skeleton: what is being promised here is where the animals will be,
-      // and an empty 224px is a truer promise than a grey panel that is about
-      // to be a list of controls.
-      className={cn(
-        hasSidebar &&
-          "lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-column-gap",
-      )}
+      // of the entire page sideways on exactly the links people share.
+      className={cn(hasSidebar && RESULTS_COLUMNS)}
     >
-      {hasSidebar && <div className="hidden lg:block" />}
-      <div className="flex flex-col gap-4">
+      {/* The cards go in the second track and the rail's is left empty: what is
+          promised here is where the animals will be, and an empty 224px is a
+          truer promise than a grey panel about to become a list of controls.
+          col-start rather than an empty element to hold the column open. */}
+      <div className={cn("flex flex-col gap-4", hasSidebar && "lg:col-start-2")}>
         {/* The toolbar the hidden block also covers: the species tabs, the
             result count and the sort control are as unanswered as the cards.
-            In the band the real bar draws, rule and all (animal-filters.tsx),
-            because the height of that band is what decides where the first row
-            of cards starts: a bare 36px skeleton put them 21px above where
-            they land.
-            The three heights are that bar's own, which states a different one
-            per width and states each for a reason: the species strip measures
-            28px from outside below md (its tap overlays live in padding the
-            row's margins collapse through), the trigger beside it sets 44 from
-            md, and the desktop row states 32 so the panel head across the
-            gutter can line up with it. Copied here rather than derived,
-            because a stand-in cannot render the bar it stands in for. */}
-        <div className="bleed border-b py-rail-pad lg:mx-0 lg:px-0">
-          <Skeleton className="h-7 w-48 md:h-11 lg:h-8" />
+            In the band the real bar draws, rule and all, and at the height its
+            row states, both from animal-filters.tsx: that height is what
+            decides where the first row of cards starts, and a bare 36px
+            skeleton put them 21px above where they land. */}
+        <div className={TOOLBAR_BAND}>
+          <Skeleton className={cn("w-48", TOOLBAR_ROW_HEIGHT)} />
         </div>
         <div className={CARD_GRID}>
           {PENDING_CARDS.map((n) => (
@@ -473,22 +467,11 @@ export function AnimalGrid({
         // footer block is taller than the dock's band, so the grid's clearance
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
-        // minmax(0,1fr) and not 1fr. A grid track sized 1fr takes its
-        // automatic minimum from its content, so the results column could
-        // never be narrower than the widest thing in it, and what is in it is
-        // a toolbar whose species tabs and sort control state their sizes in
-        // rem. At the text size WCAG 1.4.4 asks a page to survive, 200%, that
-        // toolbar wants 1122px beside a 448px rail: the column refused to
-        // shrink, the grid overflowed the frame, and the whole document
-        // scrolled sideways - 1698px of it in a 1440px window, and the same
-        // 1698px in a 1024px one, where it is two thirds of the page again.
-        // A floor of 0 lets the column take the room that is left, and the tab
-        // strip inside it then does what it already does on a phone, which is
-        // scroll and fade its own edges.
-        className={cn(
-          hasSidebar &&
-            "lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-column-gap",
-        )}
+        // The rail and the grid beside it, from lib/card-grid.ts, which owns
+        // the 14rem the photo bands are derived from and the minmax(0,...)
+        // floor that keeps the column shrinkable. The stand-in above wears the
+        // same string; what happens when the two disagree is written there.
+        className={cn(hasSidebar && RESULTS_COLUMNS)}
       >
         {/* The page went from its h1 straight to one h3 per card, so there was
             nothing between the top of the document and the results to navigate

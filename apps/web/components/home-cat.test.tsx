@@ -46,7 +46,6 @@ describe("the home cat", () => {
     const { container } = render(<HomeCat locale="sl" />);
 
     const caption = container.querySelector("figcaption")!;
-    expect(caption).toBeTruthy();
     const link = caption.querySelector("a")!;
     expect(link.getAttribute("href")).toBe(SRECKO_PATHS.sl);
     expect(link.className).toContain("text-xs");
@@ -63,21 +62,23 @@ describe("the home cat", () => {
     expect(classes).toContain("absolute");
   });
 
-  it("draws a smaller stage on a phone held sideways, in step with the corner it reserves", () => {
-    // 128x100 against 152x120 and 168x132: the poster's shape at all three, so
-    // the still is never letterboxed against a canvas that fills its box, and
-    // each fits the corner it is drawn in: 158px at lg, 142 below it, 104 on a
-    // phone held sideways. The corner reserves the figure plus the 32px that
-    // keeps a wrapped title off him, and site-page.tsx pads by this property
-    // rather than by a number of its own so the two cannot drift.
+  it("takes its width from the corner the hero reserves", () => {
+    // The corner and the drawing in it are one measurement, and this is
+    // where that stops being a claim: the figure subtracts the 32px that
+    // keeps a wrapped title off him rather than restating a width per
+    // breakpoint, and the stage keeps the poster's shape rather than
+    // restating a height. Retuning CAT_CORNER moves all of it.
     const { container } = render(<HomeCat locale="sl" />);
-    const classes = container.querySelector("figure")!.className.split(" ");
-    const stage = container.querySelector('[data-testid="cat"]')!.className.split(" ");
 
-    expect(classes).toContain("short:w-32");
-    expect(stage).toContain("short:h-25");
-    expect(CAT_CORNER).toContain("[--cat-corner:11.5rem]");
-    expect(CAT_CORNER).toContain("lg:[--cat-corner:12.5rem]");
-    expect(CAT_CORNER).toContain("short:[--cat-corner:10rem]");
+    expect(container.querySelector("figure")!.className).toContain(
+      "w-[calc(var(--cat-corner)-2rem)]",
+    );
+    expect(
+      container.querySelector('[data-testid="cat"]')!.className,
+    ).toContain("aspect-[192/152]");
+    expect(CAT_CORNER).toBe(
+      "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:10rem]",
+    );
   });
+
 });

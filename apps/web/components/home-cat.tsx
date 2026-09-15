@@ -21,21 +21,39 @@ export const HOME_CAT_FRAMING: CatFraming = {
   poster: "/models/our-cat/poster-home.webp?v=3",
 };
 
+/** How much of the hero's line the corner reserves, and, minus the 32px that
+ *  keeps a wrapped title off him, the width of everything drawn in it.
+ *
+ *  One measurement rather than four lists kept in lockstep by hand.
+ *  site-page.tsx pads the hero by this property, the figure below takes its
+ *  width from it, and the stage takes its height from its own aspect, so each
+ *  of the three sizes this corner has is stated once and the rest is
+ *  arithmetic. A property and not a prop because the padding belongs to the
+ *  hero and the drawing is its child, which is the bargain --rail-pad strikes
+ *  in globals.css for the same reason.
+ *
+ *  184px, 200px at lg, 160px on a phone held sideways. */
+export const CAT_CORNER =
+  "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:10rem]";
+
 /**
  * Srečko in the home page's top right corner, beside the hero.
  *
- * The hero is a heading and one line, 62px tall, and the right half of it
+ * The hero is a heading and one line, 70px tall, and the right half of it
  * stood empty from tablet width up. He does not sit in that row: any stage
  * tall enough to show him would grow the row and leave the heading with
  * dead space above it (measured: 48px of it). He is positioned out of flow
- * instead, in the corner the page already has: from the header rule down
- * to the top of the toolbar, which at lg is the top padding, the hero and
- * the section gap, 158px at lg and 142 below it, with nothing else in it.
- * The heading, the meta line, the tabs and the cards all keep their places.
- * The figure is one of two fixed sizes rather than derived from those three,
- * because the poster is rendered for a box of that shape; a box that changed
- * shape with the hero would letterbox the still while the canvas fills it,
- * and he would jump on handover.
+ * instead, in the corner the page already has: from the header rule down to
+ * the top of the toolbar, which is the page's top padding, the hero and the
+ * section gap. Measured on the built page that is 158px at lg and 142
+ * between md and lg, where the padding and the gap are both smaller; a
+ * heading that comes in on two lines makes it taller again. The heading,
+ * the meta line, the tabs and the cards all keep their places.
+ *
+ * The figure is sized from the corner rather than from the hero, and the
+ * stage keeps the poster's shape at every size, because the still is
+ * object-contain while the canvas fills its box: a box of another shape
+ * letterboxes one and not the other, and he jumps on handover.
  *
  * His link, "Spoznajte Srečka", is his caption, under him, inside this box.
  *
@@ -56,12 +74,11 @@ export const HOME_CAT_FRAMING: CatFraming = {
  * its taps. Inside the box it is bounded by the same --cat-corner the row is
  * padded by.
  *
- * It costs him a fifth of his size. The corner is the band from the header
- * rule to the top of the toolbar and nothing can make it taller, so a line
- * under him has to come out of the stage. What it buys back is a stage that
- * fits the corner at last: the 192x152 one overflowed the 142px band between
- * md and lg by 10px wherever the heading came in on one line, and drew his
- * ears behind the language switcher and the menu button.
+ * It costs him a fifth of his size. Nothing can make the corner taller, so a
+ * line under him has to come out of the stage. What it buys back is a stage
+ * that fits: the 192x152 one overflowed the 142px band by 10px wherever the
+ * heading came in on one line, between 850 and 1023, and drew his ears
+ * behind the language switcher and the menu button.
  *
  * Below md there is no such corner beside a two-line title, and above the
  * title he would push the tabs and the first cards under the fold, so the
@@ -76,44 +93,37 @@ export const HOME_CAT_FRAMING: CatFraming = {
  * often never fetched, here he is on screen at once, and without the wait
  * every desktop visit would fetch him alongside the first card photos.
  *
- * On a phone held sideways he is drawn smaller, at 128x100. That viewport is
- * 390px tall and wide enough to be past md, so he was claiming 152px of it in
- * the corner and 224px of the title's line, which put the heading on two
- * lines, the meta row on two, and the species tabs 21px inside the filter
- * dock's plate: the page's primary control was under a floating one, and the
- * first card row started 366px down a 390px screen. The smaller stage and the
- * narrower corner it reserves give the heading one line and the tabs a 41px
- * gap above the dock, without taking him off the page. Same aspect ratio, so
- * the poster stays the model's own first frame rather than a letterboxed one.
+ * On a phone held sideways the corner is 160px wide and he is drawn at
+ * 128x100 in it, with no caption under him. That viewport is 390px tall and
+ * wide enough to be past md, so the full corner was claiming 152px of its
+ * height and 224px of the title's line, which put the heading on two lines,
+ * the meta row on two, and the species tabs 21px inside the filter dock's
+ * plate: the page's primary control was under a floating one, and the first
+ * card row started 366px down a 390px screen. The narrower corner gives the
+ * heading one line and the tabs a clear gap above the dock, without taking
+ * him off the page.
  */
-
-/** How much of the hero's line the corner reserves, and the box drawn in it.
- *  The two are one measurement: the figure's width plus the 32px that keeps a
- *  wrapped title off him. Written as a property so the padding cannot be
- *  retuned in site-page.tsx without the drawing moving with it. */
-export const CAT_CORNER =
-  "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:10rem]";
 
 export function HomeCat({ locale }: { locale: Locale }) {
   return (
     // A column: the stage, then his name, filling the corner and no more.
     //
-    // Two sizes, because the corner is two sizes. It is the page's top
-    // padding, the hero and the section gap, which is 158px at lg and 142
-    // between md and lg, and the figure is measured from the bottom up: too
-    // tall and it crosses the header rule rather than the toolbar, where the
-    // language switcher and the menu button are. The 192x152 stage this
-    // started as was already 10px over that at 850 to 1023, wherever the
-    // heading came in on one line; 152x120 with his name under it clears the
-    // rule at both, and is the largest box that does.
-    <figure className="absolute right-0 -bottom-section-gap hidden w-38 flex-col items-center md:flex lg:w-42 short:w-32">
+    // The width is the corner less the 32px that keeps a wrapped title off
+    // him, so each of the corner's three sizes reaches the drawing without
+    // being written again: 152, 168 at lg, 128 held sideways. The figure is
+    // laid out from the bottom up and what is above it is the header rule
+    // rather than more page, so a box taller than its corner crosses into the
+    // language switcher and the menu button rather than into the toolbar.
+    <figure className="absolute right-0 -bottom-section-gap hidden w-[calc(var(--cat-corner)-2rem)] flex-col items-center md:flex">
       <CatModel
         locale={locale}
-        // The aspect is the poster's at every one of the three sizes, which is
-        // the rule this box cannot break: the still is object-contain and the
-        // canvas fills the box, so a box of another shape letterboxes the one
-        // and not the other, and he jumps when WebGL takes over.
-        className="h-30 w-full lg:h-33 short:h-25"
+        // The poster's own shape, so the height follows the width at all three
+        // sizes: 120, 133 at lg, 101 held sideways, which is what leaves the
+        // caption its line inside a corner of 142, 158 and about 104.
+        className="aspect-[192/152] w-full"
+        // Advisory and unread today: next.config sets images.unoptimized,
+        // which drops sizes and srcset, and there is one poster file. Kept
+        // truthful about the three boxes for the day that changes.
         sizes="(max-height: 32rem) 128px, (min-width: 64rem) 168px, 152px"
         framing={HOME_CAT_FRAMING}
         startAfterLoad

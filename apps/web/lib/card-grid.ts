@@ -172,6 +172,21 @@ export const CARD_PHOTO_RADIUS = "rounded-2xl";
 // together or not at all, so they are read from one file.
 export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 
+// The two columns the results page draws from lg: the filter rail, then the
+// grid. Here rather than in animal-grid.tsx because the 14rem is already this
+// file's number - the bands below are derived from "a 14rem sidebar plus a 2rem
+// column gap", and the note above says what moving it costs. Two elements wear
+// this string, the results block and the stand-in that holds its place while a
+// filtered link hydrates, and they have to agree about the page's shape or the
+// grid jumps sideways when the real one arrives.
+//
+// minmax(0,1fr) and not 1fr: a 1fr track takes its automatic minimum from its
+// content, and the content is a toolbar sized in rem, so at 200% browser text
+// the column refused to shrink and the document scrolled sideways at every
+// desktop width.
+export const RESULTS_COLUMNS =
+  "lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
+
 export const CARD_PHOTO_SIZES =
   "(max-width: 639px) calc(50vw - 24px)," +
   " (max-width: 703px) calc(50vw - 32px)," +

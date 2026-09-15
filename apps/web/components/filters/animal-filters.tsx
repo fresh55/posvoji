@@ -79,6 +79,27 @@ import type { AnimalSort } from "@/lib/sort";
 const DOCK_CLASS =
   "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
 
+/** The band the toolbar draws itself in: full width below lg, the frame's own
+ *  column from lg, with the rule under it that the grid starts below.
+ *
+ *  Exported because the stand-in that holds the results' place while a filtered
+ *  link hydrates draws the same band (ResultsPending in animal-grid.tsx), and
+ *  its height is what decides where that page's first row of cards starts. It
+ *  cannot render this component to find out - the sheet and the picker in here
+ *  are stateful, and exactly one desktop LocationPicker may be mounted - so the
+ *  band is a string both can wear instead of a shape one of them copies. */
+export const TOOLBAR_BAND = "bleed border-b py-rail-pad lg:mx-0 lg:px-0";
+
+/** What the row inside that band measures at each width, for the same stand-in.
+ *
+ *  Three numbers because the row states three: the species strip alone comes to
+ *  28px below md (its tap overlays live in padding this row's margins collapse
+ *  through), the sort trigger beside it sets 44 from md, and the desktop row
+ *  states 32 for itself so the filter panel's head lines up with it across the
+ *  gutter. Beside the rows that state them rather than in the file that copies
+ *  them, so a retune there is made in sight of this. */
+export const TOOLBAR_ROW_HEIGHT = "h-7 md:h-11 lg:h-8";
+
 // Desktop has enough room for one quiet toolbar. Below lg the species tabs
 // hold the sticky rail on their own, joined from md by the same quiet sort
 // control, while the two primary discovery actions share a bottom dock that
@@ -239,7 +260,7 @@ export function AnimalFilters({
           gutter pins to the same edge and carries the same amount as top
           padding, so the two columns start their content on one line. The
           number is written once, in globals.css. */}
-      <div className="bleed sticky top-0 z-20 border-b bg-background/95 py-rail-pad backdrop-blur-sm short:static lg:mx-0 lg:bg-background lg:px-0 lg:backdrop-blur-none">
+      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-20 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
         {/* min-h-8 states the row's height rather than leaving it to whichever
             control happens to be tallest. It was the sort trigger's 32px
             (size="sm"), and that control stands down at zero results, so the

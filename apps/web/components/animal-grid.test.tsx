@@ -21,6 +21,7 @@ import {
 } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
+import { RESULTS_COLUMNS } from "@/lib/card-grid";
 import {
   columnTracks,
   restoreGridColumns,
@@ -380,21 +381,6 @@ describe("a filter with nothing left to narrow", () => {
   });
 });
 
-describe("the results column", () => {
-  it("is allowed to be narrower than the toolbar inside it", () => {
-    // A 1fr track cannot shrink below its content's minimum, and the toolbar
-    // in this column sizes itself in rem: at 200% browser text the column
-    // held its full width, the grid overflowed the frame and the document
-    // scrolled sideways at every desktop width. jsdom applies no stylesheet,
-    // so what is pinned here is the track, which is where the floor has to be
-    // stated - the column's own children cannot lift it.
-    const { container } = renderGrid(ANIMALS);
-
-    const results = container.querySelector('[data-slot="results"]')!;
-    expect(results.className).toContain("lg:grid-cols-[14rem_minmax(0,1fr)]");
-  });
-});
-
 describe("the pre-hydration mark", () => {
   it("comes off once the grid has rendered the address it was opened at", () => {
     // The layout's inline script puts it on before anything paints, because a
@@ -425,20 +411,20 @@ describe("the pre-hydration mark", () => {
 
   it("stands the cards in the column they will arrive in", () => {
     // The stand-in and the block it stands in for are siblings, so nothing
-    // makes them agree about the page's shape except saying it twice. Drawn
-    // as one full-width column while the results draw two, the whole grid
-    // jumped 256px sideways the moment hydration landed, on precisely the
-    // filtered links people share.
+    // makes them agree about the page's shape except the string they share.
+    // Drawn as one full-width column while the results draw two, the whole
+    // grid jumped 256px sideways the moment hydration landed, on precisely
+    // the filtered links people share. jsdom applies no stylesheet, so what
+    // is pinned is that both wear the track and that the cards are in the
+    // second of its two columns.
     const { container } = renderGrid(ANIMALS);
 
     const pending = container.querySelector('[data-slot="results-pending"]')!;
     const results = container.querySelector('[data-slot="results"]')!;
-    expect(results.className).toContain("lg:grid-cols-[14rem_minmax(0,1fr)]");
-    expect(pending.className).toContain("lg:grid-cols-[14rem_minmax(0,1fr)]");
-    // The rail's column is held open and left empty; the cards go in the
-    // second one, the same way the grid does.
-    expect(pending.children).toHaveLength(2);
-    expect(pending.children[0].className).toContain("lg:block");
+    expect(results.className).toContain(RESULTS_COLUMNS);
+    expect(pending.className).toContain(RESULTS_COLUMNS);
+    expect(pending.children).toHaveLength(1);
+    expect(pending.children[0].className).toContain("lg:col-start-2");
   });
 });
 

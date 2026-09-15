@@ -154,19 +154,10 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       // logo 96px left of the h1 above 1088px and ran both rules 192px wider
       // than the grid they bracket. The prose blocks keep their own cap, so
       // the measure does not follow the frame out.
-      // short:py-4, which is the landscape phone. At 844x390 the frame is past
-      // sm, so --page-y is 2.5rem and the page spends 80px of a 390px screen
-      // on air above and below a document that is 6,600px long. The first
-      // screen came out as the trail, the h1, the lede, the lookup button and
-      // the census, with no card on it at all. 16px is the phone value the
-      // portrait frame already uses, applied on height rather than on width,
-      // and it gives the first card back 48px of the 390.
-      //
-      // Here rather than on --page-y, which eleven pages read: every one of
-      // them has this problem in landscape, and none of them has been measured
-      // in it. The token is where this belongs the moment a second page needs
-      // it; two copies of this override is the signal, not a third.
-      mainClassName="flex w-full flex-1 flex-col gap-section-gap py-page-y short:py-4"
+      // The landscape phone this page used to override py-page-y for is
+      // answered by the token itself now (globals.css), where the second page
+      // that needed it was the signal to move it.
+      mainClassName="flex w-full flex-1 flex-col gap-section-gap py-page-y"
       // The register is 5,967px at 375px, which is 7.3 screens, and nothing
       // on this page is fixed or sticky: the header is static, so from the
       // last card the language switcher, the nav and the trail are all about

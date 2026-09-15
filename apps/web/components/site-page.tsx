@@ -41,13 +41,7 @@ export function SitePage({ locale }: { locale: Locale }) {
       // having room: at 1920 the page used to draw three cards in a 1280px
       // column and leave 320px of empty page on each side.
       wide
-      // short:py-4, which is a phone held sideways and little else: 360 to 430
-      // pixels of height, of which the header takes 77 and the filter dock
-      // another 74. The page's own 40px top and bottom are a tenth of that
-      // screen spent on air above a heading, and with them the species tabs
-      // landed inside the dock's plate. 16px is the padding the page has below
-      // sm, which is the other size where height is what the page is short of.
-      mainClassName="flex flex-1 flex-col gap-section-gap py-page-y short:py-4"
+      mainClassName="flex flex-1 flex-col gap-section-gap py-page-y"
       // /?najdena, which municipality websites published back when the lookup
       // was a mode of the map dialog. It draws nothing; it sends those
       // visitors on to the page the flow lives on.
@@ -81,14 +75,16 @@ export function SitePage({ locale }: { locale: Locale }) {
         {/* 600, which is the weight of the card names in the grid under it
             and the weight every page title on the site now carries. At 500
             the title was the lighter of the two, so the page was headed by
-            something quieter than the rows it introduces. */}
-        {/* short:text-xl puts the phone's own title size back on a screen
-            that is 360 to 430 pixels tall. The step up the widths buy is
-            width, not height, and a phone held sideways has the first and
-            none of the second: at 30px this sentence took two lines of a
-            screen that has room for about six, and on the narrower landscape
-            phones it still did beside the cat. The rest of the row reads the
-            same at 20px, which is what the same phone shows in portrait. */}
+            something quieter than the rows it introduces.
+
+            short:text-xl puts the phone's own title size back on a screen 360
+            to 430 pixels tall. The step the widths buy is width, not height,
+            and a phone held sideways has the first and none of the second: at
+            30px this sentence took two lines of a screen with room for about
+            six, and beside the cat it still did on the narrower ones. The
+            same string without this last utility is on found-animal-page.tsx;
+            the two are no longer meant to match, because that page has no
+            dock under it and no drawing beside the title. */}
         <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl short:text-xl">
           {messages.heroTitle}
         </h1>
@@ -124,9 +120,8 @@ export function SitePage({ locale }: { locale: Locale }) {
             </p>
           )}
           {/* One link in this row, and it is the one addressed to somebody
-              with a problem. The cat's link was the other, pushed to the far
-              end with ml-auto to stand under him; it is his caption now
-              (home-cat.tsx), which is where it stops competing with this. */}
+              with a problem. The cat's link is his caption now; home-cat.tsx
+              says what it was doing here and why it left. */}
           {hasLookup && <FoundAnimalButton />}
         </div>
         <HomeCat locale={locale} />

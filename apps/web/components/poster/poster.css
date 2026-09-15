@@ -30,14 +30,33 @@
    min() of a millimetre and a share of the viewport, so the sheet is never
    drawn larger than life on a wide monitor. The 3.5rem is the stage's own
    padding with room left over for a scrollbar, which 100vw counts and the
-   page cannot use. */
+   page cannot use.
+
+   And a floor under that, because the share of the viewport a phone has is
+   not enough to read. At 390 the unit came out 1.59px, which is 38% of life
+   size: the fact tiles and the shelter's own sentence at 6.4px, the date line
+   at 5.1px, a QR caption breaking mid-slug. The page most likely to be opened
+   on a phone is the one nothing on which could be read there. 0.72mm is what
+   a 640px window already gets, so the phone is handed the smallest sheet this
+   site has ever thought legible: tiles at 10.9px and the smallest line at
+   8.7px. The sheet is then 571px wide and the stage scrolls sideways instead,
+   which is the trade: a sheet you swipe across against a sheet you cannot
+   read. Nothing above 628px moves, because above that the viewport's own
+   share is already the larger of the two. */
 .poster-stage {
-  --u: min(1mm, calc((100vw - 3.5rem) / 210));
+  --u: max(0.72mm, min(1mm, calc((100vw - 3.5rem) / 210)));
 
   display: flex;
   flex: 1 1 auto;
   align-items: flex-start;
   justify-content: center;
+  /* A centred flex item wider than its scroller has its left edge cut off and
+     unreachable; safe centring falls back to flex-start at exactly that
+     point, which is where the floor above starts making the sheet wider than
+     the phone. The plain value stays first for a browser that does not know
+     the keyword: it keeps today's behaviour rather than dropping the rule. */
+  justify-content: safe center;
+  overflow-x: auto;
   padding: 1rem;
   /* The ground the sheet sits on is site chrome, not the poster, so it reads
      the site's token and follows the visitor's theme. The sheet on it is
@@ -597,6 +616,9 @@
     --u: 1mm;
 
     display: block;
+    /* The screen's scroller, undone: a printer has the whole page box and an
+       overflow here could take a strip of the sheet off it. */
+    overflow: visible;
     padding: 0;
     background: none;
   }

@@ -47,9 +47,16 @@ export const CONTENT_ID = "vsebina";
  * focus: and not focus-visible:, as the rest of this string already is: the
  * link is sr-only until it takes focus by any route, and a pointer cannot
  * reach it to focus it any other way.
+ *
+ * The padding is stated on the focused state and not once for both, because
+ * not-sr-only sets `padding: 0` and a variant carries the pseudo-class with
+ * it, so it outranks a plain px-3 whatever the order. Unfocused the link is
+ * clipped to a pixel and the padding means nothing anyway; focused it was the
+ * difference between a box and a line of text with a ring drawn tight around
+ * the glyphs.
  */
 export const SKIP_LINK =
-  "sr-only rounded-ui bg-background px-3 py-2 text-sm underline underline-offset-4 outline-none focus:not-sr-only focus:absolute focus:z-50 focus:ring-3 focus:ring-ring";
+  "sr-only rounded-ui bg-background text-sm underline underline-offset-4 outline-none focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 focus:ring-3 focus:ring-ring";
 
 /**
  * The header's variant, which has to place itself.
@@ -57,8 +64,18 @@ export const SKIP_LINK =
  * The three in-flow links sit where they are written, inside the block they
  * skip, so focus:absolute resolves against the nearest positioned ancestor and
  * lands them there. A header link has no such block: it is the first thing in
- * the document, so it pins itself to the top left of the header's row, which
- * carries `relative` for it. left-gutter and not left-2, so it lines up with
- * the page frame rather than the viewport edge under a notch.
+ * the document, so it pins itself against the header's row, which carries
+ * `relative` for it. left-gutter and not left-2, so it lines up with the page
+ * frame rather than the viewport edge under a notch.
+ *
+ * Under the row and not inside it. The row is the brand's: 40px of logo and
+ * wordmark inside 16px of padding, which leaves no band a 36px box can stand
+ * in, and at top-2 the link covered the logo from its middle down and the
+ * wordmark whole. 100% hangs it off the bottom edge instead, just below the
+ * header's rule, where the only thing behind it is the top of the page and
+ * nothing it skips is hidden while it is read. The half-rem gap is in the
+ * offset rather than in a margin because not-sr-only sets `margin: 0` at the
+ * same specificity as any focus:mt-* answering it, and which of those wins is
+ * whichever order Tailwind happens to emit them in.
  */
-export const SKIP_LINK_PINNED = `${SKIP_LINK} focus:top-2 focus:left-gutter`;
+export const SKIP_LINK_PINNED = `${SKIP_LINK} focus:top-[calc(100%+0.5rem)] focus:left-gutter`;

@@ -106,7 +106,7 @@ What is left in the repository afterwards, and whether it goes:
 
 | Path | On removal |
 | --- | --- |
-| `app/(sl)/vstop`, `app/(en)/en/enter` | Delete. |
+| `app/(sl)/vstop`, `app/(en)/en/enter` | Delete, but only after the Caddy block above is gone: the `not path` list and the `handle_errors 401` rewrite both name `/vstop.html` and `/en/enter.html`, so a release without them breaks a host still running the gate. Until then they are harmless, and the page states the password as a condition rather than announcing a closed preview, so neither route claims anything untrue once the gate is off. |
 | `components/demo-gate-page.tsx` and its test | Delete. |
 | `lib/demo-gate.ts` and its test | Delete. |
 | `components/cat-model.tsx` and its test | **Keep.** The about page renders it. |
@@ -116,4 +116,6 @@ What is left in the repository afterwards, and whether it goes:
 | The DEMO-GATE line in `DEPLOY-PORTAL.md` | Delete. |
 
 The routes carry `robots: noindex` and are harmless while they wait: the form
-sets a cookie nobody reads and sends the visitor to the home page.
+sets a cookie nobody reads and sends the visitor to the home page. Their copy
+is written for both states, so nothing has to ship on the day the gate comes
+off.

@@ -18,7 +18,7 @@ import { CONTACT_EMAIL } from "@/lib/site";
 const copy = {
   sl: {
     title: "Dostop za zavetišča",
-    lead: "Posvoji.si je v zaprtem predogledu.",
+    lead: "Geslo potrebujete samo, dokler je stran v predogledu za zavetišča.",
     label: "Geslo iz povabila",
     submit: "Vstopi",
     wrong: "Geslo ni pravilno.",
@@ -31,7 +31,7 @@ const copy = {
   },
   en: {
     title: "Access for shelters",
-    lead: "Posvoji.si is in a closed preview.",
+    lead: "A password is only needed while the site is in preview for shelters.",
     label: "Password from your invitation",
     submit: "Enter",
     wrong: "The password is not correct.",
@@ -61,8 +61,12 @@ const FOOTER_LINK = `${MUTED_LINK} underline`;
  * set, which is how it knows to say the password was wrong.
  *
  * Both routes carry robots: noindex. This is the body Caddy gives a refused
- * request while the gate is up, and it stops meaning anything once the gate
- * comes off.
+ * request while the gate is up, and the routes stay reachable on their own
+ * addresses whether it is up or not, which is why the lead states the
+ * condition rather than asserting it: a visitor who opens /vstop after the
+ * gate comes off is told what the password was for, not that the site they
+ * are already looking at is closed. docs/DEMO-GATE.md says when the routes
+ * themselves can go.
  */
 export function DemoGatePage({ locale }: { locale: Locale }) {
   const text = copy[locale];

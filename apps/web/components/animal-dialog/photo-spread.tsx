@@ -5,7 +5,7 @@ import { type WashLayer } from "@/components/animal-dialog/photo-wash";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import type { ClientAnimal } from "@/lib/animal";
-import { FAN_PHOTO_SIZES } from "@/lib/animal-images";
+import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { clampPhotoIndex } from "@/lib/animal-path";
 import { preloadPhotos } from "@/lib/preload-photos";
 import { type MotionValue } from "motion/react";
@@ -22,6 +22,14 @@ import { frontPrintOf } from "./fan-focus";
 import { enteringSlots, fanSlots, fanTempo } from "./fan-geometry";
 import { DESKTOP_FAN, PHONE_FAN, useDesktopFan } from "./fan-layout";
 import { Fan } from "./photo-fan";
+
+// How long the tier a gesture has not asked for yet may wait for an idle
+// moment before it is fetched anyway, and what a browser with no idle callback
+// waits instead. Long enough that the prints on stage are through on a slow
+// connection, short enough to be there for a flick that follows the first
+// look.
+const WARM_TIMEOUT_MS = 3000;
+const WARM_FALLBACK_MS = 2000;
 
 /**
  * The dialog's photographs: the fan, and the lightbox it opens into.
@@ -149,13 +157,30 @@ export const PhotoSpread = memo(function PhotoSpread({
   // included: enteringSlots reaches one tier further out than a single step
   // does. That is why there is nothing to warm when a gesture starts. The set
   // keeps a photo from being asked for twice.
+  //
+  // Idle, and at the side seat's size. On mount this ran in the same burst as
+  // the five prints on stage and asked for them at the front print's size:
+  // 267KB of master files for a second step nobody had taken yet, while the
+  // photograph being looked at was still on the wire. A photo walking in walks
+  // into a side seat, so the side size is the file it will draw, and the front
+  // print upgrades itself if it ever reaches the front.
   const preloaded = useRef(new Set<string>());
   useEffect(() => {
-    preloadPhotos(
-      enteringSlots(images.length, activeIndex).map((index) => images[index]),
-      FAN_PHOTO_SIZES,
-      preloaded.current,
+    const entering = enteringSlots(images.length, activeIndex).map(
+      (index) => images[index],
     );
+    if (entering.length === 0) return;
+    const warm = () =>
+      preloadPhotos(entering, FAN_SIDE_PHOTO_SIZES, preloaded.current);
+    // The timeout is the ceiling, not the plan: a phone that is still laying
+    // the dialog out has no idle period to give, and waiting forever would
+    // leave the flick it is there for unfetched.
+    if (typeof window.requestIdleCallback !== "function") {
+      const timer = window.setTimeout(warm, WARM_FALLBACK_MS);
+      return () => window.clearTimeout(timer);
+    }
+    const handle = window.requestIdleCallback(warm, { timeout: WARM_TIMEOUT_MS });
+    return () => window.cancelIdleCallback(handle);
   }, [images, activeIndex]);
 
   if (images.length === 0) {

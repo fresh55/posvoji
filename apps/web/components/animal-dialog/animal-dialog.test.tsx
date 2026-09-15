@@ -24,6 +24,7 @@ import {
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
@@ -71,6 +72,18 @@ class NoopResizeObserver {
 }
 globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
+
+// The fan waits for an idle moment before it warms the tier a step would bring
+// in, and jsdom ships no requestIdleCallback. A task is the nearest thing this
+// environment has to one, and it puts the tests on the path a browser takes
+// rather than on the timeout the fan falls back to without it.
+window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
+  window.setTimeout(
+    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
+    0,
+  )) as typeof window.requestIdleCallback;
+window.cancelIdleCallback ??= ((handle: number) =>
+  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
 
 afterEach(() => {
   cleanup();
@@ -1724,9 +1737,11 @@ describe("animal dialog", () => {
     for (const mounted of ["pika-1", "pika-2", "pika-3", "pika-6", "pika-7"]) {
       expect(asked()).not.toContain(`/media/animals/${mounted}.webp`);
     }
-    // The same ladder and sizes the fan's own photos carry, so the fetch the
-    // step then triggers is a cache hit rather than a second, different file.
-    expect(preloads[0].sizes).toBe("(max-width: 639px) 80vw, 24rem");
+    // The side seat's sizes and not the front's, because a photo walking in
+    // walks into a side seat: the same ladder and the same string that seat's
+    // own print carries, so the fetch the step then triggers is a cache hit
+    // rather than a second, different file.
+    expect(preloads[0].sizes).toBe(FAN_SIDE_PHOTO_SIZES);
     expect(preloads[0].srcset).toContain("-320.webp 320w");
 
     fireEvent.click(

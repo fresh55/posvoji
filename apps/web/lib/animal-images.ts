@@ -101,9 +101,27 @@ export function subjectPosition(
 // them.
 const HEADROOM = 0.05;
 
-/** The sizes every print in the dialog's fan carries. It lives here rather than
- *  with the fan because the card warms photos at it before the dialog opens. */
+/** The sizes the front print of the dialog's fan carries. It lives here rather
+ *  than with the fan because the card warms photos at it before the dialog
+ *  opens. */
 export const FAN_PHOTO_SIZES = "(max-width: 639px) 80vw, 24rem";
+
+/** The same for a print in one of the four seats behind the front one.
+ *
+ *  Every seat used to carry FAN_PHOTO_SIZES, so four prints drawn 88 to 144px
+ *  wide each selected the master file: 462KB of a phone dialog's first screen,
+ *  spent on pictures that are dimmed, tilted and partly off the screen edge.
+ *
+ *  The number is the fan's own geometry. A seat is the front print's width
+ *  times its tier's scale, and the two tiers are 0.58 and 0.44 of it on a
+ *  phone, 0.55 and 0.42 on a desktop (fan-geometry.ts). One value has to serve
+ *  both, and it sits in the middle of that band rather than at its top: the
+ *  outer tier then asks for the rung it draws, and the inner one for about 88%
+ *  of the device pixels it could use, which is not a difference a print at
+ *  this size can show. At 390 and DPR 3 that is the 480 rung where it was the
+ *  master. A print promoted to the front carries FAN_PHOTO_SIZES from that
+ *  render on, so the browser upgrades it. */
+export const FAN_SIDE_PHOTO_SIZES = "(max-width: 639px) 41vw, 12rem";
 
 /** The shape a print is drawn in when the photo says nothing else, and what
  *  every photo box on the site has always been. */

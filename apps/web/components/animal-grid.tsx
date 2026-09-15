@@ -37,6 +37,7 @@ import {
   RESULTS_SLOT,
 } from "@/lib/prehydration-script";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+import { sheltersIndexPath } from "@/lib/shelter-path";
 import type { ShelterPhones } from "@/lib/shelters";
 import { SKIP_LINK } from "@/lib/skip-link";
 import { effectiveSort, sortAnimals } from "@/lib/sort";
@@ -757,6 +758,34 @@ export function AnimalGrid({
               />
             </div>
           )}
+          {/* The grid grows by an IntersectionObserver and a button, and both
+              of them are this component's, so a browser that is not running
+              our scripts gets the sixty cards the export wrote and no sign
+              that the list goes on: the tab above says 486 and the page stops
+              at 60. The register is the way through. A shelter's own page is a
+              list of that shelter's animals, and for every shelter but the
+              largest the whole of it is in the prerendered HTML.
+
+              Drawn only where the export left something behind, which is what
+              hasMore says on the server render: sixty cards drawn against the
+              whole list. The browser does the rest, showing this to nobody who
+              has scripting on. */}
+          {hasMore && (
+            <noscript>
+              <p className="pt-4 text-center text-xs text-muted-foreground">
+                {messages.needsScriptForFullList}
+              </p>
+              {/* The way there, on its own line rather than spliced into the
+                  end of the sentence above: a link is a destination here, not
+                  a word, and the sentences in this file are whole and
+                  translated rather than assembled around one. */}
+              <p className="pb-4 pt-1 text-center text-xs">
+                <a href={sheltersIndexPath(locale)} className={SOURCE_LINK}>
+                  {messages.shelters}
+                </a>
+              </p>
+            </noscript>
+          )}
           {/* Where the skip link lands: the end of the grid, whatever the grid
               currently holds. tabIndex so focus actually moves here rather than
               only scrolling the page. */}
@@ -786,4 +815,4 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
-import { COARSE_ACTION } from "@/lib/link-styles";
+import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";

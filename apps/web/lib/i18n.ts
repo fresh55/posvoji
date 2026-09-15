@@ -203,6 +203,21 @@ const sl = {
   // and every genitive of žival is "živali", so the noun can be spelled out
   // here without asking plural() to agree with the number.
   shownOfTotal: "{shown} od {total} živali",
+  // What that count becomes once there is nothing left to press. The count
+  // used to leave with the button, so the last press dropped the row it was
+  // read in and the list simply stopped above the footer with no word on
+  // whether that was all of it. The numbers keep the wording above, "od
+  // {total} živali" and its one genitive, and the sentence in front of them is
+  // what the counter alone never said.
+  allShown: "Konec seznama. {total} od {total} živali.",
+  // Under the grid, for a visitor whose browser is not running our scripts.
+  // The grid grows by an observer and a button, both of them client-side, so
+  // without them the page ends at the sixty cards the export wrote and says
+  // nothing about the rest. A shelter's own page is the way through: it is a
+  // list of that shelter's animals, and for all but the largest shelters the
+  // whole of it is in the prerendered HTML.
+  needsScriptForFullList:
+    "Seznam se razširi z JavaScriptom, ki je izklopljen. Vse živali posameznega zavetišča so na njegovi strani v registru.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
   // The zero state gets specific when a shelter selection is the whole
@@ -674,6 +689,9 @@ const en: Messages = {
   noResults: "No results.",
   showMoreAnimals: "Show {n} more",
   shownOfTotal: "{shown} of {total} animals",
+  allShown: "End of the list. {total} of {total} animals.",
+  needsScriptForFullList:
+    "The list grows with JavaScript, which is turned off. Every animal of a single shelter is on that shelter’s own page in the register.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
   noResultsShelterSingular: "The selected shelter currently has no {species}.",

@@ -25,6 +25,7 @@ import {
   visibleHome,
   visibleToggles,
   type AgeGroup,
+  type SpeciesFilter,
 } from "@/lib/filters";
 import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
 import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
@@ -108,6 +109,7 @@ function FilterFlowHarness() {
   const {
     filters,
     sort,
+    setSpecies,
     toggle,
     toggleMany,
     toggleProperty,
@@ -235,6 +237,14 @@ function FilterFlowHarness() {
         <button onClick={() => setSort(DEFAULT_ANIMAL_SORT)}>
           Razvrsti privzeto
         </button>
+        {/* The species strip, as the one thing the hook exposes that writes a
+            history entry of its own. The tabs themselves are asserted in
+            species-tabs.test.tsx; what matters here is the write. */}
+        {(["all", "cat", "dog"] as SpeciesFilter[]).map((option) => (
+          <button key={option} onClick={() => setSpecies(option)}>
+            {`Vrsta: ${option}`}
+          </button>
+        ))}
       </main>
     </I18nProvider>
   );
@@ -530,5 +540,77 @@ describe("filter flow interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Samica/ }));
 
     expect(window.history.state).toEqual({ animal: true });
+  });
+
+  it("gives a species its own history entry, so back undoes the press", () => {
+    // On a phone the species strip is very often the last thing pressed
+    // before the back gesture, and on replace that gesture pointed at
+    // whatever page came before the results: arriving from /zavetisca,
+    // pressing Mačke and going back left the list entirely.
+    window.history.replaceState(null, "", "/");
+    renderFilters();
+    const before = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrsta: cat" }));
+
+    expect(query()).toBe("?vrsta=macka");
+    expect(window.history.length).toBe(before + 1);
+  });
+
+  it("keeps every other filter on one entry", () => {
+    // A sidebar toggle is an adjustment to the list already on screen, and an
+    // entry per checkbox would turn the back button into a log of every box
+    // ticked. Sort is the same.
+    renderFilters();
+    const before = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: /^Samica/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Razvrsti: newest-arrivals" }),
+    );
+
+    expect(query()).toBe("?spol=samica&razvrsti=novi");
+    expect(window.history.length).toBe(before);
+  });
+
+  it("carries history.state onto the entry a species push writes", () => {
+    // A bare pushState writes null, which would throw away whatever the entry
+    // the visitor is standing on was carrying.
+    window.history.pushState({ scrolled: 120 }, "", "/");
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrsta: dog" }));
+
+    expect(query()).toBe("?vrsta=pes");
+    expect(window.history.state).toEqual({ scrolled: 120 });
+  });
+
+  it("stacks no entry under an open animal", () => {
+    // Back closes the dialog in one press. An entry under it would spend that
+    // press undoing a filter change behind a card nobody can see past
+    // (animal-dialog.test.tsx has the whole flow).
+    window.history.pushState({ animal: true }, "", "/");
+    renderFilters();
+    const before = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrsta: dog" }));
+
+    expect(query()).toBe("?vrsta=pes");
+    expect(window.history.length).toBe(before);
+    expect(window.history.state).toEqual({ animal: true });
+  });
+
+  it("writes no entry for the species already chosen", () => {
+    // The strip reports a press on the tab that is already pressed, and an
+    // entry for a write that changes no part of the query is a back press
+    // that appears to do nothing.
+    window.history.replaceState(null, "", "/?vrsta=macka");
+    renderFilters();
+    const before = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrsta: cat" }));
+
+    expect(query()).toBe("?vrsta=macka");
+    expect(window.history.length).toBe(before);
   });
 });

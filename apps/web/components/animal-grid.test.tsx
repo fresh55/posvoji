@@ -422,6 +422,24 @@ describe("the pre-hydration mark", () => {
     // Six cards and the bar standing in for the toolbar above them.
     expect(pending!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(7);
   });
+
+  it("stands the cards in the column they will arrive in", () => {
+    // The stand-in and the block it stands in for are siblings, so nothing
+    // makes them agree about the page's shape except saying it twice. Drawn
+    // as one full-width column while the results draw two, the whole grid
+    // jumped 256px sideways the moment hydration landed, on precisely the
+    // filtered links people share.
+    const { container } = renderGrid(ANIMALS);
+
+    const pending = container.querySelector('[data-slot="results-pending"]')!;
+    const results = container.querySelector('[data-slot="results"]')!;
+    expect(results.className).toContain("lg:grid-cols-[14rem_minmax(0,1fr)]");
+    expect(pending.className).toContain("lg:grid-cols-[14rem_minmax(0,1fr)]");
+    // The rail's column is held open and left empty; the cards go in the
+    // second one, the same way the grid does.
+    expect(pending.children).toHaveLength(2);
+    expect(pending.children[0].className).toContain("lg:block");
+  });
 });
 
 describe("how much of the grid is drawn", () => {

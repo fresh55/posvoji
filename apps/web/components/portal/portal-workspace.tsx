@@ -22,7 +22,7 @@ import {
   type PortalListEntry,
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
-import { PortalNotice } from "@/components/portal/notice";
+import { PortalNotice, SessionError } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { ReviewBanner } from "@/components/portal/review-banner";
@@ -244,22 +244,7 @@ export function PortalWorkspace() {
       )}
 
       {state.status === "error" && (
-        <PortalNotice
-          icon={TriangleAlert}
-          title={portalText.sessionErrorTitle}
-          action={
-            <Button variant="outline" size="sm" onClick={reloadSession}>
-              {portalText.retry}
-            </Button>
-          }
-        >
-          {/* The title says what failed, so the body is left to say what to
-              do about it. Offline is the one cause the shelter can act on
-              themselves, and it names its own next step. */}
-          {state.offline
-            ? portalText.networkError
-            : portalText.sessionErrorLead}
-        </PortalNotice>
+        <SessionError offline={state.offline} onRetry={reloadSession} />
       )}
 
       {/* The one state a shelter cannot work their way out of, so it names the

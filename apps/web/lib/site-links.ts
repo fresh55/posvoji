@@ -42,16 +42,23 @@ export type SiteLink = {
 };
 
 /**
- * A roster entry before the hidden ones are dropped. `hidden` is not on
- * SiteLink because siteLinks() never returns one: a link a surface holds is
- * by definition not hidden, and a consumer branching on the flag would be
- * writing dead code.
+ * Keys listed on no surface: not the footer, not the header's inline row, not
+ * the dropdown, and not app/sitemap.ts either. The page and its routes stay
+ * where they are and keep working, so anything linking to one by hand is
+ * unaffected; it is only never offered.
  *
- * Hidden means listed on no surface: not the footer, not the header's inline
- * row, not the dropdown. The page and its routes stay where they are and keep
- * working, so anything linking to it by hand is unaffected.
+ * The set rather than a flag on each entry, because the sitemap is built from
+ * paths and not from the roster and still has to answer the same question. A
+ * key taken out of here is listed again everywhere at once, which is the only
+ * way the menus and the sitemap cannot end up saying different things about
+ * the same page.
+ *
+ * Currently: /viri and /en/resources, while the page waits for a pass over its
+ * contents. The two routes also carry robots: noindex for as long as they are
+ * in here, so a page the site does not link to is not offered in search
+ * either.
  */
-type SiteLinkEntry = SiteLink & { hidden?: boolean };
+export const HIDDEN_LINK_KEYS: ReadonlySet<SiteLinkKey> = new Set(["resources"]);
 
 // The one list of destinations the site has beyond the grid and the detail
 // pages. The footer and the header menu both draw from it, so a link added or
@@ -61,7 +68,7 @@ type SiteLinkEntry = SiteLink & { hidden?: boolean };
 // resolves them on the server and the menu reads them out of I18nProvider;
 // the helper stays indifferent to which side it is on.
 export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
-  const links: SiteLinkEntry[] = [
+  const links: SiteLink[] = [
     {
       key: "shelters",
       href: locale === "sl" ? "/zavetisca" : "/en/shelters",
@@ -89,16 +96,16 @@ export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
       label: messages.about,
       inline: true,
     },
-    // Hidden on purpose while the page waits for a pass over its contents.
-    // /viri and /en/resources still build and still answer; the link is only
-    // unlisted. Deleting `hidden` puts it back in the header's dropdown; the
-    // footer keeps its own record of which keys it prints, so relisting it
-    // there means saying so in site-footer.tsx too.
+    // Unlisted while the page waits for a pass over its contents: see
+    // HIDDEN_LINK_KEYS above. /viri and /en/resources still build and still
+    // answer; the link is only never offered. Taking the key out of that set
+    // puts it back in the header's dropdown and in the sitemap; the footer
+    // keeps its own record of which keys it prints, so relisting it there
+    // means saying so in site-footer.tsx too.
     {
       key: "resources",
       href: RESOURCES_PATHS[locale],
       label: messages.resources,
-      hidden: true,
     },
     // The portal is Slovenian only, so both locales point at the same login
     // page. Quiet, and no longer in the footer: a shelter that has been told
@@ -117,5 +124,5 @@ export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
 
   // The one place a hidden link is dropped, so no surface has to know
   // about it.
-  return links.filter((link) => !link.hidden);
+  return links.filter((link) => !HIDDEN_LINK_KEYS.has(link.key));
 }

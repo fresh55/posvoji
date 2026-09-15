@@ -23,9 +23,9 @@ import {
   EditorListError,
   EditorNotFound,
   FieldError,
-  PortalNotice,
   PortalPageHeading,
   PortalPending,
+  SessionError,
 } from "@/components/portal/notice";
 import { OverrideMark } from "@/components/portal/override-mark";
 import {
@@ -58,7 +58,7 @@ import type {
   PortalAnimalPatch,
   PortalField,
 } from "@/lib/portal-api";
-import { ExternalLink, TriangleAlert } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -138,19 +138,7 @@ export function AnimalEditorPage() {
     return (
       <>
         <PortalPageHeading />
-        <PortalNotice
-          icon={TriangleAlert}
-          title={portalText.sessionErrorTitle}
-          action={
-            <Button variant="outline" size="sm" onClick={reloadSession}>
-              {portalText.retry}
-            </Button>
-          }
-        >
-          {session.offline
-            ? portalText.networkError
-            : portalText.sessionErrorLead}
-        </PortalNotice>
+        <SessionError offline={session.offline} onRetry={reloadSession} />
       </>
     );
   }

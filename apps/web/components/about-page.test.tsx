@@ -86,15 +86,23 @@ describe("the about page", () => {
     expect(
       screen.getByRole("link", { name: "info@posvoji.si" }).getAttribute("href"),
     ).toBe("mailto:info@posvoji.si");
-    const repo = screen.getByRole("link", { name: code });
+    // Both links leave the site, so both say so: target="_blank" announces
+    // nothing on its own and the accessible name is what a screen reader has.
+    const newWindow = getMessages(locale).newWindow;
+    const repo = screen.getByRole("link", { name: `${code} ${newWindow}` });
     expect(repo.getAttribute("href")).toBe("https://github.com/fresh55/posvoji");
     expect(repo.getAttribute("rel")).toBe("noreferrer");
+    expect(repo.getAttribute("target")).toBe("_blank");
+    const policyLabel =
+      locale === "sl" ? "O vsebinah in dovoljenjih" : "Content and permissions";
     const policy = screen.getByRole("link", {
-      name: locale === "sl" ? "O vsebinah in dovoljenjih" : "Content and permissions",
+      name: `${policyLabel} ${newWindow}`,
     });
     expect(policy.getAttribute("href")).toBe(
       `https://github.com/fresh55/posvoji/blob/main/docs/DATA-POLICY.md${locale === "en" ? "#english-summary" : ""}`,
     );
+    expect(policy.getAttribute("rel")).toBe("noreferrer");
+    expect(policy.getAttribute("target")).toBe("_blank");
   });
 
   // The phone step the five content pages were missing; resources-page's own

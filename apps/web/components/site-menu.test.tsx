@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterLogin, SiteMenu, SiteNav } from "./site-menu";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -138,6 +144,56 @@ describe("the header's inline nav", () => {
         .getAllByRole("link")
         .some((link) => link.getAttribute("href") === "/portal/prijava"),
     ).toBe(false);
+  });
+});
+
+// Which of the two shapes draws is a container query on the header row, and
+// jsdom has neither container queries nor layout, so what is pinned here is
+// that the two conditions stay each other's opposite. Both drawing is two
+// navs on one row; neither drawing is a header with no way out of the page.
+// The behaviour itself is measured on the built page.
+describe("the inline row and the menu button", () => {
+  const ROOM = "lg:@nav-room/header:";
+
+  it("says the links only where the header row has the room for them", () => {
+    render(
+      <I18nProvider locale="sl">
+        <SiteNav />
+      </I18nProvider>,
+    );
+
+    const nav = screen.getByRole("navigation");
+    expect(nav.className.split(" ")).toContain("hidden");
+    expect(nav.className.split(" ")).toContain(`${ROOM}flex`);
+  });
+
+  it("brings the menu button in on the same condition, negated", () => {
+    render(
+      <I18nProvider locale="sl">
+        <SiteMenu />
+      </I18nProvider>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Meni" });
+    expect(trigger.className.split(" ")).toContain(`${ROOM}hidden`);
+    // The press is 44px on a 36px button, and the button now draws at widths
+    // where it never used to.
+    expect(trigger.className.split(" ")).toContain("tap-target");
+  });
+
+  // Below lg this menu is the only door to the portal, so it carries the
+  // login. From lg the corner draws it as a button of its own, and this menu
+  // can open at that width now, where the row folded for room.
+  it("leaves the login out of the menu where the header draws it", () => {
+    const menu = openMenu("sl", "Meni");
+    const login = within(menu).getByRole("menuitem", {
+      name: "Prijava za zavetišča",
+    });
+
+    expect(login.className.split(" ")).toContain("lg:hidden");
+    expect(
+      menu.querySelector('[data-slot="dropdown-menu-separator"]')?.className,
+    ).toContain("lg:hidden");
   });
 });
 

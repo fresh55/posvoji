@@ -288,6 +288,12 @@ export function ShelterMap({
    *  has not fired yet, and re-rendering the plate to say "still waiting"
    *  would be the opposite of the point. */
   const regionDwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Whether this pointer has moved over the plate since it mounted. Until it
+   *  has, a pointerenter is the plate arriving under a cursor that was already
+   *  there rather than a cursor arriving on the plate, and a hover the visitor
+   *  did not perform names a region they never pointed at. See
+   *  handleRegionPointerEnter. */
+  const pointerAsked = useRef(false);
   useEffect(
     () => () => {
       if (regionDwellRef.current !== null) clearTimeout(regionDwellRef.current);
@@ -643,6 +649,20 @@ export function ShelterMap({
 
   const handleRegionPointerEnter = useCallback(
     (regionId: number, stats: RegionStats) => {
+      // A pointer that has not moved has not asked anything. The picker's
+      // dialog opens where the cursor already is, so the plate arrives under a
+      // resting pointer and the region it lands on fires pointerenter for a
+      // hover nobody performed: the map came to the cursor, not the cursor to
+      // the map. Goriška named itself on open for that reason. The dwell above
+      // cannot catch it, because the pointer does rest there, and it rests
+      // there for good.
+      //
+      // Only asked of a pointer that can hover. A finger has no resting
+      // position and no move to give: on a coarse pointer the tap is the
+      // hover, and swallowing it would take the empty region's card with it.
+      if (!pointerAsked.current && !window.matchMedia?.(NO_HOVER).matches) {
+        return;
+      }
       // Whatever the pointer just left, it is not being named now.
       if (regionDwellRef.current !== null) {
         clearTimeout(regionDwellRef.current);
@@ -666,6 +686,19 @@ export function ShelterMap({
       }, REGION_DWELL_MS);
     },
     [onHoverShelters],
+  );
+
+  // The move that turns the guard above off, and the enter it stands in for:
+  // the pointer is already inside the region it just moved in, so there is no
+  // second pointerenter coming to raise the name. Costs a ref read per move
+  // once the pointer has spoken.
+  const handleRegionPointerMove = useCallback(
+    (regionId: number, stats: RegionStats) => {
+      if (pointerAsked.current) return;
+      pointerAsked.current = true;
+      handleRegionPointerEnter(regionId, stats);
+    },
+    [handleRegionPointerEnter],
   );
 
   const handleRegionPointerLeave = useCallback(
@@ -1006,6 +1039,7 @@ export function ShelterMap({
           onBlur={handleRegionBlur}
           onMoveFocus={handleRegionMoveFocus}
           onPointerEnter={handleRegionPointerEnter}
+          onPointerMove={handleRegionPointerMove}
           onPointerLeave={handleRegionPointerLeave}
           highlighted={region.id === highlightedRegionId}
           densityFocus={regionDensityFocus(stats, highlightedDensity)}

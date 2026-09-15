@@ -51,8 +51,21 @@ afterEach(() => cleanup());
 // in this file wants a frozen clock, least of all the roving tab stops, which
 // move focus on a real requestAnimationFrame. Markers answer on contact and
 // take a plain fireEvent.
+// A pointer arriving on a region on purpose: the move that says so, then the
+// enter. The plate ignores an enter from a pointer that has not moved, because
+// that is a plate opening under a resting cursor rather than a cursor coming
+// to the plate. See pointerAsked in shelter-map.tsx.
+function pointerOnto(node: Element) {
+  fireEvent.pointerMove(node);
+  fireEvent.pointerOver(node);
+}
+
 function hoverRegion(node: Element) {
   vi.useFakeTimers();
+  // The move first, because the plate ignores a hover from a pointer that has
+  // not moved: a dialog opening under a resting cursor fires the enter without
+  // anybody pointing at anything. See pointerAsked in shelter-map.tsx.
+  fireEvent.pointerMove(node);
   fireEvent.pointerOver(node);
   act(() => {
     vi.advanceTimersByTime(REGION_DWELL_MS);
@@ -1150,11 +1163,45 @@ describe("ShelterMap region dwell", () => {
     expect(map.callout()).toBeNull();
   });
 
+  // The picker's dialog opens where the cursor already is, so the plate
+  // arrives under a pointer that never pointed at it: the region it lands on
+  // fires pointerenter, waits out a dwell it passes by standing still, and
+  // names itself. Goriška introduced itself on every desktop open for that
+  // reason.
+  it("says nothing to a pointer the plate opened underneath", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.live);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS * 3);
+    });
+
+    expect(map.callout()).toBeNull();
+    // Nor the list's echo: nothing was hovered, so no row lights up either.
+    expect(map.onHoverShelters).not.toHaveBeenCalled();
+  });
+
+  it("answers the first move, which is the pointer arriving on purpose", () => {
+    const map = renderRegions();
+    vi.useFakeTimers();
+
+    fireEvent.pointerOver(map.live);
+    // The pointer is already inside the region, so no second enter is coming:
+    // the move has to stand in for one.
+    fireEvent.pointerMove(map.live);
+    act(() => {
+      vi.advanceTimersByTime(REGION_DWELL_MS);
+    });
+
+    expect(screen.getByText("Osrednjeslovenska")).toBeTruthy();
+  });
+
   it("answers an empty region once the pointer has stayed", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
-    fireEvent.pointerOver(map.inert);
+    pointerOnto(map.inert);
     act(() => {
       vi.advanceTimersByTime(REGION_DWELL_MS);
     });
@@ -1170,7 +1217,7 @@ describe("ShelterMap region dwell", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
-    fireEvent.pointerOver(map.live);
+    pointerOnto(map.live);
     act(() => {
       vi.advanceTimersByTime(REGION_DWELL_MS);
     });
@@ -1231,7 +1278,7 @@ describe("ShelterMap region dwell", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
-    fireEvent.pointerOver(map.inert);
+    pointerOnto(map.inert);
     act(() => {
       vi.advanceTimersByTime(REGION_DWELL_MS - 40);
     });
@@ -1253,7 +1300,7 @@ describe("ShelterMap region dwell", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
-    fireEvent.pointerOver(map.live);
+    pointerOnto(map.live);
 
     // The tint lands straight away and the name waits out the dwell. They are
     // split on purpose: the tint was never the noisy part, being a quiet
@@ -1296,7 +1343,7 @@ describe("ShelterMap region dwell", () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
-    fireEvent.pointerOver(map.inert);
+    pointerOnto(map.inert);
     act(() => {
       vi.advanceTimersByTime(REGION_DWELL_MS);
     });
@@ -1316,7 +1363,7 @@ describe("ShelterMap region dwell", () => {
     // a moment after any pick: focus parked on one region while the pointer
     // goes somewhere else.
     fireEvent.focus(map.live);
-    fireEvent.pointerOver(map.inert);
+    pointerOnto(map.inert);
     act(() => {
       vi.advanceTimersByTime(REGION_DWELL_MS);
     });

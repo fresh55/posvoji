@@ -159,6 +159,7 @@ export const Region = memo(function Region({
   onBlur,
   onMoveFocus,
   onPointerEnter,
+  onPointerMove,
   onPointerLeave,
   highlighted,
   densityFocus,
@@ -183,6 +184,10 @@ export const Region = memo(function Region({
   onBlur: (regionId: number) => void;
   onMoveFocus: (regionId: number, key: RegionMoveKey) => void;
   onPointerEnter: (regionId: number, stats: RegionStats) => void;
+  /** The first move over this region, which is how the plate tells a pointer
+   *  that came to it from one that it opened underneath. The map ignores the
+   *  hover until it arrives; see handleRegionPointerEnter in shelter-map.tsx. */
+  onPointerMove: (regionId: number, stats: RegionStats) => void;
   onPointerLeave: (regionId: number, stats: RegionStats) => void;
   /** A shelter in this region is hovered in the list, so it wears the same
    *  look pointer hover would give it. */
@@ -244,6 +249,9 @@ export const Region = memo(function Region({
         // takes it away. Nothing here is bespoke to touch.
         onPointerEnter={
           interactive ? () => onPointerEnter(region.id, stats) : undefined
+        }
+        onPointerMove={
+          interactive ? () => onPointerMove(region.id, stats) : undefined
         }
         onPointerLeave={
           interactive ? () => onPointerLeave(region.id, stats) : undefined
@@ -332,6 +340,9 @@ export const Region = memo(function Region({
       onBlur={interactive ? () => onBlur(region.id) : undefined}
       onPointerEnter={
         interactive ? () => onPointerEnter(region.id, stats) : undefined
+      }
+      onPointerMove={
+        interactive ? () => onPointerMove(region.id, stats) : undefined
       }
       onPointerLeave={
         interactive ? () => onPointerLeave(region.id, stats) : undefined

@@ -129,6 +129,10 @@ function choosePlace() {
 // frozen clock.
 function hoverRegion(node: Element) {
   vi.useFakeTimers();
+  // The move first: the plate ignores a hover from a pointer that has not
+  // moved, which is what the dialog opening under a resting cursor produces.
+  // See pointerAsked in shelter-map.tsx.
+  fireEvent.pointerMove(node);
   fireEvent.pointerOver(node);
   act(() => {
     vi.advanceTimersByTime(REGION_DWELL_MS);

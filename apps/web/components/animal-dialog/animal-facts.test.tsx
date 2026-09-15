@@ -538,6 +538,59 @@ describe("a description that is only a photo credit", () => {
   });
 });
 
+// Six listings name more than one animal, and one row of pills has one age,
+// one sex and one size to give for all of them.
+describe("a listing that names several animals", () => {
+  const SEVERAL = {
+    approximateAgeMonths: 84,
+    sex: "female",
+    size: "medium",
+  } satisfies Partial<Animal>;
+
+  it("leaves the age, the sex and the size to the shelter's text", () => {
+    renderFacts({ name: "DISEL, LYANN, LUNA", ...SEVERAL });
+
+    expect(
+      screen.queryByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeNull();
+  });
+
+  it("reads a pair joined by in the same way", () => {
+    renderFacts({ name: "Bria in Brin", ...SEVERAL });
+
+    expect(
+      screen.queryByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeNull();
+  });
+
+  it("keeps the health pills, which answer for the listing as a whole", () => {
+    renderFacts({
+      name: "Iris in Melisa",
+      ...SEVERAL,
+      medical: { fiv: "negative", felv: "negative" },
+    });
+
+    const row = screen.getByRole("list", { name: "Zdravje" });
+    expect(within(row).getByText("Brez FIV")).toBeTruthy();
+  });
+
+  it("leaves a name of two words alone", () => {
+    renderFacts({ name: "Peter Zajec", ...SEVERAL });
+
+    expect(
+      screen.getByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeTruthy();
+  });
+
+  it("leaves a name the shelter wrote a description into alone", () => {
+    renderFacts({ name: "brezrepa tritačka Luna", ...SEVERAL });
+
+    expect(
+      screen.getByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeTruthy();
+  });
+});
+
 describe("the special care pill", () => {
   it("says nothing unless the shelter marked the animal", () => {
     renderFacts({ specialNeeds: false });

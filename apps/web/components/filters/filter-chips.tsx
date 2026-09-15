@@ -737,6 +737,13 @@ function ChipButton({
 }) {
   const { locale, t } = useI18n();
   const gain = chip.gain ?? 0;
+  // What the marked pill draws, said as well as drawn. "Mačji dol +2 🐾" was a
+  // number with nothing on screen to explain it and nothing in the accessible
+  // name at all: the label stopped at the shelter, so a screen reader was told
+  // the pill removes a filter and never told what removing it gives back.
+  // Only on the marked pill, because it is the only one that draws the number;
+  // every other pill says it in the tooltip below and nowhere else.
+  const removeLabel = t("removeFilter", { label: chip.label });
 
   const button = (
     <button
@@ -745,7 +752,11 @@ function ChipButton({
       tabIndex={tabIndex}
       onFocus={onFocus}
       onClick={(event) => onRemove(fromKeyboard(event))}
-      aria-label={t("removeFilter", { label: chip.label })}
+      aria-label={
+        blocked && gain > 0
+          ? `${removeLabel}: +${animalCount(gain, locale)}`
+          : removeLabel
+      }
       // The row is walked with the arrows, so a screen reader announcing
       // "Delete" on arrival is what tells someone the key does anything here.
       aria-keyshortcuts="Delete"
@@ -793,7 +804,13 @@ function ChipButton({
   // No tooltip when there is nothing to add to the label. A pill that says
   // "Mlad" under a pointer, with a tooltip that says "remove Mlad", is a
   // second copy of what the cursor already implies.
-  if (gain <= 0 || blocked) return button;
+  //
+  // The marked pill is not that case, though it was excluded here as if it
+  // were. It draws "+2" and a paw and nothing on the page says what either
+  // means; the sentence the tooltip carries is the only place "the two animals
+  // this brings back" is written. So it keeps it, and the number is in its
+  // accessible name as well.
+  if (gain <= 0) return button;
 
   return (
     <Tooltip>

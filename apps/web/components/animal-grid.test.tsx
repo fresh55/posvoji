@@ -886,8 +886,9 @@ describe("the chips row inside the grid", () => {
     // state carries its own copy, which is the only place a phone is told
     // which of its filters is the one to drop. Whichever surface the visitor
     // is on, the way out has to be marked, so both are checked.
+    // The marked pill carries the number it draws in its name too.
     const chips = screen.getAllByRole("button", {
-      name: "Odstrani filter Shelter muri",
+      name: "Odstrani filter Shelter muri: +1 žival",
     });
     expect(chips).toHaveLength(2);
     for (const chip of chips) expect(chip.textContent).toContain("+1");

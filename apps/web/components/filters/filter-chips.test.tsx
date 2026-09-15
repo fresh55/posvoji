@@ -375,7 +375,12 @@ describe("the active filters row", () => {
       { stuck: true },
     );
 
-    const blocker = screen.getByRole("button", { name: "Remove filter Cats" });
+    // The number is in the name as well as on the pill: "+9" and a paw are
+    // drawn, and a label stopping at "Remove filter Cats" left a screen reader
+    // with the mark and no reading of it.
+    const blocker = screen.getByRole("button", {
+      name: "Remove filter Cats: +9 animals",
+    });
     expect(blocker.textContent).toContain("+9");
     expect(blocker.className).toContain("bg-brand");
     // Only the one. Five numbers over five labels is not a way out.
@@ -422,7 +427,9 @@ describe("the active filters row", () => {
     expect(
       screen.queryByRole("button", { name: /Show all selected/ }),
     ).toBeNull();
-    const blocker = screen.getByRole("button", { name: "Remove filter Meli" });
+    const blocker = screen.getByRole("button", {
+      name: "Remove filter Meli: +7 animals",
+    });
     expect(blocker.textContent).toContain("+7");
   });
 
@@ -444,7 +451,8 @@ describe("the active filters row", () => {
 
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Remove filter care1" }).textContent,
+      screen.getByRole("button", { name: "Remove filter care1: +9 animals" })
+        .textContent,
     ).toContain("+9");
   });
 

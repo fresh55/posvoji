@@ -12,6 +12,8 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     dismissError, statusId, status, resolved, locale, messages,
   } = controller;
   const copy = pickerText[locale];
+  // Spelled out rather than taken from the controller's placeOffered, which is
+  // the same test: this one narrows typed, so the row below can name the place.
   const canChoosePlace = typed.status === "matched" && !placeMode;
   const firstRow = visibleRows.find(
     (row) => (counts.get(row.value) ?? 0) > 0 || selected.includes(row.value),

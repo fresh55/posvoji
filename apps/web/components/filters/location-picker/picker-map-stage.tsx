@@ -49,6 +49,14 @@ export function PickerMapStage({ controller, hug = false }: {
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) flex flex-col gap-3 p-3 sm:p-4",
               "@container/map-stage",
+              // A landscape phone: wide, and with no height to spare. The
+              // legend and the line above it are as tall as a fifth of the
+              // stage there and the map is the part that pays for them, so
+              // they go beside it instead and the country gets the whole
+              // column. sm:short: is the repo's pair for that viewport (the
+              // custom variant in globals.css), and the padding tightens with
+              // it for the same reason every other short: rule does.
+              "sm:short:flex-row sm:short:items-stretch sm:short:py-2",
               // In flow it is also the part that gives way when the screen is
               // short. The dialog caps at 94dvh, and under about 512px of
               // viewport (a landscape phone, or a portrait one with the

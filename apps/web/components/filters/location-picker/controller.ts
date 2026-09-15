@@ -223,6 +223,10 @@ export function useLocationPickerController({
   // Editing the query after choosing a place starts a new shelter search
   // while retaining the confirmed origin in its separate, removable chip.
   const placeMode = chosenPlace !== null && chosenPlace.query === query;
+  // A place the postal table knows, offered as the row above the list and not
+  // yet chosen. The field takes a place or a shelter's name, so this is the
+  // dialog saying which of the two it read.
+  const placeOffered = typed.status === "matched" && !placeMode;
   const choosePlace = useCallback(() => {
     if (typed.status !== "matched") return;
     turnOffNearby();
@@ -490,9 +494,19 @@ export function useLocationPickerController({
   // resolved to; a "Zadetki: 17 zavetišč" beside it would be a count of the
   // roster dressed up as a search result.
   const matched = visibleRows.length + visibleOffRows.length;
+  // What 3000 used to get: a place row reading "V bližini Celje" and, right
+  // under it, "Ni zadetkov za »3000«" over a Počisti iskanje button. The
+  // postcode is not a shelter's name and was never going to match one, so the
+  // empty list is not news about the query; it reads as "no such place" about
+  // a place the dialog has just found, and offers to clear the one input that
+  // worked. Where the place row is the answer, it is the only answer drawn,
+  // and the live region says the same thing the row does.
+  const placeOnly = searching && matched === 0 && placeOffered;
   const searchNews = searching
     ? matched === 0
-      ? `${messages.noSheltersFound} »${query.trim()}«`
+      ? placeOnly
+        ? `${pickerText[locale].near} ${typed.label ?? ""}`
+        : `${messages.noSheltersFound} »${query.trim()}«`
       : `${pickerText[locale].matches}: ${shelterCount(matched, locale)}`
     : undefined;
 
@@ -617,6 +631,7 @@ export function useLocationPickerController({
     resetDocks,
     searchRef,
     placeMode,
+    placeOnly,
     searching,
     statusId,
     offGroupId,

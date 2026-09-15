@@ -274,6 +274,41 @@ describe("visibleGroups", () => {
   });
 });
 
+// The panel asks for every applicable group so a zero row stays and explains
+// an unknown. A group nobody answers has no unknown to explain: Energija was a
+// column of three disabled zeros on the live dataset, which no animal carries.
+describe("visibleGroups on the panel", () => {
+  const panel = (animals: Animal[], filters = tab("all")) =>
+    visibleGroups(animals, filters, NOW, true);
+
+  it("keeps a group a single animal answers, zero rows and all", () => {
+    const dogs = [animal("dog", { energy: "calm" }), animal("dog")];
+    expect(panel(dogs).energy).toBe(true);
+    expect(visibleGroups(dogs, tab("all"), NOW).energy).toBe(false);
+  });
+
+  it("drops a group no animal in the pool answers", () => {
+    expect(panel([animal("dog"), animal("cat")]).energy).toBe(false);
+  });
+
+  it("brings the group back the day the dataset carries the field", () => {
+    const later = [animal("dog"), animal("cat", { energy: "lively" })];
+    expect(panel(later).energy).toBe(true);
+  });
+
+  it("keeps a group the visitor has answered even with nothing behind it", () => {
+    const dogs = [animal("dog")];
+    expect(
+      panel(dogs, { ...EMPTY_FILTERS, energy: ["calm"] }).energy,
+    ).toBe(true);
+  });
+
+  it("still hides velikost on the cat tab", () => {
+    const cats = [animal("cat", { size: "small" })];
+    expect(panel(cats, tab("cat")).size).toBe(false);
+  });
+});
+
 describe("visibleToggles", () => {
   const cats = [
     animal("cat", { medical: { fiv: "negative", felv: "negative" } }),
@@ -428,10 +463,27 @@ describe("visibleCare", () => {
       "experienced-carer",
       "ongoing-care",
     ]);
-    expect(visibleHome(animals, [], true)).toEqual([
+  });
+
+  // Dom and Posebna skrb were four and two disabled zeros on the live dataset,
+  // which carries neither field. A section with no answer at all is not a
+  // question, so the panel does not ask it.
+  it("drops a section no animal in the pool answers", () => {
+    const animals = [animal("dog", { adoptionRequirements: { bondedPair: true } })];
+    expect(visibleHome(animals, [], true)).toEqual([]);
+    expect(visibleCare([animal("dog"), animal("cat")], [], true)).toEqual([]);
+  });
+
+  it("keeps a dead section the visitor has answered, so the answer can come off", () => {
+    expect(visibleHome([animal("dog")], ["apartment"], true)).toEqual([
       "apartment",
       "indoor-only",
     ]);
+  });
+
+  it("brings the section back the day one animal carries the field", () => {
+    const later = [animal("dog"), animal("cat", { apartmentOk: "yes" })];
+    expect(visibleHome(later, [], true)).toEqual(["apartment", "indoor-only"]);
   });
 });
 

@@ -20,7 +20,10 @@ import {
   speciesFacetCounts,
   toggleCounts,
   toggleLabel,
+  visibleCare,
+  visibleGoodWith,
   visibleGroups,
+  visibleHome,
   visibleToggles,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
@@ -109,7 +112,10 @@ export function useAnimalFilterModel({
     [animals, filters, reference],
   );
   // The panel follows the species tab and keeps every applicable group available
-  // so a zero-count option remains visible and explains its unknown state.
+  // so a zero-count option remains visible and explains its unknown state. A
+  // section no animal in the pool answers at all is the one exception: it has
+  // no unknown to explain, only disabled zeros, so it goes whole until the
+  // dataset carries the field.
   const pool = useMemo(
     () => bySpecies(animals, filters.species),
     [animals, filters.species],
@@ -161,10 +167,15 @@ export function useAnimalFilterModel({
     () => toggleCounts(animals, filters, reference),
     [animals, filters, reference],
   );
-  // Every option stays visible; counts indicate which answers are confirmed.
+  // Every option of a live section stays visible; counts indicate which answers
+  // are confirmed. visible* answers only whether the section is live at all,
+  // so it returns every key or none (visibleFacet in lib/filters.ts).
   const goodWith = useMemo(() => {
+    const keys = visibleGoodWith(pool, filters.goodWith, true);
     return {
-      options: goodWithOptions(locale),
+      options: goodWithOptions(locale).filter((option) =>
+        keys.includes(option.key),
+      ),
       counts: goodWithCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,
@@ -183,8 +194,9 @@ export function useAnimalFilterModel({
   ]);
 
   const home = useMemo(() => {
+    const keys = visibleHome(pool, filters.home, true);
     return {
-      options: homeOptions(locale),
+      options: homeOptions(locale).filter((option) => keys.includes(option.key)),
       counts: homeCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,
@@ -203,8 +215,9 @@ export function useAnimalFilterModel({
   ]);
 
   const care = useMemo(() => {
+    const keys = visibleCare(pool, filters.care, true);
     return {
-      options: careOptions(locale),
+      options: careOptions(locale).filter((option) => keys.includes(option.key)),
       counts: careCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,

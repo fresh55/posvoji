@@ -58,12 +58,14 @@ export function PickerMapPlate({
 
   return (
     <>
-      {/* overflow-hidden because the map keeps its aspect-derived height: on
-          a box whose height has run out (a landscape phone, or a portrait one
-          with the keyboard up) it used to paint over the legend and the
-          instruction line under it. Clipped, it loses a strip of sea at the
-          top and bottom instead, and everything under it stays readable. */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+      {/* flex-col so the map's height is its main size and shrinking it is
+          what gives way when the box runs out (a landscape phone, or a
+          portrait one with the keyboard up). As a row this column was the
+          map's cross axis, so shrink had nothing to take: the plate held the
+          498px its aspect ratio asked for inside 123px of box and the crop
+          ate the coast and the south, with no way to scroll to them.
+          overflow-hidden stays as the backstop it always was. */}
+      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden">
         <ShelterMap
           pins={pins}
           selected={selected}
@@ -87,13 +89,21 @@ export function PickerMapPlate({
           // that hands it a box whose height can run out (a landscape phone,
           // or a portrait one with the keyboard up). Holding its
           // aspect-derived height there, it painted straight over the legend
-          // and the instruction line under it. Allowed to shrink, the viewBox
-          // letterboxes inside whatever height is left.
+          // and the instruction line under it. Allowed to shrink along the
+          // column above, the viewBox letterboxes inside whatever height is
+          // left. max-h-full does not do this on its own: the dialog is
+          // h-auto under a max-height below lg, so the percentage has no
+          // definite height to resolve against and drops out.
           className="min-h-0 shrink max-h-full lg:h-full"
         />
         <MapAttribution messages={messages} />
       </div>
-      <div className="z-10 w-full shrink-0">
+      {/* Beside the map on a landscape phone rather than under it, which is
+          the stage's flex-row there (picker-map-stage.tsx). A column of
+          twelve rem: every item in the legend is whitespace-nowrap and the
+          density strip is the widest of them at 187px, so that is what the
+          column is cut to and the rest stack under it. */}
+      <div className="z-10 w-full shrink-0 sm:short:w-48 sm:short:self-center">
         <p className="mb-2 text-xs leading-snug text-muted-foreground">
           {markersVisible
             ? messages.mapInstructionsDesktop

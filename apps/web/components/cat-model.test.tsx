@@ -116,6 +116,31 @@ describe("the cat model", () => {
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
   });
 
+  it("takes a Tab into his corner for a reach, and one that stops short for none", async () => {
+    // The home corner: the stage and, under it, the one link a Tab can land
+    // on while he is still a picture. Nothing inside the stage is focusable
+    // until the viewer exists, so without this a visitor on the keyboard
+    // alone would never meet him.
+    render(
+      <>
+        <a href="/elsewhere">Si našel žival?</a>
+        <figure>
+          <CatModel sizes="100vw" locale="sl" startOnReach />
+          <figcaption><a href="/srecko">Spoznajte Srečka</a></figcaption>
+        </figure>
+      </>,
+    );
+    await act(async () => intersect(true));
+    act(() => screen.getByText("Si našel žival?").focus());
+    await act(async () => {});
+    expect(document.querySelector("model-viewer")).toBeNull();
+
+    act(() => screen.getByText("Spoznajte Srečka").focus());
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    // He is loading, so the corner says so to whoever reached for him.
+    expect(shown()).toBe(true);
+  });
+
   it("answers the touch that woke him", async () => {
     render(<CatModel sizes="100vw" locale="en" startOnReach />);
     act(() => intersect(true));

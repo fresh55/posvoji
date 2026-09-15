@@ -127,7 +127,9 @@ export const HOME_CAT_POSTER_MEDIA =
  * The reach answers both halves of it: the visit that goes for a card does not
  * pay for him at all, and the visit that goes for him spends that second on
  * the thing it asked for, with the progress cursor and the loading label
- * already saying so.
+ * already saying so. A visitor reaching by keyboard is the Tab that lands on
+ * the caption link below, which is inside this figure and so counts as a
+ * reach for the stage: without that he would never meet the cat at all.
  *
  * On a phone held sideways he is not drawn at all. That viewport is 390px
  * tall and wide enough to be past md, so he was claiming 152px of its height

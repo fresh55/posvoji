@@ -138,6 +138,10 @@ export const CatModel = memo(function CatModel({
    * his to take, and it is already the moment the stage starts speaking: the
    * progress cursor and the loading label wait for the same reach.
    *
+   * A reach is a pointer entering the stage or keyboard focus arriving
+   * anywhere in the box the page put the stage in, so a visitor who never
+   * touches a pointer meets him on the Tab that reaches his corner.
+   *
    * Left unset he starts as soon as he is on screen, which is what a stage
    * the visitor scrolled to wants.
    */
@@ -146,6 +150,9 @@ export const CatModel = memo(function CatModel({
 }) {
   const text = copy[locale];
   const host = useRef<HTMLDivElement>(null);
+  // The stage itself, for the one thing the effect needs that is outside it:
+  // the box the page put it in, which is where a keyboard reach lands.
+  const stage = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
   // What the stage still owes the visitor, and empty once it owes nothing.
   // One expression, so the label's text, its box and whether it is drawn
@@ -318,11 +325,25 @@ export const CatModel = memo(function CatModel({
         if (!disposed) onError();
       }
     };
-    // The reach a gated stage was waiting for, from the handler above.
-    wake.current = () => {
+    // The reach a gated stage was waiting for. The pointer's arrives through
+    // the handler above; the keyboard's through the corner below.
+    const takeReach = () => {
       wanted = true;
       void start();
     };
+    wake.current = takeReach;
+
+    // A Tab into the corner is a reach too. Until he loads there is nothing
+    // inside the stage for focus to land on, so the corner is the box the
+    // page put the stage in: on the home page that box is the figure, and the
+    // one thing a Tab can reach in it is his caption link, right under him.
+    // Without this a visitor who never touches a pointer never meets him.
+    const corner = startOnReach ? stage.current?.parentElement : null;
+    const onCornerFocus = () => {
+      setReached(true);
+      takeReach();
+    };
+    corner?.addEventListener("focusin", onCornerFocus);
     const observer = typeof IntersectionObserver === "undefined" ? null :
       new IntersectionObserver(([entry]) => {
         visible = entry.isIntersecting;
@@ -343,6 +364,7 @@ export const CatModel = memo(function CatModel({
     return () => {
       disposed = true;
       wake.current = () => {};
+      corner?.removeEventListener("focusin", onCornerFocus);
       observer?.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       motion.removeEventListener("change", syncPlayback);
@@ -358,6 +380,7 @@ export const CatModel = memo(function CatModel({
 
   return (
     <div
+      ref={stage}
       className={cn("relative", status === "loading" && "cursor-progress", className)}
       onPointerEnter={() => reach(false)}
       onPointerDown={() => reach(true)}

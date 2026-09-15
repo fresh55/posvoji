@@ -89,7 +89,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             the same. */}
         <a
           href={coverage.detailHref}
-          className="inline-block font-medium underline-offset-4 hover:underline max-lg:tap-target"
+          className="inline-block font-medium underline-offset-4 hover:underline pointer-coarse:tap-target"
         >
           {coverage.shelterName}
         </a>
@@ -109,7 +109,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
       {(coverage.phone || coverage.onCallPhone) && (
         <div className="space-y-2">
           {coverage.phone && (
-            <Button asChild className="w-full max-lg:h-11">
+            <Button asChild className="w-full pointer-coarse:h-11">
               <a href={telHref(coverage.phone)}>
                 <Phone className="size-4 shrink-0" aria-hidden />
                 {t("muniCall", { phone: coverage.phone })}
@@ -120,7 +120,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             <Button
               asChild
               variant="outline"
-              className="w-full max-lg:h-11"
+              className="w-full pointer-coarse:h-11"
             >
               <a href={telHref(coverage.onCallPhone)}>
                 <Phone className="size-4 shrink-0" aria-hidden />
@@ -210,7 +210,9 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
         ) : (
           coverage.sourceLabel
         )}{" "}
-        ({coverage.sourceDate}).
+        {/* One piece, or a phone breaks the date after its hyphen and the
+            credit line reads "(2026-" / "08)." */}
+        <span className="whitespace-nowrap">({coverage.sourceDate}).</span>
         {!coverage.confirmed && <> {messages.muniDatedSource}</>}
       </p>
     </Card>

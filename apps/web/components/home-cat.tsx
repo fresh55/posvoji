@@ -55,11 +55,37 @@ export const HOME_CAT_FRAMING: CatFraming = {
  * 2.1MB plus 1.3MB of renderer: on the about page he is below the fold and
  * often never fetched, here he is on screen at once, and without the wait
  * every desktop visit would fetch him alongside the first card photos.
+ *
+ * On a phone held sideways he is drawn smaller, at 128x100. That viewport is
+ * 390px tall and wide enough to be past md, so he was claiming 152px of it in
+ * the corner and 224px of the title's line, which put the heading on two
+ * lines, the meta row on two, and the species tabs 21px inside the filter
+ * dock's plate: the page's primary control was under a floating one, and the
+ * first card row started 366px down a 390px screen. The smaller stage and the
+ * narrower corner it reserves give the heading one line and the tabs a 41px
+ * gap above the dock, without taking him off the page. Same aspect ratio, so
+ * the poster stays the model's own first frame rather than a letterboxed one.
  */
+
+/** How much of the hero's line the corner reserves, and the box it draws in
+ *  it. The two are one measurement: the stage plus the 32px that keeps a
+ *  wrapped title off him. Written as a property so the padding cannot be
+ *  retuned in site-page.tsx without the drawing moving with it. */
+export const CAT_CORNER = "[--cat-corner:14rem] short:[--cat-corner:10rem]";
+const CAT_STAGE = "h-38 w-48 short:h-25 short:w-32";
+
 export function HomeCat({ locale }: { locale: Locale }) {
   return (
-    <figure className="absolute right-0 -bottom-section-gap hidden h-38 w-48 md:block">
-      <CatModel locale={locale} className="h-full" sizes="192px" framing={HOME_CAT_FRAMING} startAfterLoad />
+    <figure className={`absolute right-0 -bottom-section-gap hidden md:block ${CAT_STAGE}`}>
+      <CatModel
+        locale={locale}
+        className="h-full"
+        // The two boxes he is drawn in, so a phone held sideways is not sent
+        // the desktop still.
+        sizes="(max-height: 32rem) 128px, 192px"
+        framing={HOME_CAT_FRAMING}
+        startAfterLoad
+      />
     </figure>
   );
 }

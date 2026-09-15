@@ -1,7 +1,7 @@
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
-import { HomeCat } from "@/components/home-cat";
+import { CAT_CORNER, HomeCat } from "@/components/home-cat";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { SreckoLink } from "@/components/srecko-link";
@@ -42,7 +42,13 @@ export function SitePage({ locale }: { locale: Locale }) {
       // having room: at 1920 the page used to draw three cards in a 1280px
       // column and leave 320px of empty page on each side.
       wide
-      mainClassName="flex flex-1 flex-col gap-section-gap py-page-y"
+      // short:py-4, which is a phone held sideways and little else: 360 to 430
+      // pixels of height, of which the header takes 77 and the filter dock
+      // another 74. The page's own 40px top and bottom are a tenth of that
+      // screen spent on air above a heading, and with them the species tabs
+      // landed inside the dock's plate. 16px is the padding the page has below
+      // sm, which is the other size where height is what the page is short of.
+      mainClassName="flex flex-1 flex-col gap-section-gap py-page-y short:py-4"
       // /?najdena, which municipality websites published back when the lookup
       // was a mode of the map dialog. It draws nothing; it sends those
       // visitors on to the page the flow lives on.
@@ -68,13 +74,23 @@ export function SitePage({ locale }: { locale: Locale }) {
       {/* relative, for the cat (home-cat.tsx): he is drawn out of flow in
           the corner above the toolbar, so this row keeps its 64px and the
           heading keeps its place. The right padding from md keeps a wrapped
-          title out from under him. */}
-      <div className="relative space-y-1.5 md:pr-56">
+          title out from under him, and it is his own measurement rather than
+          a number of its own (CAT_CORNER): the corner shrinks with the stage
+          on a phone held sideways, where the full one cost the heading a
+          second line on a 390px-tall screen. */}
+      <div className={`relative space-y-1.5 md:pr-(--cat-corner) ${CAT_CORNER}`}>
         {/* 600, which is the weight of the card names in the grid under it
             and the weight every page title on the site now carries. At 500
             the title was the lighter of the two, so the page was headed by
             something quieter than the rows it introduces. */}
-        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+        {/* short:text-xl puts the phone's own title size back on a screen
+            that is 360 to 430 pixels tall. The step up the widths buy is
+            width, not height, and a phone held sideways has the first and
+            none of the second: at 30px this sentence took two lines of a
+            screen that has room for about six, and on the narrower landscape
+            phones it still did beside the cat. The rest of the row reads the
+            same at 20px, which is what the same phone shows in portrait. */}
+        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl short:text-xl">
           {messages.heroTitle}
         </h1>
         {/* One wrapping line at every width, where this used to be a text

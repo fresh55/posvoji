@@ -2180,6 +2180,24 @@ describe("animal dialog", () => {
     }
   });
 
+  // The close button on the photo is fixed to the top right of the phone
+  // shell while the card scrolls under it, and at 390px it stood over the last
+  // two or three characters of two lines of a description. The card reserves
+  // that column for the running text, which is the only thing in it whose
+  // lines reach so far right. Measured on the built export at 390x844; what a
+  // jsdom test can hold on to is that the card still asks for it and that the
+  // button it is measured against is the one that is fixed.
+  it("keeps the description clear of the fixed close button on a phone", async () => {
+    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const dialog = await screen.findByRole("dialog");
+
+    expect(slot(dialog, "animal-dialog-card").className).toContain(
+      "phone-shell:[&_[data-slot=animal-description]]:pe-11",
+    );
+    expect(slot(dialog, "dialog-close-photo").className).toContain("fixed");
+    expect(slot(dialog, "dialog-close-photo").className).toContain("size-11");
+  });
+
   // The arrows are level with the name, and from sm up the name rides a sticky
   // bar: at rest its centre is 64px under the card's top, pinned it is 40px.
   // The arrows are absolute against the frame, which does not scroll, so they

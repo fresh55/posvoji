@@ -730,9 +730,10 @@ export function AnimalFacts({
         <div className="space-y-1">
           <div
             id={descriptionId}
-            // The block the shelter's paragraphs are printed in, named so
-            // that the read-more button and the tests have one element to
-            // hold on to.
+            // Named for the dialog, which parks its fixed close button in the
+            // last 44px of these lines on a phone and reserves the column
+            // back. The animal's own page has no such button and draws this
+            // at its full width; see animal-dialog.tsx.
             data-slot="animal-description"
             // The shelter wrote this and we print it verbatim, so it is
             // Slovenian on an English page too. See quotedLang in lib/i18n.ts.

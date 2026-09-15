@@ -2641,8 +2641,13 @@ describe("animal dialog", () => {
     });
     expect(cta.className).not.toContain("max-sm:hidden");
     // On the pointer and not on the width: the 768px tablet, where this is
-    // the only copy of the button, measured 36px under max-sm.
-    expect(cta.className).toContain("pointer-coarse:h-11");
+    // the only copy of the button, measured 36px under max-sm. A minimum
+    // rather than a height, because the label wraps at a large root font and
+    // a fixed box would have it spill; 36 and 44 are what the two pointers
+    // still measure.
+    expect(cta.className).toContain("pointer-coarse:min-h-11");
+    expect(cta.className).toContain("min-h-9");
+    expect(cta.className).toContain("whitespace-normal");
   });
 
   // The shelter is named on every animal and, until the name became a link,

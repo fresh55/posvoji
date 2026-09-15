@@ -160,6 +160,25 @@ describe("the animal page's hero", () => {
     const grid = heroGrid(container);
     expect(grid.className).toContain("sm:grid-cols-2");
   });
+
+  // A grid item's automatic minimum is its min-content, so the facts column
+  // could not narrow past the longest word in the description and the page
+  // scrolled sideways: 401px of document inside a 390px viewport at a 150%
+  // root font, 533 at 200%.
+  it("lets both columns narrow past their longest word", () => {
+    const { container } = render(
+      <AnimalPage
+        locale="sl"
+        slug={animalPathParts(ANIMAL_WITH_PHOTO).animal}
+      />,
+    );
+
+    const columns = [...heroGrid(container).children];
+    expect(columns).toHaveLength(2);
+    for (const column of columns) {
+      expect(column.className).toContain("min-w-0");
+    }
+  });
 });
 
 describe("the animal page's breadcrumb", () => {

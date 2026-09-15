@@ -104,8 +104,14 @@ export function ShelterBlock({
             name up first: in the animal page's 31rem column beside the photo
             it drew "Obalno zavetišč..." with the button still on the line.
             The dialog's card is wide enough to keep one row, and below sm
-            the button is already full width on a row of its own. */}
-        <div className="min-w-[12rem] flex-1">
+            the button is already full width on a row of its own.
+
+            Capped at the row's own width, because the floor is written in rem
+            and somebody reading at 200% has a 24rem one: at 390 that was
+            384px of floor inside a 326px card, and the page scrolled
+            sideways. At any font the floor fits in, it is the same 12rem it
+            always was. */}
+        <div className="min-w-[min(12rem,100%)] flex-1">
           {/* The name goes to the shelter's own page, which holds its other
               contacts, the občine it answers for and the rest of its animals.
               Until now the only way out of this box left the site.
@@ -236,6 +242,13 @@ export function ShelterBlock({
               // the pointer and not on the width: at max-sm a 768px tablet,
               // where this is the only copy of the button, measured 36px.
               "w-full pointer-coarse:h-11 sm:w-auto",
+              // The label may take a second line rather than run out of the
+              // box. Buttons are nowrap, which at a 200% root font pushed the
+              // external-link mark 2px past a 390 viewport and gave the whole
+              // page a sideways scroll. The height follows the text instead
+              // of the label overflowing a fixed box, and at any font size
+              // the label fits on one line nothing about it moves.
+              "h-auto min-h-9 py-1.5 whitespace-normal pointer-coarse:h-auto pointer-coarse:min-h-11",
               // short: goes wherever max-sm: goes, because the bar this
               // mirrors does: the dialog draws it on the phone shell, and a
               // phone held sideways is that shell too (PHONE_SHELL in

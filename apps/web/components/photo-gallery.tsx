@@ -468,7 +468,11 @@ export function PhotoGallery({
       width: event.currentTarget.clientWidth || 1,
     };
     setDragging(true);
-    preloadAdjacent(imageIndex);
+    // The neighbours are warmed when the axis locks horizontal and not here.
+    // A finger landing on a card is most often the start of a scroll down the
+    // grid, and paying for two photos this gallery is not going to show made
+    // the page the visitor is scrolling toward wait behind them.
+    //
     // Optional call: jsdom has no pointer capture, and a gesture that cannot
     // be captured still works, it just stops tracking a finger that leaves the
     // element.
@@ -488,6 +492,9 @@ export function PhotoGallery({
       axis.current = declareAxis(distanceX, distanceY);
       // Still short of the slop: it could yet turn out to be a tap.
       if (axis.current === null) return;
+      // The gesture is the photo's now, so the photo either side is worth
+      // fetching. This is the first moment anything says so.
+      if (axis.current === "x") preloadAdjacent(imageIndex);
     }
     if (axis.current !== "x") return;
 
@@ -527,7 +534,14 @@ export function PhotoGallery({
     endGesture();
   }
 
-  function handlePointerEnter() {
+  function handlePointerEnter(event: PointerEvent<HTMLElement>) {
+    // A mouse's dwell only. On touch pointerenter fires on touchdown, so the
+    // dwell said nothing about intent: a finger that rested on a card for
+    // 150ms and then scrolled away was charged three fan-size masters and two
+    // card rungs, 304KB measured on a phone, none of it ever drawn. A phone
+    // has no hover to read, and the tap itself is early enough: it opens the
+    // dialog, and the dialog asks for the print it is going to show.
+    if (event.pointerType !== "mouse") return;
     window.clearTimeout(preloadTimer.current);
     // The dwell is the only path that warms at warmSizes. Stepping or swiping
     // is somebody reading this gallery, not somebody about to open the surface

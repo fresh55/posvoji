@@ -3,10 +3,8 @@ import {
   type ShelterCardData,
   type ShelterCardText,
 } from "@/components/shelter-card";
-import { ShelterJumpStrip } from "@/components/shelter-jump-strip";
 import { Card } from "@/components/ui/card";
 import { MUTED_LINK } from "@/lib/link-styles";
-import { publishedCount } from "@/lib/shelter-census";
 import { SKIP_LINK } from "@/lib/skip-link";
 import { cn } from "@/lib/utils";
 
@@ -55,14 +53,6 @@ export type SheltersAtlasText = {
    *  the key legible, which is a different thing from making the order
    *  predictable, so this line stays whatever size the town is drawn at. */
   sortNote: string;
-  /** "Skok na zavetišče" / "Jump to a shelter", the accessible name of the
-   *  chip strip below sm. Not printed: the chips are towns and the towns are
-   *  the sort key the line above has just named, so a visible label would be
-   *  a third line saying what the second one says. A list of seventeen links
-   *  with no name is announced as "list, 17 items" between the sort note and
-   *  the register itself, which is where a reader most needs to be told what
-   *  they have arrived at. */
-  jump: string;
 };
 
 /** The invitation, the grid's last cell rather than a banner under it. Every
@@ -91,42 +81,19 @@ export type SheltersInvite = {
  * search worth having on this site, the občina lookup, belongs to the
  * found-animal flow that owns that question.
  *
- * The chip strip below sm does not reopen that. It is an index and not a
- * filter: it hides nothing, removes nothing and answers no query. It prints
- * the same seventeen towns in the same order the grid draws them, and every
- * chip is an anchor into the grid that is already there. The argument above
- * is against a control that stands between the reader and a list they can see;
- * at one column the reader cannot see the list, and the strip is how it is
- * given back to them. See the comment on the strip for why it stops at sm.
+ * A row of town chips stood above the grid below sm for a while, as an index
+ * into the one-column list, and it is gone for the same reason. It showed
+ * three or four of sixteen towns at a time, so finding one was a sideways
+ * scroll and a tap to save a few flicks down a list that is already sorted
+ * and says so; it only helped a reader who knew the shelter's town, which
+ * the reader looking for Muri or Meli by name does not; and the question it
+ * half answered, which shelter is mine, is the lookup button's above. What
+ * it cost was 64px of the first phone screen, a second scroll axis and the
+ * page's only client boundary. Seventeen cards is eight flicks at worst.
  *
- * That also takes the whole client boundary off this page. It was here for the
- * filter's state; with no filter, the register is what it always was, a
- * document, and it renders on the server.
+ * So the register is what it always was, a document, and it renders on the
+ * server.
  */
-/** What a chip says after the town, for the towns that hold more than one
- *  shelter.
- *
- *  The register's own name minus the word every second entry opens with:
- *  "Zavetišče Mačja hiša" is the shelter and "Mačja hiša" is what tells it
- *  from "Sia in Lu" one chip away. Only that one leading word, and only where
- *  something is left after it, so a name that carries it in the middle
- *  ("Veterina Sevnica — zavetišče") is printed whole. */
-function shelterShortName(name: string): string {
-  const short = name.replace(/^Zavetišče\s+/, "").trim();
-  return short === "" ? name : short;
-}
-
-/** The towns the register lists more than one shelter in. */
-function townsWithTwo(shelters: ShelterCardData[]): Set<string> {
-  const seen = new Set<string>();
-  const twice = new Set<string>();
-  for (const shelter of shelters) {
-    if (seen.has(shelter.city)) twice.add(shelter.city);
-    seen.add(shelter.city);
-  }
-  return twice;
-}
-
 export function SheltersAtlas({
   shelters,
   card,
@@ -139,10 +106,6 @@ export function SheltersAtlas({
   text: SheltersAtlasText;
   invite?: SheltersInvite;
 }) {
-  // Computed over the whole register rather than per chip: which chips need a
-  // name is a property of the list, not of any one shelter in it.
-  const twiceInTown = townsWithTwo(shelters);
-
   return (
     <section aria-label={text.heading} className="w-full">
       {/* Seventeen name links and about fifty contact links, one tab stop
@@ -201,42 +164,19 @@ export function SheltersAtlas({
         )}
       </div>
 
-      {/* The register's own index below sm: one row that scrolls sideways.
-          Why it exists, why it stops at sm and why it is a row rather than a
-          wrapping block are all on the component.
+      {/* Two columns from sm and three from lg. Seventeen shelters plus the
+          invitation is eighteen cells: the last row comes out even at two
+          columns and at three.
 
-          Its chips are built here rather than there because the strip is a
-          client component and card.animals is a function: the count's noun
-          agrees with the number in Slovenian, so the sentence is formatted on
-          this side of the boundary and handed over as text. publishedCount is
-          the same rule the card draws its pill on (lib/shelter-census.ts), so
-          a chip cannot claim a list the card beside it does not print.
-
-          The count key is spread in rather than set to undefined, so a shelter
-          that shares no list sends no key at all across the boundary instead
-          of a marker saying it has none. */}
-      <ShelterJumpStrip
-        label={text.jump}
-        chips={shelters.map((shelter) => {
-          const count = publishedCount(shelter.animals);
-          return {
-            id: shelter.id,
-            city: shelter.city,
-            ...(twiceInTown.has(shelter.city) && {
-              qualifier: shelterShortName(shelter.name),
-            }),
-            ...(count !== undefined && {
-              count: { value: count, label: card.animals(count) },
-            }),
-          };
-        })}
-      />
-
-      {/* Two columns from sm and three from xl. The cards carry six or seven
-          lines now, so a third column at 1280px still leaves each one a
-          readable measure, and seventeen shelters plus the invitation is
-          eighteen cells: the last row comes out even at two columns and at
-          three.
+          lg and not xl. The third column used to wait for 1280px, and at
+          1024px, which is a laptop window, the two-column card measured 472px
+          wide with three short contact rows in its left third: a card that
+          was two thirds air, and a page a third taller than it needed to be.
+          At 1024px three columns are 309px each inside the frame's 2rem
+          gutters, wider than the 288px the two-column band draws at 640px, so
+          no card in the register is narrower than one it already draws. The
+          long names wrap to a second line there and the subgrid below keeps
+          the rows level whatever they do.
 
           The rows are the cards' own sections rather than the cards. Every
           cell spans three implicit rows and the shelter card takes those three
@@ -257,7 +197,7 @@ export function SheltersAtlas({
 
           The role and nothing else. The section's aria-label used to be
           repeated here; see SheltersAtlasText.heading for why it is not. */}
-      <ul role="list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <ul role="list" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {shelters.map((shelter) => (
           <ShelterCard key={shelter.id} shelter={shelter} text={card} />
         ))}
@@ -286,10 +226,11 @@ export function SheltersAtlas({
           >
             <li
               id={INVITE_ID}
-              // scroll-mt-24, the same offset the shelter cards carry, so an
+              // scroll-mt-4, the same offset the shelter cards carry, so an
               // arrival from the anchor above lands with the dashed edge clear
-              // of the viewport top rather than flush against it.
-              className="row-span-3 flex scroll-mt-24 flex-col gap-2 p-5"
+              // of the viewport top rather than flush against it. The value
+              // is argued on CARD in shelter-card.tsx.
+              className="row-span-3 flex scroll-mt-4 flex-col gap-2 p-5"
             >
               {/* h2, the rank the shelter names beside it take. The outline
                   has to say what the layout says: after seventeen h2s an h3
@@ -315,18 +256,28 @@ export function SheltersAtlas({
                   It follows the body rather than sitting on the cell's bottom
                   edge: the invitation is two paragraphs of one thought, and
                   mt-auto opened a band of blank between them as wide as the
-                  tallest card in the row. */}
+                  tallest card in the row.
+
+                  pointer-coarse:py-3.5 is the thumb's share of an inline
+                  link. This is a link inside a sentence, so it wraps with the
+                  sentence and cannot grow into a 44px box the way the contact
+                  rows do, and the tap-target overlay is drawn against one
+                  fragment of a link that may have two. Vertical padding on an
+                  inline box changes no line's height and every pixel of it
+                  takes presses. The box it pads is the font's own, 17px for
+                  this face at 14px, not the 22.75px line the text sits in, so
+                  14px above and below is what reaches 45px; 12px measured
+                  41. It overlaps the lines either side, and those are prose,
+                  so a press that strays lands on the link rather than on
+                  nothing. Hit-tested before this: 22px, the only control on
+                  the page under the floor. */}
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {invite.note}{" "}
                 <a
                   href={invite.joinHref}
                   target="_blank"
                   rel="noreferrer"
-                  // 17px of line on one row and 40px over two, so a coarse
-                  // pointer gets the overlay: it centres on the link's own
-                  // box and the only thing inside its overhang is the
-                  // sentence around it. See tap-target in globals.css.
-                  className="relative z-10 inline-flex pointer-coarse:tap-target underline underline-offset-4 hover:text-foreground"
+                  className="relative z-10 underline underline-offset-4 hover:text-foreground pointer-coarse:py-3.5"
                 >
                   {invite.joinLabel}
                   <span className="sr-only"> {invite.newWindow}</span>

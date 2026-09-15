@@ -88,9 +88,21 @@ const ITEM_LAYOUTS = {
    * slots this file leaves unshipped (ItemGroup, ItemHeader, ItemActions, see
    * the header) would each have reopened the hole on the day they landed. The
    * hole is invisible at normal text size, which is how it survived this long.
+   *
+   * Each slot is pinned to its track by name rather than by position. Left
+   * to auto-placement the tracks are handed out in document order, so the
+   * promise above, that a skipped slot is an empty track and not a shifted
+   * one, only held while every caller wrote all three slots and wrote them
+   * in the drawn order. It also tied the document order to the drawn order,
+   * which is how the register card came to announce a shelter's count before
+   * its name: the media row had to be written first to land in the first
+   * track. Named tracks let a caller write the slots in reading order and
+   * still draw them media, content, footer. Below a caller's own breakpoint
+   * a flex layout ignores the row placement, so nothing has to be undone
+   * there.
    */
   subgrid:
-    "grid grid-rows-subgrid row-span-3 gap-4 [&>*]:min-w-0 [&>[data-slot=item-footer]]:mt-0",
+    "grid grid-rows-subgrid row-span-3 gap-4 [&>*]:min-w-0 [&>[data-slot=item-media]]:row-start-1 [&>[data-slot=item-content]]:row-start-2 [&>[data-slot=item-footer]]:row-start-3 [&>[data-slot=item-footer]]:mt-0",
 } as const;
 
 function Item({

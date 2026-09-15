@@ -54,6 +54,9 @@ playwright-report/
 .vscode/
 .idea/
 
+# review runs and other generated write-ups that live beside the tree
+outputs/
+
 # misc
 scripts/__pycache__/
 .DS_Store

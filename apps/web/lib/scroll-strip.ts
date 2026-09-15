@@ -1,11 +1,12 @@
 /**
  * The classes a horizontally scrolling row of controls needs, named once.
  *
- * Two rows on this site scroll sideways rather than wrap: the active filters
- * above the animal grid (filters/filter-chips.tsx) and the register's phone
- * index (shelter-jump-strip.tsx). They are drawn at different sizes and hold
- * different things, so this is not a component; what they share is the three
- * couplings below, each of which is silent when it is got wrong.
+ * One row on this site scrolls sideways rather than wrapping today, the active
+ * filters above the animal grid (filters/filter-chips.tsx); the register's
+ * phone index was a second until it came off. Kept as a string rather than
+ * folded into that component, because the next row that scrolls should take
+ * these rather than respell them: what a strip needs is the three couplings
+ * below, each of which is silent when it is got wrong.
  *
  * fade-scroll-x hides the scrollbar and masks whichever edge still has content
  * past it, which is the whole of what says there is more to find. It eats

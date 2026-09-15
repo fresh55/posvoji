@@ -111,8 +111,15 @@ const CONTACT_ROW =
 // Everything the card is, apart from how its sections sit below sm. The two
 // phone layouts are the constants under it, and which one a card gets depends
 // on whether it has a mark to draw.
+//
+// scroll-mt-4, which is where a link to the card's anchor lands it: 16px of
+// air above its edge, the same as the gutter beside it. It was 96px, left
+// over from a layout that had something sticky to clear, and nothing on this
+// page is sticky now: the header scrolls away, so a jump put the card a
+// quarter of the screen down under a band of nothing. The invite cell carries
+// the same value for the same reason (shelters-atlas.tsx).
 const CARD =
-  "group relative scroll-mt-24 max-sm:p-4 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring";
+  "group relative scroll-mt-4 max-sm:p-4 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring";
 
 /** With a mark: three stacked sections, the name and town first. */
 const CARD_PHONE_STACK = "max-sm:flex max-sm:flex-col max-sm:gap-3";
@@ -133,7 +140,7 @@ const CARD_PHONE_STACK = "max-sm:flex max-sm:flex-col max-sm:gap-3";
  * per card by the browser suite, which adds them against the census line.
  *
  * So the card is a wrapping flex row here instead of a column. The content
- * grows from a zero basis (CONTENT_FOLD below), so it shares the first line
+ * grows from a fixed basis (CONTENT_FOLD below), so it shares the first line
  * with the media whatever the name's length: left at its own width, a long
  * name's max-content claimed the whole line and pushed the count onto a line
  * of its own again, which is what happened to "Veterinarska bolnica Brežice"
@@ -155,10 +162,22 @@ const CARD_PHONE_STACK = "max-sm:flex max-sm:flex-col max-sm:gap-3";
 const CARD_PHONE_FOLD =
   "max-sm:flex max-sm:flex-wrap max-sm:content-start max-sm:gap-3";
 /** The content's half of the fold: grow to whatever the media leaves on the
- *  first line, from nothing, so the name wraps inside that width instead of
- *  taking the line for itself. Only on a card without a mark; with one, the
- *  column layout gives the name the whole width. */
-const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-0";
+ *  first line, from a 9rem basis, so the name wraps inside that width instead
+ *  of taking the line for itself. Only on a card without a mark; with one, the
+ *  column layout gives the name the whole width.
+ *
+ *  9rem and not zero. From zero the row could shrink the name block to
+ *  nothing, and at 200% text it did: the town under the name came out as
+ *  "Br…" beside a "Brez objav" that kept its own width, which is the sort key
+ *  cut to two letters on the card that most needs it. The basis is what a
+ *  wrapping row places its lines by, so it is where the floor belongs. At the
+ *  default size it is 144px, which with the widest media (a 92px count pill
+ *  and the 12px gap) fits the narrowest card the register draws, 256px inside
+ *  the padding at a 320px viewport, so the fold holds at 100%. At 200% the
+ *  same basis is 288px on the same card, the line cannot hold both, and the
+ *  media wraps under the town onto a line of its own, which is the stacked
+ *  card's layout and loses nothing. */
+const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-36";
 
 /**
  * One shelter, as a card.
@@ -183,13 +202,22 @@ const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-0";
  *
  * Below sm there is no row to agree with. The grid is one column, every card
  * is alone on its line, and a subgrid with nothing to align to is three auto
- * tracks in a trenchcoat. So the card is a flex column there, and being a flex
- * column is what lets the sections be reordered: the name and the town first,
- * the mark and the count under them, the contacts last. The logo band was the
- * card's header and on a phone that meant the first thing on a card about a
+ * tracks in a trenchcoat. So the card is a flex column there, drawn in the
+ * order the sections are written: the name and the town first, the mark and
+ * the count under them, the contacts last. The logo band was the card's
+ * header and on a phone that meant the first thing on a card about a
  * shelter's name was not the name. Measured at 375: the name is the first
  * line, and every count pill still lands 95px down its card, which keeps it in
  * the same glance. At 320 the one name that wraps pushes its pill to 120.
+ *
+ * That is also the document order, and so the order a screen reader hears
+ * and the order a reader without CSS gets. The media row used to be written
+ * first, because auto-placement handed it the first subgrid track that way,
+ * and it cost every reader who is not looking at the band: a heading rotor
+ * stepping card to card heard "186 živali" after the previous shelter's
+ * contacts and before this one's name. Item's subgrid layout now pins each
+ * slot to its track by name (ui/item.tsx), so from sm up the band still draws
+ * media, content, footer, and the sections can be written as they are read.
  *
  * What the reorder costs is the counts sitting at one offset on every card.
  * See the ItemMedia comment below.
@@ -242,6 +270,103 @@ export function ShelterCard({
         // for all seventeen cards.
         className={`${CARD} ${shelter.logo ? CARD_PHONE_STACK : CARD_PHONE_FOLD}`}
       >
+        {/* The name and the town, written first because they are read first;
+            the subgrid places this in the second track from sm up. See the
+            phone paragraph on ShelterCard. */}
+        <ItemContent className={shelter.logo ? undefined : CONTENT_FOLD}>
+          {/* No reserved second line here any more.
+
+              A sm:max-xl:min-h-[2lh] used to sit on this title, because in the
+              two-column band the longest names wrap and a two-line name pushed
+              its own contacts 22px below its neighbour's. Reserving a line made
+              the two present the same block. It held only while no name took
+              three, and a name long enough to take three is one row of
+              data/shelters.yaml away: the same measurement with a name that
+              wraps twice puts the phone rows 115px apart again, and nothing
+              says so.
+
+              The content track is the reservation now, and it is as tall as
+              the tallest title in the row whether that is one line or four.
+              Below sm there is no row and no track, and none is wanted: a
+              card alone in a one-column list has nothing to present the same
+              block as.
+
+              The town stays with the name rather than with the track: where a
+              neighbour's name takes an extra line, the slack falls under the
+              pair and not between them. Lining the towns up too would want a
+              track of their own and would open a gap between a name and its
+              own town, which reads worse than a small line sitting a little
+              higher on one card than the next. */}
+          {/* h2, because the section that holds these cards prints no
+              heading of its own. The decision and its consequences live with
+              that aria-label, on SheltersAtlasText.heading. */}
+          {/* 18px below sm, 16px from sm up.
+
+              The name is what a reader is looking for on this page, and on a
+              phone it was the same 16px as the body of every other page under
+              a 64px band of logo: the mark was the loudest thing on a card
+              about a shelter's name. From sm up the card is one of two or
+              three side by side and the grid itself carries the scan, so
+              nothing above the breakpoint moves.
+
+              text-pretty over ItemTitle's own text-balance. Balance is the
+              right rule for a two-line heading with room to spare, and this
+              is neither: browsers stop balancing at about six lines, and the
+              longest names at 320px take four or five short ragged ones
+              before the cap even comes up. Pretty leaves the line breaks
+              alone and only keeps the last line off a single word. */}
+          <ItemTitle asChild className="text-pretty max-sm:text-lg">
+            <h2>
+              {/* The hover underline is the card's promise: a press here
+                  opens the shelter's page, from anywhere on the card, because
+                  the ::after stretches this link over the whole box. Over a
+                  contact row that promise is false, since the row lifts
+                  itself above the overlay and takes its own presses, so the
+                  name's underline stands down while a row is hovered and the
+                  row's own underline is the only one drawn. Both underlined
+                  at once read as one press doing two things. */}
+              <a
+                href={shelter.href}
+                data-card-link
+                className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-ui group-hover:underline group-has-[[data-contact]:hover]:no-underline"
+              >
+                {shelter.name}
+              </a>
+            </h2>
+          </ItemTitle>
+          {/* The town at 14px below sm, which is the sort key drawn large
+              enough to be read while scrolling.
+
+              The grid is ordered by town and says so above itself, but below
+              sm it is one column seventeen cards deep and the reader sees
+              about one and a half of them at a time. At 12px muted, under the
+              name, the one line that carries the ordering was the quietest
+              thing on the card, so the sequence read as no order at all and
+              there was no way to look for a particular shelter. The name is
+              18px below sm now, which widens that distance rather than
+              closing it, so the 14px here has only got more necessary.
+
+              sm exactly, because that is where the grid becomes two columns
+              (sm:grid-cols-2). Above it the register is scanned as a grid
+              rather than travelled through, the town is next to its neighbours
+              rather than a screen away from them, and every measurement in the
+              comments on this file was taken at 12px. Nothing above the
+              breakpoint changes.
+
+              The glyph goes with the size. Every contact row on this card
+              pairs text-sm with size-3.5, and a 12px pin beside 14px text
+              would be the one place the card paired them differently.
+
+              ItemDescription's own base is text-xs, and tailwind-merge keeps
+              the later of two sizes in the same group: the unprefixed text-sm
+              wins here, while sm:text-xs is a different modifier and
+              survives. */}
+          <ItemDescription className="flex items-center gap-1 text-sm sm:text-xs">
+            <MapPin className="size-3.5 shrink-0 sm:size-3" aria-hidden />
+            <span className="truncate">{shelter.city}</span>
+          </ItemDescription>
+        </ItemContent>
+
         {/* The mark on the left, the count on the right, on one line of their
             own: above the name from sm up, under the name and its town below
             it, and on the town's own line below sm where there is no mark to
@@ -370,111 +495,6 @@ export function ShelterCard({
             </p>
           )}
         </ItemMedia>
-
-        {/* One order utility, not three. The phone order differs from the
-            source order by a single move, the content going to the front, and
-            order-first says exactly that while the media and the footer keep
-            their own sequence at the default 0. The DOM order is left as it
-            is: the source order is the one the subgrid band draws and the one
-            a reader without CSS gets. See the phone paragraph on ShelterCard.
-
-            The usual objection to order is that it walks the keyboard through
-            a card in one sequence and the eye through it in another. It does
-            not here, because the media row holds nothing focusable: the mark
-            is decoration with an empty alt and the count is a paragraph. The
-            two things that take focus are the name and the contact rows, and
-            they are first and last in both orders. */}
-        <ItemContent
-          className={
-            shelter.logo
-              ? "max-sm:order-first"
-              : `max-sm:order-first ${CONTENT_FOLD}`
-          }
-        >
-          {/* No reserved second line here any more.
-
-              A sm:max-xl:min-h-[2lh] used to sit on this title, because in the
-              two-column band the longest names wrap and a two-line name pushed
-              its own contacts 22px below its neighbour's. Reserving a line made
-              the two present the same block. It held only while no name took
-              three, and a name long enough to take three is one row of
-              data/shelters.yaml away: the same measurement with a name that
-              wraps twice puts the phone rows 115px apart again, and nothing
-              says so.
-
-              The content track is the reservation now, and it is as tall as
-              the tallest title in the row whether that is one line or four.
-              Below sm there is no row and no track, and none is wanted: a
-              card alone in a one-column list has nothing to present the same
-              block as.
-
-              The town stays with the name rather than with the track: where a
-              neighbour's name takes an extra line, the slack falls under the
-              pair and not between them. Lining the towns up too would want a
-              track of their own and would open a gap between a name and its
-              own town, which reads worse than a small line sitting a little
-              higher on one card than the next. */}
-          {/* h2, because the section that holds these cards prints no
-              heading of its own. The decision and its consequences live with
-              that aria-label, on SheltersAtlasText.heading. */}
-          {/* 18px below sm, 16px from sm up.
-
-              The name is what a reader is looking for on this page, and on a
-              phone it was the same 16px as the body of every other page under
-              a 64px band of logo: the mark was the loudest thing on a card
-              about a shelter's name. From sm up the card is one of two or
-              three side by side and the grid itself carries the scan, so
-              nothing above the breakpoint moves.
-
-              text-pretty over ItemTitle's own text-balance. Balance is the
-              right rule for a two-line heading with room to spare, and this
-              is neither: browsers stop balancing at about six lines, and the
-              longest names at 320px take four or five short ragged ones
-              before the cap even comes up. Pretty leaves the line breaks
-              alone and only keeps the last line off a single word. */}
-          <ItemTitle asChild className="text-pretty max-sm:text-lg">
-            <h2>
-              <a
-                href={shelter.href}
-                data-card-link
-                className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-ui group-hover:underline"
-              >
-                {shelter.name}
-              </a>
-            </h2>
-          </ItemTitle>
-          {/* The town at 14px below sm, which is the sort key drawn large
-              enough to be read while scrolling.
-
-              The grid is ordered by town and says so above itself, but below
-              sm it is one column seventeen cards deep and the reader sees
-              about one and a half of them at a time. At 12px muted, under the
-              name, the one line that carries the ordering was the quietest
-              thing on the card, so the sequence read as no order at all and
-              there was no way to look for a particular shelter. The name is
-              18px below sm now, which widens that distance rather than
-              closing it, so the 14px here has only got more necessary.
-
-              sm exactly, because that is where the grid becomes two columns
-              (sm:grid-cols-2). Above it the register is scanned as a grid
-              rather than travelled through, the town is next to its neighbours
-              rather than a screen away from them, and every measurement in the
-              comments on this file was taken at 12px. Nothing above the
-              breakpoint changes.
-
-              The glyph goes with the size. Every contact row on this card
-              pairs text-sm with size-3.5, and a 12px pin beside 14px text
-              would be the one place the card paired them differently.
-
-              ItemDescription's own base is text-xs, and tailwind-merge keeps
-              the later of two sizes in the same group: the unprefixed text-sm
-              wins here, while sm:text-xs is a different modifier and
-              survives. */}
-          <ItemDescription className="flex items-center gap-1 text-sm sm:text-xs">
-            <MapPin className="size-3.5 shrink-0 sm:size-3" aria-hidden />
-            <span className="truncate">{shelter.city}</span>
-          </ItemDescription>
-        </ItemContent>
 
         {/* From sm up the contacts sit in the row's third track, which is as
             tall as the longest contact list in the row and starts at one y

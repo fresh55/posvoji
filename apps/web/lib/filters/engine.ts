@@ -811,8 +811,15 @@ function visibleFacet<Key extends string>(
   selected: readonly Key[],
   includeUnavailable = false,
 ): Key[] {
-  if (includeUnavailable) return [...keys];
   const counts = answeredCounts(indexOf(animals)[column], keys.length);
+  if (includeUnavailable) {
+    // Every key, zero rows included, for as long as the section is a question
+    // at all. When no animal in the pool answers any of them the section has
+    // nothing to say and goes whole, the way visibleGroups drops a group no
+    // animal answers. A selection holds it open so it can be taken off.
+    const answered = counts.some((count) => count > 0);
+    return answered || selected.length > 0 ? [...keys] : [];
+  }
   return keys.filter(
     (key, bit) =>
       selected.includes(key) ||
@@ -915,14 +922,6 @@ export function visibleGroups(
   now: Date,
   includeUnavailable = false,
 ): Record<MultiGroup, boolean> {
-  if (includeUnavailable) {
-    const shown = (group: MultiGroup) =>
-      filters[group].length > 0 || groupFitsSpecies(group, filters.species);
-    return {
-      sex: shown("sex"), age: shown("age"), size: shown("size"),
-      energy: shown("energy"), shelter: shown("shelter"),
-    };
-  }
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
   const distinct = {
@@ -942,9 +941,17 @@ export function visibleGroups(
     add("energy", index.energy[slot]);
     add("shelter", index.shelter[slot]);
   }
+  // includeUnavailable drops the floor to one answer rather than lifting it
+  // off the pool altogether. A section nobody in the pool answers is not a
+  // section with a zero row in it, it is a column of disabled zeros with no
+  // question behind it, and Energija, Dom and Posebna skrb were exactly that
+  // on the live dataset. One answer is enough to keep the section, so the
+  // zero rows beside it stay and explain the unknowns, and the section comes
+  // back on its own the day the field arrives.
+  const floor = includeUnavailable ? 1 : 2;
   const shown = (group: MultiGroup) =>
     filters[group].length > 0 ||
-    (groupFitsSpecies(group, filters.species) && distinct[group].size >= 2);
+    (groupFitsSpecies(group, filters.species) && distinct[group].size >= floor);
   return {
     sex: shown("sex"),
     age: shown("age"),

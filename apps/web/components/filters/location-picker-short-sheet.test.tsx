@@ -2,7 +2,7 @@
 
 import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
 import { useState } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toggleValues } from "@/lib/filters";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -107,6 +107,27 @@ describe("LocationPicker on a short viewport", () => {
     fireEvent.click(showList);
     expect(panel().className).not.toContain("max-lg:hidden");
     expect(stage().className).toContain("max-lg:hidden");
+  });
+
+  it("stands the map in a column, so a stage out of height takes it from the map", async () => {
+    await openPicker();
+    fireEvent.click(dialog().querySelector("[data-picker-show-map]")!);
+    // The plate is a dynamic import, so it lands a tick after the press.
+    const plate = await waitFor(() => {
+      const found = stage().querySelector("svg");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    const box = plate.parentElement!;
+
+    // The landscape-phone crop was this box being a row: the map's height is
+    // its cross size there, so shrink had nothing to take and the 320x210
+    // plate held the 498px its aspect ratio asked for inside 123px of box,
+    // with the coast and the south clipped off and nothing to scroll. In a
+    // column the height is the main size and the viewBox letterboxes.
+    expect(box.className).toContain("flex-col");
+    expect(box.className).toContain("min-h-0");
+    expect(plate.getAttribute("class")).toContain("shrink");
   });
 
   it("keeps results outside either view with matching safe-area space", async () => {

@@ -79,7 +79,22 @@ export const PHONE_FAN: FanGeometry = {
   // viewport with the animal's name somewhere below it. Capped at 24rem the
   // print is 253px wide, which is what it measures on a 390px phone held
   // upright, and the name row is on screen with it.
-  stageClass: "w-full overflow-x-clip short:mx-auto short:max-w-sm",
+  //
+  // The second cap is the same complaint from the other side: a small tablet
+  // held upright is still this layout, and the stage went on growing with the
+  // width. At 639x800 it was 639 wide and 524 tall, a photograph filling two
+  // thirds of the screen with the card pushed off the bottom of it. Held at
+  // 30rem from 480px up the print is 384px wide, a little larger than a phone
+  // draws it, and the stage is 393px tall. Below 480 the fan stays full bleed,
+  // because there the outermost prints running off the screen edges are what
+  // says there are more photographs.
+  //
+  // Written against not-short so the two caps cannot argue: a landscape phone
+  // is wide enough for this one and it would undo the 24rem above, and which
+  // of two max-widths wins is a question about the order Tailwind writes them
+  // in rather than about the layout.
+  stageClass:
+    "w-full overflow-x-clip short:mx-auto short:max-w-sm not-short:min-[30rem]:mx-auto not-short:min-[30rem]:max-w-[30rem]",
   chevrons: false,
 };
 

@@ -1,6 +1,6 @@
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
 import { useI18n } from "@/components/i18n-provider";
-import { type PermittedPhoto } from "@/lib/animal-images";
+import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
 import {
   MIN_SWIPE_PX,
   SWIPE_DISTANCE_RATIO,
@@ -29,7 +29,13 @@ import {
   type RefObject,
 } from "react";
 import { frontPrintOf } from "./fan-focus";
-import { FAN_LIMIT, FanTempo, fanShapes, fanSlots } from "./fan-geometry";
+import {
+  FAN_LIMIT,
+  FanTempo,
+  fanShapes,
+  fanSlots,
+  printFactor,
+} from "./fan-geometry";
 import { FanGeometry } from "./fan-layout";
 import { FLICK_TWO_PX_MS } from "./fan-options";
 
@@ -112,8 +118,18 @@ export function useFanControls({
   function seatOf(index: number, offset: number) {
     const held = seats.current.get(index);
     if (held) return held;
-    const made = motionValue(offset + progress.get());
+    const seat = offset + progress.get();
+    const made = motionValue(seat);
     seats.current.set(index, made);
+    // And its shape into the record, at the seat it is standing in. A seat is
+    // measured off the outer edge of the seat inside it, so the print that
+    // steps in behind this one has to find this one's width to stand anywhere
+    // near right. The old record has no entry for either of them: two prints
+    // enter together on a two-step walk, and the second one read a blank where
+    // its inner neighbour should be and first-painted 45 to 55px off, then
+    // re-seated a frame later once the commit effect wrote the new record.
+    // The prints render in seat order, so the inner one registers first.
+    factors.current[seat] = printFactor(images[index].aspect ?? PRINT_ASPECT);
     return made;
   }
 
@@ -234,7 +250,12 @@ export function useFanControls({
   useLayoutEffect(() => {
     // The record first, because the jumps below are what make the prints read
     // it, and they have to find the window they are being seated into.
-    factors.current = shapes;
+    //
+    // A copy of the memo's record rather than the record itself: a print
+    // stepping into the window writes its own width in here as it is seated,
+    // during the render, and the memo hands the same object back for as long as
+    // the window stands.
+    factors.current = { ...shapes };
     for (const { index, offset } of slots) {
       seats.current.get(index)?.jump(offset);
     }

@@ -1014,6 +1014,12 @@ describe("animal dialog", () => {
     // opens the whole set; on the desktop it is the chevrons as well. A fan's
     // read, not a print's: nothing rendered again for it.
     const FRONT_READ = 1;
+    // And a photo stepping into the window once more still, as the fan makes
+    // its seat. A seat is measured off the widths of the prints inside it, and
+    // the record the commit is about to replace has no entry for a print that
+    // was not on stage yet, so the print that steps in behind this one would
+    // find a blank where its inner neighbour should be. Also the fan's read.
+    const ENTERING_READ = 1;
 
     fanLayout("phone");
     const [client] = animalsForClient([MANY]);
@@ -1059,7 +1065,7 @@ describe("animal dialog", () => {
     // count is drawn over now, which is the fan's extra read of it.
     expect(step[0]).toBe(WINDOW_READ + READS_PER_RENDER);
     expect(step[1]).toBe(WINDOW_READ + FRONT_READ + READS_PER_RENDER);
-    expect(step[3]).toBe(WINDOW_READ + READS_PER_RENDER);
+    expect(step[3]).toBe(WINDOW_READ + ENTERING_READ + READS_PER_RENDER);
     // Photos 3 and 7 only moved a seat: the fan re-seated them and nothing
     // rendered. Photo 6 left the stage, so not even the window read it.
     expect(step[2]).toBe(WINDOW_READ);

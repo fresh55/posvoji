@@ -727,14 +727,17 @@ describe("animal dialog", () => {
     expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
   });
 
-  it("enlarges the photo that was clicked and moves the count onto it", async () => {
+  it("enlarges the photo that was clicked and counts it at the front", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
     const first = photoButton(dialog, "photo-spread", 1);
 
     expect(first.getAttribute("aria-pressed")).toBe("true");
-    expect(within(first).getByText("1 / 2")).toBeTruthy();
+    // The mark is drawn over the front print rather than inside it, so it is
+    // the stage that is asked what it says. Which print it stands on is the
+    // front print's own box, which the fan draws it in.
+    expect(region(dialog, "photo-spread").getByText("1 / 2")).toBeTruthy();
 
     fireEvent.click(photoButton(dialog, "photo-spread", 2));
 
@@ -746,9 +749,7 @@ describe("animal dialog", () => {
     );
     expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
       .toBe("false");
-    expect(
-      within(photoButton(dialog, "photo-spread", 2)).getByText("2 / 2"),
-    ).toBeTruthy();
+    expect(region(dialog, "photo-spread").getByText("2 / 2")).toBeTruthy();
   });
 
   it("brings a tapped side photo to the front of the phone fan", async () => {
@@ -1693,8 +1694,8 @@ describe("animal dialog", () => {
   });
 
   // Under SHEET_FROM there is no set behind the count to lead to, so it stays
-  // a mark on the print: read as text, out of the accessibility tree, and the
-  // live line under the stage says the same thing in words.
+  // a mark: read as text, out of the accessibility tree, and the live line
+  // under the stage says the same thing in words.
   it("keeps the count a mark on a set the fan shows at once", async () => {
     window.history.replaceState(null, "", "/?zival=trio");
     renderGrid([TRIO]);
@@ -1703,7 +1704,11 @@ describe("animal dialog", () => {
     const mark = region(dialog, "photo-spread").getByText("1 / 3");
     expect(mark.tagName).toBe("SPAN");
     expect(mark.getAttribute("aria-hidden")).toBe("true");
-    expect(mark.closest('button[aria-pressed="true"]')).toBeTruthy();
+    // Over the front print and not inside it. Inside, the mark travelled with
+    // the print through every step while the same mark on a longer gallery
+    // stood still, because that one is a control and could never be nested in
+    // the print's own button.
+    expect(mark.closest("button")).toBeNull();
     expect(
       region(dialog, "photo-spread").queryByRole("button", {
         name: /Vse fotografije/,
@@ -1722,15 +1727,11 @@ describe("animal dialog", () => {
     expect(count.getAttribute("title")).toBeNull();
     expect(count.className).not.toContain("cursor-pointer");
 
-    fireEvent.click(count);
-
-    // The click reaches the photo button under it, which opens the one photo.
-    await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(2));
-    expect(
-      within(slot(document.body, "photo-lightbox")).queryAllByRole("button", {
-        name: /Pokaži fotografijo/,
-      }),
-    ).toHaveLength(0);
+    // The box it is drawn in takes no presses, so the corner of the
+    // photograph under it opens the print the way the rest of it does. What a
+    // press actually lands on is hit-tested in e2e/photo-fan.spec.ts; jsdom
+    // lays nothing out and would deliver a click to whatever it was aimed at.
+    expect(count.parentElement?.className).toContain("pointer-events-none");
   });
 
   // Only the five on stage are mounted, so a step past the edge used to pop a

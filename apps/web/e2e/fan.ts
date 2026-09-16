@@ -113,18 +113,17 @@ export function prints(fan: Locator): Locator {
 }
 
 /**
- * The "N / total" mark, wherever the fan has drawn it.
+ * The "N / total" mark, which the fan draws over the front print whichever of
+ * its two shapes it is in: a span, aria-hidden and read as text rather than
+ * through the accessibility tree, and from SHEET_FROM up a button of its own,
+ * because there the mark is also the way into the contact sheet.
  *
- * Two shapes, and never both at once. Under SHEET_FROM it is a span inside the
- * front print, aria-hidden, read as text rather than through the accessibility
- * tree. From SHEET_FROM up the same mark is a button of its own, drawn over the
- * front print, because there it is also the way into the contact sheet and a
- * control cannot be nested inside the print's button.
+ * One locator for both, because both are drawn in the same box now. The span
+ * used to be nested inside the front print's own button, where it rode with
+ * the photograph through a step while the longer gallery's mark stood still.
  */
 export function badge(fan: Locator): Locator {
-  return fan.locator(
-    'button[aria-pressed="true"] [data-slot="badge"], button[data-slot="badge"]',
-  );
+  return fan.locator('[data-slot="badge"]');
 }
 
 /** The count as a control: the way into the whole set, on a gallery the fan

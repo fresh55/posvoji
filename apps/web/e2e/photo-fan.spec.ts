@@ -395,6 +395,40 @@ test("hands the keyboard back to the fan when the print it came from is gone", a
   expect(await focusedName(page)).toBe("Odpri fotografijo 9 čez cel zaslon");
 });
 
+test("keeps the count still on a short gallery and lets a press through it", async ({
+  page,
+}) => {
+  const fan = await openFan(page, MIRNA);
+  await expectPhoto(fan, 1, MIRNA_PHOTOS);
+
+  // The mark is drawn in the front print's box rather than inside the print,
+  // so a step slides the photograph under it and leaves it where it is. It
+  // used to ride with the print it was on, which is the one thing the same
+  // mark on a longer gallery never did.
+  const mark = badge(fan);
+  const before = await mark.boundingBox();
+  await fan.hover();
+  await fan.getByRole("button", { name: "Naslednja fotografija" }).click();
+  await expectPhoto(fan, 2, MIRNA_PHOTOS);
+  const after = await mark.boundingBox();
+  if (!before || !after) throw new Error("the count has no box to measure");
+  expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+  expect(Math.abs(after.y - before.y)).toBeLessThan(2);
+
+  // And it is a mark and not a control here, so what a press on that corner
+  // of the photograph lands on is the photograph. Hit-tested, because the box
+  // it is drawn in lies over the print and only pointer-events says otherwise.
+  const reach = await page.evaluate(
+    ([x, y]) =>
+      document
+        .elementFromPoint(x, y)
+        ?.closest("button")
+        ?.getAttribute("aria-label") ?? null,
+    [after.x + after.width / 2, after.y + after.height / 2],
+  );
+  expect(reach).toBe("Odpri fotografijo 2 čez cel zaslon");
+});
+
 test("opens the contact sheet from the count, which is a control of its own", async ({
   page,
 }) => {

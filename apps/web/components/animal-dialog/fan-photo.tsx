@@ -1,6 +1,5 @@
 import { frontness } from "@/components/animal-dialog/photo-wash";
 import { AnimalPhoto } from "@/components/animal-photo";
-import { Badge } from "@/components/ui/badge";
 import {
   FAN_PHOTO_SIZES,
   FAN_SIDE_PHOTO_SIZES,
@@ -28,12 +27,10 @@ import {
   seatCentre,
 } from "./fan-geometry";
 import {
-  PHOTO_BADGE_CLASS,
   PHOTO_FRAME_CLASS,
   PHOTO_SEAT_CLASS,
   PHOTO_WELL_CLASS,
 } from "./fan-photo-styles";
-import { SHEET_FROM } from "./lightbox-gesture-options";
 
 // What a hover does to a photo from the stack: bigger, lifted, and most of the
 // way back to straight, so it reads as the thing a click would pick.
@@ -379,20 +376,6 @@ export const FanPhoto = memo(function FanPhoto({
           </div>
         </div>
       </m.div>
-      {/* The count sits on the photo being looked at, and it is what tells
-          you how many there are in total. Outside the hover layer, so it is
-          not scaled with the picture.
-
-          A mark and nothing else, so it is hidden from assistive technology:
-          the live line at the bottom of the stage already says which photo of
-          how many is on show. Past SHEET_FROM the count is also the way into
-          the whole set, and a control cannot be nested inside this button; the
-          fan draws it over this print instead. */}
-      {active && count > 1 && count < SHEET_FROM && (
-        <Badge aria-hidden variant="secondary" className={PHOTO_BADGE_CLASS}>
-          {index + 1} / {count}
-        </Badge>
-      )}
     </m.button>
   );
 });

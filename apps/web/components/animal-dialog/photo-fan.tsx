@@ -199,6 +199,30 @@ export function Fan(props: FanProps) {
           );
         })}
 
+      {/* "2 / 4" on a set the fan shows all of at once: a mark and nothing
+          more, hidden from assistive technology, because the live line at the
+          bottom of this stage already says which photo of how many is on show
+          and there is no set behind this number to lead anywhere.
+
+          Drawn over the front print rather than inside it, which is the one
+          thing about it that has changed. Inside the print's own button it
+          rode with the photograph: a step carried the mark off to the side
+          with the print it was leaving on and brought it back with the next
+          one, while past SHEET_FROM the same mark stood still and the
+          photographs slid under it. One mark behaving two ways is the sort of
+          difference nobody can name and everybody sees.
+
+          This box takes no presses, so the corner of the photograph under the
+          mark still opens the print, the way the rest of the photograph
+          does. */}
+      {count > 1 && count < SHEET_FROM && (
+        <FrontPrintBox box={geometry.photoBox} photo={images[activeIndex]}>
+          <Badge aria-hidden variant="secondary" className={PHOTO_BADGE_CLASS}>
+            {activeIndex + 1} / {count}
+          </Badge>
+        </FrontPrintBox>
+      )}
+
       {/* On a set the fan cannot show at once, "4 / 12" is the one thing on
           the stage that names the whole gallery, so it is also the way into
           it. That makes it a control, and a control cannot be nested inside

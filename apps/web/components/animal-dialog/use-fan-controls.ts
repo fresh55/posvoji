@@ -497,6 +497,23 @@ export function useFanControls({
       node.dataset.leaving = "true";
       node.tabIndex = -1;
       node.style.pointerEvents = "none";
+      // And it is not the print in front any more, whatever it was when the
+      // walk started. Home and End walk the photo that was at the front right
+      // out of the window, and for as long as its copy faded there were two
+      // prints on the stage saying they were the one being looked at, which is
+      // what frontPrintOf and the specs both ask the DOM.
+      node.setAttribute("aria-pressed", "false");
+      // Anything that does put the keyboard on it is handed the print in front
+      // instead. The lightbox remembers the print it was opened from and hands
+      // focus back to it if it is still in the document, which a copy that is
+      // still fading is: focus landed on it and then went to the body with it
+      // a tenth of a second later, and the dialog's own keys went dead. Once,
+      // because the node is on its way out.
+      node.addEventListener(
+        "focus",
+        () => frontPrintOf(stageRef.current)?.focus({ preventScroll: true }),
+        { once: true },
+      );
     }
     // And what the fan is holding now, for the next commit to tell an arriving
     // print from one that was already standing here.

@@ -528,8 +528,11 @@ test("keeps the count still on a short gallery and lets a press through it", asy
   await expectPhoto(fan, 2, MIRNA_PHOTOS);
   const after = await mark.boundingBox();
   if (!before || !after) throw new Error("the count has no box to measure");
-  expect(Math.abs(after.x - before.x)).toBeLessThan(2);
-  expect(Math.abs(after.y - before.y)).toBeLessThan(2);
+  // A couple of pixels, which is the box taking the next photograph's own
+  // shape: Mirna's two are 1.609 and 1.608. Riding with the print, which is
+  // what it used to do, was 139 to 277px.
+  expect(Math.abs(after.x - before.x)).toBeLessThan(6);
+  expect(Math.abs(after.y - before.y)).toBeLessThan(6);
 
   // And it is a mark and not a control here, so what a press on that corner
   // of the photograph lands on is the photograph. Hit-tested, because the box

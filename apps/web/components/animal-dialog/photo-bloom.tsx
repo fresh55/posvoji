@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import type { DialogPhotoRect } from "@/components/animal-dialog/animal-dialog";
 import { AnimalPhoto } from "@/components/animal-photo";
@@ -43,16 +43,34 @@ function slotRect() {
 export function PhotoBloom({
   from,
   photo,
+  onFlightEnd,
 }: {
   /** Where the card's photo was standing, or nothing for a deep link. */
   from: DialogPhotoRect | undefined;
   photo: PermittedPhoto | undefined;
+  /**
+   * That the copy is no longer in the air: it has landed, or it was never
+   * going to fly, because there was no card to leave from, no photograph to
+   * carry, no slot to carry it to, or motion is turned down. The dialog holds
+   * the fan's front print back until this arrives, so it is reported in every
+   * one of those cases rather than only after a landing.
+   */
+  onFlightEnd?: () => void;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const [to, setTo] = useState<DialogPhotoRect | undefined>(undefined);
   // Where the slot really ended up, as an offset from where it first looked.
   const [aim, setAim] = useState({ x: 0, y: 0, scale: 1 });
   const [landed, setLanded] = useState(false);
+  // The copy makes one trip per opening, so the end of it is said once. The
+  // latch is a ref rather than state because nothing here is drawn from it,
+  // and because it has to hold across the effect below re-running.
+  const ended = useRef(false);
+  const end = useCallback(() => {
+    if (ended.current) return;
+    ended.current = true;
+    onFlightEnd?.();
+  }, [onFlightEnd]);
 
   // The fan lands where the dialog's zoom puts it, so the slot is measured
   // rather than worked out from the layout: once to set off towards, and again
@@ -66,7 +84,11 @@ export function PhotoBloom({
   // running underneath it. The frame below is what the commit where the fan is
   // not there yet falls back to, which is what this used to do in every case.
   useLayoutEffect(() => {
-    if (!from || shouldReduceMotion) return;
+    if (ended.current) return;
+    if (!from || !photo || shouldReduceMotion) {
+      end();
+      return;
+    }
     let settle: ReturnType<typeof setTimeout> | undefined;
     let frame: number | undefined;
 
@@ -95,6 +117,9 @@ export function PhotoBloom({
       frame = requestAnimationFrame(() => {
         const late = slotRect();
         if (late) setOff(late);
+        // No slot in that frame either, so there is no trip to make and
+        // nothing is waiting on one.
+        else end();
       });
     }
 
@@ -102,7 +127,7 @@ export function PhotoBloom({
       if (frame !== undefined) cancelAnimationFrame(frame);
       if (settle) clearTimeout(settle);
     };
-  }, [from, shouldReduceMotion]);
+  }, [from, photo, shouldReduceMotion, end]);
 
   if (!from || !to || !photo || shouldReduceMotion || landed) return null;
 
@@ -133,7 +158,10 @@ export function PhotoBloom({
         }}
         animate={{ ...aim, opacity: 0 }}
         transition={{ ...BLOOM_TRAVEL, opacity: BLOOM_FADE }}
-        onAnimationComplete={() => setLanded(true)}
+        onAnimationComplete={() => {
+          setLanded(true);
+          end();
+        }}
       >
         {/* The card's sizes, not this copy's own box. This is the card's
             photograph being carried, and asking for the rung the card already

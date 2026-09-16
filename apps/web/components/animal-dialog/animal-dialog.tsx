@@ -221,6 +221,11 @@ const DRAG_SPRING = {
 // Far enough that no ordinary scroll flick throws the dialog away.
 const DRAG_CLOSE_PX = 140;
 
+// How long the fan's front print may be kept back waiting for the bloom to
+// say it has landed. The copy travels for 360ms and fades out inside that, so
+// this only ever fires when the report is not coming at all.
+const BLOOM_HOLD_MS = 800;
+
 // The layout the dismiss gesture was designed for, and the one question the
 // whole shell is gated on. It and DESKTOP_FAN_QUERY in fan-layout.ts are the
 // two halves of one boundary, derived from it in lib/viewport-queries.ts so
@@ -406,6 +411,51 @@ export function AnimalDialog({
   // so that is the one the bloom carries across.
   const firstPhoto = lastAnimal?.images[0];
 
+  // Whether a copy is about to set off at all: a card to leave from, a
+  // photograph to carry, and motion to carry it with.
+  const bloomOpening = Boolean(
+    origin?.photo && firstPhoto && !shouldReduceMotion,
+  );
+
+  // The fan keeps its own front print back while that copy is still in the
+  // air, so the same photograph is not on screen twice. It was: the cascade
+  // has the print fully opaque at +519ms and the copy was still flying at
+  // +744ms.
+  //
+  // True from the first render for the animal the dialog opened on, which is
+  // the render that mounts the fan. Waiting for the bloom to report would draw
+  // the print for a frame and then take it away again.
+  //
+  // Only that animal. Stepping through the list with the arrows runs no bloom,
+  // because the card it would leave from is behind the dialog and was never
+  // measured, so the hold is armed on the step out of nothing and cleared on
+  // every step after it. Adjusted during render, the way lastAnimal and
+  // announced above are.
+  const [hold, setHold] = useState<{ id: string | undefined; front: boolean }>({
+    id: animal?.id,
+    front: bloomOpening,
+  });
+  if (hold.id !== animal?.id) {
+    setHold({ id: animal?.id, front: hold.id === undefined && bloomOpening });
+  }
+  const endBloom = useCallback(() => {
+    setHold((current) =>
+      current.front ? { ...current, front: false } : current,
+    );
+  }, []);
+
+  // The fail-safe. A front print that never arrives is a worse failure than
+  // the same photograph drawn twice for a moment, and the bloom's report rides
+  // on an animation completing: a starved frame loop, which is what a
+  // background tab and a preview pane that has stopped compositing both are,
+  // can leave that animation without the frame that would have finished it.
+  // The timer clears the hold whether or not the copy ever reports.
+  useEffect(() => {
+    if (!hold.front) return;
+    const timer = setTimeout(endBloom, BLOOM_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [hold.front, hold.id, endBloom]);
+
   if (!lastAnimal) return null;
 
   const name = lastAnimal.name ?? messages.unnamed;
@@ -549,7 +599,11 @@ export function AnimalDialog({
         <DialogOverlay />
         {/* Outside the content on purpose: the content carries the zoom, and a
             copy aimed at viewport coordinates cannot sit inside a transform. */}
-        <PhotoBloom from={origin?.photo} photo={firstPhoto} />
+        <PhotoBloom
+          from={origin?.photo}
+          photo={firstPhoto}
+          onFlightEnd={endBloom}
+        />
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"
@@ -638,6 +692,7 @@ export function AnimalDialog({
                   animal={lastAnimal}
                   initialIndex={askedPhoto}
                   onIndexChange={reportPhoto}
+                  holdFrontPrint={hold.front}
                 />
               </m.div>
 

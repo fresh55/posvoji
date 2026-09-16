@@ -283,6 +283,40 @@ export function enteringSlots(count: number, active: number): number[] {
   ];
 }
 
+/**
+ * The photos a two-step walk brings in from beyond the leading edge of the
+ * window, at the seats they stand in while it walks.
+ *
+ * A single step's arrival is the window's own business: it steps in as the
+ * commit re-seats everything else, one tier out, and walks no further than
+ * that. Two steps travel a tier further than the window holds, so from halfway
+ * through the walk there was nothing standing at the leading tier at all and
+ * both prints appeared at once when the step landed. Mounted while the walk
+ * runs, they walk in with the fan and the commit keeps them: they are the two
+ * the new window seats one and two out on that side.
+ *
+ * Empty for a single step, and for a gallery the fan already shows at once:
+ * there the prints that would fill the leading tier are the ones the same walk
+ * is carrying off the other side, and a photo cannot stand in two seats.
+ *
+ * Six and seven photos wrap the far pair back onto prints the window is
+ * already holding, which is why what is on stage is asked rather than assumed.
+ */
+export function walkSlots(count: number, active: number, delta: number) {
+  if (Math.abs(delta) !== 2 || count <= FAN_LIMIT) return [];
+  const side = delta < 0 ? -1 : 1;
+  const onStage = new Set(fanSlots(count, active).map((slot) => slot.index));
+  const beyond: { index: number; offset: number }[] = [];
+  for (const offset of [side * 3, side * 4]) {
+    const index = (((active + offset) % count) + count) % count;
+    if (onStage.has(index) || beyond.some((slot) => slot.index === index)) {
+      continue;
+    }
+    beyond.push({ index, offset });
+  }
+  return beyond;
+}
+
 /** What the window is holding, by shape: the print at each offset, as a share
  *  of the standard print's width. A seat is measured off the outer edge of the
  *  seat inside it, so a print's place depends on how wide the prints between it

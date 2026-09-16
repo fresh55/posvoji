@@ -36,6 +36,7 @@ import {
   fanShapes,
   fanSlots,
   printFactor,
+  walkSlots,
 } from "./fan-geometry";
 import { FanGeometry } from "./fan-layout";
 import { FLICK_TWO_PX_MS } from "./fan-options";
@@ -43,6 +44,10 @@ import { FLICK_TWO_PX_MS } from "./fan-options";
 /** One print the stage is holding: which photo, which seat of the window it
  *  stands in, and, for a print mounted mid-walk, the seat it starts from. */
 export type FanSlot = { index: number; offset: number; seat?: number };
+
+// Nothing beyond the window, as one object: a state update to the same array
+// React drops, so the walks that mount nothing cost no render.
+const NO_PRINTS: FanSlot[] = [];
 
 // A print's key. The photo alone for as long as it keeps its node, and the
 // photo and a generation once the fan has had to draw it again as a new one.
@@ -94,8 +99,22 @@ export function useFanControls({
     () => fanSlots(count, activeIndex),
     [count, activeIndex],
   );
-  // What the stage is holding, in seat order: the window the fan is seated on.
-  const prints: FanSlot[] = slots;
+  // What a two-step walk has mounted beyond the leading edge of the window,
+  // and nothing at any other time. Set when the walk starts and dropped when
+  // it lands or is put back; see walkSlots.
+  const [ahead, setAhead] = useState<FanSlot[]>(NO_PRINTS);
+
+  // What the stage is holding, in seat order: the window the fan is seated on,
+  // and the prints a two-step walk is bringing in behind its leading edge. The
+  // commit folds those into the window, so at that render they are already in
+  // the slots above and this drops the copy.
+  const prints = useMemo<FanSlot[]>(() => {
+    if (ahead.length === 0) return slots;
+    const held = new Set(slots.map((slot) => slot.index));
+    const beyond = ahead.filter((slot) => !held.has(slot.index));
+    if (beyond.length === 0) return slots;
+    return [...slots, ...beyond].sort((one, two) => one.offset - two.offset);
+  }, [slots, ahead]);
 
   // Read once per window rather than once per render, and the memo is what
   // makes that true: two tests count the shapes the fan reads to tell a print
@@ -163,6 +182,12 @@ export function useFanControls({
   // same side of the fan.
   const generations = useRef(new Map<number, number>());
 
+  // The prints this commit is taking off the stage, with the seats they are
+  // still being drawn from. Filled by the render for a print that wraps and by
+  // the commit effect for one that walks out of the window, and emptied by
+  // that effect once they are all frozen.
+  const leaving = useRef<{ index: number; seat: MotionValue<number> }[]>([]);
+
   // The keys the fan was holding when it last committed, which is how a print
   // knows whether it is being drawn for the first time. Asked of the last
   // commit rather than of the seats map, so that the answer is the same
@@ -201,10 +226,21 @@ export function useFanControls({
   function keyOf(index: number, offset: number) {
     const held = seats.current.get(index);
     const generation = generations.current.get(index) ?? 0;
-    if (!held || shouldReduceMotion) return printKey(index, generation);
+    // Only a render that is seating a new window can answer it. Between the
+    // commits the walk is in flight and every print stands a fraction of a
+    // seat from the offset it is seated at, which is the fan working rather
+    // than a print about to be moved: asked in the middle of a flick, every
+    // print on stage read as wrapping.
+    if (!held || shouldReduceMotion || seated.current === slots) {
+      return printKey(index, generation);
+    }
     const standing = held.get() - progress.get();
     if (Math.abs(standing - offset) <= 0.5) return printKey(index, generation);
-    held.jump(standing);
+    // The copy that is leaving is handed to the commit effect below, which
+    // freezes it alongside every other print the commit takes off the stage:
+    // where it is frozen depends on the record the effect is about to write,
+    // and the print inside it may be on its way out too.
+    leaving.current.push({ index, seat: held });
     seats.current.delete(index);
     generations.current.set(index, generation + 1);
     return printKey(index, generation + 1);
@@ -380,6 +416,11 @@ export function useFanControls({
   // against. The reduced-motion path commits with no walk to zero and needs
   // the same re-seating.
   const pendingReset = useRef(false);
+  const recorded = useRef(shapes);
+  // The window the prints on stage are seated in, which is what says whether a
+  // render is a commit: the one that follows a walk hands out the offsets of a
+  // new window while every print is still standing in the old one.
+  const seated = useRef(slots);
   useLayoutEffect(() => {
     // The record first, because the jumps below are what make the prints read
     // it, and they have to find the window they are being seated into.
@@ -388,27 +429,53 @@ export function useFanControls({
     // stepping into the window writes its own width in here as it is seated,
     // during the render, and the memo hands the same object back for as long as
     // the window stands.
-    factors.current = { ...shapes };
+    //
+    // Only when the window itself has changed. This effect also answers a walk
+    // mounting prints beyond the window's edge, and those prints wrote their
+    // own widths into the record as they were seated: replacing it here would
+    // take them back out a frame before the print behind them reads it.
+    if (recorded.current !== shapes) {
+      recorded.current = shapes;
+      factors.current = { ...shapes };
+    }
+    seated.current = slots;
     for (const { index, offset } of slots) {
       seats.current.get(index)?.jump(offset);
     }
-    // A print that has left the window takes its seat with it, frozen where it
-    // stands on the way out. It is drawn until its fade is over, and both the
-    // things its pose is read off are about to move under it: the walk is
-    // zeroed a few lines down, and the record above has already been replaced
-    // by the new window's. Shifting its seat by the walk it has just taken
-    // keeps the two readings the same, in the tier it is standing in and in
-    // the widths of the prints between it and the front. Left alone, the print
-    // walking off a thirteen-photo gallery's trailing edge moved 55px at the
-    // commit, because the print inside it was a portrait before the step and a
-    // landscape after it.
+    // Everything the commit is taking off the stage: a print whose seat has
+    // left the window, and the copy a wrap has left standing where it was.
+    // Both are drawn until their fade is over, and both have to be frozen,
+    // because the two things a pose is read off are about to move under them.
+    // The walk is zeroed a few lines down, and the record above has just been
+    // replaced by the new window's; shifting a seat by the walk it has just
+    // taken keeps both readings the same, the tier it stands in and the widths
+    // of the prints between it and the front. Left alone, the print walking
+    // off a thirteen-photo gallery's trailing edge moved 55px at the commit,
+    // because the print standing inside it was a portrait before the step and
+    // a landscape after it.
+    //
+    // The record first and the seats after, in two passes: a frozen print is
+    // measured off the width of the print that was standing inside it, and on
+    // a two-step walk that one is leaving in the same breath. Their frozen
+    // seats are past the window's own offsets, where the new record has
+    // nothing to say about them.
     const onStage = new Set(prints.map((print) => print.index));
     for (const [index, seat] of seats.current) {
       if (onStage.has(index)) continue;
-      seat.jump(seat.get() - progress.get());
+      leaving.current.push({ index, seat });
       seats.current.delete(index);
       generations.current.delete(index);
     }
+    const walked = progress.get();
+    const frozen = leaving.current.map(({ index, seat }) => {
+      const standing = seat.get() - walked;
+      factors.current[standing] = printFactor(
+        images[index].aspect ?? PRINT_ASPECT,
+      );
+      return { seat, standing };
+    });
+    for (const { seat, standing } of frozen) seat.jump(standing);
+    leaving.current = [];
     // The copies the commit has left standing: a print that has walked off the
     // trailing edge, and the one a wrap has drawn again on the other side of
     // the stage. Both are kept in the document while they fade, and neither is
@@ -528,9 +595,25 @@ export function useFanControls({
     // one of those, which the hook tells apart for itself.
     attachWheel.cancel();
     heading.current = delta;
+    // A walk of two steps reaches a tier the window does not hold, so the
+    // prints that should be walking in at the leading edge are mounted for the
+    // length of the walk. The commit seats them one and two out on that side,
+    // which is where they are standing by then, so nothing about the landing
+    // moves them.
+    const beyond = shouldReduceMotion
+      ? []
+      : walkSlots(count, activeIndex, delta).map((slot) => ({
+          ...slot,
+          // Seated in the window that is on stage now, and not in the one the
+          // commit is about to seat: these walk in with the fan.
+          seat: slot.offset,
+        }));
+    setAhead(beyond.length > 0 ? beyond : NO_PRINTS);
     const reseats = target !== activeIndex;
     const land = () => {
       heading.current = 0;
+      // Whatever the walk mounted is the window's now, or was never needed.
+      setAhead(NO_PRINTS);
       if (!reseats) {
         progress.jump(0);
         return;
@@ -675,6 +758,8 @@ export function useFanControls({
   // Not far, not fast: the fan goes back to where it stood.
   function springBack() {
     heading.current = 0;
+    // A walk that is not going anywhere brings nothing in.
+    setAhead(NO_PRINTS);
     // The other half of what walkTo drops, for the walk that turned out to be
     // no walk at all. A settle window left open here has nothing to catch it:
     // this spring sets no heading, so the window would find the fan at rest

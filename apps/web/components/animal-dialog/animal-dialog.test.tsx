@@ -1021,6 +1021,11 @@ describe("animal dialog", () => {
     // was not on stage yet, so the print that steps in behind this one would
     // find a blank where its inner neighbour should be. Also the fan's read.
     const ENTERING_READ = 1;
+    // And a photo leaving it once, for the same reason from the other end: it
+    // is drawn until its fade is over, frozen at a seat outside the new
+    // window, and its width goes into the record there so the print that was
+    // standing behind it can still be measured off it.
+    const LEAVING_READ = 1;
 
     fanLayout("phone");
     const [client] = animalsForClient([MANY]);
@@ -1068,10 +1073,11 @@ describe("animal dialog", () => {
     expect(step[1]).toBe(WINDOW_READ + FRONT_READ + READS_PER_RENDER);
     expect(step[3]).toBe(WINDOW_READ + ENTERING_READ + READS_PER_RENDER);
     // Photos 3 and 7 only moved a seat: the fan re-seated them and nothing
-    // rendered. Photo 6 left the stage, so not even the window read it.
+    // rendered. Photo 6 left the stage, where the only thing still asked of it
+    // is the width it is frozen at while it fades.
     expect(step[2]).toBe(WINDOW_READ);
     expect(step[6]).toBe(WINDOW_READ);
-    expect(step[5]).toBe(0);
+    expect(step[5]).toBe(LEAVING_READ);
 
     // That the prints which sat out the commit still moved to their new seats
     // is pinned in the browser suite (e2e/photo-fan.spec.ts, "re-seats every

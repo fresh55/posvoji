@@ -78,6 +78,41 @@ async function worstFrameMove(fan: Locator, walk: () => Promise<void>) {
   return sampling;
 }
 
+/**
+ * How far out the print standing furthest towards the leading side gets to,
+ * at its nearest to the middle of the stage, while the fan walks. In pixels
+ * from that middle, so a leading side with nothing on it reads as nothing.
+ *
+ * The seats are 206px (one tier out) and 271px (two) from the middle at this
+ * size, so anything over about 120 is a print standing in a real seat rather
+ * than the incoming front print sliding through the middle.
+ */
+async function nearestLeadingPrint(fan: Locator, walk: () => Promise<void>) {
+  const sampling = fan.evaluate(
+    (stage, ms) =>
+      new Promise<number>((done) => {
+        let nearest = Infinity;
+        const start = performance.now();
+        const frame = () => {
+          const stageBox = stage.getBoundingClientRect();
+          const middle = stageBox.left + stageBox.width / 2;
+          let furthest = 0;
+          for (const print of stage.querySelectorAll("button[data-print]")) {
+            const box = print.getBoundingClientRect();
+            furthest = Math.max(furthest, box.left + box.width / 2 - middle);
+          }
+          nearest = Math.min(nearest, furthest);
+          if (performance.now() - start < ms) requestAnimationFrame(frame);
+          else done(Math.round(nearest));
+        };
+        requestAnimationFrame(frame);
+      }),
+    1200,
+  );
+  await walk();
+  return sampling;
+}
+
 /** The middle of the stage, which is over the print in front. A gesture that
  *  starts here is the one a visitor makes: the pointer events bubble to the
  *  stage, and the click the browser fires afterwards is the stage's to
@@ -216,16 +251,30 @@ test("turns one photo on a mouse drag, and marks the stage while it runs", async
   await expectPhoto(fan, 2, KLOPKA_PHOTOS);
 });
 
-test("turns two photos on a hard flick", async ({ page }) => {
+test("turns two photos on a hard flick, with the leading tier standing", async ({
+  page,
+}) => {
   const fan = await openFan(page, KLOPKA);
 
   // 220px in four moves with nothing between them: over FLICK_TWO_PX_MS, which
   // is well past the 0.5 px/ms that commits a single step, so it is a gesture
   // somebody meant. Only offered past FAN_LIMIT, because on a short gallery two
   // steps walk past the whole thing and back.
-  await dragBy(page, fan, -220, { steps: 4, pauseMs: 0 });
+  //
+  // Two steps travel a tier further than the window holds, so from about
+  // halfway through the walk there was nothing at all beyond the print coming
+  // to the front, and two prints appeared together when it landed. The fan
+  // mounts them for the length of the walk now and they walk in with it.
+  const nearest = await nearestLeadingPrint(fan, () =>
+    dragBy(page, fan, -220, { steps: 4, pauseMs: 0 }),
+  );
 
   await expectPhoto(fan, 3, KLOPKA_PHOTOS);
+  expect(nearest).toBeGreaterThan(120);
+  // And the fan is back to five prints: the two it brought in are the two the
+  // new window seats on that side, so the commit keeps them rather than
+  // mounting more.
+  await expect(prints(fan)).toHaveCount(5);
 });
 
 test("turns one photo on a horizontal wheel swipe and swallows its tail", async ({

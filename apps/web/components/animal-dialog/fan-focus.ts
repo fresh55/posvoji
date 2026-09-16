@@ -22,3 +22,35 @@ export function isFocusVisible(element: Element) {
     return false;
   }
 }
+
+/** Whose focus a walk is about to take the print out from under. */
+export type FanFocusKind =
+  /** A visitor who is working the fan with the keyboard, and to whom the ring
+   *  on the new front print is the answer to what they just pressed. */
+  | "keyboard"
+  /** A finger or a mouse, which focused the print by pressing it. Putting the
+   *  keyboard back on the new front print draws that focus as a ring, because
+   *  a script focus in a document nobody has clicked in is the kind the
+   *  browser shows. */
+  | "pointer";
+
+/** What is holding the keyboard on this stage, and which of the two it is.
+ *
+ *  Asked before a commit rather than after it, because a commit is what
+ *  unmounts the print focus is on and by then the answer is gone. Any print
+ *  and not just the front one, so the attribute is read rather than its value;
+ *  see frontPrintOf for why aria-pressed is the thing to read. */
+export function focusHeldOn(
+  stage: HTMLElement | null,
+): { print: HTMLElement; kind: FanFocusKind } | null {
+  const held = document.activeElement;
+  if (
+    !stage ||
+    !(held instanceof HTMLElement) ||
+    !stage.contains(held) ||
+    !held.hasAttribute("aria-pressed")
+  ) {
+    return null;
+  }
+  return { print: held, kind: isFocusVisible(held) ? "keyboard" : "pointer" };
+}

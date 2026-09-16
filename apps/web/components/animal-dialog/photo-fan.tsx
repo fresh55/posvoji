@@ -98,6 +98,13 @@ export function Fan(props: FanProps) {
       role="group"
       aria-label={t("photoAltSingle", { name })}
       aria-keyshortcuts="ArrowLeft ArrowRight Home End"
+      // Focusable by script and not by tab: the prints are what a tab walks.
+      // This is where the keyboard goes when a walk unmounts the print that was
+      // holding it and nobody asked for the keyboard in the first place, which
+      // is what a drag or a swipe is. The arrows are answered here, so they
+      // carry on working; the stage draws no ring of its own, because nothing
+      // about a gesture should end with an outline around the photographs.
+      tabIndex={-1}
       // Arrows walk the fan one photo and Home and End walk it to the ends,
       // while focus is anywhere inside it. The page must not scroll out from
       // under the visitor doing either.
@@ -112,12 +119,15 @@ export function Fan(props: FanProps) {
         if (count < 2) return;
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault();
-          step(event.key === "ArrowLeft" ? -1 : 1);
+          // The one walk the fan hands the keyboard on to the print it brings
+          // forward, which is the only way a key press has of saying what it
+          // did.
+          step(event.key === "ArrowLeft" ? -1 : 1, "keyboard");
           return;
         }
         if (event.key !== "Home" && event.key !== "End") return;
         event.preventDefault();
-        walkToIndex(event.key === "Home" ? 0 : count - 1);
+        walkToIndex(event.key === "Home" ? 0 : count - 1, "keyboard");
       }}
       onPointerDown={startSwipe}
       onPointerMove={moveSwipe}
@@ -135,7 +145,7 @@ export function Fan(props: FanProps) {
       // Static, all of it: what a drag switches is data-dragging on the element
       // itself, which the variants below read without a render.
       className={cn(
-        "group relative touch-pan-y touch-pinch-zoom",
+        "group relative touch-pan-y touch-pinch-zoom outline-none",
         geometry.stageClass,
         solo ? geometry.soloStageAspect : geometry.stageAspect,
         count > 1 &&

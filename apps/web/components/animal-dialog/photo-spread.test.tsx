@@ -344,6 +344,45 @@ describe("fan tab order", () => {
   });
 });
 
+describe("fan focus", () => {
+  // A walk taken with a pointer must not hand the keyboard anywhere: a script
+  // focus on the new front print is drawn as a keyboard focus by the browser,
+  // and every drag and every swipe ended with a ring on the photograph. Whose
+  // walk it is comes from the walk itself rather than from the print's own
+  // :focus-visible, because the dialog opens on the front print and a press on
+  // an already focused print never makes the browser think again.
+  it("hands the stage the keyboard when a pointer walk unmounts the print holding it", async () => {
+    // Seven photos at the first: the window holds 6 and 7 on the left, and a
+    // walk of two takes 6 off the stage.
+    const { stage } = renderFan(gallery(7));
+    const leaving = print(stage(), 6);
+    leaving.focus();
+
+    fireEvent.click(print(stage(), 3));
+    await expectFront(stage, 3);
+
+    // Not the new front print, which would have drawn a ring on it. The stage
+    // answers the arrows itself, so the fan still walks from here.
+    expect(document.activeElement).not.toBe(frontPrint(stage()));
+    expect(document.activeElement).toBe(stage());
+
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 4);
+  });
+
+  // The same walk taken with a key does hand it over: the name of the print
+  // that comes forward is all a key press has to say for itself.
+  it("hands the new front print the keyboard on a key walk", async () => {
+    const { stage } = renderFan(gallery(7));
+    print(stage(), 1).focus();
+
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+
+    expect(document.activeElement).toBe(frontPrint(stage()));
+  });
+});
+
 describe("fan count control", () => {
   // The mark is 20px of badge and the hit area is drawn past its edges, so
   // what a pointer can reach is not what the fan draws. jsdom lays nothing

@@ -28,7 +28,7 @@ import {
   type PointerEvent,
   type RefObject,
 } from "react";
-import { frontPrintOf } from "./fan-focus";
+import { focusHeldOn, frontPrintOf, type FanFocusKind } from "./fan-focus";
 import {
   FAN_LIMIT,
   FanTempo,
@@ -49,10 +49,10 @@ export type FanProps = {
   /** The stage element, held above this component so the lightbox can ask the
    *  fan where to hand focus back to. */
   stageRef: RefObject<HTMLDivElement | null>;
-  /** Whether the fan the breakpoint has just replaced was holding the
-   *  keyboard. Held above too, because the swap remounts this whole component
-   *  and the answer has to survive it. */
-  keptFocusRef: RefObject<boolean>;
+  /** Whose focus the fan the breakpoint has just replaced was holding, if it
+   *  was holding one at all. Held above too, because the swap remounts this
+   *  whole component and the answer has to survive it. */
+  keptFocusRef: RefObject<FanFocusKind | null>;
   /** The wash's copy of the walk, mounted above the fan. */
   washProgress?: MotionValue<number>;
   onSelect: (index: number) => void;
@@ -146,26 +146,18 @@ export function useFanControls({
     else delete element.dataset.dragging;
   }
 
-  // Whether the keyboard is standing on one of this stage's prints. Asked
-  // before a commit rather than after it, because a commit is what unmounts
-  // the print focus is on and by then the answer is gone. Any print and not
-  // just the front one, so the attribute is read rather than its value; see
-  // frontPrintOf for why aria-pressed is the thing to read.
-  function focusOnPrint() {
-    const stage = stageRef.current;
-    const held = document.activeElement;
-    return Boolean(
-      stage &&
-      held instanceof HTMLElement &&
-      stage.contains(held) &&
-      held.hasAttribute("aria-pressed"),
-    );
-  }
-
   // Puts the keyboard back on the print in front. Only ever called where it
   // was on a print already, so it never takes focus from anything else.
   function focusFrontPrint() {
     frontPrintOf(stageRef.current)?.focus({ preventScroll: true });
+  }
+
+  // Where the keyboard goes when the print it was standing on has left and the
+  // visitor never asked for the keyboard in the first place. The stage answers
+  // the arrows itself, so the fan keeps working; it draws no ring, so nothing
+  // appears that a finger or a mouse did not ask for.
+  function focusStage() {
+    stageRef.current?.focus({ preventScroll: true });
   }
 
   // Set at a commit, read once the new window is in the tree. A walk past the
@@ -173,19 +165,40 @@ export function useFanControls({
   // it, which used to drop focus to the dialog: three arrows in, the fan
   // stopped answering the keyboard and Enter no longer opened the photo on
   // show.
-  const refocusFront = useRef(false);
+  //
+  // Which print was holding it and who was walking the fan, because the two
+  // are answered differently. A keyboard user is handed the new front print,
+  // and its name is what the step has to say for itself. A pointer is not: the
+  // print it pressed is usually still on stage a seat further out, and putting
+  // the keyboard on the new front print drew a ring on the photograph after
+  // every drag and every swipe.
+  //
+  // Who is asked of the walk rather than of the print's own :focus-visible.
+  // The dialog opens on the front print, which is a script focus and draws no
+  // ring; a press on a print that is already focused does not move focus, so
+  // the browser never reconsiders, and Chromium answers :focus-visible true
+  // for the rest of that focus. Measured on a dialog opened from a link: false
+  // at rest and true from the mouse press onwards, so a drag read as a
+  // keyboard user every time.
+  const refocus = useRef<{ print: HTMLElement; kind: FanFocusKind } | null>(
+    null,
+  );
 
   // The two geometries are separate fans and the breakpoint swaps them by
   // remounting (see the key on <Fan>), so a print holding focus goes with the
   // old one. Read on the way out, while the button is still in the document,
-  // and answered by the fan that replaces it.
+  // and answered by the fan that replaces it. A print that was holding a
+  // pointer's focus is gone with the fan it belonged to, so there is nothing
+  // to leave the keyboard on: the stage takes it and the arrows carry on.
   useLayoutEffect(() => {
-    if (keptFocusRef.current) {
-      keptFocusRef.current = false;
-      focusFrontPrint();
+    const kept = keptFocusRef.current;
+    if (kept) {
+      keptFocusRef.current = null;
+      if (kept === "keyboard") focusFrontPrint();
+      else focusStage();
     }
     return () => {
-      keptFocusRef.current = focusOnPrint();
+      keptFocusRef.current = focusHeldOn(stageRef.current)?.kind ?? null;
     };
     // Mount and unmount only: the print in front is where focus lands either
     // way, and nothing this reads is a render's to change.
@@ -269,9 +282,15 @@ export function useFanControls({
       progress.jump(0);
     }
     // After the re-seat, so the print it lands on is the one now in front.
-    if (refocusFront.current) {
-      refocusFront.current = false;
-      focusFrontPrint();
+    const held = refocus.current;
+    if (held) {
+      refocus.current = null;
+      // A keyboard user is handed the photograph the key brought forward. A
+      // pointer keeps whatever it pressed, unless the walk has carried that
+      // print off the stage, in which case the stage itself holds the keyboard
+      // so the arrows still answer.
+      if (held.kind === "keyboard") focusFrontPrint();
+      else if (!held.print.isConnected) focusStage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, shapes, progress]);
@@ -337,7 +356,7 @@ export function useFanControls({
   // holding a walk of two with nothing at its front. Landing has to put the
   // progress back itself in that case, and only a real change of front may
   // wait for the commit, or a frame paints the old seats at rest.
-  function walkTo(delta: number, target: number) {
+  function walkTo(delta: number, target: number, by: FanFocusKind = "pointer") {
     snap.current?.stop();
     // A trackpad swipe still in its settle window has the fan too, and the
     // walk is now what moves it: left alone, the window closing mid-walk
@@ -353,7 +372,8 @@ export function useFanControls({
         progress.jump(0);
         return;
       }
-      refocusFront.current = focusOnPrint();
+      const held = focusHeldOn(stageRef.current);
+      refocus.current = held ? { print: held.print, kind: by } : null;
       pendingReset.current = true;
       onSelect(target);
     };
@@ -382,11 +402,19 @@ export function useFanControls({
   });
 
   // One callback for all five prints, rather than a closure per seat: which
-  // print was pressed and where it stands are what the print itself knows, so
-  // it says both and this stays the same function from render to render.
-  const selectPhoto = useCallback((index: number, offset: number) => {
-    latestWalk.current(offset, index);
-  }, []);
+  // print was pressed, where it stands and whose press it was are what the
+  // print itself knows, so it says all three and this stays the same function
+  // from render to render.
+  //
+  // A press is where :focus-visible is worth asking: Enter on a print and a
+  // click on it arrive here as the same event, and a press that moves focus to
+  // the print is one the browser has just had to make its mind up about.
+  const selectPhoto = useCallback(
+    (index: number, offset: number, by: FanFocusKind) => {
+      latestWalk.current(offset, index, by);
+    },
+    [],
+  );
 
   // As far as a print can be walked from: the window holds two seats either
   // side of the front, and there is nothing further out to travel from.
@@ -412,14 +440,14 @@ export function useFanControls({
   // Walks `delta` photos on from the front the window is seated on. A delta
   // that nets to nothing, and a short gallery where the walk wraps back onto
   // the photo already in front, are both the fan going back to where it stood.
-  function walkBy(delta: number) {
+  function walkBy(delta: number, by: FanFocusKind = "pointer") {
     const clamped = clampWalk(delta);
     const target = (activeIndex + clamped + count) % count;
     if (clamped === 0 || target === activeIndex) {
       springBack();
       return;
     }
-    walkTo(walkFor(target, clamped), target);
+    walkTo(walkFor(target, clamped), target, by);
   }
 
   // Two quick presses are two photos: a step taken while a walk is in flight
@@ -432,13 +460,13 @@ export function useFanControls({
   // the fan breaking, so the press is dropped and the walk in flight lands;
   // the next press starts from there. A press that nets to zero is a different
   // thing, the cancel walkBy answers with a spring back, and it goes through.
-  function step(direction: -1 | 1) {
+  function step(direction: -1 | 1, by: FanFocusKind = "pointer") {
     if (count < 2) return;
     const next = clampWalk(heading.current + direction);
     if (next !== 0 && (activeIndex + next + count) % count === activeIndex) {
       return;
     }
-    walkBy(next);
+    walkBy(next, by);
   }
 
   // What a press that turned into nothing hands back. A walk it caught goes
@@ -465,10 +493,10 @@ export function useFanControls({
   // window has no seat to travel from, so the fan takes one step the short way
   // round and commits straight to it: the stack still moves, and it moves the
   // way the photo lies.
-  function walkToIndex(target: number) {
+  function walkToIndex(target: number, by: FanFocusKind = "pointer") {
     if (target === activeIndex) return;
     const forward = (target - activeIndex + count) % count;
-    walkTo(walkFor(target, 2 * forward <= count ? 1 : -1), target);
+    walkTo(walkFor(target, 2 * forward <= count ? 1 : -1), target, by);
   }
 
   // Not far, not fast: the fan goes back to where it stood.

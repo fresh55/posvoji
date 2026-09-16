@@ -18,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { frontPrintOf } from "./fan-focus";
+import { frontPrintOf, type FanFocusKind } from "./fan-focus";
 import { enteringSlots, fanSlots, fanTempo } from "./fan-geometry";
 import { DESKTOP_FAN, PHONE_FAN, useDesktopFan } from "./fan-layout";
 import { Fan } from "./photo-fan";
@@ -100,7 +100,7 @@ export const PhotoSpread = memo(function PhotoSpread({
   // because the breakpoint remounts the fan and a print holding focus goes
   // with it.
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const keptFocusRef = useRef(false);
+  const keptFocusRef = useRef<FanFocusKind | null>(null);
 
   // Held across renders so the prints below can be memoised: a print handed a
   // fresh way into the lightbox on every render is a print that re-renders on

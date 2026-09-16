@@ -16,7 +16,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import { memo, useEffect, useRef, type RefObject } from "react";
-import { isFocusVisible } from "./fan-focus";
+import { isFocusVisible, type FanFocusKind } from "./fan-focus";
 import {
   FanDepths,
   FanFactors,
@@ -132,10 +132,10 @@ export const FanPhoto = memo(function FanPhoto({
   active: boolean;
   /** Whether a pointer on this photo should lift and straighten it. */
   hoverable: boolean;
-  /** Walks this print to the front. It is told which print and where that
-   *  print is standing, so the fan can build one callback for all five rather
-   *  than a closure per seat. */
-  onSelect: (index: number, offset: number) => void;
+  /** Walks this print to the front. It is told which print, where that print
+   *  is standing and whose press it was, so the fan can build one callback for
+   *  all five rather than a closure per seat. */
+  onSelect: (index: number, offset: number, by: FanFocusKind) => void;
   /** Opens the print in front, from the box it is standing in. */
   onOpenLightbox: (from: DOMRect) => void;
 }) {
@@ -249,7 +249,15 @@ export const FanPhoto = memo(function FanPhoto({
       // `active`: the one in front opens, the rest walk here.
       onClick={(event) => {
         if (!active) {
-          onSelect(index, offset.get());
+          // Enter on a print and a click on it arrive here as the same event,
+          // and whether the browser is drawing this print's focus is what
+          // tells them apart: a press that moved focus to this print is one
+          // the browser has just made its mind up about.
+          onSelect(
+            index,
+            offset.get(),
+            isFocusVisible(event.currentTarget) ? "keyboard" : "pointer",
+          );
           return;
         }
         // Where it is standing right now, so the lightbox can grow out of it

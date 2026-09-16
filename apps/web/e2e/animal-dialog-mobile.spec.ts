@@ -100,12 +100,17 @@ test("leaves the edge arrows to the wider layout", async ({ page }) => {
   await expect(phoneNav(page, "next")).toBeVisible();
 });
 
-// The longest name in the register, by a wide margin: a shelter's listing
-// title typed into a name field. It is what the title row has to survive, so
-// it is named here rather than looked for, and a dataset that has stopped
-// carrying it should fail in one obvious place.
-const LONGEST_NAME_ID = "mala-hisa:psi_za_oddajo:rolf-nemski-ovcar-8-let";
-const LONGEST_NAME = "Rolf, nemški ovčar, 8 let";
+// The longest name in the register: "brezrepa tritačka Luna" at Mačja hiša, a
+// description typed into the name field, 22 characters where the median name
+// has five. It is what the title row has to survive, so it is named here
+// rather than looked for. At 375px it takes two full lines beside the three
+// controls, and it is the name that once pushed all three of them to a second
+// line (the title row's comment in animal-dialog.tsx). When the dataset stops
+// carrying this animal the dialog never opens, and the first assertion below
+// says which id is gone rather than leaving the layout numbers to fail
+// unexplained.
+const LUNA = "macja-hisa:4872";
+const LUNA_NAME = "brezrepa tritačka Luna";
 
 test("keeps the title row's controls together on the narrowest phone", async ({
   page,
@@ -115,10 +120,13 @@ test("keeps the title row's controls together on the narrowest phone", async ({
   // the controls the next one. What may not happen is the controls themselves
   // splitting across two lines, or the row reaching past the card.
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto(`/?zival=${encodeURIComponent(LONGEST_NAME_ID)}`);
+  await page.goto(`/?zival=${encodeURIComponent(LUNA)}`);
 
-  await expect(dialog(page)).toBeVisible();
-  await expect(title(page)).toHaveText(LONGEST_NAME);
+  await expect(
+    dialog(page),
+    `no dialog opened for ${LUNA}: is that animal still in data/dist/animals.json?`,
+  ).toBeVisible();
+  await expect(title(page)).toHaveText(LUNA_NAME);
   const next = phoneNav(page, "next");
   await expect(next).toBeVisible();
 

@@ -5,6 +5,7 @@ import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import type { DialogPhotoRect } from "@/components/animal-dialog/animal-dialog";
 import { AnimalPhoto } from "@/components/animal-photo";
 import type { PermittedPhoto } from "@/lib/animal-images";
+import { frontPrintOf } from "./fan-focus";
 import { CARD_PHOTO_RATIO, CARD_PHOTO_SIZES } from "@/lib/card-grid";
 
 // The travel is a tween rather than a spring: it has to hand over to the fan's
@@ -35,18 +36,39 @@ const RELEASE_MS = BLOOM_FADE.delay * 1000;
 const SETTLE_MS = 220;
 
 // The fan mounts one stage for the breakpoint it read, under one of two slot
-// names; the copy lands on the active photo of whichever is there. Named the
-// way frontPrintOf names it: data-print is on every print and aria-current on
-// the one in front.
-const SLOT =
-  '[data-slot="photo-fan"] button[data-print][aria-current="true"], [data-slot="photo-spread"] button[data-print][aria-current="true"]';
+// names; the copy lands on the print in front of whichever is there. Which
+// print that is stays fan-focus.ts's to answer: the lightbox's contact sheet
+// marks its own tiles with aria-current too, so the rule for telling a print
+// from a tile is one nobody else should be writing out.
+const STAGES = '[data-slot="photo-fan"], [data-slot="photo-spread"]';
 
 function slotRect() {
-  for (const slot of document.querySelectorAll(SLOT)) {
-    const rect = slot.getBoundingClientRect();
-    if (rect.width) return rect;
+  for (const stage of document.querySelectorAll<HTMLElement>(STAGES)) {
+    const rect = frontPrintOf(stage)?.getBoundingClientRect();
+    if (rect?.width) return rect;
   }
   return undefined;
+}
+
+/**
+ * Whether a copy of the card's photograph is going to fly at all.
+ *
+ * Asked from both ends: this component decides whether to draw one, and the
+ * dialog decides whether to hold the fan's front print back for it. Written
+ * out twice, the two could disagree, and each way round is a defect. The fan
+ * would hold a print back for a copy that never sets off, which is an empty
+ * seat until the fail-safe fires, or it would draw the photograph twice.
+ */
+export function bloomWillFly({
+  from,
+  photo,
+  reduced,
+}: {
+  from: DialogPhotoRect | undefined;
+  photo: PermittedPhoto | undefined;
+  reduced: boolean | null;
+}) {
+  return Boolean(from && photo && !reduced);
 }
 
 /**
@@ -109,7 +131,7 @@ export function PhotoBloom({
   // not there yet falls back to, which is what this used to do in every case.
   useLayoutEffect(() => {
     if (ended.current) return;
-    if (!from || !carried || shouldReduceMotion) {
+    if (!bloomWillFly({ from, photo: carried, reduced: shouldReduceMotion })) {
       end();
       return;
     }

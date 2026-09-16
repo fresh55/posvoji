@@ -22,7 +22,10 @@ import {
 } from "motion/react";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { DialogShareButton } from "@/components/animal-dialog/dialog-share-button";
-import { PhotoBloom } from "@/components/animal-dialog/photo-bloom";
+import {
+  PhotoBloom,
+  bloomWillFly,
+} from "@/components/animal-dialog/photo-bloom";
 import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
@@ -356,6 +359,18 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
+  // The card shows an animal's first photo, and so does the fan on the way in,
+  // so that is the one the bloom carries across.
+  const firstPhoto = lastAnimal?.images[0];
+  // Whether a copy is about to set off at all, asked the way the copy itself
+  // asks it: a card to leave from, a photograph to carry, and motion to carry
+  // it with. Two spellings of that could disagree, and both ways round are a
+  // defect, an empty front seat or the photograph drawn twice.
+  const bloomOpening = bloomWillFly({
+    from: origin?.photo,
+    photo: firstPhoto,
+    reduced: shouldReduceMotion,
+  });
   // Radix announces the title on open and never again, so stepping to another
   // animal changed every word in the dialog in silence. The name goes through a
   // live region instead. Adjusted during render the way lastAnimal above is.
@@ -363,7 +378,24 @@ export function AnimalDialog({
     id: string | undefined;
     name: string;
   }>({ id: animal?.id, name: "" });
+  // The fan keeps its own front print back until the copy starts to fade, so
+  // the same photograph is not on screen twice. It was: the cascade had the
+  // print fully opaque at +519ms with the copy still flying at +744ms. The two
+  // hand over as one crossfade now, and when the bloom says so rather than on
+  // a length of time this end knows.
+  //
+  // True from the first render for the animal the dialog opened on, which is
+  // the render that mounts the fan. Waiting for the bloom to report would draw
+  // the print for a frame and then take it away again.
+  //
+  // Only that animal. Stepping through the list with the arrows runs no bloom,
+  // because the card it would leave from is behind the dialog and was never
+  // measured, so the hold is armed on the step out of nothing and cleared on
+  // every step after it. Which animal is open is what `announced` already
+  // tracks, on the same transition, so the two are decided together.
+  const [holdFront, setHoldFront] = useState(bloomOpening);
   if (announced.id !== animal?.id) {
+    setHoldFront(announced.id === undefined && bloomOpening);
     setAnnounced({
       id: animal?.id,
       // Silent on the way in, because the title has just been announced, and
@@ -407,43 +439,10 @@ export function AnimalDialog({
   );
   const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
 
-  // The card shows an animal's first photo, and so does the fan on the way in,
-  // so that is the one the bloom carries across.
-  const firstPhoto = lastAnimal?.images[0];
-
-  // Whether a copy is about to set off at all: a card to leave from, a
-  // photograph to carry, and motion to carry it with.
-  const bloomOpening = Boolean(
-    origin?.photo && firstPhoto && !shouldReduceMotion,
-  );
-
-  // The fan keeps its own front print back until that copy starts to fade, so
-  // the same photograph is not on screen twice. It was: the cascade had the
-  // print fully opaque at +519ms with the copy still flying at +744ms. The two
-  // hand over as one crossfade now, and when the bloom says so rather than on
-  // a length of time this end knows.
-  //
-  // True from the first render for the animal the dialog opened on, which is
-  // the render that mounts the fan. Waiting for the bloom to report would draw
-  // the print for a frame and then take it away again.
-  //
-  // Only that animal. Stepping through the list with the arrows runs no bloom,
-  // because the card it would leave from is behind the dialog and was never
-  // measured, so the hold is armed on the step out of nothing and cleared on
-  // every step after it. Adjusted during render, the way lastAnimal and
-  // announced above are.
-  const [hold, setHold] = useState<{ id: string | undefined; front: boolean }>({
-    id: animal?.id,
-    front: bloomOpening,
-  });
-  if (hold.id !== animal?.id) {
-    setHold({ id: animal?.id, front: hold.id === undefined && bloomOpening });
-  }
-  const endBloom = useCallback(() => {
-    setHold((current) =>
-      current.front ? { ...current, front: false } : current,
-    );
-  }, []);
+  // Fired by the copy as its fade begins, and by the fail-safe below. Setting
+  // it false when it already is one is a state update React drops, so the
+  // second caller costs nothing.
+  const endBloom = useCallback(() => setHoldFront(false), []);
 
   // The fail-safe. A front print that never arrives is a worse failure than
   // the same photograph drawn twice for a moment, and the bloom's report rides
@@ -452,10 +451,10 @@ export function AnimalDialog({
   // can leave that animation without the frame that would have finished it.
   // The timer clears the hold whether or not the copy ever reports.
   useEffect(() => {
-    if (!hold.front) return;
+    if (!holdFront) return;
     const timer = setTimeout(endBloom, BLOOM_HOLD_MS);
     return () => clearTimeout(timer);
-  }, [hold.front, hold.id, endBloom]);
+  }, [holdFront, endBloom]);
 
   if (!lastAnimal) return null;
 
@@ -693,7 +692,7 @@ export function AnimalDialog({
                   animal={lastAnimal}
                   initialIndex={askedPhoto}
                   onIndexChange={reportPhoto}
-                  holdFrontPrint={hold.front}
+                  holdFrontPrint={holdFront}
                 />
               </m.div>
 
@@ -1007,7 +1006,6 @@ export function AnimalDialog({
               )}
             </m.div>
           </LazyMotion>
-
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>

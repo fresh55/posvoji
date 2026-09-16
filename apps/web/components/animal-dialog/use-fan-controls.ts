@@ -24,6 +24,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type MouseEvent,
   type PointerEvent,
   type RefObject,
@@ -205,6 +206,24 @@ export function useFanControls({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Which photo the live line at the bottom of the stage names: the one in
+  // front, unless the commit that brought it forward handed the keyboard to
+  // its print. That move announces the step by name as the print takes focus,
+  // and the line changing in the same breath had a screen reader read one
+  // press out twice.
+  //
+  // Held back by naming the front it is being held back for, so it answers for
+  // that commit and no other: a photo that changes any other way, in the
+  // lightbox or from a shared link, is named the moment the fan is holding it.
+  // A second key press carries the same held-back number forward rather than
+  // the front it is leaving, or the line would step one photo behind the fan.
+  const [withheld, setWithheld] = useState<{
+    front: number;
+    say: number;
+  } | null>(null);
+  const spoken =
+    withheld?.front === activeIndex ? withheld.say : activeIndex;
+
   // The cascade belongs to the mount, which is once per animal: the first
   // render reads false, and every render after it is a photo being picked.
   const entered = useRef(false);
@@ -374,6 +393,16 @@ export function useFanControls({
       }
       const held = focusHeldOn(stageRef.current);
       refocus.current = held ? { print: held.print, kind: by } : null;
+      // A walk that hands the keyboard over announces itself by the name of
+      // the print it lands on. Every other walk moves no focus at all, and the
+      // live line is the only thing that says the photo changed.
+      // Written here rather than at the commit, so it arrives in the same
+      // render as the new front and the line never says the wrong thing for a
+      // frame. Setting it to null when it already is one is a state update
+      // React drops, so an ordinary step costs no render for this.
+      setWithheld(
+        held && by === "keyboard" ? { front: target, say: spoken } : null,
+      );
       pendingReset.current = true;
       onSelect(target);
     };
@@ -708,6 +737,7 @@ export function useFanControls({
     count,
     solo,
     slots,
+    spoken,
     factors,
     seatOf,
     entered,

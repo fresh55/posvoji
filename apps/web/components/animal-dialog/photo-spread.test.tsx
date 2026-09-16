@@ -381,6 +381,28 @@ describe("fan focus", () => {
 
     expect(document.activeElement).toBe(frontPrint(stage()));
   });
+
+  // And because it does, the live line has nothing to add: a screen reader
+  // would hear the new print's name as it takes focus and then the same step
+  // again in words.
+  it("leaves the live line alone on a key walk and says every other one", async () => {
+    const { stage } = renderFan(gallery(7));
+    const live = () => stage().querySelector("[aria-live]")?.textContent;
+    expect(live()).toBe("Fotografija 1 od 7");
+
+    print(stage(), 1).focus();
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+    expect(live()).toBe("Fotografija 1 od 7");
+
+    // The chevron moves no focus to the photographs, so the line is the only
+    // thing that says which photo is on show.
+    fireEvent.click(
+      within(stage()).getByRole("button", { name: "Naslednja fotografija" }),
+    );
+    await expectFront(stage, 3);
+    expect(live()).toBe("Fotografija 3 od 7");
+  });
 });
 
 describe("fan count control", () => {

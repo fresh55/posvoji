@@ -70,6 +70,7 @@ export function Fan(props: FanProps) {
     count,
     solo,
     slots,
+    spoken,
     factors,
     seatOf,
     entered,
@@ -334,10 +335,16 @@ export function Fan(props: FanProps) {
         </FrontPrintBox>
       )}
 
-      {/* Lives inside the stage, with the photos it is counting. */}
+      {/* Lives inside the stage, with the photos it is counting.
+
+          It names the photo the fan says it is on rather than the one in
+          front, and the two differ for exactly one commit: the walk that hands
+          the keyboard to the new front print is announced by that print's own
+          name as it takes focus, and this line changing in the same breath had
+          a screen reader read one step out twice. */}
       {count > 1 && (
         <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {t("photoCount", { current: activeIndex + 1, total: count })}
+          {t("photoCount", { current: spoken + 1, total: count })}
         </span>
       )}
     </div>

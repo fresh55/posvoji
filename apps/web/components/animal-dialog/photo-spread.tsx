@@ -64,6 +64,13 @@ export const PhotoSpread = memo(function PhotoSpread({
    * one's.
    */
   onWashWindow?: (layers: WashLayer[]) => void;
+  /**
+   * True while the card's photo is still travelling into the front seat
+   * (the bloom in photo-bloom.tsx). The front print keeps its own entrance
+   * back until this turns false, so the same photograph is not drawn twice.
+   * Wired by the dialog; the fan answers it.
+   */
+  holdFrontPrint?: boolean;
 }) {
   const { messages } = useI18n();
   // Already resolved and already filtered to what may be drawn.

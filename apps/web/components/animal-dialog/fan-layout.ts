@@ -1,8 +1,8 @@
-import { STAGE_WIDTH } from "@/components/animal-dialog/photo-wash";
 import {
-  DESKTOP_SHELL_QUERY,
-  PHONE_SHELL_QUERY,
-} from "@/lib/viewport-queries";
+  PHONE_STAGE_CAP,
+  STAGE_WIDTH,
+} from "@/components/animal-dialog/photo-wash";
+import { DESKTOP_SHELL_QUERY, PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
 import { useSyncExternalStore } from "react";
 import { DESKTOP_DEPTHS, FanDepths, PHONE_DEPTHS } from "./fan-geometry";
 
@@ -93,8 +93,13 @@ export const PHONE_FAN: FanGeometry = {
   // is wide enough for this one and it would undo the 24rem above, and which
   // of two max-widths wins is a question about the order Tailwind writes them
   // in rather than about the layout.
-  stageClass:
-    "w-full overflow-x-clip short:mx-auto short:max-w-sm not-short:min-[30rem]:mx-auto not-short:min-[30rem]:max-w-[30rem]",
+  //
+  // Both of them come from PHONE_STAGE_CAP, which the wash behind this fan
+  // reads as well: the light is only in the right place while it is the same
+  // width as the photographs. mx-auto is unconditional here because the stage
+  // is w-full, so it centres whenever a cap applies and does nothing when none
+  // does.
+  stageClass: `w-full overflow-x-clip mx-auto ${PHONE_STAGE_CAP}`,
   chevrons: false,
 };
 

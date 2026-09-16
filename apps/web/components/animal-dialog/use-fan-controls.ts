@@ -1,6 +1,6 @@
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
 import { useI18n } from "@/components/i18n-provider";
-import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
+import { type PermittedPhoto } from "@/lib/animal-images";
 import {
   MIN_SWIPE_PX,
   SWIPE_DISTANCE_RATIO,
@@ -29,21 +29,23 @@ import {
   type PointerEvent,
   type RefObject,
 } from "react";
-import { focusHeldOn, frontPrintOf, type FanFocusKind } from "./fan-focus";
+import {
+  frontPrintOf,
+  heldPrintOf,
+  isStandingPrint,
+  type FanFocusKind,
+} from "./fan-focus";
 import {
   FAN_LIMIT,
   FanTempo,
   fanShapes,
   fanSlots,
-  printFactor,
+  shapeOf,
   walkSlots,
+  type FanSlot,
 } from "./fan-geometry";
 import { FanGeometry } from "./fan-layout";
 import { FLICK_TWO_PX_MS } from "./fan-options";
-
-/** One print the stage is holding: which photo, which seat of the window it
- *  stands in, and, for a print mounted mid-walk, the seat it starts from. */
-export type FanSlot = { index: number; offset: number; seat?: number };
 
 // Nothing beyond the window, as one object: a state update to the same array
 // React drops, so the walks that mount nothing cost no render.
@@ -153,7 +155,7 @@ export function useFanControls({
   // bare offset with the walk at zero is the same pose again: nothing it shows
   // depends on being told.
   const seats = useRef(new Map<number, MotionValue<number>>());
-  function seatOf(index: number, offset: number, at?: number) {
+  function seatOf(index: number, offset: number, walkingIn = false) {
     const held = seats.current.get(index);
     if (held) return held;
     // Where a print being made starts. A print stepping in at a commit is
@@ -162,7 +164,7 @@ export function useFanControls({
     // walk. A print mounted mid-walk to fill the leading tier is seated in the
     // window that is on stage now and says its own seat, so that it walks in
     // with the prints around it rather than standing still.
-    const seat = at ?? offset + progress.get();
+    const seat = walkingIn ? offset : offset + progress.get();
     const made = motionValue(seat);
     seats.current.set(index, made);
     // And its shape into the record, at the seat it is standing in. A seat is
@@ -173,7 +175,7 @@ export function useFanControls({
     // its inner neighbour should be and first-painted 45 to 55px off, then
     // re-seated a frame later once the commit effect wrote the new record.
     // The prints render in seat order, so the inner one registers first.
-    factors.current[seat] = printFactor(images[index].aspect ?? PRINT_ASPECT);
+    factors.current[seat] = shapeOf(images, index);
     return made;
   }
 
@@ -249,12 +251,12 @@ export function useFanControls({
   /** Everything the fan has to tell one print about its own arrival: the key
    *  it is drawn under, the seat it stands in, and whether this is its first
    *  render, which is what decides how it is drawn in. */
-  function printAt({ index, offset, seat }: FanSlot) {
+  function printAt({ index, offset, walkingIn }: FanSlot) {
     const key = keyOf(index, offset);
     return {
       key,
       fresh: !shown.current.has(key),
-      seat: seatOf(index, offset, seat),
+      seat: seatOf(index, offset, walkingIn),
     };
   }
 
@@ -305,9 +307,14 @@ export function useFanControls({
   // for the rest of that focus. Measured on a dialog opened from a link: false
   // at rest and true from the mouse press onwards, so a drag read as a
   // keyboard user every time.
-  const refocus = useRef<{ print: HTMLElement; kind: FanFocusKind } | null>(
-    null,
-  );
+  const refocus = useRef<HTMLElement | null>(null);
+
+  // Who last walked this fan, which is the one place that question is
+  // answered. Every walk writes it, and both places that hand the keyboard on
+  // read it: the commit below, and the breakpoint remount above. Null until
+  // something has walked it at all, which is the dialog's own opening focus on
+  // the front print, handed on the way a key press is.
+  const drivenBy = useRef<FanFocusKind | null>(null);
 
   // The two geometries are separate fans and the breakpoint swaps them by
   // remounting (see the key on <Fan>), so a print holding focus goes with the
@@ -323,7 +330,9 @@ export function useFanControls({
       else focusStage();
     }
     return () => {
-      keptFocusRef.current = focusHeldOn(stageRef.current)?.kind ?? null;
+      keptFocusRef.current = heldPrintOf(stageRef.current)
+        ? (drivenBy.current ?? "keyboard")
+        : null;
     };
     // Mount and unmount only: the print in front is where focus lands either
     // way, and nothing this reads is a render's to change.
@@ -345,8 +354,7 @@ export function useFanControls({
     front: number;
     say: number;
   } | null>(null);
-  const spoken =
-    withheld?.front === activeIndex ? withheld.say : activeIndex;
+  const spoken = withheld?.front === activeIndex ? withheld.say : activeIndex;
 
   // The cascade belongs to the mount, which is once per animal: the first
   // render reads false, and every render after it is a photo being picked.
@@ -416,10 +424,11 @@ export function useFanControls({
   // against. The reduced-motion path commits with no walk to zero and needs
   // the same re-seating.
   const pendingReset = useRef(false);
-  const recorded = useRef(shapes);
   // The window the prints on stage are seated in, which is what says whether a
   // render is a commit: the one that follows a walk hands out the offsets of a
-  // new window while every print is still standing in the old one.
+  // new window while every print is still standing in the old one. It says the
+  // same about the record of shapes below, which is built from this window and
+  // moves only when it does.
   const seated = useRef(slots);
   useLayoutEffect(() => {
     // The record first, because the jumps below are what make the prints read
@@ -434,8 +443,7 @@ export function useFanControls({
     // mounting prints beyond the window's edge, and those prints wrote their
     // own widths into the record as they were seated: replacing it here would
     // take them back out a frame before the print behind them reads it.
-    if (recorded.current !== shapes) {
-      recorded.current = shapes;
+    if (seated.current !== slots) {
       factors.current = { ...shapes };
     }
     seated.current = slots;
@@ -469,9 +477,7 @@ export function useFanControls({
     const walked = progress.get();
     const frozen = leaving.current.map(({ index, seat }) => {
       const standing = seat.get() - walked;
-      factors.current[standing] = printFactor(
-        images[index].aspect ?? PRINT_ASPECT,
-      );
+      factors.current[standing] = shapeOf(images, index);
       return { seat, standing };
     });
     for (const { seat, standing } of frozen) seat.jump(standing);
@@ -531,14 +537,8 @@ export function useFanControls({
       // pointer keeps whatever it pressed, unless the walk has carried that
       // print off the stage, in which case the stage itself holds the keyboard
       // so the arrows still answer.
-      // A print the walk has taken off the stage is still in the document
-      // while it fades, and it is no use to the keyboard there: it answers no
-      // key and is about to be taken away, which would drop focus to the
-      // dialog. Standing means being one of the fan's own prints still.
-      const standing =
-        held.print.isConnected && held.print.dataset.leaving !== "true";
-      if (held.kind === "keyboard") focusFrontPrint();
-      else if (!standing) focusStage();
+      if (drivenBy.current === "keyboard") focusFrontPrint();
+      else if (!isStandingPrint(held)) focusStage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prints, shapes, progress]);
@@ -613,19 +613,25 @@ export function useFanControls({
     // one of those, which the hook tells apart for itself.
     attachWheel.cancel();
     heading.current = delta;
+    drivenBy.current = by;
     // A walk of two steps reaches a tier the window does not hold, so the
     // prints that should be walking in at the leading edge are mounted for the
-    // length of the walk. The commit seats them one and two out on that side,
-    // which is where they are standing by then, so nothing about the landing
-    // moves them.
-    const beyond = shouldReduceMotion
-      ? []
-      : walkSlots(count, activeIndex, delta).map((slot) => ({
-          ...slot,
-          // Seated in the window that is on stage now, and not in the one the
-          // commit is about to seat: these walk in with the fan.
-          seat: slot.offset,
-        }));
+    // length of the walk, seated where they stand now rather than where the
+    // commit will put them. The commit seats them one and two out on that
+    // side, which is where they have walked to by then, so nothing about the
+    // landing moves them.
+    //
+    // Two steps and no fewer, which is the fan's own decision rather than the
+    // window's: a single step brings its print in one tier out, where the
+    // commit seats it as the walk lands, and mounting that one early would
+    // draw a print walking in from past an edge with nothing beyond it.
+    const beyond =
+      shouldReduceMotion || Math.abs(delta) !== 2
+        ? []
+        : walkSlots(count, activeIndex, delta).map((slot) => ({
+            ...slot,
+            walkingIn: true,
+          }));
     setAhead(beyond.length > 0 ? beyond : NO_PRINTS);
     const reseats = target !== activeIndex;
     const land = () => {
@@ -636,8 +642,7 @@ export function useFanControls({
         progress.jump(0);
         return;
       }
-      const held = focusHeldOn(stageRef.current);
-      refocus.current = held ? { print: held.print, kind: by } : null;
+      refocus.current = heldPrintOf(stageRef.current);
       // A walk that hands the keyboard over announces itself by the name of
       // the print it lands on. Every other walk moves no focus at all, and the
       // live line is the only thing that says the photo changed.
@@ -646,7 +651,9 @@ export function useFanControls({
       // frame. Setting it to null when it already is one is a state update
       // React drops, so an ordinary step costs no render for this.
       setWithheld(
-        held && by === "keyboard" ? { front: target, say: spoken } : null,
+        refocus.current && by === "keyboard"
+          ? { front: target, say: spoken }
+          : null,
       );
       pendingReset.current = true;
       onSelect(target);
@@ -821,6 +828,11 @@ export function useFanControls({
     if (swipeStart.current && !swipeStart.current.mouse) return;
     snap.current?.stop();
     snap.current = null;
+    // Whatever a walk this press has just caught had mounted beyond the
+    // leading edge goes with it: the finger's own release decides what the fan
+    // brings in next. Already empty for every press that catches nothing, and
+    // a state update to the same array is one React drops.
+    setAhead(NO_PRINTS);
     // And the wheel's own gesture with it. A trackpad swipe hands the fan a
     // settle window that outlives the swipe by a quarter of a second, and a
     // drag started inside it used to find that window closing under the
@@ -989,7 +1001,6 @@ export function useFanControls({
     frontWasHeld,
     holdFront,
     factors,
-    seatOf,
     entered,
     progress,
     selectPhoto,

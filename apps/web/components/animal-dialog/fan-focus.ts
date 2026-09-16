@@ -36,16 +36,32 @@ export type FanFocusKind =
    *  browser shows. */
   | "pointer";
 
-/** What is holding the keyboard on this stage, and which of the two it is.
+/** Whether this is a print the keyboard can still be left on.
+ *
+ *  A print the fan has taken off the stage is in the document until its fade
+ *  is over, and it is no use to anyone there: it answers no key, it takes no
+ *  press, and it is about to be removed, which would drop focus to the layer
+ *  around it. Two callers ask it, the fan's own walk and the lightbox handing
+ *  focus back, so the rule lives here with the rest of the contract. */
+export function isStandingPrint(element: HTMLElement | null | undefined) {
+  return Boolean(element?.isConnected && element.dataset.leaving !== "true");
+}
+
+/** The print the keyboard is standing on, or null while it is standing
+ *  somewhere else.
  *
  *  Asked before a commit rather than after it, because a commit is what
  *  unmounts the print focus is on and by then the answer is gone. Any print
  *  and not just the front one, so data-print is what is read rather than
  *  aria-current: the first is on every print, the second names only the one
- *  standing in front. */
-export function focusHeldOn(
-  stage: HTMLElement | null,
-): { print: HTMLElement; kind: FanFocusKind } | null {
+ *  standing in front.
+ *
+ *  Which visitor that focus belongs to is deliberately not answered here. The
+ *  browser's own :focus-visible cannot say: the dialog opens on the front
+ *  print, a press on an already focused print moves nothing, and Chromium then
+ *  answers true for the rest of that focus, so every drag read as a keyboard
+ *  user. The fan remembers who walked it instead. */
+export function heldPrintOf(stage: HTMLElement | null): HTMLElement | null {
   const held = document.activeElement;
   if (
     !stage ||
@@ -55,5 +71,5 @@ export function focusHeldOn(
   ) {
     return null;
   }
-  return { print: held, kind: isFocusVisible(held) ? "keyboard" : "pointer" };
+  return held;
 }

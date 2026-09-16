@@ -349,12 +349,11 @@ export const FanPhoto = memo(function FanPhoto({
       // the fan, which is still standing at the tier it was walked to. Both
       // fade, because the second one has to and the first one costs nothing.
       exit={{ opacity: 0, transition: fade }}
+      // A print that was already standing here is mounted with no initial
+      // and an animate that never changes, so it transitions nothing and the
+      // value here is never read for it.
       transition={
-        entrance === false
-          ? { duration: 0 }
-          : entrance === "fade"
-            ? fade
-            : { ...tempo.spring, delay: entrance }
+        entrance === "fade" ? fade : { ...tempo.spring, delay: entrance || 0 }
       }
     >
       {/* The hover layer carries transforms and nothing else. It cannot clip,

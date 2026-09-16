@@ -219,8 +219,16 @@ export function Fan(props: FanProps) {
 
           AnimatePresence for the copy that is leaving: on a gallery of three
           or four it is still standing at the trailing tier when the commit
-          lands, and it has to be taken away rather than vanish. */}
-      <AnimatePresence>
+          lands, and it has to be taken away rather than vanish.
+
+          presenceAffectsLayout is off because nothing here is laid out: every
+          print is absolute, so a copy on its way out moves no sibling and
+          there is no layout for its leaving to affect. Left on, the flag hands
+          every present child a rebuilt presence context on every render of
+          this component, and context reaches inside memo: all five prints
+          re-rendered their four motion elements each, for a commit that
+          changes two of them. */}
+      <AnimatePresence presenceAffectsLayout={false}>
         {prints.map((slot) => {
           const { index, offset } = slot;
           const active = offset === 0;
@@ -268,41 +276,48 @@ export function Fan(props: FanProps) {
         })}
       </AnimatePresence>
 
-      {/* "2 / 4" on a set the fan shows all of at once: a mark and nothing
-          more, hidden from assistive technology, because the live line at the
-          bottom of this stage already says which photo of how many is on show
-          and there is no set behind this number to lead anywhere.
+      {/* The front print's own box, and everything the fan draws over the
+          photograph rather than inside it: the count, and on a pointer the
+          chevrons either side.
 
-          Drawn over the front print rather than inside it, which is the one
-          thing about it that has changed. Inside the print's own button it
-          rode with the photograph: a step carried the mark off to the side
-          with the print it was leaving on and brought it back with the next
-          one, while past SHEET_FROM the same mark stood still and the
-          photographs slid under it. One mark behaving two ways is the sort of
-          difference nobody can name and everybody sees.
+          One box for all of them. Each of the three used to lay its own, so
+          three transparent copies of the same rectangle stood over the same
+          photograph and the front print's shape was worked out three times for
+          one render.
+
+          The count comes in two shapes and never both at once. Under
+          SHEET_FROM it is a mark and nothing more, hidden from assistive
+          technology, because the live line at the bottom of this stage already
+          says which photo of how many is on show and there is no set behind
+          the number to lead anywhere. From SHEET_FROM up that same mark is
+          also the only way into the whole gallery, which makes it a control,
+          and a control cannot be nested inside the print's own button: it used
+          to sit in there aria-hidden, which left the contact sheet invisible
+          to a screen reader and unreachable by tab.
+
+          Drawing the mark here rather than inside the print is what makes its
+          two shapes behave alike. Inside the print's own button it rode with
+          the photograph, so a step carried it off to the side with the print
+          it was leaving on and brought it back with the next one, while past
+          SHEET_FROM the same mark stood still and the photographs slid under
+          it. One mark behaving two ways is the sort of difference nobody can
+          name and everybody sees.
 
           This box takes no presses, so the corner of the photograph under the
-          mark still opens the print, the way the rest of the photograph
-          does. */}
-      {count > 1 && count < SHEET_FROM && (
+          mark still opens the print the way the rest of it does; what wants
+          presses takes them back for itself. */}
+      {count > 1 && (
         <FrontPrintBox box={geometry.photoBox} photo={images[activeIndex]}>
-          <Badge aria-hidden variant="secondary" className={PHOTO_BADGE_CLASS}>
-            {activeIndex + 1} / {count}
-          </Badge>
-        </FrontPrintBox>
-      )}
-
-      {/* On a set the fan cannot show at once, "4 / 12" is the one thing on
-          the stage that names the whole gallery, so it is also the way into
-          it. That makes it a control, and a control cannot be nested inside
-          the print's own button: it used to sit in there aria-hidden, which
-          left the only way to the contact sheet invisible to a screen reader
-          and unreachable by tab.
-
-          Drawn over the front print rather than in it, the way the chevrons
-          already are, so the mark itself is unchanged.
-
-          Its name leads with the mark. An aria-label of "Vse fotografije (13)"
+          {count < SHEET_FROM ? (
+            <Badge
+              aria-hidden
+              variant="secondary"
+              className={PHOTO_BADGE_CLASS}
+            >
+              {activeIndex + 1} / {count}
+            </Badge>
+          ) : (
+            /* Its name leads with the mark. An aria-label of "Vse fotografije (13)"
           named what the control does, but it also replaced the only words on
           it: a visitor who speaks to their machine reads "1 / 13" on the
           photograph and has nothing by that name to ask for, which is what
@@ -320,83 +335,85 @@ export function Fan(props: FanProps) {
           positioned into the front print's corner. The rule it carries about
           crowding still applies, and there is nothing within the overhang:
           the chevrons sit at the middle of the print's height and this sits at
-          its bottom corner. */}
-      {count >= SHEET_FROM && (
-        <FrontPrintBox box={geometry.photoBox} photo={images[activeIndex]}>
-          <Badge
-            asChild
-            variant="secondary"
-            className={cn(
-              PHOTO_BADGE_CLASS,
-              // The badge clips its own children, and the hit area below is
-              // drawn outside its edges. Nothing else in here overflows.
-              "pointer-events-auto cursor-pointer overflow-visible",
-              // 14px a side on a finger, not 12: the pill is 20px tall, and
-              // 12 left the hit area at 43px, one under the bar it is
-              // measured against.
-              "after:absolute after:-inset-2 pointer-coarse:after:-inset-3.5",
-            )}
-          >
-            {/* What this opens is said in the name and nowhere else. A title
+          its bottom corner. */
+            <Badge
+              asChild
+              variant="secondary"
+              className={cn(
+                PHOTO_BADGE_CLASS,
+                // The badge clips its own children, and the hit area below is
+                // drawn outside its edges. Nothing else in here overflows.
+                "pointer-events-auto cursor-pointer overflow-visible",
+                // 14px a side on a finger, not 12: the pill is 20px tall, and
+                // 12 left the hit area at 43px, one under the bar it is
+                // measured against.
+                "after:absolute after:-inset-2 pointer-coarse:after:-inset-3.5",
+              )}
+            >
+              {/* What this opens is said in the name and nowhere else. A title
                 repeated those words to a pointer and to nothing else, and the
                 count is how a phone reaches the rest of the set. */}
-            <button
-              type="button"
-              onClick={(event) => {
-                // The sheet grows out of the photograph, not out of the mark
-                // in its corner.
-                const stage = stageRef.current;
-                const front = frontPrintOf(stage);
-                onOpenSheet(
-                  (
-                    front ??
-                    stage ??
-                    event.currentTarget
-                  ).getBoundingClientRect(),
-                );
-              }}
-            >
-              {activeIndex + 1} / {count}{" "}
-              {/* The rest of the name, carried as text so the drawn words lead
+              <button
+                type="button"
+                onClick={(event) => {
+                  // The sheet grows out of the photograph, not out of the mark
+                  // in its corner.
+                  const stage = stageRef.current;
+                  const front = frontPrintOf(stage);
+                  onOpenSheet(
+                    (
+                      front ??
+                      stage ??
+                      event.currentTarget
+                    ).getBoundingClientRect(),
+                  );
+                }}
+              >
+                {activeIndex + 1} / {count}{" "}
+                {/* The rest of the name, carried as text so the drawn words lead
                   it. sr-only and not aria-hidden: this is the half a reader
                   needs and the half the photograph has no room for. */}
-              <span className="sr-only">{messages.allPhotos}</span>
-            </button>
-          </Badge>
-        </FrontPrintBox>
-      )}
+                <span className="sr-only">{messages.allPhotos}</span>
+              </button>
+            </Badge>
+          )}
 
-      {/* Over the active photo, in the same box it occupies. Hidden until
-          the fan is hovered or focused, exactly like the card gallery.
+          {/* Hidden until the fan is hovered or focused, exactly like the card
+              gallery.
 
-          pointer-coarse:size-11 because this geometry stands on the 768px
-          tablet too, where icon-sm is a 32px disc for a thumb. They are hidden
-          from a finger that cannot hover, but a hybrid tablet with a mouse
-          reaches them, and keyboard focus draws them on any device. The size
-          is on the pointer and not on the width, so a mouse keeps the small
-          disc at every size. */}
-      {geometry.chevrons && count > 1 && (
-        <FrontPrintBox box={geometry.photoBox} photo={images[activeIndex]}>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            onClick={() => step(-1)}
-            aria-label={messages.previousPhoto}
-            className={`${GALLERY_BUTTON_CLASS} left-1.5 pointer-coarse:size-11`}
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            onClick={() => step(1)}
-            aria-label={messages.nextPhoto}
-            className={`${GALLERY_BUTTON_CLASS} right-1.5 pointer-coarse:size-11`}
-          >
-            <ChevronRight className="size-4" aria-hidden />
-          </Button>
+              pointer-coarse:size-11 because this geometry stands on the 768px
+              tablet too, where icon-sm is a 32px disc for a thumb. They are
+              hidden from a finger that cannot hover, but a hybrid tablet with
+              a mouse reaches them, and keyboard focus draws them on any
+              device. The size is on the pointer and not on the width, so a
+              mouse keeps the small disc at every size.
+
+              Last in the box, so they are drawn over the mark rather than
+              under it. */}
+          {geometry.chevrons && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() => step(-1)}
+                aria-label={messages.previousPhoto}
+                className={`${GALLERY_BUTTON_CLASS} left-1.5 pointer-coarse:size-11`}
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() => step(1)}
+                aria-label={messages.nextPhoto}
+                className={`${GALLERY_BUTTON_CLASS} right-1.5 pointer-coarse:size-11`}
+              >
+                <ChevronRight className="size-4" aria-hidden />
+              </Button>
+            </>
+          )}
         </FrontPrintBox>
       )}
 

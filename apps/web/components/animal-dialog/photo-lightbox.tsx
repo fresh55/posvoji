@@ -136,7 +136,17 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
             returnFocus.current = null;
             // isConnected, because a detached element takes focus in silence
             // and leaves it on the body, with the dialog's own keys dead.
-            const target = saved?.isConnected ? saved : returnFocusFallback?.();
+            //
+            // A print the fan has walked off the stage is that same element a
+            // moment early: still in the document while it fades out, and
+            // taken away when the fade ends. data-leaving is what the fan
+            // marks those copies with, so one of them is no more restorable
+            // than a detached node, and the fallback is the print standing in
+            // front now, which is where the walk left the gallery.
+            const target =
+              saved?.isConnected && saved.dataset.leaving !== "true"
+                ? saved
+                : returnFocusFallback?.();
             if (!target) return;
             event.preventDefault();
             target.focus({ preventScroll: true });

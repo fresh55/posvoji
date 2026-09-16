@@ -751,7 +751,9 @@ describe("PhotoLightbox missing photo", () => {
 // stepping in here walks the fan too, and the print the lightbox was opened
 // from can leave the fan's five-print window while it is open: focus handed
 // back to it would land on a detached element, in silence, with the page's own
-// keys dead.
+// keys dead. A print the walk has taken off the stage is the same thing a
+// moment early, still in the document and marked data-leaving, so it is turned
+// down the same way.
 describe("PhotoLightbox focus on the way out", () => {
   function opened(returnFocusFallback?: () => HTMLElement | null | undefined) {
     const trigger = document.createElement("button");
@@ -814,6 +816,21 @@ describe("PhotoLightbox focus on the way out", () => {
     await close();
 
     expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+    fallback.remove();
+  });
+
+  it("takes the fallback when the print it came from is fading out", async () => {
+    const fallback = document.createElement("button");
+    document.body.append(fallback);
+    const { trigger, close } = opened(() => fallback);
+    // What the fan writes on a copy its walk has left standing. The node is
+    // still in the document, and it is on its way to not being.
+    trigger.dataset.leaving = "true";
+
+    await close();
+
+    expect(document.activeElement).toBe(fallback);
     trigger.remove();
     fallback.remove();
   });

@@ -71,6 +71,8 @@ export function Fan(props: FanProps) {
     solo,
     slots,
     spoken,
+    frontWasHeld,
+    holdFront,
     factors,
     seatOf,
     entered,
@@ -192,10 +194,16 @@ export function Fan(props: FanProps) {
                 shouldReduceMotion ? 0 : TILT_NUDGE[index % TILT_NUDGE.length]
               }
               entrance={
-                shouldReduceMotion || entered.current
+                shouldReduceMotion ||
+                (entered.current && !(active && frontWasHeld))
                   ? false
                   : Math.abs(offset) * ENTRANCE_STAGGER
               }
+              // Only the front print, and only its mount: a print that comes
+              // to the front later has nothing to wait for, because what the
+              // dialog is holding it against is the copy of the card's
+              // photograph flying into that seat as the dialog opens.
+              hold={active && holdFront}
               tempo={tempo}
               label={
                 active

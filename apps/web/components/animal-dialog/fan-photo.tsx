@@ -99,6 +99,7 @@ export const FanPhoto = memo(function FanPhoto({
   box,
   nudge,
   entrance,
+  hold,
   tempo,
   label,
   active,
@@ -127,6 +128,12 @@ export const FanPhoto = memo(function FanPhoto({
   nudge: number;
   /** Whether this mount should cascade in, and with how much delay. */
   entrance: number | false;
+  /** Whether this print's mount is still being held back, because the same
+   *  photograph is on screen somewhere else: the copy the dialog flies from
+   *  the card it was opened from. The print waits at nothing rather than
+   *  cascading in, and fades in on the entrance it is owed when this turns
+   *  false. Only ever true of the print at the front, and only at its mount. */
+  hold?: boolean;
   tempo: FanTempo;
   label: string;
   active: boolean;
@@ -306,7 +313,7 @@ export const FanPhoto = memo(function FanPhoto({
         count > 1 && "group-data-dragging:cursor-grabbing",
       )}
       initial={entrance === false ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
+      animate={{ opacity: hold ? 0 : 1 }}
       transition={
         entrance === false
           ? { duration: 0 }

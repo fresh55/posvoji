@@ -45,6 +45,7 @@ export const PhotoSpread = memo(function PhotoSpread({
   onIndexChange,
   washProgress,
   onWashWindow,
+  holdFrontPrint,
 }: {
   animal: ClientAnimal;
   /** Which photo to open on. A shared link can name one; anything out of
@@ -246,6 +247,7 @@ export const PhotoSpread = memo(function PhotoSpread({
         activeIndex={activeIndex}
         tempo={tempo}
         washProgress={washProgress}
+        holdFrontPrint={holdFrontPrint}
         stageRef={stageRef}
         keptFocusRef={keptFocusRef}
         onSelect={setActiveIndex}

@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { motionValue, type MotionValue } from "motion/react";
+import {
+  LazyMotion,
+  domAnimation,
+  motionValue,
+  type MotionValue,
+} from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
@@ -96,19 +101,28 @@ function renderFan(
     layout?: "phone" | "desktop";
     initialIndex?: number;
     washProgress?: MotionValue<number>;
+    holdFrontPrint?: boolean;
   } = {},
 ) {
   fanLayout(options.layout ?? "desktop");
   const [client] = animalsForClient([animal]);
-  const view = render(
+  // The fan stands inside the dialog's LazyMotion on the site, and an m
+  // element with no features above it renders its styles and animates
+  // nothing: the entrance below would be a print stuck at the opacity it
+  // mounted with.
+  const tree = (hold: boolean | undefined) => (
     <I18nProvider locale="sl">
-      <PhotoSpread
-        animal={client}
-        initialIndex={options.initialIndex}
-        washProgress={options.washProgress}
-      />
-    </I18nProvider>,
+      <LazyMotion features={domAnimation}>
+        <PhotoSpread
+          animal={client}
+          initialIndex={options.initialIndex}
+          washProgress={options.washProgress}
+          holdFrontPrint={hold}
+        />
+      </LazyMotion>
+    </I18nProvider>
   );
+  const view = render(tree(options.holdFrontPrint));
   // Read fresh every time: the breakpoint remounts the fan, and the stage the
   // test was holding goes with the layout it belonged to.
   function stage() {
@@ -122,7 +136,13 @@ function renderFan(
     });
     return found;
   }
-  return { view, stage };
+  /** What the dialog does when the copy of the card's photograph lands. */
+  async function releaseHold() {
+    await act(async () => {
+      view.rerender(tree(false));
+    });
+  }
+  return { view, stage, releaseHold };
 }
 
 /** The prints on stage, in the order the document holds them, by the photo
@@ -341,6 +361,42 @@ describe("fan tab order", () => {
     expect(printOrder(stage())).toEqual([1, 2, 3]);
     expect(document.activeElement).toBe(frontPrint(stage()));
     expect(stage().contains(document.activeElement)).toBe(true);
+  });
+});
+
+describe("fan entrance", () => {
+  // The dialog flies a copy of the card's photograph into the front seat when
+  // it opens, and the front print used to cascade in under it: the same
+  // photograph on screen twice, with the copy still travelling 200ms after the
+  // print had gone fully opaque. The print waits at nothing instead, and takes
+  // the entrance it is owed when the copy lands.
+  it("holds the front print back until the card's photo has landed", async () => {
+    const { stage, releaseHold } = renderFan(gallery(3), {
+      holdFrontPrint: true,
+    });
+
+    expect(frontPrint(stage()).style.opacity).toBe("0");
+    // The rest of the fan cascades in as it always does. It is the one seat
+    // the copy is flying to that has to keep out of its way.
+    await waitFor(() => expect(print(stage(), 2).style.opacity).toBe("1"));
+    expect(frontPrint(stage()).style.opacity).toBe("0");
+
+    await releaseHold();
+
+    await waitFor(() => expect(frontPrint(stage()).style.opacity).toBe("1"));
+  });
+
+  // Reduced motion is not tested here: motion reads the query once per module
+  // and answers every hook from that, so the first fan rendered in this file
+  // settles it for all of them. Both ends of the seam gate on it, the dialog
+  // where the copy is set flying and the fan where the print is held.
+
+  // The seam is optional, and a dialog that never sets it opens the fan
+  // exactly as it did before there was one.
+  it("cascades the whole fan in when nothing is held", async () => {
+    const { stage } = renderFan(gallery(3));
+
+    await waitFor(() => expect(frontPrint(stage()).style.opacity).toBe("1"));
   });
 });
 

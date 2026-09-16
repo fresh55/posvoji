@@ -122,13 +122,19 @@ export function Fan(props: FanProps) {
     <div
       ref={stage}
       data-slot={geometry.slot}
-      // A group, not a listbox or a tablist, and named the same way the card
-      // gallery names its own: nothing here is chosen or selected, the visitor
-      // is walking one picture at a time, and which one is showing is the live
-      // line at the bottom of this stage. The keys were answered in silence
-      // until now, so the shortcuts are stated where a reader can find them.
+      // A group, not a listbox or a tablist: nothing here is chosen or
+      // selected, the visitor is walking one picture at a time, and which one
+      // is showing is the live line at the bottom of this stage. The keys were
+      // answered in silence until now, so the shortcuts are stated where a
+      // reader can find them.
       role="group"
-      aria-label={t("photoAltSingle", { name })}
+      // A name of its own. It borrowed photoAltSingle, which is one
+      // photograph's text alternative, so a stage holding thirteen of them
+      // announced itself as "Fotografija: Klopka". A gallery of one keeps that
+      // string, because there it is what the stage is holding.
+      aria-label={
+        count > 1 ? t("photoFanLabel", { name }) : t("photoAltSingle", { name })
+      }
       aria-keyshortcuts="ArrowLeft ArrowRight Home End"
       // Focusable by script and not by tab: the prints are what a tab walks.
       // This is where the keyboard goes when a walk unmounts the print that was

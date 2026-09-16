@@ -313,7 +313,7 @@ function expectPhotosAndNothingElse(dialog: HTMLElement, name: string) {
 // keys it answers. The same on either geometry.
 function expectNamedFan(stage: HTMLElement) {
   expect(stage.getAttribute("role")).toBe("group");
-  expect(stage.getAttribute("aria-label")).toBe("Fotografija: Rex");
+  expect(stage.getAttribute("aria-label")).toBe("Fotografije: Rex");
   expect(stage.getAttribute("aria-keyshortcuts")).toBe(
     "ArrowLeft ArrowRight Home End",
   );
@@ -937,8 +937,21 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
 
     expect(
-      within(dialog).getAllByRole("group", { name: "Fotografija: Rex" }),
+      within(dialog).getAllByRole("group", { name: "Fotografije: Rex" }),
     ).toHaveLength(1);
+  });
+
+  // The stage is named for what it holds, and a gallery of one holds a
+  // photograph rather than a set. The plural is what every other stage takes,
+  // which expectNamedFan asks of Rex's two.
+  it("names a lone photo's stage in the singular", async () => {
+    window.history.replaceState(null, "", "/?zival=sam");
+    renderGrid([SOLO]);
+    const dialog = await screen.findByRole("dialog");
+
+    expect(slot(dialog, "photo-spread").getAttribute("aria-label")).toBe(
+      "Fotografija: Sam",
+    );
   });
 
   // A press on the fan used to be React state, so it re-rendered all five

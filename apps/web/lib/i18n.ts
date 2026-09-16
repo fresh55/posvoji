@@ -104,6 +104,12 @@ const sl = {
   // the position is part of it. A lone photo has no position to state.
   photoAlt: "Fotografija: {name}, {current} od {total}",
   photoAltSingle: "Fotografija: {name}",
+  // The name of the stage the animal dialog's fan is walked on, which is a box
+  // holding a set rather than a picture. It used to borrow photoAltSingle, so
+  // a group of thirteen photographs announced itself as one of them. A stage
+  // with a single photograph keeps the singular, because there it is the
+  // truth.
+  photoFanLabel: "Fotografije: {name}",
   showPhoto: "Pokaži fotografijo {n}",
   viewPhotoLarge: "Odpri fotografijo {n} čez cel zaslon",
   allPhotos: "Vse fotografije",
@@ -641,6 +647,7 @@ const en: Messages = {
   photoCount: "Photo {current} of {total}",
   photoAlt: "Photo of {name}, {current} of {total}",
   photoAltSingle: "Photo of {name}",
+  photoFanLabel: "Photos of {name}",
   showPhoto: "Show photo {n}",
   viewPhotoLarge: "Open photo {n} full screen",
   allPhotos: "All photos",

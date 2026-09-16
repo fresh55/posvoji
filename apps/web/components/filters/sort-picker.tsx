@@ -58,6 +58,12 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  Three placements, two dresses, one control, and a hand-rolled listbox
  *  less.
  *
+ *  The trigger says "Razvrsti:" before the order wherever nothing above it
+ *  does, which is both of the toolbar's rows. A quiet trigger draws no border
+ *  until it is hovered, so without that word the control was a phrase between
+ *  two small glyphs, and a phrase is read as a caption for whatever it comes
+ *  to rest under.
+ *
  *  `quiet` is the toolbar's dress: borderless until hovered, so a desktop row
  *  has one anchor instead of four framed boxes. Inside the sheet it is off,
  *  because there the Select is a control on its own and needs to look like
@@ -127,12 +133,15 @@ export function SortPicker({
     >
       <SelectTrigger
         size="sm"
-        // The name carries the active sort as well as the visible label does,
-        // because this control is worth finding by either. Where a caption
-        // says the first half out loud the name is built from it instead, so
-        // the sheet does not announce "Razvrsti" twice.
+        // The same words as the trigger draws, in the same order. A combobox
+        // takes no name from its contents (the accname spec allows that for
+        // neither of this control's roles), so the name has to be written;
+        // what it must not be is a second wording. It read "Razvrsti živali:
+        // Najdlje v zavetišču" while the screen said "Razvrsti: Najdlje v
+        // zavetišču", which is a visible label the spoken name does not
+        // contain, and speech input is driven by the visible one.
         aria-label={
-          labelledBy ? undefined : `${messages.sortBy}: ${labels[shown]}`
+          labelledBy ? undefined : `${messages.sortCaption}: ${labels[shown]}`
         }
         aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
         className={cn(
@@ -173,6 +182,32 @@ export function SortPicker({
           className="size-3.5 shrink-0 text-muted-foreground pointer-coarse:size-4"
           aria-hidden
         />
+        {/* The word that makes this a control rather than a caption. Quiet in
+            the toolbar, the trigger drew a bare order between a 14px arrow and
+            a chevron, and on the home page that phrase comes to rest 12px
+            under Srečko's own caption, on his centre line and in louder ink
+            than it (home-cat.tsx). A visitor read the two as one block and
+            took the order for a fact about the cat: that he is the animal who
+            has waited longest. A phrase under a picture is a caption, so the
+            phrase stops being a bare one.
+
+            Only where nothing above the control already says it. The filter
+            sheet's header says the same word over its own sort row
+            (filter-sheet.tsx), and this would be a second copy of it 6px
+            below the first.
+
+            Measured on the built page: the trigger grows from 186 to 253px
+            and no width from 768 to 1440 gains a pixel of horizontal scroll.
+            From lg it is the whole of the toolbar's right cluster, since the
+            location picker stands down beside the filter panel; below lg the
+            species strip it shares the row with is min-w-0 and gives way by
+            scrolling, which is what it does already. shrink-0 so the order
+            beside it is what gives way inside the trigger. */}
+        {!labelledBy && (
+          <span className="shrink-0 text-muted-foreground">
+            {messages.sortCaption}:
+          </span>
+        )}
         {/* The label used to go at max-sm, so a phone got an arrow and a
             chevron in a box and nothing saying what either did. That was to
             leave the species tabs beside it room to breathe; the tabs have

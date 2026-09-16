@@ -162,6 +162,36 @@ describe("SortPicker label placement", () => {
   }
 });
 
+describe("SortPicker visible caption", () => {
+  it("says what the toolbar's trigger is, in front of the order", () => {
+    mount(NOTHING);
+
+    // Quiet in the toolbar, this trigger draws no border until it is hovered,
+    // so without the word it is a phrase between a small arrow and a chevron.
+    // On the home page that phrase comes to rest under Srečko's caption and
+    // was read as a fact about the cat rather than as the order of the grid.
+    const trigger = screen.getByRole("combobox");
+    expect(trigger.textContent).toContain(
+      `${sl.sortCaption}:${sl.sortLongestInShelter}`,
+    );
+    // And it is the order that gives way inside the trigger, not the word in
+    // front of it. jsdom lays nothing out, so this is asserted on the class.
+    expect(screen.getByText(`${sl.sortCaption}:`).className).toContain(
+      "shrink-0",
+    );
+  });
+
+  it("leaves it to the caption above the sheet's", () => {
+    mount(NOTHING, PLACEMENTS["mobile sheet header"]);
+
+    // filter-sheet.tsx draws the same word over the row. Drawn here as well it
+    // would be the second copy of it within 6px.
+    const trigger = screen.getByRole("combobox");
+    expect(trigger.textContent).not.toContain(`${sl.sortCaption}:`);
+    expect(trigger.textContent).toContain(sl.sortLongestInShelter);
+  });
+});
+
 describe("SortPicker menu heading", () => {
   it("names the list its options belong to", () => {
     mount(NOTHING);
@@ -208,12 +238,12 @@ describe("SortPicker accessible name", () => {
     it(`says both the sorting and the order in the ${placement}`, () => {
       mount(NOTHING, props);
 
-      // Two ways to the same name. The toolbar's trigger stands alone and
-      // names itself, aria-label first. The sheet's has a caption above it and
-      // borrows that, plus the value it draws, through aria-labelledby; saying
-      // "Razvrsti" a second time in an aria-label would be the only thing a
-      // screen reader heard twice. Either way a control showing an order and
-      // two glyphs announces what it orders and where it stands.
+      // Two ways to the same name, and both of them the words on screen. The
+      // toolbar's trigger draws the word and the order and carries them again
+      // in an aria-label, because a combobox takes no name from its contents.
+      // The sheet's has a caption above it and borrows that, plus the value it
+      // draws, through aria-labelledby. Either way a control showing an order
+      // and two glyphs announces what it orders and where it stands.
       expect(
         screen.getByRole("combobox", {
           name: (name: string) =>
@@ -231,8 +261,10 @@ describe("SortPicker fallback for a link with no origin", () => {
 
     const trigger = screen.getByRole("combobox");
     expect(trigger.textContent).toContain(sl.sortLongestInShelter);
+    // The written name is the drawn one, word for word: a visitor speaking
+    // the label at their machine says what the screen says.
     expect(trigger.getAttribute("aria-label")).toBe(
-      `${sl.sortBy}: ${sl.sortLongestInShelter}`,
+      `${sl.sortCaption}: ${sl.sortLongestInShelter}`,
     );
   });
 
@@ -242,7 +274,7 @@ describe("SortPicker fallback for a link with no origin", () => {
     const trigger = screen.getByRole("combobox");
     expect(trigger.textContent).toContain(sl.sortNearest);
     expect(trigger.getAttribute("aria-label")).toBe(
-      `${sl.sortBy}: ${sl.sortNearest}`,
+      `${sl.sortCaption}: ${sl.sortNearest}`,
     );
   });
 });

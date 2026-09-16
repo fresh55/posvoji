@@ -15,6 +15,19 @@ const BLOOM_TRAVEL = { duration: 0.36, ease: [0.22, 1, 0.36, 1] } as const;
 // also what covers the last few pixels of the landing.
 const BLOOM_FADE = { delay: 0.18, duration: 0.2 } as const;
 
+// When the fan is told it may draw its own front print again: as the copy
+// starts to fade, so the print's entrance and the copy's fade are one
+// crossfade at one spot. The print comes in on a spring of 150 to 200ms,
+// against the 200ms the copy takes to go.
+//
+// Not the end of the copy's animation, which is far too late to be the signal:
+// the re-aim below restarts the travel, so the animation reports itself over
+// long after there is anything left to see. Measured on the built export at
+// 1280x800, the copy was at zero opacity at +764ms and the report came at
+// +920ms, which left the front seat empty for about 190ms. The report is kept
+// as a fallback for the case where this timer never runs.
+const RELEASE_MS = BLOOM_FADE.delay * 1000;
+
 // The dialog's own zoom runs for 200ms and the fan cascades in behind it, so
 // the slot measured on the first frame is a moving target: it read about 20px
 // low. The slot is read again once both have stopped and the copy re-aims at
@@ -52,11 +65,11 @@ export function PhotoBloom({
   /** The card's photograph, read as the copy sets off and not again. */
   photo: PermittedPhoto | undefined;
   /**
-   * That the copy is no longer in the air: it has landed, or it was never
-   * going to fly, because there was no card to leave from, no photograph to
-   * carry, no slot to carry it to, or motion is turned down. The dialog holds
-   * the fan's front print back until this arrives, so it is reported in every
-   * one of those cases rather than only after a landing.
+   * That the fan may draw its own front print again. It is said once, as the
+   * copy begins to fade (RELEASE_MS), and in every case where the copy is not
+   * going to fly at all: no card to leave from, no photograph to carry, no
+   * slot to carry it to, or motion turned down. The end of the copy's
+   * animation says it too, as the fallback for a timer that never ran.
    */
   onFlightEnd?: () => void;
 }) {
@@ -101,6 +114,7 @@ export function PhotoBloom({
       return;
     }
     let settle: ReturnType<typeof setTimeout> | undefined;
+    let release: ReturnType<typeof setTimeout> | undefined;
     let frame: number | undefined;
 
     const setOff = (first: DOMRect) => {
@@ -110,6 +124,9 @@ export function PhotoBloom({
         width: first.width,
         height: first.height,
       });
+      // Timed from the copy being placed, which is the moment its own fade is
+      // timed from: see RELEASE_MS.
+      release = setTimeout(end, RELEASE_MS);
       settle = setTimeout(() => {
         const rest = slotRect();
         if (!rest) return;
@@ -137,6 +154,7 @@ export function PhotoBloom({
     return () => {
       if (frame !== undefined) cancelAnimationFrame(frame);
       if (settle) clearTimeout(settle);
+      if (release) clearTimeout(release);
     };
   }, [from, carried, shouldReduceMotion, end]);
 

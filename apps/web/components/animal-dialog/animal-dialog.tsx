@@ -222,7 +222,7 @@ const DRAG_SPRING = {
 const DRAG_CLOSE_PX = 140;
 
 // How long the fan's front print may be kept back waiting for the bloom to
-// say it has landed. The copy travels for 360ms and fades out inside that, so
+// say the print's turn has come. The copy says so 180ms after it is placed, so
 // this only ever fires when the report is not coming at all.
 const BLOOM_HOLD_MS = 800;
 
@@ -417,10 +417,11 @@ export function AnimalDialog({
     origin?.photo && firstPhoto && !shouldReduceMotion,
   );
 
-  // The fan keeps its own front print back while that copy is still in the
-  // air, so the same photograph is not on screen twice. It was: the cascade
-  // has the print fully opaque at +519ms and the copy was still flying at
-  // +744ms.
+  // The fan keeps its own front print back until that copy starts to fade, so
+  // the same photograph is not on screen twice. It was: the cascade had the
+  // print fully opaque at +519ms with the copy still flying at +744ms. The two
+  // hand over as one crossfade now, and when the bloom says so rather than on
+  // a length of time this end knows.
   //
   // True from the first render for the animal the dialog opened on, which is
   // the render that mounts the fan. Waiting for the bloom to report would draw

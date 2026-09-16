@@ -203,16 +203,39 @@ describe("the bloom and the fan's front print", () => {
     expect(held()).toBe(true);
   });
 
-  it("holds the front print until the copy has landed", async () => {
+  it("lets the print in as the copy starts to fade", () => {
+    // Only the timers, so the clock moves and motion's own frames do not: the
+    // copy is certainly still on screen at the end of this.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    render(dialogFor(REX, ORIGIN));
+    expect(copy()).not.toBeNull();
+    expect(held()).toBe(true);
+
+    // The copy's fade starts 180ms after it is placed.
+    act(() => {
+      vi.advanceTimersByTime(170);
+    });
+    expect(held()).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(20);
+    });
+    expect(held()).toBe(false);
+    // The point of letting it in there: the print's entrance and the copy's
+    // fade are one crossfade at one spot, so the copy is still being drawn as
+    // the print arrives under it. Waiting for the copy's animation to report
+    // itself over left the front seat empty for about 190ms.
+    expect(copy()).not.toBeNull();
+  });
+
+  it("leaves the print in when the copy has finished and gone", async () => {
     render(dialogFor(REX, ORIGIN));
 
-    expect(copy()).not.toBeNull();
-    expect(fan.hold[0]).toBe(true);
-
-    // The copy leaving the document is the landing itself, so the two together
-    // are the whole trip: the print is let in when, and not before, the copy
-    // has stopped being drawn.
     await waitFor(() => expect(copy()).toBeNull(), { timeout: 2000 });
+
+    // The end of the animation says the same thing the timer already said, and
+    // the latch in the bloom is what keeps it from being said twice.
     expect(held()).toBe(false);
   });
 

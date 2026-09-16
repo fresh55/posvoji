@@ -47,6 +47,7 @@ export function PhotoBloom({
 }: {
   /** Where the card's photo was standing, or nothing for a deep link. */
   from: DialogPhotoRect | undefined;
+  /** The card's photograph, read as the copy sets off and not again. */
   photo: PermittedPhoto | undefined;
   /**
    * That the copy is no longer in the air: it has landed, or it was never
@@ -58,6 +59,14 @@ export function PhotoBloom({
   onFlightEnd?: () => void;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  // The photograph the copy sets off with, kept from the render it left in.
+  // The visitor can step to the next animal while it is still in the air, and
+  // that changes this prop underneath it: the copy flew on with the next
+  // animal's picture inside it, over that animal's own front print. What is in
+  // the air belongs to the animal it left.
+  // State rather than a ref, because it is read while rendering: it is the
+  // first value of this one, kept, and never set again.
+  const [carried] = useState(photo);
   const [to, setTo] = useState<DialogPhotoRect | undefined>(undefined);
   // Where the slot really ended up, as an offset from where it first looked.
   const [aim, setAim] = useState({ x: 0, y: 0, scale: 1 });
@@ -85,7 +94,7 @@ export function PhotoBloom({
   // not there yet falls back to, which is what this used to do in every case.
   useLayoutEffect(() => {
     if (ended.current) return;
-    if (!from || !photo || shouldReduceMotion) {
+    if (!from || !carried || shouldReduceMotion) {
       end();
       return;
     }
@@ -127,9 +136,9 @@ export function PhotoBloom({
       if (frame !== undefined) cancelAnimationFrame(frame);
       if (settle) clearTimeout(settle);
     };
-  }, [from, photo, shouldReduceMotion, end]);
+  }, [from, carried, shouldReduceMotion, end]);
 
-  if (!from || !to || !photo || shouldReduceMotion || landed) return null;
+  if (!from || !to || !carried || shouldReduceMotion || landed) return null;
 
   return (
     // Its own features, because this sits beside the dialog's content rather
@@ -168,7 +177,7 @@ export function PhotoBloom({
             has is what keeps the trip a cache hit instead of a second
             download starting under a 360ms animation. */}
         <AnimalPhoto
-          photo={photo}
+          photo={carried}
           alt=""
           sizes={CARD_PHOTO_SIZES}
           // The card's crop too, for the same reason: this is the card's

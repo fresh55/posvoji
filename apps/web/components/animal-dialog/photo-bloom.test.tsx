@@ -181,6 +181,11 @@ function held() {
   return fan.hold.at(-1);
 }
 
+/** The picture inside the copy, which names the animal it belongs to. */
+function carried() {
+  return copy()?.querySelector("img")?.getAttribute("src");
+}
+
 describe("the bloom and the fan's front print", () => {
   it("places the copy before the frame after the fan's own commit", () => {
     // No frame is ever served, so anything the copy waited a frame for is not
@@ -263,5 +268,19 @@ describe("the bloom and the fan's front print", () => {
     });
 
     expect(held()).toBe(false);
+  });
+
+  it("keeps carrying the animal it set off with", async () => {
+    const view = render(dialogFor(REX, ORIGIN));
+    expect(carried()).toContain("rex-1");
+
+    await act(async () => {
+      view.rerender(dialogFor(MURI, ORIGIN));
+    });
+
+    // The copy is still finishing the trip it started, and what is inside it is
+    // the picture it left the card with rather than whatever the dialog has
+    // moved on to.
+    expect(carried()).toContain("rex-1");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import type { DialogPhotoRect } from "@/components/animal-dialog/animal-dialog";
 import { AnimalPhoto } from "@/components/animal-photo";
@@ -57,12 +57,20 @@ export function PhotoBloom({
   // The fan lands where the dialog's zoom puts it, so the slot is measured
   // rather than worked out from the layout: once to set off towards, and again
   // once everything has stopped moving.
-  useEffect(() => {
+  //
+  // A layout effect, reading the slot there and then. The fan is put in the
+  // document in the same commit as this component, so the copy can be laid out
+  // in the paint the fan first appears in rather than a frame and a render
+  // later: measured on the built export at 4x CPU, the fan was on screen at
+  // +683ms and the copy only at +764ms, with the fan's own entrance already
+  // running underneath it. The frame below is what the commit where the fan is
+  // not there yet falls back to, which is what this used to do in every case.
+  useLayoutEffect(() => {
     if (!from || shouldReduceMotion) return;
     let settle: ReturnType<typeof setTimeout> | undefined;
-    const frame = requestAnimationFrame(() => {
-      const first = slotRect();
-      if (!first) return;
+    let frame: number | undefined;
+
+    const setOff = (first: DOMRect) => {
       setTo({
         left: first.left,
         top: first.top,
@@ -78,9 +86,20 @@ export function PhotoBloom({
           scale: rest.width / first.width,
         });
       }, SETTLE_MS);
-    });
+    };
+
+    const measured = slotRect();
+    if (measured) {
+      setOff(measured);
+    } else {
+      frame = requestAnimationFrame(() => {
+        const late = slotRect();
+        if (late) setOff(late);
+      });
+    }
+
     return () => {
-      cancelAnimationFrame(frame);
+      if (frame !== undefined) cancelAnimationFrame(frame);
       if (settle) clearTimeout(settle);
     };
   }, [from, shouldReduceMotion]);

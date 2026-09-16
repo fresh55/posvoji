@@ -411,7 +411,11 @@ export function PhotoGallery({
   // The two neighbours of `index`, warmed with this gallery's own sizes. The
   // dialog's fan warms the tier about to walk in through the same helper.
   function preloadAdjacent(index: number) {
-    preloadPhotos(adjacentImages(images, index), sizes, preloadedImages.current);
+    preloadPhotos(
+      adjacentImages(images, index),
+      sizes,
+      preloadedImages.current,
+    );
   }
 
   // What the surface behind a click here mounts first, at the sizes that
@@ -767,9 +771,15 @@ export function PhotoGallery({
         // own alt text and the live line at the bottom of this component.
         <div
           role="group"
-          aria-label={translate(locale, "photoAltSingle", {
-            name: name ?? messages.unnamed,
-          })}
+          // A name for the group of them, not for one photograph:
+          // photoAltSingle is one picture's text alternative, so a gallery of
+          // ten announced itself as "Fotografija: Nala". A gallery of one
+          // keeps that string, because there it is what the group holds.
+          aria-label={translate(
+            locale,
+            images.length > 1 ? "photoFanLabel" : "photoAltSingle",
+            { name: name ?? messages.unnamed },
+          )}
           aria-keyshortcuts="ArrowLeft ArrowRight Home End"
           tabIndex={0}
           onKeyDown={stepPhoto}
@@ -892,8 +902,12 @@ export function PhotoGallery({
             // node came first in the document.
             data-slot="photo-position"
             className="sr-only"
-            aria-live={announceChanges || announceOwnChanges ? "polite" : undefined}
-            aria-atomic={announceChanges || announceOwnChanges ? "true" : undefined}
+            aria-live={
+              announceChanges || announceOwnChanges ? "polite" : undefined
+            }
+            aria-atomic={
+              announceChanges || announceOwnChanges ? "true" : undefined
+            }
           >
             {translate(locale, "photoCount", {
               current: imageIndex + 1,

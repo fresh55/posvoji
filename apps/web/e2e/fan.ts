@@ -40,6 +40,12 @@ export const FRODO = "ljubljana:15a044ff-1262-4693-96dc-aaa3619c1055";
 // step's direction and the seat it travels from are not the same number. Two
 // arrows in a row here target the photo the first one is leaving.
 export const MIRNA = "macja-hisa:4026";
+// Three photos, which is the shortest gallery the window walks round: the
+// print at the trailing edge is the same photo as the one at the leading edge,
+// so a step takes it from one side of the stage to the other. 293 of the 486
+// animals in the register are the same shape of walk (three, four or five
+// photos).
+export const SUNNY = "horjul:9363";
 
 /** The animal dialog the fan is drawn inside. */
 export function dialog(page: Page): Locator {
@@ -93,11 +99,15 @@ export function otherFan(page: Page, layout: FanLayout): Locator {
   );
 }
 
-/** The print in front. It is the only one with aria-pressed="true": `active`
+/** The print in front. It is the only one with aria-current="true": `active`
  *  is `offset === 0`, and the offsets come from the committed index, so
- *  exactly one print answers to this at any point of a walk. */
+ *  exactly one print answers to this at any point of a walk.
+ *
+ *  data-print as well, so the selector reads as "a print, and the current
+ *  one". The contact sheet marks its own current tile the same way, which is
+ *  the second reason every locator here is scoped to the stage. */
 export function frontPrint(fan: Locator): Locator {
-  return fan.locator('button[aria-pressed="true"]');
+  return fan.locator('button[data-print][aria-current="true"]');
 }
 
 /** One of the prints on stage, by the photo it holds. */
@@ -107,24 +117,31 @@ export function print(fan: Locator, n: number): Locator {
   );
 }
 
-/** Every print the fan has seated. Five at most, whatever the gallery holds. */
+/** Every print the fan has seated. Five at most, whatever the gallery holds.
+ *
+ *  data-print is what every print carries and nothing else on the stage does,
+ *  aria-current being only the one in front. The chevrons and the count are
+ *  buttons on this stage too, and neither is a print.
+ *
+ *  Not the copies on their way out: a print that wraps to the other side of
+ *  the fan is drawn twice for as long as the two take to cross over, and the
+ *  one that is leaving is not one of the fan's seats any more. */
 export function prints(fan: Locator): Locator {
-  return fan.locator("button[aria-pressed]");
+  return fan.locator("button[data-print]:not([data-leaving])");
 }
 
 /**
- * The "N / total" mark, wherever the fan has drawn it.
+ * The "N / total" mark, which the fan draws over the front print whichever of
+ * its two shapes it is in: a span, aria-hidden and read as text rather than
+ * through the accessibility tree, and from SHEET_FROM up a button of its own,
+ * because there the mark is also the way into the contact sheet.
  *
- * Two shapes, and never both at once. Under SHEET_FROM it is a span inside the
- * front print, aria-hidden, read as text rather than through the accessibility
- * tree. From SHEET_FROM up the same mark is a button of its own, drawn over the
- * front print, because there it is also the way into the contact sheet and a
- * control cannot be nested inside the print's button.
+ * One locator for both, because both are drawn in the same box now. The span
+ * used to be nested inside the front print's own button, where it rode with
+ * the photograph through a step while the longer gallery's mark stood still.
  */
 export function badge(fan: Locator): Locator {
-  return fan.locator(
-    'button[aria-pressed="true"] [data-slot="badge"], button[data-slot="badge"]',
-  );
+  return fan.locator('[data-slot="badge"]');
 }
 
 /** The count as a control: the way into the whole set, on a gallery the fan
@@ -149,7 +166,11 @@ export async function expectPhoto(
     "aria-label",
     `Odpri fotografijo ${n} čez cel zaslon`,
   );
-  await expect(badge(fan)).toHaveText(`${n} / ${total}`);
+  // What the mark starts with rather than all of it: past SHEET_FROM the mark
+  // is a control, and the rest of its name is carried in a span inside it, so
+  // "Vse fotografije" is in the text there and not on a shorter gallery.
+  // Anchored, so 1 / 13 is not read off 11 / 13.
+  await expect(badge(fan)).toHaveText(new RegExp(`^${n} / ${total}\\b`));
 }
 
 /**
@@ -179,7 +200,10 @@ export async function edgePoint(
     // elementFromPoint answers null for a point that is not on screen at all.
     // A scan that starts there walks its whole budget through nulls and
     // concludes the print is covered.
-    const y = Math.min(Math.max(box.top + box.height / 2, 1), window.innerHeight - 1);
+    const y = Math.min(
+      Math.max(box.top + box.height / 2, 1),
+      window.innerHeight - 1,
+    );
     const step = from === "left" ? 2 : -2;
     const start =
       from === "left"
@@ -197,7 +221,87 @@ export async function edgePoint(
     return null;
   }, side);
   if (!point) {
-    throw new Error(`nothing of this element is reachable from its ${side} edge`);
+    throw new Error(
+      `nothing of this element is reachable from its ${side} edge`,
+    );
   }
   return point;
+}
+
+/**
+ * What a walk looks like frame by frame: the furthest any one print moves
+ * between two of them, and how near the middle the leading side ever gets.
+ *
+ * Both numbers come out of one rAF loop, because two loops measuring the same
+ * walk each forced a layout per frame inside the animation they were reading.
+ *
+ * Prints are tracked by data-print rather than by the photo's number: a print
+ * that wraps to the other side of the fan is drawn twice while the two copies
+ * cross over, and the key is what tells one node from the other. A print
+ * arriving counts as movement, so a fan that has not started walking yet is
+ * never mistaken for one that has finished.
+ *
+ * `worstMove` carries the spring's own travel, around 22px a frame at the
+ * fastest part of a step on this machine, so anything asserted against it is
+ * loose on purpose: what it guards is a print being put down somewhere else
+ * entirely, which measured 379 to 527px. `nearestLeading` is in pixels out
+ * from the middle of the stage, where the seats are 206px (one tier) and 271px
+ * (two), so a leading side with nothing standing on it reads as nothing.
+ *
+ * Sampling starts before the walk does and stops once the fan has moved and
+ * then held still, with the second and a bit as a ceiling rather than a plan.
+ */
+export async function sampleWalk(
+  fan: Locator,
+  walk: () => Promise<void>,
+): Promise<{ worstMove: number; nearestLeading: number }> {
+  const sampling = fan.evaluate(
+    (stage, ms) =>
+      new Promise<{ worstMove: number; nearestLeading: number }>((done) => {
+        const seen = new Map<string, number>();
+        let worst = 0;
+        let nearest = Infinity;
+        let walked = false;
+        let still = 0;
+        const start = performance.now();
+        // The stage does not move, so its middle is read once rather than on
+        // every frame of the walk being measured.
+        const stageBox = stage.getBoundingClientRect();
+        const middle = stageBox.left + stageBox.width / 2;
+        const frame = () => {
+          let furthest = 0;
+          let moving = false;
+          for (const print of stage.querySelectorAll<HTMLElement>(
+            "button[data-print]",
+          )) {
+            const id = print.dataset.print ?? "";
+            const box = print.getBoundingClientRect();
+            const centre = box.left + box.width / 2;
+            furthest = Math.max(furthest, centre - middle);
+            const was = seen.get(id);
+            if (was === undefined) moving = true;
+            else if (centre !== was) {
+              moving = true;
+              worst = Math.max(worst, Math.abs(centre - was));
+            }
+            seen.set(id, centre);
+          }
+          nearest = Math.min(nearest, furthest);
+          walked = walked || moving;
+          still = moving ? 0 : still + 1;
+          if (!(walked && still > 2) && performance.now() - start < ms) {
+            requestAnimationFrame(frame);
+          } else {
+            done({
+              worstMove: Math.round(worst),
+              nearestLeading: Math.round(nearest),
+            });
+          }
+        };
+        requestAnimationFrame(frame);
+      }),
+    1200,
+  );
+  await walk();
+  return sampling;
 }

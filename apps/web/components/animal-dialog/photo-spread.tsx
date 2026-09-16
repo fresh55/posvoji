@@ -18,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { frontPrintOf } from "./fan-focus";
+import { frontPrintOf, type FanFocusKind } from "./fan-focus";
 import { enteringSlots, fanSlots, fanTempo } from "./fan-geometry";
 import { DESKTOP_FAN, PHONE_FAN, useDesktopFan } from "./fan-layout";
 import { Fan } from "./photo-fan";
@@ -45,6 +45,7 @@ export const PhotoSpread = memo(function PhotoSpread({
   onIndexChange,
   washProgress,
   onWashWindow,
+  holdFrontPrint,
 }: {
   animal: ClientAnimal;
   /** Which photo to open on. A shared link can name one; anything out of
@@ -64,6 +65,13 @@ export const PhotoSpread = memo(function PhotoSpread({
    * one's.
    */
   onWashWindow?: (layers: WashLayer[]) => void;
+  /**
+   * True while the card's photo is still travelling into the front seat
+   * (the bloom in photo-bloom.tsx). The front print keeps its own entrance
+   * back until this turns false, so the same photograph is not drawn twice.
+   * Wired by the dialog; the fan answers it.
+   */
+  holdFrontPrint?: boolean;
 }) {
   const { messages } = useI18n();
   // Already resolved and already filtered to what may be drawn.
@@ -93,7 +101,7 @@ export const PhotoSpread = memo(function PhotoSpread({
   // because the breakpoint remounts the fan and a print holding focus goes
   // with it.
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const keptFocusRef = useRef(false);
+  const keptFocusRef = useRef<FanFocusKind | null>(null);
 
   // Held across renders so the prints below can be memoised: a print handed a
   // fresh way into the lightbox on every render is a print that re-renders on
@@ -239,6 +247,7 @@ export const PhotoSpread = memo(function PhotoSpread({
         activeIndex={activeIndex}
         tempo={tempo}
         washProgress={washProgress}
+        holdFrontPrint={holdFrontPrint}
         stageRef={stageRef}
         keptFocusRef={keptFocusRef}
         onSelect={setActiveIndex}

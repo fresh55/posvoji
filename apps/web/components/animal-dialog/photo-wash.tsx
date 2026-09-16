@@ -22,6 +22,25 @@ import { cn } from "@/lib/utils";
 // stated once here and read from both.
 export const STAGE_WIDTH = "w-full sm:w-[80%]";
 
+// What holds the phone stage in when the screen is wider than the photographs
+// want to be. Two caps: the landscape phone, where a band 675px wide stood
+// behind a 384px fan, and the small tablet held upright, where at 639x800 it
+// was 792px behind a 480px one.
+//
+// Stated once and read by both boxes, the way STAGE_WIDTH above already is.
+// The fan and the light behind it are only right while they are the same
+// width, and two matching strings in two files are not a mechanism. Written
+// out in full rather than composed, because Tailwind reads class names out of
+// the source and never generates one built by interpolation.
+//
+// max-sm as well as not-short, because the wash is one component for both
+// layouts while these caps belong to the phone's alone: from sm the stage is
+// the centered band above, and a bare min-[30rem] would hold that at 30rem
+// too. The fan mounts only on the phone shell, so the same string says the
+// same thing there.
+export const PHONE_STAGE_CAP =
+  "short:max-w-sm max-sm:not-short:min-[30rem]:max-w-[30rem]";
+
 // The radius is half the box, so the gradient runs out exactly where the clip
 // does. A radius wider than the box ends the fade early and leaves the wash
 // standing as a rectangle that only softens at its corners.
@@ -156,13 +175,14 @@ export function StageWash({
           axis, the same choice the fan makes in photo-spread.tsx. Clipping one
           axis leaves the overhang above and below intact. From sm the stage is
           a centered band with room to spare and the wash is drawn in full. */}
-      {/* short:max-w-sm is the landscape phone, where the fan itself is capped
-          at the same width (PHONE_FAN.stageClass): the wash is the light
-          behind the photographs and a band 675px wide behind a 384px fan put
-          that light beside them. */}
+      {/* The caps are the ones the phone fan holds itself at, read from the
+          same constant it reads, because the wash is the light behind the
+          photographs and a band wider than they are puts that light beside
+          them. */}
       <div
         className={cn(
-          "relative mx-auto h-full overflow-x-clip sm:overflow-x-visible short:max-w-sm",
+          "relative mx-auto h-full overflow-x-clip sm:overflow-x-visible",
+          PHONE_STAGE_CAP,
           STAGE_WIDTH,
         )}
       >

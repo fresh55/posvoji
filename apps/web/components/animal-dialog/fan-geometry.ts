@@ -238,12 +238,26 @@ export function seatCentre(
   );
 }
 
+/** One print the fan is holding: which photo it shows and which seat of the
+ *  window it stands in. `walkingIn` marks a print a walk has mounted beyond
+ *  the window's own edge, which is seated where it stands now rather than
+ *  where the commit will put it. */
+export type FanSlot = { index: number; offset: number; walkingIn?: boolean };
+
+/** One photo's width, as a share of the standard print's. Stated once, because
+ *  the rounding in printFactor is what keeps where a print is drawn and where
+ *  it is seated from drifting apart, and three callers had written the
+ *  fallback out by hand. */
+export function shapeOf(
+  images: readonly PermittedPhoto[],
+  index: number,
+): number {
+  return printFactor(images[index].aspect ?? PRINT_ASPECT);
+}
+
 // The window walks around the list, so the active photo is always in the
 // middle and every photo stays reachable however many there are.
-export function fanSlots(
-  count: number,
-  active: number,
-): { index: number; offset: number }[] {
+export function fanSlots(count: number, active: number): FanSlot[] {
   // Two photos have no middle to walk around. Wrapping put the other one on
   // the right both times, which read as a mistake; keeping it on the side it
   // belongs on by number means it swaps sides as you switch, and the pair
@@ -263,22 +277,45 @@ export function fanSlots(
   return slots;
 }
 
-/** The photos outside the window that a step is about to mount: both edges one
- *  step out, and both edges two, because a hard flick walks two photos at once
- *  and reaches one tier further than a single step does. Empty while the whole
+/**
+ * What a walk of `delta` photos brings onto the stage, at the seats those
+ * prints stand in while it walks.
+ *
+ * The window minus itself: the seats the walk is travelling to, less the
+ * photos already standing in it. Everything else follows from that. A gallery
+ * the fan shows at once has nothing to bring in, because the prints that would
+ * fill the leading tier are the ones the same walk is carrying off the other
+ * side and a photo cannot stand in two seats. Six and seven photos wrap the far
+ * pair back onto prints the window is already holding, and those drop out the
+ * same way. The tiers used to be written as the numbers 3 and 4, which is the
+ * same rule with FAN_LIMIT spelled into it by hand.
+ *
+ * The offsets are in the window that is on stage now rather than the one the
+ * walk is going to, because that is the fan these prints have to walk in with:
+ * a seat in the destination window is `delta` further out from here.
+ */
+export function walkSlots(
+  count: number,
+  active: number,
+  delta: number,
+): FanSlot[] {
+  const target = (((active + delta) % count) + count) % count;
+  const onStage = new Set(fanSlots(count, active).map((slot) => slot.index));
+  return fanSlots(count, target)
+    .filter((slot) => !onStage.has(slot.index))
+    .map((slot) => ({ index: slot.index, offset: slot.offset + delta }));
+}
+
+/** The photos outside the window that a step is about to mount, which is what
+ *  a gesture is warmed against: everything either side of it that a walk can
+ *  bring in, and a hard flick walks two photos at once. Empty while the whole
  *  set is already on stage, because then there is nothing to bring in. */
 export function enteringSlots(count: number, active: number): number[] {
-  if (count <= FAN_LIMIT) return [];
-  const onStage = new Set(fanSlots(count, active).map((slot) => slot.index));
-  const edge = Math.floor((FAN_LIMIT - 1) / 2) + 1;
-  // Six or seven photos wrap the far pair back onto photos the fan is already
-  // holding, and both edges can land on the same index. Warming either twice
-  // is a second Image for a file already requested.
   return [
     ...new Set(
-      [edge, -edge, edge + 1, -(edge + 1)]
-        .map((offset) => (((active + offset) % count) + count) % count)
-        .filter((index) => !onStage.has(index)),
+      [2, -2].flatMap((delta) =>
+        walkSlots(count, active, delta).map((slot) => slot.index),
+      ),
     ),
   ];
 }
@@ -289,12 +326,12 @@ export function enteringSlots(count: number, active: number): number[] {
  *  and the front are, and the fan is the only thing that knows which photo is
  *  in which seat. */
 export function fanShapes(
-  slots: readonly { index: number; offset: number }[],
+  slots: readonly FanSlot[],
   images: readonly PermittedPhoto[],
 ): FanFactors {
   const held: FanFactors = {};
   for (const { index, offset } of slots) {
-    held[offset] = printFactor(images[index].aspect ?? PRINT_ASPECT);
+    held[offset] = shapeOf(images, index);
   }
   return held;
 }

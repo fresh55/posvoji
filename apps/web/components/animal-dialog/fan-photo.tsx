@@ -1,6 +1,5 @@
 import { frontness } from "@/components/animal-dialog/photo-wash";
 import { AnimalPhoto } from "@/components/animal-photo";
-import { Badge } from "@/components/ui/badge";
 import {
   FAN_PHOTO_SIZES,
   FAN_SIDE_PHOTO_SIZES,
@@ -15,9 +14,10 @@ import {
   useTransform,
   type MotionStyle,
   type MotionValue,
+  type Transition,
 } from "motion/react";
 import { memo, useEffect, useRef, type RefObject } from "react";
-import { isFocusVisible } from "./fan-focus";
+import { isFocusVisible, type FanFocusKind } from "./fan-focus";
 import {
   FanDepths,
   FanFactors,
@@ -28,12 +28,10 @@ import {
   seatCentre,
 } from "./fan-geometry";
 import {
-  PHOTO_BADGE_CLASS,
   PHOTO_FRAME_CLASS,
   PHOTO_SEAT_CLASS,
   PHOTO_WELL_CLASS,
 } from "./fan-photo-styles";
-import { SHEET_FROM } from "./lightbox-gesture-options";
 
 // What a hover does to a photo from the stack: bigger, lifted, and most of the
 // way back to straight, so it reads as the thing a click would pick.
@@ -94,6 +92,7 @@ const PRINT_MARGIN_PX = 6;
 export const FanPhoto = memo(function FanPhoto({
   photo,
   index,
+  printId,
   offset,
   count,
   progress,
@@ -102,6 +101,8 @@ export const FanPhoto = memo(function FanPhoto({
   box,
   nudge,
   entrance,
+  fade,
+  hold,
   tempo,
   label,
   active,
@@ -111,6 +112,9 @@ export const FanPhoto = memo(function FanPhoto({
 }: {
   photo: PermittedPhoto;
   index: number;
+  /** The key this print is drawn under, written into the DOM so the fan can
+   *  tell a print from the copy a wrap has left behind. */
+  printId: string;
   /** How far this print stands from the front, in photos. A value rather than
    *  a number: a commit re-seats every print, and only the two trading the
    *  front have anything else to re-render for. */
@@ -128,17 +132,28 @@ export const FanPhoto = memo(function FanPhoto({
   factors: RefObject<FanFactors>;
   box: string;
   nudge: number;
-  /** Whether this mount should cascade in, and with how much delay. */
-  entrance: number | false;
+  /** How this print's mount is drawn: a delay into the fan's opening cascade,
+   *  a plain fade for a print that steps into the window mid-walk, or nothing
+   *  at all, which is a print that was already standing here. */
+  entrance: number | "fade" | false;
+  /** The tween a print arrives and leaves on when it is not part of the
+   *  opening cascade. Zero where motion was asked for none. */
+  fade: Transition;
+  /** Whether this print's mount is still being held back, because the same
+   *  photograph is on screen somewhere else: the copy the dialog flies from
+   *  the card it was opened from. The print waits at nothing rather than
+   *  cascading in, and fades in on the entrance it is owed when this turns
+   *  false. Only ever true of the print at the front, and only at its mount. */
+  hold?: boolean;
   tempo: FanTempo;
   label: string;
   active: boolean;
   /** Whether a pointer on this photo should lift and straighten it. */
   hoverable: boolean;
-  /** Walks this print to the front. It is told which print and where that
-   *  print is standing, so the fan can build one callback for all five rather
-   *  than a closure per seat. */
-  onSelect: (index: number, offset: number) => void;
+  /** Walks this print to the front. It is told which print, where that print
+   *  is standing and whose press it was, so the fan can build one callback for
+   *  all five rather than a closure per seat. */
+  onSelect: (index: number, offset: number, by: FanFocusKind) => void;
   /** Opens the print in front, from the box it is standing in. */
   onOpenLightbox: (from: DOMRect) => void;
 }) {
@@ -252,7 +267,15 @@ export const FanPhoto = memo(function FanPhoto({
       // `active`: the one in front opens, the rest walk here.
       onClick={(event) => {
         if (!active) {
-          onSelect(index, offset.get());
+          // Enter on a print and a click on it arrive here as the same event,
+          // and whether the browser is drawing this print's focus is what
+          // tells them apart: a press that moved focus to this print is one
+          // the browser has just made its mind up about.
+          onSelect(
+            index,
+            offset.get(),
+            isFocusVisible(event.currentTarget) ? "keyboard" : "pointer",
+          );
           return;
         }
         // Where it is standing right now, so the lightbox can grow out of it
@@ -271,8 +294,26 @@ export const FanPhoto = memo(function FanPhoto({
         if (isFocusVisible(event.currentTarget)) setHover(true);
       }}
       onBlur={() => setHover(false)}
-      aria-pressed={active}
+      // Which photograph of the set the fan is holding. It used to be
+      // aria-pressed, which made every print a toggle: a reader walking the
+      // stage announced five buttons as pressed or not pressed, a row of
+      // switches rather than a gallery with one picture on top, and pressing
+      // one of them does not turn anything on. aria-current is the same answer
+      // the lightbox's contact sheet already gives about its own tiles, so the
+      // two views of one set say the same thing.
+      //
+      // Only the print in front carries it. The rest carry nothing, because
+      // aria-current has no false to state: the absent attribute is the
+      // answer.
+      aria-current={active ? "true" : undefined}
       aria-label={label}
+      // Which print this node is, as the fan is drawing it. A print that wraps
+      // to the other side of the stage is drawn again under a new key while
+      // the copy it leaves behind fades out, and for that moment two nodes are
+      // showing the same photograph: this is what tells them apart, for the
+      // fan itself (see the commit effect in use-fan-controls.ts) and for the
+      // tests. Static, so it costs this print nothing.
+      data-print={printId}
       // The margin is stated on the seat rather than on the paper, because the
       // well it insets is under here and because it is read off the same walk
       // the seat's own transforms are. motion writes a MotionValue custom
@@ -301,11 +342,18 @@ export const FanPhoto = memo(function FanPhoto({
         count > 1 && "group-data-dragging:cursor-grabbing",
       )}
       initial={entrance === false ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
+      animate={{ opacity: hold ? 0 : 1 }}
+      // A print leaves the window in two ways. One walks off the trailing edge,
+      // where the seats are clamped and there is nothing left of it to see, and
+      // one is the copy of a print that has wrapped round to the other side of
+      // the fan, which is still standing at the tier it was walked to. Both
+      // fade, because the second one has to and the first one costs nothing.
+      exit={{ opacity: 0, transition: fade }}
+      // A print that was already standing here is mounted with no initial
+      // and an animate that never changes, so it transitions nothing and the
+      // value here is never read for it.
       transition={
-        entrance === false
-          ? { duration: 0 }
-          : { ...tempo.spring, delay: entrance }
+        entrance === "fade" ? fade : { ...tempo.spring, delay: entrance || 0 }
       }
     >
       {/* The hover layer carries transforms and nothing else. It cannot clip,
@@ -379,20 +427,6 @@ export const FanPhoto = memo(function FanPhoto({
           </div>
         </div>
       </m.div>
-      {/* The count sits on the photo being looked at, and it is what tells
-          you how many there are in total. Outside the hover layer, so it is
-          not scaled with the picture.
-
-          A mark and nothing else, so it is hidden from assistive technology:
-          the live line at the bottom of the stage already says which photo of
-          how many is on show. Past SHEET_FROM the count is also the way into
-          the whole set, and a control cannot be nested inside this button; the
-          fan draws it over this print instead. */}
-      {active && count > 1 && count < SHEET_FROM && (
-        <Badge aria-hidden variant="secondary" className={PHOTO_BADGE_CLASS}>
-          {index + 1} / {count}
-        </Badge>
-      )}
     </m.button>
   );
 });

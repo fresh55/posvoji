@@ -14,6 +14,8 @@ import {
   openFan,
   print,
   prints,
+  sampleWalk,
+  SUNNY,
 } from "./fan";
 
 // The photo fan in the animal dialog, on the layout that has a pointer.
@@ -33,6 +35,7 @@ import {
 
 const FRODO_PHOTOS = 10;
 const MIRNA_PHOTOS = 2;
+const SUNNY_PHOTOS = 3;
 
 /** The middle of the stage, which is over the print in front. A gesture that
  *  starts here is the one a visitor makes: the pointer events bubble to the
@@ -62,9 +65,7 @@ async function expectCentred(fan: Locator): Promise<void> {
   const stage = await fan.boundingBox();
   const front = await frontPrint(fan).boundingBox();
   if (!stage || !front) throw new Error("the fan has no box to measure");
-  const off = Math.abs(
-    front.x + front.width / 2 - (stage.x + stage.width / 2),
-  );
+  const off = Math.abs(front.x + front.width / 2 - (stage.x + stage.width / 2));
   expect(off).toBeLessThan(3);
 }
 
@@ -101,7 +102,9 @@ async function dragBy(
   await page.mouse.up();
 }
 
-test("opens on the first photo, with five prints on stage", async ({ page }) => {
+test("opens on the first photo, with five prints on stage", async ({
+  page,
+}) => {
   const fan = await openFan(page, KLOPKA);
 
   await expectPhoto(fan, 1, KLOPKA_PHOTOS);
@@ -172,16 +175,30 @@ test("turns one photo on a mouse drag, and marks the stage while it runs", async
   await expectPhoto(fan, 2, KLOPKA_PHOTOS);
 });
 
-test("turns two photos on a hard flick", async ({ page }) => {
+test("turns two photos on a hard flick, with the leading tier standing", async ({
+  page,
+}) => {
   const fan = await openFan(page, KLOPKA);
 
   // 220px in four moves with nothing between them: over FLICK_TWO_PX_MS, which
   // is well past the 0.5 px/ms that commits a single step, so it is a gesture
   // somebody meant. Only offered past FAN_LIMIT, because on a short gallery two
   // steps walk past the whole thing and back.
-  await dragBy(page, fan, -220, { steps: 4, pauseMs: 0 });
+  //
+  // Two steps travel a tier further than the window holds, so from about
+  // halfway through the walk there was nothing at all beyond the print coming
+  // to the front, and two prints appeared together when it landed. The fan
+  // mounts them for the length of the walk now and they walk in with it.
+  const { nearestLeading } = await sampleWalk(fan, () =>
+    dragBy(page, fan, -220, { steps: 4, pauseMs: 0 }),
+  );
 
   await expectPhoto(fan, 3, KLOPKA_PHOTOS);
+  expect(nearestLeading).toBeGreaterThan(120);
+  // And the fan is back to five prints: the two it brought in are the two the
+  // new window seats on that side, so the commit keeps them rather than
+  // mounting more.
+  await expect(prints(fan)).toHaveCount(5);
 });
 
 test("turns one photo on a horizontal wheel swipe and swallows its tail", async ({
@@ -320,8 +337,9 @@ test("lifts a stacked print under the pointer", async ({ page }) => {
    *  and a rotated matrix's first entry is not its scale. */
   async function lift(): Promise<number> {
     return stacked.evaluate((button) => {
-      const layer = button.querySelector('[data-slot="photo-print"]')
-        ?.parentElement;
+      const layer = button.querySelector(
+        '[data-slot="photo-print"]',
+      )?.parentElement;
       if (!layer) throw new Error("the print has no hover layer");
       const { transform } = getComputedStyle(layer);
       if (transform === "none") return 1;
@@ -395,6 +413,68 @@ test("hands the keyboard back to the fan when the print it came from is gone", a
   expect(await focusedName(page)).toBe("Odpri fotografijo 9 čez cel zaslon");
 });
 
+test("walks a three-photo fan round without throwing a print across it", async ({
+  page,
+}) => {
+  const fan = await openFan(page, SUNNY);
+  await expectPhoto(fan, 1, SUNNY_PHOTOS);
+  await frontPrint(fan).focus();
+
+  // On a gallery this short the window is the whole set, so the print at the
+  // trailing edge and the one at the leading edge are the same photo: the
+  // commit used to jump it across the stage in a single frame. It is drawn as
+  // two prints now, one fading out where it stood and one fading in where it
+  // is arriving.
+  const { worstMove } = await sampleWalk(fan, () =>
+    page.keyboard.press("ArrowRight"),
+  );
+
+  await expectPhoto(fan, 2, SUNNY_PHOTOS);
+  expect(worstMove).toBeLessThan(120);
+  // And the fade is over: the copy that left is gone, and the fan is holding
+  // one print per photo again.
+  await expect(prints(fan)).toHaveCount(SUNNY_PHOTOS);
+  await expect(fan.locator("button[data-leaving]")).toHaveCount(0);
+  await expectCentred(fan);
+});
+
+test("keeps the count still on a short gallery and lets a press through it", async ({
+  page,
+}) => {
+  const fan = await openFan(page, MIRNA);
+  await expectPhoto(fan, 1, MIRNA_PHOTOS);
+
+  // The mark is drawn in the front print's box rather than inside the print,
+  // so a step slides the photograph under it and leaves it where it is. It
+  // used to ride with the print it was on, which is the one thing the same
+  // mark on a longer gallery never did.
+  const mark = badge(fan);
+  const before = await mark.boundingBox();
+  await fan.hover();
+  await fan.getByRole("button", { name: "Naslednja fotografija" }).click();
+  await expectPhoto(fan, 2, MIRNA_PHOTOS);
+  const after = await mark.boundingBox();
+  if (!before || !after) throw new Error("the count has no box to measure");
+  // A couple of pixels, which is the box taking the next photograph's own
+  // shape: Mirna's two are 1.609 and 1.608. Riding with the print, which is
+  // what it used to do, was 139 to 277px.
+  expect(Math.abs(after.x - before.x)).toBeLessThan(6);
+  expect(Math.abs(after.y - before.y)).toBeLessThan(6);
+
+  // And it is a mark and not a control here, so what a press on that corner
+  // of the photograph lands on is the photograph. Hit-tested, because the box
+  // it is drawn in lies over the print and only pointer-events says otherwise.
+  const reach = await page.evaluate(
+    ([x, y]) =>
+      document
+        .elementFromPoint(x, y)
+        ?.closest("button")
+        ?.getAttribute("aria-label") ?? null,
+    [after.x + after.width / 2, after.y + after.height / 2],
+  );
+  expect(reach).toBe("Odpri fotografijo 2 čez cel zaslon");
+});
+
 test("opens the contact sheet from the count, which is a control of its own", async ({
   page,
 }) => {
@@ -405,27 +485,35 @@ test("opens the contact sheet from the count, which is a control of its own", as
   // handler: a control nested in a control, hidden from assistive technology
   // and out of the tab order, so the sheet had no keyboard way in from here.
   const count = countControl(fan);
+  // The name leads with the words on the photograph. It used to be an
+  // aria-label reading "Vse fotografije (13)", which replaced them: the count
+  // is the only thing drawn here, and a visitor speaking to their machine
+  // could read it and then ask for nothing by that name. What the control
+  // opens is said in a span inside it now, so the name cannot drift from the
+  // mark it follows.
   await expect(count).toHaveAccessibleName(
-    `Vse fotografije (${KLOPKA_PHOTOS})`,
+    `1 / ${KLOPKA_PHOTOS} Vse fotografije`,
   );
-  await expect(count).toHaveText(`1 / ${KLOPKA_PHOTOS}`);
-  await expect(badge(fan)).toHaveText(`1 / ${KLOPKA_PHOTOS}`);
+  await expect(count).toHaveText(new RegExp(`^1 / ${KLOPKA_PHOTOS}\\b`));
+  await expect(badge(fan)).toHaveText(new RegExp(`^1 / ${KLOPKA_PHOTOS}\\b`));
 
   // The mark stays 20px and its hit area is drawn past it, which a class alone
   // cannot prove: the badge clips its own children, and the pseudo-element was
   // cut off by that until the clip was lifted. Hit-tested, the way the touch
-  // targets in this suite are.
+  // targets in this suite are. What the hit answers with is the slot, because
+  // there is no aria-label on the count to name it by any more.
   const box = await count.boundingBox();
   if (!box) throw new Error("the count has no box to measure");
+  // And the second half of the name is said rather than drawn: the chip is
+  // 45px across, which is the mark, and the words would take it past a
+  // hundred.
+  expect(box.width).toBeLessThan(60);
   const reach = await page.evaluate(
     ([x, y]) =>
-      document
-        .elementFromPoint(x, y)
-        ?.closest("button")
-        ?.getAttribute("aria-label") ?? null,
+      document.elementFromPoint(x, y)?.closest("button")?.dataset.slot ?? null,
     [box.x - 5, box.y + box.height / 2],
   );
-  expect(reach).toBe(`Vse fotografije (${KLOPKA_PHOTOS})`);
+  expect(reach).toBe("badge");
 
   await count.click();
 

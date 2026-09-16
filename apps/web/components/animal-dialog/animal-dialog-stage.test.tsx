@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
+import { REFERENCE, animal, stubMatchMedia } from "@/test/animal-dialog";
 import { DESKTOP_FAN_QUERY } from "./fan-layout";
 
 // What a photo step costs the rest of the dialog.
@@ -48,21 +49,9 @@ vi.mock("@/components/animal-dialog/shelter-block", async (importOriginal) => {
   };
 });
 
-// The fan reads the viewport to pick which geometry to mount, MotionConfig
-// reads it again to resolve reducedMotion="user", and jsdom ships no
-// matchMedia at all. jsdom reports 1024px wide, so the wide answer is the
-// honest one and the fan mounts its desktop geometry.
-const DESKTOP_FAN = DESKTOP_FAN_QUERY;
-
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: media === DESKTOP_FAN,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+// jsdom reports 1024px wide, so the wide answer is the honest one and the fan
+// mounts its desktop geometry, which is the one these tests read.
+stubMatchMedia((media) => media === DESKTOP_FAN_QUERY);
 
 beforeEach(() => {
   probe.card = 0;
@@ -72,36 +61,6 @@ afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
 });
-
-const REFERENCE = "2026-08-18T00:00:00.000Z";
-
-function animal(id: string, name: string, count: number): Animal {
-  return {
-    id,
-    source: {
-      providerId: "test-shelter",
-      sourceAnimalId: id,
-      sourceUrl: `https://example.test/animals/${id}`,
-      fetchedAt: "2026-01-01T00:00:00.000Z",
-      firstSeenAt: "2026-01-01T00:00:00.000Z",
-      lastSeenAt: "2026-01-01T00:00:00.000Z",
-    },
-    shelter: { id: "test-shelter", name: "Zavetišče Test", city: "Ljubljana" },
-    name,
-    species: "dog",
-    status: "available",
-    images: Array.from({ length: count }, (_, index) => ({
-      sourceUrl: `https://example.test/${id}-${index + 1}.jpg`,
-      cachedUrl: `/media/animals/${id}-${index + 1}.webp`,
-      width: 640,
-      height: 480,
-      widths: [320, 480, 640],
-      blurDataURL: "data:image/webp;base64,UklGRg==",
-      rights: "cache-permitted" as const,
-    })),
-    attribution: "Foto: Zavetišče Test",
-  };
-}
 
 const REX = animal("rex", "Rex", 3);
 const MURI = animal("muri", "Muri", 3);
@@ -137,9 +96,11 @@ function stage(dialog: HTMLElement) {
   return found;
 }
 
-/** The print in front, which is the only one with aria-pressed="true". */
+/** The print in front, which is the only one with aria-current="true". */
 function frontLabel(dialog: HTMLElement) {
-  const front = stage(dialog).querySelector('button[aria-pressed="true"]');
+  const front = stage(dialog).querySelector(
+    'button[data-print][aria-current="true"]',
+  );
   return front?.getAttribute("aria-label");
 }
 

@@ -137,7 +137,6 @@ const CACHED_FOUR: Animal["images"] = Array.from({ length: 4 }, (_, i) => ({
   rights: "cache-permitted" as const,
 }));
 
-
 describe("photo gallery candidates", () => {
   it("offers the card's photo as a ladder, with the card's own sizes", () => {
     setup({ images: CACHED });
@@ -203,7 +202,9 @@ describe("photo gallery candidates", () => {
     // The same ladder and the same sizes the rendered photo carries, so the
     // browser runs its own selection and the visitor's later request is a
     // cache hit rather than a second, different file.
-    expect(preloads[0].srcset).toContain("/media/animals/photo-0-320.webp 320w");
+    expect(preloads[0].srcset).toContain(
+      "/media/animals/photo-0-320.webp 320w",
+    );
     expect(preloads[0].srcset).toContain("/media/animals/photo-0.webp 800w");
     expect(preloads[0].sizes).toBe(CARD_PHOTO_SIZES);
     expect(preloads[0].src).toBe("/media/animals/photo-0.webp");
@@ -261,7 +262,9 @@ describe("photo gallery dwell", () => {
     // The card's own neighbours, unchanged: this gallery's sizes, the photos
     // either side of the one on show.
     expect(
-      preloads.filter((image) => image.sizes === CARD_PHOTO_SIZES).map((i) => i.src),
+      preloads
+        .filter((image) => image.sizes === CARD_PHOTO_SIZES)
+        .map((i) => i.src),
     ).toEqual(["/media/animals/photo-3.webp", "/media/animals/photo-1.webp"]);
 
     // And the three prints the fan mounts nearest the front, each at the size
@@ -539,8 +542,12 @@ describe("photo gallery without a link", () => {
   it("names the group and lets the picture say which photo is showing", () => {
     setupPlain();
 
+    // The group holds three photographs, so it is named for the set of them.
+    // What names one is the picture's own alternative, and the two used to be
+    // the same string: a gallery calling itself "Fotografija: Rex" announced
+    // that it was a photograph rather than a group of them.
     expect(
-      screen.getByRole("group", { name: "Fotografija: Rex" }),
+      screen.getByRole("group", { name: "Fotografije: Rex" }),
     ).toBeTruthy();
     expect(screen.getByAltText("Fotografija: Rex, 1 od 3")).toBeTruthy();
   });
@@ -557,7 +564,9 @@ describe("photo gallery without a link", () => {
       expect(button.getAttribute("aria-hidden")).toBeNull();
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "Naslednja fotografija" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Naslednja fotografija" }),
+    );
     expect(counter()).toBe("2 / 3");
   });
 
@@ -590,7 +599,9 @@ describe("photo gallery controls", () => {
       // without this these were two invisible, permanently tappable discs
       // sitting on about a tenth of the photo.
       expect(button.className).toContain("pointer-events-none");
-      expect(button.className).toContain("group-hover/photo:pointer-events-auto");
+      expect(button.className).toContain(
+        "group-hover/photo:pointer-events-auto",
+      );
       // Out of the tab order; the arrows on the card's link are the keyboard's
       // way through the gallery.
       expect(button.getAttribute("tabindex")).toBe("-1");

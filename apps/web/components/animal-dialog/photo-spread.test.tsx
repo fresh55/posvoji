@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { motionValue, type MotionValue } from "motion/react";
+import {
+  LazyMotion,
+  domAnimation,
+  motionValue,
+  type MotionValue,
+} from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
@@ -96,19 +101,28 @@ function renderFan(
     layout?: "phone" | "desktop";
     initialIndex?: number;
     washProgress?: MotionValue<number>;
+    holdFrontPrint?: boolean;
   } = {},
 ) {
   fanLayout(options.layout ?? "desktop");
   const [client] = animalsForClient([animal]);
-  const view = render(
+  // The fan stands inside the dialog's LazyMotion on the site, and an m
+  // element with no features above it renders its styles and animates
+  // nothing: the entrance below would be a print stuck at the opacity it
+  // mounted with.
+  const tree = (hold: boolean | undefined) => (
     <I18nProvider locale="sl">
-      <PhotoSpread
-        animal={client}
-        initialIndex={options.initialIndex}
-        washProgress={options.washProgress}
-      />
-    </I18nProvider>,
+      <LazyMotion features={domAnimation}>
+        <PhotoSpread
+          animal={client}
+          initialIndex={options.initialIndex}
+          washProgress={options.washProgress}
+          holdFrontPrint={hold}
+        />
+      </LazyMotion>
+    </I18nProvider>
   );
+  const view = render(tree(options.holdFrontPrint));
   // Read fresh every time: the breakpoint remounts the fan, and the stage the
   // test was holding goes with the layout it belonged to.
   function stage() {
@@ -122,14 +136,23 @@ function renderFan(
     });
     return found;
   }
-  return { view, stage };
+  /** What the dialog does when the copy of the card's photograph lands. */
+  async function releaseHold() {
+    await act(async () => {
+      view.rerender(tree(false));
+    });
+  }
+  return { view, stage, releaseHold };
 }
 
 /** The prints on stage, in the order the document holds them, by the photo
- *  each one is showing. */
+ *  each one is showing. Copies on their way out are left out: a print that
+ *  wraps to the other side of the fan is drawn twice while the two cross over,
+ *  and the one that is leaving takes no tab. */
 function printOrder(stage: HTMLElement) {
   return within(stage)
     .getAllByRole("button", { name: /fotografijo \d/ })
+    .filter((button) => button.dataset.leaving !== "true")
     .map((button) => {
       const found = /fotografijo (\d+)/.exec(button.getAttribute("aria-label") ?? "");
       return Number(found?.[1]);
@@ -143,7 +166,7 @@ function print(stage: HTMLElement, n: number) {
 }
 
 function frontPrint(stage: HTMLElement) {
-  const found = stage.querySelector('button[aria-pressed="true"]');
+  const found = stage.querySelector('button[data-print][aria-current="true"]');
   if (!(found instanceof HTMLElement)) throw new Error("no front print");
   return found;
 }
@@ -151,7 +174,7 @@ function frontPrint(stage: HTMLElement) {
 /** Waits for the walk to land and the window to be re-seated on `n`. */
 async function expectFront(stage: () => HTMLElement, n: number) {
   await waitFor(() =>
-    expect(print(stage(), n).getAttribute("aria-pressed")).toBe("true"),
+    expect(print(stage(), n).getAttribute("aria-current")).toBe("true"),
   );
 }
 
@@ -300,7 +323,7 @@ describe("fan gestures", () => {
     });
 
     expect(slot(document.body, "photo-fan")).toBeTruthy();
-    expect(print(stage(), 1).getAttribute("aria-pressed")).toBe("true");
+    expect(print(stage(), 1).getAttribute("aria-current")).toBe("true");
   });
 });
 
@@ -344,6 +367,103 @@ describe("fan tab order", () => {
   });
 });
 
+describe("fan entrance", () => {
+  // The dialog flies a copy of the card's photograph into the front seat when
+  // it opens, and the front print used to cascade in under it: the same
+  // photograph on screen twice, with the copy still travelling 200ms after the
+  // print had gone fully opaque. The print waits at nothing instead, and takes
+  // the entrance it is owed when the copy lands.
+  it("holds the front print back until the card's photo has landed", async () => {
+    const { stage, releaseHold } = renderFan(gallery(3), {
+      holdFrontPrint: true,
+    });
+
+    expect(frontPrint(stage()).style.opacity).toBe("0");
+    // The rest of the fan cascades in as it always does. It is the one seat
+    // the copy is flying to that has to keep out of its way.
+    await waitFor(() => expect(print(stage(), 2).style.opacity).toBe("1"));
+    expect(frontPrint(stage()).style.opacity).toBe("0");
+
+    await releaseHold();
+
+    await waitFor(() => expect(frontPrint(stage()).style.opacity).toBe("1"));
+  });
+
+  // Reduced motion is not tested here: motion reads the query once per module
+  // and answers every hook from that, so the first fan rendered in this file
+  // settles it for all of them. Both ends of the seam gate on it, the dialog
+  // where the copy is set flying and the fan where the print is held.
+
+  // The seam is optional, and a dialog that never sets it opens the fan
+  // exactly as it did before there was one.
+  it("cascades the whole fan in when nothing is held", async () => {
+    const { stage } = renderFan(gallery(3));
+
+    await waitFor(() => expect(frontPrint(stage()).style.opacity).toBe("1"));
+  });
+});
+
+describe("fan focus", () => {
+  // A walk taken with a pointer must not hand the keyboard anywhere: a script
+  // focus on the new front print is drawn as a keyboard focus by the browser,
+  // and every drag and every swipe ended with a ring on the photograph. Whose
+  // walk it is comes from the walk itself rather than from the print's own
+  // :focus-visible, because the dialog opens on the front print and a press on
+  // an already focused print never makes the browser think again.
+  it("hands the stage the keyboard when a pointer walk unmounts the print holding it", async () => {
+    // Seven photos at the first: the window holds 6 and 7 on the left, and a
+    // walk of two takes 6 off the stage.
+    const { stage } = renderFan(gallery(7));
+    const leaving = print(stage(), 6);
+    leaving.focus();
+
+    fireEvent.click(print(stage(), 3));
+    await expectFront(stage, 3);
+
+    // Not the new front print, which would have drawn a ring on it. The stage
+    // answers the arrows itself, so the fan still walks from here.
+    expect(document.activeElement).not.toBe(frontPrint(stage()));
+    expect(document.activeElement).toBe(stage());
+
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 4);
+  });
+
+  // The same walk taken with a key does hand it over: the name of the print
+  // that comes forward is all a key press has to say for itself.
+  it("hands the new front print the keyboard on a key walk", async () => {
+    const { stage } = renderFan(gallery(7));
+    print(stage(), 1).focus();
+
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+
+    expect(document.activeElement).toBe(frontPrint(stage()));
+  });
+
+  // And because it does, the live line has nothing to add: a screen reader
+  // would hear the new print's name as it takes focus and then the same step
+  // again in words.
+  it("leaves the live line alone on a key walk and says every other one", async () => {
+    const { stage } = renderFan(gallery(7));
+    const live = () => stage().querySelector("[aria-live]")?.textContent;
+    expect(live()).toBe("Fotografija 1 od 7");
+
+    print(stage(), 1).focus();
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+    expect(live()).toBe("Fotografija 1 od 7");
+
+    // The chevron moves no focus to the photographs, so the line is the only
+    // thing that says which photo is on show.
+    fireEvent.click(
+      within(stage()).getByRole("button", { name: "Naslednja fotografija" }),
+    );
+    await expectFront(stage, 3);
+    expect(live()).toBe("Fotografija 3 od 7");
+  });
+});
+
 describe("fan count control", () => {
   // The mark is 20px of badge and the hit area is drawn past its edges, so
   // what a pointer can reach is not what the fan draws. jsdom lays nothing
@@ -352,7 +472,7 @@ describe("fan count control", () => {
   it("reaches past the mark, further where the pointer is coarse", () => {
     const { stage } = renderFan(gallery(7));
     const count = within(stage()).getByRole("button", {
-      name: "Vse fotografije (7)",
+      name: "1 / 7 Vse fotografije",
     });
 
     // 8px a side over a 20px mark is 36px, which is a mouse; 14px is the 48px
@@ -371,17 +491,28 @@ describe("fan count control", () => {
     expect(count.className).toContain("bottom-1.5");
     expect(count.className).toContain("px-1.5");
     expect(count.className).toContain("text-2xs");
-    expect(count.textContent).toBe("1 / 7");
+    expect(count.textContent).toBe("1 / 7 Vse fotografije");
   });
 
+  // The name used to be an aria-label reading "Vse fotografije (7)", which
+  // replaced the only words on the control: a visitor speaking to their
+  // machine reads "1 / 7" off the photograph and had nothing by that name to
+  // ask for. The drawn words lead the name now and the rest follows them.
   it("says what the count opens in its name and not in a hover title", () => {
     const { stage } = renderFan(gallery(7));
     const count = within(stage()).getByRole("button", {
-      name: "Vse fotografije (7)",
+      name: "1 / 7 Vse fotografije",
     });
 
+    // Said and not drawn: the words are in the name because they are in the
+    // control, in a span nobody sees, rather than in a label of its own that
+    // could drift from the mark beside it.
+    expect(count.getAttribute("aria-label")).toBeNull();
+    expect(count.querySelector(".sr-only")?.textContent).toBe(
+      "Vse fotografije",
+    );
     // The fan is a phone's gallery, and a title is a mouse and nothing else.
-    // The name already said the same words, so the name is where it stays.
+    // The name already says the same words, so the name is where it stays.
     expect(count.getAttribute("title")).toBeNull();
   });
 });

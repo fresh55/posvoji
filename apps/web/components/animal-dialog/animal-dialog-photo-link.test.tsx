@@ -119,9 +119,9 @@ describe("a link that names a photo", () => {
     const dialog = await openAt("/?zival=pika&foto=3");
 
     await waitFor(() =>
-      expect(photoButton(dialog, 3).getAttribute("aria-pressed")).toBe("true"),
+      expect(photoButton(dialog, 3).getAttribute("aria-current")).toBe("true"),
     );
-    expect(photoButton(dialog, 1).getAttribute("aria-pressed")).toBe("false");
+    expect(photoButton(dialog, 1).getAttribute("aria-current")).toBeNull();
     // The parameter is the animal's own, so it survives the rewrite to the
     // page's address rather than being dropped with ?zival=.
     await waitFor(() =>
@@ -135,7 +135,7 @@ describe("a link that names a photo", () => {
 
     // Seven photos, and nobody's ninety-ninth. A link that has outlived a
     // photo still opens the animal it was written for.
-    expect(photoButton(dialog, 1).getAttribute("aria-pressed")).toBe("true");
+    expect(photoButton(dialog, 1).getAttribute("aria-current")).toBe("true");
   });
 
   it("hands out the photo the visitor stepped to", async () => {
@@ -147,7 +147,7 @@ describe("a link that names a photo", () => {
       }),
     );
     await waitFor(() =>
-      expect(photoButton(dialog, 2).getAttribute("aria-pressed")).toBe("true"),
+      expect(photoButton(dialog, 2).getAttribute("aria-current")).toBe("true"),
     );
 
     await act(async () => {

@@ -200,7 +200,10 @@ export async function edgePoint(
     // elementFromPoint answers null for a point that is not on screen at all.
     // A scan that starts there walks its whole budget through nulls and
     // concludes the print is covered.
-    const y = Math.min(Math.max(box.top + box.height / 2, 1), window.innerHeight - 1);
+    const y = Math.min(
+      Math.max(box.top + box.height / 2, 1),
+      window.innerHeight - 1,
+    );
     const step = from === "left" ? 2 : -2;
     const start =
       from === "left"
@@ -218,7 +221,87 @@ export async function edgePoint(
     return null;
   }, side);
   if (!point) {
-    throw new Error(`nothing of this element is reachable from its ${side} edge`);
+    throw new Error(
+      `nothing of this element is reachable from its ${side} edge`,
+    );
   }
   return point;
+}
+
+/**
+ * What a walk looks like frame by frame: the furthest any one print moves
+ * between two of them, and how near the middle the leading side ever gets.
+ *
+ * Both numbers come out of one rAF loop, because two loops measuring the same
+ * walk each forced a layout per frame inside the animation they were reading.
+ *
+ * Prints are tracked by data-print rather than by the photo's number: a print
+ * that wraps to the other side of the fan is drawn twice while the two copies
+ * cross over, and the key is what tells one node from the other. A print
+ * arriving counts as movement, so a fan that has not started walking yet is
+ * never mistaken for one that has finished.
+ *
+ * `worstMove` carries the spring's own travel, around 22px a frame at the
+ * fastest part of a step on this machine, so anything asserted against it is
+ * loose on purpose: what it guards is a print being put down somewhere else
+ * entirely, which measured 379 to 527px. `nearestLeading` is in pixels out
+ * from the middle of the stage, where the seats are 206px (one tier) and 271px
+ * (two), so a leading side with nothing standing on it reads as nothing.
+ *
+ * Sampling starts before the walk does and stops once the fan has moved and
+ * then held still, with the second and a bit as a ceiling rather than a plan.
+ */
+export async function sampleWalk(
+  fan: Locator,
+  walk: () => Promise<void>,
+): Promise<{ worstMove: number; nearestLeading: number }> {
+  const sampling = fan.evaluate(
+    (stage, ms) =>
+      new Promise<{ worstMove: number; nearestLeading: number }>((done) => {
+        const seen = new Map<string, number>();
+        let worst = 0;
+        let nearest = Infinity;
+        let walked = false;
+        let still = 0;
+        const start = performance.now();
+        // The stage does not move, so its middle is read once rather than on
+        // every frame of the walk being measured.
+        const stageBox = stage.getBoundingClientRect();
+        const middle = stageBox.left + stageBox.width / 2;
+        const frame = () => {
+          let furthest = 0;
+          let moving = false;
+          for (const print of stage.querySelectorAll<HTMLElement>(
+            "button[data-print]",
+          )) {
+            const id = print.dataset.print ?? "";
+            const box = print.getBoundingClientRect();
+            const centre = box.left + box.width / 2;
+            furthest = Math.max(furthest, centre - middle);
+            const was = seen.get(id);
+            if (was === undefined) moving = true;
+            else if (centre !== was) {
+              moving = true;
+              worst = Math.max(worst, Math.abs(centre - was));
+            }
+            seen.set(id, centre);
+          }
+          nearest = Math.min(nearest, furthest);
+          walked = walked || moving;
+          still = moving ? 0 : still + 1;
+          if (!(walked && still > 2) && performance.now() - start < ms) {
+            requestAnimationFrame(frame);
+          } else {
+            done({
+              worstMove: Math.round(worst),
+              nearestLeading: Math.round(nearest),
+            });
+          }
+        };
+        requestAnimationFrame(frame);
+      }),
+    1200,
+  );
+  await walk();
+  return sampling;
 }

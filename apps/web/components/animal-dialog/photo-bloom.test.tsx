@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
+import { REFERENCE, animal, stubMatchMedia } from "@/test/animal-dialog";
 
 // The copy of the card's photograph on its way into the fan, and what the fan
 // is told while it is in the air.
@@ -91,17 +92,9 @@ Element.prototype.getBoundingClientRect = function slotOrNothing(
     : ZERO_RECT;
 };
 
-// jsdom ships no matchMedia, and the dialog asks which layout it is standing
-// in. Nothing in this file depends on the answer.
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+// Nothing in this file depends on which layout the dialog reads, so every
+// query is answered no.
+stubMatchMedia();
 
 beforeEach(() => {
   fan.hold = [];
@@ -116,44 +109,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const REFERENCE = "2026-08-18T00:00:00.000Z";
-
 // The card the dialog was opened from, as the grid measured it.
 const ORIGIN = {
   x: 240,
   y: 360,
   photo: { left: 160, top: 240, width: 260, height: 195 },
 };
-
-function animal(id: string, name: string): Animal {
-  return {
-    id,
-    source: {
-      providerId: "test-shelter",
-      sourceAnimalId: id,
-      sourceUrl: `https://example.test/animals/${id}`,
-      fetchedAt: "2026-01-01T00:00:00.000Z",
-      firstSeenAt: "2026-01-01T00:00:00.000Z",
-      lastSeenAt: "2026-01-01T00:00:00.000Z",
-    },
-    shelter: { id: "test-shelter", name: "Zavetišče Test", city: "Ljubljana" },
-    name,
-    species: "dog",
-    status: "available",
-    images: [
-      {
-        sourceUrl: `https://example.test/${id}-1.jpg`,
-        cachedUrl: `/media/animals/${id}-1.webp`,
-        width: 640,
-        height: 480,
-        widths: [320, 480, 640],
-        blurDataURL: "data:image/webp;base64,UklGRg==",
-        rights: "cache-permitted" as const,
-      },
-    ],
-    attribution: "Foto: Zavetišče Test",
-  };
-}
 
 const REX = animal("rex", "Rex");
 const MURI = animal("muri", "Muri");

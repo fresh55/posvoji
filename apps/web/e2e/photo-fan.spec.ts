@@ -14,6 +14,7 @@ import {
   openFan,
   print,
   prints,
+  sampleWalk,
   SUNNY,
 } from "./fan";
 
@@ -35,83 +36,6 @@ import {
 const FRODO_PHOTOS = 10;
 const MIRNA_PHOTOS = 2;
 const SUNNY_PHOTOS = 3;
-
-/**
- * The furthest any one print moves between two frames while the fan walks,
- * in pixels.
- *
- * Tracked by data-print rather than by the photo's number: a print that wraps
- * to the other side of the fan is drawn twice while the two copies cross over,
- * and the key is what tells one node from the other.
- *
- * The spring's own travel is in here too, at around 22px a frame on this
- * machine at the fastest part of a step, so the number this is measured
- * against is loose on purpose. What it is guarding against is a print being
- * put down somewhere else entirely, which measured 379 to 527px.
- */
-async function worstFrameMove(fan: Locator, walk: () => Promise<void>) {
-  const sampling = fan.evaluate(
-    (stage, ms) =>
-      new Promise<number>((done) => {
-        const seen = new Map<string, number>();
-        let worst = 0;
-        const start = performance.now();
-        const frame = () => {
-          const prints =
-            stage.querySelectorAll<HTMLElement>("button[data-print]");
-          for (const print of prints) {
-            const id = print.dataset.print ?? "";
-            const box = print.getBoundingClientRect();
-            const centre = box.left + box.width / 2;
-            const was = seen.get(id);
-            if (was !== undefined) worst = Math.max(worst, Math.abs(centre - was));
-            seen.set(id, centre);
-          }
-          if (performance.now() - start < ms) requestAnimationFrame(frame);
-          else done(Math.round(worst));
-        };
-        requestAnimationFrame(frame);
-      }),
-    1200,
-  );
-  await walk();
-  return sampling;
-}
-
-/**
- * How far out the print standing furthest towards the leading side gets to,
- * at its nearest to the middle of the stage, while the fan walks. In pixels
- * from that middle, so a leading side with nothing on it reads as nothing.
- *
- * The seats are 206px (one tier out) and 271px (two) from the middle at this
- * size, so anything over about 120 is a print standing in a real seat rather
- * than the incoming front print sliding through the middle.
- */
-async function nearestLeadingPrint(fan: Locator, walk: () => Promise<void>) {
-  const sampling = fan.evaluate(
-    (stage, ms) =>
-      new Promise<number>((done) => {
-        let nearest = Infinity;
-        const start = performance.now();
-        const frame = () => {
-          const stageBox = stage.getBoundingClientRect();
-          const middle = stageBox.left + stageBox.width / 2;
-          let furthest = 0;
-          for (const print of stage.querySelectorAll("button[data-print]")) {
-            const box = print.getBoundingClientRect();
-            furthest = Math.max(furthest, box.left + box.width / 2 - middle);
-          }
-          nearest = Math.min(nearest, furthest);
-          if (performance.now() - start < ms) requestAnimationFrame(frame);
-          else done(Math.round(nearest));
-        };
-        requestAnimationFrame(frame);
-      }),
-    1200,
-  );
-  await walk();
-  return sampling;
-}
 
 /** The middle of the stage, which is over the print in front. A gesture that
  *  starts here is the one a visitor makes: the pointer events bubble to the
@@ -141,9 +65,7 @@ async function expectCentred(fan: Locator): Promise<void> {
   const stage = await fan.boundingBox();
   const front = await frontPrint(fan).boundingBox();
   if (!stage || !front) throw new Error("the fan has no box to measure");
-  const off = Math.abs(
-    front.x + front.width / 2 - (stage.x + stage.width / 2),
-  );
+  const off = Math.abs(front.x + front.width / 2 - (stage.x + stage.width / 2));
   expect(off).toBeLessThan(3);
 }
 
@@ -180,7 +102,9 @@ async function dragBy(
   await page.mouse.up();
 }
 
-test("opens on the first photo, with five prints on stage", async ({ page }) => {
+test("opens on the first photo, with five prints on stage", async ({
+  page,
+}) => {
   const fan = await openFan(page, KLOPKA);
 
   await expectPhoto(fan, 1, KLOPKA_PHOTOS);
@@ -265,12 +189,12 @@ test("turns two photos on a hard flick, with the leading tier standing", async (
   // halfway through the walk there was nothing at all beyond the print coming
   // to the front, and two prints appeared together when it landed. The fan
   // mounts them for the length of the walk now and they walk in with it.
-  const nearest = await nearestLeadingPrint(fan, () =>
+  const { nearestLeading } = await sampleWalk(fan, () =>
     dragBy(page, fan, -220, { steps: 4, pauseMs: 0 }),
   );
 
   await expectPhoto(fan, 3, KLOPKA_PHOTOS);
-  expect(nearest).toBeGreaterThan(120);
+  expect(nearestLeading).toBeGreaterThan(120);
   // And the fan is back to five prints: the two it brought in are the two the
   // new window seats on that side, so the commit keeps them rather than
   // mounting more.
@@ -413,8 +337,9 @@ test("lifts a stacked print under the pointer", async ({ page }) => {
    *  and a rotated matrix's first entry is not its scale. */
   async function lift(): Promise<number> {
     return stacked.evaluate((button) => {
-      const layer = button.querySelector('[data-slot="photo-print"]')
-        ?.parentElement;
+      const layer = button.querySelector(
+        '[data-slot="photo-print"]',
+      )?.parentElement;
       if (!layer) throw new Error("the print has no hover layer");
       const { transform } = getComputedStyle(layer);
       if (transform === "none") return 1;
@@ -500,10 +425,12 @@ test("walks a three-photo fan round without throwing a print across it", async (
   // commit used to jump it across the stage in a single frame. It is drawn as
   // two prints now, one fading out where it stood and one fading in where it
   // is arriving.
-  const worst = await worstFrameMove(fan, () => page.keyboard.press("ArrowRight"));
+  const { worstMove } = await sampleWalk(fan, () =>
+    page.keyboard.press("ArrowRight"),
+  );
 
   await expectPhoto(fan, 2, SUNNY_PHOTOS);
-  expect(worst).toBeLessThan(120);
+  expect(worstMove).toBeLessThan(120);
   // And the fade is over: the copy that left is gone, and the fan is holding
   // one print per photo again.
   await expect(prints(fan)).toHaveCount(SUNNY_PHOTOS);

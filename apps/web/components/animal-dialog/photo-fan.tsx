@@ -174,14 +174,22 @@ export function Fan(props: FanProps) {
       // touch-pan-y touch-pinch-zoom, same grammar as the card gallery: the
       // fan owns the horizontal, the dialog keeps its scroll, and the pinch
       // stays for whoever needs the photo bigger.
+      //
+      // select-none and the callout for the same reason, a finger held still
+      // mid-swipe: iOS reads a long press on an image as a request for the
+      // sheet that offers to save or copy it, and one anywhere else as the
+      // start of a selection. Either one arrives while the fan is being walked
+      // and takes the gesture with it. Not only while a drag is running, which
+      // is what data-dragging:select-none used to say: the press that raises
+      // the sheet is the one before the drag has declared itself.
       // Static, all of it: what a drag switches is data-dragging on the element
       // itself, which the variants below read without a render.
       className={cn(
         "group relative touch-pan-y touch-pinch-zoom outline-none",
+        "[-webkit-touch-callout:none] select-none",
         geometry.stageClass,
         solo ? geometry.soloStageAspect : geometry.stageAspect,
-        count > 1 &&
-          "cursor-grab data-dragging:cursor-grabbing data-dragging:select-none",
+        count > 1 && "cursor-grab data-dragging:cursor-grabbing",
       )}
     >
       {/* Empty paper frames used to stand behind the outermost photos for a

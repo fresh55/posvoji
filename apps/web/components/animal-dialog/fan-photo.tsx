@@ -14,6 +14,7 @@ import {
   useTransform,
   type MotionStyle,
   type MotionValue,
+  type Transition,
 } from "motion/react";
 import { memo, useEffect, useRef, type RefObject } from "react";
 import { isFocusVisible, type FanFocusKind } from "./fan-focus";
@@ -91,6 +92,7 @@ const PRINT_MARGIN_PX = 6;
 export const FanPhoto = memo(function FanPhoto({
   photo,
   index,
+  printId,
   offset,
   count,
   progress,
@@ -99,6 +101,7 @@ export const FanPhoto = memo(function FanPhoto({
   box,
   nudge,
   entrance,
+  fade,
   hold,
   tempo,
   label,
@@ -109,6 +112,9 @@ export const FanPhoto = memo(function FanPhoto({
 }: {
   photo: PermittedPhoto;
   index: number;
+  /** The key this print is drawn under, written into the DOM so the fan can
+   *  tell a print from the copy a wrap has left behind. */
+  printId: string;
   /** How far this print stands from the front, in photos. A value rather than
    *  a number: a commit re-seats every print, and only the two trading the
    *  front have anything else to re-render for. */
@@ -126,8 +132,13 @@ export const FanPhoto = memo(function FanPhoto({
   factors: RefObject<FanFactors>;
   box: string;
   nudge: number;
-  /** Whether this mount should cascade in, and with how much delay. */
-  entrance: number | false;
+  /** How this print's mount is drawn: a delay into the fan's opening cascade,
+   *  a plain fade for a print that steps into the window mid-walk, or nothing
+   *  at all, which is a print that was already standing here. */
+  entrance: number | "fade" | false;
+  /** The tween a print arrives and leaves on when it is not part of the
+   *  opening cascade. Zero where motion was asked for none. */
+  fade: Transition;
   /** Whether this print's mount is still being held back, because the same
    *  photograph is on screen somewhere else: the copy the dialog flies from
    *  the card it was opened from. The print waits at nothing rather than
@@ -285,6 +296,13 @@ export const FanPhoto = memo(function FanPhoto({
       onBlur={() => setHover(false)}
       aria-pressed={active}
       aria-label={label}
+      // Which print this node is, as the fan is drawing it. A print that wraps
+      // to the other side of the stage is drawn again under a new key while
+      // the copy it leaves behind fades out, and for that moment two nodes are
+      // showing the same photograph: this is what tells them apart, for the
+      // fan itself (see the commit effect in use-fan-controls.ts) and for the
+      // tests. Static, so it costs this print nothing.
+      data-print={printId}
       // The margin is stated on the seat rather than on the paper, because the
       // well it insets is under here and because it is read off the same walk
       // the seat's own transforms are. motion writes a MotionValue custom
@@ -314,10 +332,18 @@ export const FanPhoto = memo(function FanPhoto({
       )}
       initial={entrance === false ? false : { opacity: 0 }}
       animate={{ opacity: hold ? 0 : 1 }}
+      // A print leaves the window in two ways. One walks off the trailing edge,
+      // where the seats are clamped and there is nothing left of it to see, and
+      // one is the copy of a print that has wrapped round to the other side of
+      // the fan, which is still standing at the tier it was walked to. Both
+      // fade, because the second one has to and the first one costs nothing.
+      exit={{ opacity: 0, transition: fade }}
       transition={
         entrance === false
           ? { duration: 0 }
-          : { ...tempo.spring, delay: entrance }
+          : entrance === "fade"
+            ? fade
+            : { ...tempo.spring, delay: entrance }
       }
     >
       {/* The hover layer carries transforms and nothing else. It cannot clip,

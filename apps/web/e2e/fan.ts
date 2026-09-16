@@ -40,6 +40,12 @@ export const FRODO = "ljubljana:15a044ff-1262-4693-96dc-aaa3619c1055";
 // step's direction and the seat it travels from are not the same number. Two
 // arrows in a row here target the photo the first one is leaving.
 export const MIRNA = "macja-hisa:4026";
+// Three photos, which is the shortest gallery the window walks round: the
+// print at the trailing edge is the same photo as the one at the leading edge,
+// so a step takes it from one side of the stage to the other. 293 of the 486
+// animals in the register are the same shape of walk (three, four or five
+// photos).
+export const SUNNY = "horjul:9363";
 
 /** The animal dialog the fan is drawn inside. */
 export function dialog(page: Page): Locator {
@@ -107,9 +113,13 @@ export function print(fan: Locator, n: number): Locator {
   );
 }
 
-/** Every print the fan has seated. Five at most, whatever the gallery holds. */
+/** Every print the fan has seated. Five at most, whatever the gallery holds.
+ *
+ *  Not the copies on their way out: a print that wraps to the other side of
+ *  the fan is drawn twice for as long as the two take to cross over, and the
+ *  one that is leaving is not one of the fan's seats any more. */
 export function prints(fan: Locator): Locator {
-  return fan.locator("button[aria-pressed]");
+  return fan.locator("button[aria-pressed]:not([data-leaving])");
 }
 
 /**

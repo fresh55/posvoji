@@ -146,10 +146,13 @@ function renderFan(
 }
 
 /** The prints on stage, in the order the document holds them, by the photo
- *  each one is showing. */
+ *  each one is showing. Copies on their way out are left out: a print that
+ *  wraps to the other side of the fan is drawn twice while the two cross over,
+ *  and the one that is leaving takes no tab. */
 function printOrder(stage: HTMLElement) {
   return within(stage)
     .getAllByRole("button", { name: /fotografijo \d/ })
+    .filter((button) => button.dataset.leaving !== "true")
     .map((button) => {
       const found = /fotografijo (\d+)/.exec(button.getAttribute("aria-label") ?? "");
       return Number(found?.[1]);

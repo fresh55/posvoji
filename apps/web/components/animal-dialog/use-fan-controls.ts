@@ -40,6 +40,16 @@ import {
 import { FanGeometry } from "./fan-layout";
 import { FLICK_TWO_PX_MS } from "./fan-options";
 
+/** One print the stage is holding: which photo, which seat of the window it
+ *  stands in, and, for a print mounted mid-walk, the seat it starts from. */
+export type FanSlot = { index: number; offset: number; seat?: number };
+
+// A print's key. The photo alone for as long as it keeps its node, and the
+// photo and a generation once the fan has had to draw it again as a new one.
+function printKey(index: number, generation: number) {
+  return generation === 0 ? `${index}` : `${index}.${generation}`;
+}
+
 export type FanProps = {
   geometry: FanGeometry;
   images: PermittedPhoto[];
@@ -84,6 +94,9 @@ export function useFanControls({
     () => fanSlots(count, activeIndex),
     [count, activeIndex],
   );
+  // What the stage is holding, in seat order: the window the fan is seated on.
+  const prints: FanSlot[] = slots;
+
   // Read once per window rather than once per render, and the memo is what
   // makes that true: two tests count the shapes the fan reads to tell a print
   // rendering again from the fan rendering around it, and rebuilding the
@@ -121,10 +134,16 @@ export function useFanControls({
   // bare offset with the walk at zero is the same pose again: nothing it shows
   // depends on being told.
   const seats = useRef(new Map<number, MotionValue<number>>());
-  function seatOf(index: number, offset: number) {
+  function seatOf(index: number, offset: number, at?: number) {
     const held = seats.current.get(index);
     if (held) return held;
-    const seat = offset + progress.get();
+    // Where a print being made starts. A print stepping in at a commit is
+    // handed the offset of the window it is joining while the walk still reads
+    // the step that has just finished, so its seat is that offset plus the
+    // walk. A print mounted mid-walk to fill the leading tier is seated in the
+    // window that is on stage now and says its own seat, so that it walks in
+    // with the prints around it rather than standing still.
+    const seat = at ?? offset + progress.get();
     const made = motionValue(seat);
     seats.current.set(index, made);
     // And its shape into the record, at the seat it is standing in. A seat is
@@ -137,6 +156,70 @@ export function useFanControls({
     // The prints render in seat order, so the inner one registers first.
     factors.current[seat] = printFactor(images[index].aspect ?? PRINT_ASPECT);
     return made;
+  }
+
+  // How many times a print has had to be drawn again as a different node. A
+  // print keeps its node, and with it its seat, for as long as it stays on the
+  // same side of the fan.
+  const generations = useRef(new Map<number, number>());
+
+  // The keys the fan was holding when it last committed, which is how a print
+  // knows whether it is being drawn for the first time. Asked of the last
+  // commit rather than of the seats map, so that the answer is the same
+  // however many times this render runs: React runs a component twice in
+  // development to catch exactly this, and a print that had made its seat in
+  // the first pass read as an old print in the second, which is a print
+  // switching on at full opacity instead of arriving.
+  const shown = useRef(new Set<string>());
+
+  // The key one print is drawn under, and the one decision that can change it.
+  //
+  // fanSlots walks a window round the whole gallery, and where the window is
+  // the whole gallery the trailing print wraps round to the leading side: the
+  // same photo, one seat out on the left before the commit and one or two
+  // seats out on the right after it. Under one key that is one node whose seat
+  // the commit jumps across the stage in a single frame. Measured on the built
+  // export at 1280x800: 433px on a gallery of three, 469px on four, 379px on
+  // five, which between them are 293 of the 486 animals in the register.
+  //
+  // A print that wraps is drawn as a different print: a fresh key, so React
+  // unmounts the one and mounts the other, and the two cross over as a fade
+  // rather than as a jump. The copy that is leaving is frozen where it stands
+  // first, because the walk is about to be zeroed under it and its pose is its
+  // seat minus that walk; the new node makes its own seat, on the side it is
+  // arriving at.
+  //
+  // Asked of where the print is drawn now against where the commit would put
+  // it, which is a question only this render can answer: the commit effect
+  // re-seats every print and zeroes the walk, and after that the two readings
+  // agree and nothing reads as wrapping. Calling it twice in one render is the
+  // same, because the first call takes the seat away.
+  //
+  // Reduced motion keeps the jump. There is no walk to be out of step with,
+  // the whole commit lands in one paint, and a print fading across the stage
+  // is motion that was asked not to happen.
+  function keyOf(index: number, offset: number) {
+    const held = seats.current.get(index);
+    const generation = generations.current.get(index) ?? 0;
+    if (!held || shouldReduceMotion) return printKey(index, generation);
+    const standing = held.get() - progress.get();
+    if (Math.abs(standing - offset) <= 0.5) return printKey(index, generation);
+    held.jump(standing);
+    seats.current.delete(index);
+    generations.current.set(index, generation + 1);
+    return printKey(index, generation + 1);
+  }
+
+  /** Everything the fan has to tell one print about its own arrival: the key
+   *  it is drawn under, the seat it stands in, and whether this is its first
+   *  render, which is what decides how it is drawn in. */
+  function printAt({ index, offset, seat }: FanSlot) {
+    const key = keyOf(index, offset);
+    return {
+      key,
+      fresh: !shown.current.has(key),
+      seat: seatOf(index, offset, seat),
+    };
   }
 
   // The stage itself. What a mouse drag changes is the cursor and the text
@@ -309,11 +392,48 @@ export function useFanControls({
     for (const { index, offset } of slots) {
       seats.current.get(index)?.jump(offset);
     }
-    // A print that has left the window takes its seat with it.
-    const onStage = new Set(slots.map((slot) => slot.index));
-    for (const index of seats.current.keys()) {
-      if (!onStage.has(index)) seats.current.delete(index);
+    // A print that has left the window takes its seat with it, frozen where it
+    // stands on the way out. It is drawn until its fade is over, and both the
+    // things its pose is read off are about to move under it: the walk is
+    // zeroed a few lines down, and the record above has already been replaced
+    // by the new window's. Shifting its seat by the walk it has just taken
+    // keeps the two readings the same, in the tier it is standing in and in
+    // the widths of the prints between it and the front. Left alone, the print
+    // walking off a thirteen-photo gallery's trailing edge moved 55px at the
+    // commit, because the print inside it was a portrait before the step and a
+    // landscape after it.
+    const onStage = new Set(prints.map((print) => print.index));
+    for (const [index, seat] of seats.current) {
+      if (onStage.has(index)) continue;
+      seat.jump(seat.get() - progress.get());
+      seats.current.delete(index);
+      generations.current.delete(index);
     }
+    // The copies the commit has left standing: a print that has walked off the
+    // trailing edge, and the one a wrap has drawn again on the other side of
+    // the stage. Both are kept in the document while they fade, and neither is
+    // one of the fan's seats any anymore, so neither may take a press or a tab
+    // or hold the keyboard. Written straight onto the element, the way the
+    // drag writes its own flag: React is not rendering these nodes again, and
+    // a state that reached them would reach all five prints with it.
+    const drawn = new Map(
+      prints.map((print) => [
+        print.index,
+        printKey(print.index, generations.current.get(print.index) ?? 0),
+      ]),
+    );
+    for (const node of stageRef.current?.querySelectorAll<HTMLElement>(
+      "button[data-print]",
+    ) ?? []) {
+      const id = node.dataset.print ?? "";
+      if (drawn.get(Number(id.split(".")[0])) === id) continue;
+      node.dataset.leaving = "true";
+      node.tabIndex = -1;
+      node.style.pointerEvents = "none";
+    }
+    // And what the fan is holding now, for the next commit to tell an arriving
+    // print from one that was already standing here.
+    shown.current = new Set(drawn.values());
     if (pendingReset.current) {
       pendingReset.current = false;
       progress.jump(0);
@@ -326,11 +446,17 @@ export function useFanControls({
       // pointer keeps whatever it pressed, unless the walk has carried that
       // print off the stage, in which case the stage itself holds the keyboard
       // so the arrows still answer.
+      // A print the walk has taken off the stage is still in the document
+      // while it fades, and it is no use to the keyboard there: it answers no
+      // key and is about to be taken away, which would drop focus to the
+      // dialog. Standing means being one of the fan's own prints still.
+      const standing =
+        held.print.isConnected && held.print.dataset.leaving !== "true";
       if (held.kind === "keyboard") focusFrontPrint();
-      else if (!held.print.isConnected) focusStage();
+      else if (!standing) focusStage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slots, shapes, progress]);
+  }, [prints, shapes, progress]);
 
   // Where the walk in flight is going, in seats, and 0 once it has landed or
   // while nothing is walking. It outlives the animation on purpose: a press
@@ -754,7 +880,8 @@ export function useFanControls({
     shouldReduceMotion,
     count,
     solo,
-    slots,
+    prints,
+    printAt,
     spoken,
     frontWasHeld,
     holdFront,

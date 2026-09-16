@@ -4,10 +4,16 @@ import { Button } from "@/components/ui/button";
 import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { type DragEvent, type ReactNode } from "react";
 import { frontPrintOf } from "./fan-focus";
 import { printBox } from "./fan-geometry";
-import { ENTRANCE_STAGGER, TILT_NUDGE } from "./fan-options";
+import {
+  ENTRANCE_STAGGER,
+  MOUNT_FADE,
+  NO_FADE,
+  TILT_NUDGE,
+} from "./fan-options";
 import { FanPhoto } from "./fan-photo";
 import { PHOTO_BADGE_CLASS } from "./fan-photo-styles";
 import { SHEET_FROM } from "./lightbox-gesture-options";
@@ -69,12 +75,12 @@ export function Fan(props: FanProps) {
     shouldReduceMotion,
     count,
     solo,
-    slots,
+    prints,
+    printAt,
     spoken,
     frontWasHeld,
     holdFront,
     factors,
-    seatOf,
     entered,
     progress,
     selectPhoto,
@@ -89,6 +95,29 @@ export function Fan(props: FanProps) {
     swallowSwipedTap,
     stage,
   } = useFanControls(props);
+
+  // How a print's arrival is drawn.
+  //
+  // The cascade belongs to the fan's own mount, which is once per animal: the
+  // first render reads false and every render after it is a photo being
+  // picked. A print that steps into the window later arrives mid-walk, where a
+  // cascade delay would have it appear after the fan had already stopped
+  // moving, so it is a plain fade instead. It used to be drawn at full opacity
+  // in one frame, which on a gallery past the fan's reach was a photograph
+  // switching on at the leading tier as the step landed.
+  //
+  // A front print held back for the bloom keeps its entrance offered after the
+  // cascade is over, because the fade it still owes is that entrance running
+  // late.
+  function entranceOf(active: boolean, offset: number, fresh: boolean) {
+    if (shouldReduceMotion) return false;
+    if (!entered.current || (active && frontWasHeld)) {
+      return Math.abs(offset) * ENTRANCE_STAGGER;
+    }
+    return fresh ? "fade" : false;
+  }
+  const fade = shouldReduceMotion ? NO_FADE : MOUNT_FADE;
+
   return (
     <div
       ref={stage}
@@ -165,26 +194,36 @@ export function Fan(props: FanProps) {
           10 while 9 and 10 stood on the left: the fan reading itself back to
           the keyboard in an order the eye cannot see.
 
-          The keys are still the photo, so a print keeps its identity and its
-          seat value across a commit; what changes is that React moves a node
-          rather than re-rendering it. A moved node loses focus, and the walk
-          already answers that: focusOnPrint is asked before the commit and
-          focusFrontPrint puts the keyboard back after the re-seat. */}
-      {slots
-        // Two refs are read here on purpose. The cascade is chosen from the
-        // mount marker above, which has to be read where the transition is
-        // built, and a print's seat value is looked up or made where the print
-        // is built, because the print's transforms take it on their first
-        // render. Both reads are idempotent, so a re-render cannot land on a
-        // different answer, which is what the rule is guarding against.
-        .map(({ index, offset }) => {
+          A print's key is the photo for as long as it keeps its seat on one
+          side of the fan, so a commit moves its node rather than re-rendering
+          it, and the print keeps its identity and its seat value across the
+          re-seat. A moved node loses focus, and the walk already answers that:
+          who was holding the keyboard is asked before the commit and answered
+          after the re-seat. A print the commit would carry across the stage is
+          drawn under a new key instead, and the two copies cross over as a
+          fade; see keyOf.
+
+          AnimatePresence for the copy that is leaving: on a gallery of three
+          or four it is still standing at the trailing tier when the commit
+          lands, and it has to be taken away rather than vanish. */}
+      <AnimatePresence>
+        {prints.map((slot) => {
+          const { index, offset } = slot;
           const active = offset === 0;
+          // Three answers are read out of the fan here rather than passed as
+          // props, because all three are questions about this render: which
+          // node this print is drawn as, the seat value its transforms take on
+          // their first render, and whether this is that first render. All of
+          // them are idempotent, so a re-render cannot land on a different
+          // answer, which is what the rule is guarding against.
+          const { key, fresh, seat } = printAt(slot);
           return (
             <FanPhoto
-              key={index}
+              key={key}
+              printId={key}
               photo={images[index]}
               index={index}
-              offset={seatOf(index, offset)}
+              offset={seat}
               count={count}
               progress={progress}
               depths={geometry.depths}
@@ -193,12 +232,8 @@ export function Fan(props: FanProps) {
               nudge={
                 shouldReduceMotion ? 0 : TILT_NUDGE[index % TILT_NUDGE.length]
               }
-              entrance={
-                shouldReduceMotion ||
-                (entered.current && !(active && frontWasHeld))
-                  ? false
-                  : Math.abs(offset) * ENTRANCE_STAGGER
-              }
+              entrance={entranceOf(active, offset, fresh)}
+              fade={fade}
               // Only the front print, and only its mount: a print that comes
               // to the front later has nothing to wait for, because what the
               // dialog is holding it against is the copy of the card's
@@ -217,6 +252,7 @@ export function Fan(props: FanProps) {
             />
           );
         })}
+      </AnimatePresence>
 
       {/* "2 / 4" on a set the fan shows all of at once: a mark and nothing
           more, hidden from assistive technology, because the live line at the

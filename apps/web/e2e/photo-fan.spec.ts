@@ -14,6 +14,7 @@ import {
   openFan,
   print,
   prints,
+  SUNNY,
 } from "./fan";
 
 // The photo fan in the animal dialog, on the layout that has a pointer.
@@ -33,6 +34,49 @@ import {
 
 const FRODO_PHOTOS = 10;
 const MIRNA_PHOTOS = 2;
+const SUNNY_PHOTOS = 3;
+
+/**
+ * The furthest any one print moves between two frames while the fan walks,
+ * in pixels.
+ *
+ * Tracked by data-print rather than by the photo's number: a print that wraps
+ * to the other side of the fan is drawn twice while the two copies cross over,
+ * and the key is what tells one node from the other.
+ *
+ * The spring's own travel is in here too, at around 22px a frame on this
+ * machine at the fastest part of a step, so the number this is measured
+ * against is loose on purpose. What it is guarding against is a print being
+ * put down somewhere else entirely, which measured 379 to 527px.
+ */
+async function worstFrameMove(fan: Locator, walk: () => Promise<void>) {
+  const sampling = fan.evaluate(
+    (stage, ms) =>
+      new Promise<number>((done) => {
+        const seen = new Map<string, number>();
+        let worst = 0;
+        const start = performance.now();
+        const frame = () => {
+          const prints =
+            stage.querySelectorAll<HTMLElement>("button[data-print]");
+          for (const print of prints) {
+            const id = print.dataset.print ?? "";
+            const box = print.getBoundingClientRect();
+            const centre = box.left + box.width / 2;
+            const was = seen.get(id);
+            if (was !== undefined) worst = Math.max(worst, Math.abs(centre - was));
+            seen.set(id, centre);
+          }
+          if (performance.now() - start < ms) requestAnimationFrame(frame);
+          else done(Math.round(worst));
+        };
+        requestAnimationFrame(frame);
+      }),
+    1200,
+  );
+  await walk();
+  return sampling;
+}
 
 /** The middle of the stage, which is over the print in front. A gesture that
  *  starts here is the one a visitor makes: the pointer events bubble to the
@@ -393,6 +437,29 @@ test("hands the keyboard back to the fan when the print it came from is gone", a
   await expect(full).toBeHidden();
   await expectPhoto(fan, 9, KLOPKA_PHOTOS);
   expect(await focusedName(page)).toBe("Odpri fotografijo 9 čez cel zaslon");
+});
+
+test("walks a three-photo fan round without throwing a print across it", async ({
+  page,
+}) => {
+  const fan = await openFan(page, SUNNY);
+  await expectPhoto(fan, 1, SUNNY_PHOTOS);
+  await frontPrint(fan).focus();
+
+  // On a gallery this short the window is the whole set, so the print at the
+  // trailing edge and the one at the leading edge are the same photo: the
+  // commit used to jump it across the stage in a single frame. It is drawn as
+  // two prints now, one fading out where it stood and one fading in where it
+  // is arriving.
+  const worst = await worstFrameMove(fan, () => page.keyboard.press("ArrowRight"));
+
+  await expectPhoto(fan, 2, SUNNY_PHOTOS);
+  expect(worst).toBeLessThan(120);
+  // And the fade is over: the copy that left is gone, and the fan is holding
+  // one print per photo again.
+  await expect(prints(fan)).toHaveCount(SUNNY_PHOTOS);
+  await expect(fan.locator("button[data-leaving]")).toHaveCount(0);
+  await expectCentred(fan);
 });
 
 test("keeps the count still on a short gallery and lets a press through it", async ({

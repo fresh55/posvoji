@@ -733,7 +733,7 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
     const first = photoButton(dialog, "photo-spread", 1);
 
-    expect(first.getAttribute("aria-pressed")).toBe("true");
+    expect(first.getAttribute("aria-current")).toBe("true");
     // The mark is drawn over the front print rather than inside it, so it is
     // the stage that is asked what it says. Which print it stands on is the
     // front print's own box, which the fan draws it in.
@@ -744,11 +744,11 @@ describe("animal dialog", () => {
     // The fan walks to the photo that was clicked and commits the new front
     // when the spring lands.
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
-    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
-      .toBe("false");
+    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-current"))
+      .toBeNull();
     expect(region(dialog, "photo-spread").getByText("2 / 2")).toBeTruthy();
   });
 
@@ -758,18 +758,18 @@ describe("animal dialog", () => {
     renderGrid();
     const dialog = await screen.findByRole("dialog");
 
-    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-current"))
       .toBe("true");
 
     fireEvent.click(photoButton(dialog, "photo-fan", 2));
 
     // The fan walks there first and commits when the spring lands.
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
-    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
-      .toBe("false");
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-current"))
+      .toBeNull();
   });
 
   it("swipes the phone fan to the next photo and swallows the tap", async () => {
@@ -788,14 +788,14 @@ describe("animal dialog", () => {
     // The release hands the fan to a spring, and the step commits when it
     // lands.
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
     // The click the browser fires at whatever the finger ended on lands in
     // the capture handler and goes no further, so the gesture stepped one
     // photo and did not also select or open one.
     fireEvent.click(photoButton(dialog, "photo-fan", 2));
-    expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-current"))
       .toBe("true");
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
@@ -1061,7 +1061,7 @@ describe("animal dialog", () => {
     });
     await waitFor(() =>
       expect(
-        photoButton(view.container, "photo-fan", 2).getAttribute("aria-pressed"),
+        photoButton(view.container, "photo-fan", 2).getAttribute("aria-current"),
       ).toBe("true"),
     );
     const step = reads.map((count, index) => count - settled[index]);
@@ -1142,7 +1142,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-fan", 3).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-fan", 3).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(region(dialog, "photo-fan").getByText("3 / 7")).toBeTruthy();
@@ -1177,7 +1177,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1194,7 +1194,7 @@ describe("animal dialog", () => {
     await mouseDrag(slot(dialog, "photo-spread"));
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1208,7 +1208,7 @@ describe("animal dialog", () => {
     await mouseDrag(slot(dialog, "photo-fan"));
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1230,7 +1230,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(region(dialog, "photo-spread").getByText("2 / 7")).toBeTruthy();
@@ -1248,7 +1248,7 @@ describe("animal dialog", () => {
     fireEvent.keyDown(fan, { key: "ArrowRight" });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 3).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 3).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(region(dialog, "photo-spread").getByText("3 / 7")).toBeTruthy();
@@ -1272,10 +1272,12 @@ describe("animal dialog", () => {
     // The walk in flight lands, and the press that would only have wrapped
     // back onto its own starting point is dropped.
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
-    expect(fan.querySelectorAll('button[aria-pressed="true"]')).toHaveLength(1);
+    expect(
+      fan.querySelectorAll('button[data-print][aria-current="true"]'),
+    ).toHaveLength(1);
     expect(region(dialog, "photo-spread").getByText("2 / 2")).toBeTruthy();
     // And the walk itself is put away: a print in front stands in the middle
     // of the stage, not two seats off it.
@@ -1301,7 +1303,7 @@ describe("animal dialog", () => {
       expect(translateX(photoButton(dialog, "photo-spread", 1)))
         .toBeCloseTo(-50, 3),
     );
-    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-current"))
       .toBe("true");
     expect(region(dialog, "photo-spread").getByText("1 / 2")).toBeTruthy();
   });
@@ -1321,7 +1323,7 @@ describe("animal dialog", () => {
     // Not preventDefault'd either: the page's own scroll is not the fan's to
     // take when the fan has nothing to do with the key.
     expect(arrow.defaultPrevented).toBe(false);
-    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-current"))
       .toBe("true");
     expect(translateX(photoButton(dialog, "photo-spread", 1)))
       .toBeCloseTo(-50, 6);
@@ -1363,7 +1365,7 @@ describe("animal dialog", () => {
       });
     });
 
-    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-fan", 1).getAttribute("aria-current"))
       .toBe("true");
 
     // The first finger still has the fan, and its own release is what counts.
@@ -1383,7 +1385,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-fan", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1408,7 +1410,7 @@ describe("animal dialog", () => {
       pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "mouse" });
     });
 
-    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-current"))
       .toBe("true");
     expect(fan.dataset.dragging).toBeUndefined();
   });
@@ -1448,7 +1450,7 @@ describe("animal dialog", () => {
       pointer(fan, "pointerup", { x: 160, y: 204, pointerType: "mouse" });
     });
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1500,7 +1502,7 @@ describe("animal dialog", () => {
     fireEvent.click(photoButton(dialog, "photo-spread", 2));
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1527,7 +1529,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(region(dialog, "photo-spread").getByText("2 / 7")).toBeTruthy();
@@ -1540,7 +1542,7 @@ describe("animal dialog", () => {
     });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 3).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 3).getAttribute("aria-current"))
         .toBe("true"),
     );
   });
@@ -1554,7 +1556,7 @@ describe("animal dialog", () => {
       fireEvent.wheel(slot(dialog, "photo-spread"), { deltaX: 0, deltaY: 300 });
     });
 
-    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
+    expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-current"))
       .toBe("true");
   });
 
@@ -1684,7 +1686,7 @@ describe("animal dialog", () => {
       name: "Vse fotografije (14)",
     });
     expect(control.textContent).toBe("1 / 14");
-    expect(control.closest("button[aria-pressed]")).toBeNull();
+    expect(control.closest("button[data-print]")).toBeNull();
     // The mark stays 20px and the hit area grows past it, because a bigger
     // chip on the photograph is the wrong answer on a phone.
     expect(control.className).toContain("after:-inset-2");
@@ -1788,7 +1790,7 @@ describe("animal dialog", () => {
     );
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(region(dialog, "photo-spread").getByText("Fotografija 2 od 2"))
@@ -1831,7 +1833,7 @@ describe("animal dialog", () => {
     fireEvent.keyDown(fan, { key: "ArrowRight" });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(document.activeElement).toBe(photoButton(dialog, "photo-spread", 2));
@@ -1839,7 +1841,7 @@ describe("animal dialog", () => {
     fireEvent.keyDown(fan, { key: "ArrowRight" });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 3).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 3).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(document.activeElement).toBe(photoButton(dialog, "photo-spread", 3));
@@ -1860,7 +1862,7 @@ describe("animal dialog", () => {
     fireEvent.click(next);
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(document.activeElement).toBe(next);
@@ -1878,14 +1880,14 @@ describe("animal dialog", () => {
     fireEvent.keyDown(fan, { key: "End" });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 7).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 7).getAttribute("aria-current"))
         .toBe("true"),
     );
 
     fireEvent.keyDown(fan, { key: "Home" });
 
     await waitFor(() =>
-      expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-pressed"))
+      expect(photoButton(dialog, "photo-spread", 1).getAttribute("aria-current"))
         .toBe("true"),
     );
     expect(region(dialog, "photo-spread").getByText("Fotografija 1 od 7"))
@@ -2245,7 +2247,9 @@ describe("animal dialog", () => {
   it("opens on the front print", async () => {
     renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
     const dialog = await screen.findByRole("dialog");
-    const front = dialog.querySelector('button[aria-pressed="true"]');
+    const front = dialog.querySelector(
+      'button[data-print][aria-current="true"]',
+    );
     expect(front).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(front));
   });

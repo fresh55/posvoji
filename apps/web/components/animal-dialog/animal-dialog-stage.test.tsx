@@ -137,9 +137,11 @@ function stage(dialog: HTMLElement) {
   return found;
 }
 
-/** The print in front, which is the only one with aria-pressed="true". */
+/** The print in front, which is the only one with aria-current="true". */
 function frontLabel(dialog: HTMLElement) {
-  const front = stage(dialog).querySelector('button[aria-pressed="true"]');
+  const front = stage(dialog).querySelector(
+    'button[data-print][aria-current="true"]',
+  );
   return front?.getAttribute("aria-label");
 }
 

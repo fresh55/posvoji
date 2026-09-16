@@ -1,14 +1,16 @@
 /** The print at the front of this stage, or null while there is no stage.
  *
  *  The chevrons and the count live on the stage too, and neither of them is a
- *  print: aria-pressed is what only a print carries, and only the front print
- *  carries it true. Four callers ask this question: focus on the way in, the
- *  rectangle the contact sheet grows out of, focus on the way back from the
- *  lightbox, and the dialog around all three, which opens on the front print
- *  and has no other way to name it. */
+ *  print: data-print is what only a print carries, and aria-current is what
+ *  the one in front carries with it. Four callers ask this question: focus on
+ *  the way in, the rectangle the contact sheet grows out of, focus on the way
+ *  back from the lightbox, and the dialog around all three, which opens on the
+ *  front print and has no other way to name it. */
 export function frontPrintOf(stage: HTMLElement | null) {
   return (
-    stage?.querySelector<HTMLElement>('button[aria-pressed="true"]') ?? null
+    stage?.querySelector<HTMLElement>(
+      'button[data-print][aria-current="true"]',
+    ) ?? null
   );
 }
 
@@ -38,8 +40,9 @@ export type FanFocusKind =
  *
  *  Asked before a commit rather than after it, because a commit is what
  *  unmounts the print focus is on and by then the answer is gone. Any print
- *  and not just the front one, so the attribute is read rather than its value;
- *  see frontPrintOf for why aria-pressed is the thing to read. */
+ *  and not just the front one, so data-print is what is read rather than
+ *  aria-current: the first is on every print, the second names only the one
+ *  standing in front. */
 export function focusHeldOn(
   stage: HTMLElement | null,
 ): { print: HTMLElement; kind: FanFocusKind } | null {
@@ -48,7 +51,7 @@ export function focusHeldOn(
     !stage ||
     !(held instanceof HTMLElement) ||
     !stage.contains(held) ||
-    !held.hasAttribute("aria-pressed")
+    !held.hasAttribute("data-print")
   ) {
     return null;
   }

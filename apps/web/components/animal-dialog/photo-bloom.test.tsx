@@ -51,7 +51,9 @@ vi.mock("@/components/animal-dialog/photo-spread", async (importOriginal) => {
       fan.hold.push(props.holdFrontPrint);
       return (
         <div data-slot="photo-spread">
-          {fan.slot && <button type="button" aria-pressed="true" />}
+          {fan.slot && (
+            <button type="button" data-print="0.0" aria-current="true" />
+          )}
         </div>
       );
     },
@@ -82,7 +84,9 @@ const ZERO_RECT = new DOMRect(0, 0, 0, 0);
 Element.prototype.getBoundingClientRect = function slotOrNothing(
   this: Element,
 ) {
-  return this.matches('[data-slot="photo-spread"] button[aria-pressed="true"]')
+  return this.matches(
+    '[data-slot="photo-spread"] button[data-print][aria-current="true"]',
+  )
     ? new DOMRect(fan.rect.left, fan.rect.top, fan.rect.width, fan.rect.height)
     : ZERO_RECT;
 };

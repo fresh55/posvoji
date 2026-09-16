@@ -99,11 +99,15 @@ export function otherFan(page: Page, layout: FanLayout): Locator {
   );
 }
 
-/** The print in front. It is the only one with aria-pressed="true": `active`
+/** The print in front. It is the only one with aria-current="true": `active`
  *  is `offset === 0`, and the offsets come from the committed index, so
- *  exactly one print answers to this at any point of a walk. */
+ *  exactly one print answers to this at any point of a walk.
+ *
+ *  data-print as well, so the selector reads as "a print, and the current
+ *  one". The contact sheet marks its own current tile the same way, which is
+ *  the second reason every locator here is scoped to the stage. */
 export function frontPrint(fan: Locator): Locator {
-  return fan.locator('button[aria-pressed="true"]');
+  return fan.locator('button[data-print][aria-current="true"]');
 }
 
 /** One of the prints on stage, by the photo it holds. */
@@ -115,11 +119,15 @@ export function print(fan: Locator, n: number): Locator {
 
 /** Every print the fan has seated. Five at most, whatever the gallery holds.
  *
+ *  data-print is what every print carries and nothing else on the stage does,
+ *  aria-current being only the one in front. The chevrons and the count are
+ *  buttons on this stage too, and neither is a print.
+ *
  *  Not the copies on their way out: a print that wraps to the other side of
  *  the fan is drawn twice for as long as the two take to cross over, and the
  *  one that is leaving is not one of the fan's seats any more. */
 export function prints(fan: Locator): Locator {
-  return fan.locator("button[aria-pressed]:not([data-leaving])");
+  return fan.locator("button[data-print]:not([data-leaving])");
 }
 
 /**

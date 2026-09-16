@@ -294,7 +294,18 @@ export const FanPhoto = memo(function FanPhoto({
         if (isFocusVisible(event.currentTarget)) setHover(true);
       }}
       onBlur={() => setHover(false)}
-      aria-pressed={active}
+      // Which photograph of the set the fan is holding. It used to be
+      // aria-pressed, which made every print a toggle: a reader walking the
+      // stage announced five buttons as pressed or not pressed, a row of
+      // switches rather than a gallery with one picture on top, and pressing
+      // one of them does not turn anything on. aria-current is the same answer
+      // the lightbox's contact sheet already gives about its own tiles, so the
+      // two views of one set say the same thing.
+      //
+      // Only the print in front carries it. The rest carry nothing, because
+      // aria-current has no false to state: the absent attribute is the
+      // answer.
+      aria-current={active ? "true" : undefined}
       aria-label={label}
       // Which print this node is, as the fan is drawing it. A print that wraps
       // to the other side of the stage is drawn again under a new key while

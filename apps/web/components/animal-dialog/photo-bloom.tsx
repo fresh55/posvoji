@@ -22,9 +22,11 @@ const BLOOM_FADE = { delay: 0.18, duration: 0.2 } as const;
 const SETTLE_MS = 220;
 
 // The fan mounts one stage for the breakpoint it read, under one of two slot
-// names; the copy lands on the active photo of whichever is there.
+// names; the copy lands on the active photo of whichever is there. Named the
+// way frontPrintOf names it: data-print is on every print and aria-current on
+// the one in front.
 const SLOT =
-  '[data-slot="photo-fan"] button[aria-pressed="true"], [data-slot="photo-spread"] button[aria-pressed="true"]';
+  '[data-slot="photo-fan"] button[data-print][aria-current="true"], [data-slot="photo-spread"] button[data-print][aria-current="true"]';
 
 function slotRect() {
   for (const slot of document.querySelectorAll(SLOT)) {

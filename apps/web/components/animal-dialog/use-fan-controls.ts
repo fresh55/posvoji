@@ -501,8 +501,9 @@ export function useFanControls({
       // walk started. Home and End walk the photo that was at the front right
       // out of the window, and for as long as its copy faded there were two
       // prints on the stage saying they were the one being looked at, which is
-      // what frontPrintOf and the specs both ask the DOM.
-      node.setAttribute("aria-pressed", "false");
+      // what frontPrintOf and the specs both ask the DOM. Taken away rather
+      // than set false, because aria-current has no false to state.
+      node.removeAttribute("aria-current");
       // Anything that does put the keyboard on it is handed the print in front
       // instead. The lightbox remembers the print it was opened from and hands
       // focus back to it if it is still in the document, which a copy that is

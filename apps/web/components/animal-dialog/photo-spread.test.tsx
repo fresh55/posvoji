@@ -166,7 +166,7 @@ function print(stage: HTMLElement, n: number) {
 }
 
 function frontPrint(stage: HTMLElement) {
-  const found = stage.querySelector('button[aria-pressed="true"]');
+  const found = stage.querySelector('button[data-print][aria-current="true"]');
   if (!(found instanceof HTMLElement)) throw new Error("no front print");
   return found;
 }
@@ -174,7 +174,7 @@ function frontPrint(stage: HTMLElement) {
 /** Waits for the walk to land and the window to be re-seated on `n`. */
 async function expectFront(stage: () => HTMLElement, n: number) {
   await waitFor(() =>
-    expect(print(stage(), n).getAttribute("aria-pressed")).toBe("true"),
+    expect(print(stage(), n).getAttribute("aria-current")).toBe("true"),
   );
 }
 
@@ -323,7 +323,7 @@ describe("fan gestures", () => {
     });
 
     expect(slot(document.body, "photo-fan")).toBeTruthy();
-    expect(print(stage(), 1).getAttribute("aria-pressed")).toBe("true");
+    expect(print(stage(), 1).getAttribute("aria-current")).toBe("true");
   });
 });
 

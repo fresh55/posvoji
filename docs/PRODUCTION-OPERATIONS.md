@@ -49,8 +49,9 @@ retain the host lock for inspection. This verifies delivery, not every route.
 
 ## Supervised handover
 
-1. Restore SSH access. Inspect the server firewall and SSH listener from the
-   console; retain the restriction to the maintainer's current address.
+1. Restore SSH access using the [firewall recovery runbook](operations/SSH-FIREWALL-RECOVERY.md).
+   Inspect both firewalls and the SSH listener; retain the restriction to the
+   maintainer's current address.
 2. Review, test and merge the intended code. Promote the resulting full main
    commit, including the new SHA created by a squash merge.
 3. Install the repository's Node version and pinned pnpm, plus Python 3.12+,

@@ -16,11 +16,12 @@ come from the same place, for the same reason.
 
 ## HSTS
 
-Without `Strict-Transport-Security`, a navigation that starts from a typed
-hostname, an old bookmark or a plain link goes to `http://posvoji.si` first and
-waits for the `308`. That first request is unencrypted, and Chrome labels the
-tab "Ni varno" until the redirect lands. The header makes the browser rewrite
-the scheme itself, so the insecure request is never sent.
+Without a cached HSTS policy, a navigation starting over HTTP can send an
+unencrypted request before receiving the HTTPS redirect. Some browsers already
+upgrade navigations to HTTPS, so this is not inevitable for every typed hostname.
+After receiving `Strict-Transport-Security` over HTTPS, the browser upgrades
+future HTTP navigations itself while the policy remains valid. HSTS alone does
+not protect a first visit made over HTTP before the browser learns the policy.
 
 Measured 16 September 2026 against the live site, signed in past the gate: the
 homepage returns `200` carrying `Referrer-Policy`, `X-Content-Type-Options`,
@@ -43,10 +44,69 @@ than ours. On 16 September 2026 it answered `200` over HTTPS with a valid
 every subdomain added later, including one stood up on HTTP for a few minutes.
 IMAP and SMTP are unaffected; the policy is a browser rule.
 
-Leave `preload` off. It submits the domain to a list compiled into browsers,
-and removal takes months to reach users. It is worth doing once the site is
-public and the year-long `max-age` has held; it is not worth doing during a
-closed preview.
+Leave `preload` off during the closed preview. The token signals consent to
+preloading; adding it does not itself submit the domain to the browser list.
+Submission is a separate step, and removal from shipped lists can take months.
+Consider it only once the site is public and the year-long policy has held.
+See the [HSTS preload service](https://hstspreload.org/) for the requirements.
+
+### Applying HSTS to the live Caddyfile
+
+If SSH is unavailable, first use the
+[firewall recovery runbook](operations/SSH-FIREWALL-RECOVERY.md). The examples
+below are an operator procedure, not evidence that the live change is applied.
+
+The live response includes `X-Frame-Options` and `Permissions-Policy`, which
+the examples in this document do not reproduce. Inspect the full Caddyfile,
+including any imported files and site boundaries, on the host. Do not replace
+it with an example or use a global substitution across all header blocks.
+
+```bash
+caddy_backup="/etc/caddy/Caddyfile.bak-$(date -u +%Y%m%dT%H%M%SZ)"
+sudo cp -a /etc/caddy/Caddyfile "$caddy_backup"
+sudo less /etc/caddy/Caddyfile
+sudoedit /etc/caddy/Caddyfile
+```
+
+Add only this line to the existing general `header` block for `posvoji.si`:
+
+```caddy
+Strict-Transport-Security "max-age=300"
+```
+
+Preserve authentication, media routing, other headers and all other site
+blocks. If that block lives in an imported file, back up and edit that file
+instead; still validate the top-level Caddyfile. Review the diff against the
+backup before validating and reloading:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy
+sudo systemctl status caddy --no-pager
+```
+
+From a machine outside the host, verify a real homepage response. This prompts
+for the gate password; do not put the password in the command or a committed file:
+
+```bash
+curl --silent --show-error --fail --head --user '<GATE_USERNAME>' https://posvoji.si/
+```
+
+On Windows use `curl.exe`. Require HTTP 200 and exactly one
+`Strict-Transport-Security: max-age=300` header, alongside the existing security
+headers. A 401, a redirect or a TLS error does not pass. Keep TLS verification
+enabled and confirm the page works in a browser too.
+
+Observe for at least the five-minute stage before raising to `max-age=86400`.
+After a full day of successful HTTPS operation, recheck HTTPS on every existing
+subdomain before moving to `max-age=31536000; includeSubDomains`. Back up, review,
+validate, reload and verify at each stage. Do not run all stages in one session.
+
+If validation fails, do not reload. Restore the edited file from its exact
+backup, then validate again. If a reload or response check fails, restore the
+prior known-working configuration, validate and reload it, and repeat the
+external check. To explicitly clear a cached HSTS policy, serve `max-age=0`
+over valid HTTPS; removing the header alone does not clear it. Clients that do
+not receive the clearing response retain their previous policy until expiry.
 
 ## Compression
 

@@ -472,7 +472,7 @@ describe("fan count control", () => {
   it("reaches past the mark, further where the pointer is coarse", () => {
     const { stage } = renderFan(gallery(7));
     const count = within(stage()).getByRole("button", {
-      name: "Vse fotografije (7)",
+      name: "1 / 7 Vse fotografije",
     });
 
     // 8px a side over a 20px mark is 36px, which is a mouse; 14px is the 48px
@@ -491,17 +491,28 @@ describe("fan count control", () => {
     expect(count.className).toContain("bottom-1.5");
     expect(count.className).toContain("px-1.5");
     expect(count.className).toContain("text-2xs");
-    expect(count.textContent).toBe("1 / 7");
+    expect(count.textContent).toBe("1 / 7 Vse fotografije");
   });
 
+  // The name used to be an aria-label reading "Vse fotografije (7)", which
+  // replaced the only words on the control: a visitor speaking to their
+  // machine reads "1 / 7" off the photograph and had nothing by that name to
+  // ask for. The drawn words lead the name now and the rest follows them.
   it("says what the count opens in its name and not in a hover title", () => {
     const { stage } = renderFan(gallery(7));
     const count = within(stage()).getByRole("button", {
-      name: "Vse fotografije (7)",
+      name: "1 / 7 Vse fotografije",
     });
 
+    // Said and not drawn: the words are in the name because they are in the
+    // control, in a span nobody sees, rather than in a label of its own that
+    // could drift from the mark beside it.
+    expect(count.getAttribute("aria-label")).toBeNull();
+    expect(count.querySelector(".sr-only")?.textContent).toBe(
+      "Vse fotografije",
+    );
     // The fan is a phone's gallery, and a title is a mouse and nothing else.
-    // The name already said the same words, so the name is where it stays.
+    // The name already says the same words, so the name is where it stays.
     expect(count.getAttribute("title")).toBeNull();
   });
 });

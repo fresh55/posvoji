@@ -300,10 +300,14 @@ export function Fan(props: FanProps) {
           and unreachable by tab.
 
           Drawn over the front print rather than in it, the way the chevrons
-          already are, so the mark itself is unchanged. It is named for what it
-          does and carries the count, because "Vse fotografije" alone would not
-          say how many there are; the number it shows says which photo is on
-          top, which the live line below states in words.
+          already are, so the mark itself is unchanged.
+
+          Its name leads with the mark. An aria-label of "Vse fotografije (13)"
+          named what the control does, but it also replaced the only words on
+          it: a visitor who speaks to their machine reads "1 / 13" on the
+          photograph and has nothing by that name to ask for, which is what
+          WCAG 2.5.3 is about. The visible text is the name's first words now
+          and "Vse fotografije" follows it, said to a reader and not drawn.
 
           The hit area grows and the mark does not: 20px of badge is under half
           the 44px a thumb is measured against, and a bigger chip on the
@@ -333,12 +337,11 @@ export function Fan(props: FanProps) {
               "after:absolute after:-inset-2 pointer-coarse:after:-inset-3.5",
             )}
           >
-            {/* The name is the only place what this opens is said. A title
+            {/* What this opens is said in the name and nowhere else. A title
                 repeated those words to a pointer and to nothing else, and the
                 count is how a phone reaches the rest of the set. */}
             <button
               type="button"
-              aria-label={`${messages.allPhotos} (${count})`}
               onClick={(event) => {
                 // The sheet grows out of the photograph, not out of the mark
                 // in its corner.
@@ -353,7 +356,11 @@ export function Fan(props: FanProps) {
                 );
               }}
             >
-              {activeIndex + 1} / {count}
+              {activeIndex + 1} / {count}{" "}
+              {/* The rest of the name, carried as text so the drawn words lead
+                  it. sr-only and not aria-hidden: this is the half a reader
+                  needs and the half the photograph has no room for. */}
+              <span className="sr-only">{messages.allPhotos}</span>
             </button>
           </Badge>
         </FrontPrintBox>

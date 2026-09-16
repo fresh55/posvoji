@@ -558,27 +558,35 @@ test("opens the contact sheet from the count, which is a control of its own", as
   // handler: a control nested in a control, hidden from assistive technology
   // and out of the tab order, so the sheet had no keyboard way in from here.
   const count = countControl(fan);
+  // The name leads with the words on the photograph. It used to be an
+  // aria-label reading "Vse fotografije (13)", which replaced them: the count
+  // is the only thing drawn here, and a visitor speaking to their machine
+  // could read it and then ask for nothing by that name. What the control
+  // opens is said in a span inside it now, so the name cannot drift from the
+  // mark it follows.
   await expect(count).toHaveAccessibleName(
-    `Vse fotografije (${KLOPKA_PHOTOS})`,
+    `1 / ${KLOPKA_PHOTOS} Vse fotografije`,
   );
-  await expect(count).toHaveText(`1 / ${KLOPKA_PHOTOS}`);
-  await expect(badge(fan)).toHaveText(`1 / ${KLOPKA_PHOTOS}`);
+  await expect(count).toHaveText(new RegExp(`^1 / ${KLOPKA_PHOTOS}\\b`));
+  await expect(badge(fan)).toHaveText(new RegExp(`^1 / ${KLOPKA_PHOTOS}\\b`));
 
   // The mark stays 20px and its hit area is drawn past it, which a class alone
   // cannot prove: the badge clips its own children, and the pseudo-element was
   // cut off by that until the clip was lifted. Hit-tested, the way the touch
-  // targets in this suite are.
+  // targets in this suite are. What the hit answers with is the slot, because
+  // there is no aria-label on the count to name it by any more.
   const box = await count.boundingBox();
   if (!box) throw new Error("the count has no box to measure");
+  // And the second half of the name is said rather than drawn: the chip is
+  // 45px across, which is the mark, and the words would take it past a
+  // hundred.
+  expect(box.width).toBeLessThan(60);
   const reach = await page.evaluate(
     ([x, y]) =>
-      document
-        .elementFromPoint(x, y)
-        ?.closest("button")
-        ?.getAttribute("aria-label") ?? null,
+      document.elementFromPoint(x, y)?.closest("button")?.dataset.slot ?? null,
     [box.x - 5, box.y + box.height / 2],
   );
-  expect(reach).toBe(`Vse fotografije (${KLOPKA_PHOTOS})`);
+  expect(reach).toBe("badge");
 
   await count.click();
 

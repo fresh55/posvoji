@@ -1696,9 +1696,13 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
 
     const control = region(dialog, "photo-spread").getByRole("button", {
-      name: "Vse fotografije (14)",
+      // The words on the photograph lead the name and what the control does
+      // follows them, said in a span nobody sees. An aria-label of "Vse
+      // fotografije (14)" replaced the only words on it, so a visitor speaking
+      // to their machine could read "1 / 14" and ask for nothing by it.
+      name: "1 / 14 Vse fotografije",
     });
-    expect(control.textContent).toBe("1 / 14");
+    expect(control.textContent).toBe("1 / 14 Vse fotografije");
     expect(control.closest("button[data-print]")).toBeNull();
     // The mark stays 20px and the hit area grows past it, because a bigger
     // chip on the photograph is the wrong answer on a phone.

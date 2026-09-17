@@ -117,6 +117,22 @@ const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
  *  their controls in one column. min() keeps it a cap rather than a floor. */
 const SHEET_BLOCK_CLASS = "sm:mx-auto sm:w-[min(28rem,100%)]";
 
+/** The same column, said about a box's children one at a time.
+ *
+ *  The cap sits on each block in the scrolling body rather than on one box
+ *  around them. The scroll box itself has to stay the sheet's full width, so
+ *  its bar is at the sheet's edge and its padding is the sheet's, and the
+ *  sections in it are a fragment: a box around them would be a node added for
+ *  nothing but its width. Every child in there is a block of its own, so
+ *  centring them one by one is the same column.
+ *
+ *  Beside the class it mirrors, and not spelled out at the call site 360 lines
+ *  below. The child-selector form has a reason; a second copy of the two
+ *  measurements it repeats does not, and a column named twice is a column that
+ *  moves in one place. */
+const SHEET_BLOCK_CHILDREN_CLASS =
+  "[&>*]:sm:mx-auto [&>*]:sm:w-[min(28rem,100%)]";
+
 /** What is behind the Filtri button, or undefined when nothing is.
  *
  *  It lives here rather than in the dock that mounts the sheet, because what
@@ -465,25 +481,19 @@ export function FilterSheet({
           </div>
         </div>
 
-        {/* [scrollbar-width:thin] because until it was here this box said
-            nothing about being a scroll box: no fade, no bar, and nine folded
-            section names that end at the bottom edge with more under it. The
-            same thin bar the picker's shelter list wears
-            (picker-shelter-list.tsx); a phone draws no bar at all and loses
-            nothing, and on a mouse or a trackpad it is the whole of the cue. */}
+        {/* scrollbar-thin because until it was here this box said nothing
+            about being a scroll box: no fade, no bar, and nine folded section
+            names that end at the bottom edge with more under it. The same thin
+            bar the picker's shelter list wears (picker-shelter-list.tsx), and
+            the utility carries the thumb colour that a hand-written
+            scrollbar-width never got (globals.css); a phone draws no bar at
+            all and loses nothing, and on a mouse or a trackpad it is the whole
+            of the cue. */}
         <div
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
           className={cn(
-            "flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6 [scrollbar-width:thin]",
-            // The cap sits on each block in here rather than on one box around
-            // them. The scroll box itself has to stay the sheet's full width,
-            // so its bar is at the sheet's edge and its padding is the
-            // sheet's, and the sections below are a fragment: a box around
-            // them would be a node added for nothing but its width. Every
-            // child in here is a block of its own, so centring them one by one
-            // is the same column (SHEET_BLOCK_CLASS, worn by the header and
-            // the footer as one class each).
-            "[&>*]:sm:mx-auto [&>*]:sm:w-[min(28rem,100%)]",
+            "flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6 scrollbar-thin",
+            SHEET_BLOCK_CHILDREN_CLASS,
           )}
         >
           {/* Kje above every section, the same order the panel keeps at lg.

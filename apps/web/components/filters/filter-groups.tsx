@@ -457,6 +457,25 @@ export function FilterGroupList({
   const drawn = <T,>(options: T[], isDead: (option: T) => boolean) =>
     drawnOptions(options, layout, isDead);
 
+  // The same call four times over, in the four sections whose options carry a
+  // `key`: health, Družba, Dom and Posebna skrb. Each differed only in which
+  // tally to count in and which list of chosen values to ask, and spelled the
+  // dead test out again to say so.
+  //
+  // Two shapes and not one, because the options have two shapes. The card
+  // groups below key on `value` (FilterOption, which is what lib/filters
+  // builds a group from) and these four key on `key`, so a single helper would
+  // have to take a reader function per call and would be the thing it
+  // replaced. The groups.map case keeps its own call.
+  const drawnByKey = <T extends { key: string }>(
+    options: T[],
+    counts: Map<string, number>,
+    selected: readonly string[],
+  ): T[] =>
+    drawn(options, ({ key }) =>
+      isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
+    );
+
   const collapseFor = (
     key: FilterSectionKey,
     summary: string | null,
@@ -513,12 +532,7 @@ export function FilterGroupList({
 
       {toggles.length > 0 && (
         <HealthToggleCards
-          toggles={drawn(toggles, ({ key }) =>
-            isDeadOption(
-              toggleTally.get(key) ?? 0,
-              filters.toggles.includes(key),
-            ),
-          )}
+          toggles={drawnByKey(toggles, toggleTally, filters.toggles)}
           counts={toggleTally}
           selected={filters.toggles}
           onToggle={onToggleProperty}
@@ -536,11 +550,10 @@ export function FilterGroupList({
 
       {goodWith && goodWith.options.length > 0 && (
         <GoodWithCards
-          options={drawn(goodWith.options, ({ key }) =>
-            isDeadOption(
-              goodWith.counts.get(key) ?? 0,
-              filters.goodWith.includes(key),
-            ),
+          options={drawnByKey(
+            goodWith.options,
+            goodWith.counts,
+            filters.goodWith,
           )}
           counts={goodWith.counts}
           selected={filters.goodWith}
@@ -565,9 +578,7 @@ export function FilterGroupList({
           asks what the visitor is willing to take on. */}
       {home && home.options.length > 0 && (
         <HomeCards
-          options={drawn(home.options, ({ key }) =>
-            isDeadOption(home.counts.get(key) ?? 0, filters.home.includes(key)),
-          )}
+          options={drawnByKey(home.options, home.counts, filters.home)}
           counts={home.counts}
           selected={filters.home}
           resultCount={home.resultCount}
@@ -588,9 +599,7 @@ export function FilterGroupList({
 
       {care && care.options.length > 0 && (
         <CareCards
-          options={drawn(care.options, ({ key }) =>
-            isDeadOption(care.counts.get(key) ?? 0, filters.care.includes(key)),
-          )}
+          options={drawnByKey(care.options, care.counts, filters.care)}
           counts={care.counts}
           selected={filters.care}
           resultCount={care.resultCount}

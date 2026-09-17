@@ -100,17 +100,17 @@ test("leaves the edge arrows to the wider layout", async ({ page }) => {
   await expect(phoneNav(page, "next")).toBeVisible();
 });
 
-// The longest name in the register: "brezrepa tritačka Luna" at Mačja hiša, a
-// description typed into the name field, 22 characters where the median name
-// has five. It is what the title row has to survive, so it is named here
-// rather than looked for. At 375px it takes two full lines beside the three
-// controls, and it is the name that once pushed all three of them to a second
-// line (the title row's comment in animal-dialog.tsx). When the dataset stops
-// carrying this animal the dialog never opens, and the first assertion below
-// says which id is gone rather than leaving the layout numbers to fail
-// unexplained.
-const LUNA = "macja-hisa:4872";
-const LUNA_NAME = "brezrepa tritačka Luna";
+// The longest name in the register: "brezrepa tritačka Luna" at Mačja hiša,
+// which writes a descriptor in front of the name across its listings. 22
+// characters where the median name has five. It is what the title row has to
+// survive, so it is named here rather than looked for. At 375px it takes two
+// full lines beside the three controls, and at 360px it is the name that
+// pushed all three of them to a second line before the row was fixed (the
+// title row's comment in animal-dialog.tsx). When the dataset stops carrying
+// this animal the dialog never opens, and the message on the first assertion
+// below names the id rather than failing as a bare visibility timeout.
+const BREZREPA_LUNA = "macja-hisa:4872";
+const BREZREPA_LUNA_NAME = "brezrepa tritačka Luna";
 
 test("keeps the title row's controls together on the narrowest phone", async ({
   page,
@@ -120,13 +120,13 @@ test("keeps the title row's controls together on the narrowest phone", async ({
   // the controls the next one. What may not happen is the controls themselves
   // splitting across two lines, or the row reaching past the card.
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto(`/?zival=${encodeURIComponent(LUNA)}`);
+  await page.goto(`/?zival=${encodeURIComponent(BREZREPA_LUNA)}`);
 
   await expect(
     dialog(page),
-    `no dialog opened for ${LUNA}: is that animal still in data/dist/animals.json?`,
+    `the dialog did not open for ${BREZREPA_LUNA}, which may have left data/dist/animals.json`,
   ).toBeVisible();
-  await expect(title(page)).toHaveText(LUNA_NAME);
+  await expect(title(page)).toHaveText(BREZREPA_LUNA_NAME);
   const next = phoneNav(page, "next");
   await expect(next).toBeVisible();
 
@@ -148,11 +148,16 @@ test("keeps the title row's controls together on the narrowest phone", async ({
       groupRight: group.getBoundingClientRect().right,
       lineRight: line.getBoundingClientRect().right,
       headingRight: heading!.getBoundingClientRect().right,
+      headingHeight: heading!.getBoundingClientRect().height,
+      lineHeight: Number.parseFloat(getComputedStyle(heading!).lineHeight),
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth,
     };
   });
 
+  // The premise of the pin: this name wraps. A register whose longest name
+  // fits on one line is no longer testing the row that had to survive it.
+  expect(row.headingHeight).toBeGreaterThan(row.lineHeight * 1.5);
   // The two steps and the share button, and the group of them is one control
   // tall: the name and the badge may take the line above, the controls may not
   // break among themselves.

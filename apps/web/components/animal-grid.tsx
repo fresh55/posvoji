@@ -640,27 +640,32 @@ export function AnimalGrid({
                       {messages.showFromAllShelters}
                     </Button>
                   )}
-                  {/* The one way out of this screen, drawn once. With pills
-                      above it, it stands under the row and takes the clear
-                      that row would otherwise have ended in. It is lg:hidden
-                      with them: the pills are, because the sticky toolbar
-                      draws its own row there with its own clear at the end of
-                      it, and this button goes with them or a desktop would
-                      show two.
+                  {/* The one way out of this screen, drawn once and at every
+                      width. With pills above it, it stands under the row and
+                      takes the clear that row would otherwise have ended in.
+
+                      It used to be lg:hidden with the pills, on the grounds
+                      that the sticky toolbar draws its own row up there with
+                      its own clear at the end of it and a desktop would
+                      otherwise show two. What that left at lg was a screen
+                      saying "Ni zadetkov. Poskusi z manj filtri." with no
+                      control under it at all, and the only way out a 12px
+                      pill at the end of a strip 130px above the sentence. Two
+                      presses that do the same thing is the cheaper of the two
+                      faults, and the branch beside this one has always drawn
+                      its button at lg for exactly that reason.
 
                       Without pills the state is a species tab with nothing in
                       it, which a deep link to a species the roster does not
                       hold can reach, and the only thing left to undo is the
                       species. A clear leaves the species standing
                       (use-animal-filters.ts), so what this offers there is the
-                      species' own way back, worded as what it does. Nothing
-                      else on any width offers the press, so it stays at every
-                      width. */}
+                      species' own way back, worded as what it does. */}
                   {chips.length > 0 ? (
                     <Button
                       variant="outline"
                       size="sm"
-                      className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
+                      className={EMPTY_STATE_ACTION}
                       onClick={handleClearAll}
                     >
                       {messages.clearFilters}

@@ -115,6 +115,20 @@ function query() {
   return window.location.search;
 }
 
+// The empty state's own clear, told apart from the one at the end of the
+// toolbar's chips row by the row that holds the other: that row is drawn from
+// lg only, and only one of the two chip rows is painted at a width while jsdom
+// paints neither, so the class token is the handle. Read by exclusion rather
+// than by lg:hidden, which the state's button no longer carries: at lg it is
+// the only control on a screen that has nothing else on it.
+function stateClear() {
+  const own = screen
+    .getAllByRole("button", { name: "Počisti filtre" })
+    .filter((clear) => !clear.closest('[class~="max-lg:hidden"]'));
+  expect(own).toHaveLength(1);
+  return own[0];
+}
+
 
 describe("animal grid empty state", () => {
   it("names the shelter-species conflict and offers to drop only the shelter", () => {
@@ -216,9 +230,7 @@ describe("animal grid empty state", () => {
     const drop = screen.getByRole("button", {
       name: "Pokaži iz vseh zavetišč",
     });
-    const clear = screen
-      .getAllByRole("button", { name: "Počisti filtre" })
-      .find((button) => button.closest('[class~="lg:hidden"]'))!;
+    const clear = stateClear();
     const row = drop.parentElement!;
 
     expect(row.className).toContain("flex-wrap");
@@ -255,7 +267,7 @@ describe("animal grid empty state", () => {
     ).toBeNull();
   });
 
-  it("leaves one clear control per surface once chips can carry it", () => {
+  it("draws the toolbar's clear and the state's own, and no third one", () => {
     // A shelter is picked, so there is a chip, so both chip rows render: the
     // toolbar's at lg and the empty state's own below it. Each already ends in
     // a clear, and the state used to put a second clear button under them
@@ -264,33 +276,33 @@ describe("animal grid empty state", () => {
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 
-    // One per surface, and no surface twice, which is also what says no third
-    // button stands under the pills. The class tokens are how the two
-    // rows are told apart, because only one of them is painted at a time and
-    // jsdom paints neither.
+    // Two, and no surface twice, which is also what says no third button
+    // stands under the pills. The class tokens are how the toolbar's row is
+    // told from the state's own button, because only one of the two chip rows
+    // is painted at a width and jsdom paints neither.
     const clears = screen.getAllByRole("button", {
       name: "Počisti filtre",
     });
     expect(clears).toHaveLength(2);
     expect(
-      clears.filter((clear) => clear.closest('[class~="lg:hidden"]')),
-    ).toHaveLength(1);
-    expect(
       clears.filter((clear) => clear.closest('[class~="max-lg:hidden"]')),
     ).toHaveLength(1);
 
-    // The row's own clear clears the filters. The species tab stays: it is
-    // the scope the list is read in, not one of the pills, and clearing from
-    // under it lands on every rabbit rather than on every animal
-    // (use-animal-filters.ts).
-    fireEvent.click(
-      clears.find((clear) => clear.closest('[class~="lg:hidden"]'))!,
-    );
+    // The state's own is drawn at every width: at lg this screen otherwise
+    // had no control on it at all and the only way out was a 12px pill in the
+    // toolbar's strip, 130px above the sentence.
+    const own = stateClear();
+    expect(own.className).not.toContain("lg:hidden");
+
+    // It clears the filters. The species tab stays: it is the scope the list
+    // is read in, not one of the pills, and clearing from under it lands on
+    // every rabbit rather than on every animal (use-animal-filters.ts).
+    fireEvent.click(own);
 
     expect(query()).toBe("?vrsta=ostalo");
   });
 
-  it("draws the phone way out under the pills rather than off the end of them", () => {
+  it("draws the way out under the pills rather than off the end of them", () => {
     // Same state as above, read for where the clear is rather than how many
     // there are. Measured at 390px with four filters active: the pills ran to
     // x 497 and the clear, as the strip's last item, sat at x 514, off the
@@ -299,15 +311,10 @@ describe("animal grid empty state", () => {
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 
-    const belowLg = screen
-      .getAllByRole("button", { name: "Počisti filtre" })
-      .filter((clear) => clear.closest('[class~="lg:hidden"]'));
-    expect(belowLg).toHaveLength(1);
-
     // Out of the strip the pills scroll in and out of the row that walks them
     // with the arrow keys, drawn as the same outline button this state offers
     // when there are no chips at all to carry a clear.
-    const clear = belowLg[0];
+    const clear = stateClear();
     expect(clear.closest("[data-scroll-strip]")).toBeNull();
     expect(clear.closest("[role='toolbar']")).toBeNull();
     expect(clear.getAttribute("data-slot")).toBe("button");

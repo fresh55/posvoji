@@ -340,10 +340,57 @@ describe("AnimalCard element placement", () => {
     const badges = screen.getAllByText("rezervirano");
     expect(badges).toHaveLength(1);
     expect(badges[0].closest('[data-slot="photo-frame"]')).toBeNull();
-    expect(badges[0].parentElement?.querySelector("[data-slot=\"photo-frame\"]")).toBeTruthy();
+    // Positioned against the article, which is the element that holds both the
+    // frame and the text: the pill is laid on the photo without being inside
+    // the photo's own box.
+    const article = badges[0].closest("article");
+    expect(article?.querySelector('[data-slot="photo-frame"]')).toBeTruthy();
+    expect(article?.className).toContain("relative");
+    expect(badges[0].className).toContain("absolute");
     // And it is not inside the card's link, competing with the name.
     expect(badges[0].closest("a")).toBeNull();
   });
+
+  // A screen reader walks the card in DOM order, and with the two marks in the
+  // photo's wrapper it heard "Čaka 8 let. Fotografija 1 od 6." before it heard
+  // whose card this was. They are drawn last now and positioned against the
+  // article, which puts them on the same pixels.
+  //
+  // One render each, because the two marks can never share a card: the wait is
+  // only drawn for an animal still waiting, and a status badge is only drawn
+  // for one that is not.
+  for (const [what, rest, mark] of [
+    ["the status", { status: "reserved" as const }, "rezervirano"],
+    [
+      "the wait",
+      { intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) },
+      /Čaka/,
+    ],
+  ] as const) {
+    it(`names the animal before ${what} laid on its photo`, () => {
+      render(
+        <I18nProvider locale="sl">
+          <AnimalCard
+            animal={animal(rest)}
+            reference={NOW}
+            showShelter
+            onOpen={() => undefined}
+          />
+        </I18nProvider>,
+      );
+
+      const drawn = screen.getByText(mark);
+      for (const earlier of [
+        screen.getByText("Rex"),
+        screen.getByRole("link", { name: "Test" }),
+      ]) {
+        expect(
+          earlier.compareDocumentPosition(drawn) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    });
+  }
 
   it("puts the wait on the photo, not in the name's row", () => {
     render(

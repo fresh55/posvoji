@@ -7,29 +7,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   isStagingFile,
+  stagingPath,
   sweepStagingFiles,
   writeFileAtomic,
 } from "./write-atomic";
-
-// A name writeFileAtomic really staged, rather than the convention written out
-// a second time here: a target whose directory does not exist fails on the
-// staging write itself, and the error carries the staged path.
-function stagingName(target: string): string {
-  const probe = mkdtempSync(join(tmpdir(), "posvoji-staging-probe-"));
-  try {
-    writeFileAtomic(join(probe, "absent", target), "staged");
-  } catch (error) {
-    const staged = (error as NodeJS.ErrnoException).path;
-    if (staged) return basename(staged);
-  } finally {
-    rmSync(probe, { recursive: true, force: true });
-  }
-  throw new Error("writeFileAtomic staged no sibling to name");
-}
 
 describe("writeFileAtomic", () => {
   let dir: string;
@@ -82,10 +67,12 @@ describe("writeFileAtomic", () => {
   });
 });
 
+// stagingPath appends to the path it is given, so a bare target name yields
+// the bare name writeFileAtomic stages beside that target.
 describe("isStagingFile", () => {
   it("accepts a name writeFileAtomic would stage", () => {
-    expect(isStagingFile(stagingName("latest.json"))).toBe(true);
-    expect(isStagingFile(stagingName(`${"a".repeat(64)}.json`))).toBe(true);
+    expect(isStagingFile(stagingPath("latest.json"))).toBe(true);
+    expect(isStagingFile(stagingPath(`${"a".repeat(64)}.json`))).toBe(true);
   });
 
   it("rejects published names and near misses", () => {
@@ -93,7 +80,7 @@ describe("isStagingFile", () => {
     expect(isStagingFile(`${"a".repeat(64)}.json`)).toBe(false);
     expect(isStagingFile("foo.tmp")).toBe(false);
     expect(isStagingFile("x.123-notauuid.tmp")).toBe(false);
-    expect(isStagingFile(`${stagingName("latest.json")}.json`)).toBe(false);
+    expect(isStagingFile(`${stagingPath("latest.json")}.json`)).toBe(false);
   });
 });
 
@@ -109,21 +96,24 @@ describe("sweepStagingFiles", () => {
   });
 
   it("removes a dead run's staging file and leaves everything else", () => {
-    const stagingDirectory = stagingName("cards");
-    writeFileSync(join(dir, stagingName("latest.json")), "half written");
+    const stagingDirectory = stagingPath("cards");
+    writeFileSync(join(dir, stagingPath("latest.json")), "half written");
     writeFileSync(join(dir, "latest.json"), "published");
     mkdirSync(join(dir, stagingDirectory));
 
-    expect(sweepStagingFiles(dir)).toBe(1);
+    const kept = sweepStagingFiles(dir).map((entry) => entry.name);
+    expect(kept.sort()).toEqual(["latest.json", stagingDirectory].sort());
     expect(readdirSync(dir).sort()).toEqual(
       ["latest.json", stagingDirectory].sort(),
     );
   });
 
-  it("reports nothing to sweep in a published directory", () => {
+  it("hands back a published directory untouched", () => {
     writeFileSync(join(dir, "latest.json"), "published");
 
-    expect(sweepStagingFiles(dir)).toBe(0);
+    expect(sweepStagingFiles(dir).map((entry) => entry.name)).toEqual([
+      "latest.json",
+    ]);
     expect(readdirSync(dir)).toEqual(["latest.json"]);
   });
 });

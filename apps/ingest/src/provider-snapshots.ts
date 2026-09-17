@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Animal } from "@posvoji/schema";
 import type { ProviderPolicy } from "@posvoji/schema";
@@ -81,21 +81,23 @@ export class ProviderSnapshots {
     if (!existsSync(base)) return;
     if (lstatSync(base).isSymbolicLink()) throw new Error("snapshot directory must not be a link");
     // Only the provider directories are written to, but a stray here would be
-    // read as a provider id and refused on every run, same as below.
-    sweepStagingFiles(base);
+    // read as a provider id and refused on every run, same as below. The sweep
+    // returns what it left behind, so each directory is read once.
     const granted = new Set(policies.filter((p) => p.permission.status === "granted").map((p) => p.providerId));
-    for (const providerId of readdirSync(base)) {
+    for (const provider of sweepStagingFiles(base)) {
+      const providerId = provider.name;
       const dir = this.directory(providerId);
-      if (!lstatSync(dir).isDirectory() || lstatSync(dir).isSymbolicLink()) throw new Error("invalid snapshot provider directory");
+      // A listed entry describes itself rather than what it points at, the way
+      // lstat does, so a link is never a directory here.
+      if (!provider.isDirectory()) throw new Error("invalid snapshot provider directory");
       // A run killed between the write and the rename leaves a staging file
       // here. It is not snapshot state, and the check below would refuse it on
       // every later run until an operator deleted it. prune runs under the
       // artifact lock, so nothing in here is mid-write.
-      sweepStagingFiles(dir);
-      const names = readdirSync(dir);
-      for (const name of names) {
-        if ((name !== "latest.json" && !/^[a-f0-9]{64}\.json$/.test(name)) ||
-            !lstatSync(join(dir, name)).isFile() || lstatSync(join(dir, name)).isSymbolicLink()) {
+      const entries = sweepStagingFiles(dir);
+      const names = entries.map((entry) => entry.name);
+      for (const entry of entries) {
+        if ((entry.name !== "latest.json" && !/^[a-f0-9]{64}\.json$/.test(entry.name)) || !entry.isFile()) {
           throw new Error("unexpected entry in snapshot directory");
         }
       }

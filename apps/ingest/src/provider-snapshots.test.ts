@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ProviderPolicy } from "@posvoji/schema";
 import { buildCrawlManifest, ProviderSnapshots, reserveInputRevision } from "./provider-snapshots";
 import type { ProviderCrawlResult } from "./incremental-crawl";
+import { stagingPath } from "./write-atomic";
 
 const policy = ProviderPolicy.parse({
   providerId: "fixture", source: "https://shelter.invalid/", enabled: true,
@@ -75,7 +75,7 @@ describe("provider checkpoints", () => {
       return ref;
     });
     // The name writeFileAtomic stages beside the pointer it rewrites.
-    writeFileSync(join(dir, `latest.json.${process.pid}-${randomUUID()}.tmp`), "half written");
+    writeFileSync(join(dir, stagingPath("latest.json")), "half written");
     store.prune([policy], { fixture: refs[0]! });
     const files = readdirSync(dir);
     expect(files).toHaveLength(5); // three recent objects, sealed object, pointer

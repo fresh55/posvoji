@@ -286,7 +286,17 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          <div className="flex shrink-0 items-center gap-2">
+          {/* min-w-0 shrink, and it was shrink-0. At 200% text this cluster
+              asks for 496px inside the 384px the 1024 layout leaves it, and
+              refusing to shrink it pushed the document 80px wider than the
+              window: the page scrolled sideways, which is the one thing a
+              text-size setting must not cost. Shrinking, the sort trigger's
+              value truncates instead (it is line-clamped already,
+              sort-picker.tsx) and the strip beside it keeps scrolling; the
+              species strip is min-w-0 too, so neither of the two is the one
+              that always gives way. Nothing moves at 100% text, where the
+              cluster asks for less than its track. */}
+          <div className="flex min-w-0 shrink items-center gap-2">
             {/* sr-only here for the same reason as the phone's status line
                 below: the species tabs at the other end of this row carry
                 every count now, including Vse's, so a drawn copy here would

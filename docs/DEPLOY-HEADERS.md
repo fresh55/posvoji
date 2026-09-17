@@ -39,10 +39,10 @@ covers it.
 **Not verified against production.** `posvoji.si` answers `401` behind Caddy
 `basic_auth`, the gate DEPLOY-PORTAL.md records, so
 `curl -sI -H 'Accept-Encoding: gzip' https://posvoji.si/` cannot say what the
-live server does with a real response. `scripts/deploy.sh` states in a comment
-that the live Caddyfile "has no `precompressed` directive and encodes text on
-the fly"; that Caddyfile lives on the host and is in no path of this
-repository, so the claim could not be checked either. If the live config
+live server does with a real response. The live Caddyfile is assumed to encode
+text on the fly and to carry no `precompressed` directive; it lives on the host
+and is in no path of this repository, so that assumption could not be checked
+either. If the live config
 already compresses, the directives below change nothing and this file finally
 records what the server is doing. Run the curl once the gate comes off, before
 assuming it either way.
@@ -60,6 +60,163 @@ followed by `sudo systemctl reload caddy`. Repeat the curl against one
 `/_next/static/chunks/*.js` file from the current release: `encode` covers both
 in one directive, and a chunk answering without the header means the directive
 is not where it is assumed to be.
+
+## The 3D model
+
+`out/models/our-cat/cat.glb` is the one large asset on this site that no server
+compresses on its own. Caddy's `encode` picks responses by `Content-Type`, and
+its default match list is `text/*`, `font/*`, `image/svg+xml`, the two icon
+types and a long set of `application/*` document and font types
+([encode](https://caddyserver.com/docs/caddyfile/directives/encode)). No
+`model/*` type is in it, so the model goes out raw.
+
+The file is meshopt-encoded geometry, which is built to be entropy-coded
+afterwards. Measured on the September 2026 export: 2,134,152 bytes raw,
+1,233,819 gzipped, 1,137,222 brotli at quality 11. The homepage, `/o-nas` and
+the gate page each load it, so that is close to a megabyte wasted per first
+visit, and, like the homepage, the cat appears either way. Nothing on the page
+points at the cost.
+
+Quality 11 is too slow to run per request, so the build does it once.
+`pnpm --filter web build` runs `apps/web/scripts/precompress-out.mjs` after
+`next build`, which writes `cat.glb.br` and `cat.glb.gz` next to the model and
+skips a sibling that is already newer than it. `scripts/deploy.sh` packs those
+two into the release and fails a release that carries any other precompressed
+sibling, since the host encodes text per request already.
+
+**Sidecars are what this repository supports.** The on-the-fly alternative
+below is written down for a host that cannot serve them, and it uses neither
+file. Either way the host has to be configured, and until it is, the two files
+are dead weight in the release: a sidecar nothing asks for is never read.
+
+### Caddy
+
+Give the `file_server` that serves the release the subdirective:
+
+```caddy
+root * /srv/posvoji/current/public
+try_files {path}.html {path} {path}/index.html
+file_server {
+    precompressed br gzip
+}
+```
+
+`precompressed` looks for the uncompressed file first, then for a sidecar per
+enabled format, and answers with the sidecar and the matching
+`Content-Encoding`
+([file_server](https://caddyserver.com/docs/caddyfile/directives/file_server)).
+Naming the two formats keeps `zstd` out of the default `br zstd gzip`: the
+build writes no `.zst`, and an enabled format costs a lookup per request
+whether or not its sidecar exists.
+
+Nothing in it compares the sidecar with the file beside it. Every release
+directory is written once and never edited, so inside one release they cannot
+drift apart, but a release that arrived some other way is a different matter;
+see the host steps.
+
+The model's `Content-Type` is a separate question, and `precompressed` does not
+depend on it. Caddy keeps no MIME table of its own: `file_server` calls Go's
+`mime.TypeByExtension` and, when the extension is unknown, sends no
+`Content-Type` at all rather than letting Go sniff one
+(`modules/caddyhttp/fileserver/staticfiles.go`). Go's built-in table has no
+`.glb`, so on Linux the answer comes from the host's `/etc/mime.types` and is
+`model/gltf-binary` only if the host's media-types package carries that entry.
+Nothing in the page depends on it, because the model is fetched and parsed as
+bytes, but `encode`'s match does, which is the next section's problem.
+
+### Caddy, compressing on the fly instead
+
+```caddy
+encode zstd gzip {
+    match {
+        header Content-Type model/gltf-binary*
+        header Content-Type text/*
+        header Content-Type application/json*
+        header Content-Type application/javascript*
+        header Content-Type application/xhtml+xml*
+        header Content-Type application/wasm*
+        header Content-Type font/*
+        header Content-Type image/svg+xml*
+    }
+}
+```
+
+Three things make this the second choice. `match` replaces the default list
+instead of adding to it, so every type the site still needs compressed has to
+be named again and the list above covers only what this site serves. It pays
+compression CPU on every request, at a lower brotli or zstd level than 11.
+And it fires on the type the file server produced, so it does nothing unless
+`.glb` resolves to `model/gltf-binary` on that host: check with
+`curl -sI https://posvoji.si/models/our-cat/cat.glb` before relying on it.
+
+Do not count on a `header` directive that sets `Content-Type` to steer it.
+`encode` matches the type the file server produced, and which of the two
+directives sees the header first is not something this document has tested.
+The host's MIME table is the thing to fix.
+
+### nginx
+
+```nginx
+gzip_static on;
+brotli_static on;
+```
+
+`gzip_static` is not built by default; it needs
+`--with-http_gzip_static_module`. `brotli_static` comes from the third-party
+`ngx_brotli` module. Neither consults `gzip_types`: the static module takes
+`gzip_http_version`, `gzip_proxied`, `gzip_disable` and `gzip_vary` into
+account and nothing else
+([ngx_http_gzip_static_module](https://nginx.org/en/docs/http/ngx_http_gzip_static_module.html)),
+so the sidecar is served whatever the model's media type turns out to be.
+
+For nginx compressing on the fly instead, two additions. The media type has to
+be declared, because nginx's bundled `conf/mime.types` has no `glb` entry and
+would otherwise call the model `application/octet-stream`, and the type then
+joins the `gzip_types` list from the nginx section above:
+
+```nginx
+types {
+    model/gltf-binary glb;
+}
+
+gzip_types text/css application/javascript application/json image/svg+xml application/xml model/gltf-binary;
+```
+
+### Host steps
+
+Nothing in this repository can make the host serve the sidecars. On the
+production host, in this order:
+
+1. **Deploy once from this repository first.** The current live release
+   carries about 10500 `.br`/`.gz` files from an old hand-made deploy.
+   `precompressed` serves a sidecar without comparing it to the file beside it,
+   so turning the directive on over that release would start serving those
+   siblings, and nothing says they were written from the bytes they now sit
+   next to. A release built by `scripts/deploy.sh` contains the model's two and
+   nothing else.
+2. **Add the subdirective** to the `file_server` in the `posvoji.si` block of
+   the host Caddyfile, then `sudo caddy validate --config <path>` and
+   `sudo systemctl reload caddy`.
+3. **Confirm it on a real response.**
+
+   ```bash
+   curl -sI -H 'Accept-Encoding: br' https://posvoji.si/models/our-cat/cat.glb |
+     grep -i 'content-encoding\|content-length'
+   ```
+
+   `br` and a length near 1,137,222 rather than 2,134,152. Behind the launch
+   gate this answers `401`, so pass the credentials or run it after the gate
+   comes off. From then on `scripts/monitor-production.sh` asserts the same
+   header on every run with a `HEAD`, which carries the sidecar's headers and
+   none of its megabyte. That assertion fails until step 2 lands.
+
+   The `HEAD` takes the file server's source at its word: it sets
+   `Content-Encoding` before any body is written, so a bodyless response still
+   carries it. That has been seen against a stand-in server and not against
+   this host. If the curl above reports `br` where the monitor reports nothing,
+   that shortcut is what to drop, and a `--range` request will not replace it:
+   Caddy declines to encode a partial response, so a range over an on-the-fly
+   encoding arrives raw.
 
 ## The branded 404
 
@@ -353,7 +510,9 @@ posvoji.si {
 
     root * /srv/posvoji/current/public
     try_files {path}.html {path} {path}/index.html
-    file_server
+    file_server {
+        precompressed br gzip
+    }
 
     @nextStatic path /_next/static/*
     header @nextStatic Cache-Control "public, max-age=31536000, immutable" {
@@ -388,6 +547,9 @@ first breaks clean URLs such as `/en/resources`.
 the handlers that produce a response wherever it is written in the block, so
 one line covers the documents, the chunks and the media block. Its default
 content-type match leaves the already-compressed images alone.
+`precompressed` is the opposite: a `file_server` subdirective, so it applies to
+the release's file server alone, and the media block's stays bare because
+nothing under `/media` has a sidecar.
 `handle_errors` catches a missing media file as well as a missing page, which
 sends the HTML body to a request that wanted an image; the status is what a
 crawler reads and the body is never seen. None of this changes what

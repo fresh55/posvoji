@@ -88,9 +88,12 @@ if (!existsSync(OUT_DIR)) {
 
 const files = candidates(OUT_DIR);
 if (files.length === 0) {
-  // A tripwire, not a failure: the export can legitimately stop containing a
-  // .glb, but the extension list going quiet by accident should be visible.
-  console.log(`precompress: no ${EXTENSIONS.join(" or ")} files under out`);
+  // The export can legitimately stop containing a .glb, but the extension list
+  // going quiet by accident would ship a release where the one asset no host
+  // compresses goes out raw, with nothing in the log to say so. Fail the
+  // build; whoever meant it edits the list above.
+  console.error(`precompress: no ${EXTENSIONS.join(" or ")} files under out`);
+  process.exitCode = 1;
 }
 
 for (const file of files) {

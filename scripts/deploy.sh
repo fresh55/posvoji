@@ -798,11 +798,13 @@ ARTIFACT_FILES="$(grep -c -v '/$' "${TMP_ROOT}/listing.txt" || true)"
 
 # The only precompressed siblings a release carries are the model's. Anything
 # else precompressed is a text asset the host already encodes per request, and
-# it stops the deploy here, before an upload.
-UNEXPECTED_SIDECAR="$(grep -E '\.(br|gz|zst)$' "${TMP_ROOT}/listing.txt" |
+# it stops the deploy here, before an upload. A `.tmp` is caught with them:
+# precompress-out.mjs writes each sibling under that suffix and renames it, so
+# one left behind is a half-written body from an interrupted build.
+UNEXPECTED_SIDECAR="$(grep -E '\.(br|gz|zst)$|\.tmp$' "${TMP_ROOT}/listing.txt" |
   grep -v -E '\.glb\.(br|gz)$' | head -n 1 || true)"
 [ -z "${UNEXPECTED_SIDECAR}" ] ||
-  fail "the export carries a precompressed sibling that is not a model's: ${UNEXPECTED_SIDECAR}"
+  fail "the export carries a sibling that is not a model's finished .br or .gz: ${UNEXPECTED_SIDECAR}"
 
 # One real file out of the archive, so the post-upload check on the host tests
 # something more than index.html existing. A hashed JS chunk is a good pick:

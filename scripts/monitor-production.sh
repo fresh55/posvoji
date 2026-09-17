@@ -59,12 +59,23 @@ delivery() {
 }
 # The same release switch as above takes the hashed chunk with it. Retry once.
 delivery || delivery
+# out/404.html only reaches a visitor if the server is wired to serve it
+# (docs/DEPLOY-HEADERS.md). Assert the status and the page's own words, so the
+# server and the export cannot drift apart unnoticed.
+status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani)
+[[ "$status" = 404 ]] || { echo "unexpected HTTP status for a missing path: $status" >&2; exit 1; }
+grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path did not serve the branded 404' >&2; exit 1; }
 # The 3D cat's model is the one large asset no host compresses by itself:
 # Caddy's encode matches Content-Type and its default list has no model/* entry,
 # so cat.glb ships raw unless the siblings the build writes are served with
 # `precompressed br gzip` (docs/DEPLOY-HEADERS.md). Raw it is 1,500,464 bytes
-# against 550,478 brotli, and the page renders either way, which is the blind
-# spot the two checks above exist for.
+# against 550,478 brotli.
+#
+# Opt-in, because the host is not wired for those siblings yet and nothing in
+# this repository can wire it: until the directive lands the answer here is
+# correctly "no Content-Encoding", and a red light on every run for a thing
+# the site works without is a red light nobody reads. docs/DEPLOY-HEADERS.md
+# turns it on as the last of its host steps.
 #
 # HEAD, because a precompressed sibling's Content-Encoding is set before any
 # body is written: a bodyless 200 carries it and the megabyte stays off the
@@ -77,22 +88,19 @@ delivery || delivery
 # The URL carries no ?v= cache buster, unlike the one components/cat-model.tsx
 # requests. Caddy and nginx both match the path and ignore the query, so
 # nothing here has to track that number.
-model_args=()
-for arg in "${args[@]}"; do [[ "$arg" = --compressed ]] || model_args+=("$arg"); done
-model_args+=(--head --header 'Accept-Encoding: br, gzip')
-model() {
-  local status
-  status=$(curl "${model_args[@]}" --output /dev/null --dump-header "$scratch/model-headers" --write-out '%{http_code}' https://posvoji.si/models/our-cat/cat.glb) || return 1
-  [[ "$status" = 200 ]] || { echo "unexpected HTTP status for the 3D model: $status" >&2; return 1; }
-  grep -qi '^content-encoding:' "$scratch/model-headers" || { echo 'no Content-Encoding for /models/our-cat/cat.glb' >&2; return 1; }
-}
-model
-# out/404.html only reaches a visitor if the server is wired to serve it
-# (docs/DEPLOY-HEADERS.md). Assert the status and the page's own words, so the
-# server and the export cannot drift apart unnoticed.
-status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani)
-[[ "$status" = 404 ]] || { echo "unexpected HTTP status for a missing path: $status" >&2; exit 1; }
-grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path did not serve the branded 404' >&2; exit 1; }
+if [[ "${POSVOJI_MONITOR_MODEL_ENCODING:-}" = 1 ]]; then
+  model_args=()
+  for arg in "${args[@]}"; do [[ "$arg" = --compressed ]] || model_args+=("$arg"); done
+  model_args+=(--head --header 'Accept-Encoding: br, gzip')
+  model() {
+    local status
+    status=$(curl "${model_args[@]}" --output /dev/null --dump-header "$scratch/model-headers" --write-out '%{http_code}' https://posvoji.si/models/our-cat/cat.glb) || return 1
+    [[ "$status" = 200 ]] || { echo "unexpected HTTP status for the 3D model: $status" >&2; return 1; }
+    grep -qi '^content-encoding:' "$scratch/model-headers" || { echo 'no Content-Encoding for /models/our-cat/cat.glb' >&2; return 1; }
+  }
+  # A release can switch under it like any other check here. Retry once.
+  model || model
+fi
 fetch https://posvoji.si/_posvoji/operations.json "$scratch/operations.json"
 node "$script_dir/release-status.mjs" operations "$scratch/operations.json"
 echo 'production delivery, compression, the 404, pipeline freshness and host jobs: OK'

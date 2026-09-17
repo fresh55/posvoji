@@ -72,10 +72,10 @@ types and a long set of `application/*` document and font types
 
 The file is meshopt-encoded geometry, which is built to be entropy-coded
 afterwards. Measured on the September 2026 export: 1,500,464 bytes raw,
-624,978 gzipped, 550,478 brotli at quality 11. The homepage, `/o-nas` and
-the gate page each load it, so that is close to a megabyte wasted per first
-visit, and, like the homepage, the cat appears either way. Nothing on the page
-points at the cost.
+624,978 gzipped, 550,478 brotli at quality 11. The gate page loads it on every
+visit, `/o-nas` when a visitor scrolls to the stage and the homepage only when
+one reaches for the corner, so a first visit to the gate wastes close to a
+megabyte of it.
 
 Quality 11 is too slow to run per request, so the build does it once.
 `pnpm --filter web build` runs `apps/web/scripts/precompress-out.mjs` after
@@ -206,17 +206,27 @@ production host, in this order:
 
    `br` and a length near 550,478 rather than 1,500,464. Behind the launch
    gate this answers `401`, so pass the credentials or run it after the gate
-   comes off. From then on `scripts/monitor-production.sh` asserts the same
-   header on every run with a `HEAD`, which carries the sidecar's headers and
-   none of its megabyte. That assertion fails until step 2 lands.
+   comes off.
 
-   The `HEAD` takes the file server's source at its word: it sets
+   The `HEAD` below takes the file server's source at its word: it sets
    `Content-Encoding` before any body is written, so a bodyless response still
    carries it. That has been seen against a stand-in server and not against
    this host. If the curl above reports `br` where the monitor reports nothing,
    that shortcut is what to drop, and a `--range` request will not replace it:
    Caddy declines to encode a partial response, so a range over an on-the-fly
    encoding arrives raw.
+
+4. **Turn the monitor's check on.** `scripts/monitor-production.sh` asserts the
+   same header with that `HEAD` on every run, but only when
+   `POSVOJI_MONITOR_MODEL_ENCODING=1` is set: until step 2 lands the honest
+   answer is no `Content-Encoding`, and a check that fails for a thing the site
+   works without is one nobody reads. Set it in both places that run the
+   script, once the curl above answers `br`:
+
+   - `scripts/systemd/posvoji-health.service`, as a second `Environment=` line
+     beside `POSVOJI_MONITOR_NETRC_FILE`, then `sudo systemctl daemon-reload`.
+   - `.github/workflows/production-health.yml`, in the `env:` of the step that
+     runs the script, beside `MONITOR_NETRC`.
 
 ## The branded 404
 

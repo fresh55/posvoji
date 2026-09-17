@@ -56,6 +56,17 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  trigger goes back on the row there and the sheet's copy stands down.
  *  Three placements, one dress, one control, and a hand-rolled listbox less.
  *
+ *  The phone keeps it in the sheet, and that is a decision rather than a gap.
+ *  Of twelve listing pages measured in September 2026, the four that sort on a
+ *  phone at all -- Dogs Trust, Etsy, Zalando, IKEA -- fold the order into the
+ *  filter sheet as its first section, which is this, and only Petfinder keeps
+ *  a sort control of its own at every width. Both ways of putting one on the
+ *  phone page charge the fold: a line under the species tabs moves the first
+ *  card from y=334 to about y=390 on a 390x844 screen, and a third dock button
+ *  has to take its width from the shelter trigger, which answers the question
+ *  a phone visitor asks first. What a phone visitor is owed instead is the
+ *  waiting time on the cards, where it already is.
+ *
  *  That one dress is a framed control that says "Razvrsti:" before the order.
  *  It wore the toolbar's quiet dress until a visitor was confused by it: quiet
  *  draws no border until hover, so on the home page it was a bare phrase
@@ -67,9 +78,16 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  label beside the control with the chosen order visible, and it is the
  *  primary way a visitor re-orders 486 animals.
  *
- *  The quiet dress stays what the species tabs and the shelter trigger wear
- *  (toolbar-trigger.ts). A tab strip needs no frame, because its chosen tab is
- *  a filled pill; a control holding a value the visitor has to read does. */
+ *  The species tabs across the row keep no frame and need none: which one is
+ *  chosen is a filled pill, and a strip of text with one pill in it is not
+ *  mistakable for a sentence. The shelter trigger shows a value the same way
+ *  this one does, and it keeps the quiet dress (toolbar-trigger.ts) because of
+ *  where it is drawn rather than because the rule stops at this control: in
+ *  the filter panel it is a row under the panel's own Kje heading, in the dock
+ *  it is a framed button already, and the one layout that puts it in this row
+ *  is an lg page with no panel beside the grid. That row, where a framed sort
+ *  control would stand next to a quiet shelter one, is the place to settle
+ *  whether the quiet dress survives at all. It is not settled here. */
 export function SortPicker({
   value,
   onChange,

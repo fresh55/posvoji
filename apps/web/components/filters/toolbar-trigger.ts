@@ -1,10 +1,15 @@
-/** The toolbar's quiet trigger treatment, shared by the shelter picker and the
- *  sort picker so the two controls sitting side by side stay in step.
+/** The toolbar's quiet trigger treatment, worn by the shelter picker.
  *
  *  The row above the grid held three bordered boxes next to the species tabs,
  *  four framed things asking for the same glance. The tabs are the row's
- *  anchor; these two draw their frame when a pointer or the open state asks
- *  for it, and are only text at rest.
+ *  anchor; this one draws its frame when a pointer or the open state asks for
+ *  it, and is only text at rest.
+ *
+ *  The sort trigger wore it too until a visitor read its bare order as a
+ *  caption for the drawing above it (sort-picker.tsx). It keeps a frame at
+ *  rest now, so the two are no longer in step, and the one layout where both
+ *  stand in this row is the lg page with no filter panel beside it. Whichever
+ *  way that row is settled, it is settled for both of them at once.
  *
  *  The dark: terms are not decoration. Both primitives ship a dark ground of
  *  their own (`dark:bg-input/30`, `dark:hover:bg-input/50` in ui/button.tsx

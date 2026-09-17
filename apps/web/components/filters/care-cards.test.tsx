@@ -199,8 +199,10 @@ describe("FilterGroupList", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
+    // One facet has a count, so the sidebar draws that option alone; the
+    // section itself appearing is what this test is about.
     expect(
       screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
-    ).toHaveLength(4);
+    ).toHaveLength(1);
   });
 });

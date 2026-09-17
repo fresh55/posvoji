@@ -439,8 +439,9 @@ export function FilterGroupList({
       age control's alone once, and by the time the sex and size sections were
       brought onto the row treatment it was deciding all of them. */
   layout?: FilterCardLayout;
-  /** Folds sections behind their headers. The sidebar turns this on; the
-      sheet scrolls as one page and leaves it off. */
+  /** Folds sections behind their headers. Both the sidebar and the phone
+      sheet turn it on; the sheet needs it more (filter-sheet.tsx has the
+      numbers: nine open sections through a 189px window at 320x568). */
   collapsible?: boolean;
 } & FilterActionContract) {
   const { isOpen, toggleSection } = useFilterSections();

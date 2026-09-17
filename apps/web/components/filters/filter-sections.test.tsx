@@ -434,9 +434,10 @@ describe("the sidebar's surfaces", () => {
     const options = container.querySelectorAll<HTMLElement>(
       '[data-slot="toggle-group-item"], button[aria-pressed]',
     );
-    // Two sexes, three ages, three sizes, three energies, two health traits
-    // and two household answers: every option the fixture can show.
-    expect(options).toHaveLength(15);
+    // Two sexes, three ages, three sizes, two of three energies (no animal in
+    // the fixture is Uravnotežen, and the sidebar leaves a dead option out),
+    // two health traits and two household answers.
+    expect(options).toHaveLength(14);
 
     for (const option of options) {
       expect(option.className).toContain("border-transparent");
@@ -466,5 +467,10 @@ describe("the sidebar's surfaces", () => {
     // row; tap-target would set position: relative and fight the absolute.
     expect(reset?.className).toContain("pointer-coarse:min-h-11");
     expect(reset?.className).toContain("absolute");
+    // A mouse gets a 25px box from padding, not from an overlay, and the
+    // shared p-0 must not ride along or the stylesheet's order decides which
+    // wins.
+    expect(reset?.className).toContain("px-1");
+    expect(reset?.className).not.toContain("p-0");
   });
 });

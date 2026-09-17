@@ -4,7 +4,7 @@ import type { Ref } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { CARDS_PER_CLICK } from "@/components/grid-rendering";
-import { COARSE_ACTION } from "@/lib/link-styles";
+import { COARSE_ACTION, CONTROL_FRAME } from "@/lib/link-styles";
 
 /**
  * The tail of an incrementally drawn grid.
@@ -86,14 +86,10 @@ export function GridLoadMore({
           // what a thumb needs. The pointer and not the width, so a touch tablet
           // past lg gets it and a narrow mouse window does not.
           //
-          // The frame is what says this is pressable at all: it is an outline
-          // button with no fill, alone on a line under sixty photographs, and
-          // --border measures 1.26:1 light and 1.47:1 dark, which SC 1.4.11
-          // asks 3:1 of. --control-border is the token for exactly that
-          // (globals.css, 3.66:1 and 3.77:1). Stated for dark as well because
-          // the variant states dark:border-input for itself and a dark: class
-          // outranks an unprefixed one whatever the merge does with it.
-          className={`${COARSE_ACTION} border-control-border dark:border-control-border`}
+          // CONTROL_FRAME because the frame is what says this is pressable at
+          // all: an outline button with no fill, alone on a line under sixty
+          // photographs (lib/link-styles.ts).
+          className={`${COARSE_ACTION} ${CONTROL_FRAME}`}
         >
           {t("showMoreAnimals", { n: Math.min(CARDS_PER_CLICK, total - drawn) })}
         </Button>

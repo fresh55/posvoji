@@ -143,15 +143,12 @@ function shelterAbsenceKey(count: number): TranslationKey {
  *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
  *  mouse.
  *
- *  The border is the same argument in the other dimension. These are outline
- *  buttons with no fill on an empty page, so their edge is the whole of what
- *  says they are controls, and --border measures 1.26:1 light and 1.47:1 dark
- *  where SC 1.4.11 asks 3:1. --control-border is the token for a frame that
- *  identifies a control (globals.css, 3.66:1 and 3.77:1). Dark is stated as
- *  well: the variant carries dark:border-input and a dark: class outranks an
- *  unprefixed one whatever tailwind-merge makes of the pair.
+ *  CONTROL_FRAME is the same argument in the other dimension: these are
+ *  outline buttons with no fill on an empty page, so their edge is the whole
+ *  of what says they are controls. Why that is a token and not --border is
+ *  written where the constant is (lib/link-styles.ts).
  */
-const EMPTY_STATE_ACTION = `${COARSE_ACTION} border-control-border dark:border-control-border`;
+const EMPTY_STATE_ACTION = `${COARSE_ACTION} ${CONTROL_FRAME}`;
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
@@ -805,10 +802,6 @@ export function AnimalGrid({
               </p>
             </noscript>
           )}
-          {/* Where the skip link lands: the end of the grid, whatever the grid
-              currently holds. tabIndex so focus actually moves here rather than
-              only scrolling the page. */}
-          <div id="za-rezultati" tabIndex={-1} />
         </div>
 
         {hasSidebar && (
@@ -870,6 +863,21 @@ export function AnimalGrid({
           />
         )}
 
+        {/* Where the skip link lands, and it has to be past the rail as well
+            as past the cards. It used to be the last child of the grid column,
+            which was the end of the document until the results moved ahead of
+            the panel: from then on skipping the list left the visitor at the
+            top of fourteen to thirty-two filter stops, which is further from
+            the footer than the grid was. A row of its own under both columns,
+            so it is last whichever track it is read from, and zero-height, so
+            it costs the layout nothing. tabIndex so focus actually moves here
+            rather than only scrolling the page. */}
+        <div
+          id="za-rezultati"
+          tabIndex={-1}
+          className={cn(hasSidebar && "lg:col-span-2 lg:row-start-2")}
+        />
+
         {dialogMounted && (
           <AnimalDialog
             animal={selected}
@@ -892,4 +900,4 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
-import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
+import { COARSE_ACTION, CONTROL_FRAME, SOURCE_LINK } from "@/lib/link-styles";

@@ -107,6 +107,27 @@
      of drift --rail-pad above exists to prevent, so the number is written here
      and read there. */
   --toolbar-row: 2.25rem;
+  /* The stacking order this site actually uses, written down once because it
+     was decided nowhere and read by grepping five files. Nothing here is a
+     token; the classes stay plain z-* utilities, and this is the ladder they
+     are chosen from:
+
+       z-10  inside a component, over its own content: a card's gallery dots
+             and chevrons, a badge over a photo.
+       z-20  a card's own frame line, over everything the card draws.
+       z-30  floating page furniture that a visitor can scroll past: the phone
+             filter dock.
+       z-40  page chrome that must stay legible over the page: the sticky
+             toolbar band, the back-to-top control. These two never overlap,
+             and animal-filters.tsx says what happens when the band and the
+             dock do.
+       z-50  a layer that takes the page away: dialog, drawer, popover, the
+             overlays under them.
+       z-[55] the one thing that stands over an open dialog: the photo bloom.
+
+     A new fixed or sticky thing belongs on a rung that already exists. If it
+     needs one between two of these, the pair it lands between is the argument
+     to write down, not the number. */
   /* Where the back-to-top control sits, and the one place that distance is
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
@@ -327,10 +348,17 @@
      statement, so one name. */
   --brand: oklch(0.92 0.045 151);
   --brand-foreground: oklch(0.32 0.075 151);
-  /* 0.64, not 0.68: this line is a chip's hover edge, a chosen filter card's
-     border and a picker row's mark, and at 0.68 it measured 2.78:1 on the page
-     and 2.55:1 on --muted. SC 1.4.11 asks 3:1 of a state boundary; 0.64
-     measures 3.27:1 and 3.00:1 (2026-09-17 audit). */
+  /* 0.64, not 0.68: at 0.68 this measured 2.78:1 on the page and 2.55:1 on
+     --muted, and SC 1.4.11 asks 3:1 of a state boundary; 0.64 measures 3.27:1
+     and 3.00:1 (2026-09-17 audit). Measured on a chip's hover edge, a chosen
+     filter card's border and a picker row's mark, but worn by fourteen places
+     in all: the brand badge variant, the shelter card's count pill, the
+     shelter avatar and the detail map's halo, the dialog's fact pills and
+     share button, the picker footer, a section header's summary chip, and
+     four portal surfaces. The two grounds it was measured against, the page
+     and --muted, are the grounds those wear it on too, which is why one
+     number covers them; a surface that needs its own is a surface that needs
+     its own token. */
   --brand-border: oklch(0.64 0.075 151);
   --brand-strong: oklch(0.44 0.1 151);
   /* The ink for the one place that green is a ground rather than a line: the
@@ -470,14 +498,25 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.923 0.003 48.717);
   --input: oklch(0.923 0.003 48.717);
-  /* The edge of a control whose frame is what says it can be pressed: the sort
-     trigger, back-to-top, the load-more and empty-state buttons, the header
-     login, the dock's shelter trigger, the picker's search field, the chips.
+  /* The edge of any control whose boundary is what identifies it: an outline
+     button, a select trigger, a text input, a chip, a resting check box.
+     A rule and not a list, because a list of call sites is a list that goes
+     out of date.
+
      --border stays a hairline (1.26:1 on the page) because it is also every
      divider and the card's edge, and a divider is not a component. A frame
      that identifies a component is, and SC 1.4.11 asks 3:1 of it: this
      measures 3.66:1 on the page and 3.36:1 on --muted (2026-09-17 audit).
-     Worn as border-control-border, never as a divider. */
+     Worn as border-control-border, never as a divider.
+
+     Applied at the leaves for now, through CONTROL_FRAME in lib/link-styles.ts.
+     The root of it is ui/button.tsx's outline variant, which spells
+     border-border and dark:border-input for its own: the token belongs there
+     and in ui/select.tsx and ui/input.tsx, at which point CONTROL_FRAME and its
+     dark half go away. That reaches about forty call sites across the portal,
+     the register and the dialog, none of which this audit measured, so it is
+     the follow-up and not this pass. Do not copy the pattern to a new control
+     without reading that constant first. */
   --control-border: oklch(0.62 0.004 49);
   /* The focus ring, and the one token here with a number it has to hit: SC
      1.4.11 asks a focus indicator for 3:1 against what it sits on. Measured
@@ -744,7 +783,15 @@
    visible grey in dark, from the one token that already reads well on both
    grounds. */
 @utility fade-scroll-thin {
-  @apply fade-scroll-mask;
+  @apply fade-scroll-mask scrollbar-thin;
+}
+
+/* The thin bar on its own, for a box that scrolls and wants to say so without
+   the fade: the phone filter sheet, the picker's shelter list, the dialog.
+   Lifted out of fade-scroll-thin the way fade-scroll-mask was, because three
+   call sites had reached for `[scrollbar-width:thin]` by hand and none of them
+   got the thumb colour the paragraph above measured. */
+@utility scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--muted-foreground) 30%, transparent)
     transparent;
@@ -819,6 +866,12 @@
    what the scrollbar believes until a card has been drawn once, and an
    estimate under it promises a shorter page than the grid delivers. Residual
    drift is 6 to 11px per row.
+
+   Those widths were measured on the results grid, which has the rail beside
+   it; shelter-animal-grid.tsx wears this too and has no rail, so its columns
+   at the lg band are narrower and its cards shorter than the number here.
+   That is the safe direction, since every band has to sit above the real card
+   and not under it, but a measurement pass there would tighten it.
 
    Safe on this element in particular: the card is already overflow-hidden and
    its one focus ring is an inset ring on an overlay inside the photo frame

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Locale } from "@/lib/i18n";
+import { CONTROL_FRAME } from "@/lib/link-styles";
 import { siteLinks } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
 
@@ -150,7 +151,10 @@ export function ShelterLogin() {
       variant="outline"
       // 32px drawn at size sm, which is a mouse's button. On a coarse pointer
       // it is the only door to the portal on the page, so it takes the 44.
-      className="hidden border-control-border font-normal text-muted-foreground pointer-coarse:h-11 hover:text-foreground lg:inline-flex dark:border-control-border"
+      className={cn(
+        CONTROL_FRAME,
+        "hidden font-normal text-muted-foreground pointer-coarse:h-11 hover:text-foreground lg:inline-flex",
+      )}
     >
       {/* The whole phrase at every width it renders at, never "Prijava" on
           its own. On a site with no visitor accounts, a bare login in the

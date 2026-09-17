@@ -227,6 +227,20 @@ export function AnimalFilters({
   // going out of step between two call sites, not the second mount. The box
   // is the strip's, because SpeciesTabs takes no className and the row needs
   // something that can be told to give way before the sort control does.
+  // The two mounts of the chips row ask the same question of the same state,
+  // so they ask it once here. Only where they are drawn differs, and that is
+  // the placement each passes (filter-chips.tsx).
+  const showChips = !isEmpty && (chips.length > 0 || undo);
+  const chipProps = {
+    chips,
+    onClearAll,
+    undo,
+    // With nothing matching the row names the chip costing the most, because
+    // "try fewer filters" is advice and not a way out, and the empty state
+    // draws no pills of its own to say it with (animal-grid.tsx).
+    stuck: resultCount === 0,
+  };
+
   const speciesStrip = (
     <div className="min-w-0">
       <SpeciesTabs
@@ -377,7 +391,7 @@ export function AnimalFilters({
             page jumping. */}
         <LazyMotion features={domAnimation}>
           <AnimatePresence initial={false}>
-            {!isEmpty && (chips.length > 0 || undo) && (
+            {showChips && (
               <m.div
                 key="filter-chips"
                 initial={{ height: 0, opacity: 0 }}
@@ -390,13 +404,7 @@ export function AnimalFilters({
                 transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
                 className="min-w-0 overflow-hidden max-lg:hidden"
               >
-                <FilterChips
-                  chips={chips}
-                  onClearAll={onClearAll}
-                  undo={undo}
-                  stuck={resultCount === 0}
-                  className="mt-2"
-                />
+                <FilterChips {...chipProps} className="mt-2" />
               </m.div>
             )}
           </AnimatePresence>
@@ -438,20 +446,16 @@ export function AnimalFilters({
           In flow and not in the band, which answers each objection that took
           the row off the phone in the first place (see the lg-only row
           above). It scrolls away with the results, so the pinned chrome pays
-          nothing and the badge carries the state once the row is past. It
-          wraps, so there is no second horizontal scroller under the species
-          strip and no flick that resolves as a tap. And it sits where the
-          sheet was: a filter picked in the sheet lands behind it, so closing
-          the sheet lands on the evidence.
+          nothing and the badge carries the state once the row is past. And it
+          sits where the sheet was: a filter picked in the sheet lands behind
+          it, so closing the sheet lands on the evidence. The shape it takes
+          here is the "flow" placement in filter-chips.tsx, which is where the
+          wrapping and the cap are settled and measured.
 
-          Measured at 375px: three filters are one 44px line and push the
-          first card down 60px, five are two lines. Capped at five plus a
-          "+N", which is what bounds that push.
-
-          It carries the way back from a clear as well, which is why the
-          condition holds on `undo` with no chips left: clearing is the one
-          filter action repeating the gesture cannot undo, and FilterChips
-          swaps the pills for the offer for the few seconds it stands. */}
+          It carries the way back from a clear as well, which is why the gate
+          holds on `undo` with no chips left: clearing is the one filter
+          action repeating the gesture cannot undo, and FilterChips swaps the
+          pills for the offer for the few seconds it stands. */}
       {/* A second mount of the same row and not the band's moved: one
           instance cannot be inside the sticky band at lg and in flow below
           it, and a hook choosing a parent from the width would break the
@@ -459,23 +463,9 @@ export function AnimalFilters({
           row, so the cost is a second layout tree, one of which is always
           display:none, and it has to stay zero-rect-safe (focusAfterRow in
           filter-chips.tsx). */}
-      {!isEmpty && (chips.length > 0 || undo) && (
+      {showChips && (
         <div data-slot="mobile-filter-row" className="lg:hidden">
-          <FilterChips
-            chips={chips}
-            onClearAll={onClearAll}
-            undo={undo}
-            // With nothing matching the row names the chip costing the most,
-            // because "try fewer filters" is advice and not a way out, and
-            // the empty state below draws no pills of its own to say it with
-            // (animal-grid.tsx).
-            stuck={resultCount === 0}
-            // Clearing everything stays in the sheet's footer, one tap away
-            // the whole time; the row keeps it only where it is the way out.
-            clear={resultCount === 0}
-            wrap
-            maxVisible={5}
-          />
+          <FilterChips {...chipProps} placement="flow" />
         </div>
       )}
 

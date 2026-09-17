@@ -54,6 +54,11 @@ const COLLAPSE_AT = 3;
  *  narrower, so it passes a cap of its own (animal-filters.tsx). */
 const MAX_VISIBLE = 8;
 
+/** The same bound in flow, where a line is narrower and the pills are 44px
+ *  tall rather than 28. Measured at 375px: five pills plus the "+N" is three
+ *  lines, which is as much of the grid as a row above it may take. */
+const FLOW_VISIBLE = 5;
+
 /** Chips past which the sheet's Kje section shows a "+N" instead of the rest.
  *  The same bound the row above keeps, at the size a section can afford: three
  *  shelter names wrap to two lines on a phone and a fourth would push the
@@ -88,6 +93,60 @@ const CHIP_PILL =
 // pill but the "+N".
 const CHIP_REMOVABLE =
   "group border-border bg-background text-foreground hover:border-brand-border hover:bg-muted active:bg-muted";
+
+/** Where the row is drawn. The band is the sticky bar at lg; flow is under
+ *  it on a phone (animal-filters.tsx). Everything the two do differently
+ *  follows from this one answer, so it is asked once, here, rather than
+ *  arriving as a boolean per difference. */
+export type ChipRowPlacement = "band" | "flow";
+
+/** The shape each placement gives the row.
+ *
+ *  `scrolls` is the whole of the difference underneath: a strip that scrolls
+ *  sideways needs the edge fades, the mark a child is scrolled into view by,
+ *  and the vertical room a 44px pill takes inside a box sized to 28px. In
+ *  flow the row wraps into a page that already scrolls, so it needs none of
+ *  them, and a second horizontal scroller under the species strip is the
+ *  objection that kept this row off phones until now.
+ *
+ *  The band keeps the strip although it wraps from sm: measured at 1024px
+ *  with nine pills it does not overflow at all, and at 200% text it overflows
+ *  by 22px. The strip is what that case falls back on. */
+const PLACEMENT: Record<
+  ChipRowPlacement,
+  { visible: number; scrolls: boolean; box: string; pills: string; pill?: string }
+> = {
+  band: {
+    visible: MAX_VISIBLE,
+    scrolls: true,
+    // SCROLL_STRIP is the fade, the scroll padding that keeps a focused pill
+    // out from under it, and the horizontal room the focus ring needs; the
+    // couplings between those three are on the constant. The -my/py pair is
+    // this row's own vertical half of it: it holds the pills' 44px, which the
+    // scroll box would otherwise clip to its own content height.
+    box: cn(
+      SCROLL_STRIP,
+      "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
+    ),
+    // w-max is the strip's own width, a row as wide as its content for the
+    // strip to scroll. It wraps from sm, where there is width to wrap into.
+    pills: "w-max sm:w-auto sm:flex-wrap",
+  },
+  flow: {
+    visible: FLOW_VISIBLE,
+    scrolls: false,
+    // min-w-0 and nothing else: the box is as wide as the column and the
+    // pills wrap inside it.
+    box: "min-w-0",
+    pills: "flex-wrap",
+    // Narrows CHIP_PILL's own pointer-coarse:px-3. Measured at 375px, three
+    // typical pills came to 110, 112 and 111 wide and missed one line by 6px.
+    pill: "pointer-coarse:px-2.5",
+  },
+};
+
+/** What every pill row wears at both placements. */
+const PILL_ROW = "flex items-center gap-1.5 pointer-coarse:gap-2";
 
 type Run = { facet: FilterFacet; chips: Chip[] };
 
@@ -160,9 +219,7 @@ export function FilterChips({
   onClearAll,
   undo,
   stuck = false,
-  clear = true,
-  wrap = false,
-  maxVisible = MAX_VISIBLE,
+  placement = "band",
   className,
 }: {
   chips: Chip[];
@@ -170,29 +227,23 @@ export function FilterChips({
   /** Offered for a few seconds after a clear, in place of the chips it took
    *  away. Absent the rest of the time. */
   undo?: () => void;
-  /** Wrap the pills instead of scrolling them sideways. The phone's in-flow
-   *  row wraps: it sits in a page that already scrolls vertically, and a
-   *  second horizontal scroller under the species strip was the objection
-   *  that took the row off the phone in the first place. */
-  wrap?: boolean;
-  /** Pills past which the rest fold behind "+N". The phone row caps lower
-   *  than the desktop one: it wraps, so the cap bounds lines, not width. */
-  maxVisible?: number;
   /** The filter state matches nothing. The row then names the chip that is
    *  costing the most, because it is the way out and the visitor has no other
    *  means of telling which of five pills is the one to drop. */
   stuck?: boolean;
-  /** Whether the row ends in its own clear-everything. On by default, which
-   *  is the sticky toolbar's case at lg: the last thing in the strip, after
-   *  the pills it clears. The phone's in-flow row turns it off, because there
-   *  the sheet's footer holds a clear that is one tap away the whole time, and
-   *  turns it back on when nothing matches, where clearing is the point of the
-   *  screen (animal-filters.tsx). */
-  clear?: boolean;
+  /** Which of the two mounts this is. Defaults to the band, which is the one
+   *  that has always been here. */
+  placement?: ChipRowPlacement;
   className?: string;
 }) {
   const { locale, messages, t } = useI18n();
   const reduceMotion = useReducedMotion();
+  const shape = PLACEMENT[placement];
+  // Whether the row ends in its own clear-everything. The band's is the last
+  // thing in the strip, after the pills it clears, at every result count. In
+  // flow the sheet's footer holds a clear one tap away the whole time, so the
+  // row spends a line on one only where clearing is the point of the screen.
+  const clear = shape.scrolls || stuck;
   const scrollRef = useScrollEdgeFadesX<HTMLDivElement>();
   const toolbarRef = useRef<HTMLElement>(null);
 
@@ -248,10 +299,10 @@ export function FilterChips({
   // worth drawing if it is on screen, and with nothing matching there are no
   // cards below for a taller row to push down.
   const hidden =
-    showAll || blocker ? 0 : Math.max(0, all.length - maxVisible);
+    showAll || blocker ? 0 : Math.max(0, all.length - shape.visible);
   const items: Item[] =
     hidden > 0
-      ? [...all.slice(0, maxVisible), { id: "more", kind: "more", hidden }]
+      ? [...all.slice(0, shape.visible), { id: "more", kind: "more", hidden }]
       : all;
 
   // Every stop the arrow keys walk, in the order they are drawn. Inline, clear
@@ -276,11 +327,11 @@ export function FilterChips({
     //
     // Nothing to bring into view when the row wraps: every pill it holds is
     // already on screen, and the box has no scrollLeft to write.
-    if (wrap || !blockerKey) return;
+    if (!shape.scrolls || !blockerKey) return;
     scrollChildIntoViewX(stopNode(toolbarRef.current, blockerKey), {
       smooth: !reduceMotion,
     });
-  }, [blockerKey, reduceMotion, wrap]);
+  }, [blockerKey, reduceMotion, shape.scrolls]);
   const chipsKey = chips.map((chip) => chip.key).join("|");
   const seenChips = useRef<string[]>([]);
 
@@ -303,11 +354,11 @@ export function FilterChips({
     const keys = chipsKey === "" ? [] : chipsKey.split("|");
     const added = keys.filter((key) => !seenChips.current.includes(key));
     seenChips.current = keys;
-    if (wrap || added.length !== 1) return;
+    if (!shape.scrolls || added.length !== 1) return;
     scrollChildIntoViewX(stopNode(toolbarRef.current, added[0]), {
       smooth: !reduceMotion,
     });
-  }, [chipsKey, reduceMotion, wrap]);
+  }, [chipsKey, reduceMotion, shape.scrolls]);
 
   // By id and not by position. A removed pill fades out before it is taken
   // out of the DOM, so counting nodes for a render or two after a removal
@@ -396,7 +447,7 @@ export function FilterChips({
 
   // Two pixels tighter per side when wrapping: at 375 three typical pills
   // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
-  const pill = wrap ? cn(CHIP_PILL, "pointer-coarse:px-2.5") : CHIP_PILL;
+  const pill = cn(CHIP_PILL, shape.pill);
 
   // "Show me all of these" belonged to a filter state that is about to stop
   // existing. Carried over, the next pills a visitor picks would arrive
@@ -425,43 +476,20 @@ export function FilterChips({
         {messages.activeFilters}
       </span>
 
-      {/* min-w-0 and nothing else: the default shrink is what lets this box
+      {/* min-w-0 in both shapes: the default shrink is what lets this box
           take the width it needs and no more. It used to be flex-1, which on
           a wide screen parked the clear a thousand pixels to the right of the
           last pill it clears, with the whole empty middle of the row between
-          them.
-
-          The vertical padding holds the pills' 44px height, which this scroll
-          box would otherwise clip to its own content height. The negative
-          margin gives the row back the height it had before. */}
+          them. What the two shapes differ in is on PLACEMENT above. */}
       <div
-        // Only where there is a scroll to fade. The hook masks whichever edge
-        // still has content past it, and a wrapping box has neither, so wired
-        // up there it would watch a box that never scrolls and dim nothing.
-        ref={wrap ? undefined : scrollRef}
-        // The mark says "a child can be scrolled into view inside me", and a
-        // wrapping box cannot, so it goes with the ref.
-        {...(wrap ? {} : { [SCROLL_STRIP_MARK]: "" })}
-        // SCROLL_STRIP is the fade, the scroll padding that keeps a focused
-        // pill out from under it, and the horizontal room the focus ring
-        // needs; the couplings between those three are on the constant. The
-        // -my/py pair below is this row's own vertical half of it.
-        className={
-          wrap
-            ? "min-w-0"
-            : cn(
-                SCROLL_STRIP,
-                "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
-              )
-        }
+        // Both only where there is a scroll: the hook masks whichever edge
+        // still has content past it, and the mark says a child can be
+        // scrolled into view in here. A wrapping box can do neither.
+        ref={shape.scrolls ? scrollRef : undefined}
+        {...(shape.scrolls ? { [SCROLL_STRIP_MARK]: "" } : {})}
+        className={shape.box}
       >
-        <div
-          className={
-            wrap
-              ? "flex flex-wrap items-center gap-1.5 pointer-coarse:gap-2"
-              : "flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap pointer-coarse:gap-2"
-          }
-        >
+        <div className={cn(PILL_ROW, shape.pills)}>
           <AnimatePresence initial={false} mode="popLayout">
             {items.map((item) => (
               <m.span

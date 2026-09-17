@@ -21,6 +21,7 @@ import {
   UNDO_WINDOW_MS,
 } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { chipRows, phoneRow, stickyRow } from "@/test/filter-rows";
 import { animalsForClient } from "@/lib/dataset";
 import { RESULTS_COLUMNS } from "@/lib/card-grid";
 import {
@@ -111,32 +112,6 @@ const ANIMALS = [
 function query() {
   return window.location.search;
 }
-
-/** Both chip rows. A section and not a role query: the sidebar's toggle groups
- *  come back as toolbars too, and these two are the only sections that are
- *  one (filter-chips.tsx). */
-function chipRows(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>("section[role='toolbar']")];
-}
-
-/** The active filters are stated twice, once per width: in flow under the
- *  toolbar band below lg, and inside the sticky bar at lg. Only CSS separates
- *  the two, so jsdom mounts both and every query about one of them has to name
- *  which (animal-filters.tsx). */
-function phoneRow(): HTMLElement {
-  const row = document.querySelector<HTMLElement>(
-    '[data-slot="mobile-filter-row"]',
-  );
-  if (!row) throw new Error("no phone filter row on the page");
-  return row;
-}
-
-function stickyRow(): HTMLElement {
-  const row = chipRows().find((candidate) => !phoneRow().contains(candidate));
-  if (!row) throw new Error("no chips row in the sticky bar");
-  return row;
-}
-
 
 describe("animal grid empty state", () => {
   it("names the shelter-species conflict and offers to drop only the shelter", () => {

@@ -375,7 +375,8 @@ describe("the active filters row", () => {
             chip({ key: "b", facet: "age", label: "Puppies", onRemove }),
           ]}
           onClearAll={vi.fn()}
-          clear
+          placement="flow"
+          stuck
         />
       </I18nProvider>,
     );
@@ -390,7 +391,7 @@ describe("the active filters row", () => {
         <FilterChips
           chips={[chip({ key: "a", label: "Dogs" })]}
           onClearAll={vi.fn()}
-          clear={false}
+          placement="flow"
         />
       </I18nProvider>,
     );
@@ -567,18 +568,16 @@ describe("the active filters row", () => {
     expect(stops[stops.length - 1]).toBe("clear");
   });
 
-  it("hands the clear back to the caller when asked, stops and seam with it", () => {
-    // The empty state asks for this and draws its own way out instead
-    // (animal-grid.tsx). At the end of the strip the clear is the row's last
-    // item, and at 390px with four filters the pills already ran past the
-    // right edge: the one control that ends the state sat at x 514 behind a
-    // sideways scroll nothing on screen advertised.
+  it("draws no clear in flow while something matches, stops and seam with it", () => {
+    // In flow the sheet's footer holds a clear one tap away the whole time,
+    // so the row spends a line on one only where clearing is the point of the
+    // screen. Everything that belongs to the button goes when it does.
     const { container } = renderChips(
       [
         chip({ key: "a", label: "Dogs" }),
         chip({ key: "b", facet: "age", label: "Cats" }),
       ],
-      { clear: false },
+      { placement: "flow" },
     );
 
     expect(
@@ -592,12 +591,12 @@ describe("the active filters row", () => {
     );
     expect(stops).toEqual(["a", "b"]);
 
-    // The seam guards the inline button against an overscroll flick. With no
-    // button behind the pills there is nothing to guard, and a line at the end
-    // of the strip is then a line to nowhere.
-    const strip = container.querySelector("[data-scroll-strip]");
-    expect(strip?.querySelectorAll("span[aria-hidden]")).toHaveLength(0);
-    expect(strip?.querySelectorAll("button")).toHaveLength(2);
+    // The seam guards the button against an overscroll flick. With no button
+    // behind the pills there is nothing to guard, and a line at the end of
+    // the row is then a line to nowhere.
+    const row = container.querySelector("section[role='toolbar'] > div");
+    expect(row?.querySelectorAll("span[aria-hidden]")).toHaveLength(0);
+    expect(row?.querySelectorAll("button")).toHaveLength(2);
   });
 
   it("brings the way out into view rather than leaving it past the scroll", () => {
@@ -661,7 +660,7 @@ describe("the active filters row", () => {
         chip({ key: "a", label: "Dogs" }),
         chip({ key: "b", facet: "age", label: "Cats" }),
       ],
-      { wrap: true },
+      { placement: "flow" },
     );
 
     const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
@@ -695,7 +694,7 @@ describe("the active filters row", () => {
       chip({ key: `${facet}:0`, facet, label: `${facet}0` }),
     );
     expect(six).toHaveLength(6);
-    renderChips(six, { maxVisible: 5 });
+    renderChips(six, { placement: "flow" });
 
     expect(
       screen.getAllByRole("button", { name: /^Remove filter/ }),

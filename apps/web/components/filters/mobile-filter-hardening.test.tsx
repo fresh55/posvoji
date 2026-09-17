@@ -4,6 +4,7 @@ import { type ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
+import { phoneRow, stickyRow } from "@/test/filter-rows";
 import {
   EMPTY_FILTERS,
   FILTER_FACETS,
@@ -356,41 +357,25 @@ describe("mobile filter hardening", () => {
       resultCount: 2,
     });
 
-    const row = container.querySelector(
-      '[data-slot="mobile-filter-row"]',
-    ) as HTMLElement;
+    // This suite's share of the pair is where the row sits: outside the
+    // sticky band and outside the toolbar the species strip rides in. What
+    // each row holds is asserted next door (animal-grid.test.tsx), and the
+    // caps themselves in filter-chips.test.tsx.
+    const row = phoneRow(container);
     expect(row.className).toContain("lg:hidden");
     expect(row.closest('[class~="sticky"]')).toBeNull();
     expect(row.closest('[data-slot="mobile-toolbar"]')).toBeNull();
 
-    // Five pills, the rest behind a count. The bar's own row takes eight;
-    // this one wraps, so its cap bounds the lines it can push the grid down
-    // by rather than how far it runs past the right edge.
+    // One assertion on the contents, because it is the one that says the two
+    // rows are not the same row: five pills here against the band's eight.
     expect(
       within(row).getAllByRole("button", { name: /^Remove filter/ }),
     ).toHaveLength(5);
-    expect(within(row).getByRole("button", { name: "Show 1 more" })).toBeTruthy();
-
-    // With results on screen the row names what is on and nothing else:
-    // clearing everything is in the sheet's footer, one tap away the whole
-    // time, and the row keeps a clear only where it is the way out.
     expect(
-      within(row).queryByRole("button", { name: "Clear filters" }),
-    ).toBeNull();
-
-    // The row at lg is the sticky bar's own, with the whole eight-pill cap
-    // and its clear at the end of the strip. Only CSS separates the two, so
-    // jsdom mounts both and each has to be named.
-    const sticky = [
-      ...container.querySelectorAll<HTMLElement>("section[role='toolbar']"),
-    ].find((candidate) => !row.contains(candidate)) as HTMLElement;
-    expect(sticky.closest('[class~="max-lg:hidden"]')).not.toBeNull();
-    expect(
-      within(sticky).getAllByRole("button", { name: /^Remove filter/ }),
+      within(stickyRow(container)).getAllByRole("button", {
+        name: /^Remove filter/,
+      }),
     ).toHaveLength(6);
-    expect(
-      within(sticky).getByRole("button", { name: "Clear filters" }),
-    ).toBeTruthy();
   });
 
   it("keeps a flick off the end of the tab strip out of the browser's back gesture", () => {

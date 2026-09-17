@@ -79,13 +79,22 @@ const SCOPE_VISIBLE = 3;
 //
 // border-ring with the ring, because this shape has a border to move. The
 // hand-rolled ring-2 was the odd one out against every primitive's ring-3.
+//
+// The colour is stated here and not by each shape, because on all three of
+// them this line is the pill: a chip has no fill and no shadow, so the frame
+// is the whole of what says a thing is there to be pressed. --border measured
+// 1.26:1 against the bar in light mode and 1.47:1 in dark, which is a divider's
+// strength; --control-border is 3.66:1 and 3.77:1, the 3:1 SC 1.4.11 asks of a
+// boundary that identifies a control. The two shapes that mean something by
+// their border still say it over this: the "+N" adds border-dashed and a
+// marked pill takes --brand-border, which is 3.27:1 since the same audit.
 const CHIP_PILL =
-  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
+  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border border-control-border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
 
 // The look a pill wears when pressing it takes its filter off, which is every
 // pill but the "+N".
 const CHIP_REMOVABLE =
-  "group border-border bg-background text-foreground hover:border-brand-border hover:bg-muted active:bg-muted";
+  "group bg-background text-foreground hover:border-brand-border hover:bg-muted active:bg-muted";
 
 type Run = { facet: FilterFacet; chips: Chip[] };
 
@@ -440,7 +449,7 @@ export function FilterChips({
                         })}
                         className={cn(
                           pill,
-                          "border-border bg-background text-foreground hover:bg-muted",
+                          "bg-background text-foreground hover:bg-muted",
                         )}
                       >
                         <ChipGlyph facet={item.run.facet} />
@@ -468,7 +477,7 @@ export function FilterChips({
                     // not a filter: nothing comes off when it is pressed.
                     className={cn(
                       pill,
-                      "border-dashed border-border text-muted-foreground tabular-nums hover:bg-muted hover:text-foreground",
+                      "border-dashed text-muted-foreground tabular-nums hover:bg-muted hover:text-foreground",
                     )}
                   >
                     +{item.hidden}
@@ -663,7 +672,7 @@ export function RemovableChips({
           // the toolbar row's own "+N" wears.
           className={cn(
             CHIP_PILL,
-            "border-dashed border-border text-muted-foreground tabular-nums hover:bg-muted hover:text-foreground",
+            "border-dashed text-muted-foreground tabular-nums hover:bg-muted hover:text-foreground",
           )}
         >
           +{hidden}

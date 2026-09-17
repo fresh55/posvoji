@@ -269,14 +269,21 @@ export function FilterSelectionMark({
               // dark mode: a white tick on it measured 2.39:1. See
               // --brand-strong-foreground in globals.css.
               "border-brand-strong bg-brand-strong text-brand-strong-foreground"
-            : // /80 and not the /40 this was. At /40 the resting box measured
-              // 1.77:1 in light and 2.11:1 in dark against the surface it
-              // stands on, which is a box nobody can see: the one thing that
-              // says a row or a tile can be picked at all was invisible until
-              // it was picked. /80 measures 3.65:1 and 5.20:1, which clears
-              // the 3:1 SC 1.4.11 asks of a control's own boundary in both
-              // modes. The checked box is not affected; its tick is 7.37:1.
-              "border-muted-foreground/80 bg-background text-transparent",
+            : // The control tier, by name. This is the boundary of a control,
+              // which is what --control-border is for, and it was spelled as
+              // muted-foreground/80 ten lines from a token that says the same
+              // thing: one tier, two spellings. It started at /40, where the
+              // resting box measured 1.77:1 light and 2.11:1 dark against the
+              // surface it stands on, which is a box nobody can see, and /80
+              // took it to 3.65:1 and 5.20:1.
+              //
+              // border-control-border measures 3.66:1 and 3.77:1. Light is
+              // unchanged and dark gives up 5.20:1 for 3.77:1, still over the
+              // 3:1 SC 1.4.11 asks of a control's own boundary. No dark: half:
+              // this span spells no dark border of its own, so the token's own
+              // dark value stands (see CONTROL_FRAME in lib/link-styles.ts).
+              // The checked box is not affected; its tick is 7.37:1.
+              "border-control-border bg-background text-transparent",
           className,
         )}
       >

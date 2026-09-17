@@ -119,7 +119,12 @@ const NAVIGATION_KEYS = ["ArrowDown", "ArrowUp", "Home", "End"];
 
 function moveSectionFocus(event: KeyboardEvent<HTMLButtonElement>) {
   if (!NAVIGATION_KEYS.includes(event.key)) return;
-  const container = event.currentTarget.closest("aside");
+  // The aside on desktop, the drawer's content on a phone: the sheet folds
+  // its sections too now, and inside the drawer there is no aside to find,
+  // so the walk used to end silently on the first arrow press there.
+  const container = event.currentTarget.closest(
+    'aside, [data-slot="drawer-content"]',
+  );
   if (!container) return;
   const triggers = [
     ...container.querySelectorAll<HTMLButtonElement>("h3 button[aria-expanded]"),
@@ -198,8 +203,11 @@ export function FilterSectionHeader({
         "h-auto text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
-        // shapes, because the two placements differ. In the sheet this sits in
-        // the header's flex row and takes the overlay. A folding section's
+        // shapes, because the two placements differ. In the sheet's Kje row,
+        // the one caller with no collapse contract (location-scope-row.tsx),
+        // this sits in the header's flex row and takes the overlay; the
+        // sheet's filter sections fold now and take the absolute branch below
+        // with its 44px coarse floor. A folding section's
         // header is a positioned row and the button is absolute inside it, and
         // `tap-target` sets position: relative, which would fight that; there
         // the drawn box is grown instead, which costs the row nothing because

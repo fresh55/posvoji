@@ -558,17 +558,20 @@ describe("AnimalCard focus ring", () => {
     // light green edge on a white studio photo: that boundary measured under
     // 3:1 on 54 of 59 lead photos, and 3.4:1 with this layer.
     expect(frame?.className).toContain(
-      "group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(0,0,0,0.09)]",
-    );
-    // The dark theme repeats it, because the hairline's own dark rule writes
-    // the same property at the same specificity.
-    expect(frame?.className).toContain(
-      "dark:group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+      "group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]",
     );
     // The hairline is still there at rest, which is what closes a white photo
     // against the white page.
     expect(frame?.className).toContain(
-      "after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)]",
+      "after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]",
+    );
+    // One string each and no dark twin. The hairline is the only thing the
+    // theme changes about this frame and --card-photo-edge (globals.css) is
+    // where it changes now, so a dark: shadow here would be the old pair
+    // coming back.
+    expect(frame?.className).not.toContain("dark:after:shadow-");
+    expect(frame?.className).not.toContain(
+      "dark:group-has-[a:focus-visible]/card:after:shadow-",
     );
   });
 });

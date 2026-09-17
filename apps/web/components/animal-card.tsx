@@ -73,7 +73,11 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // studio shots on a white ground, and on the white page such a photo has no
 // edge at all: the corners disappear and the wait mark at the top right sits
 // in what reads as empty page. 9% black in light mode and 8% white in dark
-// close the shape without reading as a border around the picture. It was 6%,
+// close the shape without reading as a border around the picture. Those two
+// values are --card-photo-edge (globals.css), which is the only thing the
+// theme changes about this frame: both shadows below read the token, so the
+// hairline and the focused ring's inner edge are each one string instead of a
+// light one and a dark one that had to be kept in step by hand. It was 6%,
 // and at 6% the edge is rgb(240) on the white page: the top of the frame read,
 // but where a studio photo runs to pure white at the bottom the corners
 // vanished and the picture ended nowhere. 9% is rgb(232), an edge the eye
@@ -100,17 +104,17 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // bright thing. The hairline stays in the same value: it is under the ring
 // while the ring is there, and back on its own the moment focus leaves.
 //
-// The dark theme repeats the pair rather than inheriting it, because the
-// hairline's dark rule and this one both write the same property and, being
-// equally specific, the later of the two wins: the dark rule has to be the
-// focused one in the dark theme as well.
+// The 45% black is the same in both themes, so with the hairline behind a
+// token neither shadow has a dark twin left to write. That pair used to be
+// four strings differing in one colour, and the focused dark one existed only
+// to restate the hairline's dark rule, which wrote the same property at the
+// same specificity and would otherwise have won.
 const PHOTO_FRAME =
   `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
   ` after:${CARD_PHOTO_RADIUS}` +
-  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
-  " group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(0,0,0,0.09)]" +
-  " dark:group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]" +
+  " group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({

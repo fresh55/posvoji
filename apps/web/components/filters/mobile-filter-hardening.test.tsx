@@ -187,6 +187,22 @@ describe("mobile filter hardening", () => {
     );
   });
 
+  it("puts the sticky toolbar band over the dock", () => {
+    // At 200% text on a 390x844 phone the band lands at y 687-792 and this
+    // plate covers 698-812, so with the dock on top the species tabs were
+    // behind it at landing and the page's one species control could not be
+    // pressed until the visitor scrolled. The band is where the tabs live and
+    // the dock is fixed, so the dock is the one that gives way.
+    const { container } = renderFilters();
+
+    const band = container
+      .querySelector('[data-slot="mobile-toolbar"]')
+      ?.parentElement;
+    const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(band?.className.split(" ")).toContain("z-40");
+    expect(dock?.className.split(" ")).toContain("z-30");
+  });
+
   it("keeps the sheet mounted for a homogeneous multi-result set, so the sort control stays reachable", async () => {
     // Three results, no facet with more than one value between them: every
     // group and toggle list is empty, exactly what a shelter's single-species

@@ -79,8 +79,15 @@ import type { AnimalSort } from "@/lib/sort";
 // moves. Only the horizontal edges move: the bottom keeps the safe-area inset
 // the footer's docked padding is measured against, and BackToTop is positioned
 // on its own and stays at the viewport's right edge.
+//
+// z-30, under the sticky toolbar band (z-40) and above the page. The two only
+// ever meet at 200% text, where the band lands at y 687-792 on a 390x844
+// phone and this plate covers 698-812: with the plate on top the species tabs
+// were unreachable at landing, and the band is where they live. This plate is
+// fixed, so one scroll frees it whatever the band does. Nothing above it below
+// lg but BackToTop (z-40), which stands 5.5rem up and never overlaps it.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
 
 /** The band the toolbar draws itself in: full width below lg, the frame's own
  *  column from lg, with the rule under it that the grid starts below.
@@ -274,7 +281,16 @@ export function AnimalFilters({
           gutter pins to the same edge and carries the same amount as top
           padding, so the two columns start their content on one line. The
           number is written once, in globals.css. */}
-      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-20 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
+      {/* z-40, above the dock, and it was z-20 under it. At 200% text on a
+          390x844 phone this band lands at y 687-792 and the fixed dock covers
+          698-812, so at landing the species tabs were entirely behind the
+          dock's plate and the one species control on the page could not be
+          pressed until the visitor scrolled. The band wins that overlap now:
+          it is the tabs' only home and it pins to the top of the viewport,
+          while the dock is fixed to the bottom and comes clear of it the
+          moment the page moves at all. Nothing changes at 100% text, where
+          the two never meet. */}
+      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-40 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
         {/* --toolbar-row states the row's height rather than leaving it to
             whichever control happens to be tallest: the sort trigger stands
             down at zero results, and the row would otherwise fall to the tabs'

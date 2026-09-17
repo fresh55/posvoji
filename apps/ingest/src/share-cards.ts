@@ -17,6 +17,7 @@ import {
   shareCardsDir,
 } from "./paths";
 import { writeFileAtomic } from "./write-atomic";
+import { renderCardInChild } from "./share-card-process";
 
 // Where the static site serves the files written to shareCardsDir.
 const PUBLIC_PREFIX = "/media/share";
@@ -515,23 +516,25 @@ export async function writeShareCards(
 
     try {
       if (photo) {
-        const source = readFileSync(photo);
         const file = shareCardFile(animal.id);
+        const text = cardText(animal, "sl", reference);
         writeFileAtomic(
           join(cardsDir, file),
-          await renderPhotoCard(source, cardText(animal, "sl", reference)),
+          process.platform === "win32"
+            ? await renderCardInChild({ kind: "photo", source: photo, text })
+            : await renderPhotoCard(readFileSync(photo), text),
         );
         next.entries[animal.id] = { files: [file], fingerprint };
       } else {
         const files: string[] = [];
         for (const locale of CARD_LOCALES) {
           const file = shareCardFile(animal.id, locale);
+          const text = cardText(animal, locale, reference);
           writeFileAtomic(
             join(cardsDir, file),
-            await renderTypographicCard(
-              cardText(animal, locale, reference),
-              animal.species,
-            ),
+            process.platform === "win32"
+              ? await renderCardInChild({ kind: "typographic", text, species: animal.species })
+              : await renderTypographicCard(text, animal.species),
           );
           files.push(file);
         }
@@ -539,8 +542,8 @@ export async function writeShareCards(
       }
       written++;
     } catch (error) {
-      // A card is a nice-to-have. A shelter photo that sharp cannot read must
-      // not take the export down with it.
+      // A card is optional. On Windows even a native renderer crash arrives
+      // here as a rejected child process, so the dataset can still be sealed.
       console.warn(`share card ${animal.id}: not drawn (${error})`);
     }
   }

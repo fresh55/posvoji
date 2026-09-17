@@ -47,8 +47,7 @@ $ErrorActionPreference = 'Continue'
 
 $EventSource = 'PosvojiCrawl'
 
-# One id per level, so an operator can filter the Application log on the id
-# alone. eventcreate only accepts 1 to 1000.
+# One id per level, so an operator can filter the Application log on the id.
 $EventIds = @{
   'Error'       = 100
   'Warning'     = 101
@@ -113,25 +112,21 @@ function Write-CrawlEvent {
   $body = "$Title`r`n`r`n$Message"
 
   # Write-EventLog first because it works as a normal user once the source
-  # exists. It is setup-crawl-task.ps1 that creates the source, since doing so
-  # writes under HKLM and needs an elevated run.
+  # exists. Source registration writes under HKLM and needs an elevated run
+  # of setup-crawl-event-source.ps1 (or the original task installer).
   try {
     Write-EventLog -LogName Application -Source $EventSource -EntryType $Level `
       -EventId $id -Message $body -ErrorAction Stop
     return
   }
   catch {
-    # Falls through to eventcreate, which registers the source itself when it
-    # is run elevated.
-  }
-
-  $eventType = $Level.ToUpper()
-  & eventcreate.exe /T $eventType /ID $id /L APPLICATION /SO $EventSource /D $body 2>&1 |
-    Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    Write-Error ("event log: could not record this run. The event source " +
-      "$EventSource is not registered and eventcreate needs elevation to " +
-      "create it. Run setup-crawl-task.ps1 from an elevated prompt once.")
+    # Notification is best effort. Do not attempt to create an HKLM source in
+    # an unattended, unprivileged task or print a second PowerShell error.
+    # Registering this source must not re-enable the retired Windows tasks.
+    Write-Warning ("event log: could not record this run under $EventSource. " +
+      "Run scripts/setup-crawl-event-source.ps1 once in Windows PowerShell as " +
+      "administrator. The run log still contains this notification. " +
+      "Reason: $($_.Exception.Message)")
   }
 }
 

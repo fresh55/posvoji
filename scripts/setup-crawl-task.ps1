@@ -260,7 +260,7 @@ elseif (Test-Elevated) {
 else {
   Write-Info "event source $EventSource is not registered and this shell is not elevated."
   Write-Info 'Toasts and run logs work without it. To get the event log too, run once as admin:'
-  Write-Info "  New-EventLog -LogName Application -Source $EventSource"
+  Write-Info "  & '$PSScriptRoot\setup-crawl-event-source.ps1'"
 }
 
 # --- stage 6: the tasks ------------------------------------------------------

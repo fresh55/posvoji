@@ -273,19 +273,9 @@ describe("LocationPicker status line", () => {
   });
 });
 
-describe("LocationPicker short and narrow screens", () => {
-  it("tightens the header where there is no height", async () => {
-    await openPicker();
-    const header = dialog().querySelector<HTMLElement>("[data-picker-header]")!;
-
-    // The 8px is what the landscape plate needs to reach the width its region
-    // names are gated on; see the comment on the header in view.tsx.
-    expect(header.className).toContain("short:py-2");
-  });
-
-  it("takes the notch off the dialog's own width", async () => {
-    await openPicker();
-
-    expect(dialog().className).toContain("env(safe-area-inset-left,0px)");
-  });
-});
+// The short-screen header padding and the notch inset are deliberately not
+// asserted here. Both were class-string checks: jsdom emits no Tailwind and
+// lays nothing out, so `short:py-2` and the safe-area inset passed whether or
+// not the utility ever produced a rule, and broke on any refactor that moved
+// the padding onto another element. Neither is a claim this level can make;
+// only a browser at a short landscape viewport can measure them.

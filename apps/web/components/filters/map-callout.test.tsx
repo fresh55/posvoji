@@ -10,7 +10,12 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";
-import { calloutType, DEFAULT_PLATE_SCALE, MapCallout } from "./map-callout";
+import {
+  calloutType,
+  DEFAULT_PLATE_SCALE,
+  MapCallout,
+  type CalloutRect,
+} from "./map-callout";
 
 afterEach(() => cleanup());
 
@@ -575,6 +580,103 @@ describe("MapCallout rectangle report", () => {
         </svg>,
       ),
     ).not.toThrow();
+  });
+});
+
+// Which side of the mark the chip takes. The chip is opaque, so whatever it
+// lands on is gone while it is up, and the side used to be decided by frame fit
+// alone: the hover over Zavod Muri covered the Celje coin whole. `avoid` is a
+// preference laid over that rule rather than a replacement for it, so the frame
+// still decides first and a caller with nothing to protect gets the old answer.
+describe("MapCallout side choice", () => {
+  const type = calloutType(DEFAULT_PLATE_SCALE);
+  const REACH = 5;
+  // The frame margin the plate's furniture keeps. Private to the component and
+  // restated here on purpose: the placement arithmetic is the thing under test,
+  // and reading the number back out of the component would only assert that it
+  // equals itself.
+  const FRAME_MARGIN = 2;
+
+  // Where the chip actually landed, read off the report rather than off the
+  // classes: this is the same rectangle the plate suppresses town anchors
+  // against, and it is the only place the side choice is visible as a number.
+  function placed(x: number, avoid?: readonly CalloutRect[]): CalloutRect {
+    const onRect = vi.fn();
+    render(
+      <svg>
+        <MapCallout
+          x={x}
+          y={MAP_HEIGHT / 2}
+          reach={REACH}
+          title="Zavetišče Horjul"
+          metadata="12 živali"
+          rectKey="town"
+          avoid={avoid}
+          onRect={onRect}
+        />
+      </svg>,
+    );
+    return onRect.mock.calls.at(-1)![1] as CalloutRect;
+  }
+
+  const rightOf = (x: number) => x + REACH + type.labelGap;
+  const leftOf = (x: number) => x - REACH - type.labelGap - type.width;
+  const clamped = (value: number) =>
+    Math.min(
+      Math.max(value, FRAME_MARGIN),
+      MAP_WIDTH - type.width - FRAME_MARGIN,
+    );
+
+  it("takes the side the frame alone chose, for a caller with nothing to avoid", () => {
+    // The rule as it stood before any of this: the right side unless the
+    // reserved column runs off the frame there. Across the plate, including the
+    // ends where the clamp is what lands the chip.
+    for (const x of [10, 50, 120, 160, 200, 260, 310]) {
+      const rightFits = rightOf(x) + type.width <= MAP_WIDTH - FRAME_MARGIN;
+      const expected = clamped(rightFits ? rightOf(x) : leftOf(x));
+
+      expect(placed(x).x).toBeCloseTo(expected, 5);
+      // An empty list is the same answer as no list at all, which is what a
+      // caller with nothing painted near it hands in.
+      expect(placed(x, []).x).toBeCloseTo(expected, 5);
+    }
+  });
+
+  it("flips to the quiet side when a mark is painted on the one it prefers", () => {
+    const x = 160;
+    // The premise, asserted rather than assumed: at this x the chip fits on
+    // either side, so the frame has nothing to say and what is already painted
+    // is what decides.
+    expect(rightOf(x) + type.width).toBeLessThanOrEqual(
+      MAP_WIDTH - FRAME_MARGIN,
+    );
+    expect(leftOf(x)).toBeGreaterThanOrEqual(FRAME_MARGIN);
+
+    const right = placed(x);
+    expect(right.x).toBeCloseTo(rightOf(x), 5);
+
+    // One coin, sitting inside the box the chip would otherwise take.
+    const marker = { x: right.x + 1, y: right.y + 1, width: 6, height: 6 };
+
+    expect(placed(x, [marker]).x).toBeCloseTo(leftOf(x), 5);
+  });
+
+  it("stays right when both sides would hide exactly as much", () => {
+    const x = 160;
+    const right = placed(x);
+    const left = { ...right, x: leftOf(x) };
+    // The same mark inside each candidate box, so the two sides cover the same
+    // area as each other. Neither one reaches the other box: the two positions
+    // are a chip's width and two gaps apart.
+    const marks = [
+      { x: right.x + 1, y: right.y + 1, width: 6, height: 6 },
+      { x: left.x + 1, y: left.y + 1, width: 6, height: 6 },
+    ];
+
+    // Ties go right, which is the side this read as before anything was
+    // avoided, so a plate crowded evenly on both sides draws what it always
+    // drew.
+    expect(placed(x, marks).x).toBeCloseTo(rightOf(x), 5);
   });
 });
 

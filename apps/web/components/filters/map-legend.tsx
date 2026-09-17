@@ -170,9 +170,9 @@ export function MapLegend({
               map-marker.tsx), so two captions beside two identical glyphs
               promised a distinction the map cannot draw: fifteen hollow discs
               and a key claiming some of them were one thing and some the
-              other. With both states on the plate the row takes the wider of
-              the two captions, since the narrower one is only true of half the
-              circles it would be explaining. */}
+              other. With both states on the plate the row takes the caption
+              that is true of every hollow circle, since the other one is only
+              true of half the circles it would be explaining. */}
           {hasEmptyMarker
             ? mapAvailabilityText[locale].noListingsLegend
             : mapAvailabilityText[locale].noMatchesLegend}

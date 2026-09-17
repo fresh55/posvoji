@@ -148,13 +148,15 @@ export function LocationPickerView({
           {searchNews ? <span>{searchNews}</span> : null}
         </p>
         {/* short:py-2 because on a screen with no height to spare this header
-            is 133px of a 414px dialog, and the map under it is the part that
-            pays: the 8px buys the landscape plate the width it needs to name
-            its regions (292 to 300, against the 300 threshold in
-            map-region-names.tsx). Every other block in the picker has a short:
-            rule; this one had none. Only the padding: the close button is
-            44px tall and sets the row's height by itself, so hiding the hint
-            beside it was measured at 0.6px and would have cost a sentence. */}
+            takes a share of the dialog nothing else in it does: 133px of 414
+            on a 390-wide phone with the keyboard up. The map is what pays for
+            it, and on a phone held sideways at 844 by 390 those 8px are what
+            carry the plate to 300px drawn, which is where
+            map-region-names.tsx starts naming regions; under it the country
+            is unlabelled. Every other block in the picker has a short: rule;
+            this one had none. Only the padding: the close button is 44px tall
+            and sets the row's height by itself, so hiding the hint beside it
+            was measured at under a pixel and would have cost a sentence. */}
         <div data-picker-header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b bg-background px-4 py-3 short:py-2 sm:px-6">
           <DialogHeader className="min-w-0 flex-1 gap-1 text-left">
             <DialogTitle className="text-lg font-semibold leading-tight sm:text-xl">
@@ -179,7 +181,7 @@ export function LocationPickerView({
             // into two lines with the close button between them (measured).
             className="order-last w-full rounded-ui bg-muted p-1 sm:order-none sm:w-auto lg:hidden"
           >
-            <ToggleGroupItem value="list" data-picker-show-list aria-label={messages.expandPanel} className="h-11 min-w-0 flex-1 gap-2 text-sm data-[state=on]:border-border data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-background data-[state=on]:hover:text-foreground sm:min-w-28 sm:flex-none">
+            <ToggleGroupItem value="list" data-picker-show-list aria-label={pickerText[locale].showList} className="h-11 min-w-0 flex-1 gap-2 text-sm data-[state=on]:border-border data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-background data-[state=on]:hover:text-foreground sm:min-w-28 sm:flex-none">
               <List className="size-4" aria-hidden />
               {locale === "sl" ? "Seznam" : "List"}
             </ToggleGroupItem>

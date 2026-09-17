@@ -117,6 +117,7 @@ export const pickerText = {
     // allShelters), which read as a label rather than a button.
     allShelters: "Pokaži vsa zavetišča",
     backToResults: "Nazaj k rezultatom",
+    showList: "Pokaži seznam",
     chooseShelters: "Izberi zavetišča",
     chooseSheltersHint: "Izberi eno ali več zavetišč.",
     showMap: "Pokaži zemljevid",
@@ -136,6 +137,10 @@ export const pickerText = {
     zeroMatches: "No published animals match your selection.",
     allShelters: "Show all shelters",
     backToResults: "Back to results",
+    // Not i18n's expandPanel, which the desktop rail says as "Show the list".
+    // This names a view on a switch beside "Zemljevid", not a panel that
+    // unfolds, and the two should be free to read differently.
+    showList: "Show list",
     chooseShelters: "Choose shelters",
     chooseSheltersHint: "Select one or more shelters.",
     showMap: "Show map",

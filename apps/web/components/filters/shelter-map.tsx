@@ -347,10 +347,12 @@ export function ShelterMap({
 
   /** The frames the blur teardowns below are waiting on, so an unmount can
    *  cancel whatever has not run yet. */
-  const blurFramesRef = useRef(new Set<number>());
+  const blurFramesRef = useRef(new Set<{ frame: number }>());
   useEffect(
     () => () => {
-      for (const frame of blurFramesRef.current) cancelAnimationFrame(frame);
+      for (const pending of blurFramesRef.current) {
+        cancelAnimationFrame(pending.frame);
+      }
       blurFramesRef.current.clear();
     },
     [],
@@ -379,15 +381,17 @@ export function ShelterMap({
    *  is written first, and the late blur then finds a different id and does
    *  nothing, which is the same order the pointer's own leave already keeps. */
   const deferAfterBlur = useCallback((teardown: () => void) => {
-    // Declared and initialised before the request, so the callback has a
-    // binding to read whenever it runs. A test that runs frames synchronously
-    // does run it during the request itself.
-    let frame = 0;
-    frame = requestAnimationFrame(() => {
-      blurFramesRef.current.delete(frame);
+    // A token of our own rather than the frame id, because a test that runs
+    // frames synchronously runs the callback inside the request: keyed on the
+    // id, the delete would run before the add and leave the set growing by an
+    // entry per blur. The id is read out of the token when the cleanup
+    // cancels, by which time the request has returned either way.
+    const pending: { frame: number } = { frame: 0 };
+    blurFramesRef.current.add(pending);
+    pending.frame = requestAnimationFrame(() => {
+      blurFramesRef.current.delete(pending);
       teardown();
     });
-    blurFramesRef.current.add(frame);
   }, []);
 
   const plateRef = useRef<SVGSVGElement>(null);

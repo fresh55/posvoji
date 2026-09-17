@@ -27,9 +27,9 @@ import type { LocationPickerController } from "./controller";
 // It needs a height of its own. flex-1 is `flex: 1 1 0%`, which is 0 in a
 // column sized by its content, and below lg with the list put away the stage
 // is exactly that: the dialog painted as a header, a strip of padding and a
-// footer, then jumped to full height when the chunk landed. min-h-52 is the
-// plate's own 210-unit viewBox at 1:1, and shrink lets it go when the box is
-// shorter than that, the same as the real map does.
+// footer, then jumped to full height when the chunk landed. min-h-52 is 208px,
+// within two of the plate's own 210-unit viewBox at 1:1, and shrink lets it go
+// when the box is shorter than that, the same as the real map does.
 const PickerMapPlate = dynamic(
   () =>
     import("./picker-map-plate").then((module) => module.PickerMapPlate),

@@ -508,6 +508,11 @@ export function useLocationPickerController({
     visibleOffRows.some((row) => row.value === value);
   const hoveredRow =
     hoveredRowValue && onScreen(hoveredRowValue) ? hoveredRowValue : null;
+  // Retired and not merely hidden, the same way the drop note retires above. A
+  // masked value comes back the moment the query is cleared, and the row it
+  // names lights up again under a pointer that has not moved since it was
+  // somewhere else entirely.
+  if (hoveredRowValue && !hoveredRow) setHoveredRowValue(null);
   // Open details are an answer someone asked for, and asking outranks a
   // pointer passing over the map: the hover still tints its row, but it stops
   // scrolling the list, which used to carry the answer off the top of it.

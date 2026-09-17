@@ -946,6 +946,54 @@ describe("LocationPicker off-site shelters", () => {
   });
 });
 
+// Enter and ArrowDown in the search box move focus to the first result, and
+// swallow the key only when they moved something. One state has a first result
+// that is not on the page: a query that matches live rows, all of them empty,
+// and an off-site row as well. The live find looks for a row with animals or a
+// pick and comes back with none, so the fallback names the off-site row; but
+// live rows exist, so that group is drawn as a folded Collapsible and its rows
+// are unmounted, which means the row registered no ref. A key that moved
+// nothing belongs to the browser, or Tab and Enter go dead in the one field
+// that has to keep working.
+describe("LocationPicker search keys with nothing to move to", () => {
+  // Every live row empty, which is what a filter can leave behind: the rows
+  // stay in the list, greyed and unpickable.
+  const noCounts = new Map<string, number>();
+
+  it("leaves the key alone when the only match is behind the fold", async () => {
+    const input = await openPicker({ offSite, counts: noCounts });
+
+    type(input, "Zavetišče");
+
+    // The premise: both live rows on screen, so the off-site group is a fold
+    // rather than the whole answer, and nothing inside it is mounted.
+    expect(rowOrder()).toEqual(["sever", "jug"]);
+    expect(screen.queryByRole("link", { name: /Zavetišče Vzhod/ })).toBeNull();
+
+    input.focus();
+    for (const key of ["Enter", "ArrowDown"]) {
+      // fireEvent returns false for a key the handler swallowed.
+      expect(fireEvent.keyDown(input, { key })).toBe(true);
+      expect(document.activeElement).toBe(input);
+    }
+  });
+
+  it("reaches the off-site row once the group is open", async () => {
+    const input = await openPicker({ offSite, counts: noCounts });
+
+    type(input, "Zavetišče");
+    openOffGroup();
+    input.focus();
+
+    // Same query, same empty live rows: the one thing that changed is that the
+    // row the fallback names is now mounted and has a ref to focus.
+    expect(fireEvent.keyDown(input, { key: "ArrowDown" })).toBe(false);
+    expect(document.activeElement).toBe(
+      screen.getByRole("link", { name: /Zavetišče Vzhod/ }),
+    );
+  });
+});
+
 // The off-site rows used to be hand-written <a> tags with none of ShelterRows'
 // map-hover wiring. They go through ShelterRows now (see shelter-rows.tsx's
 // href branch), so a marker hover has to echo on them exactly the way it
@@ -2621,10 +2669,13 @@ describe("LocationPicker persistent footer", () => {
     fireEvent.click(dialog.querySelector("[data-picker-show-map]")!);
     expect(dialog.querySelector("[data-picker-panel]")?.contains(footer)).toBe(false);
     expect(footer.contains(pill)).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" }));
-    expect(screen.queryByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeTruthy();
-    expect(document.querySelector("[data-picker-trigger]")?.getAttribute("aria-label")).toContain("Zavetišče: Zavetišče Jug");
+    // Jug and not Sever, although Sever was picked first: the chip names the
+    // same shelter the summary beside it opens on, and that list reads in the
+    // panel's order rather than the URL's (footer.tsx).
+    fireEvent.click(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" }));
+    expect(screen.queryByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeTruthy();
+    expect(document.querySelector("[data-picker-trigger]")?.getAttribute("aria-label")).toContain("Zavetišče: Zavetišče Sever");
   });
 
   it("removes later selections from the summary and closes only that summary on Escape", async () => {
@@ -2644,7 +2695,9 @@ describe("LocationPicker persistent footer", () => {
     fireEvent.keyDown(summary, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Izbrano: 2" })).toBeNull());
     expect(screen.getByRole("dialog")).toBe(picker);
-    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeTruthy();
+    // The summary is gone; what is left on the footer is the chip, and it
+    // names the first of the two survivors in the panel's order.
+    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeTruthy();
   });
 
   it("says the count once, on the button, and not again above the list", async () => {

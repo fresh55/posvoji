@@ -280,16 +280,21 @@ export const Region = memo(function Region({
           // Gated on the plate having been pointed at, like every other hover
           // rule on a region: the dialog opens under a resting cursor, and a
           // region that lights up for a hover nobody performed is the plate
-          // answering a question that was never asked. The JS half of the same
-          // guard is pointerAsked in shelter-map.tsx, which is where the whole
-          // argument is written down.
+          // answering a question that was never asked. The argument is written
+          // down beside pointerAsked in shelter-map.tsx.
+          //
+          // The gate is stricter here than the one in that file, on purpose.
+          // There a coarse pointer is exempt, because a tap is the only hover
+          // a finger has and the naming would be swallowed with it. The
+          // attribute is set by a pointer that moved, which a tap is not, so
+          // on touch a region draws no hover look at all. That is the state
+          // worth having: the tint a tap used to leave behind stayed until
+          // something else was touched, and a mark that outlives the finger
+          // reads as a selection rather than as a hover.
           // Dark carries its own pair, because the rest value there is half of
           // this one (see the fill below) and a hover that stayed at 7% would
           // be three and a half times the resting tint rather than the barely
-          // there acknowledgement this is. Written out rather than left to
-          // cascade: the resting dark rule and this one compute the same
-          // specificity, so without the dark variant here the empty region
-          // stopped answering a pointer in dark altogether. Measured.
+          // there acknowledgement this is.
           interactive &&
             "group-data-[pointer-asked]/plate:hover:fill-foreground/7 dark:group-data-[pointer-asked]/plate:hover:fill-foreground/4",
           // Neutral foreground and not the ramp's green, on purpose: "no

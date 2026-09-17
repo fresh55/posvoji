@@ -24,11 +24,12 @@ export function PickerFooter({ controller, hug = false }: {
   const summaryTriggerRef = useRef<HTMLButtonElement>(null);
   const summaryInteractedOutsideRef = useRef(false);
   const summaryRowsRef = useRef(new Map<string, HTMLButtonElement>());
-  const firstSelected = selectedRows[0];
   // The panel above reads alphabetically; the selection arrives in URL order.
-  // Sorted once, so the rows and the index the removal focus walks are the
-  // same list.
+  // Sorted once, so the chip, the rows and the index the removal focus walks
+  // are all the same list: the chip naming one shelter while the list a press
+  // away opened on another was the half of this the sort had not reached.
   const summaryRows = [...selectedRows].sort((a, b) => a.label.localeCompare(b.label, locale));
+  const firstSelected = summaryRows[0];
   const summaryLabel = locale === "sl"
     ? `Pokaži izbrana zavetišča (${selectedRows.length})`
     : `Show selected shelters (${selectedRows.length})`;

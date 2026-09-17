@@ -75,8 +75,11 @@ export function PickerMapPlate({
             to its left at 1440 with the panel collapsed, 132px on a phone
             held sideways. Where the height is what binds (from lg, and on a
             landscape phone) this box takes the plate's own 32:21 from the
-            height and the map fills it exactly; where the width binds it is
-            the column, which is what the plate fills anyway. */}
+            height and the map fills it exactly, so the credit is on the
+            country. Where the width binds instead the box is the column, the
+            plate letterboxes inside it, and the credit sits under the map
+            with that band between them, which is what 1024 with the panel
+            open still looks like. */}
         <div
           className={cn(
             "relative flex min-h-0 w-full shrink flex-col justify-center",

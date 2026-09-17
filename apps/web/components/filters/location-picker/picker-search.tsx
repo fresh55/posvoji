@@ -31,8 +31,14 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
       return true;
     }
     if (firstRow) {
-      rowRefs.current.get(firstRow.value)?.focus();
-      return true;
+      // The ref and not the row: an off-site row is only in the map while its
+      // group is mounted, and the group is folded whenever any live row
+      // matched. Answering "yes" on a row whose ref is absent swallowed the
+      // key and moved nothing, which is the failure this return exists to
+      // prevent.
+      const node = rowRefs.current.get(firstRow.value);
+      node?.focus();
+      return Boolean(node);
     }
     return false;
   };

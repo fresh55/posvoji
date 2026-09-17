@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {

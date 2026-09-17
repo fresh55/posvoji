@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";

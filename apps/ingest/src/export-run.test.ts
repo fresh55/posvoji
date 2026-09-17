@@ -207,6 +207,19 @@ describe("the export command's production pipeline", () => {
     expect(h.release).toHaveBeenCalledOnce();
   });
 
+  it("keeps a sealed run's exit code when the lock release throws", async () => {
+    const h = harness();
+    h.release.mockImplementation(() => {
+      throw new Error("fixture release failure");
+    });
+    const result = await runExport({}, h.services);
+    expect(result.exitCode).toBe(0);
+    expect(h.seal).toHaveBeenCalledOnce();
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining("fixture release failure"),
+    );
+  });
+
   it("reuses a completed provider checkpoint after a later phase fails", async () => {
     const h = harness();
     h.cacheImages.mockRejectedValueOnce(new Error("fixture media failure"));

@@ -769,6 +769,15 @@ export async function runExport(
     });
     return { exitCode, dataset, generationId };
   } finally {
-    release();
+    // The dataset is written and sealed by the time this runs. A release that
+    // throws (a retired lock, a token mismatch, a directory the process cannot
+    // rename) would replace the run's result with exit 1 and abort a deploy
+    // the run earned. The next run recovers a lock whose owner is gone.
+    try {
+      release();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`artifact lock: release failed, the next run recovers it: ${message}`);
+    }
   }
 }

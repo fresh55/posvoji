@@ -498,6 +498,18 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.923 0.003 48.717);
   --input: oklch(0.923 0.003 48.717);
+  /* The hairline the card's photo frame closes its shape with, and the one
+     thing the theme changes about that frame: both of PHOTO_FRAME's shadows
+     read it (animal-card.tsx), so neither carries a dark twin any more. Many
+     shelter photos are studio shots on a white ground and have no edge at all
+     on the white page. 9% black is rgb(232) at the corners, which the eye
+     finds where a photo runs to white and which still reads as the picture's
+     own rim rather than a line drawn round it. It was 6%, and at 6% the top of
+     the frame read but the bottom corners vanished. Not --border: that is a
+     colour and it is every divider, while this is an alpha over whatever the
+     photograph happens to be. rgba and not oklch, because those are the
+     measured values the frame's own comment argues from. */
+  --card-photo-edge: rgba(0, 0, 0, 0.09);
   /* The edge of any control whose boundary is what identifies it: an outline
      button, a select trigger, a text input, a chip, a resting check box.
      A rule and not a list, because a list of call sites is a list that goes
@@ -636,6 +648,8 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  /* See the light block. 8% white against the dark grid. */
+  --card-photo-edge: rgba(255, 255, 255, 0.08);
   /* See the light block. 3.77:1 on the page, 3.67:1 on --muted. */
   --control-border: oklch(1 0 0 / 40%);
   --ring: oklch(0.75 0.105 151);
@@ -696,6 +710,7 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
+    --card-photo-edge: rgba(255, 255, 255, 0.08);
     --control-border: oklch(1 0 0 / 40%);
     --ring: oklch(0.75 0.105 151);
   }
